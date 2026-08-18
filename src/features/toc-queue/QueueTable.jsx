@@ -2,9 +2,11 @@ import { useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { QueueRow, getQueueMiddleColumns } from './QueueRow';
 import { QueueEmptyState } from './QueueEmptyState';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
+import { enrichTocRow } from '../toc/tocColumns';
 
 /**
  * Agent-queue table shared by the TCM Agent Queue tab and the standalone
@@ -26,12 +28,22 @@ export function QueueTable({
   const selectAll = useAppStore(s => s.selectAll);
   const clearSelected = useAppStore(s => s.clearSelected);
 
+  const isToc = worklistKey === 'toc';
+
   const columns = useMemo(() => [
     { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },
-    { key: 'members', label: 'Members', sticky: 'left', left: 36, width: 240, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
+    {
+      key: 'members',
+      label: 'Members',
+      sticky: 'left',
+      left: 36,
+      width: 240,
+      ...(isToc ? { sortKey: 'name', sortType: 'alpha' } : {}),
+      thStyle: { borderRight: '0.5px solid var(--neutral-150)' },
+    },
     ...(middleColumns || getQueueMiddleColumns(programLabel)),
     { key: 'actions', label: 'Actions', sticky: 'right', width: 140 },
-  ], [programLabel, middleColumns]);
+  ], [programLabel, middleColumns, isToc]);
 
   const activeFilters = useAppStore(s => s.activeFilters);
   const currentPage = useAppStore(s => s.currentPage);
@@ -56,8 +68,22 @@ export function QueueTable({
       }
     }
 
-    return result;
-  }, [patients, searchQuery, activeFilters]);
+    return isToc ? result.map(enrichTocRow) : result;
+  }, [patients, searchQuery, activeFilters, isToc]);
+
+  // TOC only — click cycles asc → desc → clear (back to priority order).
+  // TCM Agent Queue keeps its fixed priority sort.
+  const { sorted, sortKey, sortDir, setSort, clearSort } = useTableSort(filteredQueue);
+  const handleSort = (field) => {
+    if (sortKey === field) {
+      if (sortDir === 'asc') setSort(field, 'desc');
+      else if (sortDir === 'desc') clearSort();
+      else setSort(field, 'asc');
+    } else {
+      setSort(field, 'asc');
+    }
+  };
+  const displayQueue = isToc ? sorted : filteredQueue;
 
   const callsByPatient = useMemo(() => {
     const voicemails = new Map();
@@ -97,7 +123,7 @@ export function QueueTable({
   }
 
   const startIdx = (currentPage - 1) * perPage;
-  const pageRows = filteredQueue.slice(startIdx, startIdx + perPage);
+  const pageRows = displayQueue.slice(startIdx, startIdx + perPage);
 
   const handleSelectAll = (checked) => {
     if (checked) selectAll([...new Set([...selectedIds, ...pageRows.map(p => p.id)])]);
@@ -110,6 +136,9 @@ export function QueueTable({
       worklistKey={worklistKey}
       columns={columns}
       rows={pageRows}
+      sortKey={isToc ? sortKey : undefined}
+      sortDir={isToc ? sortDir : undefined}
+      onSort={isToc ? handleSort : undefined}
       renderRow={(p, _i, ctx) => (
         <QueueRow
           key={p.id}

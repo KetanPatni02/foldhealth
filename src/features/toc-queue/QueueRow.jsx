@@ -388,10 +388,17 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
   const openAssessmentDrawer = useAppStore(s => s.openAssessmentDrawer);
   const openOutreachStatusDrawer = useAppStore(s => s.openOutreachStatusDrawer);
   const showToast = useAppStore(s => s.showToast);
+  const allowLiveDrawer = useAppStore(s => s.activeSubnavList !== 'TOC');
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const updatePatient = useAppStore(s => s.updatePatient);
   const callBtnRef = useRef(null);
 
   const p = patient;
   const openDetail = useAppStore(s => s.openDetail);
+  const openPatientQuickView = () => openQuickView({
+    id: p.id, name: p.name, initials: p.initials, gender: p.gender,
+    age: p.age, memberId: p.memberId, language: p.language, lace: p.lace,
+  });
 
   const middleCols = (columns || QUEUE_MIDDLE_COLUMNS)
     .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
@@ -402,6 +409,8 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
     completedCall,
     openAssessmentDrawer,
     openOutreachStatusDrawer,
+    platformUsers,
+    updatePatient,
   };
 
   const handleRowClick = () => {
@@ -409,15 +418,15 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
       openDetail(p.id);
       return;
     }
-    if (p.status === 'oncall') {
+    if (p.status === 'oncall' && allowLiveDrawer) {
       openLiveDrawer(p.id);
       return;
     }
-    openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace });
+    openPatientQuickView();
   };
   const handleCallClick = (e) => {
     e.stopPropagation();
-    if (p.status === 'oncall') {
+    if (p.status === 'oncall' && allowLiveDrawer) {
       openLiveDrawer(p.id);
       return;
     }
@@ -447,7 +456,7 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
                 className={rowStyles.patientNameLink}
                 onClick={(e) => {
                   e.stopPropagation();
-                  openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace });
+                  openPatientQuickView();
                 }}
               >
                 {p.name}
@@ -488,9 +497,9 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
             size="L"
             tooltip="View details"
             onClick={() => {
-              if (p.status === 'oncall') openLiveDrawer(p.id);
+              if (p.status === 'oncall' && allowLiveDrawer) openLiveDrawer(p.id);
               else if (p.status === 'completed') openDetail(p.id);
-              else openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace });
+              else openPatientQuickView();
             }}
           />
           <span className={rowStyles.actionDivider} />
@@ -499,7 +508,7 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
               ref={callBtnRef}
               icon="solar:phone-linear"
               size="L"
-              tooltip={p.status === 'oncall' ? 'View live call' : 'Call patient'}
+              tooltip={p.status === 'oncall' && allowLiveDrawer ? 'View live call' : 'Call patient'}
               iconColor={p.status === 'oncall' ? '#059669' : undefined}
               className={p.status === 'oncall' ? rowStyles.oncall : p.status === 'queued' ? rowStyles.queuedCall : ''}
               onClick={handleCallClick}

@@ -2441,6 +2441,7 @@ export const useAppStore = create((set, get) => ({
   // ─── Supabase: Persist a patient update ───
   persistPatient: async (id, updates) => {
     const dbUpdates = updatesToDb(updates);
+    if (!Object.keys(dbUpdates).length) return;
     const { error } = await supabase
       .from('patients')
       .update(dbUpdates)

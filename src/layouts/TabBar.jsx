@@ -121,7 +121,7 @@ export function TabBar() {
     };
   })();
 
-  const onQueueTab = activeTab === 'toc-queue';
+  const onQueueTab = activeSubnavList === 'TCM' && activeTab === 'toc-queue';
 
   return (
     <>

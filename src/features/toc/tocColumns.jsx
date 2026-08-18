@@ -16,7 +16,7 @@ const PROGRAM_SUB_STATUS = {
 const OUTREACH_STATUS = {
   Completed: { tone: 'success', icon: 'solar:check-circle-linear' },
   'Needs Review': { tone: 'error', icon: 'solar:danger-triangle-linear' },
-  Scheduled: { tone: 'info', icon: 'solar:clock-circle-linear' },
+  Scheduled: { tone: 'warning', icon: 'solar:clock-circle-linear' },
 };
 
 const ADMIT_CLASS = { IP: 'Inpatient', ED: 'Emergency' };
@@ -80,10 +80,80 @@ function outreachStatusLabel(p) {
 }
 
 function riskIq(p) {
+  if (p.riskIq) return p.riskIq;
   if (p.lace === 'High') return 'High';
   if (p.lace === 'Medium') return 'Moderate';
   if (p.lace === 'Low') return 'Low';
   return 'Undetermined';
+}
+
+const LACE_RANK = { High: 0, Medium: 1, Low: 2 };
+const RISK_RANK = { High: 0, Moderate: 1, Low: 2, Undetermined: 3 };
+
+function parseMdy(s) {
+  if (!s) return null;
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(s);
+  if (!m) return null;
+  return Date.UTC(+m[3], +m[1] - 1, +m[2]);
+}
+
+export function resolveCareTeamName(p, field, salt = '') {
+  if (p[field]) return p[field];
+  const pool = field === 'nurseCoach' ? CARE_TEAM.nurse
+    : field === 'coordinator' ? CARE_TEAM.coordinator
+      : field === 'socialWorker' ? CARE_TEAM.socialWorker
+        : CARE_TEAM.chw;
+  return hashPick(`${p.id}${salt}`, pool);
+}
+
+/** Sort fields for useTableSort — dates as UTC timestamps, acuity as rank. */
+export function enrichTocRow(p) {
+  return {
+    ...p,
+    programSubStatusSort: programSubStatus(p).label,
+    admitClassSort: ADMIT_CLASS[p.tocType] || 'Inpatient',
+    laceSort: LACE_RANK[p.lace] ?? 3,
+    aiOutcomeSort: outreachStatusLabel(p),
+    assessmentSort: `TOC ${p.tocType === 'ED' ? 'ED' : 'IP'} Assessment`,
+    nextActionDueSort: parseMdy(p.dueOn || p.nextOutreach),
+    outreachSort: parseMdy(p.outreachDate || p.callDate),
+    lastOutreachBySort: p.agentAssigned || 'TOC Agent',
+    nurseCoachSort: resolveCareTeamName(p, 'nurseCoach'),
+    coordinatorSort: resolveCareTeamName(p, 'coordinator', '-c'),
+    socialWorkerSort: resolveCareTeamName(p, 'socialWorker', '-s'),
+    chwSort: resolveCareTeamName(p, 'communityHealthWorker', '-h'),
+    startDateSort: parseMdy(p.startDate),
+    lastAdmissionSort: parseMdy(p.lastAdmission),
+    radarSort: p.radar || 'Undetermined',
+    riskIqSort: RISK_RANK[riskIq(p)] ?? 3,
+    carePlanStatusSort: p.carePlanStatus || 'none',
+  };
+}
+
+function RoleAssignee({ name, initials, field, patient, ctx, pickerTitle }) {
+  const users = (ctx.platformUsers || []).map(u => ({
+    id: u.id,
+    name: u.name,
+    initials: u.initials,
+    role: u.clinicalRoles?.[0] || '',
+  }));
+  const onSelect = (u) => ctx.updatePatient?.(patient.id, {
+    [field]: u.name,
+    [`${field}Initials`]: u.initials,
+  });
+  if (!name) {
+    return <AssigneeChange unassigned users={users} onSelect={onSelect} pickerTitle={pickerTitle} />;
+  }
+  return (
+    <AssigneeChange
+      name={name}
+      initials={initials}
+      showRole={false}
+      users={users}
+      onSelect={onSelect}
+      pickerTitle={pickerTitle}
+    />
+  );
 }
 
 function PersonCell({ name }) {
@@ -190,6 +260,8 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'programSubStatus',
     label: 'Program Sub Status',
+    sortKey: 'programSubStatusSort',
+    sortType: 'generic',
     tdClassName: rowStyles.td,
     renderCell: (p) => {
       const cfg = programSubStatus(p);
@@ -199,12 +271,16 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'admitClass',
     label: 'Admit Class',
+    sortKey: 'admitClassSort',
+    sortType: 'generic',
     tdClassName: rowStyles.td,
     renderCell: (p) => <DateCell value={ADMIT_CLASS[p.tocType] || 'Inpatient'} />,
   },
   {
     key: 'tocAcuity',
     label: 'TOC Acuity',
+    sortKey: 'laceSort',
+    sortType: 'priority',
     tdClassName: rowStyles.td,
     tdStyle: BAND_LEFT,
     thStyle: BAND_TH_LEFT,
@@ -214,7 +290,9 @@ export const TOC_MIDDLE_COLUMNS = [
   },
   {
     key: 'outreachStatus',
-    label: 'Outreach Status',
+    label: 'AI Outcome',
+    sortKey: 'aiOutcomeSort',
+    sortType: 'generic',
     tdClassName: rowStyles.td,
     tdStyle: BAND,
     thStyle: BAND_TH,
@@ -236,6 +314,8 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'assessment',
     label: 'AI Assessment',
+    sortKey: 'assessmentSort',
+    sortType: 'alpha',
     tdClassName: rowStyles.td,
     tdStyle: BAND,
     thStyle: BAND_TH,
@@ -254,6 +334,8 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'aiTasks',
     label: 'AI Tasks',
+    sortKey: 'tasks',
+    sortType: 'number',
     tdClassName: rowStyles.td,
     tdStyle: BAND_RIGHT,
     thStyle: BAND_TH_RIGHT,
@@ -266,88 +348,153 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'nextActionDue',
     label: 'Next Action Due',
+    sortKey: 'nextActionDueSort',
+    sortType: 'date',
     tdClassName: rowStyles.td,
     renderCell: (p) => <DateCell value={p.dueOn || p.nextOutreach} />,
   },
   {
     key: 'outreach',
     label: 'Outreach',
+    sortKey: 'outreachSort',
+    sortType: 'date',
     tdClassName: rowStyles.td,
     renderCell: (p) => <OutreachCell patient={p} />,
   },
   {
     key: 'lastOutreachBy',
     label: 'Last Outreach By',
+    sortKey: 'lastOutreachBySort',
+    sortType: 'alpha',
     tdClassName: rowStyles.td,
     renderCell: (p) => <PersonCell name={p.agentAssigned || 'TOC Agent'} />,
   },
   {
     key: 'assignee',
     label: 'Assignee',
+    sortKey: 'assignee',
+    sortType: 'alpha',
     tdClassName: rowStyles.td,
-    renderCell: (p) => (
-      p.assignee
-        ? <AssigneeChange name={p.assignee} initials={p.assigneeInitials} showRole={false} disabled />
-        : <AssigneeChange unassigned disabled />
+    renderCell: (p, ctx) => (
+      <RoleAssignee
+        name={p.assignee}
+        initials={p.assigneeInitials}
+        field="assignee"
+        patient={p}
+        ctx={ctx}
+        pickerTitle="Change assignee"
+      />
     ),
   },
   {
     key: 'nurseCoach',
     label: 'Nurse/Health Coach',
+    sortKey: 'nurseCoachSort',
+    sortType: 'alpha',
     tdClassName: rowStyles.td,
-    renderCell: (p) => {
-      const name = hashPick(p.id, CARE_TEAM.nurse);
-      return <AssigneeChange name={name} initials={initialsFrom(name)} showRole={false} disabled />;
+    renderCell: (p, ctx) => {
+      const name = resolveCareTeamName(p, 'nurseCoach');
+      return (
+        <RoleAssignee
+          name={name}
+          initials={p.nurseCoachInitials || initialsFrom(name)}
+          field="nurseCoach"
+          patient={p}
+          ctx={ctx}
+          pickerTitle="Change nurse / health coach"
+        />
+      );
     },
   },
   {
     key: 'coordinator',
     label: 'Coordinator',
+    sortKey: 'coordinatorSort',
+    sortType: 'alpha',
     tdClassName: rowStyles.td,
-    renderCell: (p) => {
-      const name = hashPick(`${p.id}-c`, CARE_TEAM.coordinator);
-      return <AssigneeChange name={name} initials={initialsFrom(name)} showRole={false} disabled />;
+    renderCell: (p, ctx) => {
+      const name = resolveCareTeamName(p, 'coordinator', '-c');
+      return (
+        <RoleAssignee
+          name={name}
+          initials={p.coordinatorInitials || initialsFrom(name)}
+          field="coordinator"
+          patient={p}
+          ctx={ctx}
+          pickerTitle="Change coordinator"
+        />
+      );
     },
   },
   {
     key: 'socialWorker',
     label: 'Social Worker',
+    sortKey: 'socialWorkerSort',
+    sortType: 'alpha',
     tdClassName: rowStyles.td,
-    renderCell: (p) => {
-      const name = hashPick(`${p.id}-s`, CARE_TEAM.socialWorker);
-      return <AssigneeChange name={name} initials={initialsFrom(name)} showRole={false} disabled />;
+    renderCell: (p, ctx) => {
+      const name = resolveCareTeamName(p, 'socialWorker', '-s');
+      return (
+        <RoleAssignee
+          name={name}
+          initials={p.socialWorkerInitials || initialsFrom(name)}
+          field="socialWorker"
+          patient={p}
+          ctx={ctx}
+          pickerTitle="Change social worker"
+        />
+      );
     },
   },
   {
     key: 'communityHealthWorker',
     label: 'Com. Health Worker',
+    sortKey: 'chwSort',
+    sortType: 'alpha',
     tdClassName: rowStyles.td,
-    renderCell: (p) => {
-      const name = hashPick(`${p.id}-h`, CARE_TEAM.chw);
-      return <AssigneeChange name={name} initials={initialsFrom(name)} showRole={false} disabled />;
+    renderCell: (p, ctx) => {
+      const name = resolveCareTeamName(p, 'communityHealthWorker', '-h');
+      return (
+        <RoleAssignee
+          name={name}
+          initials={p.communityHealthWorkerInitials || initialsFrom(name)}
+          field="communityHealthWorker"
+          patient={p}
+          ctx={ctx}
+          pickerTitle="Change community health worker"
+        />
+      );
     },
   },
   {
     key: 'startDate',
     label: 'Start Date',
+    sortKey: 'startDateSort',
+    sortType: 'date',
     tdClassName: rowStyles.td,
     renderCell: (p) => <DateCell value={p.startDate} />,
   },
   {
     key: 'lastAdmission',
     label: 'Last Admission',
+    sortKey: 'lastAdmissionSort',
+    sortType: 'date',
     tdClassName: rowStyles.td,
     renderCell: (p) => <DateCell value={p.lastAdmission} />,
   },
   {
     key: 'radar',
     label: 'Radar',
+    sortKey: 'radarSort',
+    sortType: 'generic',
     tdClassName: rowStyles.td,
-    renderCell: () => <span className={styles.radar}>Undetermined</span>,
+    renderCell: (p) => <span className={styles.radar}>{p.radar || 'Undetermined'}</span>,
   },
   {
     key: 'riskIq',
     label: 'Risk IQ',
+    sortKey: 'riskIqSort',
+    sortType: 'priority',
     tdClassName: rowStyles.td,
     renderCell: (p) => {
       const value = riskIq(p);
@@ -361,6 +508,8 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'readmission',
     label: 'Readmission',
+    sortKey: 'readmission',
+    sortType: 'generic',
     tdClassName: rowStyles.td,
     renderCell: (p) => (
       p.readmission === 'Yes'
@@ -371,6 +520,8 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'carePlanStatus',
     label: 'Care Plan Status',
+    sortKey: 'carePlanStatusSort',
+    sortType: 'generic',
     tdClassName: rowStyles.td,
     renderCell: (p) => (
       p.carePlanStatus === 'updated'

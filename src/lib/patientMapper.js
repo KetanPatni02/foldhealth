@@ -54,6 +54,18 @@ export function dbToJs(row) {
     phone: row.phone || null,
     city: row.city || null,
     state: row.state || null,
+    nurseCoach: row.nurse_coach || null,
+    nurseCoachInitials: row.nurse_coach_initials || null,
+    coordinator: row.coordinator || null,
+    coordinatorInitials: row.coordinator_initials || null,
+    socialWorker: row.social_worker || null,
+    socialWorkerInitials: row.social_worker_initials || null,
+    communityHealthWorker: row.community_health_worker || null,
+    communityHealthWorkerInitials: row.community_health_worker_initials || null,
+    tags: row.tags || [],
+    tagsMore: row.tags_more ?? 0,
+    radar: row.radar || null,
+    riskIq: row.risk_iq || null,
   };
 }
 
@@ -112,6 +124,18 @@ export function jsToDb(patient) {
     phone: 'phone',
     city: 'city',
     state: 'state',
+    nurseCoach: 'nurse_coach',
+    nurseCoachInitials: 'nurse_coach_initials',
+    coordinator: 'coordinator',
+    coordinatorInitials: 'coordinator_initials',
+    socialWorker: 'social_worker',
+    socialWorkerInitials: 'social_worker_initials',
+    communityHealthWorker: 'community_health_worker',
+    communityHealthWorkerInitials: 'community_health_worker_initials',
+    tags: 'tags',
+    tagsMore: 'tags_more',
+    radar: 'radar',
+    riskIq: 'risk_iq',
   };
 
   for (const [jsKey, dbKey] of Object.entries(map)) {

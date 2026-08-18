@@ -262,7 +262,7 @@ export function WorklistShell({
                         onSort={onSort}
                         align={col.align || 'left'}
                         className={styles.th}
-                        style={{ ...stickyStyle, width: col.width }}
+                        style={{ ...stickyStyle, width: col.width, ...col.thStyle }}
                       />
                     );
                   }
