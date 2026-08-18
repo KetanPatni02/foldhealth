@@ -2,10 +2,12 @@ import { Input as FoldInput } from '../../components/Input/Input';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { PopulationGroupsRow } from './PopulationGroupsRow.jsx';
 import { BulkSelectIcon } from './PopulationGroupsViewPanels.jsx';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
+import { ImportRuleDrawer } from './ImportRuleDrawer';
 import { FOLD_DB_MAP } from './data/fold-db.js';
 
 /* Export a group's members as CSV — same columns the edit drawer's download
@@ -52,7 +54,7 @@ const POP_COLUMNS = [
   { key: 'actions',  label: 'Action', sticky: 'right', width: 150 },
 ];
 
-export function PopulationGroupsViewTable({ vm, onToggleSidebar }) {
+export function PopulationGroupsViewTable({ vm, onImportRule }) {
   const {
     searchQuery, setSearchQuery, searchOpen, setSearchOpen,
     checkedRows, setCheckedRows,
@@ -77,7 +79,7 @@ export function PopulationGroupsViewTable({ vm, onToggleSidebar }) {
   const header = (
     <div style={{ padding:'10px 20px 10px 6px', borderBottom:'0.5px solid var(--neutral-150)', display:'flex', alignItems:'center', flexShrink:0 }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-        <ActionButton icon="solar:sidebar-minimalistic-linear" size="L" tooltip="Collapse sidebar" iconColor="var(--neutral-300)" onClick={onToggleSidebar} />
+        <SubnavToggle />
         <span style={{ fontSize:16, fontWeight:600, color:'var(--neutral-400)' }}>Population Groups</span>
       </div>
 
@@ -103,8 +105,8 @@ export function PopulationGroupsViewTable({ vm, onToggleSidebar }) {
 
         <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
 
-        {/* Import Rule — neutral button, no icon */}
-        <Button variant="secondary" size="L">Import Rule</Button>
+        {/* Import Rule — opens the templates drawer */}
+        <Button variant="secondary" size="L" onClick={onImportRule}>Import Rule</Button>
 
         <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
 

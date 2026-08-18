@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Badge } from '../../components/Badge/Badge';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { GroupName, UsersGroupRoundedLinear } from './PopulationGroupsViewPanels.jsx';
 import styles from './PopulationGroupsRow.module.css';
@@ -51,8 +52,13 @@ export function PopulationGroupsRow({ group, selected, onToggle, onEdit, onDelet
       {/* Inactive members */}
       <td className={styles.td}>{group.inactive != null ? group.inactive : '–'}</td>
 
-      {/* Type */}
-      <td className={styles.td}>{group.type}</td>
+      {/* Type + optional Draft badge */}
+      <td className={styles.td}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          {group.type}
+          {group.status === 'draft' && <Badge tone="warning" size="S" label="Draft" />}
+        </span>
+      </td>
 
       {/* Created / updated dates */}
       <td className={styles.td}>{group.created}</td>

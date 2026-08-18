@@ -2742,6 +2742,18 @@ export const useAppStore = create((set, get) => ({
     s.pgRuleBuilder ? { pgRuleBuilder: { ...s.pgRuleBuilder, name } } : {}
   )),
 
+  /* Silent count-sync: the rule-builder detail screen evaluates live
+     membership and pushes the real Active/Inactive split back so the table's
+     columns stay honest (profile data changes between visits).  Fire and
+     forget — never blocks the view or toasts the user. */
+  syncPopGroupCounts: async (id, { count, inactive }) => {
+    const { error } = await supabase
+      .from('population_groups')
+      .update({ active_count: count, inactive_count: inactive })
+      .eq('id', id);
+    if (error) { console.warn('[store] syncPopGroupCounts failed:', error.message); return; }
+    set(s => ({ popGroups: s.popGroups.map(g => (g.id === id ? { ...g, count, inactive } : g)) }));
+  },
   deletePopGroup: async (id) => {
     const name = get().popGroups.find(g => g.id === id)?.name;
     const { error } = await supabase

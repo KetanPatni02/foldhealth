@@ -23,7 +23,7 @@ const genderShort = (g) => (String(g || '').charAt(0).toUpperCase() || '—');
  * rendered through the shared WorklistShell (header hidden — the tab bar
  * above owns that chrome).
  */
-export function QualifiedMembersTable({ members, loading }) {
+export function QualifiedMembersTable({ members, loading, error, onRetry }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const patients = useAppStore(s => s.patients);
 
@@ -42,6 +42,20 @@ export function QualifiedMembersTable({ members, loading }) {
   /* Quick View only understands the TOC patient shape, so the name is a
      link just for members that exist in that store slice. */
   const quickViewable = useMemo(() => new Set((patients || []).map(p => p.id)), [patients]);
+
+  // Error state — clearly different from "no members" so clinical users don't
+  // act on missing data.
+  if (!loading && error) {
+    return (
+      <EmptyState
+        icon="solar:danger-triangle-linear"
+        title="Could not load members"
+        description={`The patient data fetch failed: ${error}. This does NOT mean zero patients qualify — it means we couldn't check.`}
+        actionLabel="Retry"
+        onAction={onRetry}
+      />
+    );
+  }
 
   // No qualifying patients — a proper empty state beats a headers-only table.
   if (!loading && members.length === 0) {
