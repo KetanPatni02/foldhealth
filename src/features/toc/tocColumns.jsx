@@ -1,4 +1,5 @@
 import { Icon } from '../../components/Icon/Icon';
+import { BotIcon } from '../../components/Icon/BotIcon';
 import { Badge } from '../../components/Badge/Badge';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Link } from '../../components/Link/Link';
@@ -46,6 +47,8 @@ const CARE_TEAM = {
   socialWorker: ['Robin Berg', 'Ignacio Beer', 'Daniel Arsulo'],
   chw: ['Ignacio Beer', 'shravank 7hills', 'Chemy Maa'],
 };
+
+const HUMAN_OUTREACH = ['Michelle Ling', 'Robin Berg', 'Chemy Maa', 'Delores Conn'];
 
 const BAND = { background: 'var(--primary-50)' };
 const BAND_LEFT = { ...BAND, borderLeft: '0.5px solid var(--primary-200)' };
@@ -97,6 +100,15 @@ function parseMdy(s) {
   return Date.UTC(+m[3], +m[1] - 1, +m[2]);
 }
 
+export function resolveLastOutreachBy(p) {
+  if (p.lastOutreachBy) {
+    return { name: p.lastOutreachBy, isAgent: p.lastOutreachBy === 'TOC Agent' };
+  }
+  const n = String(p.id || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  if (n % 3 !== 0) return { name: 'TOC Agent', isAgent: true };
+  return { name: HUMAN_OUTREACH[n % HUMAN_OUTREACH.length], isAgent: false };
+}
+
 export function resolveCareTeamName(p, field, salt = '') {
   if (p[field]) return p[field];
   const pool = field === 'nurseCoach' ? CARE_TEAM.nurse
@@ -117,7 +129,7 @@ export function enrichTocRow(p) {
     assessmentSort: `TOC ${p.tocType === 'ED' ? 'ED' : 'IP'} Assessment`,
     nextActionDueSort: parseMdy(p.dueOn || p.nextOutreach),
     outreachSort: parseMdy(p.outreachDate || p.callDate),
-    lastOutreachBySort: p.agentAssigned || 'TOC Agent',
+    lastOutreachBySort: resolveLastOutreachBy(p).name,
     nurseCoachSort: resolveCareTeamName(p, 'nurseCoach'),
     coordinatorSort: resolveCareTeamName(p, 'coordinator', '-c'),
     socialWorkerSort: resolveCareTeamName(p, 'socialWorker', '-s'),
@@ -156,12 +168,17 @@ function RoleAssignee({ name, initials, field, patient, ctx, pickerTitle }) {
   );
 }
 
-function PersonCell({ name }) {
+function OutreachByCell({ patient }) {
+  const { name, isAgent } = resolveLastOutreachBy(patient);
   if (!name) return <span className={styles.dash}>—</span>;
   return (
     <span className={styles.person}>
-      <Icon name="solar:user-rounded-linear" size={16} color="var(--primary-300)" />
-      <span className={styles.personName}>{name}</span>
+      {isAgent ? (
+        <BotIcon size={16} color="var(--neutral-400)" />
+      ) : (
+        <Icon name="solar:user-rounded-linear" size={16} color="var(--neutral-400)" />
+      )}
+      <span className={styles.outreachByName}>{name}</span>
     </span>
   );
 }
@@ -282,8 +299,6 @@ export const TOC_MIDDLE_COLUMNS = [
     sortKey: 'laceSort',
     sortType: 'priority',
     tdClassName: rowStyles.td,
-    tdStyle: BAND_LEFT,
-    thStyle: BAND_TH_LEFT,
     renderCell: (p) => (
       <Badge size="M" variant={`lace-${(p.lace || 'low').toLowerCase()}`} label={p.lace || 'Low'} />
     ),
@@ -294,8 +309,8 @@ export const TOC_MIDDLE_COLUMNS = [
     sortKey: 'aiOutcomeSort',
     sortType: 'generic',
     tdClassName: rowStyles.td,
-    tdStyle: BAND,
-    thStyle: BAND_TH,
+    tdStyle: BAND_LEFT,
+    thStyle: BAND_TH_LEFT,
     renderCell: (p, ctx) => {
       const label = outreachStatusLabel(p);
       const cfg = OUTREACH_STATUS[label];
@@ -339,19 +354,20 @@ export const TOC_MIDDLE_COLUMNS = [
     tdClassName: rowStyles.td,
     tdStyle: BAND_RIGHT,
     thStyle: BAND_TH_RIGHT,
-    renderCell: (p) => (
+    renderCell: (p, ctx) => (
       p.tasks > 0
-        ? <span className={styles.taskBadge}>{p.tasks}</span>
+        ? (
+          <button
+            type="button"
+            className={styles.assessmentBtn}
+            onClick={(e) => { e.stopPropagation(); ctx.openAiTasksDrawer(p.id); }}
+            aria-label={`Open AI tasks for ${p.name}`}
+          >
+            <Badge size="M" tone="primary" label={String(p.tasks)} />
+          </button>
+        )
         : <span className={styles.dash}>—</span>
     ),
-  },
-  {
-    key: 'nextActionDue',
-    label: 'Next Action Due',
-    sortKey: 'nextActionDueSort',
-    sortType: 'date',
-    tdClassName: rowStyles.td,
-    renderCell: (p) => <DateCell value={p.dueOn || p.nextOutreach} />,
   },
   {
     key: 'outreach',
@@ -367,7 +383,15 @@ export const TOC_MIDDLE_COLUMNS = [
     sortKey: 'lastOutreachBySort',
     sortType: 'alpha',
     tdClassName: rowStyles.td,
-    renderCell: (p) => <PersonCell name={p.agentAssigned || 'TOC Agent'} />,
+    renderCell: (p) => <OutreachByCell patient={p} />,
+  },
+  {
+    key: 'nextActionDue',
+    label: 'Next Action Due',
+    sortKey: 'nextActionDueSort',
+    sortType: 'date',
+    tdClassName: rowStyles.td,
+    renderCell: (p) => <DateCell value={p.dueOn || p.nextOutreach} />,
   },
   {
     key: 'assignee',
@@ -534,7 +558,10 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'tags',
     label: 'Tags',
+    width: 320,
     tdClassName: rowStyles.td,
+    tdStyle: { minWidth: 320 },
+    thStyle: { minWidth: 320 },
     renderCell: (p) => <TagCell patient={p} />,
   },
 ];

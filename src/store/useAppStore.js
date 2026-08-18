@@ -8122,6 +8122,11 @@ export const useAppStore = create((set, get) => ({
   openOutreachStatusDrawer: (patientId) => set({ outreachStatusDrawerPatientId: patientId }),
   closeOutreachStatusDrawer: () => set({ outreachStatusDrawerPatientId: null }),
 
+  // TOC worklist → AI Tasks drawer — same id-only pattern as assessment / outreach.
+  aiTasksDrawerPatientId: null,
+  openAiTasksDrawer: (patientId) => set({ aiTasksDrawerPatientId: patientId }),
+  closeAiTasksDrawer: () => set({ aiTasksDrawerPatientId: null }),
+
   updatePatient: (id, updates) => {
     // Optimistic local update
     set(s => ({

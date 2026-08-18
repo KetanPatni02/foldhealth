@@ -72,6 +72,7 @@ const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer
 const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer'), 'EditPatientDrawer');
 const AssessmentDrawer     = lz(() => import('../features/toc-queue/AssessmentDrawer'),                    'AssessmentDrawer');
 const OutreachStatusDrawer = lz(() => import('../features/toc-queue/OutreachStatusDrawer'),                'OutreachStatusDrawer');
+const AiTasksDrawer        = lz(() => import('../features/toc/AiTasksDrawer'),                             'AiTasksDrawer');
 // Archived HCC worklist — a frozen fork of the HCC feature (src/features/
 // hcc-archived) so upstream HCC changes never alter it. Lazy so it stays out
 // of the entry chunk.
@@ -389,6 +390,7 @@ export function AppLayout() {
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const assessmentDrawerPatientId = useAppStore(s => s.assessmentDrawerPatientId);
   const outreachStatusDrawerPatientId = useAppStore(s => s.outreachStatusDrawerPatientId);
+  const aiTasksDrawerPatientId = useAppStore(s => s.aiTasksDrawerPatientId);
   const editingCampaignId = useAppStore(s => s.editingCampaignId);
   const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
   const editingFormId = useAppStore(s => s.editingFormId);
@@ -516,6 +518,7 @@ export function AppLayout() {
         {quickViewPatient && <QuickViewDrawer />}
         {assessmentDrawerPatientId && <AssessmentDrawer />}
         {outreachStatusDrawerPatientId && <OutreachStatusDrawer />}
+        {aiTasksDrawerPatientId && <AiTasksDrawer />}
         <PgProcessingHost />
       </Suspense>
       <Toaster />

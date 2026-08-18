@@ -387,6 +387,7 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
   const openLiveDrawer = useAppStore(s => s.openLiveDrawer);
   const openAssessmentDrawer = useAppStore(s => s.openAssessmentDrawer);
   const openOutreachStatusDrawer = useAppStore(s => s.openOutreachStatusDrawer);
+  const openAiTasksDrawer = useAppStore(s => s.openAiTasksDrawer);
   const showToast = useAppStore(s => s.showToast);
   const allowLiveDrawer = useAppStore(s => s.activeSubnavList !== 'TOC');
   const platformUsers = useAppStore(s => s.platformUsers);
@@ -409,6 +410,7 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
     completedCall,
     openAssessmentDrawer,
     openOutreachStatusDrawer,
+    openAiTasksDrawer,
     platformUsers,
     updatePatient,
   };

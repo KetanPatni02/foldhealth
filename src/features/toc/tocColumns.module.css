@@ -17,10 +17,10 @@
   max-width: 100%;
 }
 
-.personName {
+.outreachByName {
   font-size: 14px;
-  font-weight: 500;
-  color: var(--primary-300);
+  font-weight: 400;
+  color: var(--neutral-400);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -35,20 +35,6 @@
   background: none;
   cursor: pointer;
   font: inherit;
-}
-
-.taskBadge {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--primary-100);
-  color: var(--primary-300);
-  font-size: 12px;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .radar {
@@ -71,7 +57,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.tagCell > * {
+  flex-shrink: 0;
 }
 
 .tagMore {
