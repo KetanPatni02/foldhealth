@@ -3,12 +3,97 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
 import { Badge } from '../../components/Badge/Badge';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { useAppStore } from '../../store/useAppStore';
-import { isOverdue, buildTaskMetaLine } from './TasksView.utils';
+import { isOverdue, buildTaskMetaLine, getInitials } from './TasksView.utils';
 import { SubtaskIcon, PriorityIcon, CheckIcon } from './TasksViewIcons';
 import { TaskDatePicker } from './TasksViewDropdowns';
 import { usePopoverPosition } from './usePopoverPosition';
 import styles from './TasksView.module.css';
+
+// Build the picker options for AssigneeChange in a row cell: current user
+// pinned first with "(You)", then everyone else, deduped by id.
+function useAssigneeOptions() {
+  const taskProfiles = useAppStore(s => s.taskProfiles);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  return useMemo(() => {
+    const list = [];
+    const seen = new Set();
+    if (currentUserProfile?.id) {
+      list.push({
+        id: currentUserProfile.id,
+        name: `${currentUserProfile.name} (You)`,
+        initials: getInitials(currentUserProfile.name),
+        role: currentUserProfile.role,
+        _realName: currentUserProfile.name,
+      });
+      seen.add(currentUserProfile.id);
+    }
+    (taskProfiles || []).forEach(p => {
+      if (seen.has(p.id)) return;
+      list.push({
+        id: p.id,
+        name: p.name,
+        initials: getInitials(p.name),
+        role: p.role,
+        _realName: p.name,
+      });
+      seen.add(p.id);
+    });
+    return list;
+  }, [taskProfiles, currentUserProfile]);
+}
+
+// Two shared cell renderers so TaskRow and TaskTableRow don't duplicate
+// the picker plumbing.
+export function AssignedToCell({ task }) {
+  const updateTask = useAppStore(s => s.updateTask);
+  const showToast = useAppStore(s => s.showToast);
+  const options = useAssigneeOptions();
+
+  const onSelect = (u) => {
+    const realName = u._realName || u.name;
+    updateTask(task.id, { assigned_to: realName, assigned_to_id: u.id || null });
+    showToast(`Assigned to ${realName}`);
+  };
+
+  return (
+    <AssigneeChange
+      name={task.assigned_to || undefined}
+      initials={task.assigned_to ? getInitials(task.assigned_to) : undefined}
+      unassigned={!task.assigned_to}
+      unassignedLabel="Assign"
+      size="M"
+      showRole={false}
+      fillContainer
+      users={options}
+      onSelect={onSelect}
+    />
+  );
+}
+
+export function MemberCell({ task }) {
+  const openMember = (e) => {
+    e.stopPropagation();
+    const state = useAppStore.getState();
+    const match = state.patients.find(p => p.name === task.member)
+      || (state.allPatients || []).find(p => p.name === task.member);
+    if (match) state.openQuickView(match);
+  };
+  if (!task.member) return null;
+  return (
+    <AssigneeChange
+      name={task.member}
+      initials={getInitials(task.member)}
+      avatarVariant="patient"
+      size="M"
+      showRole={false}
+      fillContainer
+      onClick={openMember}
+      ariaLabel={`Open member ${task.member}`}
+    />
+  );
+}
 
 export function RowLabelDropdown({ task, children }) {
   const [open, setOpen] = useState(false);
@@ -91,7 +176,7 @@ export function RowLabelDropdown({ task, children }) {
 }
 
 /* ── Three-dot Action Menu for rows and kanban cards ── */
-import { RowActionMenu, RowStatusDropdown, RowAssignDropdown } from './TasksViewRowDropdowns';
+import { RowActionMenu, RowStatusDropdown } from './TasksViewRowDropdowns';
 export function SkeletonRow() {
   return (
     <div className={styles.taskRow}>
@@ -192,26 +277,13 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
 
       {!hideAssignedTo && (
         <div className={styles.cellAssigned} onClick={e => e.stopPropagation()}>
-          <RowAssignDropdown task={task} />
+          <AssignedToCell task={task} />
         </div>
       )}
 
       {!hideMember && (
-        <div className={styles.cellMember}>
-          <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
-          <button
-            type="button"
-            className={styles.memberLink}
-            onClick={(e) => {
-              e.stopPropagation();
-              const state = useAppStore.getState();
-              const match = state.patients.find(p => p.name === task.member)
-                || (state.allPatients || []).find(p => p.name === task.member);
-              if (match) state.openQuickView(match);
-            }}
-          >
-            {task.member}
-          </button>
+        <div className={styles.cellMember} onClick={e => e.stopPropagation()}>
+          <MemberCell task={task} />
         </div>
       )}
 
@@ -239,6 +311,113 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
         <RowActionMenu task={task} />
       </div>
     </div>
+  );
+}
+
+/* ── Table-mode row (WorklistShell) ── */
+export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
+  const isCompleted = task.status === 'completed';
+  const labels = Array.isArray(task.labels) ? task.labels : [];
+  const updateTask = useAppStore(s => s.updateTask);
+  const showToast = useAppStore(s => s.showToast);
+  const overdue = isOverdue(task);
+
+  return (
+    <tr className={styles.taskTr} onClick={() => onTaskClick?.(task)}>
+      <td className={styles.tdCheck}>
+        <button
+          type="button"
+          className={`${styles.taskCheckbox} ${isCompleted ? styles.taskCheckboxChecked : ''}`}
+          onClick={e => { e.stopPropagation(); onToggle(task); }}
+          aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
+        >
+          <span className={styles.taskCheckIcon}>
+            <CheckIcon size={13} />
+          </span>
+        </button>
+      </td>
+
+      <td className={styles.tdTask}>
+        <div className={styles.tdTaskInner}>
+          <div className={styles.taskInfo}>
+            {task.parent_task && (
+              <span className={styles.parentLabel}>Parent Task : {task.parent_task}</span>
+            )}
+            {task.is_subtask ? (
+              <div className={styles.subtaskRow}>
+                <SubtaskIcon size={14} color="var(--primary-300)" />
+                <span className={`${styles.taskName} ${isCompleted ? styles.taskNameDone : ''}`}>{task.name}</span>
+              </div>
+            ) : (
+              <span className={`${styles.taskName} ${isCompleted ? styles.taskNameDone : ''}`}>{task.name}</span>
+            )}
+            <span className={styles.taskMeta}>{buildTaskMetaLine(task)}</span>
+          </div>
+          <div className={styles.taskAttachments}>
+            {task.attachments > 0 && (
+              <span className={styles.attachBadge}>
+                <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
+                {task.attachments}
+              </span>
+            )}
+            {task.comments > 0 && (
+              <span className={styles.attachBadge}>
+                <Icon name="solar:chat-round-line-linear" size={14} color="var(--neutral-300)" />
+                {task.comments}
+              </span>
+            )}
+          </div>
+        </div>
+      </td>
+
+      <td className={styles.tdCenter}>
+        <PriorityIcon priority={task.priority} size={16} />
+      </td>
+
+      <td className={styles.td} onClick={e => e.stopPropagation()}>
+        <RowStatusDropdown task={task} />
+      </td>
+
+      <td className={`${styles.td} ${styles.tdDue} ${overdue ? styles.dueMissed : ''}`} onClick={e => e.stopPropagation()}>
+        <TaskDatePicker value={task.due_date} overdue={overdue} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
+      </td>
+
+      {!hideAssignedTo && (
+        <td className={styles.td} onClick={e => e.stopPropagation()}>
+          <AssignedToCell task={task} />
+        </td>
+      )}
+
+      <td className={styles.td} onClick={e => e.stopPropagation()}>
+        <MemberCell task={task} />
+      </td>
+
+      <td className={styles.td} onClick={e => e.stopPropagation()}>
+        <RowLabelDropdown task={task}>
+          <div className={styles.tdLabelsInner}>
+            {labels.length > 0 ? (
+              <>
+                {labels.slice(0, 2).map(l => (
+                  <Badge key={l} variant="overflow" label={l} />
+                ))}
+                {labels.length > 2 && (
+                  <span className={styles.labelOverflow} title={labels.slice(2).join(', ')}>+{labels.length - 2}</span>
+                )}
+              </>
+            ) : (
+              <button className={styles.addLabel}>
+                <Icon name="solar:tag-linear" size={13} color="var(--neutral-200)" />
+                Add Label
+              </button>
+            )}
+          </div>
+        </RowLabelDropdown>
+      </td>
+
+      <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
+        <RowActionMenu task={task} />
+      </td>
+    </tr>
   );
 }
 
