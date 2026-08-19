@@ -10519,10 +10519,15 @@ export const useAppStore = create((set, get) => ({
             taskId: id,
           });
         }
-        // Newly mentioned in this task's mentions array.
+        // Newly mentioned in this task's mentions array. Case-insensitive
+        // match — someone typing "@fold demo" freehand still gets caught
+        // even if the profile is stored as "Fold Demo".
         if ('mentions' in updates && Array.isArray(updates.mentions) && me.name) {
           const before = Array.isArray(prev.mentions) ? prev.mentions : [];
-          if (updates.mentions.includes(me.name) && !before.includes(me.name)) {
+          const meLower = me.name.toLowerCase();
+          const hasNow = updates.mentions.some(m => (m || '').toLowerCase() === meLower);
+          const hadBefore = before.some(m => (m || '').toLowerCase() === meLower);
+          if (hasNow && !hadBefore) {
             get().addNotification?.({
               type: 'task.mentioned',
               title: 'You were mentioned in a task',

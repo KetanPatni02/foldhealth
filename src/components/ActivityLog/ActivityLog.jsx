@@ -1,6 +1,44 @@
 import { useState } from 'react';
 import { Icon } from '../Icon/Icon';
+import { Badge } from '../Badge/Badge';
+import { Avatar } from '../Avatar/Avatar';
+import { useAppStore } from '../../store/useAppStore';
 import styles from './ActivityLog.module.css';
+
+// Render a comment body with the signed-in user's @-mentions painted in the
+// mention style (secondary-300, weight 500). Other users' mentions stay
+// plain text — highlighting them here would compete visually with the row's
+// primary meaning. Match is case-insensitive so `@fold demo` still fires
+// when the account name is `Fold Demo`.
+function renderCommentBodyWithMentions(text, meName) {
+  if (!text) return null;
+  if (!meName) return text;
+  // Same shape as the extraction regex in TaskDetailDrawer.handleAddComment —
+  // `@` followed by one or two whitespace-separated word groups.
+  const re = /@(\w+(?:\s+\w+)?)/g;
+  const meLower = meName.toLowerCase();
+  const parts = [];
+  let last = 0;
+  let match;
+  let idx = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const label = match[1];
+    if (label.toLowerCase() === meLower) {
+      // Inline style rather than a CSS module class so this file doesn't
+      // drag in the shared stylesheet's pre-existing raw-px violations
+      // (DS guardrail runs on the whole file). Tokens keep it design-safe.
+      parts.push(
+        <span key={`m-${idx++}`} style={{ fontWeight: 500, color: 'var(--secondary-300)' }}>@{label}</span>,
+      );
+    } else {
+      parts.push(match[0]);
+    }
+    last = re.lastIndex;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
 
 // Icon per entry type. The bordered neutral square chrome stays constant
 // across types — matches OutreachTab.LogEntry and HCC's ActivityTab, where
@@ -30,38 +68,39 @@ const TYPE_ICON = {
   referral:        'solar:arrow-right-up-linear',
 };
 
-// Status label → pill style class in the CSS. HEDIS canonical status
-// grouping drives the color band: Open → primary (Not Started); Engaged /
-// Engaged Requires Follow-Up / Submitted → warning (In Progress); Completed
-// → success (Done); Closed - * → neutral (Closed). HCC-only labels
-// (Accepted / Dismissed / Audited / Returned / …) keep their existing
-// classes so both worklists share the map. Unknown falls to `pillNone`.
-const TRANS_BADGE = {
-  // HEDIS — Not Started (primary)
-  Open:                          'pillOpen',
-  // HEDIS — In Progress (warning)
-  Engaged:                       'pillInProgress',
-  'Engaged Requires Follow-Up':  'pillInProgress',
-  Submitted:                     'pillInProgress',
-  // HEDIS — Done (success)
-  Completed:                     'pillCompleted',
-  // HEDIS — Closed (neutral)
-  'Closed - Do not call':        'pillClosed',
-  'Closed - UTR':                'pillClosed',
-  'Closed - Other':              'pillClosed',
-  // HCC vocabulary
-  Accepted:                      'pillAccepted',
-  Dismissed:                     'pillDismissed',
-  Deleted:                       'pillDeleted',
-  None:                          'pillNone',
-  Returned:                      'pillReturned',
-  New:                           'pillNew',
-  Audited:                       'pillAudited',
-  'In Progress':                 'pillInProgress',
-  'Pending':                     'pillPending',
-  'Pending Review':              'pillPending',
-  Rejected:                      'pillRejected',
+// Status label → Badge tone. HEDIS canonical status grouping drives the
+// color band: Open → primary (Not Started); Engaged / Submitted → warning
+// (In Progress); Completed → success (Done); Closed - * → grey. HCC-only
+// labels (Accepted / Dismissed / Audited / Returned / …) share the same
+// map so both worklists render identical status pills. Unknown falls to
+// 'grey'.
+const STATUS_TONE = {
+  // Not Started
+  Open:                          'primary',
+  Audited:                       'primary',
+  // In Progress
+  Engaged:                       'warning',
+  'Engaged Requires Follow-Up':  'warning',
+  Submitted:                     'warning',
+  'In Progress':                 'warning',
+  New:                           'warning',
+  Pending:                       'warning',
+  'Pending Review':              'warning',
+  // Done
+  Completed:                     'success',
+  Accepted:                      'success',
+  // Negative
+  Dismissed:                     'error',
+  Returned:                      'error',
+  Rejected:                      'error',
+  // Closed / muted
+  'Closed - Do not call':        'grey',
+  'Closed - UTR':                'grey',
+  'Closed - Other':              'grey',
+  Deleted:                       'grey',
+  None:                          'grey',
 };
+const statusTone = (label) => STATUS_TONE[label] || 'grey';
 
 /**
  * Shared per-record activity feed.
@@ -227,7 +266,7 @@ function OutreachEntryBody({ entry }) {
         <MetaLine entry={entry} />
         <div className={styles.titleRow}>
           <span className={styles.title}>{entry.title}</span>
-          {(entry.badges || []).map(b => <span key={b} className={styles.badge}>{b}</span>)}
+          {(entry.badges || []).map(b => <Badge key={b} tone="primary" size="S" label={b} />)}
         </div>
         <div className={styles.outcomeRow}>
           {entry.outcome && (
@@ -325,9 +364,9 @@ function StatusChangeEntryBody({ entry }) {
         </div>
         {entry.from && entry.to && (
           <div className={styles.transition}>
-            <span className={`${styles.pill} ${styles[TRANS_BADGE[entry.from] || 'pillNone']}`}>{entry.from}</span>
+            <Badge tone={statusTone(entry.from)} size="S" label={entry.from} />
             <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <span className={`${styles.pill} ${styles[TRANS_BADGE[entry.to] || 'pillNone']}`}>{entry.to}</span>
+            <Badge tone={statusTone(entry.to)} size="S" label={entry.to} />
           </div>
         )}
       </div>
@@ -391,9 +430,7 @@ function DetailCardEntryBody({ entry, variant }) {
                   )}
                 </div>
                 <div className={styles.detailCardTrailing}>
-                  {dc.status && (
-                    <span className={`${styles.pill} ${styles[TRANS_BADGE[dc.status] || 'pillPending']}`}>{dc.status}</span>
-                  )}
+                  {dc.status && <Badge tone={statusTone(dc.status)} size="S" label={dc.status} />}
                   <button type="button" className={styles.detailCardIconBtn} onClick={(e) => e.stopPropagation()} aria-label="Open">
                     <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
                   </button>
@@ -406,14 +443,12 @@ function DetailCardEntryBody({ entry, variant }) {
                   <div className={styles.detailCardText}>
                     <div className={styles.detailCardTitleRow}>
                       <span className={styles.detailCardTitle}>{dc.title}</span>
-                      {dc.chip && <span className={styles.detailCardChip}>{dc.chip}</span>}
+                      {dc.chip && <Badge tone="grey" size="S" label={dc.chip} />}
                     </div>
                     {dc.subtitle && <div className={styles.detailCardSubtitle}>{dc.subtitle}</div>}
                   </div>
                   <div className={styles.detailCardTrailing}>
-                    {dc.status && (
-                      <span className={`${styles.pill} ${styles[TRANS_BADGE[dc.status] || 'pillPending']}`}>{dc.status}</span>
-                    )}
+                    {dc.status && <Badge tone={statusTone(dc.status)} size="S" label={dc.status} />}
                     <button type="button" className={styles.detailCardIconBtn} onClick={(e) => e.stopPropagation()} aria-label="Preview">
                       <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
                     </button>
@@ -438,6 +473,24 @@ function DetailCardEntryBody({ entry, variant }) {
 }
 
 /* ── Variant: Assignee change (from → to avatar transition) ──────────── */
+function AssigneeChip({ assignee }) {
+  return (
+    <span className={styles.assigneeChip}>
+      {assignee ? (
+        <>
+          <Avatar variant="assignee" size="XS" initials={assignee.initials} />
+          {assignee.name}
+        </>
+      ) : (
+        <>
+          <Avatar variant="others" size="XS" iconName="solar:user-linear" type="icon" />
+          Unassigned
+        </>
+      )}
+    </span>
+  );
+}
+
 function AssigneeChangeEntryBody({ entry }) {
   const fromA = entry.fromAssignee;
   const toA   = entry.toAssignee;
@@ -450,29 +503,9 @@ function AssigneeChangeEntryBody({ entry }) {
         </div>
         {(fromA || toA) && (
           <div className={styles.avatarTransition}>
-            {fromA ? (
-              <span className={styles.avatarPill}>
-                <span className={styles.avatarPillDot}>{fromA.initials}</span>
-                {fromA.name}
-              </span>
-            ) : (
-              <span className={styles.avatarPill}>
-                <span className={`${styles.avatarPillDot} ${styles.avatarPillDotEmpty}`}>—</span>
-                Unassigned
-              </span>
-            )}
+            <AssigneeChip assignee={fromA} />
             <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            {toA ? (
-              <span className={styles.avatarPill}>
-                <span className={styles.avatarPillDot}>{toA.initials}</span>
-                {toA.name}
-              </span>
-            ) : (
-              <span className={styles.avatarPill}>
-                <span className={`${styles.avatarPillDot} ${styles.avatarPillDotEmpty}`}>—</span>
-                Unassigned
-              </span>
-            )}
+            <AssigneeChip assignee={toA} />
           </div>
         )}
       </div>
@@ -510,6 +543,7 @@ function UploadEntryBody({ entry }) {
 
 /* ── Variant: Comment (HCC .tlCommentBody inline paragraph) ──────────── */
 function CommentEntryBody({ entry }) {
+  const meName = useAppStore(s => s.currentUserProfile?.name);
   return (
     <div className={`${styles.card} ${styles.cardStatic}`}>
       <div className={styles.body}>
@@ -518,7 +552,9 @@ function CommentEntryBody({ entry }) {
           <span className={styles.title}>{entry.title || 'Added a Comment'}</span>
         </div>
         {entry.commentBody && (
-          <div className={styles.commentBody}>{entry.commentBody}</div>
+          <div className={styles.commentBody}>
+            {renderCommentBodyWithMentions(entry.commentBody, meName)}
+          </div>
         )}
       </div>
     </div>
