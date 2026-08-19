@@ -17,7 +17,7 @@ function buildColumns(hideAssignedTo) {
     { key: 'status', label: 'Status', width: 110 },
     { key: 'due', label: 'Due Date', width: 130 },
   ];
-  if (!hideAssignedTo) cols.push({ key: 'assigned', label: 'Assigned To', width: 200 });
+  if (!hideAssignedTo) cols.push({ key: 'assigned', label: 'Assigned To', width: 170 });
   cols.push(
     { key: 'member', label: 'Member', width: 210 },
     { key: 'labels', label: 'Labels', width: 220 },
@@ -44,8 +44,8 @@ export function TasksViewContent({
 
   const columns = useMemo(() => buildColumns(hideAssignedTo), [hideAssignedTo]);
   const colCount = columns.length;
-  // 48 + task(min 258 flex) + 60 + 110 + 130 + 200 + 210 + 220 + 48 = 1284
-  const minTableWidth = hideAssignedTo ? 1086 : 1286;
+  // 48 + task(min 258 flex) + 60 + 110 + 130 + 170 + 210 + 220 + 48 = 1254
+  const minTableWidth = hideAssignedTo ? 1086 : 1256;
 
   if (filteredTasks.length === 0 && !(tasksLoading && tasks.length === 0)) {
     if (PERSONAL_TABS.has(tasksTab) && !currentUserProfile?.id && !currentUserProfile?.name) {
