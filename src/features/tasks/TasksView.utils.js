@@ -6,16 +6,24 @@ export const TABS = [
   { key: 'mentions', label: 'Mentions' },
 ];
 
-// Compose the "By : Actor • Meta" line used on rows and kanban cards.
-// Attribution is mandatory at the DB level — every task now has a real
-// `created_by` — so this line is always shown, even when the actor is
-// 'System' (backfilled or true automation). The old suppression that
-// treated System as noise contradicted that guarantee.
+// Compose the single-source attribution line for row + kanban cards.
+//
+// A task's origin is exactly ONE of: a user, an automation, an agent, or
+// a care journey — never a combination. `task.meta` sometimes carries
+// that origin (e.g. "Care Journey · Hypertension Control · '24", "Pool :
+// Coder", or a legacy "By : Dr. JeDee Potter" from an older schema); when
+// it does, meta IS the attribution and wins outright. Otherwise we fall
+// back to the mandatory `created_by` field.
+//
+// The prior implementation joined the two with " • " and produced
+// duplicates like "By : Dr. Potter • By : Dr. Potter" on tasks whose meta
+// legacy-encoded the same actor.
 export function buildTaskMetaLine(task) {
   if (!task) return null;
-  const actor = task.created_by?.trim() || 'Unknown';
   const meta = task.meta?.trim();
-  return meta ? `By : ${actor} • ${meta}` : `By : ${actor}`;
+  if (meta && /^(Care Journey|Pool|By)\b/i.test(meta)) return meta;
+  const actor = task.created_by?.trim() || 'Unknown';
+  return `By : ${actor}`;
 }
 
 export function getInitials(name) {
