@@ -111,7 +111,7 @@ export function TabBar() {
     if (activeSubnavList === 'All Patients') return { title: 'All Patients', toggleItems: [] };
     if (activeSubnavList === 'HCC')          return { title: 'HCC Worklist', toggleItems: [] };
     if (activeSubnavList === 'CCM')          return { title: 'CCM Worklist', toggleItems: [] };
-    if (activeSubnavList === 'TOC')          return { title: 'TOC', toggleItems: [] };
+    if (activeSubnavList === 'TOC IP')          return { title: 'TOC IP', toggleItems: [] };
     return {
       title: 'TCM',
       toggleItems: [
@@ -182,7 +182,7 @@ export function TabBar() {
 
       {showEditConfirm && (
         <ConfirmDialog
-          message={`This will take you to the Agent Builder where you can modify the conversation flow, prompts, and transitions for the ${activeSubnavList === 'TOC' ? 'TOC' : 'TCM'} agent. Any unsaved changes in the current view will be preserved.`}
+          message={`This will take you to the Agent Builder where you can modify the conversation flow, prompts, and transitions for the ${activeSubnavList === 'TOC IP' ? 'TOC IP' : 'TCM'} agent. Any unsaved changes in the current view will be preserved.`}
           onConfirm={handleConfirmEdit}
           onCancel={() => setShowEditConfirm(false)}
         />

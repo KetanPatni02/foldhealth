@@ -172,7 +172,7 @@ export function stateToHash(state) {
   }
 
   const LIST_TO_URL = {
-    'TOC': 'toc',
+    'TOC IP': 'toc',
     'TCM': 'tcm',
     'Day Optimizer': 'day-optimizer',
     'Review HRA': 'review-hra',
@@ -222,13 +222,13 @@ export function stateToHash(state) {
     return buildHash('population', 'patient', patientKey, ...subSegs);
   }
 
-  if (state.activeSubnavList === 'TOC') {
+  if (state.activeSubnavList === 'TOC IP') {
     return buildHash('population', 'toc');
   }
   if (state.activeSubnavList === 'TCM') {
     return buildHash('population', activeTab === 'toc-queue' ? 'tcm-queue' : 'tcm');
   }
-  if (state.activeSubnavList && state.activeSubnavList !== 'TOC') {
+  if (state.activeSubnavList && state.activeSubnavList !== 'TOC IP') {
     // HEDIS has its own top-level path
     if (state.activeSubnavList === 'HEDIS') {
       return buildHash('hedis');
@@ -243,7 +243,7 @@ export function stateToHash(state) {
 }
 
 function tabForListSlug(section, list) {
-  if (list === 'TOC' || section === 'tcm-queue' || section === 'toc-queue') return 'toc-queue';
+  if (list === 'TOC IP' || section === 'tcm-queue' || section === 'toc-queue') return 'toc-queue';
   return 'toc-worklist';
 }
 
@@ -405,7 +405,7 @@ export function hashToState(route, state = null) {
   updates.activePage = 'population';
 
   const URL_TO_LIST = {
-    'toc': 'TOC',
+    'toc': 'TOC IP',
     'tcm': 'TCM',
     'tcm-queue': 'TCM',
     'toc-worklist': 'TCM',

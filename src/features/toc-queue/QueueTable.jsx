@@ -155,7 +155,7 @@ export function QueueTable({
       selectedIds={selectedIds}
       onSelectAll={handleSelectAll}
       onClearSelection={clearSelected}
-      minTableWidth={middleColumns ? 3200 : 1900}
+      minTableWidth={middleColumns ? 3330 : 1900}
     />
   );
 }

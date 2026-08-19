@@ -17,38 +17,105 @@
   max-width: 100%;
 }
 
-.personName {
+.outreachByName {
   font-size: 14px;
-  font-weight: 500;
-  color: var(--primary-300);
+  font-weight: 400;
+  color: var(--neutral-400);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.assessmentTd {
+  padding: 8px;
+  vertical-align: middle;
+}
+
 .assessmentBtn {
   display: inline-flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 2px;
   padding: 0;
   border: none;
   background: none;
   cursor: pointer;
   font: inherit;
+  text-align: left;
+  width: 100%;
+  min-width: 0;
 }
 
-.taskBadge {
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--primary-100);
-  color: var(--primary-300);
+/* Badge defaults to align-self: center — keep band cells left-aligned. */
+.assessmentBtn > * {
+  align-self: flex-start;
+}
+
+.agentBandTd {
+  text-align: left;
+}
+
+.assessmentLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.assessmentMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 400;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.assessmentMetaStatus {
+  color: var(--neutral-300);
+}
+
+.assessmentMetaDetail {
+  color: var(--neutral-300);
+}
+
+.aiOutcomeInvokedAt {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.statusDot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  border: 1px solid;
+}
+
+.statusDotCompleted {
+  background: var(--status-success-light);
+  border-color: var(--status-success);
+}
+
+.statusDotNotStarted {
+  background: var(--neutral-100);
+  border-color: var(--neutral-300);
+}
+
+.statusDotPartial {
+  background: var(--neutral-0);
+  border-color: var(--status-success);
 }
 
 .radar {
@@ -71,7 +138,12 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.tagCell > * {
+  flex-shrink: 0;
 }
 
 .tagMore {
@@ -82,11 +154,20 @@
 
 /* SNP Outreach cell — phone + status + date + attempt dots */
 .outreachCell { display: inline-flex; align-items: flex-start; gap: 6px; }
+.outreachBtn {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
 .outreachNone { display: inline-flex; align-items: center; gap: 6px; }
 .outreachBody { display: inline-flex; flex-direction: column; gap: 2px; }
-.outreachStatus { font-size: 13px; font-weight: 500; color: var(--status-error); }
-.outreachDate { font-size: 13px; color: var(--status-error); }
 .outreachStatusOk { font-size: 13px; font-weight: 500; color: var(--status-success); }
-.outreachDateOk { font-size: 13px; color: var(--status-success); }
+.outreachDateOk { font-size: 12px; font-weight: 400; color: var(--neutral-300); }
+.outreachStatus { font-size: 13px; font-weight: 500; color: var(--status-error); }
+.outreachDate { font-size: 12px; font-weight: 400; color: var(--neutral-300); }
 .dots { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
 .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }

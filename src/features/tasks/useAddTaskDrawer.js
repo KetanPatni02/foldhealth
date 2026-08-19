@@ -61,7 +61,9 @@ export function useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTask
     status !== initialStatus ||
     stagedSubtasks.length > 0;
 
-  const canSave = name.trim() !== '' && isDirty && name.length <= TITLE_MAX;
+  // Creator attribution is mandatory — without a signed-in profile we can't
+  // stamp `created_by` truthfully, so block Save.
+  const canSave = name.trim() !== '' && isDirty && name.length <= TITLE_MAX && !!currentUserProfile?.name;
 
   const addStagedSubtask = () => {
     const trimmed = subtaskName.trim();
@@ -74,8 +76,12 @@ export function useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTask
 
   const handleSave = async () => {
     if (!canSave) return;
-    const me = currentUserProfile?.name || 'Dr. JeDee Potter';
-    const meId = currentUserProfile?.id || null;
+    if (!currentUserProfile?.name) {
+      showToast('Cannot create task: no user identified');
+      return;
+    }
+    const me = currentUserProfile.name;
+    const meId = currentUserProfile.id || null;
     const pickedAssignee = assignedTo
       ? (taskProfiles || []).find(p => p.name === assignedTo)
       : null;

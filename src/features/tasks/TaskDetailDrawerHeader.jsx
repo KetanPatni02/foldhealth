@@ -2,19 +2,13 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
 import { Select } from '../../components/Select/Select';
-import { STATUS_ORDER, STATUS_LABELS } from './TasksView.utils';
+import { InlineEditable } from '../../components/InlineEditable/InlineEditable';
+import { STATUS_ORDER, STATUS_LABELS, TITLE_MAX } from './TasksView.utils';
 import styles from './TasksView.module.css';
 
 export function TaskDetailDrawerHeader({
   task,
-  labels,
-  editingTitle,
-  titleDraft,
-  setTitleDraft,
-  setEditingTitle,
-  titleRef,
-  onTitleSave,
-  onTitleKeyDown,
+  onTitleCommit,
   onStatusChange,
   onClaim,
   onCopyLink,
@@ -48,28 +42,14 @@ export function TaskDetailDrawerHeader({
         {task.is_subtask && task.parent_task && (
           <Badge variant="overflow" label={task.parent_task} />
         )}
-        {labels.length > 0 && !task.is_subtask && (
-          <Badge variant="overflow" label={labels[0]} />
-        )}
-        {editingTitle ? (
-          <input
-            ref={titleRef}
-            className={styles.drawerTaskTitleInput}
-            aria-label="Task title"
-            value={titleDraft}
-            onChange={e => setTitleDraft(e.target.value)}
-            onBlur={onTitleSave}
-            onKeyDown={onTitleKeyDown}
-            autoFocus
-          />
-        ) : (
-          <h3
-            className={styles.drawerTaskTitle}
-            onClick={() => { setTitleDraft(task.name); setEditingTitle(true); }}
-          >
-            {task.name}
-          </h3>
-        )}
+        <InlineEditable
+          value={task.name}
+          onCommit={onTitleCommit}
+          maxLength={TITLE_MAX}
+          className={styles.drawerTaskTitleEditable}
+          inputClassName={styles.drawerTaskTitleEditableInput}
+          title="Edit title"
+        />
       </div>
     </>
   );

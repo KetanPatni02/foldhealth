@@ -1,9 +1,14 @@
 import { Icon } from '../../components/Icon/Icon';
+import { BotIcon } from '../../components/Icon/BotIcon';
 import { Badge } from '../../components/Badge/Badge';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
-import { Link } from '../../components/Link/Link';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './tocColumns.module.css';
+import { hasAgentConnected, outreachStatusLabel, resolveAiTaskCount } from './tocOutcome';
+import { AiOutcomeCell } from './tocColumnCells/AiOutcomeCell';
+import { AssessmentCell } from './tocColumnCells/AssessmentCell';
+import { assessmentLabel, resolveAssessmentStatus } from './tocAssessment';
+import { OutreachCell } from './tocColumnCells/OutreachCell';
 
 const PROGRAM_SUB_STATUS = {
   enrolled: { variant: 'toc-enrolled', label: 'Enrolled', icon: 'solar:check-circle-bold' },
@@ -11,12 +16,6 @@ const PROGRAM_SUB_STATUS = {
   attempted: { variant: 'toc-attempted', label: 'Attempted', icon: 'solar:history-bold' },
   new: { variant: 'toc-new', label: 'New', icon: 'solar:star-bold' },
   oncall: { variant: 'toc-oncall', label: 'On Call', icon: 'solar:phone-calling-bold' },
-};
-
-const OUTREACH_STATUS = {
-  Completed: { tone: 'success', icon: 'solar:check-circle-linear' },
-  'Needs Review': { tone: 'error', icon: 'solar:danger-triangle-linear' },
-  Scheduled: { tone: 'warning', icon: 'solar:clock-circle-linear' },
 };
 
 const ADMIT_CLASS = { IP: 'Inpatient', ED: 'Emergency' };
@@ -47,6 +46,8 @@ const CARE_TEAM = {
   chw: ['Ignacio Beer', 'shravank 7hills', 'Chemy Maa'],
 };
 
+const HUMAN_OUTREACH = ['Michelle Ling', 'Robin Berg', 'Chemy Maa', 'Delores Conn'];
+
 const BAND = { background: 'var(--primary-50)' };
 const BAND_LEFT = { ...BAND, borderLeft: '0.5px solid var(--primary-200)' };
 const BAND_RIGHT = { ...BAND, borderRight: '0.5px solid var(--primary-200)' };
@@ -72,13 +73,6 @@ function programSubStatus(p) {
   return PROGRAM_SUB_STATUS[p.tocStatus] || PROGRAM_SUB_STATUS.new;
 }
 
-function outreachStatusLabel(p) {
-  if (p.status === 'completed' || p.outreachStatus === 'Completed') return 'Completed';
-  if (p.status === 'failed' || p.status === 'review' || p.outreachStatus === 'Overdue') return 'Needs Review';
-  if (p.outreachStatus === 'Attempted') return 'Needs Review';
-  return 'Scheduled';
-}
-
 function riskIq(p) {
   if (p.riskIq) return p.riskIq;
   if (p.lace === 'High') return 'High';
@@ -97,6 +91,16 @@ function parseMdy(s) {
   return Date.UTC(+m[3], +m[1] - 1, +m[2]);
 }
 
+export function resolveLastOutreachBy(p) {
+  if (!hasAgentConnected(p)) return { name: null, isAgent: false };
+  if (p.lastOutreachBy) {
+    return { name: p.lastOutreachBy, isAgent: p.lastOutreachBy === 'TOC Agent' };
+  }
+  const n = String(p.id || '').split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  if (n % 3 !== 0) return { name: 'TOC Agent', isAgent: true };
+  return { name: HUMAN_OUTREACH[n % HUMAN_OUTREACH.length], isAgent: false };
+}
+
 export function resolveCareTeamName(p, field, salt = '') {
   if (p[field]) return p[field];
   const pool = field === 'nurseCoach' ? CARE_TEAM.nurse
@@ -113,11 +117,12 @@ export function enrichTocRow(p) {
     programSubStatusSort: programSubStatus(p).label,
     admitClassSort: ADMIT_CLASS[p.tocType] || 'Inpatient',
     laceSort: LACE_RANK[p.lace] ?? 3,
-    aiOutcomeSort: outreachStatusLabel(p),
-    assessmentSort: `TOC ${p.tocType === 'ED' ? 'ED' : 'IP'} Assessment`,
+    aiOutcomeSort: outreachStatusLabel(p) || '',
+    assessmentSort: assessmentLabel(),
+    aiTasksSort: resolveAiTaskCount(p),
     nextActionDueSort: parseMdy(p.dueOn || p.nextOutreach),
     outreachSort: parseMdy(p.outreachDate || p.callDate),
-    lastOutreachBySort: p.agentAssigned || 'TOC Agent',
+    lastOutreachBySort: resolveLastOutreachBy(p).name || '',
     nurseCoachSort: resolveCareTeamName(p, 'nurseCoach'),
     coordinatorSort: resolveCareTeamName(p, 'coordinator', '-c'),
     socialWorkerSort: resolveCareTeamName(p, 'socialWorker', '-s'),
@@ -156,12 +161,17 @@ function RoleAssignee({ name, initials, field, patient, ctx, pickerTitle }) {
   );
 }
 
-function PersonCell({ name }) {
+function OutreachByCell({ patient }) {
+  const { name, isAgent } = resolveLastOutreachBy(patient);
   if (!name) return <span className={styles.dash}>—</span>;
   return (
     <span className={styles.person}>
-      <Icon name="solar:user-rounded-linear" size={16} color="var(--primary-300)" />
-      <span className={styles.personName}>{name}</span>
+      {isAgent ? (
+        <BotIcon size={16} color="var(--neutral-400)" />
+      ) : (
+        <Icon name="solar:user-rounded-linear" size={16} color="var(--neutral-400)" />
+      )}
+      <span className={styles.outreachByName}>{name}</span>
     </span>
   );
 }
@@ -197,61 +207,6 @@ function TagCell({ patient }) {
   );
 }
 
-const DOT_COLOR = { red: 'var(--status-error)', blue: 'var(--status-info)', grey: 'var(--neutral-200)' };
-
-function mapOutreachDots(raw) {
-  return (raw?.length ? raw : ['pending', 'pending', 'pending']).map((d) => (
-    d === 'failed' || d === 'red' ? 'red' : d === 'success' || d === 'blue' ? 'blue' : 'grey'
-  ));
-}
-
-function mapTocOutreach(p) {
-  const raw = Array.isArray(p.outreachDots) ? p.outreachDots : [];
-  const hasSuccess = raw.includes('success') || raw.includes('blue') || p.outreachAttended;
-  const hasFailed = raw.includes('failed') || raw.includes('red');
-  const date = p.outreachDate || p.callDate;
-  if (!hasSuccess && !hasFailed && !date) return null;
-  return {
-    failed: hasFailed && !hasSuccess,
-    status: hasSuccess ? 'Attended' : 'Failed',
-    date,
-    dots: mapOutreachDots(raw),
-  };
-}
-
-function OutreachCell({ patient }) {
-  const outreach = mapTocOutreach(patient);
-  if (!outreach) {
-    return (
-      <span className={styles.outreachNone}>
-        <Icon name="solar:phone-calling-linear" size={16} color="var(--neutral-200)" />
-        <span className={styles.dash}>—</span>
-      </span>
-    );
-  }
-  const failed = outreach.failed;
-  return (
-    <span className={styles.outreachCell}>
-      <Icon
-        name="solar:phone-calling-linear"
-        size={16}
-        color={failed ? 'var(--status-error)' : 'var(--status-success)'}
-      />
-      <span className={styles.outreachBody}>
-        <span className={failed ? styles.outreachStatus : styles.outreachStatusOk}>{outreach.status}</span>
-        {outreach.date && (
-          <span className={failed ? styles.outreachDate : styles.outreachDateOk}>{outreach.date}</span>
-        )}
-        <span className={styles.dots}>
-          {outreach.dots.map((c, i) => (
-            <span key={i} className={styles.dot} style={{ background: DOT_COLOR[c] || DOT_COLOR.grey }} />
-          ))}
-        </span>
-      </span>
-    </span>
-  );
-}
-
 /**
  * TOC worklist middle columns — matches Agent Worklist Figma 3044:70430.
  * Sticky Members / Actions stay in QueueRow.
@@ -282,8 +237,6 @@ export const TOC_MIDDLE_COLUMNS = [
     sortKey: 'laceSort',
     sortType: 'priority',
     tdClassName: rowStyles.td,
-    tdStyle: BAND_LEFT,
-    thStyle: BAND_TH_LEFT,
     renderCell: (p) => (
       <Badge size="M" variant={`lace-${(p.lace || 'low').toLowerCase()}`} label={p.lace || 'Low'} />
     ),
@@ -293,57 +246,78 @@ export const TOC_MIDDLE_COLUMNS = [
     label: 'AI Outcome',
     sortKey: 'aiOutcomeSort',
     sortType: 'generic',
-    tdClassName: rowStyles.td,
-    tdStyle: BAND,
-    thStyle: BAND_TH,
-    renderCell: (p, ctx) => {
-      const label = outreachStatusLabel(p);
-      const cfg = OUTREACH_STATUS[label];
-      return (
-        <button
-          type="button"
-          className={styles.assessmentBtn}
-          onClick={(e) => { e.stopPropagation(); ctx.openOutreachStatusDrawer(p.id); }}
-          aria-label={`Open outreach status for ${p.name}`}
-        >
-          <Badge size="M" tone={cfg.tone} label={label} icon={cfg.icon} />
-        </button>
-      );
-    },
+    tdClassName: `${rowStyles.td} ${styles.agentBandTd}`,
+    tdStyle: BAND_LEFT,
+    thStyle: BAND_TH_LEFT,
+    renderCell: (p, ctx) => (
+      <AiOutcomeCell
+        patient={p}
+        onOpen={() => ctx.openOutreachStatusDrawer(p.id)}
+      />
+    ),
   },
   {
     key: 'assessment',
     label: 'AI Assessment',
     sortKey: 'assessmentSort',
     sortType: 'alpha',
-    tdClassName: rowStyles.td,
+    width: 200,
+    tdClassName: `${rowStyles.td} ${styles.assessmentTd}`,
     tdStyle: BAND,
-    thStyle: BAND_TH,
+    thStyle: { ...BAND_TH, minWidth: 200 },
     renderCell: (p, ctx) => (
-      <button
-        type="button"
-        className={styles.assessmentBtn}
-        onClick={(e) => { e.stopPropagation(); ctx.openAssessmentDrawer(p.id); }}
-        aria-label={`Open assessment for ${p.name}`}
-      >
-        <Link>TOC {p.tocType === 'ED' ? 'ED' : 'IP'} Assessment</Link>
-        <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--primary-300)" />
-      </button>
+      <AssessmentCell
+        patient={p}
+        onOpen={() => ctx.openAssessmentDrawer(p.id, {
+          prefilled: resolveAssessmentStatus(p) === 'completed',
+        })}
+      />
     ),
   },
   {
     key: 'aiTasks',
     label: 'AI Tasks',
-    sortKey: 'tasks',
+    sortKey: 'aiTasksSort',
     sortType: 'number',
-    tdClassName: rowStyles.td,
+    tdClassName: `${rowStyles.td} ${styles.agentBandTd}`,
     tdStyle: BAND_RIGHT,
     thStyle: BAND_TH_RIGHT,
-    renderCell: (p) => (
-      p.tasks > 0
-        ? <span className={styles.taskBadge}>{p.tasks}</span>
-        : <span className={styles.dash}>—</span>
+    renderCell: (p, ctx) => {
+      const taskCount = resolveAiTaskCount(p);
+      return taskCount > 0
+        ? (
+          <button
+            type="button"
+            className={styles.assessmentBtn}
+            onClick={(e) => { e.stopPropagation(); ctx.openAiTasksDrawer(p.id); }}
+            aria-label={`Open AI tasks for ${p.name}`}
+          >
+            <Badge size="M" tone="primary" label={String(taskCount)} />
+          </button>
+        )
+        : <span className={styles.dash}>—</span>;
+    },
+  },
+  {
+    key: 'outreach',
+    label: 'Outreach',
+    sortKey: 'outreachSort',
+    sortType: 'date',
+    tdClassName: rowStyles.td,
+    renderCell: (p, ctx) => (
+      <OutreachCell
+        patient={p}
+        onOpen={() => ctx.openOutreachStatusDrawer(p.id)}
+      />
     ),
+  },
+  {
+    key: 'lastOutreachBy',
+    label: 'Last Outreach By',
+    sortKey: 'lastOutreachBySort',
+    sortType: 'alpha',
+    tdClassName: rowStyles.td,
+    renderCell: (p) => <OutreachByCell patient={p} />,
   },
   {
     key: 'nextActionDue',
@@ -352,22 +326,6 @@ export const TOC_MIDDLE_COLUMNS = [
     sortType: 'date',
     tdClassName: rowStyles.td,
     renderCell: (p) => <DateCell value={p.dueOn || p.nextOutreach} />,
-  },
-  {
-    key: 'outreach',
-    label: 'Outreach',
-    sortKey: 'outreachSort',
-    sortType: 'date',
-    tdClassName: rowStyles.td,
-    renderCell: (p) => <OutreachCell patient={p} />,
-  },
-  {
-    key: 'lastOutreachBy',
-    label: 'Last Outreach By',
-    sortKey: 'lastOutreachBySort',
-    sortType: 'alpha',
-    tdClassName: rowStyles.td,
-    renderCell: (p) => <PersonCell name={p.agentAssigned || 'TOC Agent'} />,
   },
   {
     key: 'assignee',
@@ -534,7 +492,10 @@ export const TOC_MIDDLE_COLUMNS = [
   {
     key: 'tags',
     label: 'Tags',
+    width: 320,
     tdClassName: rowStyles.td,
+    tdStyle: { minWidth: 320 },
+    thStyle: { minWidth: 320 },
     renderCell: (p) => <TagCell patient={p} />,
   },
 ];

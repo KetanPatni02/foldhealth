@@ -66,7 +66,7 @@ export const FILTER_DEFS = [
 
 /** Relabel status + outreach chips for the standalone TOC queue vs TCM. */
 export function filterDefsForList(list) {
-  const program = list === 'TOC' ? 'TOC' : 'TCM';
+  const program = list === 'TOC IP' ? 'TOC IP' : 'TCM';
   return FILTER_DEFS.map((def) => {
     if (def.key === 'tocStatus') return { ...def, label: `${program} Status` };
     if (def.key === 'outreachType') {

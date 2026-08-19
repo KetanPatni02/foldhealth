@@ -8,6 +8,7 @@ import { isVisible } from '../../../../../../../forms/render/layout';
 import { resolveRecall } from '../../../../../../../forms/render/recall';
 import { isAnswered } from '../../../../../../../forms/scoring/util';
 import { SEVERITY } from '../../../../../../../forms/scoring/types';
+import { AssessmentFormSkeleton } from './AssessmentFormSkeleton';
 import styles from './AssessmentFormView.module.css';
 
 // Stable identity for "no answers yet" so the scoring/visibility memos below
@@ -139,7 +140,7 @@ export function AssessmentFormView({ formName, interpretation = 'High Risk', fal
       : 'grey')
     : 'error';
 
-  if (loading) return <div className={styles.state}>Loading form…</div>;
+  if (loading) return <AssessmentFormSkeleton />;
   if (!form) {
     return (
       <div className={styles.state}>

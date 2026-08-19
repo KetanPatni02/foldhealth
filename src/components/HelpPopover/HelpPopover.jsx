@@ -20,10 +20,10 @@ const FEATURES = [
     items: [
       {
         icon: 'solar:clipboard-list-linear',
-        crumbs: ['TOC'],
-        description: 'Agent-led outreach queue for transition-of-care patients.',
+        crumbs: ['TOC IP'],
+        description: 'Agent-led outreach queue for transition-of-care inpatients.',
         page: 'population',
-        subnavList: 'TOC',
+        subnavList: 'TOC IP',
       },
       {
         icon: 'solar:clipboard-list-linear',

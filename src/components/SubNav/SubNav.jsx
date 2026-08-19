@@ -8,14 +8,14 @@ import styles from './SubNav.module.css';
 const WORKLISTS = [
   { label: 'SNP', filter: null, view: 'snp' },
   { label: 'Annual Visit', filter: null },
-  { label: 'TOC', filter: null, view: 'toc' },
-  { label: 'TCM', filter: null },
+  { label: 'TOC IP', filter: null, view: 'toc' },
   { label: 'HCC', filter: null, view: 'hcc' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
   { label: 'CCM', filter: null, view: 'ccm' },
   { label: 'JSA', filter: null, view: 'jsa' },
   { label: 'High Utilizers', filter: { readmission: 'Yes' } },
   { label: 'DM', filter: null },
+  { label: 'TCM', filter: null },
 ];
 const WORKLIST_LABELS = WORKLISTS.map(w => w.label);
 const WORKLIST_BY_LABEL = Object.fromEntries(WORKLISTS.map(w => [w.label, w]));
@@ -67,8 +67,9 @@ export function SubNav({ collapsed }) {
   // localStorage-cached order may predate a newly added worklist.
   const orderedWorklists = useMemo(() => {
     let saved = (worklistOrder || []).filter(l => WORKLIST_BY_LABEL[l]);
-    if (saved.includes('TOC') && !saved.includes('TCM')) {
-      saved = saved.map(l => (l === 'TOC' ? 'TCM' : l));
+    if (saved.includes('TOC')) {
+      const hasTcm = saved.includes('TCM');
+      saved = saved.map(l => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l));
     }
     const order = saved.length > 0
       ? [...saved, ...WORKLIST_LABELS.filter(l => !saved.includes(l))]
@@ -102,7 +103,7 @@ export function SubNav({ collapsed }) {
       else if (list.view === 'jsa') counts[list.label] = jsaMembers.length;
       else if (list.label === 'Annual Visit') counts[list.label] = awvMembers.length;
       else if (list.label === 'TCM') counts[list.label] = patients.length;
-      else if (list.label === 'TOC') counts[list.label] = patients.filter(p => p.agentAssigned).length;
+      else if (list.label === 'TOC IP') counts[list.label] = patients.filter(p => p.agentAssigned).length;
       else counts[list.label] = 0;
     }
     return counts;
