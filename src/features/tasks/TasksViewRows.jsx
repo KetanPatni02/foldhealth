@@ -160,7 +160,7 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
           ) : (
             <span className={`${styles.taskName} ${isCompleted ? styles.taskNameDone : ''}`}>{task.name}</span>
           )}
-          {(() => { const meta = buildTaskMetaLine(task); return meta ? <span className={styles.taskMeta}>{meta}</span> : null; })()}
+          <span className={styles.taskMeta}>{buildTaskMetaLine(task)}</span>
         </div>
         <div className={styles.taskAttachments}>
           {task.attachments > 0 && (

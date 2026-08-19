@@ -7,17 +7,14 @@ export const TABS = [
 ];
 
 // Compose the "By : Actor • Meta" line used on rows and kanban cards.
-// Returns null when there's nothing worth showing so the caller can skip
-// the whole line — a blanket "By : System Automation" on every task adds
-// noise, not information.
+// Attribution is mandatory at the DB level — every task now has a real
+// `created_by` — so this line is always shown, even when the actor is
+// 'System' (backfilled or true automation). The old suppression that
+// treated System as noise contradicted that guarantee.
 export function buildTaskMetaLine(task) {
   if (!task) return null;
-  const actor = task.created_by?.trim();
+  const actor = task.created_by?.trim() || 'Unknown';
   const meta = task.meta?.trim();
-  const isAutomation = !actor || actor === 'System' || /^system\b/i.test(actor);
-  // Nothing to show — no human actor, no automation-authored meta note.
-  if (isAutomation && !meta) return null;
-  if (isAutomation) return meta;
   return meta ? `By : ${actor} • ${meta}` : `By : ${actor}`;
 }
 

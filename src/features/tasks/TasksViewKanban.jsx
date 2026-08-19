@@ -111,10 +111,7 @@ export function KanbanCardContent({ task, onToggle }) {
 
         {/* Row 6: Meta + linked counts */}
         <div className={styles.cardFooterRow}>
-          {(() => {
-            const meta = buildTaskMetaLine(task);
-            return meta ? <span className={styles.cardFooterMeta}>{meta}</span> : <span />;
-          })()}
+          <span className={styles.cardFooterMeta}>{buildTaskMetaLine(task)}</span>
           <div className={styles.cardLinked}>
             {task.is_subtask && (
               <span className={styles.linkedItem}>
