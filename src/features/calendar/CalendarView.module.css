@@ -146,8 +146,7 @@
 
 /* Ensure no overflow hidden on parent chain breaks sticky */
 .calendarWrap :global(.sx__calendar),
-.calendarWrap :global(.sx__view-container),
-.calendarWrap :global(.sx__calendar-content) {
+.calendarWrap :global(.sx__view-container) {
   overflow: visible !important;
 }
 
@@ -156,7 +155,7 @@
   display: none !important;
 }
 
-/* Hide empty all-day events grid */
+/* Hide the empty all-day events row (week/day views render it above the grid) */
 .calendarWrap :global(.sx__date-grid) {
   display: none !important;
 }
@@ -212,11 +211,6 @@
   --sx-color-outline-variant: var(--neutral-100);
 }
 
-/* Make the calendar grid fill available height */
-.calendarWrap :global(.sx__calendar-content) {
-  height: 100% !important;
-}
-
 .calendarWrap :global(.sx__week-wrapper) {
   height: 100% !important;
   flex: 1;
@@ -234,13 +228,6 @@
   flex: 1 !important;
 }
 
-/* Day headers */
-.calendarWrap :global(.sx__time-grid-day__header) {
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-300);
-}
-
 /* Events — let schedule-x handle the left border color per calendar type */
 .calendarWrap :global(.sx__event) {
   border-radius: 4px !important;
@@ -250,14 +237,15 @@
   transition: box-shadow 0.12s, filter 0.12s;
 }
 
-.calendarWrap :global(.sx__event:hover:not(.sx__event--selection)) {
+.calendarWrap :global(.sx__event:hover:not(.is-selection)) {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
   filter: brightness(0.97);
   z-index: 2;
 }
 
-/* Selection highlight — dotted 30-min block */
-.calendarWrap :global(.sx__event.sx__event--selection) {
+/* Selection highlight — dashed 30-min block. The class comes from the event's
+   _options.additionalClasses; schedule-x has no built-in selection modifier. */
+.calendarWrap :global(.sx__event.is-selection) {
   border: 1.5px dashed var(--primary-300) !important;
   border-left: 1.5px dashed var(--primary-300) !important;
   background: rgba(140, 90, 226, 0.06) !important;
@@ -338,17 +326,9 @@
   text-decoration: line-through;
 }
 
-/* Today highlight */
-.calendarWrap :global(.sx__date-grid-day--is-today .sx__date-grid-day__header-day-number) {
-  background: var(--primary-300) !important;
-  color: #fff !important;
-  border-radius: 50%;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
+/* Month view's "today" pill is painted by schedule-x itself from
+   --sx-color-primary, which the token block above already maps to
+   --primary-300. No override needed here. */
 
 /* Time grid clickable */
 .calendarWrap :global(.sx__time-grid-day) {
@@ -359,14 +339,14 @@
   background: rgba(140, 90, 226, 0.02);
 }
 
-/* Month grid cells clickable — stretch to fill row */
-.calendarWrap :global(.sx__date-grid-day) {
+/* Month grid cells clickable. schedule-x already gives them flex:1, so only
+   the affordance is ours. (These previously targeted .sx__date-grid-day —
+   the hidden all-day row — so month cells never got a pointer cursor.) */
+.calendarWrap :global(.sx__month-grid-day) {
   cursor: pointer;
-  flex: 1 !important;
-  min-height: 0;
 }
 
-.calendarWrap :global(.sx__date-grid-day:hover) {
+.calendarWrap :global(.sx__month-grid-day:hover) {
   background: rgba(140, 90, 226, 0.02);
 }
 

@@ -1,11 +1,30 @@
-import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { useMemo } from 'react';
+import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { useAppStore } from '../../store/useAppStore';
 import { KanbanBoard, EmptyState } from './TasksViewKanban';
-import { StatusGroup, SkeletonRow } from './TasksViewList';
-import styles from './TasksView.module.css';
+import { StatusGroupRows } from './TasksViewStatusGroup';
 
-// Personal tabs need a signed-in identity to filter against.
 const PERSONAL_TABS = new Set(['assigned', 'created', 'mentions']);
+
+function buildColumns(hideAssignedTo) {
+  // Widths tuned so the AssigneeChange pill (fillContainer) can hold
+  // full names like "Suryakumar Vishwakarma" without truncating. Status
+  // and Due Date give up room since they always fit their shortest labels.
+  const cols = [
+    { key: 'check', label: '', width: 48, align: 'center' },
+    { key: 'task', label: 'Tasks' },
+    { key: 'priority', label: 'P', width: 60, align: 'center' },
+    { key: 'status', label: 'Status', width: 110 },
+    { key: 'due', label: 'Due Date', width: 130 },
+  ];
+  if (!hideAssignedTo) cols.push({ key: 'assigned', label: 'Assigned To', width: 170 });
+  cols.push(
+    { key: 'member', label: 'Member', width: 210 },
+    { key: 'labels', label: 'Labels', width: 220 },
+    { key: 'actions', label: '', width: 48 },
+  );
+  return cols;
+}
 
 export function TasksViewContent({
   tasksLoading,
@@ -22,30 +41,13 @@ export function TasksViewContent({
 }) {
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const tasksTab = useAppStore(s => s.tasksTab);
-  if (tasksLoading && tasks.length === 0) {
-    return (
-      <div className={styles.tableWrap}>
-        <div className={styles.tableHeader}>
-          <div className={`${styles.thCell} ${styles.colCheck}`}>
-            <ActionButton icon="solar:sort-from-top-to-bottom-linear" size="S" />
-          </div>
-          <div className={`${styles.thCell} ${styles.colTask}`}>Tasks</div>
-          <div className={`${styles.thCell} ${styles.colP}`}>P</div>
-          <div className={`${styles.thCell} ${styles.colStatus}`}>Status</div>
-          <div className={`${styles.thCell} ${styles.colDue}`}>Due Date</div>
-          {!hideAssignedTo && <div className={`${styles.thCell} ${styles.colAssigned}`}>Assigned To</div>}
-          <div className={`${styles.thCell} ${styles.colMember}`}>Member</div>
-          <div className={`${styles.thCell} ${styles.colLabels}`}>Labels</div>
-        </div>
-        {[1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
-      </div>
-    );
-  }
 
-  if (filteredTasks.length === 0) {
-    // A "personal" tab (Assigned to Me / Created by Me / Mentions) with no
-    // signed-in profile always yields zero — tell the user why instead of
-    // sending them chasing a filter that isn't the problem.
+  const columns = useMemo(() => buildColumns(hideAssignedTo), [hideAssignedTo]);
+  const colCount = columns.length;
+  // 48 + task(min 258 flex) + 60 + 110 + 130 + 170 + 210 + 220 + 48 = 1254
+  const minTableWidth = hideAssignedTo ? 1086 : 1256;
+
+  if (filteredTasks.length === 0 && !(tasksLoading && tasks.length === 0)) {
     if (PERSONAL_TABS.has(tasksTab) && !currentUserProfile?.id && !currentUserProfile?.name) {
       return (
         <EmptyState
@@ -76,33 +78,23 @@ export function TasksViewContent({
   }
 
   return (
-    <div className={styles.tableWrap}>
-      <div className={styles.tableHeader}>
-        <div className={`${styles.thCell} ${styles.colCheck}`}>
-          <ActionButton icon="solar:sort-from-top-to-bottom-linear" size="S" />
-        </div>
-        <div className={`${styles.thCell} ${styles.colTask}`}>Tasks</div>
-        <div className={`${styles.thCell} ${styles.colP}`}>P</div>
-        <div className={`${styles.thCell} ${styles.colStatus}`}>Status</div>
-        <div className={`${styles.thCell} ${styles.colDue}`}>Due Date</div>
-        {!hideAssignedTo && <div className={`${styles.thCell} ${styles.colAssigned}`}>Assigned To</div>}
-        <div className={`${styles.thCell} ${styles.colMember}`}>Member</div>
-        <div className={`${styles.thCell} ${styles.colLabels}`}>Labels</div>
-        <div className={`${styles.thCell} ${styles.colActions}`} />
-      </div>
-
-      {grouped.map(g => (
-        <StatusGroup
-          key={g.status}
-          status={g.status}
-          label={g.label}
-          tasks={g.tasks}
+    <WorklistShell
+      header={null}
+      columns={columns}
+      rows={grouped}
+      renderRow={(group) => (
+        <StatusGroupRows
+          key={group.status}
+          group={group}
+          colCount={colCount}
           onToggle={handleToggle}
           onTaskClick={onTaskClick}
           hideAssignedTo={hideAssignedTo}
           onAddTask={onAddTask}
         />
-      ))}
-    </div>
+      )}
+      loading={tasksLoading && tasks.length === 0}
+      minTableWidth={minTableWidth}
+    />
   );
 }

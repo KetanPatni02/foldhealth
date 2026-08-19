@@ -986,6 +986,10 @@
   cursor: pointer;
   font-family: 'Inter', sans-serif;
   transition: background .15s;
+  /* Date / status text never wraps — cells narrow enough to force a
+     two-line MM-DD-YYYY should ellipsize or trigger the horizontal
+     scroll, not stack numerals vertically. */
+  white-space: nowrap;
 }
 
 .detailValue:hover {

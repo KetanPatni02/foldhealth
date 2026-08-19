@@ -34,11 +34,10 @@ export function CalendarView() {
         <CalendarContent
           onSlotClick={calendar.handleSlotClick}
           onEventClick={calendar.handleEventClick}
+          onRangeUpdate={calendar.handleRangeUpdate}
           calendarRef={calendar.calendarRef}
           eventsPluginRef={calendar.eventsPluginRef}
           dbAppointments={calendar.filteredAppointments}
-          appointmentTypes={calendar.apptTypesForFilter}
-          timezone={calendar.timezone}
         />
       </div>
 

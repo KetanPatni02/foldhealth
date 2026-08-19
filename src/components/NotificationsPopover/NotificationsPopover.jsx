@@ -24,6 +24,9 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   const openHccSftpReview = useAppStore(s => s.openHccSftpReview);
   const setActivePage = useAppStore(s => s.setActivePage);
   const setActiveSubnavList = useAppStore(s => s.setActiveSubnavList);
+  const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
+  const openAppointmentFromNotification = useAppStore(s => s.openAppointmentFromNotification);
+  const setPendingChatUserEmail = useAppStore(s => s.setPendingChatUserEmail);
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -45,6 +48,13 @@ export function NotificationsPopover({ onClose, anchorRef }) {
       setActivePage?.('population');
       setActiveSubnavList?.('HCC');
       openHccSftpReview?.();
+    } else if (n.action === 'openTask' && n.taskId != null) {
+      openTaskFromNotification?.(n.taskId);
+    } else if (n.action === 'openAppointment' && n.appointmentId != null) {
+      openAppointmentFromNotification?.(n.appointmentId);
+    } else if (n.action === 'openChat' && n.chatUserEmail) {
+      setActivePage?.('messages');
+      setPendingChatUserEmail?.(n.chatUserEmail);
     }
     onClose?.();
   };
@@ -80,7 +90,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
             >
               <span className={styles.entryIcon}>
                 <Icon
-                  name={n.type === 'hcc.extraction_complete' ? 'solar:document-text-linear' : 'solar:bell-linear'}
+                  name={iconForType(n.type)}
                   size={16}
                   color="var(--primary-300)"
                 />
@@ -97,6 +107,15 @@ export function NotificationsPopover({ onClose, anchorRef }) {
       )}
     </div>
   );
+}
+
+function iconForType(type) {
+  if (type === 'task.assigned') return 'solar:user-plus-rounded-linear';
+  if (type === 'task.mentioned') return 'solar:mention-square-linear';
+  if (type === 'appointment.assigned') return 'solar:calendar-linear';
+  if (type === 'message.received') return 'solar:chat-round-linear';
+  if (type === 'hcc.extraction_complete') return 'solar:document-text-linear';
+  return 'solar:bell-linear';
 }
 
 function relativeTime(ts) {

@@ -28,6 +28,7 @@ import styles from './AssigneeChange.module.css';
  * Hover / keyboard focus fills the pill with a subtle neutral-50
  * background and reveals a chevron (disabled states skip the reveal).
  */
+// v2 — added fillContainer prop for row-cell full-width pills.
 export const AssigneeChange = forwardRef(function AssigneeChange({
   name,
   initials,

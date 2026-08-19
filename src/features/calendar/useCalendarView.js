@@ -3,6 +3,8 @@ import { FALLBACK_APPOINTMENT_TYPES } from '../../components/ScheduleDrawer/sche
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import {
+  appointmentMatchesStatuses,
+  apptToEvent,
   BROWSER_TIMEZONE,
   getNowInTimezone,
   getTodayInTimezone,
@@ -18,7 +20,7 @@ export function useCalendarView() {
   const calendarRef = useRef(null);
   const eventsPluginRef = useRef(null);
   const [timezone, setTimezone] = useState(BROWSER_TIMEZONE);
-  const timezoneLabel = getTimezoneOffset(timezone);
+  const timezoneLabel = useMemo(() => getTimezoneOffset(timezone), [timezone]);
 
   const [calendarTitle, setCalendarTitle] = useState(() => {
     const today = getTodayInTimezone(timezone);
@@ -36,6 +38,8 @@ export function useCalendarView() {
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
   const fetchAppointmentTypes = useAppStore(s => s.fetchAppointmentTypes);
   const showToast = useAppStore(s => s.showToast);
+  const pendingOpenAppointmentId = useAppStore(s => s.pendingOpenAppointmentId);
+  const clearPendingOpenAppointmentId = useAppStore(s => s.clearPendingOpenAppointmentId);
 
   useEffect(() => {
     fetchAppointments();
@@ -50,7 +54,10 @@ export function useCalendarView() {
       .from('profiles')
       .select('id, full_name, email, status')
       .order('full_name')
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        // postgrest resolves (never rejects) on failure — without this the
+        // Users chip just renders empty with no signal that the query failed.
+        if (error) { console.error('Failed to load users for the calendar filter', error); return; }
         if (data?.length) {
           setUsers(data.map(u => ({
             id: u.id,
@@ -70,8 +77,15 @@ export function useCalendarView() {
       const typeSet = new Set(filterType);
       filtered = filtered.filter(a => typeSet.has(a.appointment_type_name));
     }
+    if (filterLocation.length > 0) {
+      const locationSet = new Set(filterLocation);
+      filtered = filtered.filter(a => locationSet.has(a.location));
+    }
+    if (filterStatus.length > 0) {
+      filtered = filtered.filter(a => appointmentMatchesStatuses(a, filterStatus));
+    }
     return filtered;
-  }, [appointments, filterUser, filterType, users]);
+  }, [appointments, filterUser, filterType, filterLocation, filterStatus]);
 
   const handleViewChange = (view) => {
     setCurrentView(view);
@@ -110,7 +124,7 @@ export function useCalendarView() {
         dayCol.appendChild(overlay);
       }
     });
-    document.querySelectorAll('.sx__date-grid-day').forEach(cell => {
+    document.querySelectorAll('.sx__month-grid-day').forEach(cell => {
       cell.querySelectorAll('[data-past-overlay]').forEach(el => el.remove());
       const dateStr = cell.getAttribute('data-date');
       if (dateStr && dateStr < today) {
@@ -138,13 +152,25 @@ export function useCalendarView() {
     }
   }, [timezone]);
 
+  // schedule-x calls onRangeUpdate synchronously from a signal effect, i.e.
+  // before preact has committed the new grid, so the repaint has to wait a
+  // turn. Deliberately setTimeout and not requestAnimationFrame: rAF never
+  // fires while the tab is hidden, which would leave the title and the
+  // past-day shading stale until the next navigation.
+  const handleRangeUpdate = useCallback(() => {
+    setTimeout(() => {
+      updateTitle();
+      applyPastOverlays();
+      applyTimeIndicator();
+    }, 0);
+  }, [updateTitle, applyPastOverlays, applyTimeIndicator]);
+
   const handleToday = () => {
     const app = calendarRef.current;
     if (!app?.$app) return;
     const T = globalThis.Temporal;
     if (T) {
       app.$app.datePickerState.selectedDate.value = T.Now.plainDateISO(timezone);
-      setTimeout(() => { updateTitle(); applyPastOverlays(); applyTimeIndicator(); }, 50);
     }
   };
 
@@ -158,44 +184,96 @@ export function useCalendarView() {
     $app.datePickerState.selectedDate.value = currentViewConfig.backwardForwardFn($app.datePickerState.selectedDate.value, units);
   }, []);
 
-  const handlePrev = () => { navigateCalendar('backward'); setTimeout(() => { updateTitle(); applyPastOverlays(); applyTimeIndicator(); }, 50); };
-  const handleNext = () => { navigateCalendar('forward'); setTimeout(() => { updateTitle(); applyPastOverlays(); applyTimeIndicator(); }, 50); };
+  const handlePrev = () => navigateCalendar('backward');
+  const handleNext = () => navigateCalendar('forward');
 
   const clearSelection = useCallback(() => {
     const ep = eventsPluginRef.current;
-    if (ep) {
-      try { ep.remove('__selection__'); } catch {}
-    }
+    // Must check the event exists first. schedule-x's remove() does
+    // splice(findIndex(...), 1) with no guard, so removing an id that isn't
+    // there splices at -1 and silently deletes the LAST real appointment —
+    // which is every drawer close that didn't start from a slot click.
+    if (ep?.get('__selection__')) ep.remove('__selection__');
   }, []);
 
   const [clickedAppointment, setClickedAppointment] = useState(null);
-  const eventClickRef = useRef(false);
 
-  const handleSlotClick = useCallback((dateTime) => {
-    if (eventClickRef.current) return;
+  /* eslint-disable react-hooks/set-state-in-effect --
+   * `pendingOpenAppointmentId` is a one-shot external signal from the store
+   * (NotificationsPopover sets it); we consume it and clear the flag. Same
+   * carve-out the pendingAddTask consumer uses in useTasksView.
+   */
+  useEffect(() => {
+    if (pendingOpenAppointmentId == null) return;
+    const appt = appointments.find(a => String(a.id) === String(pendingOpenAppointmentId));
+    if (appt) {
+      setClickedAppointment(appt);
+      setShowSchedule(true);
+    }
+    clearPendingOpenAppointmentId();
+  }, [pendingOpenAppointmentId, appointments, clearPendingOpenAppointmentId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  const handleSlotClick = useCallback((dateTime, e) => {
+    // schedule-x stops propagation on event clicks, so this should never fire
+    // for a click that landed on an appointment. Assert it from the DOM event
+    // rather than the timing flag this used to keep.
+    if (e?.target?.closest?.('.sx__event')) return;
+
+    // schedule-x reports the raw click position (e.g. 3:13), not the slot.
+    // Snap down to the 30-min slot the hover preview highlights so the
+    // drawer and the dashed selection show the time the user clicked on.
+    if (dateTime?.with && typeof dateTime.minute === 'number') {
+      dateTime = dateTime.with({
+        minute: dateTime.minute < 30 ? 0 : 30,
+        second: 0,
+        millisecond: 0,
+        microsecond: 0,
+        nanosecond: 0,
+      });
+    }
 
     const T = globalThis.Temporal;
     if (T && dateTime?.epochMilliseconds) {
       const now = T.Now.zonedDateTimeISO(timezone);
       const minTime = now.add({ minutes: 15 });
       if (dateTime.epochMilliseconds < minTime.epochMilliseconds) {
-        showToast('Cannot book in the past. Appointment must be at least 15 minutes from now.');
+        // Phrased against the slot, not the click: the time was snapped down,
+        // so a click late in the current half-hour lands on a slot that has
+        // already started. "Cannot book in the past" would misdescribe that.
+        showToast('Appointments must start at least 15 minutes from now.');
+        return;
+      }
+    } else if (typeof dateTime?.day === 'number') {
+      // Month view hands over a whole day (a PlainDate, which has no
+      // epochMilliseconds), so the check above skipped it entirely and past
+      // days were bookable there. Compare dates instead.
+      const clicked = `${dateTime.year}-${String(dateTime.month).padStart(2, '0')}-${String(dateTime.day).padStart(2, '0')}`;
+      if (clicked < getTodayInTimezone(timezone)) {
+        showToast('Cannot book in the past.');
         return;
       }
     }
 
     const ep = eventsPluginRef.current;
-    if (ep && T && dateTime?.add) {
+    // Only meaningful for a timed click. A month-view click is a whole day with
+    // no time yet, so there is no interval to test for a clash.
+    if (T && dateTime?.epochMilliseconds && dateTime.add) {
       const clickStart = dateTime.epochMilliseconds;
       const clickEnd = dateTime.add({ minutes: 30 }).epochMilliseconds;
-      try {
-        const allEvents = ep.getAll();
-        const hasOverlap = allEvents.some(e => {
-          if (e.id === '__selection__') return false;
-          return clickStart < e.end.epochMilliseconds && clickEnd > e.start.epochMilliseconds;
-        });
-        if (hasOverlap) return;
-      } catch {}
+      // Check against ALL appointments, not the calendar's event list — that
+      // list only holds what the filter chips currently show, so filtering
+      // would otherwise hide a conflict and let you double-book the slot.
+      const hasOverlap = (appointments || []).some(a => {
+        let ev;
+        try { ev = apptToEvent(a, T, 'UTC'); } catch { return false; }
+        if (!ev?.start?.epochMilliseconds || !ev.end?.epochMilliseconds) return false;
+        return clickStart < ev.end.epochMilliseconds && clickEnd > ev.start.epochMilliseconds;
+      });
+      if (hasOverlap) {
+        showToast('That slot overlaps an existing appointment.');
+        return;
+      }
     }
 
     setClickedAppointment(null);
@@ -211,13 +289,12 @@ export function useCalendarView() {
         end,
         title: 'New Appointment',
         calendarId: 'selection',
+        _options: { additionalClasses: ['is-selection'] },
       });
     }
-  }, [clearSelection]);
+  }, [clearSelection, timezone, showToast, appointments]);
 
   const handleEventClick = useCallback((event) => {
-    eventClickRef.current = true;
-    setTimeout(() => { eventClickRef.current = false; }, 100);
     const appt = appointments.find(a => a.id === event.id);
     setClickedAppointment(appt || null);
     setSelectedSlot(event.start);
@@ -228,17 +305,8 @@ export function useCalendarView() {
     setShowSchedule(false);
     setClickedAppointment(null);
     clearSelection();
-    const applyCancelled = () => {
-      const store = useAppStore.getState();
-      for (const a of (store.appointments || [])) {
-        if (a.status !== 'Cancelled') continue;
-        const el = document.querySelector(`[data-event-id="${a.id}"]`);
-        if (el && !el.classList.contains('is-cancelled')) el.classList.add('is-cancelled');
-      }
-    };
-    setTimeout(applyCancelled, 300);
-    setTimeout(applyCancelled, 800);
-    setTimeout(applyCancelled, 1500);
+    // A status change refetches appointments, and the re-rendered events carry
+    // their own is-cancelled class — no post-render class patching needed.
   }, [clearSelection]);
 
   const hoverRef = useRef(null);
@@ -300,8 +368,28 @@ export function useCalendarView() {
     // can return a different set once schedule-x has re-rendered the grid,
     // which would leave the original listeners attached forever.
     let subscribedDays = [];
+    let timer;
+    let attempts = 0;
 
-    const timer = setTimeout(() => {
+    // The grid is ready when the CURRENT view's DOM exists — the column
+    // count check matters on view switches, when the previous view's
+    // columns linger in the DOM for a frame or two.
+    const gridReady = () => {
+      // Wait for the CELLS, not just the wrapper — the wrapper mounts a beat
+      // earlier, and decorating against zero cells would silently no-op with
+      // no retry (month view would lose its past-day shading).
+      if (currentView === 'month-grid') return document.querySelectorAll('.sx__month-grid-day').length > 0;
+      return document.querySelectorAll('.sx__time-grid-day').length === (currentView === 'day' ? 1 : 7);
+    };
+
+    const setup = () => {
+      if (!gridReady()) {
+        // Poll instead of a fixed delay so the hover ghost, overlays and
+        // initial scroll appear the moment schedule-x renders (the calendar
+        // itself loads async), not 800ms later. Give up after ~6s.
+        if (attempts++ < 120) timer = setTimeout(setup, 50);
+        return;
+      }
       subscribedDays = Array.from(document.querySelectorAll('.sx__time-grid-day'));
       subscribedDays.forEach(day => {
         day.addEventListener('mousemove', handleMove);
@@ -328,7 +416,8 @@ export function useCalendarView() {
         const wrap = document.querySelector('[class*="calendarWrap"]');
         if (wrap) wrap.scrollTop = Math.max(0, scrollTarget);
       }
-    }, 800);
+    };
+    setup();
 
     return () => {
       clearTimeout(timer);
@@ -343,6 +432,17 @@ export function useCalendarView() {
       hoverRef.current = null;
     };
   }, [currentView, timezone, timezoneLabel, applyPastOverlays, applyTimeIndicator]);
+
+  // The now-line was drawn once and then froze. Redraw it each minute so it
+  // tracks the clock, and repaint the past-day shading with it so a day that
+  // rolls over while the tab is open dims without a refresh.
+  useEffect(() => {
+    const id = setInterval(() => {
+      applyTimeIndicator();
+      applyPastOverlays();
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [applyTimeIndicator, applyPastOverlays]);
 
   return {
     calendarTitle,
@@ -373,6 +473,7 @@ export function useCalendarView() {
     handleNext,
     handleSlotClick,
     handleEventClick,
+    handleRangeUpdate,
     handleCloseDrawer,
   };
 }

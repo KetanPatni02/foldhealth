@@ -128,10 +128,22 @@ export function CommentComposer({
   const [mention, setMention] = useState(null); // { range, query } | null
   const [mentionIdx, setMentionIdx] = useState(0);
   const platformUsers = useAppStore(s => s.platformUsers);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
   // Fall back to the mock so the picker still renders before the fetch lands.
-  const users = platformUsers?.length ? platformUsers : SYSTEM_USERS;
+  // Always include the signed-in user so someone can @-mention themselves
+  // (or write a note visible in their own Mentions tab). Deduped by id.
+  const users = useMemo(() => {
+    const base = platformUsers?.length ? platformUsers : SYSTEM_USERS;
+    if (!currentUserProfile?.name) return base;
+    if (base.some(u => u.id === currentUserProfile.id || u.name === currentUserProfile.name)) return base;
+    const initials = currentUserProfile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return [
+      { id: currentUserProfile.id, name: currentUserProfile.name, initials, role: currentUserProfile.role, source: 'self' },
+      ...base,
+    ];
+  }, [platformUsers, currentUserProfile]);
   const matches = useMemo(() => {
     if (!mention) return [];
     const q = mention.query.toLowerCase();

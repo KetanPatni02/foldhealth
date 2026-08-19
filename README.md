@@ -37,6 +37,35 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Calendar: slot clicks snap to 30-min slots + faster load** — clicking a
+  timeslot now books the slot the hover preview shows (schedule-x reports the
+  raw pixel time, e.g. 3:13; we snap it down to :00/:30 before it reaches the
+  Schedule drawer and the dashed selection). Calendar libs now load in
+  parallel instead of a sequential import waterfall, the grid setup (hover
+  ghost, past-day overlays, scroll-to-now) polls for readiness instead of
+  waiting a fixed 800ms, and `isResponsive: false` stops schedule-x from
+  silently hijacking week view into day view when it mounts mid-layout.
+  Location/Status filter chips actually filter now, and month view finally
+  dims past days (the old selector matched nothing in schedule-x v4).
+
+- **Calendar: vanishing-appointment fix + schedule-x v4 cleanup** — opening and
+  closing an appointment drawer used to silently delete the last appointment
+  from the grid: `clearSelection()` called the events plugin's `remove()` for a
+  selection event that didn't exist, and schedule-x's `remove()` does
+  `splice(findIndex(...), 1)`, so a missing id splices at `-1` and drops the
+  final event. It's guarded with an existence check now. Cancelled styling and
+  the dashed new-slot block are declarative (`_options.additionalClasses`)
+  instead of a `querySelector` chain fired at 100/300/600ms and again at
+  300/800/1500ms, so they paint correctly on the first frame — the dashed
+  selection style had in fact never applied, because `.sx__event--selection`
+  isn't a class v4 emits. Navigation repaints run off schedule-x's
+  `onRangeUpdate` rather than a `setTimeout(50)` guess, the now-line ticks each
+  minute instead of freezing at page load, the Location/Status filter options
+  come from the same constants the booking form writes (the calendar's own
+  copies had drifted — `Fold Health, NY` vs `Fold Health, New York`, so any
+  location selection matched zero rows), and the four empty `catch {}` blocks
+  and the dead `buildCalendars` helper are gone.
+
 - **Dynamic group detail screen + qualified members + activity log** —
   clicking a Dynamic group row opens its read-only detail screen (Figma
   1-13951): left rail with the group summary, live qualified-member count and
