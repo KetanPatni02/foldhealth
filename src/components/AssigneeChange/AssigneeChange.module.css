@@ -31,6 +31,18 @@
   width: fit-content;
 }
 
+/* Opt-in: let the pill fill its parent width instead of the fixed 140px.
+   Used by table rows where the containing cell owns the column width. */
+.fillContainer.assigned {
+  width: 100%;
+  max-width: 100%;
+}
+.fillContainer.unassigned {
+  width: 100%;
+  max-width: 100%;
+  justify-content: flex-start;
+}
+
 /* Size tokens (Figma Fold-Pixel-1.0 node 8629:178). The pill hugs its
    content on both sides so the avatar sits close to the left edge and the
    chevron sits close to the right — matches the Figma tight-pill spec. */
@@ -119,6 +131,10 @@
   white-space: nowrap;
 }
 
+/* Chevron always occupies its layout slot so the pill's width and the
+   text column stay stable across hover — no reflow / no flicker. At rest
+   we fade it out; hover / focus fades it back in. Flex will still let a
+   short name use the remaining space without visible truncation. */
 .chevron {
   margin-left: auto;
   opacity: 0;

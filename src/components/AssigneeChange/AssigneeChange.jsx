@@ -37,12 +37,19 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   unassignedLabel = 'Assign User',
   size = 'M',              // 'M' | 'S'
   avatarOnly = false,
+  // Avatar variant for the leading initials chip in the assigned state.
+  // Default 'staff' matches the assign-a-user shape; callers can pass
+  // 'patient' to reuse the pill for member cells.
+  avatarVariant = 'staff',
   // hideAvatar drops the initials avatar in the assigned state and swaps the
   // outlined person avatar for a plain leading Solar icon in the unassigned
   // state. Ignored in `avatarOnly` mode (the avatar IS the affordance there).
   hideAvatar = false,
   leadingIconName = 'solar:user-plus-rounded-linear',
   disabled = false,
+  // Opt-in for table rows: drop the fixed 140px pill width and fill the
+  // parent cell so long names use every pixel the column allocates.
+  fillContainer = false,
   users,
   onSelect,
   pickerTitle,
@@ -145,6 +152,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
     unassigned ? styles.unassigned : styles.assigned,
     size === 'S' ? styles.sizeS : styles.sizeM,
     avatarOnly ? styles.avatarOnly : '',
+    fillContainer ? styles.fillContainer : '',
     disabled ? styles.disabled : '',
     className || '',
   ].filter(Boolean).join(' ');
@@ -195,7 +203,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
     >
       {!(hideAvatar && !avatarOnly) && (
         <Avatar
-          variant="staff"
+          variant={avatarVariant}
           initials={initials}
           size={avatarSize}
           className={avatarOnly ? styles.avatarInner : undefined}
@@ -221,7 +229,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
           role="tooltip"
         >
           <div className={styles.tooltipCard}>
-            <Avatar variant="staff" initials={initials} className={styles.tooltipAvatar} />
+            <Avatar variant={avatarVariant} initials={initials} className={styles.tooltipAvatar} />
             <span className={styles.tooltipText}>
               {name && <span className={styles.tooltipName}>{name}</span>}
               {role && <span className={styles.tooltipRole}>{role}</span>}
