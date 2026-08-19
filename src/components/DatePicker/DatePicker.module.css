@@ -1,64 +1,36 @@
-.input {
-  height: 36px;
-  padding: 0 10px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  color: var(--neutral-400);
-  font-size: var(--font-md);
-  font-weight: 400;
-  line-height: 1.2;
-  transition: border-color 120ms ease, box-shadow 120ms ease;
-  /* Native date input has a calendar icon — leave room for it. */
-  min-width: 140px;
+/* DatePicker in single mode delegates to `<Input type="date">` — no
+   local styles needed. Range mode renders a text field + calendar
+   overlay button, so the wrapper positions the icon over the trailing
+   edge of the input. */
+
+.wrap {
+  position: relative;
+  width: 100%;
+}
+
+.dateInput {
+  padding-right: var(--space-8);
+  cursor: pointer;
+}
+
+.iconTrigger {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--neutral-300);
   outline: none;
 }
-
-.input:hover:not(:disabled) {
-  border-color: var(--neutral-200);
-}
-
-.input:focus {
-  border-color: var(--primary-300);
-  box-shadow: 0 0 0 3px rgba(140, 90, 226, 0.12); /* primary-300 @ 12% */
-}
-
-.input:disabled {
-  background: var(--neutral-50);
-  color: var(--neutral-200);
+.iconTrigger:disabled {
   cursor: not-allowed;
-}
-
-.error {
-  border-color: var(--status-error);
-}
-
-.error:focus {
-  border-color: var(--status-error);
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12); /* status-error @ 12% */
-}
-
-/* Calendar icon — keep it neutral so it doesn't fight the field color. */
-.input::-webkit-calendar-picker-indicator {
-  cursor: pointer;
-  opacity: 0.6;
-  transition: opacity 120ms ease;
-}
-.input::-webkit-calendar-picker-indicator:hover {
-  opacity: 1;
-}
-
-/* Hidden variant — kept in DOM (never display:none) so showPicker() still
-   works when triggered from another control. */
-.hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-  opacity: 0;
-  pointer-events: none;
+  color: var(--neutral-150);
 }
