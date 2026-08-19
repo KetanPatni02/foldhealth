@@ -12,7 +12,6 @@ export function TaskDetailDrawerHeader({
   onStatusChange,
   onClaim,
   onCopyLink,
-  onCopyId,
   onDelete,
 }) {
   return (
@@ -31,8 +30,6 @@ export function TaskDetailDrawerHeader({
           <ActionButton icon="solar:paperclip-linear" size="L" tooltip="Attachments" />
           <span className={styles.iconDivider} />
           <ActionButton icon="solar:link-minimalistic-linear" size="L" tooltip="Copy link" onClick={onCopyLink} />
-          <span className={styles.iconDivider} />
-          <ActionButton icon="solar:clipboard-text-linear" size="L" tooltip="Copy ID" onClick={onCopyId} />
           <span className={styles.iconDivider} />
           <ActionButton icon="solar:trash-bin-trash-linear" size="L" tooltip="Delete" onClick={onDelete} />
         </div>

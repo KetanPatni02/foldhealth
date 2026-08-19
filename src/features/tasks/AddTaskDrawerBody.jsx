@@ -16,7 +16,7 @@ export function AddTaskDrawerBody({
   assignedTo, setAssignedTo,
   member, setMember,
   pool, setPool,
-  description, setDescription,
+  setDescription,
   selectedLabels, toggleLabel,
   showAddSubtask, setShowAddSubtask,
   subtaskName, setSubtaskName,

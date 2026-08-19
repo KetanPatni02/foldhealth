@@ -27,11 +27,10 @@ export const AUDIT_LOG_VERB_MAP = {
 };
 
 export const TASK_FILTER_DEFS = [
-  { key: 'assigned_to', label: 'Assigned to', primary: true, options: [
-    { value: 'Dr. JeDee Potter', label: 'Dr. JeDee Potter' },
-    { value: 'Deborah Hintz', label: 'Deborah Hintz' },
-    { value: 'Dr. Robert Frost', label: 'Dr. Robert Frost' },
-  ]},
+  // Options are populated at runtime from taskProfiles in useTasksView —
+  // see filterDefs's usesProfiles branch. Empty here so the cold-load
+  // dropdown never shows stale seed names.
+  { key: 'assigned_to', label: 'Assigned to', primary: true, options: [] },
   { key: 'view_by', label: 'View By', primary: true, options: [
     { value: 'status', label: 'Status' },
     { value: 'priority', label: 'Priority' },
@@ -42,11 +41,7 @@ export const TASK_FILTER_DEFS = [
     { value: 'priority', label: 'Priority' },
     { value: 'name', label: 'Name' },
   ]},
-  { key: 'created_by', label: 'Created By', primary: true, options: [
-    { value: 'Dr. JeDee Potter', label: 'Dr. JeDee Potter' },
-    { value: 'Deborah Hintz', label: 'Deborah Hintz' },
-    { value: 'Dr. Robert Frost', label: 'Dr. Robert Frost' },
-  ]},
+  { key: 'created_by', label: 'Created By', primary: true, options: [] },
   { key: 'task_status', label: 'Task Status', primary: true, options: [
     { value: 'pending', label: 'Pending' },
     { value: 'missed', label: 'Missed' },

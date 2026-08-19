@@ -4,10 +4,18 @@ import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBa
 import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { AddTaskDrawer } from './AddTaskDrawer';
 import { TaskDetailDrawer } from './TaskDetailDrawer';
-import { VIEW_TOGGLE_ITEMS } from './TasksViewIcons';
+import { KanbanIcon } from './TasksViewIcons';
 import { useTasksView } from './useTasksView';
 import { TasksViewContent } from './TasksViewContent';
 import styles from './TasksView.module.css';
+
+// Local to this file — TasksViewIcons.jsx is a components-only file, and
+// keeping VIEW_TOGGLE_ITEMS there mixes a JSX-carrying constant with the
+// component exports and trips react-refresh HMR.
+const VIEW_TOGGLE_ITEMS = [
+  { key: 'list', icon: 'solar:list-linear' },
+  { key: 'board', icon: <KanbanIcon size={16} /> },
+];
 
 export { AddTaskDrawer } from './AddTaskDrawer';
 export { TaskDetailDrawer } from './TaskDetailDrawer';

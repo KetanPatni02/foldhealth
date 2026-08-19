@@ -18,7 +18,8 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { toast } from '../../components/Toast/sonnerToast';
 import { useAppStore } from '../../store/useAppStore';
 import { STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_COLORS, isOverdue, formatDateFriendly } from './TasksView.utils';
-import { PriorityIcon, SubtaskIcon, CheckIcon } from './TasksViewIcons';
+import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
+import { PriorityIcon, SubtaskIcon } from './TasksViewIcons';
 import { RowActionMenu } from './TasksViewRowDropdowns';
 import styles from './TasksView.module.css';
 
@@ -50,13 +51,13 @@ export function KanbanCardContent({ task, onToggle }) {
           </div>
           <button
             type="button"
-            className={`${styles.taskCheckbox} ${isCompleted ? styles.taskCheckboxChecked : ''}`}
+            role="checkbox"
+            aria-checked={isCompleted}
+            className={styles.taskCheckboxBtn}
             onClick={(e) => { e.stopPropagation(); onToggle?.(task); }}
             aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            <span className={styles.taskCheckIcon}>
-              <CheckIcon size={13} />
-            </span>
+            <CheckboxTick checked={isCompleted} size={16} />
           </button>
         </div>
 

@@ -1,25 +1,20 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
-import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
-import { Avatar } from '../../components/Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';
-import { toast } from '../../components/Toast/sonnerToast';
-import {
-  STATUS_ORDER, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_ORDER, PRIORITY_LABELS,
-  getInitials, isOverdue, formatDateFriendly, PAGE_SIZE,
-} from './TasksView.utils';
-import { SubtaskIcon, PriorityIcon, CheckIcon } from './TasksViewIcons';
+import { isOverdue } from './TasksView.utils';
+import { SubtaskIcon, PriorityIcon } from './TasksViewIcons';
 import { TaskDatePicker } from './TasksViewDropdowns';
+import { usePopoverPosition } from './usePopoverPosition';
 import styles from './TasksView.module.css';
 
 export function RowLabelDropdown({ task, children }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
+  const pos = usePopoverPosition(btnRef, open);
   const updateTask = useAppStore(s => s.updateTask);
   const showToast = useAppStore(s => s.showToast);
   const taskLabels = useAppStore(s => s.taskLabels);
@@ -54,11 +49,11 @@ export function RowLabelDropdown({ task, children }) {
           Add Label
         </button>
       )}
-      {open && createPortal(
+      {open && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={e => { e.stopPropagation(); setOpen(false); setSearch(''); }}>
           <div
             className={styles.simpleDropdown}
-            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
             onClick={e => e.stopPropagation()}
           >
             <div className={styles.dropdownSearch}>
@@ -139,13 +134,14 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
     <div className={styles.taskRow} onClick={() => onTaskClick?.(task)}>
       <div className={`${styles.cellCheck} ${pinnedEnds ? styles.pinLeft0 : ''}`}>
         <button
-          className={`${styles.taskCheckbox} ${isCompleted ? styles.taskCheckboxChecked : ''}`}
+          type="button"
+          role="checkbox"
+          aria-checked={isCompleted}
+          className={styles.taskCheckboxBtn}
           onClick={e => { e.stopPropagation(); onToggle(task); }}
           aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
         >
-          <span className={styles.taskCheckIcon}>
-            <CheckIcon size={13} />
-          </span>
+          <CheckboxTick checked={isCompleted} size={16} />
         </button>
       </div>
 

@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { toast } from '../../components/Toast/sonnerToast';
 import {
   TABS, TASK_FILTER_DEFS, STATUS_ORDER, STATUS_LABELS, PRIORITY_ORDER, PRIORITY_LABELS,
+  parseTaskDate, todayStart,
 } from './TasksView.utils';
 
 function buildGroupedTasks(sortedTasks, viewBy) {
@@ -14,12 +15,11 @@ function buildGroupedTasks(sortedTasks, viewBy) {
     }, []);
   }
   if (viewBy === 'due_date') {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = todayStart();
     const buckets = { overdue: [], today: [], upcoming: [], no_date: [] };
     sortedTasks.forEach(t => {
-      if (!t.due_date) { buckets.no_date.push(t); return; }
-      const p = t.due_date.split('-');
-      const d = new Date(+p[2], +p[0] - 1, +p[1]); d.setHours(0, 0, 0, 0);
+      const d = parseTaskDate(t.due_date);
+      if (!d) { buckets.no_date.push(t); return; }
       if (d < today) buckets.overdue.push(t);
       else if (d.getTime() === today.getTime()) buckets.today.push(t);
       else buckets.upcoming.push(t);
@@ -46,12 +46,11 @@ function buildKanbanGroups(sortedTasks, viewBy) {
     }));
   }
   if (viewBy === 'due_date') {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const today = todayStart();
     const buckets = { overdue: [], today: [], upcoming: [], no_date: [] };
     sortedTasks.forEach(t => {
-      if (!t.due_date) { buckets.no_date.push(t); return; }
-      const p = t.due_date.split('-');
-      const d = new Date(+p[2], +p[0] - 1, +p[1]); d.setHours(0, 0, 0, 0);
+      const d = parseTaskDate(t.due_date);
+      if (!d) { buckets.no_date.push(t); return; }
       if (d < today) buckets.overdue.push(t);
       else if (d.getTime() === today.getTime()) buckets.today.push(t);
       else buckets.upcoming.push(t);
@@ -211,11 +210,10 @@ export function useTasksView() {
     const sorted = [...filteredTasks];
     if (sortBy === 'due_date') {
       sorted.sort((a, b) => {
-        if (!a.due_date) return 1;
-        if (!b.due_date) return -1;
-        const pa = a.due_date.split('-'); const pb = b.due_date.split('-');
-        const da = new Date(+pa[2], +pa[0] - 1, +pa[1]);
-        const db = new Date(+pb[2], +pb[0] - 1, +pb[1]);
+        const da = parseTaskDate(a.due_date);
+        const db = parseTaskDate(b.due_date);
+        if (!da) return 1;
+        if (!db) return -1;
         return da - db;
       });
     } else if (sortBy === 'priority') {

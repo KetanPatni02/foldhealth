@@ -14,7 +14,7 @@ import styles from './TasksView.module.css';
  * standard TaskRow so rows look exactly like the Tasks module. When the section
  * has no tasks it shows the ring empty state instead of the table.
  */
-export function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAssignedTo, hideMember, onAddTask, emptyLabel }) {
+export function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAssignedTo, hideMember, emptyLabel }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(tasks.length / PROG_TASKS_PER_PAGE));
   // Clamp if the list shrank (e.g. a task moved sections) so we never land on
@@ -80,7 +80,7 @@ export function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAs
  * Toggling completion updates the shared task store. Pass `hideMember` when
  * already in a member context.
  */
-export function TaskListSection({ tasks = [], onTaskClick, hideAssignedTo = false, hideMember = false, onAddTask }) {
+export function TaskListSection({ tasks = [], onTaskClick, hideAssignedTo = false, hideMember = false }) {
   const updateTask = useAppStore(s => s.updateTask);
   const handleToggle = useCallback((task) => {
     updateTask(task.id, { status: task.status === 'completed' ? 'pending' : 'completed' });
@@ -98,7 +98,6 @@ export function TaskListSection({ tasks = [], onTaskClick, hideAssignedTo = fals
         onTaskClick={onTaskClick}
         hideAssignedTo={hideAssignedTo}
         hideMember={hideMember}
-        onAddTask={onAddTask}
         emptyLabel="No Open Tasks"
       />
       <ProgramTaskSection
@@ -108,7 +107,6 @@ export function TaskListSection({ tasks = [], onTaskClick, hideAssignedTo = fals
         onTaskClick={onTaskClick}
         hideAssignedTo={hideAssignedTo}
         hideMember={hideMember}
-        onAddTask={onAddTask}
         emptyLabel="No Completed Tasks"
       />
     </>

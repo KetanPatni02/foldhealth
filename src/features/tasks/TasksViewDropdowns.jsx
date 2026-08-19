@@ -5,6 +5,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
 import { useAppStore } from '../../store/useAppStore';
 import { MONTH_NAMES, formatDateFriendly } from './TasksView.utils';
+import { usePopoverPosition } from './usePopoverPosition';
 import styles from './TasksView.module.css';
 
 export function TaskDatePicker({ value, onSelect, overdue }) {
@@ -17,6 +18,7 @@ export function TaskDatePicker({ value, onSelect, overdue }) {
     return new Date();
   });
   const btnRef = useRef(null);
+  const pos = usePopoverPosition(btnRef, open);
 
   const today = new Date();
   const todayDay = today.getDate();
@@ -50,11 +52,11 @@ export function TaskDatePicker({ value, onSelect, overdue }) {
         <Icon name="solar:calendar-linear" size={16} color={overdue ? 'var(--status-error)' : (value ? 'var(--neutral-300)' : 'var(--neutral-200)')} />
         <span>{formatDateFriendly(value)}</span>
       </button>
-      {open && createPortal(
+      {open && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)}>
           <div
             className={styles.calendarDropdown}
-            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
             onClick={e => e.stopPropagation()}
           >
             <div className={styles.calendarHeader}>
@@ -85,6 +87,7 @@ export function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
+  const pos = usePopoverPosition(btnRef, open);
   const taskLabels = useAppStore(s => s.taskLabels);
   const createTaskLabel = useAppStore(s => s.createTaskLabel);
   const showToast = useAppStore(s => s.showToast);
@@ -108,11 +111,11 @@ export function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
       <button className={styles.detailValue} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
         {children || <Icon name="solar:add-circle-linear" size={14} color="var(--neutral-200)" />}
       </button>
-      {open && createPortal(
+      {open && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }}>
           <div
             className={styles.simpleDropdown}
-            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
             onClick={e => e.stopPropagation()}
           >
             <div className={styles.dropdownSearch}>
@@ -149,10 +152,11 @@ export function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
   );
 }
 
-export function DetailDropdown({ value, options, onSelect, icon, renderOption, children, searchable = true, multiSelect, selected }) {
+export function DetailDropdown({ value, options, onSelect, renderOption, children, searchable = true, multiSelect, selected }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
+  const pos = usePopoverPosition(btnRef, open);
   const selectedSet = useMemo(() => new Set(selected || []), [selected]);
 
   const filtered = options.filter(opt => {
@@ -166,11 +170,11 @@ export function DetailDropdown({ value, options, onSelect, icon, renderOption, c
       <button ref={btnRef} className={styles.detailValue} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
         {children || value || '—'}
       </button>
-      {open && createPortal(
+      {open && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }}>
           <div
             className={styles.simpleDropdown}
-            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
             onClick={e => e.stopPropagation()}
           >
             {searchable && options.length > 3 && (

@@ -62,7 +62,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
   const labels = Array.isArray(task.labels) ? task.labels : [];
   const memberInitials = task.member ? task.member.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
   const assigneeInitials = task.assigned_to ? task.assigned_to.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
-  const subtasks = allTasks.filter(t => t.parent_task_id === task.id || (t.is_subtask && t.parent_task === task.name));
+  const subtasks = allTasks.filter(t => t.parent_task_id === task.id);
   const completedSubs = subtasks.filter(t => t.status === 'completed').length;
 
   const assigneeNames = (() => {
@@ -160,7 +160,6 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask }) {
           onStatusChange={handleStatusChange}
           onClaim={async () => { await claimTask(task.id); showToast('Task claimed'); }}
           onCopyLink={() => { navigator.clipboard?.writeText(`${window.location.origin}/#/tasks?taskId=${task.id}`); showToast('Link copied'); }}
-          onCopyId={() => { navigator.clipboard?.writeText(String(task.id)); showToast('ID copied'); }}
           onDelete={() => setShowDeleteConfirm(true)}
         />
         <TaskDetailDrawerDetails

@@ -7,7 +7,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { Select } from '../../components/Select/Select';
-import { LABEL_OPTIONS, TITLE_MAX, getInitials, isOverdue, formatDateFriendly, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_OPTIONS } from './TasksView.utils';
+import { LABEL_OPTIONS, TITLE_MAX, getInitials, isOverdue, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_OPTIONS } from './TasksView.utils';
 import { PriorityIcon } from './TasksViewIcons';
 import { TaskDatePicker, DetailDropdown } from './TasksViewDropdowns';
 import styles from './TasksView.module.css';

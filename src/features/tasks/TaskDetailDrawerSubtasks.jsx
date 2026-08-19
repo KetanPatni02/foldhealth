@@ -60,7 +60,7 @@ export function TaskDetailDrawerSubtasks({
                   type="button"
                   role="checkbox"
                   aria-checked={sub.status === 'completed'}
-                  className={styles.subtaskCheckboxBtn}
+                  className={styles.taskCheckboxBtn}
                   aria-label={sub.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}
                   onClick={e => {
                     e.stopPropagation();
