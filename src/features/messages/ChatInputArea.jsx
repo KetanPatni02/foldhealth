@@ -85,11 +85,11 @@ export function ChatInputArea({
       </div>
 
       <div className={styles.chatInputFooter}>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)' }}>
+        <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
           Press Enter to send •{' '}
           <span style={{ color: 'var(--primary-300)', cursor: 'pointer' }}>Change</span>
         </span>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--neutral-300)', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', cursor: 'pointer' }}>
           <input type="checkbox" style={{ width: 14, height: 14, accentColor: 'var(--primary-300)' }} />
           Archive on send
         </label>

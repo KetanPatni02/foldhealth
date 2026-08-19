@@ -77,7 +77,7 @@ export function CallsConvPanel({
               placeholder="Search calls…"
               value={listSearch}
               onChange={e => onListSearchChange(e.target.value)}
-              style={{ paddingLeft: 28, fontSize: 13 }}
+              style={{ paddingLeft: 28, fontSize: 'var(--font-md)' }}
               autoFocus
             />
           </div>

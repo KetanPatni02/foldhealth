@@ -9,7 +9,7 @@ export function ChatHeader({ otherUser, isOtherTyping }) {
 
   return (
     <div className={styles.chatHeader}>
-      <div className={styles.convAvatar} style={{ width: 40, height: 40, borderRadius: 10, fontSize: 14 }}>
+      <div className={styles.convAvatar} style={{ width: 40, height: 40, borderRadius: 10, fontSize: 'var(--font-base)' }}>
         {initials}
       </div>
       <div className={styles.chatHeaderInfo}>

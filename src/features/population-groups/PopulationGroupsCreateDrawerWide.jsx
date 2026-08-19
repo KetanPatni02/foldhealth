@@ -26,27 +26,27 @@ export function PopulationGroupsCreateDrawerWide({ vm, onMemberAdded }) {
                 {/* LEFT: locked form */}
                 <div className="thin-scroll" style={{ width:'clamp(300px, 38%, 460px)', flexShrink:0, overflowY:'auto', padding:'16px', borderRight:'0.5px solid var(--neutral-100)' }}>
                   <div style={{ marginBottom:16 }}>
-                    <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }} htmlFor={`${uid}-segment-name`}>Create Segment Name <span style={{ color:'var(--status-error)' }}>•</span></label>
+                    <label style={{ display:'block', fontSize: 'var(--font-base)', fontWeight:400, color:'var(--neutral-200)', marginBottom: 5 }} htmlFor={`${uid}-segment-name`}>Create Segment Name <span style={{ color:'var(--status-error)' }}>•</span></label>
                     <Input
                       id={`${uid}-segment-name`}
                       value={segmentName}
                       onChange={e => setSegmentName(e.target.value)}
                       placeholder="Enter Name"
-                      style={{ fontSize:14, color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', width:'100%', border:'0.5px solid var(--neutral-200)' }}
+                      style={{ fontSize: 'var(--font-base)', color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', width:'100%', border:'0.5px solid var(--neutral-200)' }}
                     />
                   </div>
                   <div style={{ marginBottom:16 }}>
-                    <label style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }} htmlFor={`${uid}-description`}>Description</label>
+                    <label style={{ display:'block', fontSize: 'var(--font-base)', fontWeight:400, color:'var(--neutral-200)', marginBottom: 5 }} htmlFor={`${uid}-description`}>Description</label>
                     <Input.TextArea
                       id={`${uid}-description`}
                       value={description}
                       onChange={e => setDescription(e.target.value)}
                       placeholder="Enter Description"
-                      style={{ fontSize:14, color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', resize:'none', border:'0.5px solid var(--neutral-200)' }}
+                      style={{ fontSize: 'var(--font-base)', color:'var(--neutral-400)', fontFamily:'Inter, sans-serif', resize:'none', border:'0.5px solid var(--neutral-200)' }}
                     />
                   </div>
                   <div style={{ marginBottom:16 }}>
-                    <span style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Choose Filter <span style={{ color:'var(--status-error)' }}>•</span></span>
+                    <span style={{ display:'block', fontSize: 'var(--font-base)', fontWeight:400, color:'var(--neutral-200)', marginBottom: 5 }}>Choose Filter <span style={{ color:'var(--status-error)' }}>•</span></span>
                     <DrawerSelect
                       value={chosenFilter}
                       onChange={val => { setChosenFilter(val); setUploadFile(null); setUploadState('idle'); setCriteria([{ attr:'Age', op:'≥', val:'' }]); }}
@@ -55,7 +55,7 @@ export function PopulationGroupsCreateDrawerWide({ vm, onMemberAdded }) {
                     />
                   </div>
                   <div style={{ marginBottom:16 }}>
-                    <span style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Frequency <span style={{ color:'var(--status-error)' }}>•</span></span>
+                    <span style={{ display:'block', fontSize: 'var(--font-base)', fontWeight:400, color:'var(--neutral-200)', marginBottom: 5 }}>Frequency <span style={{ color:'var(--status-error)' }}>•</span></span>
                     <DrawerSelect
                       value="one-time"
                       onChange={() => {}}
@@ -65,7 +65,7 @@ export function PopulationGroupsCreateDrawerWide({ vm, onMemberAdded }) {
                     />
                   </div>
                   <div>
-                    <span style={{ display:'block', fontSize:14, fontWeight:400, color:'var(--neutral-200)', marginBottom:5 }}>Current Membership Status</span>
+                    <span style={{ display:'block', fontSize: 'var(--font-base)', fontWeight:400, color:'var(--neutral-200)', marginBottom: 5 }}>Current Membership Status</span>
                     <DrawerSelect
                       value={memberStatus}
                       onChange={val => setMemberStatus(val)}
@@ -97,13 +97,13 @@ export function PopulationGroupsCreateDrawerWide({ vm, onMemberAdded }) {
                         </div>
                       </div>
                       <div style={{ textAlign:'center' }}>
-                        <div style={{ fontSize:14, fontWeight:600, color:'var(--neutral-400)', marginBottom:4 }}>Processing your file…</div>
-                        <div style={{ fontSize:14, color:'var(--neutral-300)', lineHeight:1.6 }}>Uploading and validating your patient list</div>
+                        <div style={{ fontSize: 'var(--font-base)', fontWeight:600, color:'var(--neutral-400)', marginBottom: 4 }}>Processing your file…</div>
+                        <div style={{ fontSize: 'var(--font-base)', color:'var(--neutral-300)', lineHeight: 1.6 }}>Uploading and validating your patient list</div>
                       </div>
                       <div style={{ width:220, height:4, background:'var(--primary-100)', borderRadius:2, overflow:'hidden', position:'relative' }}>
                         <div style={{ position:'absolute', height:'100%', width:'45%', background:'linear-gradient(90deg, transparent, var(--primary-300), var(--primary-200), transparent)', borderRadius:2, animation:'pg-progress 1.8s ease-in-out infinite' }} />
                       </div>
-                      <div style={{ fontSize:14, color:'var(--neutral-200)', textAlign:'center', lineHeight:1.6 }}>You can minimize this window and<br/>continue working while it processes.</div>
+                      <div style={{ fontSize: 'var(--font-base)', color:'var(--neutral-200)', textAlign:'center', lineHeight: 1.6 }}>You can minimize this window and<br/>continue working while it processes.</div>
                       <Button
                         variant="secondary"
                         size="L"

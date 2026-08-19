@@ -47,7 +47,7 @@ function Wrapper(props) {
         }}
       />
       {submissions.length > 0 && (
-        <div style={{ fontSize: 12, color: 'var(--neutral-300)', borderTop: '1px solid var(--neutral-150)', paddingTop: 8 }}>
+        <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', borderTop: '1px solid var(--neutral-150)', paddingTop: '0.5rem' }}>
           <div style={{ marginBottom: 4, fontWeight: 500 }}>Submitted:</div>
           {submissions.map((s, i) => <div key={i}>{i + 1}. {s}</div>)}
         </div>

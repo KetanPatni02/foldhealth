@@ -48,7 +48,7 @@ export const AllSizes = {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {['XS', 'S', 'M', 'L', 'XL'].map((s) => (
         <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <span style={{ width: 32, fontSize: 12, color: 'var(--neutral-300)' }}>{s}</span>
+          <span style={{ width: 32, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>{s}</span>
           <AvatarGroup people={FIVE} size={s} variant="patient" max={3} />
           <AvatarGroup people={FIVE} size={s} variant="staff" max={3} />
         </div>

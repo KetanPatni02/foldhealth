@@ -27,7 +27,7 @@ export function NewChatModal({
           placeholder="Search by name or email…"
           value={newChatSearch}
           onChange={e => onSearchChange(e.target.value)}
-          style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', height: 40, fontSize: 14 }}
+          style={{ borderRadius: 0, borderLeft: 'none', borderRight: 'none', borderTop: 'none', height: 40, fontSize: 'var(--font-base)' }}
         />
         <div className={styles.newChatList}>
           {filteredNewUsers.length === 0 ? (

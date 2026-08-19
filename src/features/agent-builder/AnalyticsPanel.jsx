@@ -117,7 +117,7 @@ function MiniChart({ data, color = '#8C5AE2' }) {
           <XAxis dataKey="t" hide />
           <YAxis hide />
           <Tooltip
-            contentStyle={{ background: '#fff', border: '1px solid #E9ECF1', borderRadius: 6, fontSize: 12, fontFamily: 'Inter' }}
+            contentStyle={{ background: '#fff', border: '1px solid #E9ECF1', borderRadius: 6, fontSize: 'var(--font-sm)', fontFamily: 'Inter' }}
             labelStyle={{ color: '#6F7A90', fontWeight: 500 }}
           />
           <Area

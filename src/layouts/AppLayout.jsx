@@ -88,10 +88,10 @@ function ComingSoonState({ listName }) {
       justifyContent: 'center', padding: '64px 24px', gap: 12,
     }}>
       <Icon name="solar:hourglass-line-linear" size={44} color="var(--neutral-200)" />
-      <p style={{ fontSize: 17, fontWeight: 600, color: 'var(--neutral-400)', margin: 0 }}>
+      <p style={{ fontSize: 'var(--font-xl)', fontWeight: 600, color: 'var(--neutral-400)', margin: 0 }}>
         {listName}
       </p>
-      <p style={{ fontSize: 14, margin: 0, textAlign: 'center', maxWidth: 320, color: 'var(--neutral-300)' }}>
+      <p style={{ fontSize: 'var(--font-base)', margin: 0, textAlign: 'center', maxWidth: 320, color: 'var(--neutral-300)' }}>
         This worklist is coming soon. Check back for updates.
       </p>
     </div>

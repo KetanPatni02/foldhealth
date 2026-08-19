@@ -11,10 +11,10 @@ import { AuditLogDrawer } from './AuditLogDrawer';
 
 const thStyle = {
   textAlign: 'left', padding: '8px 16px', color: 'var(--neutral-300)', fontWeight: 500,
-  fontSize: 12, whiteSpace: 'nowrap', borderBottom: '1px solid var(--neutral-150)',
+  fontSize: 'var(--font-sm)', whiteSpace: 'nowrap', borderBottom: '1px solid var(--neutral-150)',
   background: 'var(--neutral-0)', position: 'sticky', top: 0,
 };
-const tdStyle = { padding: '10px 16px', fontSize: 13, color: 'var(--neutral-400)', verticalAlign: 'middle' };
+const tdStyle = { padding: '10px 16px', fontSize: 'var(--font-md)', color: 'var(--neutral-400)', verticalAlign: 'middle' };
 
 function RowActionMenu({ group, onClose, onEdit, onRequestDelete }) {
   return (
@@ -26,7 +26,7 @@ function RowActionMenu({ group, onClose, onEdit, onRequestDelete }) {
       <button style={{
         width: '100%', padding: '8px 14px', border: 'none', background: 'none',
         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-        fontSize: 13, color: 'var(--neutral-400)', textAlign: 'left',
+        fontSize: 'var(--font-md)', color: 'var(--neutral-400)', textAlign: 'left',
       }} onMouseOver={e => e.currentTarget.style.background = 'var(--neutral-50)'}
         onMouseOut={e => e.currentTarget.style.background = 'none'}
         onClick={() => { onEdit(); onClose(); }}>
@@ -37,7 +37,7 @@ function RowActionMenu({ group, onClose, onEdit, onRequestDelete }) {
       <button style={{
         width: '100%', padding: '8px 14px', border: 'none', background: 'none',
         cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
-        fontSize: 13, color: 'var(--status-error)', textAlign: 'left',
+        fontSize: 'var(--font-md)', color: 'var(--status-error)', textAlign: 'left',
       }} onMouseOver={e => e.currentTarget.style.background = 'var(--status-error-light)'}
         onMouseOut={e => e.currentTarget.style.background = 'none'}
         onClick={() => { onClose(); onRequestDelete(); }}>
@@ -95,7 +95,7 @@ function ChatGroupRow({ g, onOpen }) {
         {g.name}
       </td>
       <td style={tdStyle}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--neutral-400)' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--font-md)', color: 'var(--neutral-400)' }}>
           <Icon name="solar:users-group-rounded-linear" size={14} color="var(--neutral-300)" />
           {g.activeChats}
         </span>
@@ -103,12 +103,12 @@ function ChatGroupRow({ g, onOpen }) {
       <td style={tdStyle}>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           {g.users.slice(0, 1).map((u, i) => (
-            <span key={i} style={{ fontSize: 13, color: 'var(--neutral-400)' }}>{u}</span>
+            <span key={i} style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-400)' }}>{u}</span>
           ))}
           {(g.users.length + g.roles.length) > 1 && (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 3,
-              padding: '1px 6px', borderRadius: 4, fontSize: 11, fontWeight: 500,
+              padding: '1px 6px', borderRadius: 4, fontSize: 'var(--font-xs)', fontWeight: 500,
               color: 'var(--primary-300)', background: 'var(--primary-50, #F5F0FF)',
               border: '0.5px solid var(--primary-200)',
             }}>
@@ -118,8 +118,8 @@ function ChatGroupRow({ g, onOpen }) {
           )}
         </div>
       </td>
-      <td style={{ ...tdStyle, fontSize: 13, color: 'var(--neutral-400)' }}>{g.location}</td>
-      <td style={{ ...tdStyle, fontSize: 13, color: 'var(--neutral-400)' }}>
+      <td style={{ ...tdStyle, fontSize: 'var(--font-md)', color: 'var(--neutral-400)' }}>{g.location}</td>
+      <td style={{ ...tdStyle, fontSize: 'var(--font-md)', color: 'var(--neutral-400)' }}>
         {g.updated} by {g.updatedBy}
       </td>
       <td style={tdStyle} onClick={e => e.stopPropagation()}>
@@ -216,8 +216,8 @@ export function ChatSettingsPanel({ searchQuery = '' }) {
           <tr>
             <td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--neutral-200)' }}>
               <Icon name="solar:chat-square-linear" size={32} color="var(--neutral-200)" />
-              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-300)', marginTop: 8 }}>No groups found</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>Try adjusting your search or create a new group.</div>
+              <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-300)', marginTop: '0.5rem' }}>No groups found</div>
+              <div style={{ fontSize: 'var(--font-md)', marginTop: 4 }}>Try adjusting your search or create a new group.</div>
             </td>
           </tr>
         )}

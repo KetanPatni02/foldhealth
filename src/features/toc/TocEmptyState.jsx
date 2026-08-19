@@ -15,15 +15,15 @@ export function TocEmptyState() {
         }}>
           <Icon name="solar:users-group-two-rounded-linear" size={28} color="var(--neutral-200)" />
         </div>
-        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>No active agent runs</div>
-        <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>No active agent runs</div>
+        <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', lineHeight: 1.5 }}>
           Invoke an agent from the TCM Worklist to start.
         </div>
         <button
           type="button"
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4,
-            fontSize: 13, color: 'var(--primary-300)', cursor: 'pointer',
+            fontSize: 'var(--font-md)', color: 'var(--primary-300)', cursor: 'pointer',
             background: 'none', border: 'none', padding: 0, font: 'inherit',
           }}
           onClick={() => {

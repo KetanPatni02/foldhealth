@@ -27,11 +27,11 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
           }}>
             <Icon name="solar:routing-2-bold" size={20} color="var(--primary-300)" />
           </div>
-          <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--neutral-500)' }}>
+          <div style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-500)' }}>
             Open Agent Builder?
           </div>
         </div>
-        <p style={{ fontSize: 14, color: 'var(--neutral-300)', lineHeight: 1.6, margin: '0 0 20px' }}>
+        <p style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-300)', lineHeight: 1.6, margin: '0 0 20px' }}>
           {message}
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>

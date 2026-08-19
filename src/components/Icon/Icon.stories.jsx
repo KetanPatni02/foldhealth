@@ -40,12 +40,12 @@ function Catalog() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 32, borderTop: '0.5px solid var(--neutral-150)', paddingTop: 24 }}>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 12 }}>Common icons</div>
+        <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 'var(--font-sm)' }}>Common icons</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16 }}>
           {COMMON_ICONS.map(name => (
             <div key={name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
               <Icon name={name} size={24} />
-              <span style={{ fontSize: 10, color: 'var(--neutral-300)', textAlign: 'center', wordBreak: 'break-all' }}>
+              <span style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-300)', textAlign: 'center', wordBreak: 'break-all' }}>
                 {name.replace('solar:', '')}
               </span>
             </div>
@@ -53,19 +53,19 @@ function Catalog() {
         </div>
       </div>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 12 }}>Branded in-repo icons</div>
+        <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 'var(--font-sm)' }}>Branded in-repo icons</div>
         <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
           <div style={{ textAlign: 'center' }}>
             <AiInsightIcon size={32} />
-            <div style={{ fontSize: 10, color: 'var(--neutral-300)', marginTop: 4 }}>AI Insight</div>
+            <div style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-300)', marginTop: 4 }}>AI Insight</div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <CloseIcon size={24} />
-            <div style={{ fontSize: 10, color: 'var(--neutral-300)', marginTop: 4 }}>Close</div>
+            <div style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-300)', marginTop: 4 }}>Close</div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <UnityIcon size={24} color="var(--primary-300)" />
-            <div style={{ fontSize: 10, color: 'var(--neutral-300)', marginTop: 4 }}>Unity</div>
+            <div style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-300)', marginTop: 4 }}>Unity</div>
           </div>
         </div>
       </div>

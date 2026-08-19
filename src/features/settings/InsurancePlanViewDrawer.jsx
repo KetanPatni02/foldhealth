@@ -46,7 +46,7 @@ export function InsurancePlanViewDrawer({ plan, onClose, onEdit }) {
       className={`insurancePlanPanel ${styles.widePanel}`}
       bodyClassName={styles.drawerBody}
       headerStyle={{ padding: '8px 12px 8px 16px', borderBottom: '0.5px solid var(--neutral-150)' }}
-      titleStyle={{ fontSize: 16, fontWeight: 500 }}
+      titleStyle={{ fontSize: 'var(--font-lg)', fontWeight: 500 }}
     >
       {/* ── Left: detail panel ── */}
       <div className={styles.leftPanel}>

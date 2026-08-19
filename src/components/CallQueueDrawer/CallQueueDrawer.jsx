@@ -708,7 +708,7 @@ export function CallQueueDrawer({ agent, onClose, initialTab }) {
       onClose={onClose}
       bodyClassName={`${styles.drawerBody} ${isExpanded ? styles.drawerBodyExpanded : ''}`}
       headerStyle={{ padding: '12px 12px 12px 16px' }}
-      titleStyle={{ fontSize: 16 }}
+      titleStyle={{ fontSize: 'var(--font-lg)' }}
       className={`${styles.drawerTransition} ${isExpanded ? styles.drawerExpanded : ''}`}
     >
       <div className={styles.drawerLayout}>

@@ -40,7 +40,7 @@ function pick(arr, seed) { return arr[seed % arr.length]; }
 const normMemberId = (v) => (v || '').toString().replace(/^#/, '').trim().toLowerCase();
 
 const TH_STYLE = {
-  padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+  padding: '8px 14px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)',
   borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
   position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
   whiteSpace: 'nowrap', userSelect: 'none',
@@ -281,10 +281,10 @@ export function AllPatientsTable() {
           padding: '64px 24px', gap: 12, color: 'var(--neutral-300)',
         }}>
           <Icon name="solar:users-group-two-rounded-linear" size={40} color="var(--neutral-200)" />
-          <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--neutral-400)', margin: 0 }}>
+          <p style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-400)', margin: 0 }}>
             {searchQuery ? 'No results found' : 'No patients yet'}
           </p>
-          <p style={{ fontSize: 14, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+          <p style={{ fontSize: 'var(--font-base)', margin: 0, textAlign: 'center', maxWidth: 320 }}>
             {searchQuery ? 'Try adjusting your search.' : 'Patients from TOC and HCC worklists will appear here.'}
           </p>
         </div>

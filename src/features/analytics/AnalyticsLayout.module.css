@@ -95,7 +95,7 @@
 .viewHeader {
   display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
 }
-.viewTitle { font-size: 0.9375rem; font-weight: 500; color: var(--neutral-500); letter-spacing: -.2px; }
+.viewTitle { font-size: var(--font-lg); font-weight: 500; color: var(--neutral-500); letter-spacing: -.2px; }
 .viewSub { font-size: var(--font-sm); font-weight: 400; color: var(--neutral-200); margin-top: 2px; }
 .filterBar {
   display: flex; align-items: center; gap: 8px; flex-shrink: 0;

@@ -102,7 +102,7 @@ export function PopulationGroupsViewTable({ vm, onImportRule }) {
     <div style={{ padding:'10px 20px 10px 4px', borderBottom:'0.5px solid var(--neutral-150)', display:'flex', alignItems:'center', flexShrink:0 }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
         <SubnavToggle />
-        <span style={{ fontSize:16, fontWeight:600, color:'var(--neutral-400)' }}>Population Groups</span>
+        <span style={{ fontSize: 'var(--font-lg)', fontWeight: 600, color:'var(--neutral-400)' }}>Population Groups</span>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:'auto' }}>

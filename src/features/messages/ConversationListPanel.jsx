@@ -73,7 +73,7 @@ export function ConversationListPanel({
               placeholder="Search conversations…"
               value={searchQuery}
               onChange={e => onSearchChange(e.target.value)}
-              style={{ paddingLeft: 28, paddingRight: 30, fontSize: 12 }}
+              style={{ paddingLeft: 28, paddingRight: 30, fontSize: 'var(--font-sm)' }}
             />
             <button
               className={styles.convSearchClear}

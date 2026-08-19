@@ -62,17 +62,17 @@ export function CareView({ showToast, editing = false, resetTick = 0 }) {
       <div className={s.roiStrip}>
         {ROI_PROGRAMS.map((r, i) => (
           <div key={i} className={s.roiCard}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)' }}>{r.prog}</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginTop: 2 }}>{r.members}</div>
+            <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)' }}>{r.prog}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 2 }}>{r.members}</div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-              <span style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Saved</span>
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--status-success)' }}>{r.saved}</span>
+              <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Saved</span>
+              <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--status-success)' }}>{r.saved}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-              <span style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Spent</span>
-              <span style={{ fontSize: 12, color: 'var(--neutral-300)' }}>{r.spent}</span>
+              <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Spent</span>
+              <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>{r.spent}</span>
             </div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--primary-300)', marginTop: 4 }}>ROI {r.roi}</div>
+            <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--primary-300)', marginTop: 4 }}>ROI {r.roi}</div>
           </div>
         ))}
       </div>
@@ -129,7 +129,7 @@ function ProductivityTab({ stripMetrics, cmRows, prodByCmLoading, showToast, edi
           <div key={i} className={s.prodCard}>
             <div className={s.prodLabel}>{m.label}</div>
             <div className={s.prodVal}>{m.val}<span className={s.prodTarget}> / {m.target}</span></div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: dc, marginTop: 2 }}>{m.delta} vs last mo</div>
+            <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: dc, marginTop: 2 }}>{m.delta} vs last mo</div>
           </div>
         );
       })}
@@ -143,8 +143,8 @@ function ProductivityTab({ stripMetrics, cmRows, prodByCmLoading, showToast, edi
           onClick={() => c.label === 'Overdue Cases' ? showToast?.('Viewing 127 overdue cases') : showToast?.('Loading case list...')}
         >
           <div>
-            <div style={{ fontSize: 24, fontWeight: 500, color: c.color }}>{c.value}</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{c.label}</div>
+            <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: c.color }}>{c.value}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{c.label}</div>
           </div>
         </button>
       ))}
@@ -241,13 +241,13 @@ function BottlenecksTab({ showToast, editing = false, resetTick = 0 }) {
     <Card title="Enrollment Funnel Drop-off Analysis" sub="Overall conversion: 15.0%">
       {funnelStages.map((stage, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--neutral-50)' }}>
-          <div style={{ width: 140, fontSize: 12, fontWeight: 500 }}>{stage.label}</div>
+          <div style={{ width: 140, fontSize: 'var(--font-sm)', fontWeight: 500 }}>{stage.label}</div>
           <div style={{ flex: 1, height: 20, background: 'var(--neutral-50)', borderRadius: 4, overflow: 'hidden', position: 'relative' }}>
             <div style={{ width: `${stage.pct}%`, height: '100%', background: stage.pct < 25 ? 'var(--status-success)' : stage.pct < 50 ? 'var(--status-info)' : 'var(--status-info)', borderRadius: 4, display: 'flex', alignItems: 'center', paddingLeft: 6 }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-0)' }}>{stage.n.toLocaleString()}</span>
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-0)' }}>{stage.n.toLocaleString()}</span>
             </div>
           </div>
-          {stage.drop && <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--status-error)', width: 40 }}>{stage.drop}</span>}
+          {stage.drop && <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--status-error)', width: 40 }}>{stage.drop}</span>}
         </div>
       ))}
     </Card>
@@ -261,15 +261,15 @@ function BottlenecksTab({ showToast, editing = false, resetTick = 0 }) {
           <div key={i} style={{ padding: '10px 12px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, marginBottom: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <div style={{ fontWeight: 500, fontSize: 14 }}>{lp.step}</div>
-                <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginTop: 2 }}>{lp.reason}</div>
+                <div style={{ fontWeight: 500, fontSize: 'var(--font-base)' }}>{lp.step}</div>
+                <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 2 }}>{lp.reason}</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 16, fontWeight: 500, color: rc }}>{lp.n}</div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: rc }}>{lp.drop} drop-off</div>
+                <div style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: rc }}>{lp.n}</div>
+                <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: rc }}>{lp.drop} drop-off</div>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--status-info)', marginTop: 8 }}><strong>Recommended:</strong> {lp.rec}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-info)', marginTop: '0.5rem' }}><strong>Recommended:</strong> {lp.rec}</div>
           </div>
         );
       })}
@@ -283,8 +283,8 @@ function BottlenecksTab({ showToast, editing = false, resetTick = 0 }) {
           onClick={() => showToast?.(`Viewing ${a.n} ${a.label.toLowerCase()}`)}
         >
           <div>
-            <div style={{ fontSize: 24, fontWeight: 500, color: a.color }}>{a.n}</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{a.label}</div>
+            <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: a.color }}>{a.n}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{a.label}</div>
           </div>
         </button>
       ))}
@@ -324,28 +324,28 @@ const StaffCard = ({ staff, isBottom, showToast }) => {
     <button type="button" style={{ display: 'block', width: '100%', padding: '10px 12px', background: bg, borderRadius: 8, marginBottom: 6, cursor: 'pointer', textAlign: 'left' }}
       onClick={() => showToast?.(`Viewing ${staff.name} detail`)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <div style={{ width: 28, height: 28, borderRadius: '50%', background: rkColor, color: 'var(--neutral-0)', fontSize: 12, fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>#{staff.rank}</div>
+        <div style={{ width: 28, height: 28, borderRadius: '50%', background: rkColor, color: 'var(--neutral-0)', fontSize: 'var(--font-sm)', fontWeight: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>#{staff.rank}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 500, fontSize: 14 }}>{staff.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{staff.role}</div>
+          <div style={{ fontWeight: 500, fontSize: 'var(--font-base)' }}>{staff.name}</div>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{staff.role}</div>
         </div>
-        <span style={{ fontSize: 16, color: trendColor }}>{staff.trend}</span>
+        <span style={{ fontSize: 'var(--font-lg)', color: trendColor }}>{staff.trend}</span>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' }}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500, color: staff.engage > 70 ? 'var(--status-success)' : staff.engage > 55 ? 'var(--status-warning)' : 'var(--status-error)' }}>{staff.engage}%</div>
-          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Engage</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: staff.engage > 70 ? 'var(--status-success)' : staff.engage > 55 ? 'var(--status-warning)' : 'var(--status-error)' }}>{staff.engage}%</div>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Engage</div>
         </div>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500, color: staff.tcm > 80 ? 'var(--status-success)' : staff.tcm > 65 ? 'var(--status-warning)' : 'var(--status-error)' }}>{staff.tcm}%</div>
-          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>TCM Adh.</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: staff.tcm > 80 ? 'var(--status-success)' : staff.tcm > 65 ? 'var(--status-warning)' : 'var(--status-error)' }}>{staff.tcm}%</div>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>TCM Adh.</div>
         </div>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500 }}>{staff.caseload}</div>
-          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Caseload</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500 }}>{staff.caseload}</div>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Caseload</div>
         </div>
       </div>
-      {isBottom && <div style={{ fontSize: 12, color: 'var(--status-warning)', marginTop: 6 }}>Low contact rate &middot; TCM gaps &middot; High-risk challenges</div>}
+      {isBottom && <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-warning)', marginTop: 6 }}>Low contact rate &middot; TCM gaps &middot; High-risk challenges</div>}
     </button>
   );
 };
@@ -443,10 +443,10 @@ function QualityTab({ bars, showToast, editing = false, resetTick = 0 }) {
         return (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--neutral-50)' }}>
             <div>
-              <div style={{ fontWeight: 500, fontSize: 12 }}>{q.label}</div>
-              <div style={{ fontSize: 12, color: dc, marginTop: 2 }}>{q.delta}</div>
+              <div style={{ fontWeight: 500, fontSize: 'var(--font-sm)' }}>{q.label}</div>
+              <div style={{ fontSize: 'var(--font-sm)', color: dc, marginTop: 2 }}>{q.delta}</div>
             </div>
-            <div style={{ fontSize: 24, fontWeight: 500, color: q.color }}>{q.value}</div>
+            <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: q.color }}>{q.value}</div>
           </div>
         );
       })}
@@ -455,19 +455,19 @@ function QualityTab({ bars, showToast, editing = false, resetTick = 0 }) {
 
   const renderComplianceIssues = () => (
     <Card title={<span>&#x26A0; Compliance Issues</span>} style={{ border: '1px solid var(--status-warning-light)' }}
-      actions={<Button variant="primary" size="S" style={{ fontSize: 12 }} onClick={() => showToast?.('Compliance alerts sent to managers')}>Alert All</Button>}
+      actions={<Button variant="primary" size="S" style={{ fontSize: 'var(--font-sm)' }} onClick={() => showToast?.('Compliance alerts sent to managers')}>Alert All</Button>}
     >
       {complianceIssues.map((c, i) => {
         const sc = c.severity === 'high' ? 'var(--status-error)' : c.severity === 'medium' ? 'var(--status-warning)' : 'var(--status-success)';
         return (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '10px 0', borderBottom: '1px solid var(--neutral-50)' }}>
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 500, fontSize: 12 }}>{c.issue}</div>
-              <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginTop: 2 }}>Assigned: {c.assigned}</div>
+              <div style={{ fontWeight: 500, fontSize: 'var(--font-sm)' }}>{c.issue}</div>
+              <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 2 }}>Assigned: {c.assigned}</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4, marginLeft: 12 }}>
               <span className={`${s.stPill} ${c.severity === 'high' ? s.stRed : c.severity === 'medium' ? s.stAmber : s.stGreen}`}>{c.severity}</span>
-              <span style={{ fontSize: 16, fontWeight: 500, color: sc }}>{c.n}</span>
+              <span style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: sc }}>{c.n}</span>
             </div>
           </div>
         );
@@ -482,10 +482,10 @@ function QualityTab({ bars, showToast, editing = false, resetTick = 0 }) {
           const vc = p.rate >= p.target ? 'var(--status-success)' : p.rate >= p.target - 5 ? 'var(--status-warning)' : 'var(--status-error)';
           return (
             <div key={i} style={{ background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, padding: 14, textAlign: 'center' }}>
-              <div style={{ fontSize: 24, fontWeight: 500, color: vc }}>{p.rate}%</div>
-              <div style={{ fontSize: 12, fontWeight: 500, marginTop: 4 }}>{p.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginTop: 2 }}>Target: {p.target}%</div>
-              <div style={{ fontSize: 12, color: 'var(--status-success)', marginTop: 3 }}>{'↑'} {p.delta}</div>
+              <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: vc }}>{p.rate}%</div>
+              <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, marginTop: 4 }}>{p.name}</div>
+              <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 2 }}>Target: {p.target}%</div>
+              <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-success)', marginTop: 3 }}>{'↑'} {p.delta}</div>
             </div>
           );
         })}
@@ -573,8 +573,8 @@ function renderProgramsSummaryStrip() {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, padding: '12px 16px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8 }}>
       {PROGRAMS_SUMMARY_STRIP.map(([label, val, c], i) => (
         <div key={i} style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 20, fontWeight: 500, color: c }}>{val}</div>
-          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{label}</div>
+          <div style={{ fontSize: 'var(--font-2xl)', fontWeight: 500, color: c }}>{val}</div>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{label}</div>
         </div>
       ))}
     </div>
@@ -630,16 +630,16 @@ function ProgramsTab({ showToast, programsDetail, programsLoading, editing = fal
           <Card key={i}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>
-                  {p.name} <span style={{ fontSize: 12, padding: '2px 6px', borderRadius: 4, background: p.color + '20', color: p.color, fontWeight: 500 }}>{p.abbr}</span>
+                <div style={{ fontSize: 'var(--font-base)', fontWeight: 500 }}>
+                  {p.name} <span style={{ fontSize: 'var(--font-sm)', padding: '2px 6px', borderRadius: 4, background: p.color + '20', color: p.color, fontWeight: 500 }}>{p.abbr}</span>
                 </div>
               </div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, textAlign: 'center', marginBottom: 8 }}>
-              <div><div style={{ fontSize: 14, fontWeight: 500, color: enrollColor }}>{p.enrolled}%</div><div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Enrolled</div></div>
-              <div><div style={{ fontSize: 14, fontWeight: 500 }}>{p.members.toLocaleString()}</div><div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Members</div></div>
-              <div><div style={{ fontSize: 14, fontWeight: 500, color: 'var(--status-success)' }}>{p.saved}</div><div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Saved</div></div>
-              <div><div style={{ fontSize: 14, fontWeight: 500, color: p.color }}>{p.roi}</div><div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>ROI</div></div>
+              <div><div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: enrollColor }}>{p.enrolled}%</div><div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Enrolled</div></div>
+              <div><div style={{ fontSize: 'var(--font-base)', fontWeight: 500 }}>{p.members.toLocaleString()}</div><div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Members</div></div>
+              <div><div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--status-success)' }}>{p.saved}</div><div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Saved</div></div>
+              <div><div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: p.color }}>{p.roi}</div><div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>ROI</div></div>
             </div>
             <div style={{ background: 'var(--neutral-50)', borderRadius: 2, height: 4, marginBottom: 8 }}>
               <div style={{ height: 4, borderRadius: 2, background: enrollColor, width: `${p.enrolled}%` }} />
@@ -647,13 +647,13 @@ function ProgramsTab({ showToast, programsDetail, programsLoading, editing = fal
             {p.kpis.map(([label, val, target, cl], j) => {
               const vc = cl === 'g' ? 'var(--status-success)' : cl === 'r' ? 'var(--status-error)' : cl === 'a' ? 'var(--status-warning)' : 'var(--neutral-300)';
               return (
-                <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: 12 }}>
+                <div key={j} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontSize: 'var(--font-sm)' }}>
                   <span style={{ color: 'var(--neutral-300)' }}>{label}</span>
                   <span><span style={{ fontWeight: 500, color: vc }}>{val}</span> <span style={{ color: 'var(--neutral-200)' }}>/ {target}</span></span>
                 </div>
               );
             })}
-            <div style={{ fontSize: 12, color: 'var(--status-warning)', marginTop: 6, padding: '6px 8px', background: 'var(--status-warning-light)', borderRadius: 4 }}>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-warning)', marginTop: 6, padding: '6px 8px', background: 'var(--status-warning-light)', borderRadius: 4 }}>
               {'●'} {p.alert}
             </div>
           </Card>

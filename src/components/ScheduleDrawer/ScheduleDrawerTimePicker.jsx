@@ -33,22 +33,22 @@ export function ScheduleDrawerTimePicker({
         {isSectionOpen('timePicker') && (
           <div className={styles.timeSlotDropdown} style={{ position: 'relative', marginTop: 8 }}>
             <div className={styles.timeSlotHeader}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-200)' }}>Available Slots (30 mins)</span>
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-200)' }}>Available Slots (30 mins)</span>
               <div style={{ flex: 1 }} />
-              <button onClick={() => setSectionOpen('pickTime', !isSectionOpen('pickTime'))} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--primary-300)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
+              <button onClick={() => setSectionOpen('pickTime', !isSectionOpen('pickTime'))} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--font-sm)', color: 'var(--primary-300)', fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>
                 <Icon name="solar:clock-circle-linear" size={12} color="var(--primary-300)" /> Pick Time
               </button>
               <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
-              <span style={{ fontSize: 11, color: 'var(--neutral-300)', background: 'var(--neutral-50)', padding: '2px 8px', borderRadius: 4, border: '0.5px solid var(--neutral-100)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-300)', background: 'var(--neutral-50)', padding: '2px 8px', borderRadius: 4, border: '0.5px solid var(--neutral-100)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                 <Icon name="solar:global-linear" size={10} color="var(--neutral-300)" />
                 {timezoneLabel}
               </span>
             </div>
             {isSectionOpen('pickTime') ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input aria-label="Custom time" type="time" value={customTime} onChange={e => setCustomTime(e.target.value)} style={{ height: 32, border: '0.5px solid var(--neutral-200)', borderRadius: 4, fontSize: 14, fontFamily: 'Inter, sans-serif', color: 'var(--neutral-400)', padding: '0 8px' }} autoFocus />
-                <button onClick={() => { if (customTime) { const [hh, mm] = customTime.split(':').map(Number); const ampm = hh >= 12 ? 'pm' : 'am'; const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh; setTime(`${h12}:${String(mm).padStart(2, '0')} ${ampm}`); setSectionOpen('timePicker', false); setSectionOpen('pickTime', false); } }} style={{ fontSize: 12, color: 'var(--primary-300)', background: 'var(--primary-50)', border: '0.5px solid var(--primary-200)', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>Set</button>
-                <button onClick={() => setSectionOpen('pickTime', false)} style={{ fontSize: 12, color: 'var(--neutral-300)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
+                <input aria-label="Custom time" type="time" value={customTime} onChange={e => setCustomTime(e.target.value)} style={{ height: 32, border: '0.5px solid var(--neutral-200)', borderRadius: 4, fontSize: 'var(--font-base)', fontFamily: 'Inter, sans-serif', color: 'var(--neutral-400)', padding: '0 8px' }} autoFocus />
+                <button onClick={() => { if (customTime) { const [hh, mm] = customTime.split(':').map(Number); const ampm = hh >= 12 ? 'pm' : 'am'; const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh; setTime(`${h12}:${String(mm).padStart(2, '0')} ${ampm}`); setSectionOpen('timePicker', false); setSectionOpen('pickTime', false); } }} style={{ fontSize: 'var(--font-sm)', color: 'var(--primary-300)', background: 'var(--primary-50)', border: '0.5px solid var(--primary-200)', borderRadius: 4, padding: '4px 12px', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>Set</button>
+                <button onClick={() => setSectionOpen('pickTime', false)} style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif' }}>Cancel</button>
               </div>
             ) : (
               <div className={styles.timeSlots}>

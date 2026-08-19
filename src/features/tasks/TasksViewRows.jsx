@@ -5,7 +5,7 @@ import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
 import { Badge } from '../../components/Badge/Badge';
 import { useAppStore } from '../../store/useAppStore';
 import { isOverdue, buildTaskMetaLine } from './TasksView.utils';
-import { SubtaskIcon, PriorityIcon } from './TasksViewIcons';
+import { SubtaskIcon, PriorityIcon, CheckIcon } from './TasksViewIcons';
 import { TaskDatePicker } from './TasksViewDropdowns';
 import { usePopoverPosition } from './usePopoverPosition';
 import styles from './TasksView.module.css';
@@ -137,13 +137,13 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
       <div className={`${styles.cellCheck} ${pinnedEnds ? styles.pinLeft0 : ''}`}>
         <button
           type="button"
-          role="checkbox"
-          aria-checked={isCompleted}
-          className={styles.taskCheckboxBtn}
+          className={`${styles.taskCheckbox} ${isCompleted ? styles.taskCheckboxChecked : ''}`}
           onClick={e => { e.stopPropagation(); onToggle(task); }}
           aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
         >
-          <CheckboxTick checked={isCompleted} size={16} />
+          <span className={styles.taskCheckIcon}>
+            <CheckIcon size={13} />
+          </span>
         </button>
       </div>
 

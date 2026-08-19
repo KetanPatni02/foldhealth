@@ -17,10 +17,10 @@ function EmptySearch() {
       padding: '64px 24px', gap: 12, color: 'var(--neutral-300)',
     }}>
       <Icon name="solar:magnifer-linear" size={40} color="var(--neutral-200)" />
-      <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--neutral-400)', margin: 0 }}>
+      <p style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-400)', margin: 0 }}>
         No results found
       </p>
-      <p style={{ fontSize: 14, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+      <p style={{ fontSize: 'var(--font-base)', margin: 0, textAlign: 'center', maxWidth: 320 }}>
         No members match your current filters. Try adjusting the filters or clearing them.
       </p>
     </div>
@@ -78,7 +78,7 @@ function SectionHeader({ section, count, colSpan, isExpanded, onToggle, hasMore 
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          fontSize: 13, fontWeight: 500, color: section.color,
+          fontSize: 'var(--font-md)', fontWeight: 500, color: section.color,
           fontFamily: "'Inter', sans-serif",
         }}>
           {section.dot ? (
@@ -91,7 +91,7 @@ function SectionHeader({ section, count, colSpan, isExpanded, onToggle, hasMore 
           )}
           {section.label}
           <span style={{
-            fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)',
+            fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-300)',
             background: 'var(--neutral-100)', padding: '1px 6px',
             borderRadius: 4, marginLeft: 2,
           }}>
@@ -102,7 +102,7 @@ function SectionHeader({ section, count, colSpan, isExpanded, onToggle, hasMore 
               onClick={(e) => { e.stopPropagation(); onToggle(); }}
               style={{
                 marginLeft: 'auto', background: 'none', border: 'none',
-                fontSize: 12, fontWeight: 500, color: 'var(--primary-300)',
+                fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--primary-300)',
                 cursor: 'pointer', fontFamily: "'Inter', sans-serif",
                 display: 'inline-flex', alignItems: 'center', gap: 4,
               }}
@@ -253,7 +253,7 @@ export function WorklistTable() {
         <thead>
           <tr>
             <th style={{
-              padding: '8px 10px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+              padding: '8px 10px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)',
               borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
               width: 36, position: 'sticky', top: 0, left: 0, zIndex: 4,
               textAlign: 'left', whiteSpace: 'nowrap', userSelect: 'none',
@@ -273,7 +273,7 @@ export function WorklistTable() {
                 right: 0,
                 zIndex: 3,
                 textAlign: 'left',
-                fontSize: 12,
+                fontSize: 'var(--font-sm)',
                 fontWeight: 500,
                 color: 'var(--neutral-300)',
               }}

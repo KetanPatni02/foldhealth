@@ -21,7 +21,7 @@ export function Timeline({ entries, currentUserName, renderExtra, emptyLabel = '
   const groups = useMemo(() => groupByMonth(entries || []), [entries]);
 
   if (!entries || entries.length === 0) {
-    return <div style={{ padding: 16, fontSize: 13, color: 'var(--neutral-300)' }}>{emptyLabel}</div>;
+    return <div style={{ padding: 16, fontSize: 'var(--font-md)', color: 'var(--neutral-300)' }}>{emptyLabel}</div>;
   }
 
   return (
@@ -29,7 +29,7 @@ export function Timeline({ entries, currentUserName, renderExtra, emptyLabel = '
       {groups.map(group => (
         <div key={group.label}>
           <div style={{
-            fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+            fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)',
             marginBottom: 8, paddingLeft: 4,
           }}>
             {group.label}
@@ -91,7 +91,7 @@ export function ChangeDisplay({ change }) {
     );
   }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--font-md)' }}>
       <span style={{ color: 'var(--neutral-300)', textDecoration: 'line-through' }}>{change.from || '(empty)'}</span>
       <ArrowRight />
       <span style={{ color: 'var(--neutral-400)' }}>{change.to || '(empty)'}</span>
@@ -139,7 +139,7 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
         <div style={{ padding: 8 }}>
           <div style={{
             display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap',
-            fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 4,
+            fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 4,
           }}>
             {entry.date && <span>{entry.date}</span>}
             {entry.date && entry.time && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
@@ -154,7 +154,7 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
           </div>
 
           {entry.details && (
-            <div style={{ fontSize: 14, color: 'var(--neutral-400)', lineHeight: 1.2, marginBottom: 4 }}>
+            <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-400)', lineHeight: 1.2, marginBottom: 4 }}>
               {entry.details}
             </div>
           )}
@@ -164,7 +164,7 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
               {entry.changes.map((c, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {c.field && (
-                    <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-200)', textTransform: 'capitalize' }}>{c.field}</span>
+                    <span style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-200)', textTransform: 'capitalize' }}>{c.field}</span>
                   )}
                   <ChangeDisplay change={c} />
                 </div>
@@ -173,7 +173,7 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
           )}
 
           {entry.category && (
-            <span style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{entry.category}</span>
+            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{entry.category}</span>
           )}
 
           {renderExtra && renderExtra(entry)}

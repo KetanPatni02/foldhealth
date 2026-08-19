@@ -13,8 +13,8 @@ const cardStyle = {
   flexDirection: 'column',
   gap: 4,
 };
-const labelStyle = { fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)', textTransform: 'uppercase', letterSpacing: '0.04em' };
-const valueStyle = { fontSize: 20, fontWeight: 500, color: 'var(--neutral-500)', lineHeight: 1.2 };
+const labelStyle = { fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-300)', textTransform: 'uppercase', letterSpacing: '0.04em' };
+const valueStyle = { fontSize: 'var(--font-2xl)', fontWeight: 500, color: 'var(--neutral-500)', lineHeight: 1.2 };
 
 function StatCard({ icon, iconColor, label, value, sub, subColor }) {
   return (
@@ -24,7 +24,7 @@ function StatCard({ icon, iconColor, label, value, sub, subColor }) {
         <span style={labelStyle}>{label}</span>
       </div>
       <div style={valueStyle}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: subColor || 'var(--neutral-300)' }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 'var(--font-xs)', color: subColor || 'var(--neutral-300)' }}>{sub}</div>}
     </div>
   );
 }

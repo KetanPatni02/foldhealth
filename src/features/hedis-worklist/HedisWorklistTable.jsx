@@ -216,12 +216,12 @@ export function HedisWorklistTable() {
                     />
                   : <th
                       key={col.key}
-                      style={{ padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}
+                      style={{ padding: '8px 14px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}
                     >
                       {col.label}
                     </th>
               ))}
-              <th className={rowStyles.stickyRight} style={{ padding: '8px 12px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
+              <th className={rowStyles.stickyRight} style={{ padding: '8px 12px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 <ColumnsHeaderButton
                   columns={columnPrefs.orderedColumns}
                   hiddenSet={columnPrefs.hiddenSet}

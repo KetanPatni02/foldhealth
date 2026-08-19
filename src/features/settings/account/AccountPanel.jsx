@@ -192,7 +192,7 @@ export function ViewUserDrawer({ user, onClose, onEdit }) {
   const licenceStates = raw.licence_states?.length > 0 ? raw.licence_states : [];
 
   return (
-    <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 14 }}>
+    <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 'var(--font-base)' }}>
       <UserProfileBanner user={user} onChat={openChat} />
       <TabStrip
         items={VIEW_TABS.map(t => ({ key: t, label: t }))}
@@ -521,7 +521,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
   const handleDiscard = () => { onClose(); };
 
   return (
-    <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 14 }}>
+    <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 'var(--font-base)' }}>
       <UserProfileBanner user={user} />
       <TabStrip
         items={DRAWER_TABS.map(t => ({ key: t, label: t }))}

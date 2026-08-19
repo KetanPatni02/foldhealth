@@ -54,7 +54,7 @@ function PlaygroundStory({ label, sortable, sortType }) {
           </tr>
         </thead>
       </table>
-      <div style={{ marginTop: 16, fontSize: 12, color: 'var(--neutral-300)', fontFamily: 'Inter, sans-serif' }}>
+      <div style={{ marginTop: 16, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', fontFamily: 'Inter, sans-serif' }}>
         Click the header to cycle sort · current: <b>{dir ?? 'idle'}</b>
       </div>
     </div>
@@ -103,7 +103,7 @@ function VariantCell({ label, sortField, sortType, activeKey, activeDir }) {
 function FragmentRow({ typeLabel, label, sortField, sortType }) {
   return (
     <>
-      <div style={{ fontSize: 12, color: 'var(--neutral-400)' }}>{typeLabel}</div>
+      <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-400)' }}>{typeLabel}</div>
       {STATES.map((s) => (
         <VariantCell
           key={s.title}
@@ -124,14 +124,14 @@ export const AllVariants = {
       <div style={{ display: 'grid', gridTemplateColumns: '160px repeat(3, 1fr)', gap: 12, alignItems: 'center' }}>
         <div />
         {STATES.map((s) => (
-          <div key={s.title} style={{ fontSize: 12, color: 'var(--neutral-300)', fontWeight: 500 }}>{s.title}</div>
+          <div key={s.title} style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', fontWeight: 500 }}>{s.title}</div>
         ))}
         {SORT_TYPES.map((t) => (
           <FragmentRow key={t.key} typeLabel={`${t.sample} (${t.key})`} label={t.sample} sortField="demo" sortType={t.key} />
         ))}
         <FragmentRow typeLabel="Non-sortable" label="Visit Type" />
       </div>
-      <div style={{ marginTop: 16, fontSize: 12, color: 'var(--neutral-300)' }}>
+      <div style={{ marginTop: 16, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
         Hover any arrow to see the type-specific tooltip copy.
       </div>
     </div>

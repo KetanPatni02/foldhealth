@@ -172,7 +172,7 @@ export function GroupDetailDrawer() {
         <div style={{ position: 'relative' }}>
           <input aria-label="Group name" value={groupName} onChange={e => setGroupName(e.target.value.slice(0, 50))}
             placeholder="Enter group name e.g. ortho group" style={inputStyle} />
-          <span style={{ position: 'absolute', right: 12, top: 9, fontSize: 12, color: 'var(--neutral-200)' }}>
+          <span style={{ position: 'absolute', right: 12, top: 9, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>
             {groupName.length}/50
           </span>
         </div>
@@ -180,17 +180,17 @@ export function GroupDetailDrawer() {
 
       {/* Group Name Preview */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginBottom: 6 }}>Group Name Preview</div>
+        <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginBottom: 6 }}>Group Name Preview</div>
         <div style={{ padding: '12px 16px', background: 'var(--neutral-50)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center' }}>
           <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary-50)', border: '1.5px solid var(--primary-200)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Icon name="solar:chat-round-dots-linear" size={16} color="var(--primary-300)" />
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, color: 'var(--neutral-500)' }}>
+            <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-500)' }}>
               [patient_name] - <span style={{ color: 'var(--neutral-200)' }}>{groupName || 'Group Name'}</span>
-              <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--neutral-200)' }}>23:54</span>
+              <span style={{ marginLeft: 8, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>23: 54</span>
             </div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>[patient_name] was added</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>[patient_name] was added</div>
           </div>
         </div>
       </div>
@@ -229,7 +229,7 @@ export function GroupDetailDrawer() {
           <textarea aria-label="Group welcome message" value={welcomeMsg} onChange={e => setWelcomeMsg(e.target.value.slice(0, 300))}
             placeholder="Write a welcome message for this group"
             style={{ ...inputStyle, minHeight: 80, resize: 'vertical', lineHeight: 1.5 }} />
-          <span style={{ position: 'absolute', right: 12, bottom: 8, fontSize: 11, color: 'var(--neutral-200)' }}>
+          <span style={{ position: 'absolute', right: 12, bottom: 8, fontSize: 'var(--font-xs)', color: 'var(--neutral-200)' }}>
             {welcomeMsg.length}/300
           </span>
         </div>
@@ -242,7 +242,7 @@ export function GroupDetailDrawer() {
           <textarea aria-label="Automatic reply" value={oooMsg} onChange={e => setOooMsg(e.target.value.slice(0, 300))}
             placeholder="Set up an automatic reply"
             style={{ ...inputStyle, minHeight: 80, resize: 'vertical', lineHeight: 1.5 }} />
-          <span style={{ position: 'absolute', right: 12, bottom: 8, fontSize: 11, color: 'var(--neutral-200)' }}>
+          <span style={{ position: 'absolute', right: 12, bottom: 8, fontSize: 'var(--font-xs)', color: 'var(--neutral-200)' }}>
             {oooMsg.length}/300
           </span>
         </div>
@@ -254,7 +254,7 @@ export function GroupDetailDrawer() {
           type="button"
           onClick={handleBusinessHours}
           style={{
-            fontSize: 13, color: 'var(--primary-300)', fontWeight: 500, textDecoration: 'none',
+            fontSize: 'var(--font-md)', color: 'var(--primary-300)', fontWeight: 500, textDecoration: 'none',
             display: 'inline-flex', alignItems: 'center', gap: 3,
             background: 'none', border: 'none', padding: 0, font: 'inherit', cursor: 'pointer',
           }}

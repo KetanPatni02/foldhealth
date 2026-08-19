@@ -64,7 +64,7 @@ export function GoalWizardDescribeStep({ active, isEdit, nlInput, setNlInput, ai
       </div>
       {!isEdit && (
         <>
-          <div style={{ fontSize: 11, color: 'var(--neutral-200)', marginBottom: 8, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+          <div style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)', marginBottom: 8, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.04em' }}>
             Or start from a template
           </div>
           <div className={s.templateGrid}>
@@ -170,7 +170,7 @@ export function GoalWizardStepsStep({
         <div className={s.sectionTitle} style={{ marginBottom: 0 }}>
           <Icon name="solar:clipboard-list-linear" size={14} color="var(--neutral-300)" />
           Goal Steps
-          <span style={{ fontSize: 12, color: 'var(--neutral-200)', fontWeight: 400, marginLeft: 8 }}>
+          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', fontWeight: 400, marginLeft: '0.5rem' }}>
             <span style={{ color: 'var(--status-success)' }}>●</span> Required <span style={{ color: 'var(--status-warning)' }}>●</span> Optional
           </span>
         </div>
@@ -180,7 +180,7 @@ export function GoalWizardStepsStep({
       {steps.map((st, i) => (
         editingStepIdx === i ? (
           <div key={st.id || i} style={{ background: 'var(--neutral-50)', border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 12, marginBottom: 6 }}>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--primary-300)', marginBottom: 8 }}>Edit Step {i + 1}</div>
+            <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--primary-300)', marginBottom: '0.5rem' }}>Edit Step {i + 1}</div>
             <div className={s.addStepRow}>
               <Input type="text" value={st.name} style={{ flex: 2 }}
                 onChange={e => updateStep(i, { name: e.target.value })} placeholder="Step name" />
@@ -208,7 +208,7 @@ export function GoalWizardStepsStep({
             <div className={s.stepNum}>{i + 1}</div>
             <div className={s.stepContent}>
               <div className={s.stepNameRow}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>{st.name}</span>
+                <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>{st.name}</span>
                 <Badge variant={st.type === 'mandatory' ? 'compliance-pass' : 'status-queued'} label={st.type === 'mandatory' ? 'Required' : 'Optional'} />
                 {weighted && <span className={s.scoreChip}>{st.score}pt</span>}
               </div>
@@ -230,7 +230,7 @@ export function GoalWizardStepsStep({
 
       {showAddStep && (
         <div style={{ background: 'var(--neutral-50)', border: '0.5px dashed var(--neutral-150)', borderRadius: 8, padding: 12, marginBottom: 6 }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 8 }}>New Step</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: '0.5rem' }}>New Step</div>
           <div className={s.addStepRow}>
             <Input type="text" placeholder="Step name" style={{ flex: 2 }} value={newStep.name}
               onChange={e => setNewStep({ ...newStep, name: e.target.value })} />
@@ -288,7 +288,7 @@ export function GoalWizardReviewStep({
       {metrics.length > 0 && (
         <div className={s.successContainer}>
           {metrics.map((m, i) => (
-            <div key={i} className={s.successItem} style={{ fontSize: 14 }}>
+            <div key={i} className={s.successItem} style={{ fontSize: 'var(--font-base)' }}>
               <CheckIcon size={14} color="#009B53" />
               <span style={{ flex: 1 }}>{m}</span>
               <CloseButton size={14} onClick={() => removeMetric(i)} className={s.metricRemove} label="Remove metric" />
@@ -335,7 +335,7 @@ export function GoalWizardReviewStep({
         {desc && (
           <div className={s.reviewRow}>
             <div className={s.reviewLabel}>Description</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-400)', lineHeight: 1.5 }}>{desc}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-400)', lineHeight: 1.5 }}>{desc}</div>
           </div>
         )}
       </div>

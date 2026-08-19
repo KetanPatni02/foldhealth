@@ -28,7 +28,7 @@ class ViewErrorBoundary extends React.Component {
   static getDerivedStateFromError() { return { hasError: true }; }
   render() {
     if (this.state.hasError) return (
-      <div style={{ padding: 24, color: 'var(--neutral-300)', fontSize: 14 }}>
+      <div style={{ padding: 24, color: 'var(--neutral-300)', fontSize: 'var(--font-base)' }}>
         Something went wrong loading this view.
       </div>
     );
@@ -230,7 +230,7 @@ export function AnalyticsLayout() {
             <span className={`${s.recDot} ${s.ok}`} />
             <span className={s.recLabel}>Labs</span>
             <span>3h ago</span>
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--neutral-200)' }}>
+            <span style={{ marginLeft: 'auto', fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>
               Last full refresh: Today 6:00 AM
             </span>
           </div>

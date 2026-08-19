@@ -317,7 +317,7 @@
 .previewResult { width: 300px; flex-shrink: 0; border-left: 0.5px solid var(--neutral-150); display: flex; flex-direction: column; }
 .pvResultBody { flex: 1 1 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .pvScoreCard { display: flex; align-items: center; gap: 12px; padding: 12px; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
-.pvScoreVal { font-size: 1.75rem; font-weight: 700; color: var(--neutral-500); min-width: 40px; }
+.pvScoreVal { font-size: var(--font-3xl); font-weight: 700; color: var(--neutral-500); min-width: 40px; }
 .pvScoreMeta { flex: 1 1 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .pvScoreName { font-size: var(--font-base); color: var(--neutral-400); font-weight: 500; }
 .pvScoreStatus { font-size: var(--font-sm); color: var(--neutral-200); text-transform: capitalize; }

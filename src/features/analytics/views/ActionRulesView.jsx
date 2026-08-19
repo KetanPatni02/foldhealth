@@ -76,7 +76,7 @@ export function ActionRulesView({ showToast, editing = false, resetTick = 0 }) {
         <div key={i} className={s.ruleCard}>
           <div className={s.ruleTrigger}>{r.trigger}</div>
           <div className={s.ruleAction}>{r.action}</div>
-          {r.count && <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginTop: 4 }}>Used {r.count} times this week</div>}
+          {r.count && <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 4 }}>Used {r.count} times this week</div>}
         </div>
       ))}
     </Card>
@@ -88,7 +88,7 @@ export function ActionRulesView({ showToast, editing = false, resetTick = 0 }) {
         <div key={i} className={s.ruleCard}>
           <div className={s.ruleTrigger}>{r.trigger}</div>
           <div className={s.ruleAction}>{r.action}</div>
-          {r.count && <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginTop: 4 }}>Triggered {r.count} times &middot; {r.overrides || 0} overrides</div>}
+          {r.count && <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 4 }}>Triggered {r.count} times &middot; {r.overrides || 0} overrides</div>}
         </div>
       ))}
     </Card>
@@ -100,7 +100,7 @@ export function ActionRulesView({ showToast, editing = false, resetTick = 0 }) {
         <div key={i} className={s.ruleCard}>
           <div className={s.ruleTrigger}>{r.trigger}</div>
           <div className={s.ruleAction}>{r.action}</div>
-          {r.count && <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginTop: 4 }}>Triggered {r.count} times &middot; {r.resolved || 0} resolved without human</div>}
+          {r.count && <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 4 }}>Triggered {r.count} times &middot; {r.resolved || 0} resolved without human</div>}
         </div>
       ))}
     </Card>
@@ -111,8 +111,8 @@ export function ActionRulesView({ showToast, editing = false, resetTick = 0 }) {
       title="Rules Builder"
       actions={<Button variant="primary" size="S" onClick={() => showToast?.('Opening no-code rules builder')}>+ New Rule</Button>}
     >
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, fontSize: 14, color: 'var(--neutral-300)', lineHeight: 1.6 }}>
-        <span style={{ fontSize: 14, marginTop: 1 }}>{'ℹ️'}</span>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, fontSize: 'var(--font-base)', color: 'var(--neutral-300)', lineHeight: 1.6 }}>
+        <span style={{ fontSize: 'var(--font-base)', marginTop: 1 }}>{'ℹ️'}</span>
         <span>Rules are configurable by Clinical Ops Managers and Population Health Leaders through a no-code builder. Each rule has an owner, approval chain, and audit log. Rules can be paused, modified, or retired without engineering involvement.</span>
       </div>
     </Card>

@@ -203,7 +203,7 @@ function ObservationEditor({ draft, field, onChange, onPatch }) {
             value={draft.unit || ''}
             onChange={e => onChange('unit', e.target.value)}
             placeholder="unit"
-            style={{ width: 56, textAlign: 'right', border: 'none', padding: 0, fontSize: 13 }}
+            style={{ width: 56, textAlign: 'right', border: 'none', padding: 0, fontSize: 'var(--font-md)' }}
           />
         </span>
       </div>

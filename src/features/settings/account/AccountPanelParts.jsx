@@ -97,7 +97,7 @@ export function MultiSelectField({ label, required, options, value = EMPTY_STRIN
               {v}
               <CloseButton size={10} onClick={e => { e.stopPropagation(); toggle(v); }} className={styles.tagClose} label="Remove" />
             </span>
-          )) : <span style={{ color: 'var(--neutral-200)', fontSize: 14 }}>Select...</span>}
+          )) : <span style={{ color: 'var(--neutral-200)', fontSize: 'var(--font-base)' }}>Select...</span>}
           <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
         </div>
       </div>
@@ -148,7 +148,7 @@ export function AddColumnDropdown({ available, labels, onAdd, onClose }) {
             <span>{labels[col] || col}</span>
           </label>
         ))}
-        {available.length === 0 && <div style={{ padding: 12, color: 'var(--neutral-300)', fontSize: 13 }}>All columns added</div>}
+        {available.length === 0 && <div style={{ padding: 12, color: 'var(--neutral-300)', fontSize: 'var(--font-md)' }}>All columns added</div>}
         <div style={{ display: 'flex', gap: 8, padding: '8px 12px', borderTop: '0.5px solid var(--neutral-100)' }}>
           <Button variant="ghost" size="S" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="S" onClick={() => onAdd(selected)} disabled={selected.length === 0}>Add Columns</Button>

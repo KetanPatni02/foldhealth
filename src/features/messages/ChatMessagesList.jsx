@@ -31,8 +31,8 @@ export function ChatMessagesList({
       ) : messages.length === 0 ? (
         <div className={styles.chatEmpty}>
           <div className={styles.chatEmptyAvatar}>{initials}</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--neutral-500)' }}>{displayName}</div>
-          <div style={{ fontSize: 13, color: 'var(--neutral-300)' }}>No messages yet. Say hello!</div>
+          <div style={{ fontSize: 'var(--font-lg)', fontWeight: 600, color: 'var(--neutral-500)' }}>{displayName}</div>
+          <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)' }}>No messages yet. Say hello!</div>
         </div>
       ) : messages.map((msg, idx) => {
         const isOwn    = msg.sender_id === currentUser.id;

@@ -82,10 +82,10 @@ export function ScheduleDrawerViewMode({
               <>
                 <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setShowMoreMenu(false)} />
                 <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, zIndex: 9999, background: 'var(--neutral-0)', border: '0.5px solid var(--neutral-100)', borderRadius: 8, boxShadow: '0 4px 24px -4px rgba(0,0,0,0.12)', padding: 8, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <button onClick={() => { showToast('Booking link copied!'); setShowMoreMenu(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--neutral-400)', fontFamily: 'Inter, sans-serif', width: '100%', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                  <button onClick={() => { showToast('Booking link copied!'); setShowMoreMenu(false); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, border: 'none', background: 'none', cursor: 'pointer', fontSize: 'var(--font-base)', color: 'var(--neutral-400)', fontFamily: 'Inter, sans-serif', width: '100%', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                     <Icon name="solar:link-linear" size={16} color="var(--neutral-300)" /> Send Booking Link
                   </button>
-                  <button onClick={() => { setShowMoreMenu(false); handleDeleteAppointment(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, border: 'none', background: 'none', cursor: 'pointer', fontSize: 14, color: 'var(--status-error)', fontFamily: 'Inter, sans-serif', width: '100%', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                  <button onClick={() => { setShowMoreMenu(false); handleDeleteAppointment(); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', borderRadius: 4, border: 'none', background: 'none', cursor: 'pointer', fontSize: 'var(--font-base)', color: 'var(--status-error)', fontFamily: 'Inter, sans-serif', width: '100%', textAlign: 'left' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
                     <Icon name="solar:trash-bin-minimalistic-linear" size={16} color="var(--status-error)" /> Delete Appointment
                   </button>
                 </div>
@@ -122,19 +122,19 @@ export function ScheduleDrawerViewMode({
             )}
             <div className={styles.patientInfoGrid}>
               <div className={styles.patientInfoRow}>
-                <span className={styles.patientInfoLabel} style={{ fontSize: 14, fontWeight: 500 }}>Patient Location</span>
-                <span className={styles.patientInfoValue} style={{ fontSize: 14 }}>{ea.location || 'New York'}</span>
+                <span className={styles.patientInfoLabel} style={{ fontSize: 'var(--font-base)', fontWeight: 500 }}>Patient Location</span>
+                <span className={styles.patientInfoValue} style={{ fontSize: 'var(--font-base)' }}>{ea.location || 'New York'}</span>
               </div>
               <div className={styles.patientInfoRow}>
-                <span className={styles.patientInfoLabel} style={{ fontSize: 14, fontWeight: 500 }}>Last Appointment</span>
-                <span className={styles.patientInfoValue} style={{ fontSize: 14 }}>07-26-2023 with Katherine Moss <button className={styles.viewDetailsLink}>View Details</button></span>
+                <span className={styles.patientInfoLabel} style={{ fontSize: 'var(--font-base)', fontWeight: 500 }}>Last Appointment</span>
+                <span className={styles.patientInfoValue} style={{ fontSize: 'var(--font-base)' }}>07-26-2023 with Katherine Moss <button className={styles.viewDetailsLink}>View Details</button></span>
               </div>
             </div>
           </div>
         </div>
 
         <div className={styles.section} style={isPastAppointment ? { pointerEvents: 'none', opacity: 0.7 } : undefined}>
-          <span className={styles.sectionLabel}>Appointment Details {isPastAppointment && <span style={{ fontSize: 11, color: 'var(--neutral-200)', fontWeight: 400 }}>(Past — read only)</span>}</span>
+          <span className={styles.sectionLabel}>Appointment Details {isPastAppointment && <span style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)', fontWeight: 400 }}>(Past — read only)</span>}</span>
           <div className={styles.detailsCard}>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Appointment Type</span>
@@ -191,7 +191,7 @@ export function ScheduleDrawerViewMode({
           ) : (
             <div
               onClick={() => setEditingInstruction(true)}
-              style={{ border: '0.5px solid var(--neutral-150)', borderRadius: 4, padding: 8, fontSize: 14, color: ea.member_instruction ? 'var(--neutral-400)' : 'var(--neutral-200)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4, background: 'var(--neutral-50)', cursor: 'pointer', minHeight: 36 }}
+              style={{ border: '0.5px solid var(--neutral-150)', borderRadius: 4, padding: 8, fontSize: 'var(--font-base)', color: ea.member_instruction ? 'var(--neutral-400)' : 'var(--neutral-200)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4, background: 'var(--neutral-50)', cursor: 'pointer', minHeight: 36 }}
             >
               {ea.member_instruction || 'Click to add instructions...'}
             </div>
@@ -228,7 +228,7 @@ export function ScheduleDrawerViewMode({
             ) : (
               <div
                 onClick={() => setEditingStaffInstruction(true)}
-                style={{ border: '0.5px solid var(--neutral-150)', borderRadius: 4, padding: 8, fontSize: 14, color: ea.staff_instruction ? 'var(--neutral-400)' : 'var(--neutral-200)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4, background: 'var(--neutral-50)', cursor: 'pointer', minHeight: 36 }}
+                style={{ border: '0.5px solid var(--neutral-150)', borderRadius: 4, padding: 8, fontSize: 'var(--font-base)', color: ea.staff_instruction ? 'var(--neutral-400)' : 'var(--neutral-200)', fontFamily: 'Inter, sans-serif', lineHeight: 1.4, background: 'var(--neutral-50)', cursor: 'pointer', minHeight: 36 }}
               >
                 {ea.staff_instruction || 'Click to add staff instructions...'}
               </div>

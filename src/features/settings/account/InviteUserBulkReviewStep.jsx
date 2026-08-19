@@ -29,7 +29,7 @@ export function InviteUserBulkReviewStep({
 }) {
   return (
     <Drawer
-      title={<div><div style={{ fontSize: 16, fontWeight: 600 }}>Bulk Import Users</div><div style={{ fontSize: 13, color: 'var(--neutral-300)', fontWeight: 400 }}>Import the Prospect in bulk by uploading a spreadsheet.</div></div>}
+      title={<div><div style={{ fontSize: 'var(--font-lg)', fontWeight: 600 }}>Bulk Import Users</div><div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', fontWeight: 400 }}>Import the Prospect in bulk by uploading a spreadsheet.</div></div>}
       onClose={onClose}
       className={styles.bulkReviewDrawer}
       bodyClassName={styles.inviteDrawerBody}
@@ -88,8 +88,8 @@ export function InviteUserBulkReviewStep({
                           <Avatar variant="assignee" initials={getInitials(`${row.first_name} ${row.last_name}`).toUpperCase()} />
                         )}
                         <div>
-                          <div style={{ fontSize: 13, fontWeight: 500, color: isEmpty ? 'var(--neutral-200)' : 'var(--neutral-400)' }}>{isEmpty ? 'Unnamed' : `${row.first_name} ${row.last_name}`}</div>
-                          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{row.email || 'abc@xyz.com'}</div>
+                          <div style={{ fontSize: 'var(--font-md)', fontWeight: 500, color: isEmpty ? 'var(--neutral-200)' : 'var(--neutral-400)' }}>{isEmpty ? 'Unnamed' : `${row.first_name} ${row.last_name}`}</div>
+                          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{row.email || 'abc@xyz.com'}</div>
                         </div>
                       </div>
                     </td>

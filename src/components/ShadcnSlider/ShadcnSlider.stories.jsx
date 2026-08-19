@@ -55,11 +55,11 @@ function Wrapper(props) {
   const [value, setValue] = useState(props.defaultValue || [40]);
   return (
     <div style={{ width: 280, padding: 8 }}>
-      <label id="slider-demo-label" style={{ display: 'block', fontSize: 12, color: 'var(--neutral-400)', marginBottom: 6 }}>
+      <label id="slider-demo-label" style={{ display: 'block', fontSize: 'var(--font-sm)', color: 'var(--neutral-400)', marginBottom: 6 }}>
         Value
       </label>
       <Slider {...props} value={value} onValueChange={setValue} aria-labelledby="slider-demo-label" />
-      <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginTop: 8 }}>{value.join(' – ')}</div>
+      <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', marginTop: '0.5rem' }}>{value.join(' – ')}</div>
     </div>
   );
 }

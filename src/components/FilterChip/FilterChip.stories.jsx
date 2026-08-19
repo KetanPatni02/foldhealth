@@ -92,7 +92,7 @@ export const Sizes = {
 function Row({ title, children }) {
   return (
     <div>
-      <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', marginBottom: 6 }}>{title}</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{children}</div>
     </div>
   );

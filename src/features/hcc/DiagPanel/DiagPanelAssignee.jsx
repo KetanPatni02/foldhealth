@@ -89,7 +89,7 @@ export function AssigneeAvatar({ member, dosState, currentDos, locked = false })
             width: 24, height: 24, borderRadius: 6,
             background: 'var(--secondary-100)', border: '0.5px solid var(--secondary-200)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, fontSize: 10, fontWeight: 500, color: 'var(--secondary-300)',
+            flexShrink: 0, fontSize: 'var(--font-2xs)', fontWeight: 500, color: 'var(--secondary-300)',
             cursor: 'default', padding: 0,
           }}
         >

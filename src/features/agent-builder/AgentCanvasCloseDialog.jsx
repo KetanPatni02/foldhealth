@@ -8,10 +8,10 @@ export function AgentCanvasCloseDialog({ open, onOpenChange, onDiscard, onSaveAn
         <DialogTitle className="sr-only">Unsaved Changes</DialogTitle>
         <DialogDescription className="sr-only">You have unsaved changes. Choose to discard or save.</DialogDescription>
         <div style={{ padding: 16, borderBottom: '0.5px solid var(--neutral-150)' }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)', marginBottom: 8 }}>
+          <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)', marginBottom: '0.5rem' }}>
             Unsaved Changes
           </div>
-          <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', lineHeight: 1.5 }}>
             You have unsaved changes to this workflow. Would you like to save before leaving?
           </div>
         </div>

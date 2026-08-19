@@ -342,7 +342,7 @@ function JsaOutreachCell({ member }) {
             <div>
               <div className={styles.outreachWlFailed}>Failed</div>
               {member.lastOutreach && (
-                <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{member.lastOutreach}</div>
+                <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{member.lastOutreach}</div>
               )}
             </div>
           </>

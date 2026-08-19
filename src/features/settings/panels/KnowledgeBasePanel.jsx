@@ -20,15 +20,15 @@ const CATEGORIES = ['General', 'Appointments', 'Medications', 'Labs', 'Complianc
 
 const thStyle = {
   textAlign: 'left', padding: '8px 16px', color: 'var(--neutral-300)', fontWeight: 500,
-  fontSize: 12, whiteSpace: 'nowrap', borderBottom: '1px solid var(--neutral-150)',
+  fontSize: 'var(--font-sm)', whiteSpace: 'nowrap', borderBottom: '1px solid var(--neutral-150)',
   background: 'var(--neutral-0)', position: 'sticky', top: 0,
 };
-const tdStyle = { padding: '10px 16px', fontSize: 13, color: 'var(--neutral-400)', verticalAlign: 'top', borderBottom: '0.5px solid var(--neutral-100)' };
+const tdStyle = { padding: '10px 16px', fontSize: 'var(--font-md)', color: 'var(--neutral-400)', verticalAlign: 'top', borderBottom: '0.5px solid var(--neutral-100)' };
 
-const fieldLabel = { fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 6, display: 'block' };
+const fieldLabel = { fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 6, display: 'block' };
 const fieldInput = {
   width: '100%', padding: '10px 12px', borderRadius: 8, border: '0.5px solid var(--neutral-150)',
-  fontSize: 14, fontFamily: "'Inter', sans-serif", color: 'var(--neutral-400)', outline: 'none',
+  fontSize: 'var(--font-base)', fontFamily: "'Inter', sans-serif", color: 'var(--neutral-400)', outline: 'none',
   transition: 'border-color .15s',
 };
 const fieldTextarea = {
@@ -119,9 +119,9 @@ function FaqDrawer({ mode, faq, onClose, onSave, saving }) {
           marginTop: 8, padding: 16, borderRadius: 10,
           background: 'var(--neutral-25, #FAFBFF)', border: '0.5px solid var(--neutral-100)',
         }}>
-          <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-200)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Preview</div>
-          <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--neutral-500)', marginBottom: 6 }}>{form.question}</div>
-          {form.answer.trim() && <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.5 }}>{form.answer}</div>}
+          <div style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-200)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Preview</div>
+          <div style={{ fontWeight: 500, fontSize: 'var(--font-base)', color: 'var(--neutral-500)', marginBottom: 6 }}>{form.question}</div>
+          {form.answer.trim() && <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', lineHeight: 1.5 }}>{form.answer}</div>}
           <div style={{ marginTop: 10 }}>
             <Badge variant={CATEGORY_BADGE[form.category] || 'ai-neutral'} label={form.category} />
           </div>
@@ -232,8 +232,8 @@ export function KnowledgeBasePanel({ searchQuery = '' }) {
           {filtered.length === 0 && (
             <tr><td colSpan={4} style={{ textAlign: 'center', padding: 40, color: 'var(--neutral-200)' }}>
               <Icon name="solar:book-linear" size={32} color="var(--neutral-150)" />
-              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-300)', marginTop: 8 }}>No FAQ articles found</div>
-              <div style={{ fontSize: 13, marginTop: 4 }}>
+              <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-300)', marginTop: '0.5rem' }}>No FAQ articles found</div>
+              <div style={{ fontSize: 'var(--font-md)', marginTop: 4 }}>
                 {searchQuery.trim() ? 'Try adjusting your search.' : 'Add your first FAQ to help patients and agents.'}
               </div>
             </td></tr>
@@ -247,12 +247,12 @@ export function KnowledgeBasePanel({ searchQuery = '' }) {
             >
               <td style={tdStyle}>
                 <div style={{ fontWeight: 500, marginBottom: 4, color: 'var(--neutral-500)' }}>{faq.question}</div>
-                <div style={{ fontSize: 12, color: 'var(--neutral-200)', lineHeight: 1.4 }}>{faq.answer}</div>
+                <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', lineHeight: 1.4 }}>{faq.answer}</div>
               </td>
               <td style={tdStyle}>
                 <Badge variant={CATEGORY_BADGE[faq.category] || 'ai-neutral'} label={faq.category} />
               </td>
-              <td style={{ ...tdStyle, fontSize: 12, color: 'var(--neutral-200)', whiteSpace: 'nowrap' }}>{faq.updatedAt}</td>
+              <td style={{ ...tdStyle, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', whiteSpace: 'nowrap' }}>{faq.updatedAt}</td>
               <td style={tdStyle} onClick={e => e.stopPropagation()}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <ActionButton icon="solar:pen-linear" size="L" tooltip="Edit FAQ"

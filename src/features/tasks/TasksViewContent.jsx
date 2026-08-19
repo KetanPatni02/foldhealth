@@ -14,7 +14,6 @@ export function TasksViewContent({
   tasksViewMode,
   kanbanGroups,
   grouped,
-  viewBy,
   hideAssignedTo,
   handleToggle,
   handleTaskMove,
@@ -69,7 +68,6 @@ export function TasksViewContent({
     return (
       <KanbanBoard
         kanbanGroups={kanbanGroups}
-        viewBy={viewBy}
         onToggle={handleToggle}
         onTaskMove={handleTaskMove}
         onTaskClick={onTaskClick}

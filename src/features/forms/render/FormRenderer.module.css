@@ -108,8 +108,8 @@
   background: var(--primary-300); color: var(--neutral-0); font-size: var(--font-md); font-weight: 600;
 }
 .tfHeadText { flex: 1 1 0; min-width: 0; }
-.tfQText { font-size: 1.625rem; line-height: 1.25; font-weight: 600; color: var(--primary-300); }
-.tfDesc { font-size: 0.9375rem; font-style: italic; color: var(--primary-200); margin: 8px 0 0; }
+.tfQText { font-size: var(--font-3xl); line-height: 1.25; font-weight: 600; color: var(--primary-300); }
+.tfDesc { font-size: var(--font-base); font-style: italic; color: var(--primary-200); margin: 8px 0 0; }
 .tfBody { display: flex; flex-direction: column; gap: 16px; padding-left: 36px; }
 
 /* Typeform underline-style input/textarea — override the shared chrome.

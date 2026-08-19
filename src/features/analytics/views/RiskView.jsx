@@ -39,8 +39,8 @@ const HCC_LOW = [
 
 function renderRiskMethodology() {
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, fontSize: 14, color: 'var(--neutral-400)', lineHeight: 1.6 }}>
-      <span style={{ fontSize: 14, marginTop: 1 }}>{'ℹ️'}</span>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '10px 14px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, fontSize: 'var(--font-base)', color: 'var(--neutral-400)', lineHeight: 1.6 }}>
+      <span style={{ fontSize: 'var(--font-base)', marginTop: 1 }}>{'ℹ️'}</span>
       <span>
         <strong>CMS HCC Model V28</strong> &mdash; RAF displayed to 3 decimal places. Potential RAF is derived from all open HCC suspects in the suspect worklist below.
       </span>
@@ -100,7 +100,7 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
   const renderRafTrend = () => (
     <Card title="RAF Score Trend" sub={periodLabel}>
       <RafTrendLineChart data={RAF_TREND} potential={1.120} />
-      <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--neutral-200)', marginTop: 6 }}>
+      <div style={{ display: 'flex', gap: 12, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 6 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 2, background: 'var(--status-warning)', display: 'inline-block', borderRadius: 2 }} />Actual RAF</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 14, height: 0, borderTop: '2px dashed var(--neutral-150)', display: 'inline-block' }} />Potential 1.120</span>
       </div>
@@ -144,28 +144,28 @@ export function RiskView({ showToast, editing = false, resetTick = 0 }) {
     >
       <div className={s.g2}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>{'✓'} Highest Closure Rates</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: '0.5rem' }}>{'✓'} Highest Closure Rates</div>
           {HCC_HIGH.map(h => (
             <div key={h.code} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--neutral-50)' }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--primary-300)', minWidth: 55 }}>{h.code}</span>
-              <span style={{ flex: 1, fontSize: 12 }}>{h.label}</span>
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--primary-300)', minWidth: 55 }}>{h.code}</span>
+              <span style={{ flex: 1, fontSize: 'var(--font-sm)' }}>{h.label}</span>
               <div style={{ width: 80, height: 6, background: 'var(--neutral-50)', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ width: `${h.pct}%`, height: '100%', background: h.color, borderRadius: 3 }} />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 500, color: h.color, width: 35, textAlign: 'right' }}>{h.rate}</span>
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: h.color, width: 35, textAlign: 'right' }}>{h.rate}</span>
             </div>
           ))}
         </div>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>{'⚠'} Lowest Closure Rates &mdash; Biggest Opportunity</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: '0.5rem' }}>{'⚠'} Lowest Closure Rates &mdash; Biggest Opportunity</div>
           {HCC_LOW.map(h => (
             <div key={h.code} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--neutral-50)' }}>
-              <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--primary-300)', minWidth: 55 }}>{h.code}</span>
-              <span style={{ flex: 1, fontSize: 12 }}>{h.label}</span>
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--primary-300)', minWidth: 55 }}>{h.code}</span>
+              <span style={{ flex: 1, fontSize: 'var(--font-sm)' }}>{h.label}</span>
               <div style={{ width: 80, height: 6, background: 'var(--neutral-50)', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ width: `${h.pct}%`, height: '100%', background: h.color, borderRadius: 3 }} />
               </div>
-              <span style={{ fontSize: 12, fontWeight: 500, color: h.color, width: 35, textAlign: 'right' }}>{h.rate}</span>
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: h.color, width: 35, textAlign: 'right' }}>{h.rate}</span>
             </div>
           ))}
         </div>

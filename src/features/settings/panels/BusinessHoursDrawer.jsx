@@ -34,7 +34,7 @@ const DEFAULT_AVAILABLE = {
 
 const inputStyle = {
   padding: '8px 12px', borderRadius: 4, border: '0.5px solid var(--neutral-150)',
-  fontSize: 13, fontFamily: "'Inter', sans-serif", outline: 'none', color: 'var(--neutral-400)',
+  fontSize: 'var(--font-md)', fontFamily: "'Inter', sans-serif", outline: 'none', color: 'var(--neutral-400)',
   width: 120, boxSizing: 'border-box',
 };
 
@@ -69,7 +69,7 @@ export function BusinessHoursDrawer() {
     <Drawer title="Set Global Template Business Hours" onClose={() => setBusinessHoursOpen(false)} headerRight={headerRight}>
       {/* Time Zone */}
       <div style={{ marginBottom: 20 }}>
-        <div style={{ fontSize: 14, color: 'var(--neutral-300)', marginBottom: 6 }}>Time Zone</div>
+        <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-300)', marginBottom: 6 }}>Time Zone</div>
         <Select
           options={TIMEZONES}
           value={timezone}
@@ -92,7 +92,7 @@ export function BusinessHoursDrawer() {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '10px 14px', borderBottom: isAvailable ? '0.5px solid var(--neutral-100)' : 'none',
             }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)' }}>{day}</span>
+              <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)' }}>{day}</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <Button variant="ghost" size="S" onClick={() => addSlot(day)}
                   style={{ opacity: isAvailable ? 1 : 0.4 }}>
@@ -100,7 +100,7 @@ export function BusinessHoursDrawer() {
                 </Button>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Switch checked={isAvailable} onChange={() => toggleDay(day)} />
-                  <span style={{ fontSize: 12, color: isAvailable ? 'var(--neutral-400)' : 'var(--neutral-200)' }}>Available</span>
+                  <span style={{ fontSize: 'var(--font-sm)', color: isAvailable ? 'var(--neutral-400)' : 'var(--neutral-200)' }}>Available</span>
                 </div>
               </div>
             </div>
@@ -110,7 +110,7 @@ export function BusinessHoursDrawer() {
               {daySlots.map((slot, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <div>
-                    <div style={{ fontSize: 11, color: 'var(--primary-300)', marginBottom: 4 }}>From Time</div>
+                    <div style={{ fontSize: 'var(--font-xs)', color: 'var(--primary-300)', marginBottom: 4 }}>From Time</div>
                     <div style={{ position: 'relative' }}>
                       <input aria-label="From time" value={slot.from} readOnly style={{
                         ...inputStyle,
@@ -122,7 +122,7 @@ export function BusinessHoursDrawer() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: 'var(--neutral-300)', marginBottom: 4 }}>To Time</div>
+                    <div style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-300)', marginBottom: 4 }}>To Time</div>
                     <div style={{ position: 'relative' }}>
                       <input aria-label="To time" value={slot.to} readOnly style={{
                         ...inputStyle,
@@ -139,7 +139,7 @@ export function BusinessHoursDrawer() {
                   )}
                 </div>
               ))}
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--neutral-300)', cursor: 'pointer', marginTop: 4 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', cursor: 'pointer', marginTop: 4 }}>
                 <input type="checkbox" style={{ accentColor: 'var(--primary-300)' }} /> Apply to All Days
               </label>
             </div>

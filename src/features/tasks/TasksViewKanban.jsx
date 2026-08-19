@@ -18,8 +18,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { toast } from '../../components/Toast/sonnerToast';
 import { useAppStore } from '../../store/useAppStore';
 import { STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_COLORS, isOverdue, formatDateFriendly, buildTaskMetaLine } from './TasksView.utils';
-import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
-import { PriorityIcon, SubtaskIcon } from './TasksViewIcons';
+import { PriorityIcon, SubtaskIcon, CheckIcon } from './TasksViewIcons';
 import { RowActionMenu } from './TasksViewRowDropdowns';
 import styles from './TasksView.module.css';
 
@@ -51,13 +50,13 @@ export function KanbanCardContent({ task, onToggle }) {
           </div>
           <button
             type="button"
-            role="checkbox"
-            aria-checked={isCompleted}
-            className={styles.taskCheckboxBtn}
+            className={`${styles.taskCheckbox} ${isCompleted ? styles.taskCheckboxChecked : ''}`}
             onClick={(e) => { e.stopPropagation(); onToggle?.(task); }}
             aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
-            <CheckboxTick checked={isCompleted} size={16} />
+            <span className={styles.taskCheckIcon}>
+              <CheckIcon size={13} />
+            </span>
           </button>
         </div>
 
@@ -233,10 +232,8 @@ function DroppableKanbanColumn({ groupKey, label, tasks, onToggle, onTaskClick }
   );
 }
 
-const VIEW_BY_LABEL = { status: 'Status', priority: 'Priority', due_date: 'Due Date' };
-
 /* ── Kanban Board with DnD ── */
-export function KanbanBoard({ kanbanGroups, viewBy = 'status', onToggle, onTaskMove, onTaskClick }) {
+export function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick }) {
   const [activeTask, setActiveTask] = useState(null);
 
   const sensors = useSensors(
@@ -296,8 +293,6 @@ export function KanbanBoard({ kanbanGroups, viewBy = 'status', onToggle, onTaskM
     return closestCenter(args);
   }, []);
 
-  const axisLabel = VIEW_BY_LABEL[viewBy] || 'Status';
-
   return (
     <DndContext
       sensors={sensors}
@@ -305,9 +300,6 @@ export function KanbanBoard({ kanbanGroups, viewBy = 'status', onToggle, onTaskM
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className={styles.kanbanAxisHint}>
-        Grouped by <strong>{axisLabel}</strong> — dragging a card changes its {axisLabel.toLowerCase()}.
-      </div>
       <div className={styles.kanbanWrap}>
         {kanbanGroups.map(g => (
           <DroppableKanbanColumn

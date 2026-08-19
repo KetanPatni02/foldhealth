@@ -37,10 +37,10 @@ export function ProviderPicker({ value, onSelect, profileUsers = EMPTY_PROFILE_U
               <button key={p.name} className={styles.providerItem} onClick={() => { onSelect(p.name); setOpen(false); }}>
                 <Avatar variant="assignee" initials={getInitials(p.name).toUpperCase()} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{p.gender}</div>
+                  <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>{p.name}</div>
+                  <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{p.gender}</div>
                 </div>
-                <span style={{ fontSize: 12, color: p.slots === 'Not Available' ? 'var(--neutral-200)' : 'var(--primary-300)' }}>{p.slots || ''}</span>
+                <span style={{ fontSize: 'var(--font-sm)', color: p.slots === 'Not Available' ? 'var(--neutral-200)' : 'var(--primary-300)' }}>{p.slots || ''}</span>
               </button>
             ))}
           </div>

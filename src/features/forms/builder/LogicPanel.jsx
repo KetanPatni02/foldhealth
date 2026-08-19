@@ -263,7 +263,7 @@ export function LogicPanel({ fields, settings, onChange }) {
           label: `${OPERATOR_LABELS[c.operator] || c.operator}${c.operator !== OPERATOR.EXISTS && c.answer != null && c.answer !== '' ? ` ${c.answer}` : ''}`,
           animated: true,
           style: { stroke: 'var(--primary-300)', strokeWidth: 1.5 },
-          labelStyle: { fontSize: 11, fill: 'var(--neutral-400)', fontFamily: 'Inter, sans-serif' },
+          labelStyle: { fontSize: 'var(--font-xs)', fill: 'var(--neutral-400)', fontFamily: 'Inter, sans-serif' },
           labelBgStyle: { fill: 'var(--neutral-0)' },
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--primary-300)' },
         });
@@ -277,7 +277,7 @@ export function LogicPanel({ fields, settings, onChange }) {
           target: `ending:${j.to}`,
           label: 'jump',
           style: { stroke: 'var(--status-success)', strokeWidth: 1.5, strokeDasharray: '5 4' },
-          labelStyle: { fontSize: 11, fill: 'var(--status-success)', fontFamily: 'Inter, sans-serif' },
+          labelStyle: { fontSize: 'var(--font-xs)', fill: 'var(--status-success)', fontFamily: 'Inter, sans-serif' },
           labelBgStyle: { fill: 'var(--neutral-0)' },
           markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--status-success)' },
         });

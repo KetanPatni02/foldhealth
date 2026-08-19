@@ -251,7 +251,7 @@ function MetricChart({ metric, range, colors }) {
   const RangeShape = makeRangeShape(topColor, botColor, metric.shapeStyle || 'bp');
 
   const axisProps = {
-    tick: { fontSize: 11, fill: axisColor, fontFamily: 'Inter, sans-serif' },
+    tick: { fontSize: 'var(--font-xs)', fill: axisColor, fontFamily: 'Inter, sans-serif' },
     axisLine: false,
     tickLine: false,
   };

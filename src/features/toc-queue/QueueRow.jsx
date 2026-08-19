@@ -159,7 +159,7 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
   if (status === 'review') {
     return <Badge size="M" variant="status-review" label="Review" icon="solar:danger-triangle-linear" />;
   }
-  return <span style={{ fontSize: 13, color: 'var(--neutral-200)' }}>—</span>;
+  return <span style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-200)' }}>—</span>;
 }
 
 // Shared status → badge-variant map for the Assessment and Outreach Status
@@ -282,10 +282,10 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
     thStyle: { ...AGENT_TH_STYLE, borderRight: '2px solid var(--primary-200)', minWidth: 140 },
     renderCell: (p) => (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, whiteSpace: 'nowrap' }}>
-        <span style={{ fontSize: 14, color: 'var(--neutral-400)' }}>
+        <span style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-400)' }}>
           {computeAgentDueOn(p.dischargeDate, p.outreachType) || '—'}
         </span>
-        <span style={{ fontSize: 12, color: 'var(--neutral-300)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+        <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
           <Icon name="solar:clock-circle-linear" size={14} />
           {p.outreachLeft || '—'}
         </span>
@@ -335,7 +335,7 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
     renderCell: (p) => (
       <div className={rowStyles.assigneeCell}>
         <Avatar variant="assignee" initials={p.assigneeInitials} />
-        <span style={{ fontSize: 13 }}>{p.assignee}</span>
+        <span style={{ fontSize: 'var(--font-md)' }}>{p.assignee}</span>
       </div>
     ),
   },

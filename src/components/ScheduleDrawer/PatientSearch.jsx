@@ -47,7 +47,7 @@ export function PatientSearch({ patients, onSelect, inputId }) {
               </div>
             </button>
           )) : (
-            <div style={{ padding: '12px 16px', fontSize: 13, color: 'var(--neutral-200)', textAlign: 'center' }}>No patients found</div>
+            <div style={{ padding: '12px 16px', fontSize: 'var(--font-md)', color: 'var(--neutral-200)', textAlign: 'center' }}>No patients found</div>
           )}
         </div>
       )}

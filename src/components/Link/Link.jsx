@@ -11,7 +11,7 @@ import styles from './Link.module.css';
  *  - children   (ReactNode)
  *  - onClick    (function)
  *  - className  (string)
- *  - style      (object)   — e.g. { fontSize: 12 }
+ *  - style      (object)   — e.g. { fontSize: 'var(--font-sm)' }
  */
 export function Link({ children, onClick, className, style, ...rest }) {
   return (

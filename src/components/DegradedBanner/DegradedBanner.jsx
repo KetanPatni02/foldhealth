@@ -22,13 +22,13 @@ export function DegradedBanner() {
       padding: '8px 16px',
       background: hasDown ? 'var(--status-error-light)' : 'var(--status-warning-light)',
       borderBottom: `1px solid ${hasDown ? 'rgba(215,40,37,0.2)' : 'rgba(217,165,11,0.2)'}`,
-      fontSize: 13,
+      fontSize: 'var(--font-md)',
       color: hasDown ? 'var(--status-error)' : 'var(--status-warning)',
       fontWeight: 500,
     }}>
       <Icon name="solar:danger-triangle-bold" size={16} />
       {hasDown ? 'System Outage' : 'Degraded Performance'}: {names.join(', ')}
-      <span style={{ fontWeight: 400, fontSize: 12, marginLeft: 4 }}>
+      <span style={{ fontWeight: 400, fontSize: 'var(--font-sm)', marginLeft: 4 }}>
         — Some features may be limited. Contact engineering if issues persist.
       </span>
     </div>

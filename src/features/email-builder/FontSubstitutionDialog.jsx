@@ -62,10 +62,10 @@ export function FontSubstitutionDialog() {
         }}>
           <Icon name="solar:text-italic-circle-linear" size={20} color="var(--primary-300)" />
           <div style={{ flex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: 'var(--neutral-500)' }}>
+            <h3 style={{ margin: 0, fontSize: 'var(--font-lg)', fontWeight: 600, color: 'var(--neutral-500)' }}>
               {pendingUnknownFonts.length === 1 ? 'Unknown font detected' : `${pendingUnknownFonts.length} unknown fonts detected`}
             </h3>
-            <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--neutral-300)' }}>
+            <p style={{ margin: '2px 0 0', fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
               Map each to a Google Font the builder can load. Email clients render the substitution.
             </p>
           </div>
@@ -75,7 +75,7 @@ export function FontSubstitutionDialog() {
           {pendingUnknownFonts.map(font => (
             <div key={font} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
-                flex: '0 0 160px', fontSize: 13, color: 'var(--neutral-400)',
+                flex: '0 0 160px', fontSize: 'var(--font-md)', color: 'var(--neutral-400)',
                 fontWeight: 500,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }} title={font}>

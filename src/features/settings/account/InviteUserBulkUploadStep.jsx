@@ -9,7 +9,7 @@ export function InviteUserBulkUploadStep({ onClose, bulkFile, fileInputRef, onFi
 
   return (
     <Drawer
-      title={<div><div style={{ fontSize: 16, fontWeight: 600 }}>Bulk Import Users</div><div style={{ fontSize: 13, color: 'var(--neutral-300)', fontWeight: 400 }}>Import the users in bulk by uploading a spreadsheet.</div></div>}
+      title={<div><div style={{ fontSize: 'var(--font-lg)', fontWeight: 600 }}>Bulk Import Users</div><div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', fontWeight: 400 }}>Import the users in bulk by uploading a spreadsheet.</div></div>}
       onClose={onClose}
       bodyClassName={styles.inviteDrawerBody}
       headerRight={<Button variant="primary" size="L" disabled={!bulkFile} onClick={onNext}>Next</Button>}
@@ -45,13 +45,13 @@ export function InviteUserBulkUploadStep({ onClose, bulkFile, fileInputRef, onFi
           <div className={styles.bulkFileCard}>
             <Icon name="solar:document-text-linear" size={24} color="var(--neutral-300)" />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>{bulkFile.name}</div>
-              <div style={{ fontSize: 12, color: 'var(--neutral-300)' }}>{(bulkFile.size / (1024 * 1024)).toFixed(1)} MB</div>
+              <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>{bulkFile.name}</div>
+              <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>{(bulkFile.size / (1024 * 1024)).toFixed(1)} MB</div>
             </div>
             <button className={styles.bulkChooseFile} onClick={onClearFile}>Change file</button>
           </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--neutral-200)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>
           <span>Supported formats: CSV, XLS, XLSX</span>
           <span>Max size: 5 MB</span>
         </div>
@@ -60,8 +60,8 @@ export function InviteUserBulkUploadStep({ onClose, bulkFile, fileInputRef, onFi
           <div className={styles.bulkTemplate}>
             <Icon name="solar:file-text-linear" size={24} color="var(--neutral-300)" />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--neutral-400)' }}>User Details Import Template</div>
-              <div style={{ fontSize: 13, color: 'var(--neutral-300)' }}>You can download the attached example and use it as a template to add users</div>
+              <div style={{ fontSize: 'var(--font-base)', fontWeight: 600, color: 'var(--neutral-400)' }}>User Details Import Template</div>
+              <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)' }}>You can download the attached example and use it as a template to add users</div>
             </div>
             <button className={styles.bulkChooseFile} onClick={downloadUserImportTemplate}>Download sample</button>
           </div>

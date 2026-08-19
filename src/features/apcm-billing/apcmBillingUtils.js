@@ -1,6 +1,6 @@
 export const thStyle = {
   padding: '8px 14px',
-  fontSize: 12,
+  fontSize: 'var(--font-sm)',
   fontWeight: 500,
   color: 'var(--neutral-300)',
   textAlign: 'left',

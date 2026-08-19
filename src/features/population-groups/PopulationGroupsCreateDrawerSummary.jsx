@@ -30,7 +30,7 @@ export function PopulationGroupsCreateDrawerSummary({ vm, onMemberAdded }) {
                       <>
                         {/* ── File Processing Summary heading ── */}
                         {!showPreview && (
-                          <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', marginBottom:10 }}>File Processing Summary</div>
+                          <div style={{ fontSize: 'var(--font-base)', fontWeight:500, color:'var(--neutral-400)', marginBottom: 'var(--font-2xs)' }}>File Processing Summary</div>
                         )}
 
                         {/* ── Info banner (Figma 1921-9782) — above file chip, hidden on Review Pop Group ── */}
@@ -41,7 +41,7 @@ export function PopulationGroupsCreateDrawerSummary({ vm, onMemberAdded }) {
                               <path d="M8 7v4" stroke="var(--status-info)" strokeWidth="1.4" strokeLinecap="round"/>
                               <circle cx="8" cy="5.5" r="0.7" fill="var(--status-info)"/>
                             </svg>
-                            <span style={{ fontSize:12, fontWeight:400, color:'var(--neutral-400)', lineHeight:1.4 }}>
+                            <span style={{ fontSize: 'var(--font-sm)', fontWeight:400, color:'var(--neutral-400)', lineHeight: 1.4 }}>
                               Enter correct values for fold ID &amp; match to recommended entries OR Reupload excel with correct data.
                             </span>
                           </div>
@@ -109,7 +109,7 @@ export function PopulationGroupsCreateDrawerSummary({ vm, onMemberAdded }) {
                                 setMatchSummary({ matched:[], notFound:[], duplicates:[] });
                                 manualSelRef.current = {}; setShowPreview(false); parsedRef.current = null;
                               }}
-                              style={{ flex:1, height:34, background:'var(--neutral-0)', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize:14, fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}
+                              style={{ flex:1, height:34, background:'var(--neutral-0)', color:'var(--neutral-300)', border:'0.5px solid var(--neutral-150)', borderRadius:6, fontSize: 'var(--font-base)', fontWeight:500, cursor:'pointer', fontFamily:'Inter, sans-serif', transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap: 6 }}
                               onMouseEnter={e => e.currentTarget.style.background='var(--neutral-50)'}
                               onMouseLeave={e => e.currentTarget.style.background='var(--neutral-0)'}>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
@@ -118,7 +118,7 @@ export function PopulationGroupsCreateDrawerSummary({ vm, onMemberAdded }) {
                             <button
                               disabled={unmatchedAll.length > 0 && !allResolved}
                               onClick={() => setShowPreview(true)}
-                              style={{ flex:1, height:34, borderRadius:6, fontSize:14, fontWeight:500, fontFamily:'Inter, sans-serif', transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap:6, border:'none',
+                              style={{ flex:1, height:34, borderRadius:6, fontSize: 'var(--font-base)', fontWeight:500, fontFamily:'Inter, sans-serif', transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center', gap: 6, border:'none',
                                 background: (unmatchedAll.length === 0 || allResolved) ? 'var(--primary-300)' : 'var(--neutral-100)',
                                 color:      (unmatchedAll.length === 0 || allResolved) ? 'var(--neutral-0)' : 'var(--neutral-200)',
                                 cursor:     (unmatchedAll.length === 0 || allResolved) ? 'pointer' : 'not-allowed',

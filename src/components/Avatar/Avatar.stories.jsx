@@ -60,12 +60,12 @@ export const AllSizesAndVariants = {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {COLOR_VARIANTS.map(v => (
         <div key={v.key} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 12, color: 'var(--neutral-300)' }}>{v.label}</div>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>{v.label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {SIZES.map(s => (
               <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 <Avatar variant={v.key} initials="AB" size={s} />
-                <span style={{ fontSize: 11, color: 'var(--neutral-200)' }}>{s}</span>
+                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)' }}>{s}</span>
               </div>
             ))}
           </div>
@@ -80,12 +80,12 @@ export const IconAvatar = {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {COLOR_VARIANTS.map(v => (
         <div key={v.key} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ fontSize: 12, color: 'var(--neutral-300)' }}>{v.label}</div>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>{v.label}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             {SIZES.map(s => (
               <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                 <Avatar variant={v.key} type="icon" iconName="solar:user-linear" size={s} />
-                <span style={{ fontSize: 11, color: 'var(--neutral-200)' }}>{s}</span>
+                <span style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)' }}>{s}</span>
               </div>
             ))}
           </div>

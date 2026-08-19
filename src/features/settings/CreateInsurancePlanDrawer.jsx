@@ -35,7 +35,7 @@ export function CreateInsurancePlanDrawer({ onClose, onSave = () => {}, initialP
         className={`insurancePlanPanel ${plan.showPreview ? styles.widePanel : styles.narrowPanel}`}
         bodyClassName={styles.drawerBody}
         headerStyle={{ padding: '8px 12px 8px 16px', borderBottom: '0.5px solid var(--neutral-150)' }}
-        titleStyle={{ fontSize: 16, fontWeight: 500 }}
+        titleStyle={{ fontSize: 'var(--font-lg)', fontWeight: 500 }}
       >
         <div className={styles.leftPanel}>
           <div className={styles.stageNavRow}>

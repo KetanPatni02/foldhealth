@@ -138,7 +138,7 @@ export function LiveDrawer() {
       {ongoingCall?.compliance && (
         <div style={{
           border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 10, marginBottom: 12, background: '#fafbff',
-          display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 12, color: 'var(--neutral-300)',
+          display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)',
         }}>
           <span><strong>Verified:</strong> {ongoingCall.compliance.identityVerified ? 'Yes' : 'No'}</span>
           <span>•</span>
@@ -177,7 +177,7 @@ export function LiveDrawer() {
               )}
             </div>
           )) : (
-            <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--neutral-300)' }}>
+            <div style={{ padding: '12px 0', fontSize: 'var(--font-md)', color: 'var(--neutral-300)' }}>
               No goals data available yet.
             </div>
           )}

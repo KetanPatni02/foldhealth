@@ -1,11 +1,10 @@
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
-import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
 import { Input } from '../../components/Input/Input';
 import { Link } from '../../components/Link/Link';
 import { TITLE_MAX, isOverdue, formatDateFriendly, STATUS_LABELS, STATUS_BADGE_VARIANTS } from './TasksView.utils';
-import { PriorityIcon } from './TasksViewIcons';
+import { PriorityIcon, CheckIcon } from './TasksViewIcons';
 import styles from './TasksView.module.css';
 
 export function TaskDetailDrawerSubtasks({
@@ -58,16 +57,16 @@ export function TaskDetailDrawerSubtasks({
               <div key={sub.id} className={styles.subtaskCard} onClick={() => onSelectTask?.(sub)}>
                 <button
                   type="button"
-                  role="checkbox"
-                  aria-checked={sub.status === 'completed'}
-                  className={styles.taskCheckboxBtn}
+                  className={`${styles.taskCheckbox} ${sub.status === 'completed' ? styles.taskCheckboxChecked : ''}`}
                   aria-label={sub.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}
                   onClick={e => {
                     e.stopPropagation();
                     updateTask(sub.id, { status: sub.status === 'completed' ? 'pending' : 'completed' });
                   }}
                 >
-                  <CheckboxTick checked={sub.status === 'completed'} size={16} />
+                  <span className={styles.taskCheckIcon}>
+                    <CheckIcon size={13} />
+                  </span>
                 </button>
                 <div className={styles.subtaskCardBody}>
                   <div className={styles.subtaskCardRow}>

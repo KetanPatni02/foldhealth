@@ -38,14 +38,14 @@ function HealthRadarChart({ data }) {
         <PolarGrid stroke="#e9ecf1" strokeWidth={0.75} />
         <PolarAngleAxis
           dataKey="axis"
-          tick={{ fontSize: 11, fill: '#6f7a90', fontFamily: 'Inter, sans-serif' }}
+          tick={{ fontSize: 'var(--font-xs)', fill: '#6f7a90', fontFamily: 'Inter, sans-serif' }}
           tickLine={false}
         />
         <PolarRadiusAxis
           angle={90}
           domain={[0, 3]}
           tickCount={4}
-          tick={{ fontSize: 8, fill: '#d0d6e1', fontFamily: 'Inter, sans-serif' }}
+          tick={{ fontSize: '0.5rem', fill: '#d0d6e1', fontFamily: 'Inter, sans-serif' }}
           axisLine={false}
           tickLine={false}
         />

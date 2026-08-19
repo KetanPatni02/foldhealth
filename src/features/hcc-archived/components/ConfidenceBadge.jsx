@@ -28,7 +28,7 @@ export function ConfidenceBadge({ code, score: scoreProp, size = 's', title }) {
         background: sty.bg,
         color: sty.color,
         fontFamily: 'Inter, sans-serif',
-        fontSize: isXs ? 9 : 10,
+        fontSize: isXs ? 9 : 'var(--font-2xs)',
         fontWeight: 600,
         lineHeight: 1,
         whiteSpace: 'nowrap',

@@ -30,8 +30,8 @@ export default function SectionAccordion({ title, count, badgeColor, gradientFro
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>{title}</span>
-          <span style={{ background: badgeColor, color: 'var(--neutral-0)', fontSize: 10, fontWeight: 500, borderRadius: 4, padding: '2px 4px', minWidth: 16, textAlign: 'center' }}>
+          <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>{title}</span>
+          <span style={{ background: badgeColor, color: 'var(--neutral-0)', fontSize: 'var(--font-2xs)', fontWeight: 500, borderRadius: 4, padding: '2px 4px', minWidth: 'var(--font-lg)', textAlign: 'center' }}>
             {count}
           </span>
         </div>

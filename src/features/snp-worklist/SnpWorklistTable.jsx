@@ -113,7 +113,7 @@ function orderKeys(keys) {
 
 const thStyle = {
   padding: '8px 14px',
-  fontSize: 12,
+  fontSize: 'var(--font-sm)',
   fontWeight: 500,
   color: 'var(--neutral-300)',
   borderBottom: '1px solid var(--neutral-150)',

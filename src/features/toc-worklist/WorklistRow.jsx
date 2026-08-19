@@ -84,7 +84,7 @@ function OutreachCell({ patient }) {
             <Icon name="solar:phone-bold" size={15} color="var(--status-error)" />
             <div>
               <div className={styles.outreachWlFailed}>Failed</div>
-              {patient.outreachDate && <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{patient.outreachDate}</div>}
+              {patient.outreachDate && <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{patient.outreachDate}</div>}
             </div>
           </>
         ) : (
@@ -144,7 +144,7 @@ function AssigneeCell({ patient, platformUsers, updatePatient }) {
 
 function AgentAssignedCell({ patient }) {
   if (!patient.agentAssigned) {
-    return <span style={{ fontSize: 13, color: 'var(--neutral-200)' }}>—</span>;
+    return <span style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-200)' }}>—</span>;
   }
   return (
     <div className={styles.agentCell}>

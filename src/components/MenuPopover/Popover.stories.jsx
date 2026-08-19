@@ -47,7 +47,7 @@ function PopoverDemo({ buttonLabel = 'Open popover', children }) {
           background: 'var(--white)',
           cursor: 'pointer',
           fontFamily: 'Inter, sans-serif',
-          fontSize: 13,
+          fontSize: 'var(--font-md)',
           color: 'var(--neutral-400)',
         }}
       >

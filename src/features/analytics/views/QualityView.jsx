@@ -81,7 +81,7 @@ export function QualityView({ showToast, editing = false, resetTick = 0 }) {
         <select
           value={measureFilter}
           onChange={e => setMeasureFilter(e.target.value)}
-          style={{ fontSize: 12, padding: '3px 8px', minWidth: 130, borderRadius: 6, border: '1px solid var(--neutral-100)' }}
+          style={{ fontSize: 'var(--font-sm)', padding: '3px 8px', minWidth: 130, borderRadius: 6, border: '1px solid var(--neutral-100)' }}
         >
           {QUALITY_FILTER_OPTIONS.map(f => <option key={f}>{f}</option>)}
         </select>
@@ -152,7 +152,7 @@ export function QualityView({ showToast, editing = false, resetTick = 0 }) {
                   <td className={`${s.r} ${s.mono}`}>{p.gaps}</td>
                   <td className={`${s.r} ${rc}`} style={{ fontWeight: 500 }}>{p.toGoal}</td>
                   <td className={`${s.r}`}>{p.awv}</td>
-                  <td style={{ color: tc, fontSize: 14, textAlign: 'center' }}>{p.trend}</td>
+                  <td style={{ color: tc, fontSize: 'var(--font-base)', textAlign: 'center' }}>{p.trend}</td>
                 </tr>
               );
             })}
@@ -168,8 +168,8 @@ export function QualityView({ showToast, editing = false, resetTick = 0 }) {
       style={{ border: '1px solid var(--status-error-light)' }}
       actions={
         <div style={{ display: 'flex', gap: 6 }}>
-          <Button variant="primary" size="S" style={{ fontSize: 12 }} onClick={() => showToast?.('Scheduling AWV for 620 members')}>Schedule AWV (620)</Button>
-          <Button variant="ghost" size="S" style={{ fontSize: 12 }} onClick={() => showToast?.('Scheduling office visits for 620 members')}>Schedule Office Visit (620)</Button>
+          <Button variant="primary" size="S" style={{ fontSize: 'var(--font-sm)' }} onClick={() => showToast?.('Scheduling AWV for 620 members')}>Schedule AWV (620)</Button>
+          <Button variant="ghost" size="S" style={{ fontSize: 'var(--font-sm)' }} onClick={() => showToast?.('Scheduling office visits for 620 members')}>Schedule Office Visit (620)</Button>
         </div>
       }
     >
@@ -180,7 +180,7 @@ export function QualityView({ showToast, editing = false, resetTick = 0 }) {
         <Button variant="primary" size="S" onClick={() => showToast?.('Viewing all 1,240 members')}>View All 1,240 Members &rarr;</Button>
         <Button variant="ghost" size="S" onClick={() => showToast?.('AWV Opportunity: 847 members')}>AWV Opportunity (847) &rarr;</Button>
       </div>
-      <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginTop: 8 }}>
+      <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: '0.5rem' }}>
         Two separate cohorts for split targeting: AWV scheduling for prevention-eligible members; office visit for members recently seen but no gap addressed.
       </div>
     </Card>

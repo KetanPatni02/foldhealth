@@ -43,7 +43,7 @@ export default {
 // spacer so it renders inside the story canvas.
 const Stage = ({ children }) => (
   <div style={{ minHeight: 240, position: 'relative', padding: 24 }}>
-    <p style={{ color: 'var(--neutral-300)', fontSize: 13 }}>
+    <p style={{ color: 'var(--neutral-300)', fontSize: 'var(--font-md)' }}>
       BulkBar renders as a floating bar at the bottom of the viewport.
     </p>
     {children}

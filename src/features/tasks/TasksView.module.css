@@ -199,10 +199,69 @@
   justify-content: center;
 }
 
-/* Bespoke .taskCheckbox / .taskCheckboxChecked / .taskCheckIcon rules were
-   removed once every caller migrated to the shared <CheckboxTick> primitive
-   (row, kanban card, subtask drawer). The interaction wrapper is
-   .taskCheckboxBtn defined further down. */
+.taskCheckbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-0);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition:
+    background var(--duration-fast) var(--ease-hover),
+    border-color var(--duration-fast) var(--ease-hover),
+    transform var(--duration-fast) var(--ease-out);
+  padding: 0;
+}
+
+.taskCheckbox:hover {
+  border-color: var(--primary-300);
+}
+
+/* Press feedback — subtle scale-down while held. Slightly deeper than the
+   Button primitive's 0.97 because the checkbox is a smaller hit target. */
+.taskCheckbox:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.taskCheckboxChecked {
+  background: var(--status-success-bright);
+  border-color: var(--status-success-bright);
+}
+
+.taskCheckboxChecked:hover {
+  background: var(--status-success);
+  border-color: var(--status-success);
+}
+
+/* Check icon — always mounted; scale + opacity drive the state change so
+   React never remounts the SVG. */
+.taskCheckIcon {
+  display: inline-flex;
+  transform: scale(0.6);
+  opacity: 0;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    opacity var(--duration-fast) var(--ease-out);
+}
+
+.taskCheckboxChecked .taskCheckIcon {
+  transform: scale(1);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .taskCheckbox:active:not(:disabled) {
+    transform: none;
+  }
+  .taskCheckIcon,
+  .taskCheckboxChecked .taskCheckIcon {
+    transform: none;
+  }
+}
 
 /* Task info */
 .cellTask {
@@ -481,19 +540,6 @@
 /* ═══════════════════════════════════════════════════════════
    Kanban Board View
    ═══════════════════════════════════════════════════════════ */
-.kanbanAxisHint {
-  padding: 8px 16px;
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  border-bottom: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-  flex-shrink: 0;
-}
-.kanbanAxisHint strong {
-  color: var(--neutral-400);
-  font-weight: 500;
-}
-
 .kanbanWrap {
   flex: 1;
   display: flex;
@@ -1192,23 +1238,6 @@
 }
 .subtaskAddInputWrap {
   flex: 1;
-}
-/* Shared bare-button wrapper for CheckboxTick — used by list rows, kanban
-   card, and subtask drawer. Provides the interaction hitbox (native button
-   + role=checkbox), CheckboxTick provides the visual. */
-.taskCheckboxBtn {
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.taskCheckboxBtn:focus-visible {
-  outline: 2px solid var(--primary-200);
-  outline-offset: 2px;
-  border-radius: 4px;
 }
 
 .subtaskCardNameDone {

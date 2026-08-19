@@ -41,7 +41,7 @@ export const Playground = {
   render: () => (
     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
       <Wrapper defaultChecked={false} aria-label="Accept terms" />
-      <span style={{ fontSize: 14, color: 'var(--neutral-500)' }}>Accept terms</span>
+      <span style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-500)' }}>Accept terms</span>
     </label>
   ),
 };
@@ -49,7 +49,7 @@ export const Playground = {
 function Row({ label, children }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-      <span style={{ width: 200, fontSize: 12, color: 'var(--neutral-300)' }}>{label}</span>
+      <span style={{ width: 200, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>{label}</span>
       {children}
     </div>
   );

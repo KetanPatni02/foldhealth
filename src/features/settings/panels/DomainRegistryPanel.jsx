@@ -18,10 +18,10 @@ import { HeaderCell } from '../../../components/HeaderCell/HeaderCell';
 
 const thStyle = {
   textAlign: 'left', padding: '8px 16px', color: 'var(--neutral-300)', fontWeight: 500,
-  fontSize: 12, whiteSpace: 'nowrap', borderBottom: '0.5px solid var(--neutral-150)',
+  fontSize: 'var(--font-sm)', whiteSpace: 'nowrap', borderBottom: '0.5px solid var(--neutral-150)',
   background: 'var(--neutral-0)', position: 'sticky', top: 0,
 };
-const tdStyle = { padding: '12px 16px', fontSize: 14, fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
+const tdStyle = { padding: '12px 16px', fontSize: 'var(--font-base)', fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
 
 const CATEGORY_BADGE_MAP = {
   'Internal': 'ai-care', 'Prior authorization': 'ai-care',
@@ -40,7 +40,7 @@ function getComponentStats(domainId, components) {
 }
 
 /* ── Form Field Wrapper ── */
-const FORM_FIELD_LABEL_STYLE = { fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)' };
+const FORM_FIELD_LABEL_STYLE = { fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)' };
 
 function FormField({ label, hint, controlId, children }) {
   return (
@@ -49,7 +49,7 @@ function FormField({ label, hint, controlId, children }) {
         ? <label htmlFor={controlId} style={FORM_FIELD_LABEL_STYLE}>{label}</label>
         : <span style={FORM_FIELD_LABEL_STYLE}>{label}</span>}
       {children}
-      {hint && <span style={{ fontSize: 11, color: hint.color || 'var(--neutral-200)' }}>{hint.text || hint}</span>}
+      {hint && <span style={{ fontSize: 'var(--font-xs)', color: hint.color || 'var(--neutral-200)' }}>{hint.text || hint}</span>}
     </div>
   );
 }
@@ -112,7 +112,7 @@ function AddDomainDrawer({ onClose, onSave }) {
           background: 'var(--status-warning-light)', border: '0.5px solid color-mix(in srgb, var(--status-warning) 20%, transparent)',
         }}>
           <Icon name="solar:shield-warning-linear" size={16} color="var(--status-warning)" style={{ flexShrink: 0, marginTop: 1 }} />
-          <div style={{ fontSize: 12, color: 'var(--status-warning)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-warning)', lineHeight: 1.5 }}>
             Patient context including patientId will be shared with iFrames on this domain. Only register domains from HIPAA-compliant vendors.
           </div>
         </div>
@@ -170,7 +170,7 @@ function EditDomainDrawer({ domain, onClose, onSave }) {
           background: 'var(--status-warning-light)', border: '0.5px solid color-mix(in srgb, var(--status-warning) 20%, transparent)',
         }}>
           <Icon name="solar:info-circle-linear" size={16} color="var(--status-warning)" style={{ flexShrink: 0, marginTop: 1 }} />
-          <div style={{ fontSize: 12, color: 'var(--status-warning)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-warning)', lineHeight: 1.5 }}>
             Domain URL cannot be changed after registration. Delete and re-add to change the domain.
           </div>
         </div>
@@ -258,7 +258,7 @@ export function DomainRegistryPanel({ searchQuery = '' }) {
           background: 'var(--status-info-light)', borderBottom: '0.5px solid color-mix(in srgb, var(--status-info) 30%, transparent)',
         }}>
           <Icon name="solar:info-circle-linear" size={16} color="var(--status-info)" style={{ flexShrink: 0 }} />
-          <div style={{ fontSize: 12, color: 'var(--status-info)', lineHeight: 1.5, flex: 1 }}>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-info)', lineHeight: 1.5, flex: 1 }}>
             Domains are account-scoped. Only URLs from registered domains can be used when configuring components.
           </div>
           <CloseButton size={16} onClick={() => setInfoDismissed(true)} label="Dismiss info banner" />
@@ -285,8 +285,8 @@ export function DomainRegistryPanel({ searchQuery = '' }) {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--neutral-300)' }}>
                   <Icon name="solar:global-linear" size={32} color="var(--neutral-150)" />
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>No domains found</div>
-                    <div style={{ fontSize: 13, marginTop: 4 }}>
+                    <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>No domains found</div>
+                    <div style={{ fontSize: 'var(--font-md)', marginTop: 4 }}>
                       {searchQuery.trim() ? 'Try adjusting your search.' : 'Register your first domain to start configuring embedded components.'}
                     </div>
                   </div>
@@ -306,7 +306,7 @@ export function DomainRegistryPanel({ searchQuery = '' }) {
               >
                 <td style={{ ...tdStyle, fontWeight: 500, color: 'var(--neutral-400)' }}>{d.vendor}</td>
                 <td style={tdStyle}>
-                  <code style={{ background: 'var(--neutral-50)', padding: '2px 6px', borderRadius: 4, fontSize: 11, fontFamily: "'SF Mono', monospace", color: 'var(--neutral-400)' }}>{d.domain}</code>
+                  <code style={{ background: 'var(--neutral-50)', padding: '2px 6px', borderRadius: 4, fontSize: 'var(--font-xs)', fontFamily: "'SF Mono', monospace", color: 'var(--neutral-400)' }}>{d.domain}</code>
                 </td>
                 <td style={tdStyle}><Badge variant={CATEGORY_BADGE_MAP[d.category] || 'ai-neutral'} label={d.category} /></td>
                 <td style={tdStyle}><Badge variant={HIPAA_BADGE_MAP[d.hipaa] || 'ai-neutral'} label={d.hipaa} /></td>

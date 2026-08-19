@@ -44,6 +44,15 @@
         ],
         "createdAt": "2026-08-19T08:12:02.738Z",
         "reason": "background is a paint-only property, not a layout property — no thrash"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "width",
+        "files": [
+          "src/features/forms/render/FormRenderer.module.css"
+        ],
+        "createdAt": "2026-08-19T10:00:00.000Z",
+        "reason": "Progress-bar fill: width is the intended property for a determinate track, not a layout animation to avoid"
       }
     ]
   }

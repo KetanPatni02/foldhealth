@@ -140,7 +140,7 @@ export const ALL_PATIENTS_MIDDLE_COLUMNS = [
       row.pcp ? (
         <div className={rowStyles.assigneeCell}>
           <Avatar variant="staff" initials={row.pcpInitials || row.pcp.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} />
-          <span style={{ fontSize: 13 }}>{row.pcp}</span>
+          <span style={{ fontSize: 'var(--font-md)' }}>{row.pcp}</span>
         </div>
       ) : (
         <span className={styles.dash}>—</span>

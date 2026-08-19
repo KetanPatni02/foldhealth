@@ -53,7 +53,7 @@ export function DetailDrawerRecording({
         </span>
       </button>
       {open && (!callTranscript || callTranscript.length === 0) && (
-        <div style={{ padding: '16px', fontSize: 13, color: 'var(--neutral-300)', textAlign: 'center' }}>
+        <div style={{ padding: '16px', fontSize: 'var(--font-md)', color: 'var(--neutral-300)', textAlign: 'center' }}>
           No call recording available. Recording will appear after a completed call.
         </div>
       )}
@@ -169,7 +169,7 @@ export function DetailDrawerRecording({
                     </div>
                     {!isSystem && msg.sender === 'patient' && (
                       <div className={styles.msgAvatar} style={{ background: 'var(--primary-100)', marginTop: 18 }}>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--primary-400)' }}>
+                        <span style={{ fontSize: 'var(--font-2xs)', fontWeight: 600, color: 'var(--primary-400)' }}>
                           {msg.name.split(' ').map(n => n[0]).join('')}
                         </span>
                       </div>

@@ -110,7 +110,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
               </div>
               <div className={styles.profileCardBottom}>
                 <strong>{selectedProfileId === 'central' ? p.health_plan_name : (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name}</strong> <span>({p.health_plan_id || formatFoldId(patient.memberId)})</span>
-                <span className={`${styles.badge} ${styles.badgeGrey}`} style={{ height: 18, fontSize: 12, padding: '0 4px', marginLeft: 4 }}>+{((p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1)}</span>
+                <span className={`${styles.badge} ${styles.badgeGrey}`} style={{ height: 18, fontSize: 'var(--font-sm)', padding: '0 4px', marginLeft: 4 }}>+{((p.insurance_profiles || FALLBACK_P360.insurance_profiles).length - 1)}</span>
               </div>
             </button>
             {showProfileDropdown && (

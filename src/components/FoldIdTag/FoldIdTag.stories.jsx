@@ -45,13 +45,13 @@ const previewStyles = `
 export const Playground = {
   args: { id: '10070' },
   render: (args) => (
-    <div style={{ padding: 48, fontFamily: 'Inter, sans-serif', fontSize: 13 }}>
+    <div style={{ padding: 48, fontFamily: 'Inter, sans-serif', fontSize: 'var(--font-md)' }}>
       <FoldIdTag
         {...args}
         showToast={() => {}}
         className="foldId-storybook-preview"
       />
-      <p style={{ marginTop: 32, fontSize: 12, color: 'var(--neutral-200)' }}>
+      <p style={{ marginTop: 32, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>
         Hover the ID above to see "Click to copy Member ID", then click to trigger the "Copied" transition.
       </p>
       <style>{previewStyles}</style>
@@ -82,7 +82,7 @@ export const TransitionDemo = {
     }, []);
     const shown = formatFoldId('10070');
     return (
-      <div style={{ padding: '96px 48px 48px', fontFamily: 'Inter, sans-serif', fontSize: 13, textAlign: 'center' }}>
+      <div style={{ padding: '96px 48px 48px', fontFamily: 'Inter, sans-serif', fontSize: 'var(--font-md)', textAlign: 'center' }}>
         <div style={{ display: 'inline-block', position: 'relative' }}>
           {/* Mock of the Tooltip bubble — same neutral-500 background,
               same 6px radius, same 12/font shadow — anchored above a
@@ -98,7 +98,7 @@ export const TransitionDemo = {
               background: 'var(--neutral-500)',
               color: 'var(--neutral-0)',
               borderRadius: 6,
-              fontSize: 12,
+              fontSize: 'var(--font-sm)',
               whiteSpace: 'nowrap',
               boxShadow: '0 4px 12px rgba(0,0,0,.14)',
               pointerEvents: 'none',
@@ -110,7 +110,7 @@ export const TransitionDemo = {
           </div>
           <span className="foldId-storybook-preview">{shown}</span>
         </div>
-        <p style={{ marginTop: 48, fontSize: 12, color: 'var(--neutral-200)' }}>
+        <p style={{ marginTop: 48, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>
           Label swaps every 1.6s so you can watch the fade animation loop.
         </p>
         <style>{previewStyles}</style>
