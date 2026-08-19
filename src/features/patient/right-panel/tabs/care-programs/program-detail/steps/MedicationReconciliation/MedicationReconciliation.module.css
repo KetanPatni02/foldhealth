@@ -1,7 +1,11 @@
 .container {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
+  /* The table is the only thing allowed to scroll sideways (see
+     .tableScroll); the page itself never does. */
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -11,6 +15,13 @@
      drawer itself resized, not one specific toggle. */
   container-type: inline-size;
   container-name: medRecon;
+}
+/* Sections keep their natural height and let .container scroll instead.
+   Flex items default to flex-shrink:1, so expanding the discharge-updates
+   list would otherwise squash the medications table and checklist toward
+   zero rather than pushing them down. */
+.container > * {
+  flex-shrink: 0;
 }
 
 /* Entrance for the "Add New" search/form panels and the discharge-upload
@@ -38,6 +49,11 @@
   gap: 8px;
 }
 .medHeaderLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.medHeaderRight {
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -76,7 +92,7 @@
   padding: 0 5px;
   border-radius: 4px;
   background: var(--secondary-300);
-  color: var(--neutral-500);
+  color: var(--neutral-0);
   font-size: 12px;
   font-weight: 500;
 }
@@ -133,6 +149,41 @@
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 0.5px solid var(--neutral-150);
+}
+/* Row exit — used when a discharge suggestion is dismissed and when a saved
+   medication is deleted. The row slides right, then collapses its own height
+   so the rows below close the gap in the same beat instead of jumping once
+   it's gone. The component removes it from state on animationend.
+
+   `max-height` is the only way to animate an auto height here; the 120px cap
+   is comfortably above a real row (even with a wrapped Sig), so it doesn't
+   clip mid-flight. Longer than --duration-slow on purpose — the slide reads
+   as a deliberate "this is leaving the list" beat. */
+@keyframes rowExit {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 120px;
+  }
+  55% {
+    opacity: 0;
+    transform: translateX(100%);
+    max-height: 120px;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(100%);
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-width: 0;
+  }
+}
+.extractedRowExiting,
+.medRowExiting {
+  animation: rowExit 450ms var(--ease-out) forwards;
+  overflow: hidden;
+  pointer-events: none;
 }
 .extractedRow:last-child {
   border-bottom: none;
@@ -244,33 +295,314 @@
   border-radius: 8px;
 }
 
-/* ── Medications table ── */
-.table {
+/* ── Medications card view — Figma 7211:452572 ── */
+/* Owns the select-all → list spacing in one place. Without the wrapper the
+   two sat as siblings under .container's 16px gap and stacked with the
+   row's own bottom padding. */
+.medCardSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.medCardSelectAll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.medCardList {
   display: flex;
   flex-direction: column;
 }
+.medCardRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.medCardRow:last-child {
+  border-bottom: none;
+}
+.medCardText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.medCardNameRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.medCardName {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.medCardMeta {
+  font-size: 14px;
+  color: var(--neutral-300);
+}
+.medCardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+/* "Stop | Continue" segmented pair — bordered container, divider between
+   the two buttons instead of a gap. */
+.medStopContinue {
+  display: flex;
+  align-items: center;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.medStopContinue button {
+  background: var(--neutral-0);
+  border: none;
+  padding: 6px 8px;
+  font-size: 14px;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.medStopContinue button:disabled {
+  cursor: default;
+  color: var(--neutral-150);
+}
+.medStopContinue button:first-child {
+  border-right: 0.5px solid var(--neutral-150);
+}
+/* Selected-state fills — Stop turns error-red once a medication is
+   actually stopped; Continue turns success-green once acknowledged.
+   Selectors are scoped through `.medStopContinue button` so they outrank
+   the `button:disabled` rule above: a stopped pill keeps its white-on-red
+   fill instead of picking up the greyed-out disabled text color. */
+.medStopContinue button.stopActive,
+.medStopContinue button.stopActive:disabled {
+  background: var(--status-error);
+  color: var(--neutral-0);
+}
+.medStopContinue button.continueActive {
+  background: var(--status-success);
+  color: var(--neutral-0);
+}
+
+/* ── Medications table ── */
+/* The only horizontally-scrolling region. */
+.tableScroll {
+  overflow-x: auto;
+  min-width: 0;
+  /* Container context so the note strip can size itself to the visible pane
+     (100cqi) rather than the table's much wider min-width. */
+  container-type: inline-size;
+}
+/* min-width is the sum of every fixed track plus the name column's 200px
+   floor (32+200+139+139+260+110+100). Above that the table just fills the
+   pane and the name column's 1fr soaks up the slack; below it the table
+   holds this width and .tableScroll scrolls. Keep in sync with
+   grid-template-columns below. */
+.table {
+  display: flex;
+  flex-direction: column;
+  min-width: 980px;
+}
+/* Date tracks are 123px + 16px cell padding, status is 94px + 16px, so the
+   inline editors drop in at their exact widths without reflowing the row.
+   The actions track is sized to what the button cluster actually measures
+   (Note icon + divider + kebab + cell padding). None can be `max-content` —
+   every row is its own grid, so the header labels and the data rows would
+   resolve to different widths and the columns would misalign. Widen the
+   actions track again if the Stop/Continue toggle comes back. */
 .headRow,
 .row {
   display: grid;
-  grid-template-columns: 32px minmax(200px, 1.4fr) 110px 110px minmax(200px, 1.6fr) minmax(160px, 1.2fr);
+  grid-template-columns: 32px minmax(200px, 1fr) 139px 139px 260px 110px 100px;
   align-items: center;
-  column-gap: 8px;
 }
 .headRow {
-  padding: 8px 4px;
   border-bottom: 0.5px solid var(--neutral-150);
   font-size: 14px;
   color: var(--neutral-300);
 }
 .row {
-  padding: 10px 4px;
   border-bottom: 0.5px solid var(--neutral-100);
 }
-.checkCell { display: flex; align-items: center; }
-.nameCell { font-size: 14px; color: var(--neutral-500); min-width: 0; }
-.dateCell { font-size: 14px; color: var(--neutral-300); white-space: nowrap; }
-.sigCell { font-size: 14px; color: var(--neutral-300); min-width: 0; }
-.noteCell { font-size: 14px; color: var(--neutral-300); min-width: 0; }
+/* Each cell owns its own 8/8px padding — column-gap alone collapsed when a
+   cell's content (e.g. Sig wrapping to two lines, Status + Actions sitting
+   close together) grew past its column width, so text touched the next
+   column instead of stopping at a gutter. */
+.checkCell { display: flex; align-items: center; padding: 8px; }
+.nameCell { font-size: 14px; color: var(--neutral-500); min-width: 0; padding: 8px; }
+.dateCell { font-size: 14px; color: var(--neutral-300); white-space: nowrap; padding: 8px; }
+.sigCell { font-size: 14px; color: var(--neutral-300); min-width: 0; padding: 8px; }
+.statusCell { font-size: 14px; color: var(--neutral-300); min-width: 0; padding: 8px; }
+.actionsCell { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px; }
+
+/* Pinned columns — checkbox + medication name hold the left edge, actions
+   hold the right, while the middle (dates / sig / status) scrolls under
+   them. Each needs its own opaque background or scrolling content shows
+   through. */
+.checkCell,
+.nameCell {
+  position: sticky;
+  z-index: 1;
+  background: var(--neutral-0);
+}
+.checkCell { left: 0; }
+.nameCell { left: 32px; }
+.actionsCell {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--neutral-0);
+}
+
+/* Read-only table cell that doubles as an inline-edit trigger. Reads as
+   plain text until hovered/focused so the table stays calm, but it's a real
+   button underneath for keyboard access. */
+.cellEditTrigger {
+  display: block;
+  width: 100%;
+  margin: -4px;
+  padding: 4px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: text;
+  transition: background var(--duration-fast) var(--ease-hover);
+}
+.cellEditTrigger:hover {
+  background: var(--neutral-50);
+}
+.cellEditTrigger:focus-visible {
+  outline: 1px solid var(--primary-300);
+  outline-offset: 0;
+}
+/* Fixed widths for the editable controls. The date/status columns are sized
+   to these plus the cell's 8px side padding, so swapping a cell into edit
+   mode doesn't reflow the row. */
+.cellEditDate,
+.cellEditStatus {
+  display: block;
+}
+.cellEditDate {
+  width: 123px;
+}
+.cellEditStatus {
+  width: 94px;
+}
+/* `min-width: 0` matters — DatePicker's own `.input` carries a 140px
+   min-width that would otherwise beat `width: 100%` and spill the control
+   into the next column. */
+.cellEditDate > *,
+.cellEditStatus > * {
+  width: 100%;
+  min-width: 0;
+}
+
+/* ── Inline edit of a saved medication — Figma 2094:37808 ──
+   The row is swapped for the shared form card while every other row blurs
+   back, so the edit reads as a focused, temporary state. */
+/* Pairs with .addPanel, which supplies the white card chrome — this only
+   adds the breathing room the surrounding rows would otherwise provide. */
+.medEditRow {
+  margin: 8px 0;
+}
+.medRowDimmed {
+  filter: blur(1px);
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+.formEyebrow {
+  font-size: 12px;
+  color: var(--neutral-300);
+}
+
+/* ── Inline note editor — Figma 2529:16692 ──
+   Expands under the medication row it belongs to, in both the card and table
+   views. Full-bleed grey strip, indented to sit under the med name. */
+.noteEditor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--neutral-50);
+  padding: 8px 12px 12px 20px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  box-sizing: border-box;
+  /* Fill the visible pane instead of the table's full scroll width, and stay
+     put when the table scrolls sideways. In the card view the nearest
+     container is .container, which is the right width there too. */
+  width: 100cqi;
+  position: sticky;
+  left: 0;
+}
+/* The line that reads as the note strip's "top border" is actually the med
+   row's own bottom border — drop it while expanded so the row and its note
+   read as one block. */
+.rowNoteOpen,
+.medCardRowNoteOpen {
+  border-bottom: none;
+}
+.noteEditorLabel {
+  font-size: 13px;
+  color: var(--neutral-300);
+}
+
+/* ── Bulk action bar — Figma 2570:46879 ──
+   Same treatment as the Letters step. `position: absolute` resolves against
+   the program content column (the nearest positioned ancestor), not
+   .container — so the bar stays pinned while the list scrolls under it.
+   left/right:0 + margin:auto rather than left:50% + translateX, or
+   shrink-to-fit would cap the bar at half the column width. */
+.bulkBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  z-index: 200;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--neutral-0);
+  border-radius: 8px;
+  box-shadow: var(--shadow-bulk-bar);
+}
+.bulkSelect {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.bulkCount {
+  font-size: 14px;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.bulkDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
 
 /* ── Medication Checklist ── */
 .checklist {
@@ -280,9 +612,19 @@
   padding-top: 8px;
 }
 .checklistTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 14px;
   font-weight: 500;
   color: var(--neutral-500);
+}
+.mandatoryDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
 }
 .checkItem {
   display: flex;

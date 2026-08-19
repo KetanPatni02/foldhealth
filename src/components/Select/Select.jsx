@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import styles from './Select.module.css';
@@ -20,6 +21,12 @@ import styles from './Select.module.css';
  *  - id         (string)        — passes through to the trigger button
  *  - menuAlign  'left' | 'right' — popover horizontal anchor (defaults left)
  *  - leadingIcon (string)       — optional Solar icon shown before the label
+ *  - portal     (boolean)       — render the menu into document.body with
+ *                                 fixed positioning. Needed when the Select
+ *                                 sits inside a scroll container (e.g. a
+ *                                 horizontally-scrolling table), which would
+ *                                 otherwise clip the absolutely-positioned
+ *                                 menu. Off by default.
  */
 export function Select({
   options = [],
@@ -43,6 +50,7 @@ export function Select({
   // onChange with its own value and closes the menu (used to break out
   // of multi-select into a one-off action).
   multiple = false,
+  portal = false,
 }) {
   const valueArray = multiple ? (Array.isArray(value) ? value : []) : null;
   const valueSet = useMemo(
@@ -56,12 +64,19 @@ export function Select({
   const [menuPlacement, setMenuPlacement] = useState('bottom');
   const [query, setQuery] = useState('');
   const wrapRef = useRef(null);
+  const menuRef = useRef(null);
   const searchRef = useRef(null);
+  // Trigger geometry, captured on open, used to place a portaled menu.
+  const [anchorRect, setAnchorRect] = useState(null);
 
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      const inWrap = wrapRef.current?.contains(e.target);
+      // A portaled menu is outside wrapRef, so check it separately or the
+      // menu would close before the click landed on an option.
+      const inMenu = menuRef.current?.contains(e.target);
+      if (!inWrap && !inMenu) setOpen(false);
     };
     const keyHandler = (e) => {
       if (e.key === 'Escape') setOpen(false);
@@ -81,6 +96,7 @@ export function Select({
     const trigger = wrapRef.current?.querySelector('button');
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
+    setAnchorRect({ top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, width: rect.width });
     const MENU_MAX = 260; // .menu max-height (240) + a little buffer
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
@@ -92,6 +108,10 @@ export function Select({
     if (open && searchable) searchRef.current?.focus();
     if (!open) setQuery('');
   }, [open, searchable]);
+
+  // Portaled menus escape any clipping scroll container; inline ones keep
+  // the original absolute-in-wrap behaviour.
+  const renderMenu = (node) => (portal ? createPortal(node, document.body) : node);
 
   const selected = multiple ? null : options.find(o => o.value === value);
   const selectedMulti = multiple
@@ -141,14 +161,24 @@ export function Select({
           className={open ? styles.chevronOpen : styles.chevron}
         />
       </button>
-      {open && (
+      {open && renderMenu(
         <ul
+          ref={menuRef}
           role="listbox"
           className={[
             styles.menu,
-            menuAlign === 'right' ? styles.menuRight : '',
-            menuPlacement === 'top' ? styles.menuTop : '',
+            portal ? styles.menuPortal : '',
+            !portal && menuAlign === 'right' ? styles.menuRight : '',
+            !portal && menuPlacement === 'top' ? styles.menuTop : '',
           ].filter(Boolean).join(' ')}
+          style={portal && anchorRect ? {
+            width: anchorRect.width,
+            left: menuAlign === 'right' ? undefined : anchorRect.left,
+            right: menuAlign === 'right' ? window.innerWidth - anchorRect.right : undefined,
+            ...(menuPlacement === 'top'
+              ? { bottom: window.innerHeight - anchorRect.top + 4 }
+              : { top: anchorRect.bottom + 4 }),
+          } : undefined}
         >
           {searchable && (
             <li className={styles.searchRow}>

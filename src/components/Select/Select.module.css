@@ -86,6 +86,19 @@
   overflow-y: auto;
 }
 
+/* Portaled variant — lives on document.body, so it's positioned against the
+   viewport from the trigger's measured rect instead of its wrapper. Lets the
+   menu escape a clipping scroll container (e.g. a horizontally-scrolling
+   table). Coordinates come from inline styles set by the component. */
+.menuPortal {
+  position: fixed;
+  top: auto;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  z-index: 9800;
+}
+
 /* Flip-up variant — used when the trigger is near the bottom of the
    viewport and opening downward would clip. Pinned above the trigger. */
 .menuTop {

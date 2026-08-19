@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
+import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import styles from './MenuPopover.module.css';
 
 /**
@@ -19,7 +20,9 @@ import styles from './MenuPopover.module.css';
  * @param {object}   props
  * @param {DOMRect}  [props.anchorRect]
  * @param {object}   [props.anchorRef]
- * @param {Array}    props.items          – [{ key, icon, label, trailing, danger, disabled, hint }]
+ * @param {Array}    props.items          – [{ key, icon, iconElement, label, trailing, danger, disabled, hint }]
+ *                                          `iconElement` renders a custom node in the icon slot,
+ *                                          overriding the Solar `icon` name.
  *                                          Also accepts { section: 'Label' } for an uppercase
  *                                          group header and { divider: true } for a rule line.
  * @param {function} props.onSelect       – (key, item) => void
@@ -117,12 +120,13 @@ export function MenuPopover({
               onClose?.();
             }}
           >
-            {item.icon && (
+            {item.iconElement}
+            {!item.iconElement && item.icon && (
               <Icon name={item.icon} size={16} color={item.danger ? 'var(--status-error)' : 'var(--neutral-400)'} />
             )}
             <span className={styles.label}>{item.label}</span>
             {item.trailing && (
-              <Icon name="solar:alt-arrow-right-linear" size={10} color="var(--neutral-300)" />
+              <DownChevronIcon size={12} color="var(--neutral-300)" className={styles.submenuChevron} />
             )}
           </button>
           );

@@ -37,6 +37,9 @@ const VARIANT_DEFAULTS = {
  * @param {function} props.onConfirm   – Called when user clicks the primary action.
  * @param {function} props.onCancel    – Called when user clicks cancel or overlay.
  * @param {boolean}  props.loading     – If true, disable buttons and show loading text.
+ * @param {string}   [props.overlayClassName] – Override the scrim utility class
+ *   (defaults to the shared `bg-black/40`), e.g. `bg-black/25` for a lighter
+ *   backdrop.
  */
 export function ConfirmDialog({
   variant = 'warning',
@@ -49,6 +52,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   loading = false,
+  overlayClassName,
 }) {
   const preset = VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.warning;
   const resolvedIcon = icon ?? preset.icon;
@@ -58,6 +62,7 @@ export function ConfirmDialog({
     <AlertDialog open onOpenChange={(open) => { if (!open) onCancel?.(); }}>
       <AlertDialogContent
         className="flex flex-col items-center gap-4 p-5 max-w-[340px]"
+        overlayClassName={overlayClassName}
       >
         <div className="flex items-center justify-center w-6 h-6 shrink-0">
           <Icon name={resolvedIcon} size={24} color={resolvedIconColor} />

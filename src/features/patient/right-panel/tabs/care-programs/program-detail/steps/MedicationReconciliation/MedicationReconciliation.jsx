@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '../../../../../../../../components/Button/Button';
 import { Input } from '../../../../../../../../components/Input/Input';
@@ -13,6 +13,11 @@ import { MenuPopover } from '../../../../../../../../components/MenuPopover/Menu
 import { SearchBar } from '../../../../../../../../components/SearchBar/SearchBar';
 import { DocumentUploader, FileRow } from '../../../../../../../../components/DocumentUploader/DocumentUploader';
 import { CloseButton } from '../../../../../../../../components/CloseButton/CloseButton';
+import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
+import { Toggle } from '../../../../../../../../components/Toggle/Toggle';
+import { TableIcon } from '../../../../../../../../components/Icon/TableIcon';
+import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { searchMedications } from '../../../../../../../../lib/openfda';
 import { MED_RECON_MOCK } from '../../../../../../data/medReconMock';
@@ -60,6 +65,15 @@ const ADD_NEW_MENU_ITEMS = [
   { key: 'manual', icon: 'solar:pen-2-linear', label: 'Add Manually' },
   { key: 'discharge', icon: 'solar:upload-minimalistic-linear', label: 'Upload Discharge Summary' },
   { key: 'surescript', icon: 'solar:refresh-circle-linear', label: 'Sync Surescript' },
+];
+
+// Active Medications view toggle — mirrors the list/grid Toggle used on
+// Program Related Files.
+const MED_VIEW_ITEMS = [
+  // Passed as an element, not a `custom:table` name, so the glyph inherits the
+  // Toggle's active/hover text color instead of TableIcon's neutral default.
+  { key: 'table', icon: <TableIcon size={14} color="currentColor" /> },
+  { key: 'card', icon: 'solar:list-linear' },
 ];
 
 // Matches a numbered line like "1. Metformin 1000mg - 1 tab daily on empty
@@ -251,11 +265,54 @@ async function extractMedsFromFile(file, onProgress) {
   return meds;
 }
 
+// Per-row overflow menu holding Edit + Delete. Each row needs its own
+// trigger ref and open state, so this can't be hoisted into the parent.
+const MED_ROW_MENU_ITEMS = [
+  { key: 'edit', icon: 'solar:pen-2-linear', label: 'Edit' },
+  { key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true },
+];
+
+function MedRowMenu({ onEdit, onDelete }) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        className={styles.extractedIconBtn}
+        onClick={() => setOpen(v => !v)}
+        aria-label="More actions"
+        title="More actions"
+      >
+        <Icon name="solar:menu-dots-linear" size={16} color="var(--neutral-300)" />
+      </button>
+      {open && (
+        <MenuPopover
+          anchorRef={btnRef}
+          items={MED_ROW_MENU_ITEMS}
+          onSelect={(key) => {
+            if (key === 'edit') onEdit();
+            else onDelete();
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+          width={160}
+          ariaLabel="Medication actions"
+        />
+      )}
+    </>
+  );
+}
+
 export function MedicationReconciliation() {
   const patientId          = useAppStore(s => s.selectedPatientId);
   const storedMeds         = useAppStore(s => (patientId ? s.patientMedications[patientId] : null));
   const fetchPatientMedications = useAppStore(s => s.fetchPatientMedications);
   const addPatientMedication    = useAppStore(s => s.addPatientMedication);
+  const updatePatientMedication = useAppStore(s => s.updatePatientMedication);
+  const deletePatientMedication = useAppStore(s => s.deletePatientMedication);
   const showToast = useAppStore(s => s.showToast);
 
   useEffect(() => {
@@ -273,6 +330,9 @@ export function MedicationReconciliation() {
   // by medication id, matches Figma 2556:46848.
   const [noteExpanded, setNoteExpanded] = useState({});
 
+  // table (grid/columns) vs card (Figma 7211:452572) view of Active Medications.
+  const [medView, setMedView] = useState('table');
+
   // Add-New container state. Three phases:
   //   closed  — the "Add New" button is idle, nothing rendered below the header.
   //   search  — the container shows a search input; the user is typing or picking.
@@ -285,16 +345,17 @@ export function MedicationReconciliation() {
   const [searchError, setSearchError] = useState('');
   const [draft, setDraft] = useState(blankDraft);
   const [saving, setSaving] = useState(false);
-  const [addNewMenuOpen, setAddNewMenuOpen] = useState(false);
   const [dischargeUploadOpen, setDischargeUploadOpen] = useState(false);
   const [extractedMeds, setExtractedMeds] = useState(null);
   const [extractedExpanded, setExtractedExpanded] = useState(true);
   const [extracting, setExtracting] = useState(false);
   const [extractStage, setExtractStage] = useState('');
   const [editingExtractedId, setEditingExtractedId] = useState(null);
+  // Id of a saved medication being edited inline; its row is replaced by the
+  // shared form card and the surrounding rows blur out behind it.
+  const [editingMedId, setEditingMedId] = useState(null);
   const searchRowRef = useRef(null);
   const abortRef = useRef(null);
-  const addNewBtnRef = useRef(null);
 
   // Debounced OpenFDA search. Cancels the previous in-flight fetch before
   // firing a new one — typeahead should never race stale responses onto the
@@ -347,6 +408,7 @@ export function MedicationReconciliation() {
     setResults([]);
     setDraft(blankDraft());
     setEditingExtractedId(null);
+    setEditingMedId(null);
     abortRef.current?.abort();
   };
 
@@ -416,6 +478,28 @@ export function MedicationReconciliation() {
       return;
     }
 
+    // Editing a medication that's already persisted — update it in place
+    // rather than inserting a duplicate row.
+    if (editingMedId) {
+      if (!patientId) return;
+      setSaving(true);
+      try {
+        await updatePatientMedication(patientId, editingMedId, {
+          name: draft.name.trim(),
+          start: isoToMMDDYYYY(draft.start),
+          stop: isStopped ? isoToMMDDYYYY(draft.stopDate) : '',
+          stopReason: isStopped ? draft.stopReason : '',
+          sig: draft.sig.trim(),
+          status: draft.status,
+          note: draft.note.trim(),
+        });
+      } finally {
+        setSaving(false);
+      }
+      discard();
+      return;
+    }
+
     if (!patientId) return;
     setSaving(true);
     let id;
@@ -457,11 +541,28 @@ export function MedicationReconciliation() {
     }
   };
 
-  const dismissExtracted = (id) => {
+  // Dismissing an extracted row slides it out to the right first; the row is
+  // only dropped from state once the animation ends (see removeExtracted).
+  // Reduced-motion users skip straight to the removal.
+  const [exitingExtractedIds, setExitingExtractedIds] = useState(new Set());
+
+  const removeExtracted = (id) => {
     setExtractedMeds(prev => {
       const next = (prev || []).filter(m => m.id !== id);
       return next.length ? next : null;
     });
+    setExitingExtractedIds(prev => {
+      if (!prev.has(id)) return prev;
+      const n = new Set(prev);
+      n.delete(id);
+      return n;
+    });
+  };
+
+  const dismissExtracted = (id) => {
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduced) { removeExtracted(id); return; }
+    setExitingExtractedIds(prev => new Set(prev).add(id));
   };
 
   const addExtracted = async (m) => {
@@ -480,12 +581,252 @@ export function MedicationReconciliation() {
     if (id) dismissExtracted(m.id);
   };
 
-  // Shared by the top "Add New" container (a fresh manual add) and the
-  // inline edit that opens in place of a discharge-extracted row — same
-  // draft/handlers, just rendered in a different spot depending on
-  // `editingExtractedId`.
+  // Stop/Continue toggle — commented out for now, kept for reference.
+  // "Stop" set the medication Stopped as of today; "Continue" had no backing
+  // field yet, so it only marked the pill green locally (continuedIds), and
+  // clicking Stop cleared that so both never looked selected.
+  // const [continuedIds, setContinuedIds] = useState(new Set());
+  //
+  // const stopMedication = (m) => {
+  //   if (!patientId) return;
+  //   setContinuedIds(prev => {
+  //     if (!prev.has(m.id)) return prev;
+  //     const next = new Set(prev);
+  //     next.delete(m.id);
+  //     return next;
+  //   });
+  //   updatePatientMedication(patientId, m.id, { status: 'Stopped', stop: isoToMMDDYYYY(todayISO()) });
+  // };
+  //
+  // const continueMedication = (m) => {
+  //   setContinuedIds(prev => new Set(prev).add(m.id));
+  // };
+
+  // Inline note editor — the Note action expands the med's own row into a
+  // grey strip holding a labelled Textarea (Figma 2529:16692). Edits live in
+  // `noteDrafts` while typing and persist to Supabase on blur, so we're not
+  // firing a write per keystroke.
+  const [openNoteIds, setOpenNoteIds] = useState(new Set());
+  const [noteDrafts, setNoteDrafts] = useState({});
+
+  const toggleNote = (m) => {
+    setOpenNoteIds(prev => {
+      const next = new Set(prev);
+      if (next.has(m.id)) {
+        next.delete(m.id);
+      } else {
+        next.add(m.id);
+        setNoteDrafts(d => (m.id in d ? d : { ...d, [m.id]: m.note || '' }));
+      }
+      return next;
+    });
+  };
+
+  const commitNote = (m) => {
+    if (!patientId) return;
+    const draft = noteDrafts[m.id] ?? '';
+    if (draft === (m.note || '')) return;
+    updatePatientMedication(patientId, m.id, { note: draft });
+  };
+
+  // The Note action badges the number of notes on the med. There's a single
+  // `note` field today, so that's 1 or nothing — `count` is left undefined
+  // when empty so ActionButton skips the badge entirely.
+  const noteCount = (m) => (m.note?.trim() ? 1 : undefined);
+
+  const renderNoteEditor = (m) => (
+    <div className={styles.noteEditor}>
+      <span className={styles.noteEditorLabel}>Note</span>
+      <Textarea
+        value={noteDrafts[m.id] ?? ''}
+        onChange={e => setNoteDrafts(d => ({ ...d, [m.id]: e.target.value }))}
+        onBlur={() => commitNote(m)}
+        placeholder="Add a note"
+        rows={2}
+      />
+    </div>
+  );
+
+  // Inline single-cell editing in the table — clicking Start/Stop Date, Sig
+  // or Status swaps just that cell for its matching control. Dates and
+  // Status commit on change (the control closes itself); Sig commits on
+  // blur or Enter, and Escape abandons the edit.
+  const [editingCell, setEditingCell] = useState(null); // { id, field }
+  const [cellDraft, setCellDraft] = useState('');
+
+  const isEditingCell = (m, field) => editingCell?.id === m.id && editingCell?.field === field;
+
+  const beginCellEdit = (m, field) => {
+    // A full-row edit owns the whole row — don't let a cell edit race it.
+    if (editingMedId) return;
+    setEditingCell({ id: m.id, field });
+    setCellDraft(
+      field === 'start' ? mmddyyyyToISO(m.start)
+        : field === 'stop' ? mmddyyyyToISO(m.stop)
+          : field === 'sig' ? (m.sig || '')
+            : (m.status || 'Active')
+    );
+  };
+
+  const cancelCellEdit = () => { setEditingCell(null); setCellDraft(''); };
+
+  const cellEditRef = useRef(null);
+
+
+  const commitCell = (m, field, rawValue) => {
+    const value = rawValue !== undefined ? rawValue : cellDraft;
+    const patch =
+      field === 'start' ? { start: value ? isoToMMDDYYYY(value) : '' }
+        : field === 'stop' ? { stop: value ? isoToMMDDYYYY(value) : '' }
+          : field === 'sig' ? { sig: value.trim() }
+            : { status: value };
+    const [key] = Object.keys(patch);
+    if (patientId && (m[key] || '') !== (patch[key] || '')) {
+      updatePatientMedication(patientId, m.id, patch);
+    }
+    cancelCellEdit();
+  };
+
+  // Clicking anywhere outside the open editor closes it, committing whatever
+  // is in the draft (a no-op when nothing changed). No dep array on purpose:
+  // the handler reads cellDraft/editingCell, and re-binding each render is
+  // cheaper than reasoning about stale closures.
+  useEffect(() => {
+    if (!editingCell) return undefined;
+    const med = medications.find(x => x.id === editingCell.id);
+    if (!med) return undefined;
+    const onPointerDown = (e) => {
+      if (cellEditRef.current?.contains(e.target)) return;
+      // Status portals its menu to document.body, so clicking an option is
+      // technically outside the cell — don't treat that as clicking away.
+      if (e.target.closest?.('[role="listbox"]')) return;
+      commitCell(med, editingCell.field);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  });
+
+  // Read-only cell content doubles as the edit trigger. Rendered as a real
+  // button so it stays keyboard-reachable rather than a click-only span.
+  const cellTrigger = (m, field, text) => (
+    <button
+      type="button"
+      className={styles.cellEditTrigger}
+      onClick={() => beginCellEdit(m, field)}
+    >
+      {text}
+    </button>
+  );
+
+  // Bulk selection — mirrors the Letters step: a Set of ids drives the row
+  // checkboxes and a floating action bar (Figma 2570:46879).
+  const [selectedMedIds, setSelectedMedIds] = useState(new Set());
+  const allMedsSelected = selectedMedIds.size === medications.length && medications.length > 0;
+  const someMedsSelected = selectedMedIds.size > 0 && !allMedsSelected;
+  const toggleMed = (id) =>
+    setSelectedMedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleAllMeds = () =>
+    setSelectedMedIds(prev => (prev.size === medications.length ? new Set() : new Set(medications.map(m => m.id))));
+  const clearMedSelection = () => setSelectedMedIds(new Set());
+
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
+  // Deleting a medication slides its row out before the row leaves state.
+  // The store's delete is optimistic — calling it up front would unmount the
+  // row mid-animation — so the row is marked exiting first and the actual
+  // delete fires from onAnimationEnd. `pendingDeletes` holds the ids still
+  // animating plus the callback that reports the result once they land.
+  const [exitingMedIds, setExitingMedIds] = useState(new Set());
+  const pendingDeletes = useRef({ remaining: new Set(), onDone: null, failures: 0 });
+
+  const beginMedExit = (ids, onDone) => {
+    if (ids.length === 0) return;
+    pendingDeletes.current = { remaining: new Set(ids), onDone, failures: 0 };
+    // Reduced motion skips the slide — animationend never fires when
+    // animations are off, so the rows would otherwise linger forever.
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      ids.forEach(id => finishMedExit(id));
+      return;
+    }
+    setExitingMedIds(prev => { const n = new Set(prev); ids.forEach(id => n.add(id)); return n; });
+  };
+
+  const finishMedExit = async (id) => {
+    const ok = await deletePatientMedication(patientId, id);
+    setExitingMedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+    const p = pendingDeletes.current;
+    if (!p.remaining.has(id)) return;
+    p.remaining.delete(id);
+    if (!ok) p.failures += 1;
+    // Only report once the whole batch has settled, and only if at least one
+    // actually deleted — the store surfaces its own error toast per failure.
+    if (p.remaining.size === 0 && p.failures === 0) p.onDone?.();
+  };
+
+  const stopSelectedMeds = async () => {
+    if (!patientId) return;
+    const ids = [...selectedMedIds];
+    const today = isoToMMDDYYYY(todayISO());
+    setBulkBusy(true);
+    try {
+      await Promise.all(ids.map(id => updatePatientMedication(patientId, id, { status: 'Stopped', stop: today })));
+      showToast(`${ids.length} medication${ids.length === 1 ? '' : 's'} stopped`);
+      clearMedSelection();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const confirmBulkDelete = () => {
+    if (!patientId) return;
+    const ids = [...selectedMedIds];
+    setBulkDeleteOpen(false);
+    clearMedSelection();
+    beginMedExit(ids, () => {
+      showToast(`${ids.length} medication${ids.length === 1 ? '' : 's'} deleted`);
+    });
+  };
+
+  // Delete confirmation — Figma 2564:46849. Holds the medication pending
+  // deletion; null means the dialog is closed.
+  const [deleteTarget, setDeleteTarget] = useState(null);
+
+  const confirmDeleteMedication = () => {
+    if (!patientId || !deleteTarget) return;
+    const { id, name } = deleteTarget;
+    setDeleteTarget(null);
+    beginMedExit([id], () => showToast(`"${name}" deleted`));
+  };
+
+  // Opens the shared form card in place of a saved medication's row,
+  // pre-filled from that medication (Figma 2094:37808).
+  const editMedication = (m) => {
+    setDraft({
+      name: m.name,
+      status: m.status || 'Active',
+      start: mmddyyyyToISO(m.start) || todayISO(),
+      stopDate: mmddyyyyToISO(m.stop),
+      stopReason: m.stopReason || '',
+      sig: m.sig || '',
+      note: m.note || '',
+      noteOpen: !!m.note,
+      openfdaMeta: m.openfdaMeta || null,
+      source: m.source || 'manual',
+    });
+    setEditingExtractedId(null);
+    setEditingMedId(m.id);
+    setPhase('form');
+    setDischargeUploadOpen(false);
+  };
+
+  // Shared by the top "Add New" container (a fresh manual add), the inline
+  // edit of a discharge-extracted row, and the inline edit of a saved
+  // medication — same draft/handlers, just rendered in a different spot
+  // depending on `editingExtractedId` / `editingMedId`.
   const formCard = (
     <div className={styles.formCard}>
+      {editingMedId && <span className={styles.formEyebrow}>Edit Medication</span>}
       <div className={styles.formMedName}>{draft.name}</div>
 
       <div className={styles.formGrid}>
@@ -572,32 +913,25 @@ export function MedicationReconciliation() {
       {/* Active Medications */}
       <div className={styles.medHeader}>
         <div className={styles.medHeaderLeft}>
-          <Checkbox aria-label="Select all medications" disabled={medications.length === 0} />
-          <span className={styles.medHeaderTitle}>Active Medications</span>
+          <span className={styles.medHeaderTitle}>Member's Medications</span>
         </div>
-        <Button
-          ref={addNewBtnRef}
-          variant="tertiary"
-          size="L"
-          trailingIcon="solar:alt-arrow-down-linear"
-          onClick={() => setAddNewMenuOpen(v => !v)}
-        >
-          Add New
-        </Button>
-        {addNewMenuOpen && (
-          <MenuPopover
-            anchorRef={addNewBtnRef}
-            items={ADD_NEW_MENU_ITEMS}
-            onSelect={(key) => {
+        <div className={styles.medHeaderRight}>
+          <Toggle size="S" items={MED_VIEW_ITEMS} active={medView} onChange={setMedView} />
+          <Button
+            variant="tertiary"
+            size="L"
+            menuItems={ADD_NEW_MENU_ITEMS}
+            menuWidth={250}
+            menuAriaLabel="Add medication"
+            onMenuSelect={(key) => {
               if (key === 'manual') { setDischargeUploadOpen(false); openContainer(); }
               else if (key === 'discharge') { discard(); setDischargeUploadOpen(true); }
               else showToast(`${ADD_NEW_MENU_ITEMS.find(i => i.key === key)?.label} — coming soon`);
             }}
-            onClose={() => setAddNewMenuOpen(false)}
-            width={250}
-            ariaLabel="Add medication"
-          />
-        )}
+          >
+            Add New
+          </Button>
+        </div>
       </div>
 
       {/* Search phase — no wrapping card, the search bar sits flush in the
@@ -640,7 +974,7 @@ export function MedicationReconciliation() {
       {/* Form phase — a med was picked; card matches Figma 2086:24739.
           When editing an extracted med, its form renders inline in the
           discharge list below instead (see editingExtractedId). */}
-      {phase === 'form' && !editingExtractedId && (
+      {phase === 'form' && !editingExtractedId && !editingMedId && (
         <div className={`${styles.addPanel} ${styles.panelEnter}`}>
           {formCard}
         </div>
@@ -703,7 +1037,11 @@ export function MedicationReconciliation() {
                       {formCard}
                     </div>
                   ) : (
-                  <div key={m.id} className={styles.extractedRow}>
+                  <div
+                    key={m.id}
+                    className={`${styles.extractedRow} ${exitingExtractedIds.has(m.id) ? styles.extractedRowExiting : ''}`}
+                    onAnimationEnd={() => { if (exitingExtractedIds.has(m.id)) removeExtracted(m.id); }}
+                  >
                     <Checkbox aria-label={`Select ${m.name}`} />
                     <div className={styles.extractedText}>
                       <div className={styles.extractedName}>{m.name}</div>
@@ -760,39 +1098,240 @@ export function MedicationReconciliation() {
         </>
       )}
 
-      {/* Medications table */}
+      {/* Medications — table (columns) or card (Figma 7211:452572) view */}
       {medications.length === 0 ? (
         <div className={styles.empty}>
           <RingEmptyState icon="solar:pill-linear" label="No Active Medications" />
         </div>
+      ) : medView === 'card' ? (
+        <div className={styles.medCardSection}>
+          <div className={`${styles.medCardSelectAll} ${editingMedId ? styles.medRowDimmed : ''}`}>
+            <Checkbox
+              checked={someMedsSelected ? 'indeterminate' : allMedsSelected}
+              onCheckedChange={toggleAllMeds}
+              aria-label="Select all medications"
+              disabled={medications.length === 0}
+            />
+            <span>Select All</span>
+          </div>
+          <div className={styles.medCardList}>
+          {medications.map(m => (
+            <Fragment key={m.id}>
+            {editingMedId === m.id ? (
+            <div className={`${styles.addPanel} ${styles.medEditRow}`}>{formCard}</div>
+            ) : (
+            <div
+              className={[
+                styles.medCardRow,
+                openNoteIds.has(m.id) ? styles.medCardRowNoteOpen : '',
+                editingMedId ? styles.medRowDimmed : '',
+                exitingMedIds.has(m.id) ? styles.medRowExiting : '',
+              ].filter(Boolean).join(' ')}
+              onAnimationEnd={() => { if (exitingMedIds.has(m.id)) finishMedExit(m.id); }}
+            >
+              <Checkbox
+                checked={selectedMedIds.has(m.id)}
+                onCheckedChange={() => toggleMed(m.id)}
+                aria-label={`Select ${m.name}`}
+              />
+              <div className={styles.medCardText}>
+                <div className={styles.medCardNameRow}>
+                  <span className={styles.medCardName}>{m.name}</span>
+                  {m.source === 'discharge_import' && (
+                    <Badge tone="primary" size="S" label="New" />
+                  )}
+                </div>
+                <div className={styles.medCardMeta}>
+                  {m.start} - {m.stop || '—'} <span className={styles.extractedDot}>•</span> {m.sig || '—'}
+                </div>
+              </div>
+              <div className={styles.medCardActions}>
+                {/* Stop/Continue toggle — commented out for now.
+                <div className={styles.medStopContinue}>
+                  <button
+                    type="button"
+                    className={m.status === 'Stopped' ? styles.stopActive : ''}
+                    onClick={() => stopMedication(m)}
+                    disabled={m.status === 'Stopped'}
+                  >
+                    Stop
+                  </button>
+                  <button
+                    type="button"
+                    className={continuedIds.has(m.id) ? styles.continueActive : ''}
+                    onClick={() => continueMedication(m)}
+                    disabled={m.status === 'Stopped'}
+                  >
+                    Continue
+                  </button>
+                </div>
+                <span className={styles.extractedDivider} />
+                */}
+                <ActionButton
+                  icon="solar:document-text-linear"
+                  size="S"
+                  tooltip="Note"
+                  count={noteCount(m)}
+                  onClick={() => toggleNote(m)}
+                />
+                <span className={styles.extractedDivider} />
+                <MedRowMenu
+                  onEdit={() => editMedication(m)}
+                  onDelete={() => setDeleteTarget(m)}
+                />
+              </div>
+            </div>
+            )}
+            {editingMedId !== m.id && openNoteIds.has(m.id) && renderNoteEditor(m)}
+            </Fragment>
+          ))}
+          </div>
+        </div>
       ) : (
+        <div className={styles.tableScroll}>
         <div className={styles.table}>
-          <div className={styles.headRow}>
-            <span className={styles.checkCell} />
+          <div className={`${styles.headRow} ${editingMedId ? styles.medRowDimmed : ''}`}>
+            <span className={styles.checkCell} onClick={e => e.stopPropagation()}>
+              <Checkbox
+              checked={someMedsSelected ? 'indeterminate' : allMedsSelected}
+              onCheckedChange={toggleAllMeds}
+              aria-label="Select all medications"
+              disabled={medications.length === 0}
+            />
+            </span>
             <span className={styles.nameCell}>Medication Name</span>
             <span className={styles.dateCell}>Start Date</span>
             <span className={styles.dateCell}>Stop Date</span>
             <span className={styles.sigCell}>Sig</span>
-            <span className={styles.noteCell}>Note</span>
+            <span className={styles.statusCell}>Status</span>
+            <span className={styles.actionsCell}>Actions</span>
           </div>
           {medications.map(m => (
-            <div key={m.id} className={styles.row}>
+            <Fragment key={m.id}>
+            {editingMedId === m.id ? (
+            <div className={`${styles.addPanel} ${styles.medEditRow}`}>{formCard}</div>
+            ) : (
+            <div
+              className={[
+                styles.row,
+                openNoteIds.has(m.id) ? styles.rowNoteOpen : '',
+                editingMedId ? styles.medRowDimmed : '',
+                exitingMedIds.has(m.id) ? styles.medRowExiting : '',
+              ].filter(Boolean).join(' ')}
+              onAnimationEnd={() => { if (exitingMedIds.has(m.id)) finishMedExit(m.id); }}
+            >
               <span className={styles.checkCell} onClick={e => e.stopPropagation()}>
-                <Checkbox aria-label={`Select ${m.name}`} />
+                <Checkbox
+                  checked={selectedMedIds.has(m.id)}
+                  onCheckedChange={() => toggleMed(m.id)}
+                  aria-label={`Select ${m.name}`}
+                />
               </span>
               <span className={styles.nameCell}>{m.name}</span>
-              <span className={styles.dateCell}>{m.start || '—'}</span>
-              <span className={styles.dateCell}>{m.stop || '—'}</span>
-              <span className={styles.sigCell}>{m.sig || '—'}</span>
-              <span className={styles.noteCell}>{m.note || '—'}</span>
+              <span className={styles.dateCell}>
+                {isEditingCell(m, 'start') ? (
+                  <span ref={cellEditRef} className={styles.cellEditDate}>
+                    <DatePicker
+                      value={cellDraft}
+                      aria-label="Start date"
+                      onSelect={v => commitCell(m, 'start', v)}
+                    />
+                  </span>
+                ) : cellTrigger(m, 'start', m.start || '—')}
+              </span>
+              <span className={styles.dateCell}>
+                {isEditingCell(m, 'stop') ? (
+                  <span ref={cellEditRef} className={styles.cellEditDate}>
+                    <DatePicker
+                      value={cellDraft}
+                      aria-label="Stop date"
+                      onSelect={v => commitCell(m, 'stop', v)}
+                    />
+                  </span>
+                ) : cellTrigger(m, 'stop', m.stop || '—')}
+              </span>
+              <span className={styles.sigCell}>
+                {isEditingCell(m, 'sig') ? (
+                  <span ref={cellEditRef}>
+                    <Input
+                      value={cellDraft}
+                      autoFocus
+                      aria-label="Sig"
+                      onChange={e => setCellDraft(e.target.value)}
+                      // mousedown fires before blur, so an outside click has
+                      // already committed and closed by now — guard against
+                      // committing the same edit twice.
+                      onBlur={() => { if (isEditingCell(m, 'sig')) commitCell(m, 'sig'); }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') commitCell(m, 'sig');
+                        if (e.key === 'Escape') cancelCellEdit();
+                      }}
+                    />
+                  </span>
+                ) : cellTrigger(m, 'sig', m.sig || '—')}
+              </span>
+              <span className={styles.statusCell}>
+                {isEditingCell(m, 'status') ? (
+                  <span ref={cellEditRef} className={styles.cellEditStatus}>
+                    <Select
+                      options={STATUS_OPTIONS}
+                      value={cellDraft}
+                      onChange={v => commitCell(m, 'status', v)}
+                      portal
+                    />
+                  </span>
+                ) : cellTrigger(m, 'status', m.status || 'Active')}
+              </span>
+              <span className={styles.actionsCell}>
+                {/* Stop/Continue toggle — commented out for now.
+                <div className={styles.medStopContinue}>
+                  <button
+                    type="button"
+                    className={m.status === 'Stopped' ? styles.stopActive : ''}
+                    onClick={() => stopMedication(m)}
+                    disabled={m.status === 'Stopped'}
+                  >
+                    Stop
+                  </button>
+                  <button
+                    type="button"
+                    className={continuedIds.has(m.id) ? styles.continueActive : ''}
+                    onClick={() => continueMedication(m)}
+                    disabled={m.status === 'Stopped'}
+                  >
+                    Continue
+                  </button>
+                </div>
+                <span className={styles.extractedDivider} />
+                */}
+                <ActionButton
+                  icon="solar:document-text-linear"
+                  size="S"
+                  tooltip="Note"
+                  count={noteCount(m)}
+                  onClick={() => toggleNote(m)}
+                />
+                <span className={styles.extractedDivider} />
+                <MedRowMenu
+                  onEdit={() => editMedication(m)}
+                  onDelete={() => setDeleteTarget(m)}
+                />
+              </span>
             </div>
+            )}
+            {editingMedId !== m.id && openNoteIds.has(m.id) && renderNoteEditor(m)}
+            </Fragment>
           ))}
+        </div>
         </div>
       )}
 
       {/* Medication Checklist — items from the mock, all boxes start unchecked */}
       <div className={styles.checklist}>
-        <div className={styles.checklistTitle}>Medication Checklist</div>
+        <div className={styles.checklistTitle}>
+          Medication Checklist
+          <span className={styles.mandatoryDot} aria-hidden="true" />
+        </div>
         {MED_RECON_MOCK.checklist.map(c => (
           <label key={c.id} className={styles.checkItem}>
             <Checkbox
@@ -803,6 +1342,75 @@ export function MedicationReconciliation() {
           </label>
         ))}
       </div>
+
+      {/* Delete confirmation — Figma 2564:46849 */}
+      {deleteTarget && (
+        <ConfirmDialog
+          variant="error"
+          icon="solar:trash-bin-2-linear"
+          title="Delete Medication?"
+          description="This medication will be deleted from the patient's record in Fold."
+          confirmLabel="Confirm"
+          cancelLabel="Cancel"
+          overlayClassName="bg-black/25"
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDeleteMedication}
+        />
+      )}
+
+      {/* Bulk delete — same dialog, pluralised for the selection. */}
+      {bulkDeleteOpen && (
+        <ConfirmDialog
+          variant="error"
+          icon="solar:trash-bin-2-linear"
+          title={`Delete ${selectedMedIds.size} Medication${selectedMedIds.size === 1 ? '' : 's'}?`}
+          description="These medications will be deleted from the patient's record in Fold."
+          confirmLabel="Confirm"
+          cancelLabel="Cancel"
+          overlayClassName="bg-black/25"
+          onCancel={() => setBulkDeleteOpen(false)}
+          onConfirm={confirmBulkDelete}
+        />
+      )}
+
+      {/* Bulk action bar — Figma 2570:46879. Mirrors the Letters step: sits
+          absolutely over the content column so it stays put while the
+          medication list scrolls underneath. */}
+      {selectedMedIds.size > 0 && (
+        <div className={styles.bulkBar} role="toolbar" aria-label="Medication bulk actions">
+          <div className={styles.bulkSelect}>
+            <Checkbox
+              checked={someMedsSelected ? 'indeterminate' : allMedsSelected}
+              onCheckedChange={toggleAllMeds}
+              aria-label="Select all medications"
+            />
+            <span className={styles.bulkCount}>{selectedMedIds.size} Selected</span>
+          </div>
+          <span className={styles.bulkDivider} />
+          <Button
+            variant="secondary"
+            size="L"
+            leadingIcon="solar:forbidden-circle-linear"
+            disabled={bulkBusy}
+            onClick={stopSelectedMeds}
+          >
+            Stop Medication
+          </Button>
+          <ActionButton
+            icon="solar:trash-bin-trash-linear"
+            size="S"
+            tooltip="Delete"
+            onClick={() => setBulkDeleteOpen(true)}
+          />
+          <span className={styles.bulkDivider} />
+          <ActionButton
+            icon="solar:close-circle-linear"
+            size="S"
+            tooltip="Clear selection"
+            onClick={clearMedSelection}
+          />
+        </div>
+      )}
     </div>
   );
 }

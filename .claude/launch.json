@@ -11,7 +11,7 @@
     {
       "name": "Storybook",
       "runtimeExecutable": "/bin/sh",
-      "runtimeArgs": ["-c", "export PATH=$HOME/.bun/bin:/opt/homebrew/bin:$PATH && bun run storybook -- --port $PORT --no-open"],
+      "runtimeArgs": ["-c", "export PATH=$HOME/.local/node/bin:$HOME/.bun/bin:/opt/homebrew/bin:$PATH && bun run storybook -- --port $PORT --no-open"],
       "port": 6006,
       "autoPort": true
     }

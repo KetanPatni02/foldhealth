@@ -27,6 +27,7 @@ import { ProgramDetailViewHeader } from './ProgramDetailViewHeader';
 import { ProgramDetailViewContentHeader } from './ProgramDetailViewContentHeader';
 import { ProgramDetailViewLetters } from './ProgramDetailViewLetters';
 import { downloadLetters } from './ProgramDetailView.utils';
+import { mmddyy } from './ProgramDetailView.utils';
 import styles from './ProgramDetailView.module.css';
 
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false, onSwitchProgram }) {
@@ -163,6 +164,12 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
 
         <div className={styles.content}>
           <ProgramDetailViewContentHeader
+            program={program}
+            onSignMedRecon={(name, role) => v.updateCareProgram(v.patientId, program.id, {
+              medReconSignedBy: name,
+              medReconSignedRole: role,
+              medReconSignedAt: mmddyy(),
+            })}
             stepFlags={stepFlags}
             assessmentCfg={v.assessmentCfg}
             stepName={v.stepName}

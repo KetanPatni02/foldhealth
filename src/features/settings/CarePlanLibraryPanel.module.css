@@ -1,0 +1,165 @@
+.wrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.row {
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.tdCheck,
+.tdName,
+.tdConditions,
+.tdDescription,
+.tdCount,
+.tdUpdated,
+.tdActions {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--neutral-300);
+  vertical-align: middle;
+}
+.tdCheck {
+  padding-right: 0;
+}
+.nameLink {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral-400);
+  text-align: left;
+}
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.actionCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.vDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px 0;
+  color: var(--neutral-300);
+  font-size: 14px;
+}
+
+/* ── Row kebab menu ── */
+.overflowScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+.overflowMenu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 160px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  padding: 4px;
+}
+.overflowItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--neutral-400);
+  text-align: left;
+}
+.overflowItem:hover {
+  background: var(--neutral-50);
+}
+.overflowItemDanger {
+  color: var(--status-error);
+}
+
+/* ── Drawer form ── */
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.formLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.required {
+  color: var(--status-error);
+  margin-left: 2px;
+}
+.formSection {
+  margin-bottom: 20px;
+}
+.formSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.addRowLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.listRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.listRowTitle {
+  flex: 1.4;
+  min-width: 0;
+}
+.listRowSubtitle {
+  flex: 1;
+  min-width: 0;
+}
+.listRowDuration {
+  flex: 0.6;
+  min-width: 0;
+}
+.listEmpty {
+  font-size: 13px;
+  color: var(--neutral-300);
+  padding: 8px 0;
+}
