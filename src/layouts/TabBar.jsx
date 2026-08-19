@@ -15,7 +15,7 @@ function ConfirmDialog({ message, onConfirm, onCancel }) {
       background: 'rgba(0,0,0,.4)',
     }} onClick={onCancel}>
       <div style={{
-        background: '#fff', borderRadius: 12, padding: '24px 28px',
+        background: 'var(--neutral-0)', borderRadius: 12, padding: '24px 28px',
         maxWidth: 420, width: '100%', boxShadow: '0 16px 48px rgba(0,0,0,.2)',
         fontFamily: "'Inter', sans-serif",
       }} onClick={e => e.stopPropagation()}>

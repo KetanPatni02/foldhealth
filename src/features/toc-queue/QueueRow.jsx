@@ -105,7 +105,7 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
         {total > 0 && (
           <div className={styles.liveGoalsMini}>
             <div className={styles.goalsFill}>
-              <div className={styles.goalsFillInner} style={{ width: `${pct}%`, background: '#059669' }} />
+              <div className={styles.goalsFillInner} style={{ width: `${pct}%`, background: 'var(--status-success)' }} />
             </div>
             <span className={styles.goalsText}>{done}/{total} goals</span>
           </div>

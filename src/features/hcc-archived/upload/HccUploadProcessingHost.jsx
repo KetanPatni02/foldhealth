@@ -99,9 +99,9 @@ export function HccUploadProcessingHost() {
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
               onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
-              <Icon name="solar:maximize-square-2-linear" size={16} color="#6F7A90" />
+              <Icon name="solar:maximize-square-2-linear" size={16} color="var(--neutral-300)" />
             </button>
-            <span style={{ width: 0.5, height: 16, background: '#D0D6E1' }} />
+            <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)' }} />
             <button
               onClick={() => cancel()}
               type="button"
@@ -110,7 +110,7 @@ export function HccUploadProcessingHost() {
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.04)'}
               onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
-              <Icon name="solar:close-circle-linear" size={16} color="#6F7A90" />
+              <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-300)" />
             </button>
           </div>
 
@@ -122,22 +122,22 @@ export function HccUploadProcessingHost() {
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   {done ? (
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#009B53', border: '0.67px solid #009B53', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.3 5.7L8 1" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: 'var(--status-success)', border: '0.67px solid var(--status-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.3 5.7L8 1" stroke="var(--neutral-0)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
                     </div>
                   ) : active ? (
                     <div style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ animation: 'spin 0.9s linear infinite' }}>
-                        <circle cx="7" cy="7" r="5.5" stroke="#D0D6E1" strokeWidth="1.5" />
-                        <path d="M7 1.5 A 5.5 5.5 0 0 1 12.5 7" stroke="#8C5AE2" strokeWidth="1.5" strokeLinecap="round" fill="none" />
+                        <circle cx="7" cy="7" r="5.5" stroke="var(--neutral-150)" strokeWidth="1.5" />
+                        <path d="M7 1.5 A 5.5 5.5 0 0 1 12.5 7" stroke="var(--primary-300)" strokeWidth="1.5" strokeLinecap="round" fill="none" />
                       </svg>
                     </div>
                   ) : (
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: '0.67px solid #8A94A8', background: '#fff', flexShrink: 0 }} />
+                    <div style={{ width: 16, height: 16, borderRadius: '50%', border: '0.67px solid var(--neutral-200)', background: 'var(--neutral-0)', flexShrink: 0 }} />
                   )}
                   <span style={{
                     fontSize: 'var(--font-base)',
-                    color: '#3A485F',
+                    color: 'var(--neutral-400)',
                     fontWeight: 400,
                   }}>
                     {label}
@@ -173,15 +173,15 @@ export function HccUploadProcessingHost() {
           boxShadow: '4px 15px 60px 24px rgba(0,0,0,0.15)',
           overflow: 'hidden',
           fontFamily: 'Inter, sans-serif',
-          backgroundImage: 'linear-gradient(105deg, #e7ffeb 0%, #ffffff 44%)',
+          backgroundImage: 'linear-gradient(105deg, var(--status-success-light) 0%, var(--neutral-0) 44%)',
           animation: 'pg-fade-up 0.3s ease',
         }}>
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '12px 16px',
           }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#009B53', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, animation: 'pg-badge-pop 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
-              <svg width="14" height="11" viewBox="0 0 16 13" fill="none"><path d="M1.5 6.5L5.5 10.5L14.5 1.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--status-success)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, animation: 'pg-badge-pop 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
+              <svg width="14" height="11" viewBox="0 0 16 13" fill="none"><path d="M1.5 6.5L5.5 10.5L14.5 1.5" stroke="var(--neutral-0)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)' }}>
@@ -199,7 +199,7 @@ export function HccUploadProcessingHost() {
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
               onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
-              <Icon name="solar:close-circle-linear" size={16} color="#6F7A90" />
+              <Icon name="solar:close-circle-linear" size={16} color="var(--neutral-300)" />
             </button>
           </div>
           <div style={{ padding: '0 16px 12px' }}>
@@ -208,14 +208,14 @@ export function HccUploadProcessingHost() {
               type="button"
               style={{
                 width: '100%', height: 32,
-                background: '#8C5AE2', color: '#fff',
+                background: 'var(--primary-300)', color: 'var(--neutral-0)',
                 border: 'none', borderRadius: 4,
                 fontSize: 'var(--font-base)', fontWeight: 500, cursor: 'pointer',
                 fontFamily: 'Inter, sans-serif',
                 transition: 'background 0.15s',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#7c4ad1'}
-              onMouseLeave={e => e.currentTarget.style.background = '#8C5AE2'}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-400)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--primary-300)'}
             >
               Review and Confirm Extraction
             </button>

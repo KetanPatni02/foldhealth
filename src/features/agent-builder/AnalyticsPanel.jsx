@@ -117,8 +117,8 @@ function MiniChart({ data, color = '#8C5AE2' }) {
           <XAxis dataKey="t" hide />
           <YAxis hide />
           <Tooltip
-            contentStyle={{ background: '#fff', border: '1px solid #E9ECF1', borderRadius: 6, fontSize: 'var(--font-sm)', fontFamily: 'Inter' }}
-            labelStyle={{ color: '#6F7A90', fontWeight: 500 }}
+            contentStyle={{ background: 'var(--neutral-0)', border: '1px solid var(--neutral-100)', borderRadius: 6, fontSize: 'var(--font-sm)', fontFamily: 'Inter' }}
+            labelStyle={{ color: 'var(--neutral-300)', fontWeight: 500 }}
           />
           <Area
             type="monotone"
@@ -326,14 +326,14 @@ function SnapshotContent({ agent, showBanner, setShowBanner }) {
             <div className={styles.snapField}>
               <span className={styles.snapLabel}>Empathy Level</span>
               <div className={styles.snapMeter}>
-                <div className={styles.snapMeterFill} style={{ width: `${c.empathy_level || 75}%`, background: '#009B53' }} />
+                <div className={styles.snapMeterFill} style={{ width: `${c.empathy_level || 75}%`, background: 'var(--status-success)' }} />
               </div>
               <span className={styles.snapMeterLabel}>{c.empathy_level || 75}%</span>
             </div>
             <div className={styles.snapField}>
               <span className={styles.snapLabel}>Speaking Pace</span>
               <div className={styles.snapMeter}>
-                <div className={styles.snapMeterFill} style={{ width: `${c.speaking_pace || 75}%`, background: '#8C5AE2' }} />
+                <div className={styles.snapMeterFill} style={{ width: `${c.speaking_pace || 75}%`, background: 'var(--primary-300)' }} />
               </div>
               <span className={styles.snapMeterLabel}>{c.speaking_pace || 75}%</span>
             </div>
@@ -402,11 +402,11 @@ function AnalyticsContent() {
             ))}
           </div>
           <div className={styles.uptimeLegend}>
-            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#009B53' }} /> Peak</span>
-            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#4CAF50' }} /> Active</span>
-            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#8BC34A' }} /> Low</span>
-            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#FFB300' }} /> Degraded</span>
-            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#D0D6E1' }} /> Idle</span>
+            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'var(--status-success)' }} /> Peak</span>
+            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'var(--status-success-bright)' }} /> Active</span>
+            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'color-mix(in srgb, var(--status-success) 60%, var(--status-warning))' }} /> Low</span>
+            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'var(--status-warning)' }} /> Degraded</span>
+            <span className={styles.legendItem}><span className={styles.legendDot} style={{ background: 'var(--neutral-150)' }} /> Idle</span>
           </div>
         </div>
       </div>
