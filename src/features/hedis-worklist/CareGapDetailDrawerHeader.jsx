@@ -1,5 +1,6 @@
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Button } from '../../components/Button/Button';
 import { MEASURE_NAMES, STATUS_STYLE, STATUSES, daysAgo, initialsOf } from './CareGapDetailDrawer.utils';
 import styles from './CareGapDetailDrawer.module.css';
@@ -89,19 +90,23 @@ export function CareGapDetailDrawerHeader({
               </div>
             </div>
             <div className={styles.gapTitleActions}>
-              {gap.assignee ? (
-                <button ref={assigneeBtnRef} type="button" className={styles.assigneeChip}
-                  onClick={() => (assigneePos ? closeAssignee() : openAssignee())} title={`Assigned to ${gap.assignee}`} aria-label={gap.assignee}>
-                  <span className={styles.assigneeAvatar}>{initialsOf(gap.assignee)}</span>
-                  <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
-                </button>
-              ) : (
-                <button ref={assigneeBtnRef} type="button" className={styles.assigneeChipEmpty}
-                  onClick={() => (assigneePos ? closeAssignee() : openAssignee())} title="Assign" aria-label="Assign">
-                  <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
-                  <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
-                </button>
-              )}
+              {/* Gap-level override takes precedence; otherwise fall back to
+                  the member's default assignee (same rule the table row uses). */}
+              {(() => {
+                const effectiveAssignee = gap.assignee ?? member?.assignee ?? null;
+                return (
+                  <AssigneeChange
+                    ref={assigneeBtnRef}
+                    avatarOnly
+                    unassigned={!effectiveAssignee}
+                    name={effectiveAssignee || undefined}
+                    initials={effectiveAssignee ? initialsOf(effectiveAssignee) : undefined}
+                    ariaLabel={effectiveAssignee || 'Assign'}
+                    onClick={() => (assigneePos ? closeAssignee() : openAssignee())}
+                  />
+                );
+              })()}
+
               <div className={styles.statusWrap}>
                 <button className={styles.statusBtn} onClick={() => { if (!statusLocked) setStatusOpen(v => !v); }}
                   disabled={statusLocked} title={statusLocked ? 'Completed gaps are locked' : ''}

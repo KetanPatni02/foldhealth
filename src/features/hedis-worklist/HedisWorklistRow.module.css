@@ -6,6 +6,16 @@
 .rowChecked .stickyLeft { background: var(--primary-50) !important; }
 .rowChecked .stickyRight { background: var(--primary-50); }
 
+/* Multi-gap rows (2+ gaps): top-align member and per-member cells so the
+   name / outreach / risk values sit at the top of the tall row instead of
+   floating in the middle. The gap columns are already top-aligned. */
+.rowMultiGap .checkTd,
+.rowMultiGap .memberTd,
+.rowMultiGap .td,
+.rowMultiGap .actionsCell {
+  vertical-align: top;
+}
+
 .stickyLeft {
   position: sticky;
   background: var(--neutral-0);
@@ -133,11 +143,42 @@
 .gapItems { display: flex; flex-direction: column; }
 .gapItem {
   padding: 8px 14px;
-  min-height: 36px;
+  /* 44px accommodates the AssigneeChange pill (28px height) with the shared
+     8/8 padding. Uses `height` (not min-height) with box-sizing: border-box
+     so the 0.5px separator border between items doesn't accumulate subpixel
+     drift in the Assignee column — every column's per-gap row measures the
+     same, and multi-gap cells stay pixel-aligned across columns. */
+  height: 44px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
 }
 .gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
+
+/* Equal-height footer row rendered by every gap-iterating column when more
+   than MAX_INLINE_GAPS gaps exist — mirrors the HCC dosFooter so the "View
+   More N" button in Total Gaps stays vertically aligned with the empty
+   footer spacers in Gap Status / Assignee / Start Date. */
+.gapFooter {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  border-top: 0.5px solid var(--neutral-150);
+}
+.viewMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  text-align: left;
+}
+.viewMoreBtn:hover { color: var(--primary-300); }
 
 /* Gap status */
 

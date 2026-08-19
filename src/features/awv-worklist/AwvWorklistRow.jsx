@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -127,18 +128,17 @@ export const AWV_MIDDLE_COLUMNS = [
     width: 170,
     renderCell: (member, ctx) => (
       member.assignee ? (
-        <div className={styles.assigneeCell}>
-          <Avatar variant="assignee" initials={member.assigneeIn} />
-          <span className={styles.assigneeName}>{member.assignee}</span>
-        </div>
+        <AssigneeChange
+          name={member.assignee}
+          initials={member.assigneeIn}
+          role={member.assigneeRole || 'Outreach'}
+          onClick={() => ctx.showToast(`Change assignee for ${member.name} — coming soon`)}
+        />
       ) : (
-        <button
-          type="button"
-          className={styles.assignBtn}
+        <AssigneeChange
+          unassigned
           onClick={() => ctx.showToast(`Assign owner for ${member.name} — coming soon`)}
-        >
-          Assign
-        </button>
+        />
       )
     ),
   },

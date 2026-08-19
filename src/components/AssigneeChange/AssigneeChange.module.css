@@ -66,6 +66,9 @@
 .avatarOnly.assigned:focus-visible {
   background: var(--secondary-200);
 }
+.avatarOnly.unassigned {
+  background: var(--neutral-50);
+}
 .avatarOnly.unassigned:hover,
 .avatarOnly.unassigned:focus-visible {
   background: var(--neutral-150);
@@ -223,4 +226,72 @@
   text-align: center;
   font-size: 13px;
   color: var(--neutral-300);
+}
+
+/* ── Hover tooltip (avatar-only variant) ─────────────────────────────────
+   Fixed position; JS-set top/left, then transform anchors the bottom edge
+   to the trigger and centres the card horizontally. Mirrors Figma node
+   50:297369 (small white card + tail) so it matches the HCC assignee tip. */
+.tooltip {
+  position: fixed;
+  z-index: 9600;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  animation: assigneeTooltipIn 0.14s ease;
+}
+@keyframes assigneeTooltipIn {
+  from { opacity: 0; transform: translate(-50%, calc(-100% + 4px)); }
+  to   { opacity: 1; transform: translate(-50%, -100%); }
+}
+.tooltipCard {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--neutral-0);
+  border-radius: 4px;
+  box-shadow: var(--shadow-popover);
+  backdrop-filter: blur(4px);
+}
+.tooltipTail {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--neutral-0);
+  margin: 0 auto;
+}
+.tooltipAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.2;
+  flex-shrink: 0;
+  border: 0.5px solid var(--secondary-200);
+  background: var(--secondary-50);
+  color: var(--secondary-300);
+}
+.tooltipText {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.tooltipName {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.tooltipRole {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-200);
+  white-space: nowrap;
 }

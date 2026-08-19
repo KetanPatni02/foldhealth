@@ -10,7 +10,7 @@ export default {
     docs: {
       description: {
         component:
-          'Single-line text input — matches Figma Fold-Pixel node 25:21239 exactly. Renders a bare `<input>` when only styling props are passed (backward-compatible with 20+ existing callers); adds a wrapper with label / helper / error / password-toggle when any structural slot is set. Native `type` drives sensible `inputMode` + `autoComplete` defaults and unlocks type-aware validation via native `checkValidity()` or a custom `validate()` function.',
+          'Single-line text input — matches Figma Fold-Pixel node 25:21239 exactly. Renders a bare `<input>` when only styling props are passed (backward-compatible with 20+ existing callers); adds a wrapper with label / helper / error / slot chrome when any structural slot is set. Native `type` drives sensible `inputMode` + `autoComplete` defaults and unlocks type-aware validation via native `checkValidity()` or a custom `validate()` function.',
       },
     },
   },
@@ -25,11 +25,36 @@ export default {
       options: ['text', 'email', 'password', 'number', 'tel', 'url', 'search'],
       description: 'Native input type. Drives inputMode + autoComplete defaults.',
     },
+    // Label row
+    showLabel: { control: 'boolean', description: 'Storybook-only toggle for the Title slot. Renders `label` when true.' },
     label: { control: 'text', description: 'Text above the input.' },
+    required: { control: 'boolean', description: 'Adds a 4×4 red dot next to the label and forwards `required`.' },
+    showInfo: { control: 'boolean', description: 'Info icon next to the label (`infoText` sets its tooltip).' },
+    infoText: { control: 'text', description: 'Tooltip for the info icon.' },
+    // Leading slots
+    showLeadingIcon: { control: 'boolean', description: 'Storybook-only toggle for the leading icon slot.' },
+    leadingIcon: { control: 'text', description: 'Solar icon name (e.g. `solar:user-linear`) or React node rendered before the input.' },
+    showPriority: { control: 'boolean', description: 'Leading priority flag icon (Figma "Show Priority" toggle).' },
+    // Trailing slots — each slot has a boolean toggle + a separate text value
+    showTrailingText: { control: 'boolean', description: 'Show static trailing text.' },
+    trailingText: { control: 'text', description: 'Trailing text value (e.g. "Days").' },
+    showChevron: { control: 'boolean', description: 'Show the trailing chevron.' },
+    chevronDirection: { control: 'select', options: ['down', 'up'], description: 'Chevron direction.' },
+    // Superseded by `showChevron` + `chevronDirection` in the Playground —
+    // hidden from Controls so it doesn't fall through as a "Set object"
+    // catch-all. Still a first-class prop on the component itself.
+    chevron: { table: { disable: true } },
+    trailingAction: { control: 'boolean', description: 'Trailing icon action button (Figma "Trailing Action" — default is a microphone).' },
+    trailingActionLabel: { control: 'text' },
+    trailingButton: { control: 'boolean', description: 'Show the trailing tertiary Button slot.' },
+    trailingButtonText: { control: 'text', description: 'Label for the trailing Button.' },
+    characterLimit: { control: 'boolean', description: 'Show the "N/limit" character counter on the trailing edge.' },
+    characterLimitMax: { control: 'number', description: 'Max character count.' },
+    showPasswordToggle: { control: 'boolean', description: 'Only meaningful for `type=password`. Adds an inline eye toggle.' },
+    // Below the field
+    showSupportingText: { control: 'boolean', description: 'Show supporting text below the input (helperText slot).' },
     helperText: { control: 'text', description: 'Muted text below the input. Hidden while an error shows.' },
     errorText: { control: 'text', description: 'Error message below the input. Forces the error state.' },
-    required: { control: 'boolean', description: 'Adds a red asterisk to the label and forwards `required`.' },
-    showPasswordToggle: { control: 'boolean', description: 'Only meaningful for `type=password`. Adds an inline eye toggle.' },
     validateOn: {
       control: 'select',
       options: ['blur', 'change', 'none'],
@@ -44,20 +69,102 @@ export default {
 
 const stack = { display: 'flex', flexDirection: 'column', gap: 16, width: 320 };
 
+// Storybook glue: fold every "show*" toggle + its string/number value into
+// the real Input props. Keeps the component API idiomatic (string-only
+// slots) while the Storybook Controls panel mirrors Figma's toggle-first
+// pattern where every string field has a boolean gate above it.
+function InputFromArgs({
+  showLabel, label,
+  showLeadingIcon, leadingIcon,
+  showTrailingText, trailingText,
+  showChevron, chevronDirection,
+  characterLimit, characterLimitMax,
+  showSupportingText, helperText,
+  ...rest
+}) {
+  return (
+    <Input
+      {...rest}
+      label={showLabel ? label : undefined}
+      leadingIcon={showLeadingIcon ? leadingIcon : undefined}
+      trailingText={showTrailingText ? trailingText : undefined}
+      chevron={showChevron ? (chevronDirection || 'down') : false}
+      characterLimit={characterLimit ? characterLimitMax : undefined}
+      helperText={showSupportingText ? helperText : undefined}
+    />
+  );
+}
+
 // ── Playground ──
 export const Playground = {
   args: {
     variant: 'default',
     type: 'text',
+    // Label row
+    showLabel: true,
     label: 'Title',
+    required: true,
+    showInfo: false,
+    infoText: '',
+    // Leading slots
+    showLeadingIcon: false,
+    leadingIcon: 'solar:user-linear',
+    showPriority: false,
+    // Field
     placeholder: 'Enter Task Title',
-    helperText: '',
+    // Trailing slots
+    showTrailingText: false,
+    trailingText: 'Days',
+    showChevron: false,
+    chevronDirection: 'down',
+    trailingAction: false,
+    trailingActionLabel: 'Voice input',
+    trailingButton: false,
+    trailingButtonText: 'Button Text',
+    characterLimit: false,
+    characterLimitMax: 150,
+    // Below the field
+    showSupportingText: false,
+    helperText: 'This is supporting text',
     errorText: '',
-    required: false,
-    showPasswordToggle: false,
     validateOn: 'blur',
     disabled: false,
     readOnly: false,
+    defaultValue: '',
+    showPasswordToggle: false,
+  },
+  render: (args) => <InputFromArgs {...args} />,
+};
+
+// ── Every Figma slot toggled on — mirrors the "Text Input Web" playground
+// on Fold-Pixel-1.0 node 25:21239. Every flag here maps 1:1 to the Figma
+// component's boolean/enum controls. ──
+export const AllSlots = {
+  args: {
+    showLabel: true,
+    label: 'Title',
+    placeholder: 'Enter Task Title',
+    required: true,
+    showInfo: true,
+    infoText: 'Task titles help teammates find work quickly.',
+    showLeadingIcon: true,
+    leadingIcon: 'solar:user-linear',
+    showPriority: true,
+    showTrailingText: true,
+    trailingText: 'Days',
+    showChevron: true,
+    chevronDirection: 'down',
+    trailingAction: true,
+    trailingButton: true,
+    trailingButtonText: 'Button Text',
+    characterLimit: true,
+    characterLimitMax: 150,
+    showSupportingText: true,
+    helperText: 'This is supporting text',
+  },
+  render: (args) => <InputFromArgs {...args} />,
+  parameters: {
+    docs: { description: { story: 'Every slot from the Figma Text Input Web component turned on at once.' } },
   },
 };
 

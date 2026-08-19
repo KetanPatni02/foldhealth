@@ -29,6 +29,7 @@ import { getStatusSpec, hasStatusSpec } from './statusSpec';
 import { StatusIcon } from './StatusIcon';
 import { staffById, ROLE_LABEL, ROLES } from './assignment/astranaStaff';
 import { RoleAssigneePicker } from './RoleAssigneePicker';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { ReviewProgressPopover } from './DiagPanel/ReviewProgressPopover';
 import { buildReviewStages } from './DiagPanel/ReviewProgressPopover.utils';
 import { createPortal } from 'react-dom';
@@ -310,25 +311,29 @@ export function RoleStatusCell({ name, status, date, role, memberId, dosDate, pr
   // (its work, document review, is pending); Coder/QA/Compliance read "New".
   const effectiveStatus = hasStatusSpec(status) ? status : (ROLE_DEFAULT_STATUS[role] || 'New');
   const spec = getStatusSpec(effectiveStatus);
-  const display = (
-    <>
-      <span className={styles.roleName}>{name}</span>
-      {priorResolved && (
-        <span className={styles.roleStatusLine}>
-          <StatusIcon status={effectiveStatus} size={12} color={spec.color} />
-          {date && <span className={styles.roleDate}>{date}</span>}
-        </span>
-      )}
-    </>
-  );
+  // Status glyph + expected-completion date live OUTSIDE the AssigneeChange
+  // trigger — the pill owns the name only; the status line stacks beneath it
+  // so it stays a data affordance, not part of the reassign click target.
+  const statusLine = priorResolved ? (
+    <span className={styles.roleStatusLine}>
+      <StatusIcon status={effectiveStatus} size={12} color={spec.color} />
+      {date && <span className={styles.roleDate}>{date}</span>}
+    </span>
+  ) : null;
   // Completed steps are locked; every step still in flight can be reassigned.
   if (status === 'Completed') {
-    return <div className={styles.stackCell}>{display}</div>;
+    return (
+      <div className={styles.stackCell}>
+        <span className={styles.roleName}>{name}</span>
+        {statusLine}
+      </div>
+    );
   }
   return (
-    <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={{ name }}>
-      {display}
-    </RolePicker>
+    <div className={styles.stackCell}>
+      <RolePicker role={role} memberId={memberId} dosDate={dosDate} current={{ name }} />
+      {statusLine}
+    </div>
   );
 }
 
@@ -338,7 +343,7 @@ export function RoleStatusCell({ name, status, date, role, memberId, dosDate, pr
  * or the muted "Assign" pill (unassigned). Used for unassigned steps and any
  * assigned step that isn't Completed yet.
  */
-export function RolePicker({ role, memberId, dosDate, current, children }) {
+export function RolePicker({ role, memberId, dosDate, current }) {
   return (
     <RoleAssigneePicker
       role={role}
@@ -346,14 +351,23 @@ export function RolePicker({ role, memberId, dosDate, current, children }) {
       dosDate={dosDate}
       currentName={current?.name || null}
       trigger={({ ref, onClick }) => (current ? (
-        <button ref={ref} type="button" className={styles.roleReassignTrigger} title="Change assignee" onClick={onClick}>
-          {children}
-        </button>
+        <AssigneeChange
+          ref={ref}
+          hideAvatar
+          name={current.name}
+          showRole={false}
+          onClick={onClick}
+          ariaLabel={`Change ${ROLE_LABEL[role] || role} assignee (currently ${current.name})`}
+        />
       ) : (
-        <button ref={ref} type="button" className={styles.roleUnassigned} onClick={onClick}>
-          <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-200)" />
-          <span>Assign</span>
-        </button>
+        <AssigneeChange
+          ref={ref}
+          unassigned
+          hideAvatar
+          unassignedLabel="Assign"
+          onClick={onClick}
+          ariaLabel={`Assign ${ROLE_LABEL[role] || role}`}
+        />
       ))}
     />
   );

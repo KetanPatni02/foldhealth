@@ -20,6 +20,8 @@ export default {
     unassigned: { control: 'boolean' },
     size: { control: 'inline-radio', options: ['M', 'S'] },
     avatarOnly: { control: 'boolean' },
+    hideAvatar: { control: 'boolean' },
+    unassignedLabel: { control: 'text' },
     disabled: { control: 'boolean' },
   },
 };
@@ -93,6 +95,20 @@ export const AvatarOnlyUnassigned = {
 
 export const Disabled = {
   args: { name: 'Deborah Hintz', initials: 'DH', role: 'Support team', disabled: true },
+};
+
+// ── hideAvatar variant — used by the HCC worklist role cells. Assigned rows
+// drop the initials avatar entirely; unassigned rows swap the outlined
+// Avatar-with-icon for a plain leading Solar `user-plus` glyph next to the
+// label. ────────────────────────────────────────────────────────────────
+export const HideAvatarAssigned = {
+  name: 'Hide avatar · assigned',
+  args: { name: 'Deborah Hintz', initials: 'DH', hideAvatar: true },
+};
+
+export const HideAvatarUnassigned = {
+  name: 'Hide avatar · unassigned',
+  args: { unassigned: true, hideAvatar: true, unassignedLabel: 'Assign' },
 };
 
 export const DisabledUnassigned = {
