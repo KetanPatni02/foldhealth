@@ -3,7 +3,7 @@ import styles from '../TableSkeleton/TableSkeleton.module.css';
 function SkeletonCard() {
   return (
     <div style={{
-      background: '#fff', border: '0.5px solid var(--neutral-100)', borderRadius: 10,
+      background: 'var(--neutral-0)', border: '0.5px solid var(--neutral-100)', borderRadius: 10,
       padding: 16, display: 'flex', flexDirection: 'column', gap: 10,
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>

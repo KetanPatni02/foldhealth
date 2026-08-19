@@ -137,7 +137,7 @@ export function LiveDrawer() {
       {/* Transfer Context Card (shown when taking over) */}
       {ongoingCall?.compliance && (
         <div style={{
-          border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 10, marginBottom: 12, background: '#fafbff',
+          border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 10, marginBottom: 12, background: 'var(--neutral-25)',
           display: 'flex', flexWrap: 'wrap', gap: 8, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)',
         }}>
           <span><strong>Verified:</strong> {ongoingCall.compliance.identityVerified ? 'Yes' : 'No'}</span>

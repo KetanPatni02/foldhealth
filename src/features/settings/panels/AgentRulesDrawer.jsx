@@ -82,8 +82,8 @@ export function AgentRulesDrawer() {
           </div>
         </div>
         {!agentEnabled && (
-          <div style={{ padding: '10px 16px', background: '#FFF0B3', borderTop: '1px solid rgba(245,158,11,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Icon name="solar:danger-triangle-linear" size={14} color="#F59E0B" />
+          <div style={{ padding: '10px 16px', background: 'var(--status-warning-light)', borderTop: '1px solid color-mix(in srgb, var(--status-warning) 20%, transparent)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-warning)" />
             <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-400)' }}>
               Agent is disabled for this chat group. Toggle on to re-enable.
             </span>
@@ -278,10 +278,10 @@ export function AgentRulesDrawer() {
 
       {/* Key Constraints */}
       <div style={{
-        background: '#FFF0B3', border: '0.5px solid rgba(245,158,11,0.2)', borderRadius: 8,
+        background: 'var(--status-warning-light)', border: '0.5px solid color-mix(in srgb, var(--status-warning) 20%, transparent)', borderRadius: 8,
         padding: '12px 16px', display: 'flex', gap: 10, alignItems: 'flex-start',
       }}>
-        <Icon name="solar:danger-triangle-linear" size={20} color="#F59E0B" />
+        <Icon name="solar:danger-triangle-linear" size={20} color="var(--status-warning)" />
         <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-400)', lineHeight: 1.6 }}>
           <strong>Key Constraints:</strong> Emergency (#1) and Crisis (#2) always fire first — cannot be reordered, disabled, or overridden. Default Fallback (#10) always fires last. Each message matches at most one rule (first match wins). Custom rules are inserted above #10. Changes take effect immediately for new messages.
         </div>
