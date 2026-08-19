@@ -31,6 +31,12 @@
   --neutral-400: #3A485F;
   --neutral-300: #4F5A70;
   --neutral-200: #5F6A7E;
+  /* Figma "Grey/200" (#8A94A8). Codebase's --neutral-200 was intentionally
+     darkened for AA body-text contrast, but placeholder/hint text is
+     allowed to sit at a lower ratio per WCAG. Use this token when the
+     Figma spec calls for the lighter grey — inputs use it for the
+     placeholder color at node 25:21239. */
+  --placeholder-text: #8A94A8;
   --neutral-150: #D0D6E1;
   --neutral-100: #E9ECF1;
   --neutral-75:  #F3F4F7;
@@ -190,6 +196,7 @@
   --neutral-400: #D4D1CB;   /* primary body text — soft warm off-white */
   --neutral-300: #ADA9A2;   /* muted body text — warm grey-tan */
   --neutral-200: #7E7B74;   /* hint / disabled — warm muted (~4.7:1 on page) */
+  --placeholder-text: #9A9791;  /* placeholder hint — matches neutral-200 warmth, softer */
   --neutral-150: #3D3A35;   /* default borders — visible warm */
   --neutral-100: #322F2B;   /* soft borders / dividers */
   --neutral-75:  #2A2724;   /* elevated surface 2 (hovers) */
@@ -378,6 +385,7 @@
   --neutral-400: #000000;  /* was #3A485F → body text goes fully black */
   --neutral-300: #000000;  /* was #4F5A70 → muted labels match body */
   --neutral-200: #111827;  /* was #5F6A7E → hint text near-black; one micro-step for hierarchy */
+  --placeholder-text: #374151;  /* placeholder — sits between neutral-200 body and borders */
   --neutral-150: #374151;  /* was #D0D6E1 → borders go from ghostly to obvious */
   --neutral-100: #6B7280;  /* was #E9ECF1 → dividers read as real lines */
   /* neutral-75 / -50 / -25 / -0 intentionally NOT overridden — those are
@@ -393,6 +401,7 @@
   --neutral-400: #FFFFFF;  /* was #D4D1CB → body goes full white */
   --neutral-300: #FFFFFF;  /* was #ADA9A2 → muted matches body */
   --neutral-200: #E5E1D8;  /* was #7E7B74 → hint one step down but still bright */
+  --placeholder-text: #CFCABF;  /* placeholder — a touch dimmer than neutral-200 hint */
   --neutral-150: #B8B2A7;  /* was #3D3A35 → borders lift clearly off surface */
   --neutral-100: #8A857D;  /* was #322F2B */
   /* neutral-75 / -50 / -25 / -0 intentionally NOT overridden — surface tokens. */

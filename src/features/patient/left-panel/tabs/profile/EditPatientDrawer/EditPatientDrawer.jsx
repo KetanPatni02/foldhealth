@@ -198,7 +198,7 @@ function Field({ label, required, children, className }) {
   const text = (
     <>
       {label}
-      {required && <span className={styles.required}>*</span>}
+      {required && <span className={styles.required} aria-hidden="true" />}
     </>
   );
   return (
@@ -564,8 +564,8 @@ export function EditPatientDrawer({
           <section ref={sectionRefs.basic} className={styles.section}>
             <h3 className={styles.sectionTitle}>Basic Info</h3>
             <div className={styles.grid}>
-              <Input label="Name" required value={form.name} onChange={e => set('name', e.target.value)} />
-              <Input label="Chosen Name" value={form.chosen_name} onChange={e => set('chosen_name', e.target.value)} />
+              <Input label="Name" required value={form.name} onChange={e => set('name', e.target.value)} placeholder="Enter full name" />
+              <Input label="Chosen Name" value={form.chosen_name} onChange={e => set('chosen_name', e.target.value)} placeholder="Enter preferred name" />
               <Field label="Date of Birth">
                 <DatePicker
                   value={isoFromMdy(form.date_of_birth)}
@@ -577,7 +577,7 @@ export function EditPatientDrawer({
                   placeholder="MM/DD/YYYY"
                 />
               </Field>
-              <Input label="Age" value={form.age} onChange={e => set('age', e.target.value)} />
+              <Input label="Age" value={form.age} onChange={e => set('age', e.target.value)} placeholder="Enter age" />
               <Field label="Gender">
                 <Select options={GENDER_OPTIONS} value={form.gender_identity} onChange={(v) => set('gender_identity', v)} placeholder="Select gender" />
               </Field>

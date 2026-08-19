@@ -46,28 +46,35 @@
   .grid { grid-template-columns: 1fr; }
 }
 
-/* ── Local Field wrapper (label + Select/Textarea) ─────────────── */
+/* ── Local Field wrapper (label + Select/Textarea) ───────────────
+   Kept visually aligned with `src/components/Input/Input.module.css` so
+   the Select/DatePicker/Textarea labels look identical to Input labels
+   in the same form. Update both files together on any label-spec change. */
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
 .fieldLabel {
-  font-size: 13px;
-  color: var(--neutral-300);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--neutral-200);
   line-height: 1.2;
   display: inline-flex;
   align-items: center;
   gap: 4px;
 }
 
+/* 4×4 red dot after the label — matches Input's Figma-spec required
+   indicator (node 25:21239) instead of an asterisk glyph. */
 .required {
-  color: var(--status-error);
-  font-size: 8px;
-  line-height: 1;
-  margin-left: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
 }
 
 /* ── "+ Add …" link button ─────────────────────────────────────── */
