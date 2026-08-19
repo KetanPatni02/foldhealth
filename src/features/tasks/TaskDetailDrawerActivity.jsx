@@ -1,6 +1,7 @@
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { TabStrip } from '../../components/TabStrip/TabStrip';
+import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
 import styles from './TasksView.module.css';
 
 export function TaskDetailDrawerActivity({
@@ -32,13 +33,11 @@ export function TaskDetailDrawerActivity({
           {/* Comment input — supports @mentions */}
           <CommentComposer onSubmit={handleAddComment} />
 
-          {/* Activity log — real audit entries */}
-          <div className={styles.activityLog}>
-            {activityLogItems}
-            {activityLogItems.length === 0 && (
-              <div className={styles.subtaskEmpty}>No activity yet.</div>
-            )}
-          </div>
+          {/* Activity log — real audit entries, rendered by the shared
+              ActivityLog primitive so date • time • by meta line and the
+              typed entry variants (comment / status change / assignee change)
+              match the HCC / HEDIS drawers. */}
+          <ActivityLog entries={activityLogItems} emptyLabel="No activity yet." />
         </div>
     </>
   );

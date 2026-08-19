@@ -112,6 +112,13 @@ export function useTasksView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchTasks, fetchTaskProfiles, fetchTaskLabels, fetchTaskPools, fetchAllPatients]);
 
+  /* eslint-disable react-hooks/set-state-in-effect --
+   * `pendingAddTask` is a one-shot external signal from the store (another
+   * feature sets it, we consume it and clear it). This matches the rule's
+   * own "Subscribe for updates from external state, calling setState in a
+   * callback when it changes" carve-out — Zustand delivers the change via
+   * re-render, and this branch is the callback that reacts.
+   */
   useEffect(() => {
     if (!pendingAddTask) return;
     setAddDrawerStatus('pending');
@@ -119,6 +126,7 @@ export function useTasksView() {
     setShowAddDrawer(true);
     clearPendingAddTask();
   }, [pendingAddTask, clearPendingAddTask]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const meId = currentUserProfile?.id || null;
   const meName = currentUserProfile?.name || null;
@@ -248,11 +256,12 @@ export function useTasksView() {
     if (!task) return;
 
     try {
+      let ok = false;
       if (viewBy === 'status') {
-        await updateTask(taskId, { status: targetGroupKey });
+        ok = await updateTask(taskId, { status: targetGroupKey });
       } else if (viewBy === 'priority') {
         const priorityVal = targetGroupKey === 'none' ? null : targetGroupKey;
-        await updateTask(taskId, { priority: priorityVal });
+        ok = await updateTask(taskId, { priority: priorityVal });
       } else if (viewBy === 'due_date') {
         let newDate = null;
         if (targetGroupKey === 'today') {
@@ -265,9 +274,16 @@ export function useTasksView() {
           const d = new Date(); d.setDate(d.getDate() - 1);
           newDate = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
         }
-        await updateTask(taskId, { due_date: newDate });
+        ok = await updateTask(taskId, { due_date: newDate });
       }
-      toast.success(`Task moved to ${targetGroupKey}`);
+      if (ok) {
+        toast.success(`Task moved to ${targetGroupKey}`);
+      } else {
+        // updateTask kept the optimistic local mutation but Supabase rejected
+        // the write. Reveal that to the user — the row will still snap back
+        // on the next fetch.
+        toast.error(`Move saved locally but failed to sync — try again.`);
+      }
     } catch (err) {
       console.error('handleTaskMove error:', err);
       toast.error(`Move Error: ${err.message || 'Unknown error'}`);

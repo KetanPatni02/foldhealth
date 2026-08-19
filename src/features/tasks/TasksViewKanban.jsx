@@ -22,7 +22,7 @@ import { PriorityIcon, SubtaskIcon, CheckIcon } from './TasksViewIcons';
 import { RowActionMenu } from './TasksViewRowDropdowns';
 import styles from './TasksView.module.css';
 
-export function KanbanCardContent({ task }) {
+export function KanbanCardContent({ task, onToggle }) {
   const isCompleted = task.status === 'completed';
   const labels = Array.isArray(task.labels) ? task.labels : [];
   const memberInitials = task.member ? task.member.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
@@ -49,13 +49,14 @@ export function KanbanCardContent({ task }) {
             </span>
           </div>
           <button
+            type="button"
             className={`${styles.taskCheckbox} ${isCompleted ? styles.taskCheckboxChecked : ''}`}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onToggle?.(task); }}
             aria-label={isCompleted ? 'Mark incomplete' : 'Mark complete'}
           >
             <span className={styles.taskCheckIcon}>
-            <CheckIcon size={13} />
-          </span>
+              <CheckIcon size={13} />
+            </span>
           </button>
         </div>
 
@@ -186,7 +187,7 @@ function DraggableKanbanCard({ task, groupKey, onToggle, onTaskClick }) {
       {...listeners}
       onClick={handleClick}
     >
-      <KanbanCardContent task={task} />
+      <KanbanCardContent task={task} onToggle={onToggle} />
     </div>
   );
 }
@@ -312,7 +313,8 @@ export function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick })
       </div>
       <DragOverlay dropAnimation={{
         duration: 200,
-        easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+        // ease-out-quart — smooth deceleration, no overshoot.
+        easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
       }}>
         {activeTask && (
           <div className={`${styles.kanbanCard} ${styles.kanbanCardOverlay}`}>

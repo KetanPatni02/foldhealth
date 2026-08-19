@@ -4,7 +4,7 @@ import {
   STATUS_ORDER, STATUS_LABELS, PRIORITY_OPTIONS, ASSIGNEE_OPTIONS, MEMBER_OPTIONS, TITLE_MAX, todayMMDDYYYY,
 } from './TasksView.utils';
 
-export function useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTaskCreated, extraFields }) {
+export function useAddTaskDrawer({ defaultStatus, initialMember, onTaskCreated, extraFields }) {
   const initialStatus = defaultStatus || 'pending';
   const [name, setName] = useState('');
   const [priority, setPriority] = useState('medium');

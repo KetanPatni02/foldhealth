@@ -15,7 +15,7 @@ import { toast } from '../components/Toast/sonnerToast';
 // chunk. They're only needed when Supabase returns empty or errors.
 import { updateHash } from '../lib/router';
 import { track } from '../lib/tracking';
-import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle, applyContrast, getStoredContrast } from '../lib/theme';
+import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle, applyContrast, getStoredContrast, applyFontScale, getStoredFontScale } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
 import { getChartDocs } from '../features/hcc/data/chartDocs';
@@ -564,10 +564,13 @@ const _initialThemeSetting = getStoredTheme();
 const _initialResolvedTheme = getResolvedTheme(_initialThemeSetting);
 const _initialNavStyle = getStoredNavStyle();
 const _initialContrast = getStoredContrast();
-// Apply nav style and contrast at module load so they land before React mounts
-// (the index.html blocking script handles the color theme but not these yet).
+const _initialFontScale = getStoredFontScale();
+// Apply nav style, contrast, and font scale at module load so they land before
+// React mounts (the index.html blocking script handles the color theme but not
+// these yet).
 applyNavStyle(_initialNavStyle);
 applyContrast(_initialContrast);
+applyFontScale(_initialFontScale);
 
 // ── Settings → Content → Emails: SWR cache ────────────────────────────────
 // Keyed by `${page}|${perPage}|${searchLowercased}|${status}`. Lives at
@@ -999,6 +1002,17 @@ export const useAppStore = create((set, get) => ({
     track('contrast.changed', { from, to: next });
     const applied = applyContrast(next);
     set({ contrast: applied });
+  },
+
+  // ─── Font scale ─────────────────────────────────────────────────────
+  // 5 accessibility levels: smaller / small / default / large / larger.
+  // Adjusts root font-size; all rem-based tokens scale proportionally.
+  fontScale: _initialFontScale,
+  setFontScale: (next) => {
+    const from = get().fontScale;
+    track('fontScale.changed', { from, to: next });
+    const applied = applyFontScale(next);
+    set({ fontScale: applied });
   },
 
   // ─── Featurebase (Help → Give Feedback) ─────────────────────────────
@@ -10003,10 +10017,22 @@ export const useAppStore = create((set, get) => ({
   tasksTab: 'all',
   tasksFilters: {},
   showTasksFilterBar: true,
-  tasksViewMode: 'list',
+  // Seed from localStorage so the first paint honors the user's last choice
+  // instead of always flashing 'list'. Same pattern as `changelogSeenAt` and
+  // `worklistOrder` above — this is a per-device UI preference, so no need
+  // to sync it through Supabase.
+  tasksViewMode: (() => {
+    try {
+      const saved = localStorage.getItem('tasksViewMode');
+      return saved === 'board' || saved === 'list' ? saved : 'list';
+    } catch { return 'list'; }
+  })(),
 
   setTasksTab: (tab) => set({ tasksTab: tab }),
-  setTasksViewMode: (mode) => set({ tasksViewMode: mode }),
+  setTasksViewMode: (mode) => {
+    set({ tasksViewMode: mode });
+    try { localStorage.setItem('tasksViewMode', mode); } catch { /* private mode */ }
+  },
   toggleTasksFilterBar: () => set(s => ({ showTasksFilterBar: !s.showTasksFilterBar })),
   setTasksFilter: (key, value) => {
     const filters = { ...get().tasksFilters };
@@ -10228,12 +10254,16 @@ export const useAppStore = create((set, get) => ({
         final.due_missed = true;
         final.completed_at = null;
       } else if (updates.status === 'pending') {
+        // An explicit user move to pending (drag a Missed card to Pending,
+        // uncheck a completed task, …) is intent — respect it. If the due
+        // date is still in the past, bump it forward to today so (a) the row
+        // actually reads as pending and (b) the fetch-time sweeper does not
+        // flip it back to missed on the next reload.
         if (overdue) {
-          final.status = 'missed';
-          final.due_missed = true;
-        } else {
-          final.due_missed = false;
+          const d = new Date();
+          final.due_date = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
         }
+        final.due_missed = false;
         final.completed_at = null;
       }
     }
@@ -10258,6 +10288,7 @@ export const useAppStore = create((set, get) => ({
     if (error) {
       console.warn('Update task error (optimistic update kept):', error.message);
     }
+    const dbOk = !error;
 
     // Audit logging
     if (prev) {
@@ -10285,9 +10316,27 @@ export const useAppStore = create((set, get) => ({
           get().logTaskAudit(id, 'renamed', { field: 'name', from: prev.name, to: val });
         }
       });
+
+      // If we auto-bumped the due_date while re-opening a missed task,
+      // record the implicit change so the drawer history stays truthful.
+      if (
+        !('due_date' in updates)
+        && final.due_date
+        && prev.due_date
+        && final.due_date !== prev.due_date
+      ) {
+        get().logTaskAudit(id, 'due_date_changed', {
+          field: 'due_date',
+          from: prev.due_date,
+          to: final.due_date,
+        });
+      }
     }
 
-    return true;
+    // Report DB success to the caller so it can differentiate a mirrored
+    // optimistic update from a persisted one. Prior contract always returned
+    // `true`, which meant `handleTaskMove` toasted success on failed writes.
+    return dbOk;
   },
 
   deleteTask: async (id) => {

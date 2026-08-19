@@ -63,3 +63,39 @@ export const Playground = {
     autoFocus: false,
   },
 };
+
+export const Collapsed = {
+  name: 'Default (collapsed)',
+  parameters: {
+    docs: { description: { story: 'Default state — matches the Input primitive: 32px control, 0.5px --neutral-150 border, 6px radius. Focus lifts the border to --primary-300 with a primary glow.' } },
+  },
+  render: (args) => <Wrapper {...args} />,
+  args: {
+    placeholder: 'Add a comment, use @ to mention someone',
+    autoFocus: false,
+  },
+};
+
+export const Expanded = {
+  name: 'Expanded',
+  parameters: {
+    docs: { description: { story: 'Focused state — the field grows to an 80px min-height, actions appear, and the bottom-right corner shows a native drag handle to resize the composer vertically up to 320px.' } },
+  },
+  render: (args) => <Wrapper {...args} />,
+  args: {
+    placeholder: 'Add a comment, use @ to mention someone',
+    autoFocus: true,
+  },
+};
+
+export const StatusChangeMode = {
+  name: 'Status change mode',
+  parameters: {
+    docs: { description: { story: 'Morphs into a "Status Changed" card with a mandatory-comment helper — used when a workflow transition (e.g. Coder → Record Requested) requires a note before firing.' } },
+  },
+  render: (args) => <Wrapper {...args} />,
+  args: {
+    placeholder: 'Add a comment, use @ to mention someone',
+    statusChange: { fromStatus: 'Coder', toStatus: 'Record Requested', onCancel: () => {} },
+  },
+};

@@ -25,7 +25,7 @@
 }
 
 .statusHeader {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -39,7 +39,7 @@
 .statusPill {
   padding: 3px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   line-height: 1.5;
 }
@@ -53,33 +53,60 @@
 }
 .statusPillArrow {
   color: var(--neutral-300);
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1;
 }
 
 .statusHelper {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
 }
 
+/* Collapsed default — mirrors the Input primitive
+   (Fold-Pixel node 25:21239): 32px control, 0.5px neutral-150 border,
+   6px radius, hover → neutral-200, focus → primary-300 + primary glow.
+   Kept as a contenteditable div (not <textarea>) so inline @mention
+   chips render inside the text; the collapsed styling still reads as
+   the same input. */
 .textarea {
-  border: 0.5px solid var(--neutral-200);
-  border-radius: 4px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
   outline: none;
-  padding: 8px;
-  font-size: 14px;
+  padding: 6px 8px;
+  font-size: var(--font-base);
+  font-weight: 400;
   color: var(--neutral-400);
+  background: var(--neutral-0);
   resize: none;
   min-height: 32px;
   max-height: 120px;
   box-sizing: border-box;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.5;
+  line-height: 1.4;
 }
-.textarea:focus { border-color: var(--primary-200); }
+
+.textarea:not(:focus):hover {
+  border-color: var(--neutral-200);
+}
+
+.textarea:focus {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-300) 12%, transparent);
+}
+
+/* Expanded — grows into a comment body with the native browser
+   resize handle in the bottom-right corner. `resize: vertical` only
+   paints the handle when overflow ≠ visible, which the base rule already
+   sets. */
+.textareaExpanded {
+  padding: 8px;
+  min-height: 80px;
+  max-height: 320px;
+  resize: vertical;
+}
 
 /* Placeholder for the contenteditable — driven by data-empty so it also
    suppresses when the field holds only mention chips (which leave no text
@@ -133,7 +160,7 @@
   border-radius: 6px;
   cursor: pointer;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
 }
 .mentionItem:hover,

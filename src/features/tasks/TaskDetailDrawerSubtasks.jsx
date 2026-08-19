@@ -32,7 +32,10 @@ export function TaskDetailDrawerSubtasks({
             </div>
             {subtasks.length > 0 && (
               <div className={styles.subtaskProgressBar}>
-                <div className={styles.subtaskProgressFill} style={{ width: `${(completedSubs / subtasks.length) * 100}%` }} />
+                <div
+                  className={styles.subtaskProgressFill}
+                  style={{ transform: `scaleX(${completedSubs / subtasks.length})` }}
+                />
               </div>
             )}
             {showAddSubtask && (
