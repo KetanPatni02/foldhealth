@@ -63,3 +63,8 @@ export const ASSESSMENT_STEPS = {
 };
 
 export const DEFAULT_LETTER_NAMES = ['Intro or Welcome Letter - Patient', 'UTR Letter', 'Member Flyers'];
+
+// MM/DD/YY — the stamp format the step headers use for sign-off attribution.
+export function mmddyy(d = new Date()) {
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${String(d.getFullYear()).slice(-2)}`;
+}

@@ -1733,6 +1733,80 @@ export const useAppStore = create((set, get) => ({
     return data.id;
   },
 
+  // Optimistic partial update for an already-saved medication (e.g. the
+  // card-view "Stop" quick action). `updates` uses the same camelCase keys
+  // as the row shape (status/stop/stopReason/...); only the ones passed are
+  // touched. Rolls back to the pre-update row on failure.
+  updatePatientMedication: async (patientId, medId, updates) => {
+    if (!patientId || !medId) return false;
+    const prev = (get().patientMedications[patientId] || []).find(m => m.id === medId);
+    if (!prev) return false;
+    set(s => ({
+      patientMedications: {
+        ...s.patientMedications,
+        [patientId]: (s.patientMedications[patientId] || []).map(m =>
+          m.id === medId ? { ...m, ...updates } : m
+        ),
+      },
+    }));
+    const dbUpdates = {};
+    if ('name' in updates) dbUpdates.name = updates.name;
+    if ('start' in updates) dbUpdates.start_date = updates.start || null;
+    if ('stop' in updates) dbUpdates.stop_date = updates.stop || null;
+    if ('sig' in updates) dbUpdates.sig = updates.sig || null;
+    if ('status' in updates) dbUpdates.status = updates.status;
+    if ('note' in updates) dbUpdates.note = updates.note || null;
+    if ('stopReason' in updates) dbUpdates.stop_reason = updates.stopReason || null;
+    const { error } = await supabase
+      .from('patient_medications')
+      .update(dbUpdates)
+      .eq('id', medId);
+    if (error) {
+      console.error('patient_medications update failed:', error.message);
+      set(s => ({
+        patientMedications: {
+          ...s.patientMedications,
+          [patientId]: (s.patientMedications[patientId] || []).map(m => (m.id === medId ? prev : m)),
+        },
+      }));
+      get().showToast?.(`Failed to update medication: ${error.message}`);
+      return false;
+    }
+    return true;
+  },
+
+  // Optimistic delete — drops the row locally first, then removes it from
+  // Supabase. Restores it in place on failure so the list can't silently
+  // lose a medication the DB still has.
+  deletePatientMedication: async (patientId, medId) => {
+    if (!patientId || !medId) return false;
+    const prevList = get().patientMedications[patientId] || [];
+    const index = prevList.findIndex(m => m.id === medId);
+    if (index === -1) return false;
+    const removed = prevList[index];
+    set(s => ({
+      patientMedications: {
+        ...s.patientMedications,
+        [patientId]: (s.patientMedications[patientId] || []).filter(m => m.id !== medId),
+      },
+    }));
+    const { error } = await supabase
+      .from('patient_medications')
+      .delete()
+      .eq('id', medId);
+    if (error) {
+      console.error('patient_medications delete failed:', error.message);
+      set(s => {
+        const list = [...(s.patientMedications[patientId] || [])];
+        list.splice(index, 0, removed);
+        return { patientMedications: { ...s.patientMedications, [patientId]: list } };
+      });
+      get().showToast?.(`Failed to delete medication: ${error.message}`);
+      return false;
+    }
+    return true;
+  },
+
   fetchCareProgramsForPatient: async (patientId) => {
     if (!patientId) return;
     if (get().careProgramsLoadedFor[patientId]) return;
@@ -1755,6 +1829,9 @@ export const useAppStore = create((set, get) => ({
       assignee:     r.assignee || 'Unassigned',
       pcp:          r.pcp || '—',
       progress:     Number(r.progress) || 0,
+      medReconSignedBy:   r.med_recon_signed_by || null,
+      medReconSignedRole: r.med_recon_signed_role || null,
+      medReconSignedAt:   r.med_recon_signed_at || null,
     }));
     // `trigger` is derived (not stored): the 1-based position among same-code
     // enrollments in created_at order. SNP can be enrolled repeatedly, so its
@@ -1826,6 +1903,9 @@ export const useAppStore = create((set, get) => ({
         assignee:      program.assignee,
         pcp:           program.pcp,
         progress:      program.progress,
+        med_recon_signed_by:   program.medReconSignedBy || null,
+        med_recon_signed_role: program.medReconSignedRole || null,
+        med_recon_signed_at:   program.medReconSignedAt || null,
       }, { onConflict: 'id' }).then(({ error }) => {
         if (error) console.warn('addCareProgram — insert failed:', error.message);
       });
@@ -1867,6 +1947,9 @@ export const useAppStore = create((set, get) => ({
         assignee:      updated.assignee,
         pcp:           updated.pcp,
         progress:      updated.progress,
+        med_recon_signed_by:   updated.medReconSignedBy || null,
+        med_recon_signed_role: updated.medReconSignedRole || null,
+        med_recon_signed_at:   updated.medReconSignedAt || null,
       }, { onConflict: 'id' }).then(({ error }) => {
         if (error) console.warn('updateCareProgram — update failed:', error.message);
       });

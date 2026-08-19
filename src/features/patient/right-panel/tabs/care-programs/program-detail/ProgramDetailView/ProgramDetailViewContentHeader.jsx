@@ -1,13 +1,29 @@
+import { useState } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { Button } from '../../../../../../../components/Button/Button';
+import { Link } from '../../../../../../../components/Link/Link';
+import { SelectAssigneeModal } from '../../../../../../../components/SelectAssigneeModal/SelectAssigneeModal';
+import { useAppStore } from '../../../../../../../store/useAppStore';
+import { PenIcon } from '../../../../../../../components/Icon/PenIcon';
 import { SearchBar } from '../../../../../../../components/SearchBar/SearchBar';
 import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
+import { todayMMDDYYYY } from '../../../../../../tasks/TasksView.utils';
 import { EMPTY_TASK_FILTERS } from './ProgramDetailView.utils';
 import styles from './ProgramDetailView.module.css';
 
+// Sign dropdown actions — Figma SNP-Story 3039:621576. "Send for Sign Off"
+// carries the right-chevron submenu affordance from the design; its submenu
+// isn't specced yet, so selecting it currently has no handler.
+const SIGN_MENU_ITEMS = [
+  { key: 'sign-self', iconElement: <PenIcon size={16} color="var(--neutral-400)" />, label: 'Sign (Self)' },
+  { key: 'sign-np', iconElement: <PenIcon size={16} color="var(--neutral-400)" />, label: 'Sign (NP)' },
+  { key: 'send-sign-off', icon: 'solar:checklist-minimalistic-linear', label: 'Send for Sign Off' },
+];
+
 export function ProgramDetailViewContentHeader({
+  program,
+  onSignMedRecon,
   stepFlags,
   assessmentCfg,
   stepName,
@@ -27,6 +43,56 @@ export function ProgramDetailViewContentHeader({
   goNextStep,
   nextStep,
 }) {
+  const [signOffOpen, setSignOffOpen] = useState(false);
+  const patient = useAppStore(s => s.patients.find(p => p.id === s.selectedPatientId));
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  const createTask = useAppStore(s => s.createTask);
+  const showToast = useAppStore(s => s.showToast);
+
+  // "Send for Sign Off" → pick an assignee, then file a task against them.
+  const createSignOffTask = async (user) => {
+    const memberName = patient?.name || '';
+    const me = currentUserProfile?.name || null;
+    const created = await createTask({
+      name: `Sign off on med recon for ${memberName}`,
+      status: 'pending',
+      priority: 'medium',
+      due_date: todayMMDDYYYY(),
+      assigned_to: user.name,
+      assigned_to_id: user.id,
+      member: memberName,
+      labels: [],
+      meta: '',
+      description: '',
+      pool: null,
+      mentions: [],
+      attachments: 0,
+      comments: 0,
+      is_subtask: false,
+      parent_task: null,
+      parent_task_id: null,
+      created_by: me,
+      created_by_id: currentUserProfile?.id || null,
+    });
+    showToast?.(created
+      ? `Sign-off task assigned to ${user.name}`
+      : 'Could not create the sign-off task');
+  };
+
+  const medReconSignedBy = program?.medReconSignedBy || null;
+  const medReconSignature = medReconSignedBy
+    ? `Signed by ${medReconSignedBy}${program.medReconSignedRole ? ` (${program.medReconSignedRole})` : ''} on ${program.medReconSignedAt}`
+    : null;
+
+  // Sign (Self) / Sign (NP) both stamp the current user; the menu choice is
+  // what lands in the parenthetical role.
+  const signMedRecon = (role) => {
+    const name = currentUserProfile?.name;
+    if (!name) { showToast?.('Could not sign — no signed-in user'); return; }
+    onSignMedRecon?.(name, role);
+    showToast?.('Medication reconciliation signed');
+  };
+
   const {
     isBillingStep, isOutreachStep, isPreVisitStep, isCarePlanStep,
     isAppointmentStep, isOpenCareGapsStep, isMedReconStep,
@@ -51,7 +117,9 @@ export function ProgramDetailViewContentHeader({
           <div className={styles.assessmentHeader}>
             <div className={styles.assessmentHeaderText}>
               <span className={styles.assessmentTitle}>Medication Reconciliation</span>
-              <span className={styles.assessmentMeta}>Last Reviewed by Robert Fox on 11/10/24</span>
+              <span className={medReconSignature ? styles.assessmentMetaSigned : styles.assessmentMeta}>
+                {medReconSignature || 'Last Reviewed by Robert Fox on 11/10/24'}
+              </span>
             </div>
           </div>
         ) : isReferralStep ? (
@@ -85,17 +153,39 @@ export function ProgramDetailViewContentHeader({
             <>
               <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
               <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" />
-              <Button variant="ghost" size="S" leadingIcon="solar:add-circle-linear" className={styles.actionBtn}>Add Care Plan</Button>
-              <Button variant="ghost" size="S"
-                leadingIconElement={<Icon name="solar:pen-2-linear" size={14} />}
-                className={styles.reviewedBtn}>Sign &amp; Share</Button>
+              <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear">Add Care Plan</Button>
+              <Button variant="alt" size="L" leadingIcon="solar:pen-2-linear">Sign &amp; Share</Button>
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </>
           ) : isMedReconStep ? (
             <>
               {assigneePicker}
-              {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
-              <Button variant="ghost" size="S" trailingIconElement={<DownChevronIcon size={14} />} className={styles.reviewedBtn}>Sign</Button>
+              <span className={styles.headerDivider} />
+              {!isMandatoryStep && <Link variant="secondary">Skip</Link>}
+              <span className={styles.headerDivider} />
+              {medReconSignature ? (
+                <Button variant="tertiary" size="L" leadingIcon="solar:check-circle-linear">Reviewed</Button>
+              ) : (
+                <Button
+                  variant="alt"
+                  size="L"
+                  menuItems={SIGN_MENU_ITEMS}
+                  menuWidth={220}
+                  menuAriaLabel="Sign options"
+                  onMenuSelect={(key) => {
+                    if (key === 'send-sign-off') setSignOffOpen(true);
+                    else if (key === 'sign-self') signMedRecon('Self');
+                    else if (key === 'sign-np') signMedRecon('NP');
+                  }}
+                >
+                  Sign
+                </Button>
+              )}
+              <SelectAssigneeModal
+                open={signOffOpen}
+                onClose={() => setSignOffOpen(false)}
+                onConfirm={(user) => { setSignOffOpen(false); createSignOffTask(user); }}
+              />
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </>
           ) : isProgramTasksStep ? (
@@ -122,18 +212,18 @@ export function ProgramDetailViewContentHeader({
             </>
           ) : isProgramFilesStep ? (
             <>
-              {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
+              {!isMandatoryStep && <Link variant="secondary">Skip</Link>}
             </>
           ) : isAppointmentStep ? (
             <>
               {assigneePicker}
-              {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
+              {!isMandatoryStep && <Link variant="secondary">Skip</Link>}
               <Button variant="tertiary" size="L" onClick={goNextStep} disabled={!nextStep}>Next</Button>
             </>
           ) : (
             <>
               {assigneePicker}
-              {!isMandatoryStep && <Button variant="ghost" size="S" className={styles.actionBtn}>Skip</Button>}
+              {!isMandatoryStep && <Link variant="secondary">Skip</Link>}
               <Button variant="tertiary" size="L" leadingIcon="solar:check-circle-linear">Reviewed</Button>
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </>

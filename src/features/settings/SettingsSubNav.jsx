@@ -6,6 +6,7 @@ const MENU_ITEMS = [
   { icon: 'solar:checklist-minimalistic-linear', label: 'Tasks' },
   { icon: 'solar:chat-square-linear', label: 'Messages', key: 'messages' },
   { icon: 'solar:phone-linear', label: 'Calls' },
+  { icon: 'solar:clipboard-list-linear', label: 'Care Plan Library', key: 'care-plan-library' },
   { icon: 'solar:widget-add-linear', label: 'CRM Widgets' },
   { icon: 'solar:code-square-linear', label: 'Embed', key: 'embedded-components' },
   { icon: 'solar:documents-linear', label: 'Content', key: 'content' },

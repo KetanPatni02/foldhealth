@@ -9,14 +9,17 @@ import styles from './Link.module.css';
  *
  * Props:
  *  - children   (ReactNode)
+ *  - variant    ('primary'|'secondary')  — 'secondary' renders the same link in
+ *                                          neutral text, for de-emphasised
+ *                                          actions sitting next to a primary one
  *  - onClick    (function)
  *  - className  (string)
  *  - style      (object)   — e.g. { fontSize: 'var(--font-sm)' }
  */
-export function Link({ children, onClick, className, style, ...rest }) {
+export function Link({ children, variant = 'primary', onClick, className, style, ...rest }) {
   return (
     <span
-      className={[styles.link, className].filter(Boolean).join(' ')}
+      className={[styles.link, variant === 'secondary' ? styles.secondary : '', className].filter(Boolean).join(' ')}
       onClick={onClick}
       style={style}
       {...rest}

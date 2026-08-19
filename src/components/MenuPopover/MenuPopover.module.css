@@ -79,3 +79,10 @@
   margin: 2px 0;
   flex-shrink: 0;
 }
+
+/* Submenu affordance — the shared down-chevron turned to point right, so the
+   glyph matches every other chevron in the app rather than a Solar arrow. */
+.submenuChevron {
+  transform: rotate(-90deg);
+  flex-shrink: 0;
+}

@@ -6,6 +6,7 @@ import { ContentSettings } from './ContentSettings';
 import { AccountPanel } from './account/AccountPanel';
 import { BillingPanel } from './BillingPanel';
 import { MemberLeadsPanel } from './MemberLeadsPanel';
+import { CarePlanLibraryPanel } from './CarePlanLibraryPanel';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './SettingsLayout.module.css';
 
@@ -28,6 +29,8 @@ export function SettingsLayout() {
         <BillingPanel />
       ) : settingsNavItem === 'member/leads' ? (
         <MemberLeadsPanel />
+      ) : settingsNavItem === 'care-plan-library' ? (
+        <CarePlanLibraryPanel />
       ) : (
         <AgentsTable />
       )}

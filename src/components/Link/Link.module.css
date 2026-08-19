@@ -11,6 +11,12 @@
   color: var(--primary-400);
   text-decoration: underline;
 }
+.secondary {
+  color: var(--neutral-300);
+}
+.secondary:hover {
+  color: var(--neutral-400);
+}
 .link:focus-visible {
   outline: 2px solid var(--primary-100);
   outline-offset: 2px;

@@ -343,41 +343,20 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Signed attribution — success green per Figma 482:427660 (#009B53 maps to
+   the closest existing token, --status-success). */
+.assessmentMetaSigned {
+  font-size: var(--font-sm);
+  color: var(--status-success);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .contentActions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.actionBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 4px 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 4px;
-  background: white;
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.actionBtn:hover { border-color: var(--neutral-200); }
-.reviewedBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 4px 8px;
-  border: 1px solid var(--primary-300);
-  border-radius: 4px;
-  background: white;
-  font-size: var(--font-base);
-  color: var(--primary-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.reviewedBtn:hover { background: var(--primary-100); }
 
 /* ── Floating bulk-action bar (Letters selection) ── */
 .bulkBar {

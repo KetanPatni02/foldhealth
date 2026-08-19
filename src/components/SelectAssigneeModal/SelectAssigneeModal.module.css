@@ -1,0 +1,106 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-2) 0;
+}
+.headerTitle {
+  flex: 1;
+  min-width: 0;
+  padding: 0 var(--space-2);
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* ~5.5 rows at 48px so a long roster scrolls instead of growing the dialog
+     past the viewport. */
+  max-height: 264px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  /* min-height, not height: the list is a flex column, so a fixed height gets
+     shrunk away and rows with a two-line role collapse into each other. */
+  min-height: 48px;
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-hover);
+}
+.row:hover { background: var(--neutral-50); }
+.rowSelected { background: var(--primary-50); }
+
+.radio {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 999px;
+  background: var(--neutral-0);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.radioChecked {
+  border: 5px solid var(--primary-300);
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+.name {
+  font-size: var(--font-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+.role {
+  font-size: var(--font-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--neutral-200);
+  line-height: 1.2;
+}
+
+.empty {
+  padding: var(--space-4) var(--space-2);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  text-align: center;
+}
+
+.footer {
+  display: flex;
+  gap: var(--space-2);
+}
+/* Both buttons pass fullWidth (100%), so without flex basis the first one
+   claims the whole row and pushes Confirm outside the dialog's overflow clip. */
+.footer > * {
+  flex: 1;
+  min-width: 0;
+}
