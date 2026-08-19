@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { RoleTooltip } from './RoleTooltip';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
@@ -97,10 +98,16 @@ export function ChartDetailDrawerViewRightPane(p) {
                         <span className={styles.dmAvatar}>{supportInitials}</span>
                       </span>
                     ) : (
-                      <button type="button" ref={dmRef} className={styles.dmBadge} onClick={openAssign} aria-label={supportName}>
-                        <span className={styles.dmAvatar}>{supportInitials}</span>
-                        <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
-                      </button>
+                      // name/role omitted so AssigneeChange's internal avatar-only
+                      // tooltip stays quiet — the outer RoleTooltip already carries
+                      // the hover card.
+                      <AssigneeChange
+                        ref={dmRef}
+                        avatarOnly
+                        initials={supportInitials}
+                        onClick={openAssign}
+                        ariaLabel={supportName}
+                      />
                     )}
                   </RoleTooltip>
                 ) : (
