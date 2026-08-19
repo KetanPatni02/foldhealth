@@ -6,6 +6,21 @@ export const TABS = [
   { key: 'mentions', label: 'Mentions' },
 ];
 
+// Compose the "By : Actor • Meta" line used on rows and kanban cards.
+// Returns null when there's nothing worth showing so the caller can skip
+// the whole line — a blanket "By : System Automation" on every task adds
+// noise, not information.
+export function buildTaskMetaLine(task) {
+  if (!task) return null;
+  const actor = task.created_by?.trim();
+  const meta = task.meta?.trim();
+  const isAutomation = !actor || actor === 'System' || /^system\b/i.test(actor);
+  // Nothing to show — no human actor, no automation-authored meta note.
+  if (isAutomation && !meta) return null;
+  if (isAutomation) return meta;
+  return meta ? `By : ${actor} • ${meta}` : `By : ${actor}`;
+}
+
 export function getInitials(name) {
   return name ? name.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
 }

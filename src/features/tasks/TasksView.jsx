@@ -70,6 +70,7 @@ export function TasksView() {
         tasksViewMode={view.tasksViewMode}
         kanbanGroups={view.kanbanGroups}
         grouped={view.grouped}
+        viewBy={view.viewBy}
         hideAssignedTo={view.hideAssignedTo}
         handleToggle={view.handleToggle}
         handleTaskMove={view.handleTaskMove}

@@ -17,7 +17,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { toast } from '../../components/Toast/sonnerToast';
 import { useAppStore } from '../../store/useAppStore';
-import { STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_COLORS, isOverdue, formatDateFriendly } from './TasksView.utils';
+import { STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_COLORS, isOverdue, formatDateFriendly, buildTaskMetaLine } from './TasksView.utils';
 import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
 import { PriorityIcon, SubtaskIcon } from './TasksViewIcons';
 import { RowActionMenu } from './TasksViewRowDropdowns';
@@ -112,9 +112,10 @@ export function KanbanCardContent({ task, onToggle }) {
 
         {/* Row 6: Meta + linked counts */}
         <div className={styles.cardFooterRow}>
-          <span className={styles.cardFooterMeta}>
-            {`By : ${task.created_by?.trim() || 'System Automation'}${task.meta ? ` • ${task.meta}` : ''}`}
-          </span>
+          {(() => {
+            const meta = buildTaskMetaLine(task);
+            return meta ? <span className={styles.cardFooterMeta}>{meta}</span> : <span />;
+          })()}
           <div className={styles.cardLinked}>
             {task.is_subtask && (
               <span className={styles.linkedItem}>
@@ -232,8 +233,10 @@ function DroppableKanbanColumn({ groupKey, label, tasks, onToggle, onTaskClick }
   );
 }
 
+const VIEW_BY_LABEL = { status: 'Status', priority: 'Priority', due_date: 'Due Date' };
+
 /* ── Kanban Board with DnD ── */
-export function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick }) {
+export function KanbanBoard({ kanbanGroups, viewBy = 'status', onToggle, onTaskMove, onTaskClick }) {
   const [activeTask, setActiveTask] = useState(null);
 
   const sensors = useSensors(
@@ -293,6 +296,8 @@ export function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick })
     return closestCenter(args);
   }, []);
 
+  const axisLabel = VIEW_BY_LABEL[viewBy] || 'Status';
+
   return (
     <DndContext
       sensors={sensors}
@@ -300,6 +305,9 @@ export function KanbanBoard({ kanbanGroups, onToggle, onTaskMove, onTaskClick })
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
+      <div className={styles.kanbanAxisHint}>
+        Grouped by <strong>{axisLabel}</strong> — dragging a card changes its {axisLabel.toLowerCase()}.
+      </div>
       <div className={styles.kanbanWrap}>
         {kanbanGroups.map(g => (
           <DroppableKanbanColumn

@@ -307,6 +307,7 @@ export function useTasksView() {
     sortedTasks,
     grouped,
     kanbanGroups,
+    viewBy,
     hideAssignedTo,
     handleToggle,
     handleStatusChange,

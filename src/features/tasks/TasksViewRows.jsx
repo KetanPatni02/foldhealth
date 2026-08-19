@@ -4,7 +4,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
 import { Badge } from '../../components/Badge/Badge';
 import { useAppStore } from '../../store/useAppStore';
-import { isOverdue } from './TasksView.utils';
+import { isOverdue, buildTaskMetaLine } from './TasksView.utils';
 import { SubtaskIcon, PriorityIcon } from './TasksViewIcons';
 import { TaskDatePicker } from './TasksViewDropdowns';
 import { usePopoverPosition } from './usePopoverPosition';
@@ -130,8 +130,10 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
   const updateTask = useAppStore(s => s.updateTask);
   const showToast = useAppStore(s => s.showToast);
 
+  const overdue = isOverdue(task);
+
   return (
-    <div className={styles.taskRow} onClick={() => onTaskClick?.(task)}>
+    <div className={`${styles.taskRow} ${overdue ? styles.taskRowMissed : ''}`} onClick={() => onTaskClick?.(task)}>
       <div className={`${styles.cellCheck} ${pinnedEnds ? styles.pinLeft0 : ''}`}>
         <button
           type="button"
@@ -158,9 +160,7 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
           ) : (
             <span className={`${styles.taskName} ${isCompleted ? styles.taskNameDone : ''}`}>{task.name}</span>
           )}
-          <span className={styles.taskMeta}>
-            {`By : ${task.created_by?.trim() || 'System Automation'}${task.meta ? ` • ${task.meta}` : ''}`}
-          </span>
+          {(() => { const meta = buildTaskMetaLine(task); return meta ? <span className={styles.taskMeta}>{meta}</span> : null; })()}
         </div>
         <div className={styles.taskAttachments}>
           {task.attachments > 0 && (
@@ -186,8 +186,8 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
         <RowStatusDropdown task={task} />
       </div>
 
-      <div className={`${styles.cellDue} ${isOverdue(task) ? styles.dueMissed : ''}`} onClick={e => e.stopPropagation()}>
-        <TaskDatePicker value={task.due_date} overdue={isOverdue(task)} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
+      <div className={`${styles.cellDue} ${overdue ? styles.dueMissed : ''}`} onClick={e => e.stopPropagation()}>
+        <TaskDatePicker value={task.due_date} overdue={overdue} onSelect={v => { updateTask(task.id, { due_date: v }); showToast('Due date updated'); }} />
       </div>
 
       {!hideAssignedTo && (

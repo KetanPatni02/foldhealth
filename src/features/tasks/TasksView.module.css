@@ -176,10 +176,18 @@
   padding: 0 8px;
   box-sizing: border-box;
   min-width: var(--tasks-table-min-width);
+  /* Left-edge accent bar — colored per row status. Default is transparent
+     so status-neutral rows read as plain, missed rows get a red rail. */
+  box-shadow: inset 3px 0 0 0 transparent;
+  transition: background 100ms, box-shadow 120ms;
 }
 
 .taskRow:hover {
   background: var(--primary-25);
+}
+
+.taskRowMissed {
+  box-shadow: inset 3px 0 0 0 var(--status-error);
 }
 
 /* Checkbox column */
@@ -473,6 +481,19 @@
 /* ═══════════════════════════════════════════════════════════
    Kanban Board View
    ═══════════════════════════════════════════════════════════ */
+.kanbanAxisHint {
+  padding: 8px 16px;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+.kanbanAxisHint strong {
+  color: var(--neutral-400);
+  font-weight: 500;
+}
+
 .kanbanWrap {
   flex: 1;
   display: flex;

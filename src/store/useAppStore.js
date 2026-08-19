@@ -10015,12 +10015,17 @@ export const useAppStore = create((set, get) => ({
   // storms when a caller's effect re-runs on unrelated dependency churn.
   tasksDidFetch: false,
   tasksTab: 'all',
-  tasksFilters: {},
+  // Seed filters + view mode from localStorage so a reload keeps the user's
+  // Sort By / View By / applied chips and their list/board choice. Per-device
+  // UI state — no Supabase round-trip needed.
+  tasksFilters: (() => {
+    try {
+      const raw = localStorage.getItem('tasksFilters');
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch { return {}; }
+  })(),
   showTasksFilterBar: true,
-  // Seed from localStorage so the first paint honors the user's last choice
-  // instead of always flashing 'list'. Same pattern as `changelogSeenAt` and
-  // `worklistOrder` above — this is a per-device UI preference, so no need
-  // to sync it through Supabase.
   tasksViewMode: (() => {
     try {
       const saved = localStorage.getItem('tasksViewMode');
@@ -10039,8 +10044,12 @@ export const useAppStore = create((set, get) => ({
     if (value == null) delete filters[key];
     else filters[key] = value;
     set({ tasksFilters: filters });
+    try { localStorage.setItem('tasksFilters', JSON.stringify(filters)); } catch { /* */ }
   },
-  clearTasksFilters: () => set({ tasksFilters: {} }),
+  clearTasksFilters: () => {
+    set({ tasksFilters: {} });
+    try { localStorage.removeItem('tasksFilters'); } catch { /* */ }
+  },
 
   fetchTasks: async () => {
     // Idempotent per session — see `tasksDidFetch`.
