@@ -7,21 +7,6 @@ export const DEFAULT_CALENDARS = {
   selection:  { colorName: 'selection',  lightColors: { main: '#8C5AE2', container: 'transparent', onContainer: '#8C5AE2' }, darkColors: { main: '#8C5AE2', container: 'transparent', onContainer: '#8C5AE2' } },
 };
 
-// Build calendar color configs dynamically from appointment types
-export function buildCalendars(appointmentTypes) {
-  const cals = { selection: DEFAULT_CALENDARS.selection };
-  for (const t of appointmentTypes) {
-    const key = t.name.toLowerCase().replace(/\s+/g, '_').substring(0, 20);
-    const c = t.color || '#8C5AE2';
-    cals[key] = {
-      colorName: key,
-      lightColors: { main: c, container: `${c}15`, onContainer: '#3A485F' },
-      darkColors: { main: c, container: `${c}33`, onContainer: '#E0E0E0' },
-    };
-  }
-  return cals;
-}
-
 export const TIMEZONE_OPTIONS = [
   { value: 'Asia/Kolkata', label: 'IST (GMT+5:30)' },
   { value: 'America/New_York', label: 'EST (GMT-5)' },
@@ -56,7 +41,7 @@ export function getNowInTimezone(tz) {
 export const BROWSER_TIMEZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
 
 // Map a DB appointment row to a schedule-x event object (needs Temporal T + timezone)
-export function apptToEvent(appt, appointmentTypes, T, tz) {
+export function apptToEvent(appt, T, tz) {
   function toDateTime(dateStr, timeStr) {
     if (!dateStr || !timeStr) return null;
     const [mo, dd, yyyy] = dateStr.split('-');
@@ -88,11 +73,25 @@ export function apptToEvent(appt, appointmentTypes, T, tz) {
     title: appt.patient_name || 'Appointment',
     description: `${appt.appointment_type_name || ''} • ${appt.status || 'Scheduled'}`,
     calendarId: calId,
+    // schedule-x applies these to the event element in every view, on first
+    // paint. This is what makes the cancelled styling declarative instead of
+    // a querySelector race against the renderer.
+    ...(appt.status === 'Cancelled' ? { _options: { additionalClasses: ['is-cancelled'] } } : {}),
   };
 }
 
-export const LOCATIONS = ['Fold Health, NY', '7 Hills Department', '68th Street'];
-export const STATUSES = ['Scheduled', 'Confirmed', 'Completed', 'Cancelled'];
+// A booking writes status 'Scheduled', but the drawer's status control writes
+// 'Booked' — the two mean the same thing (see useScheduleDrawer, which renders
+// 'Scheduled' as 'Booked'). The Status filter has to honour that or picking
+// "Booked" hides every appointment created through the booking form.
+export const BOOKED_STATUS_ALIASES = ['Booked', 'Scheduled'];
+
+export function appointmentMatchesStatuses(appt, selectedStatuses) {
+  const status = appt.status;
+  return selectedStatuses.some(s => (s === 'Booked'
+    ? BOOKED_STATUS_ALIASES.includes(status)
+    : s === status));
+}
 
 export const VIEWS = ['week', 'day', 'month-grid'];
 export const VIEW_LABELS = { 'week': 'Week', 'day': 'Day', 'month-grid': 'Month' };

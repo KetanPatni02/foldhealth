@@ -1050,6 +1050,17 @@ export const useAppStore = create((set, get) => ({
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"
   pendingAddTask: null,
 
+  // Pending "open this task's drawer" request — set by NotificationsPopover
+  // (or a copied task link) and consumed by TasksView on mount.
+  pendingOpenTaskId: null,
+  openTaskFromNotification: (taskId) => {
+    set({ activePage: 'tasks', pendingOpenTaskId: taskId });
+    try {
+      if (typeof window !== 'undefined') window.location.hash = `#/tasks?taskId=${taskId}`;
+    } catch { /* */ }
+  },
+  clearPendingOpenTaskId: () => set({ pendingOpenTaskId: null }),
+
   // Top-level navigation (sidebar) — restored from sessionStorage
   activePage: _savedPage === 'builder' ? 'settings' : _savedPage,
   // Tab navigation within pages
@@ -8585,6 +8596,30 @@ export const useAppStore = create((set, get) => ({
     set({ appointmentsLoading: false });
   },
 
+  // Signal-based drawer opener (mirrors pendingAddTask / pendingOpenTaskId
+  // pattern). Set by NotificationsPopover on an "openAppointment" action;
+  // consumed and cleared by useCalendarView.
+  pendingOpenAppointmentId: null,
+  openAppointmentFromNotification: (appointmentId) => {
+    set({ activePage: 'calendar', pendingOpenAppointmentId: appointmentId });
+    try {
+      if (typeof window !== 'undefined') window.location.hash = '#/calendar';
+    } catch { /* */ }
+  },
+  clearPendingOpenAppointmentId: () => set({ pendingOpenAppointmentId: null }),
+
+  // Local helper — returns true when the appointment's primary_user or any
+  // secondary_users entry matches the signed-in user's display name. No
+  // uuid-based owner is stored on the row (see calendar survey notes), so
+  // name-match is the only join we can do.
+  _appointmentInvolvesMe: (appt) => {
+    const me = get().currentUserProfile;
+    if (!me?.name || !appt) return false;
+    if (appt.primary_user === me.name) return true;
+    if (Array.isArray(appt.secondary_users) && appt.secondary_users.includes(me.name)) return true;
+    return false;
+  },
+
   createAppointment: async (appt) => {
     const { data, error } = await supabase
       .from('appointments')
@@ -8594,16 +8629,48 @@ export const useAppStore = create((set, get) => ({
     if (error) { console.error('Create appointment error:', error); return null; }
     // Refresh list
     get().fetchAppointments();
+    // Notify me if I'm listed on the appointment — but not when I created
+    // the invite myself (the store surfaces that via the drawer instead).
+    if (data && get()._appointmentInvolvesMe(data)) {
+      const me = get().currentUserProfile;
+      const scheduler = data.created_by_name || data.created_by;
+      if (!scheduler || scheduler !== me?.name) {
+        get().addNotification?.({
+          type: 'appointment.assigned',
+          title: 'You were added to an appointment',
+          body: `${data.appointment_type_name || 'Appointment'}${data.patient_name ? ` · ${data.patient_name}` : ''}`,
+          action: 'openAppointment',
+          appointmentId: data.id,
+        });
+      }
+    }
     return data;
   },
 
   updateAppointment: async (id, updates) => {
+    const prev = get().appointments.find(a => a.id === id) || null;
     const { error } = await supabase
       .from('appointments')
       .update(updates)
       .eq('id', id);
     if (error) { console.error('Update appointment error:', error); return false; }
     get().fetchAppointments();
+    // Notify me if this update newly puts me on the appointment (name
+    // becomes primary_user, or gets added to secondary_users).
+    if (prev) {
+      const wasMine = get()._appointmentInvolvesMe(prev);
+      const nextAppt = { ...prev, ...updates };
+      const nowMine = get()._appointmentInvolvesMe(nextAppt);
+      if (nowMine && !wasMine) {
+        get().addNotification?.({
+          type: 'appointment.assigned',
+          title: 'You were added to an appointment',
+          body: `${nextAppt.appointment_type_name || 'Appointment'}${nextAppt.patient_name ? ` · ${nextAppt.patient_name}` : ''}`,
+          action: 'openAppointment',
+          appointmentId: id,
+        });
+      }
+    }
     return true;
   },
 
@@ -10150,6 +10217,17 @@ export const useAppStore = create((set, get) => ({
         createdAt: opts.auditCreatedAt || normalized.created_at,
       });
     }
+    // Notify me if this task was created assigning it to me (either
+    // directly or via a pool where I'll pick it up later).
+    if (me && final.assigned_to_id && final.assigned_to_id === me.id && final.created_by_id !== me.id) {
+      get().addNotification?.({
+        type: 'task.assigned',
+        title: 'You were assigned a task',
+        body: final.name,
+        action: 'openTask',
+        taskId: final.id,
+      });
+    }
     return final;
   },
 
@@ -10339,6 +10417,38 @@ export const useAppStore = create((set, get) => ({
           from: prev.due_date,
           to: final.due_date,
         });
+      }
+
+      // Notifications for the signed-in user.
+      const me = get().currentUserProfile;
+      if (me) {
+        // Newly assigned to me — but not when I self-assigned via drag /
+        // menu (updated_by will match, so we skip the noise).
+        const wasMine = prev.assigned_to_id === me.id || prev.assigned_to === me.name;
+        const nowMine = ('assigned_to_id' in updates && updates.assigned_to_id === me.id)
+          || ('assigned_to' in updates && updates.assigned_to === me.name);
+        if (nowMine && !wasMine) {
+          get().addNotification?.({
+            type: 'task.assigned',
+            title: 'You were assigned a task',
+            body: prev.name,
+            action: 'openTask',
+            taskId: id,
+          });
+        }
+        // Newly mentioned in this task's mentions array.
+        if ('mentions' in updates && Array.isArray(updates.mentions) && me.name) {
+          const before = Array.isArray(prev.mentions) ? prev.mentions : [];
+          if (updates.mentions.includes(me.name) && !before.includes(me.name)) {
+            get().addNotification?.({
+              type: 'task.mentioned',
+              title: 'You were mentioned in a task',
+              body: prev.name,
+              action: 'openTask',
+              taskId: id,
+            });
+          }
+        }
       }
     }
 

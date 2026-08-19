@@ -36,6 +36,7 @@ export function MessagesView() {
   const setMessagesUnreadCount = useAppStore(s => s.setMessagesUnreadCount);
   const pendingChatUserEmail = useAppStore(s => s.pendingChatUserEmail);
   const setPendingChatUserEmail = useAppStore(s => s.setPendingChatUserEmail);
+  const addNotification = useAppStore(s => s.addNotification);
 
   const [currentUser, setCurrentUser]     = useState(null);
   const [profiles, setProfiles]           = useState({});
@@ -120,10 +121,30 @@ export function MessagesView() {
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'direct_messages',
         filter: `recipient_id=eq.${currentUser.id}`,
-      }, () => setConvRefreshKey(k => k + 1))
+      }, (payload) => {
+        setConvRefreshKey(k => k + 1);
+        // Fire a bell notification for the arrival — but not if I'm
+        // already looking at the chat with that sender (the message will
+        // land in the open view; nothing to announce). Also skip echoes
+        // where I somehow received my own message.
+        const row = payload?.new;
+        if (!row || row.read_at) return;
+        if (row.sender_id === currentUser.id) return;
+        if (row.sender_id === selectedUserId) return;
+        const sender = allProfiles.find(p => p.id === row.sender_id);
+        const senderName = sender ? getDisplayName(sender) : 'Someone';
+        const preview = (row.content || '').slice(0, 90);
+        addNotification?.({
+          type: 'message.received',
+          title: `New message from ${senderName}`,
+          body: preview || (row.media_type ? 'Sent an attachment' : ''),
+          action: 'openChat',
+          chatUserEmail: sender?.email || null,
+        });
+      })
       .subscribe();
     return () => ch.unsubscribe();
-  }, [currentUser]);
+  }, [currentUser, selectedUserId, allProfiles, addNotification]);
 
   const handleConversationUpdate = useCallback(() => setConvRefreshKey(k => k + 1), []);
 
