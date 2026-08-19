@@ -21,7 +21,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
   animation: icdCreationIn 0.22s ease;
 }
 
@@ -41,7 +40,7 @@
 
 .title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--font-xl);
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -108,7 +107,7 @@
 
 .colTitle {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -139,7 +138,7 @@
 }
 
 .queueName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-500);
   overflow: hidden;
@@ -151,7 +150,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   margin-top: 2px;
 }
@@ -220,7 +219,7 @@
   border: 0.5px solid var(--primary-100);
   border-radius: 6px;
   background: var(--primary-50);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
   cursor: pointer;
@@ -242,7 +241,7 @@
   border: 0.5px solid var(--primary-100);
   border-radius: 6px;
   background: var(--neutral-0);
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   line-height: 1.6;
 }
@@ -278,14 +277,14 @@
 }
 
 .emptyTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-500);
   margin-bottom: 6px;
 }
 
 .emptyMsg {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   margin-bottom: 16px;
   max-width: 320px;
@@ -307,13 +306,13 @@
 }
 
 .recordsTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-500);
 }
 
 .recordsSubtitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   margin-top: 2px;
 }
@@ -351,7 +350,7 @@
 }
 
 .recordName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -360,7 +359,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   margin-bottom: 8px;
 }
@@ -378,7 +377,7 @@
 }
 
 .icdChip {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--primary-300);
   background: var(--primary-50);
@@ -387,7 +386,7 @@
 }
 
 .icdChipInvalid {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--status-error);
   background: var(--status-error-light, #FFEDED);
@@ -419,7 +418,7 @@
 }
 
 .linkBtn {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
   background: none;
@@ -434,7 +433,7 @@
 }
 
 .label {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -445,7 +444,7 @@
 }
 
 .helper {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
 }
 
@@ -471,7 +470,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   margin-bottom: 6px;
@@ -491,11 +490,10 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-500);
   cursor: pointer;
-  font-family: inherit;
   transition: border-color 0.12s, background 0.12s;
 }
 
@@ -505,7 +503,7 @@
 }
 
 .sampleTier {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   padding: 1px 6px;
   border-radius: 8px;
@@ -530,7 +528,7 @@
   gap: 4px;
   padding: 2px 8px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   line-height: 1;
   border: 0.5px solid transparent;
@@ -590,8 +588,7 @@
   padding: 6px 0;
   border: none;
   background: transparent;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-500);
   cursor: pointer;
@@ -632,7 +629,7 @@
 }
 
 .tierDocName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-500);
   overflow: hidden;
@@ -641,7 +638,7 @@
 }
 
 .tierDocSub {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   margin-top: 2px;
 }
@@ -654,7 +651,7 @@
   border-radius: 12px;
   background: var(--status-success-light, #E6F5EC);
   color: var(--status-success);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -680,8 +677,7 @@
   background: transparent;
   border: none;
   border-radius: 6px;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   cursor: pointer;
@@ -710,7 +706,7 @@
 }
 
 .tabCount {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
@@ -730,7 +726,7 @@
 .tabEmpty {
   text-align: center;
   padding: 32px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -747,7 +743,7 @@
 }
 
 .sectionTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -782,13 +778,13 @@
 .reviewRowName {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-500);
 }
 
 .reviewRowSub {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-300);
   margin-top: 2px;
@@ -802,7 +798,7 @@
   border-radius: 12px;
   background: rgba(194, 143, 42, 0.12);
   color: var(--status-warning, #C28F2A);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
 }
 
@@ -814,7 +810,7 @@
   border-radius: 12px;
   background: var(--status-success-light, #E6F5EC);
   color: var(--status-success);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
 }
 
@@ -831,7 +827,7 @@
   border-radius: 6px;
   color: var(--primary-300);
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--font-md);
   cursor: pointer;
   transition: background 0.12s;
 }

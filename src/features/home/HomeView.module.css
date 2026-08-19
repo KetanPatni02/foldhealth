@@ -24,14 +24,13 @@
   gap: 6px;
   height: 24px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
   background: none;
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-family: inherit;
 }
 
 .toolbarBtn:hover {
@@ -77,14 +76,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-500);
 }
 
 .countChip {
   padding: 1px 6px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-400);
   background: var(--neutral-100);
@@ -131,7 +130,7 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
@@ -142,7 +141,6 @@
   border-radius: 12px;
   overflow: hidden;
   color: #ffffff;
-  font-family: 'Inter', sans-serif;
   background:
     radial-gradient(circle at 80% 15%, rgba(255, 255, 255, 0.18), transparent 50%),
     linear-gradient(135deg, var(--primary-300) 0%, var(--primary-400) 55%, var(--primary-400) 100%);
@@ -156,7 +154,7 @@
 }
 
 .welcomeGreeting {
-  font-size: 18px;
+  font-size: var(--font-xl);
   font-weight: 600;
   letter-spacing: -0.01em;
   color: #ffffff;
@@ -170,7 +168,7 @@
   background: rgba(255, 255, 255, 0.14);
   border: 0.5px solid rgba(255, 255, 255, 0.18);
   border-radius: 20px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: #ffffff;
   cursor: pointer;
@@ -197,7 +195,7 @@
 
 .locationDropdownGroup {
   padding: 8px 14px 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--neutral-300);
   text-transform: uppercase;
@@ -209,7 +207,7 @@
   width: 100%;
   text-align: left;
   padding: 7px 14px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   background: none;
@@ -232,7 +230,7 @@
 }
 
 .welcomeTime {
-  font-size: 38px;
+  font-size: 2.375rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: #ffffff;
@@ -240,7 +238,7 @@
 }
 
 .welcomeDate {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: rgba(255, 255, 255, 0.72);
   margin-top: 4px;
 }
@@ -266,20 +264,20 @@
 }
 
 .welcomeWeatherLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.72);
 }
 
 .welcomeWeatherMain {
-  font-size: 18px;
+  font-size: var(--font-xl);
   font-weight: 600;
   color: #ffffff;
   margin-top: 2px;
 }
 
 .welcomeWeatherDesc {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: rgba(255, 255, 255, 0.72);
   margin-top: 2px;
 }
@@ -292,7 +290,7 @@
 }
 
 .welcomeTemp {
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 700;
   color: #ffffff;
   line-height: 1;
@@ -300,7 +298,7 @@
 }
 
 .welcomeTempUnit {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: rgba(255, 255, 255, 0.8);
   margin-left: 2px;
@@ -350,18 +348,18 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
 
 .chevron {
   color: var(--neutral-300);
-  font-size: 10px;
+  font-size: var(--font-2xs);
 }
 
 .patientMeta {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -377,7 +375,7 @@
   align-items: center;
   gap: 3px;
   padding: 2px 6px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   border: 0.5px solid var(--neutral-200);
   border-radius: 10px;
@@ -420,19 +418,19 @@
 }
 
 .assignedName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
 
 .assignedText {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   margin-top: 2px;
 }
 
 .assignedTime {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   flex-shrink: 0;
 }
@@ -469,7 +467,7 @@
   left: -40px;
   top: -6px;
   width: 38px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   color: var(--neutral-300);
   text-align: right;
@@ -534,7 +532,7 @@
 }
 
 .calEventTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary-300);
   white-space: nowrap;
@@ -543,7 +541,7 @@
 }
 
 .calEventMeta {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: var(--neutral-400);
   margin-top: 2px;
   white-space: nowrap;
@@ -576,7 +574,7 @@
   position: absolute;
   left: -38px;
   top: -6px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   color: var(--status-error);
   background: var(--neutral-0);
@@ -609,7 +607,7 @@
 }
 
 .taskTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
   line-height: 1.4;
 }
@@ -619,12 +617,12 @@
   align-items: center;
   gap: 6px;
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
 }
 
 .taskDue {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
 }
 
@@ -660,7 +658,7 @@
   border: 0.5px solid #F6E8A5;
   border-radius: 4px;
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-500);
   line-height: 1.5;
   cursor: pointer;
@@ -676,7 +674,7 @@
 }
 
 .quickNoteTextFull {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-500);
   line-height: 1.5;
   white-space: pre-wrap;
@@ -684,7 +682,7 @@
 }
 
 .quickNoteMeta {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: var(--neutral-300);
   margin-top: 6px;
 }
@@ -721,7 +719,7 @@
 
 .quickNoteSaveBtn {
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: #fff;
   background: var(--primary-300);
@@ -733,7 +731,7 @@
 
 .quickNoteCancelBtn {
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   background: none;
@@ -761,9 +759,8 @@
   border: none;
   outline: none;
   resize: vertical;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   background: transparent;
   padding: 0;
@@ -777,14 +774,14 @@
   gap: 8px;
 }
 .deleteConfirmText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .deleteConfirmActions { display: flex; gap: 6px; }
 .deleteConfirmBtn {
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: #fff;
   background: var(--status-error);
@@ -795,7 +792,7 @@
 .deleteConfirmBtn:hover { opacity: 0.9; }
 .deleteConfirmCancelBtn {
   padding: 4px 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   background: none;
@@ -810,13 +807,13 @@
   border: 0.5px solid #F6E8A5;
   border-radius: 6px;
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-500);
   line-height: 1.5;
 }
 
 .stickyMeta {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: var(--neutral-400);
   margin-top: 6px;
 }
@@ -827,14 +824,14 @@
   align-items: center;
   gap: 6px;
   padding: 24px 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
 }
 
 .loading, .errorState {
   padding: 24px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 

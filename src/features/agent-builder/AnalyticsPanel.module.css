@@ -25,7 +25,7 @@
 
 .tab {
   padding: 10px 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   background: none;
@@ -33,7 +33,6 @@
   border-bottom: 2px solid transparent;
   cursor: pointer;
   white-space: nowrap;
-  font-family: 'Inter', sans-serif;
   transition: color .12s;
 }
 
@@ -104,25 +103,23 @@
 }
 
 .bannerEmoji {
-  font-size: 20px;
+  font-size: var(--font-2xl);
   line-height: 1;
 }
 
 .bannerTitle {
-  font-size: 20px;
+  font-size: var(--font-2xl);
   font-weight: 600;
   color: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
 .bannerSub {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: color-mix(in srgb, var(--neutral-0) 80%, transparent);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Section Card ── */
@@ -141,10 +138,9 @@
 }
 
 .sectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
 }
 
 .sectionBody {
@@ -170,10 +166,9 @@
 .statusItem:last-child { border-right: none; }
 
 .statusLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--status-success);
-  font-family: 'Inter', sans-serif;
 }
 
 .statusLabelNeutral {
@@ -181,10 +176,9 @@
 }
 
 .statusValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Active Channels ── */
@@ -202,19 +196,17 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── System Prompt Preview ── */
 .promptPreview {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.5;
-  font-family: 'Inter', sans-serif;
   white-space: pre-wrap;
   max-height: 400px;
   overflow-y: auto;
@@ -245,17 +237,15 @@
 }
 
 .statLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
 }
 
 .statValue {
-  font-size: 24px;
+  font-size: var(--font-3xl);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -263,9 +253,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
-  font-family: 'Inter', sans-serif;
 }
 
 .deltaPos { color: var(--status-success); }
@@ -273,10 +262,9 @@
 .deltaNeu { color: var(--neutral-300); }
 
 .statSub {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Uptime Heatmap Bar ── */
@@ -288,17 +276,15 @@
 }
 
 .uptimeTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .uptimeStarted {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .uptimeBar {
@@ -342,10 +328,9 @@
 }
 
 .uptimeTooltipTime {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   margin-bottom: 4px;
 }
 
@@ -353,10 +338,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
   margin-bottom: 2px;
 }
 
@@ -368,10 +352,9 @@
 }
 
 .uptimeTooltipPatients {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 /* Uptime legend */
@@ -385,10 +368,9 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .legendDot {
@@ -410,17 +392,15 @@
 }
 
 .chartLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
 }
 
 .chartValue {
-  font-size: 24px;
+  font-size: var(--font-3xl);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -428,10 +408,9 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .chartArea {
@@ -448,17 +427,16 @@
   gap: 12px;
   padding: 80px 0;
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
 }
 
 .placeholderTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-300);
 }
 
 .placeholderDesc {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-200);
 }
@@ -477,27 +455,24 @@
 }
 
 .snapLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-200);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-family: 'Inter', sans-serif;
 }
 
 .snapValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .snapDesc {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.5;
-  font-family: 'Inter', sans-serif;
 }
 
 .snapPill {
@@ -507,10 +482,9 @@
   background: var(--primary-50);
   border: 0.5px solid var(--primary-300);
   border-radius: 20px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
-  font-family: 'Inter', sans-serif;
   width: fit-content;
 }
 
@@ -529,10 +503,9 @@
 }
 
 .snapMeterLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
 }
 
 .snapGoalRow {
@@ -554,24 +527,22 @@
 }
 
 .snapGoalName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .snapGoalMeta {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
 }
 
 .snapGoalBadge {
   display: inline-flex;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -581,10 +552,9 @@
 .badgeAmber { background: var(--status-warning-light); color: var(--status-warning); }
 
 .snapGoalRate {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--status-success);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Call Log Container with split panel ── */
@@ -627,10 +597,9 @@
 }
 
 .callLogRightTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .callLogRightClose {

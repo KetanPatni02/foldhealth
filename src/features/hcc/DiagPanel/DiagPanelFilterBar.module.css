@@ -18,12 +18,12 @@
   background: transparent;
   cursor: pointer;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--primary-300);
 }
 .clearBtn:hover { background: var(--neutral-50); }
 
 .clearIcon {
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1;
 }

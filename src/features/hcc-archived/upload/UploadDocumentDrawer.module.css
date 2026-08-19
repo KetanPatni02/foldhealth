@@ -21,8 +21,7 @@
   min-height: 0;
 }
 .title {
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -31,7 +30,6 @@
   display: inline-flex;
   align-items: flex-start;
   gap: 6px;
-  font-family: 'Inter', sans-serif;
 }
 .titleStack {
   display: inline-flex;
@@ -49,7 +47,7 @@
 }
 .titleHint {
   margin-left: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -202,7 +200,6 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 .whatNextHeadLabel {
   flex: 1;
@@ -546,7 +543,6 @@
   gap: 10px;
   padding: 8px 14px;
   border-bottom: 0.5px solid var(--neutral-50);
-  font-family: 'Inter', sans-serif;
 }
 .pickerQueueItem:last-child { border-bottom: none; }
 .pickerQueueItemIcon {
@@ -625,21 +621,20 @@
   border: 0.5px solid rgba(20, 94, 204, 0.2);
   border-radius: 6px;
   color: var(--neutral-400, #3a485f);
-  font-family: 'Inter', sans-serif;
 }
 .howToHead {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-weight: 500;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 .howToList {
   margin: 4px 0 0;
   padding: 0 0 0 22px;
   list-style: decimal outside;
   font-weight: 400;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.5;
 }
 .howToList li { padding-left: 2px; }
@@ -801,14 +796,13 @@
   to { transform: rotate(360deg); }
 }
 .processingTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-500);
   margin-top: 4px;
 }
 .processingSubtitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   text-align: center;
   max-width: 420px;
@@ -824,7 +818,7 @@
   margin: 8px 0 4px;
 }
 .processingHint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   text-align: center;
   max-width: 320px;
@@ -861,7 +855,7 @@
 .processingFileName {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   overflow: hidden;
@@ -892,7 +886,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   background: #fff;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   line-height: 1.45;
 }
@@ -995,8 +989,7 @@
   display: inline-flex;
   align-items: center;
   gap: 14px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
 }
 .statsSummary strong {
@@ -1014,8 +1007,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
   background: var(--neutral-50);
@@ -1068,8 +1060,7 @@
   padding: 8px 14px;
   background: var(--neutral-100);
   border-bottom: 0.5px solid var(--neutral-150);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -1097,7 +1088,7 @@
   border: 0.5px solid rgba(215, 40, 37, 0.2);
   padding: 1px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   margin-left: auto;
 }
@@ -1113,7 +1104,6 @@
   background: var(--neutral-0);
   cursor: pointer;
   border-left: 3px solid transparent;
-  font-family: 'Inter', sans-serif;
 }
 .masterRow:hover { background: var(--neutral-50); }
 .masterRowSelected {
@@ -1130,13 +1120,13 @@
   min-width: 0;
 }
 .masterRowDos {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   font-variant-numeric: tabular-nums;
 }
 .masterRowMeta {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1151,7 +1141,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 6px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   border-radius: 4px;
   border: 0.5px solid;
@@ -1187,8 +1177,7 @@
 .masterEmpty {
   padding: 40px 24px;
   text-align: center;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -1212,14 +1201,12 @@
   min-width: 0;
 }
 .detailHeaderName {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-500);
 }
 .detailHeaderMeta {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 .detailRemoveBtn {
@@ -1227,8 +1214,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
   background: transparent;
@@ -1243,8 +1229,7 @@
 .detailEmpty {
   padding: 60px 24px;
   text-align: center;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -1268,8 +1253,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
   background: transparent;
@@ -1299,8 +1283,7 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
   background: transparent;
@@ -1328,8 +1311,7 @@
 .tableEmpty {
   padding: 60px 24px;
   text-align: center;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 .encTable {
@@ -1340,8 +1322,7 @@
   width: 100%;
   min-width: 1180px;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 .encTable thead th {
   position: sticky;
@@ -1349,7 +1330,7 @@
   z-index: 1;
   background: var(--neutral-50);
   text-align: left;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -1508,7 +1489,7 @@
   color: var(--primary-300);
 }
 .tdPageEmpty {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
 }
 
@@ -1554,7 +1535,7 @@
   min-width: 0;
 }
 .tdPatientName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   white-space: nowrap;
@@ -1567,8 +1548,7 @@
   align-items: center;
   padding: 1px 6px;
   border-radius: 999px;
-  font-family: 'Inter', sans-serif;
-  font-size: 9px;
+  font-size: 0.5625rem;
   font-weight: 600;
   line-height: 1.2;
   letter-spacing: 0.2px;
@@ -1579,8 +1559,7 @@
   align-items: center;
   gap: 4px;
   padding: 4px 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
   background: var(--neutral-0);
@@ -1616,8 +1595,7 @@
   border-radius: 4px;
   cursor: pointer;
   text-align: left;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-500);
 }
 .tdPatientPickerItem:hover { background: var(--neutral-50); }
@@ -1632,7 +1610,7 @@
   flex: 1;
 }
 .tdPatientPickerItemName {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-500);
   font-weight: 500;
   white-space: nowrap;
@@ -1679,7 +1657,7 @@
 .tdPatientPickerCurrent {
   margin-left: auto;
   padding: 0 6px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   color: var(--primary-300);
   background: var(--primary-100);
@@ -1699,8 +1677,7 @@
 .tdInput {
   width: 100%;
   padding: 5px 7px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-500);
   background: var(--neutral-0);
   border: 0.5px solid transparent;
@@ -1718,7 +1695,7 @@
 
 .tdIcds { min-width: 140px; }
 .tdIcdsEmpty {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 .tdIcdsRow {
@@ -1736,12 +1713,11 @@
 }
 .tdIcdsRow .icdChip {
   padding: 1px 4px 1px 6px;
-  font-size: 11px;
+  font-size: var(--font-xs);
 }
 .icdOverflow {
   padding: 1px 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-400);
   background: var(--neutral-50);
@@ -1782,14 +1758,12 @@
 }
 .mismatchText {
   flex: 1;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-500);
   min-width: 200px;
 }
 .linkBtn {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
   background: transparent;
@@ -1810,8 +1784,7 @@
 .memberPickerInput {
   width: 100%;
   padding: 6px 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-200);
@@ -1840,8 +1813,7 @@
   border-radius: 4px;
   cursor: pointer;
   text-align: left;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
 }
 .memberPickerItem:hover { background: var(--neutral-50); }
@@ -1849,12 +1821,12 @@
 .memberPickerItemActive:hover { background: var(--primary-100); }
 .memberPickerMeta {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
 }
 .memberPickerCurrent {
   padding: 0 6px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   color: var(--primary-300);
   background: var(--primary-100);
@@ -1914,8 +1886,7 @@
   gap: 4px;
 }
 .fieldLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-400);
   text-transform: uppercase;
@@ -1928,8 +1899,7 @@
 .fieldInput {
   width: 100%;
   padding: 7px 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
@@ -1943,12 +1913,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--status-error);
 }
 .fieldHint {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
 }
 
@@ -1960,8 +1930,7 @@
   margin-bottom: 8px;
 }
 .icdsLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-400);
   text-transform: uppercase;
@@ -1996,7 +1965,7 @@
   margin-top: 6px;
 }
 .icdsEmpty {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   font-style: italic;
 }
@@ -2008,8 +1977,7 @@
   background: var(--primary-50);
   border: 0.5px solid var(--primary-200);
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -2041,8 +2009,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
   background: transparent;
@@ -2226,7 +2193,7 @@
   font-weight: 500;
 }
 .sftpExternalLink:hover { text-decoration: underline; }
-.sftpExternalHint { font-size: 11px; }
+.sftpExternalHint { font-size: var(--font-xs); }
 
 /* SFTP demo trigger — sits below the credentials link, lets the user
    exercise the multi-doc review workflow without an actual SFTP. */
@@ -2379,7 +2346,6 @@
   color: var(--primary-300);
 }
 .icdChosenChip code {
-  font-family: 'JetBrains Mono', 'Inter', monospace;
 }
 .icdChosenDesc {
   font-weight: 400;
@@ -2604,7 +2570,6 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  font-family: 'Inter', sans-serif;
   text-align: left;
   pointer-events: auto;
   transform: translateY(-100%);
@@ -2675,7 +2640,7 @@
 .tdConfTierReview { background: var(--status-warning); }
 .tdConfTierLow    { background: var(--status-error); }
 .tdConfEmpty {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
 }
 
@@ -2763,7 +2728,6 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
   animation: icd-pop 0.12s ease-out;
 }
 @keyframes icd-pop {
@@ -2802,7 +2766,6 @@
   background: #fff;
   text-align: left;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   border-bottom: 0.5px solid var(--neutral-50);
 }
 .icdPickerItem:hover { background: var(--primary-50); }
@@ -2811,21 +2774,21 @@
 .icdPickerItemDisabled:hover { background: #fff; }
 .icdPickerCode {
   font-weight: 600;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--primary-300);
   min-width: 56px;
 }
 .icdPickerDesc {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .icdPickerHint {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: var(--neutral-300);
   font-weight: 600;
   text-transform: uppercase;
@@ -2956,10 +2919,10 @@
   align-items: flex-start;
   padding-bottom: 12px;
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
 }
-.dummyPageOrg { font-weight: 600; color: var(--neutral-500); font-size: 13px; }
+.dummyPageOrg { font-weight: 600; color: var(--neutral-500); font-size: var(--font-md); }
 .dummyPageOrgSub { margin-top: 2px; }
 .dummyPageHeaderRight { text-align: right; line-height: 1.4; }
 .dummyPageH1 {
@@ -2972,7 +2935,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 4px 24px;
   margin-bottom: 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
 }
 .dummyPageSection {
@@ -2988,14 +2951,14 @@
 .dummyPageIcdList {
   margin: 6px 0 0;
   padding: 0 0 0 20px;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 .dummyPageIcdList li { padding: 2px 0; }
 .dummyPageFooter {
   margin-top: 24px;
   padding-top: 12px;
   border-top: 0.5px dashed var(--neutral-150);
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   font-style: italic;
 }

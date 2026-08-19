@@ -5,7 +5,7 @@
 
 .headerCell {
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   background: var(--neutral-0);
@@ -79,7 +79,7 @@
   transform: translateX(-50%);
   background: var(--neutral-500);
   color: var(--neutral-0);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;

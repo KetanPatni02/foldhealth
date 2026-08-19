@@ -62,7 +62,7 @@
 .outreachCell > * { align-self: flex-start; }
 
 .outreachOncall {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--status-success);
   display: flex;
   align-items: center;
@@ -72,7 +72,7 @@
 }
 
 .outreachTime {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   display: flex;
   align-items: center;
@@ -82,11 +82,11 @@
 
 .assigneeCell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .agentCell    { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.agentName    { font-size: 13px; font-weight: 500; color: var(--neutral-400); }
-.agentRole    { font-size: 12px; color: var(--neutral-300); }
+.agentName    { font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
+.agentRole    { font-size: var(--font-sm); color: var(--neutral-300); }
 
-.dateText { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
-.dateDash { font-size: 14px; color: var(--neutral-200); }
+.dateText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
+.dateDash { font-size: var(--font-base); color: var(--neutral-200); }
 
 .actionBtn {
   width: 28px;
@@ -104,7 +104,7 @@
     color var(--duration-fast) var(--ease-hover),
     border-color var(--duration-fast) var(--ease-hover);
   position: relative;
-  font-size: 18px;
+  font-size: var(--font-xl);
 }
 .actionBtn:hover { background: var(--neutral-50); color: var(--primary-300); }
 .actionBtn.oncall { color: var(--status-success); background: var(--status-success-light); }
@@ -143,7 +143,7 @@
   flex-shrink: 0;
 }
 
-.scheduledSub { font-size: 12px; color: var(--neutral-300); padding-left: 2px; }
+.scheduledSub { font-size: var(--font-sm); color: var(--neutral-300); padding-left: 2px; }
 .tasksCell    { display: flex; align-items: center; gap: 4px; }
 .taskBadge {
   min-width: 24px;
@@ -152,7 +152,7 @@
   border-radius: 4px;
   background: var(--primary-100);
   color: var(--primary-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -165,7 +165,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
   background: var(--status-error-light);
@@ -191,11 +191,11 @@
 }
 
 .attemptsWrapper:hover .attemptsTooltip { display: block; }
-.attemptsTooltipHeader { padding: 12px 16px; background: var(--neutral-50); border-bottom: 1px solid var(--neutral-150); font-size: 13px; font-weight: 500; color: var(--neutral-400); }
-.attemptRow { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--neutral-100); font-size: 14px; color: var(--neutral-400); }
+.attemptsTooltipHeader { padding: 12px 16px; background: var(--neutral-50); border-bottom: 1px solid var(--neutral-150); font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
+.attemptRow { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--neutral-100); font-size: var(--font-base); color: var(--neutral-400); }
 .attemptRow:last-child { border-bottom: none; }
-.attemptIcon { font-size: 18px; flex-shrink: 0; color: var(--status-error); }
+.attemptIcon { font-size: var(--font-xl); flex-shrink: 0; color: var(--status-error); }
 .attemptDetail { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-.attemptTime { font-size: 12px; color: var(--neutral-200); }
-.attemptOutcome { font-size: 14px; color: var(--neutral-400); font-weight: 400; }
-.attemptNumBadge { font-size: 12px; font-weight: 500; color: var(--status-error); background: var(--status-error-light); padding: 2px 8px; border-radius: 4px; border: 0.5px solid color-mix(in srgb, var(--status-error) 20%, transparent); flex-shrink: 0; }
+.attemptTime { font-size: var(--font-sm); color: var(--neutral-200); }
+.attemptOutcome { font-size: var(--font-base); color: var(--neutral-400); font-weight: 400; }
+.attemptNumBadge { font-size: var(--font-sm); font-weight: 500; color: var(--status-error); background: var(--status-error-light); padding: 2px 8px; border-radius: 4px; border: 0.5px solid color-mix(in srgb, var(--status-error) 20%, transparent); flex-shrink: 0; }

@@ -20,7 +20,7 @@
 }
 
 .loadingText {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -32,7 +32,7 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1.6;
   color: var(--neutral-500);
   word-break: break-word;
@@ -58,7 +58,7 @@
 }
 
 .fallbackName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   max-width: 320px;
@@ -68,6 +68,6 @@
 }
 
 .fallbackHint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }

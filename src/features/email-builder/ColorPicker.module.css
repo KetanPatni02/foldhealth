@@ -6,7 +6,6 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   box-shadow: 0 12px 60px -15px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.04);
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-400);
   display: flex;
   flex-direction: column;
@@ -223,7 +222,7 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   transition:
     border-color var(--duration-fast) var(--ease-hover),
@@ -260,7 +259,7 @@
 .alphaSuffix {
   margin-left: 3px;
   color: var(--neutral-200);
-  font-size: 11px;
+  font-size: var(--font-xs);
 }
 
 /* ── Variables / preset swatches ─────────────────────────────────────── */
@@ -272,8 +271,7 @@
   gap: 6px;
 }
 .sectionLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   line-height: 1;
   color: var(--neutral-300);
@@ -355,8 +353,7 @@
   min-height: 20px;
 }
 .fieldLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   flex-shrink: 0;
 }
@@ -367,8 +364,7 @@
   cursor: pointer;
 }
 .angleValue {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   width: 36px;
   text-align: right;
@@ -411,15 +407,13 @@
   padding: 0 2px;
   border: none;
   background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   text-align: right;
   outline: none;
 }
 .stopPosSuffix {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   margin-right: 4px;
 }
@@ -440,8 +434,7 @@
   padding: 0 4px;
   border: none;
   background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   text-transform: uppercase;
   letter-spacing: 0.2px;

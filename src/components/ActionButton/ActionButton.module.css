@@ -77,7 +77,6 @@
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
   font-weight: 500;
   line-height: 1.2;
   pointer-events: none;
@@ -100,7 +99,7 @@
   right: -6px;
   height: 12px;
   padding: 2px 3px;
-  font-size: 8px;
+  font-size: 0.5rem;
 }
 
 .sizeL .badge {
@@ -109,7 +108,7 @@
   width: 14px;
   height: 14px;
   padding: 2px 4px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
 }
 
 .sizeXL .badge {
@@ -118,7 +117,7 @@
   width: 17px;
   height: 17px;
   padding: 2px 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 
 /* ── Status dot (red/green indicator) ── */
@@ -154,9 +153,8 @@
   transform: translateX(-50%);
   background: var(--neutral-0, #fff);
   color: var(--neutral-400, #3a485f);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
   white-space: nowrap;
   padding: 5px 10px;

@@ -2,8 +2,7 @@
 
 .sectionLabel {
   height: 28px; display: flex; align-items: center; padding-left: 8px;
-  font-size: 14px; font-weight: 400; color: var(--neutral-300);
-  font-family: 'Inter', sans-serif; margin-bottom: 4px;
+  font-size: var(--font-base); font-weight: 400; color: var(--neutral-300);
 }
 
 .card {
@@ -17,6 +16,6 @@
   padding: 6px 8px;
   border-bottom: 0.5px solid var(--neutral-150);
 }
-.colTitle { flex: 1; font-size: 14px; font-weight: 500; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
-.colStatus { width: 90px; flex-shrink: 0; font-size: 14px; font-weight: 500; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
+.colTitle { flex: 1; font-size: var(--font-base); font-weight: 500; color: var(--neutral-300); }
+.colStatus { width: 90px; flex-shrink: 0; font-size: var(--font-base); font-weight: 500; color: var(--neutral-300); }
 .colActions { width: 24px; flex-shrink: 0; }

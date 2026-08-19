@@ -26,7 +26,7 @@
 
 .sectionTab {
   padding: 10px 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   background: none;
@@ -34,7 +34,6 @@
   border-bottom: 2px solid transparent;
   cursor: pointer;
   white-space: nowrap;
-  font-family: 'Inter', sans-serif;
   transition: color .12s;
 }
 
@@ -79,7 +78,6 @@
   border: none;
   cursor: pointer;
   width: 100%;
-  font-family: 'Inter', sans-serif;
 }
 
 .cardHeader:hover { background: var(--neutral-50); }
@@ -91,7 +89,7 @@
 }
 
 .cardTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   line-height: 1.2;
@@ -144,19 +142,17 @@
 }
 
 .subsectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   line-height: 1.2;
-  font-family: 'Inter', sans-serif;
 }
 
 .subsectionDesc {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.3;
-  font-family: 'Inter', sans-serif;
   margin-top: 4px;
 }
 
@@ -171,11 +167,10 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-200);
   line-height: 1.2;
-  font-family: 'Inter', sans-serif;
 }
 
 .fieldRequired {
@@ -197,8 +192,7 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   padding: 0 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   background: var(--neutral-0);
@@ -220,9 +214,8 @@
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
   pointer-events: none;
 }
 
@@ -241,8 +234,7 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   cursor: pointer;
   transition: border-color .15s;
@@ -279,11 +271,10 @@
 
 .selectOption {
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   cursor: pointer;
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
 }
 
 .selectOption:hover { background: var(--primary-100); color: var(--primary-300); }
@@ -296,8 +287,7 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   padding: 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.4;
@@ -340,9 +330,8 @@
   background: var(--neutral-50);
   border: 0.5px solid color-mix(in srgb, var(--neutral-300) 10%, transparent);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   white-space: nowrap;
   height: 20px;
 }
@@ -366,8 +355,7 @@
   min-width: 80px;
   border: none;
   outline: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   background: transparent;
   padding: 0 2px;
@@ -393,7 +381,6 @@
   border-radius: 8px;
   cursor: pointer;
   transition: border-color .15s, background .15s;
-  font-family: 'Inter', sans-serif;
   min-width: 170px;
 }
 
@@ -447,14 +434,14 @@
 }
 
 .radioCardTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.2;
 }
 
 .radioCardDesc {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.2;
@@ -475,10 +462,9 @@
 
 .sliderLabel {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .sliderBadge {
@@ -488,9 +474,8 @@
   padding: 2px 6px;
   min-width: 18px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
 }
 .sliderBadgeHigh {
   background: var(--status-success-light);
@@ -564,10 +549,9 @@
 .sliderThumb:active { cursor: grabbing; }
 
 .sliderThumbText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: #fff;
-  font-family: 'Inter', sans-serif;
   line-height: 1;
 }
 
@@ -595,7 +579,6 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   /* Anchors .srOnlyInput to this row, so focusing it scrolls here rather
      than to wherever the nearest positioned ancestor happens to be. */
   position: relative;
@@ -639,7 +622,7 @@
 }
 
 .checkboxLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.2;
@@ -674,19 +657,17 @@
 }
 
 .policyName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.2;
-  font-family: 'Inter', sans-serif;
 }
 
 .policyDesc {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.2;
-  font-family: 'Inter', sans-serif;
 }
 
 .recommendedBadge {
@@ -701,10 +682,9 @@
   background: var(--status-info-light);
   border: 0.5px solid color-mix(in srgb, var(--status-info) 20%, transparent);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--status-info);
-  font-family: 'Inter', sans-serif;
   white-space: nowrap;
 }
 
@@ -720,11 +700,10 @@
   gap: 6px;
   background: none;
   border: none;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   padding: 4px 0;
 }
 
@@ -736,13 +715,12 @@
   align-items: center;
   gap: 2px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 
 .linkRow:hover .linkRowText { color: var(--primary-300); }
 
 .linkRowText {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   line-height: 1.2;
@@ -792,7 +770,6 @@
   padding: 8px 10px;
   cursor: pointer;
   border-radius: 6px;
-  font-family: 'Inter', sans-serif;
   transition: background .1s;
 }
 
@@ -821,14 +798,14 @@
 }
 
 .goalOptionName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.2;
 }
 
 .goalOptionMeta {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-200);
   line-height: 1.2;
@@ -840,7 +817,7 @@
   align-items: center;
   padding: 1px 6px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -865,9 +842,8 @@
   background: var(--neutral-50);
   border: 0.5px solid color-mix(in srgb, var(--neutral-300) 10%, transparent);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
 }
 
 .goalTagPreview {
@@ -901,7 +877,6 @@
 .goalEmpty {
   padding: 16px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
 }

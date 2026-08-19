@@ -8,10 +8,10 @@
 .rowSelected { background: var(--primary-50); }
 
 .content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.title { font-size: 14px; color: var(--neutral-500); font-family: 'Inter', sans-serif; line-height: 1.4; }
-.meta { font-size: 13px; color: var(--neutral-300); font-family: 'Inter', sans-serif; }
+.title { font-size: var(--font-base); color: var(--neutral-500); line-height: 1.4; }
+.meta { font-size: var(--font-md); color: var(--neutral-300); }
 
-.status { width: 90px; flex-shrink: 0; font-size: 14px; color: var(--neutral-300); font-family: 'Inter', sans-serif; padding-top: 2px; }
+.status { width: 90px; flex-shrink: 0; font-size: var(--font-base); color: var(--neutral-300); padding-top: 2px; }
 
 .moreBtn { display: flex; align-items: center; flex-shrink: 0; opacity: 0; transition: opacity 0.1s; }
 .row:hover .moreBtn { opacity: 1; }

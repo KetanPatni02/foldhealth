@@ -7,7 +7,6 @@
   border-radius: 12px;
   box-shadow: 0 12px 32px rgba(0,0,0,.15);
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
 }
 
 .header {
@@ -18,13 +17,13 @@
 }
 
 .title {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--neutral-400);
 }
 
 .sub {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   margin-top: 2px;
 }
@@ -34,7 +33,7 @@
   border: none;
   cursor: pointer;
   color: var(--neutral-300);
-  font-size: 18px;
+  font-size: var(--font-xl);
   padding: 2px;
   display: flex;
 }
@@ -43,7 +42,7 @@
 
 .sectionLabel {
   padding: 8px 16px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   text-transform: uppercase;
@@ -64,13 +63,13 @@
 .numberInfo { flex: 1; }
 
 .numberValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
 
 .numberLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   margin-top: 1px;
 }
@@ -78,7 +77,7 @@
 .tags { display: flex; gap: 4px; }
 
 .tag {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   padding: 2px 6px;
   border-radius: 4px;
@@ -92,7 +91,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   text-transform: uppercase;
@@ -100,7 +99,7 @@
 }
 
 .viaLink {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
   cursor: pointer;
@@ -121,13 +120,13 @@
 .callerInfo { flex: 1; }
 
 .callerName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
 
 .callerPhone {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
 }
 
@@ -141,11 +140,10 @@
   border-radius: 8px;
   background: var(--primary-300);
   color: #fff;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   border: none;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   width: calc(100% - 32px);
 }
 

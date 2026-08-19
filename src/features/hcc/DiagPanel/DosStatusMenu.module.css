@@ -8,8 +8,7 @@
   border: 0.5px solid;
   background: var(--neutral-0);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   transition: filter 0.12s;
 }
@@ -71,12 +70,11 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-family: 'Inter', sans-serif;
 }
 
 .menuHeader {
   padding: 4px 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
 }
@@ -96,7 +94,6 @@
   cursor: pointer;
   background: transparent;
   border: none;
-  font-family: inherit;
   min-height: 32px;
   max-height: 44px;
   transition: background 0.12s;
@@ -111,7 +108,7 @@
 
 .menuItemLabel {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
 }
 

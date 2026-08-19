@@ -21,7 +21,7 @@
 .title {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--media-viewer-chrome-fg);
   overflow: hidden;

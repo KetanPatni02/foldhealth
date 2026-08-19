@@ -13,6 +13,6 @@
 
 .loading {
   padding: 24px 16px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }

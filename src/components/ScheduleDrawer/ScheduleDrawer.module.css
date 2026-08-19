@@ -24,8 +24,7 @@
 .section { display: flex; flex-direction: column; gap: 6px; }
 
 .sectionLabel {
-  font-size: 14px; font-weight: 400; color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-base); font-weight: 400; color: var(--neutral-200);
 }
 
 .required { color: var(--status-error); }
@@ -43,7 +42,7 @@
 
 .searchInput {
   border: none; outline: none; flex: 1;
-  font-size: 14px; font-family: 'Inter', sans-serif;
+  font-size: var(--font-base);
   color: var(--neutral-400); background: transparent;
 }
 
@@ -60,13 +59,12 @@
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px; border: none; background: none;
   cursor: pointer; width: 100%; text-align: left;
-  font-family: 'Inter', sans-serif; transition: background .1s;
 }
 
 .searchItem:hover { background: var(--neutral-50); }
 
-.searchItemName { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
-.searchItemMeta { font-size: 12px; color: var(--neutral-200); }
+.searchItemName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
+.searchItemMeta { font-size: var(--font-sm); color: var(--neutral-200); }
 
 /* ── Patient Card ── */
 .patientCard {
@@ -80,8 +78,8 @@
 }
 
 .patientCardInfo { flex: 1; min-width: 0; }
-.patientCardName { font-size: 16px; font-weight: 600; color: var(--neutral-400); }
-.patientCardMeta { font-size: 13px; color: var(--neutral-300); }
+.patientCardName { font-size: var(--font-lg); font-weight: 600; color: var(--neutral-400); }
+.patientCardMeta { font-size: var(--font-md); color: var(--neutral-300); }
 .rafScore { color: var(--status-error); font-weight: 500; }
 .rafDelta { color: var(--status-success-bright); display: inline-flex; align-items: center; gap: 2px; }
 
@@ -90,18 +88,18 @@
   border-bottom: 0.5px solid var(--neutral-100);
 }
 
-.reasonLabel { font-size: 12px; color: var(--primary-300); margin-bottom: 2px; display: block; }
+.reasonLabel { font-size: var(--font-sm); color: var(--primary-300); margin-bottom: 2px; display: block; }
 
 .reasonInput {
   width: 100%; border: none; outline: none; background: transparent;
-  font-size: 14px; font-family: 'Inter', sans-serif; color: var(--neutral-400);
+  font-size: var(--font-base); color: var(--neutral-400);
   padding: 0;
 }
 
 .reasonInput::placeholder { color: var(--neutral-200); }
 
 .reasonValue {
-  font-size: 14px; color: var(--neutral-400); cursor: pointer;
+  font-size: var(--font-base); color: var(--neutral-400); cursor: pointer;
   padding: 2px 0;
 }
 
@@ -110,12 +108,12 @@
 .patientInfoGrid { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 
 .patientInfoRow { display: flex; gap: 12px; }
-.patientInfoLabel { font-size: 13px; font-weight: 500; color: var(--neutral-400); min-width: 120px; }
-.patientInfoValue { font-size: 13px; color: var(--neutral-400); }
+.patientInfoLabel { font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); min-width: 120px; }
+.patientInfoValue { font-size: var(--font-md); color: var(--neutral-400); }
 
 .viewDetailsLink {
   color: var(--primary-300); font-weight: 500; background: none;
-  border: none; cursor: pointer; font-size: 13px; font-family: 'Inter', sans-serif;
+  border: none; cursor: pointer; font-size: var(--font-md);
 }
 
 /* ── Appointment Details Card ── */
@@ -137,22 +135,21 @@
 .detailRow:last-child { border-bottom: none; }
 
 .detailLabel {
-  font-size: 14px; font-weight: 500; color: var(--neutral-400);
+  font-size: var(--font-base); font-weight: 500; color: var(--neutral-400);
   min-width: 150px; flex-shrink: 0;
   min-height: 24px; display: flex; align-items: center;
 }
 
 .detailValue {
-  font-size: 14px; color: var(--neutral-400);
+  font-size: var(--font-base); color: var(--neutral-400);
   display: flex; align-items: center; gap: 6px;
-  background: none; border: none; font-family: 'Inter', sans-serif;
+  background: none; border: none;
 }
 
 .detailValuePlaceholder {
-  font-size: 14px; color: var(--neutral-200);
+  font-size: var(--font-base); color: var(--neutral-200);
   display: flex; align-items: center; gap: 6px;
   background: none; border: none; cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 
 .detailValuePlaceholder:hover { color: var(--primary-300); }
@@ -185,7 +182,7 @@
 
 .apptSearchInput {
   border: none; outline: none; flex: 1;
-  font-size: 13px; font-family: 'Inter', sans-serif;
+  font-size: var(--font-md);
   color: var(--neutral-400); background: transparent;
 }
 
@@ -193,25 +190,24 @@
   display: flex; align-items: center; gap: 8px;
   padding: 10px 12px; border: none; background: none;
   cursor: pointer; width: 100%; text-align: left;
-  font-family: 'Inter', sans-serif; transition: background .1s;
   border-bottom: 0.5px solid var(--neutral-100);
 }
 
 .apptItem:last-child { border-bottom: none; }
 .apptItem:hover { background: var(--neutral-50); }
 
-.apptItemName { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
-.apptItemMeta { font-size: 12px; color: var(--neutral-200); }
+.apptItemName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
+.apptItemMeta { font-size: var(--font-sm); color: var(--neutral-200); }
 
 .apptItemDuration {
   display: flex; align-items: center; gap: 4px;
-  font-size: 12px; color: var(--neutral-300); white-space: nowrap;
+  font-size: var(--font-sm); color: var(--neutral-300); white-space: nowrap;
 }
 
 /* ── RSVP ── */
 .rsvpRow {
   display: flex; align-items: center; gap: 8px;
-  font-size: 14px; color: var(--neutral-400); cursor: pointer;
+  font-size: var(--font-base); color: var(--neutral-400); cursor: pointer;
 }
 
 .checkbox {
@@ -227,8 +223,7 @@
 
 .instructionTextarea {
   width: 100%; border: none; outline: none;
-  padding: 10px 12px; font-size: 14px;
-  font-family: 'Inter', sans-serif; color: var(--neutral-400);
+  padding: 10px 12px; font-size: var(--font-base);
   resize: none; min-height: 60px; box-sizing: border-box;
 }
 
@@ -237,8 +232,7 @@
 .instructionEditable {
   min-height: 60px;
   padding: 10px 12px;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   outline: none;
   line-height: 1.5;
@@ -249,7 +243,7 @@
   color: var(--neutral-200);
 }
 
-.instructionEditable h3 { font-size: 16px; font-weight: 600; margin: 4px 0; }
+.instructionEditable h3 { font-size: var(--font-lg); font-weight: 600; margin: 4px 0; }
 .instructionEditable ul { margin: 4px 0; padding-left: 20px; }
 .instructionEditable b, .instructionEditable strong { font-weight: 600; }
 .instructionEditable i, .instructionEditable em { font-style: italic; }
@@ -267,9 +261,8 @@
 
 .addStaffBtn {
   display: flex; align-items: center; gap: 6px;
-  font-size: 14px; font-weight: 500; color: var(--primary-300);
+  font-size: var(--font-base); font-weight: 500; color: var(--primary-300);
   background: none; border: none; cursor: pointer;
-  font-family: 'Inter', sans-serif; padding: 4px 0;
 }
 
 .addStaffBtn:hover { text-decoration: underline; }
@@ -285,7 +278,7 @@
   display: flex; align-items: center; gap: 8px;
   padding: 10px 14px; border: none; background: none;
   cursor: pointer; width: 100%; text-align: left;
-  font-size: 14px; color: var(--neutral-400); font-family: 'Inter', sans-serif;
+  font-size: var(--font-base); color: var(--neutral-400);
   transition: background .1s;
 }
 .simpleDropItem:hover { background: var(--neutral-50); }
@@ -301,16 +294,14 @@
   display: flex; align-items: center; gap: 10px;
   padding: 10px 12px; border: none; background: none;
   cursor: pointer; width: 100%; text-align: left;
-  font-family: 'Inter', sans-serif; transition: background .1s;
   border-bottom: 0.5px solid var(--neutral-100);
 }
 .providerItem:last-child { border-bottom: none; }
 .providerItem:hover { background: var(--neutral-50); }
 .addSecondaryBtn {
   display: flex; align-items: center; gap: 4px;
-  font-size: 12px; font-weight: 500; color: var(--primary-300);
+  font-size: var(--font-sm); font-weight: 500; color: var(--primary-300);
   background: none; border: none; cursor: pointer;
-  font-family: 'Inter', sans-serif; white-space: nowrap;
 }
 
 /* ── Calendar Dropdown ── */
@@ -324,14 +315,13 @@
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 12px;
 }
-.calendarTitle { font-size: 14px; font-weight: 600; color: var(--neutral-400); }
+.calendarTitle { font-size: var(--font-base); font-weight: 600; color: var(--neutral-400); }
 .calendarGrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
-.calendarDayLabel { font-size: 12px; font-weight: 500; color: var(--neutral-200); padding: 6px 0; }
+.calendarDayLabel { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-200); padding: 6px 0; }
 .calendarDay {
   width: 36px; height: 36px; border-radius: 50%; border: none;
-  background: none; cursor: pointer; font-size: 13px; color: var(--neutral-400);
+  background: none; cursor: pointer; font-size: var(--font-md); color: var(--neutral-400);
   display: flex; align-items: center; justify-content: center;
-  font-family: 'Inter', sans-serif; transition: background .1s;
 }
 .calendarDay:hover { background: var(--primary-50); color: var(--primary-300); }
 
@@ -351,13 +341,13 @@
 .timeSlotHeader { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .pickTimeBtn {
   display: flex; align-items: center; gap: 4px;
-  font-size: 12px; color: var(--primary-300); font-weight: 500;
-  background: none; border: none; cursor: pointer; font-family: 'Inter', sans-serif;
+  font-size: var(--font-sm); color: var(--primary-300); font-weight: 500;
+  background: none; border: none; cursor: pointer;
 }
 .timeSlots { display: flex; flex-wrap: wrap; gap: 6px; }
 .timeSlot {
   padding: 2px 6px; height: 22px; min-width: 85px; border: none; border-radius: 4px;
-  font-size: 14px; color: var(--neutral-300); background: var(--neutral-50);
+  font-size: var(--font-base); color: var(--neutral-300); background: var(--neutral-50);
   cursor: pointer; transition: background var(--duration-instant) var(--ease-hover), color var(--duration-instant) var(--ease-hover), border-color var(--duration-instant) var(--ease-hover); text-align: center;
 }
 .timeSlot:hover { background: var(--primary-50); color: var(--primary-300); }

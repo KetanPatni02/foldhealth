@@ -52,11 +52,11 @@
 
 /* Sizes — width, height, radius, and font scale together. Font ratio is
    ~44% of tile size (matches Avatar's default 14/32). */
-.xs { --avatar-tile-size: 20px; width: 20px; height: 20px; border-radius: 5px; font-size: 9px; }
-.s  { --avatar-tile-size: 24px; width: 24px; height: 24px; border-radius: 6px; font-size: 10px; }
-.m  { --avatar-tile-size: 32px; width: 32px; height: 32px; border-radius: 8px; font-size: 14px; }
-.l  { --avatar-tile-size: 40px; width: 40px; height: 40px; border-radius: 10px; font-size: 16px; }
-.xl { --avatar-tile-size: 48px; width: 48px; height: 48px; border-radius: 12px; font-size: 18px; }
+.xs { --avatar-tile-size: 20px; width: 20px; height: 20px; border-radius: 5px; font-size: 0.5625rem; }
+.s  { --avatar-tile-size: 24px; width: 24px; height: 24px; border-radius: 6px; font-size: var(--font-2xs); }
+.m  { --avatar-tile-size: 32px; width: 32px; height: 32px; border-radius: 8px; font-size: var(--font-base); }
+.l  { --avatar-tile-size: 40px; width: 40px; height: 40px; border-radius: 10px; font-size: var(--font-lg); }
+.xl { --avatar-tile-size: 48px; width: 48px; height: 48px; border-radius: 12px; font-size: var(--font-xl); }
 
 /* Overflow popover — appears on hover/focus of the +N chip. Lists every
    member with their initials tile + name. */
@@ -87,7 +87,7 @@
   gap: 8px;
   padding: 6px 8px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 .popoverItem:hover { background: var(--neutral-50); }
@@ -98,7 +98,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   flex-shrink: 0;
 }
 .popoverInitials.patient {

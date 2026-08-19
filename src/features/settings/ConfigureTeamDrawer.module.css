@@ -24,8 +24,7 @@
   gap: 6px;
 }
 .label {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -39,8 +38,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 8px 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-500);
   background: var(--neutral-0);
@@ -75,8 +73,7 @@
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   font-variant-numeric: tabular-nums;
@@ -112,8 +109,7 @@
 }
 .userMenuEmpty {
   padding: 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   text-align: center;
 }
@@ -126,13 +122,12 @@
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   text-align: left;
   width: 100%;
 }
 .userMenuItem:hover { background: var(--neutral-50); }
 .userMenuName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   flex: 1;
@@ -142,7 +137,7 @@
   white-space: nowrap;
 }
 .userMenuRole {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -162,8 +157,7 @@
 
 /* Right-aligned chip showing the staff member's remaining bandwidth. */
 .userMenuAvailable {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-400);
   background: var(--neutral-50);
@@ -178,8 +172,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 8px 36px 8px 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-500);
   background: var(--neutral-0);
@@ -210,8 +203,7 @@
   background: var(--primary-50);
   border: 0.5px solid var(--primary-200);
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -236,8 +228,7 @@
 /* TIN dropdown rows — Figma 2609:12533. Provider-group rows with an icon
    bubble, number + provider count, and an "Assigned: %" badge. */
 .tinMenuTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   padding: 6px 8px 4px;
@@ -276,20 +267,17 @@
   gap: 1px;
 }
 .tinRowNumber {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .tinRowProviders {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .tinRowAssigned {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-400);
   background: var(--neutral-50);
@@ -302,16 +290,14 @@
 /* Hover-trigger variants of meta lines — show a dashed underline so users
    discover the hover popup. */
 .userCardMetaHover {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   border-bottom: 1px dashed var(--neutral-200);
   cursor: help;
 }
 .assignTotalHover {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   border-bottom: 1px dashed var(--neutral-200);
@@ -332,8 +318,7 @@
   justify-content: space-between;
 }
 .selectedTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -344,8 +329,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
 }
@@ -374,14 +358,12 @@
   gap: 1px;
 }
 .userCardName {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .userCardMeta {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -397,8 +379,7 @@
 .capacityInput {
   width: 56px;
   padding: 6px 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
   border: none;
   outline: none;
@@ -407,8 +388,7 @@
   font-variant-numeric: tabular-nums;
 }
 .capacityPct {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 .userRemoveBtn {
@@ -432,8 +412,7 @@
   border-top: 0.5px solid var(--neutral-100);
 }
 .assignToLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   margin-bottom: 2px;
@@ -449,8 +428,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 6px 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-500);
   background: var(--neutral-0);
@@ -476,8 +454,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 6px 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-500);
   background: var(--neutral-0);
@@ -536,13 +513,12 @@
   cursor: pointer;
   text-align: left;
   width: 100%;
-  font-family: 'Inter', sans-serif;
 }
 .vendorRow:hover { background: var(--neutral-50); }
 .vendorRowText {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -560,8 +536,7 @@
 .assignPctInput {
   width: 100%;
   padding: 6px 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
   background: transparent;
   border: none;
@@ -570,8 +545,7 @@
   font-variant-numeric: tabular-nums;
 }
 .assignPctSuffix {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 .assignTrash {
@@ -587,8 +561,7 @@
 .assignTrash:hover { background: var(--neutral-50); }
 
 .assignTotal {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   margin-top: 2px;
@@ -619,8 +592,7 @@
   background: transparent;
   cursor: pointer;
   padding: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -638,8 +610,7 @@
   padding: 4px 8px;
   background: var(--neutral-25);
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-400);
 }

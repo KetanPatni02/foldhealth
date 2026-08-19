@@ -33,7 +33,7 @@
   border-bottom: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
 }
-.title { flex: 1; font-size: 16px; font-weight: 500; color: var(--neutral-500); }
+.title { flex: 1; font-size: var(--font-lg); font-weight: 500; color: var(--neutral-500); }
 
 .iconBtn {
   display: inline-flex;
@@ -67,12 +67,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--font-lg);
   flex-shrink: 0;
 }
 .bannerText { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.bannerName { display: flex; align-items: center; gap: 4px; font-size: 16px; font-weight: 500; color: var(--neutral-400); }
-.bannerMeta { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--neutral-300); flex-wrap: wrap; }
+.bannerName { display: flex; align-items: center; gap: 4px; font-size: var(--font-lg); font-weight: 500; color: var(--neutral-400); }
+.bannerMeta { display: flex; align-items: center; gap: 4px; font-size: var(--font-base); color: var(--neutral-300); flex-wrap: wrap; }
 .dot { color: var(--neutral-300); }
 .rafVal { color: var(--neutral-400); }
 .rafBadge {
@@ -85,7 +85,7 @@
   background: var(--status-success-light);
   border: 0.5px solid color-mix(in srgb, var(--status-success) 20%, transparent);
   color: var(--status-success);
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 .bannerActions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
@@ -108,7 +108,7 @@
   justify-content: space-between;
   padding: 0 12px;
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   flex-shrink: 0;
 }
@@ -150,9 +150,9 @@
    so the "Created : <date>" row is visually identical to the Diagnosis Gap
    Details drawer. */
 .createdGroup { display: inline-flex; align-items: center; gap: 8px; }
-.createdLabel { font-size: 13px; font-weight: 400; color: var(--neutral-300); flex-shrink: 0; }
-.createdDate  { font-size: 13px; font-weight: 600; color: var(--neutral-500); flex-shrink: 0; }
-.overdue      { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 500; color: var(--status-error); flex-shrink: 0; }
+.createdLabel { font-size: var(--font-md); font-weight: 400; color: var(--neutral-300); flex-shrink: 0; }
+.createdDate  { font-size: var(--font-md); font-weight: 600; color: var(--neutral-500); flex-shrink: 0; }
+.overdue      { display: inline-flex; align-items: center; gap: 3px; font-size: var(--font-sm); font-weight: 500; color: var(--status-error); flex-shrink: 0; }
 /* Matches DiagPanel .withCoderPill — same ProgressRing + label + tint. */
 .teamBadge {
   display: inline-flex;
@@ -161,7 +161,7 @@
   padding: 4px 8px;
   border-radius: 4px;
   background: var(--neutral-50);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
   flex-shrink: 0;
@@ -202,7 +202,7 @@
   background: var(--secondary-50);
   border: 0.5px solid var(--secondary-200);
   color: var(--secondary-300);
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -221,7 +221,7 @@
   border-radius: 4px;
   background: transparent;
   color: var(--neutral-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -236,7 +236,7 @@
   background: var(--neutral-50);
   border: 0.5px solid color-mix(in srgb, var(--neutral-300) 10%, transparent);
   color: var(--neutral-300);
-  font-size: 14px;
+  font-size: var(--font-base);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -255,7 +255,7 @@
   border-radius: 4px;
   background: var(--status-success-light);
   border: 0.5px solid color-mix(in srgb, var(--status-success) 20%, transparent);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   flex-shrink: 0;
 }
@@ -266,7 +266,7 @@
 .rightBody { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 12px; overflow-x: hidden; overflow-y: auto; }
 .assocRow { display: flex; align-items: center; gap: 4px; padding: 4px 0; }
 .assocLeft { flex: 1; display: flex; align-items: center; gap: 4px; }
-.assocLabel { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
+.assocLabel { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
 .dosBadge {
   display: inline-flex;
   align-items: center;
@@ -276,7 +276,7 @@
   background: var(--primary-50);
   border: 0.5px solid var(--primary-200);
   color: var(--primary-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   cursor: pointer;
 }
 .dosBadge:hover { background: var(--primary-100); }
@@ -300,8 +300,8 @@
 }
 .dosPanelRow:last-child { border-bottom: none; }
 .dosPanelInfo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.dosPanelDate { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
-.dosPanelMeta { font-size: 12px; color: var(--neutral-300); }
+.dosPanelDate { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
+.dosPanelMeta { font-size: var(--font-sm); color: var(--neutral-300); }
 .dosPanelSep { margin: 0 5px; color: var(--neutral-200); }
 
 /* Per-document "More actions" → Edit / Unlink / Delete menu. Sits above
@@ -325,7 +325,7 @@
   border: none;
   border-radius: 6px;
   background: none;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   cursor: pointer;
@@ -428,7 +428,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--primary-300);
   padding: 2px 4px;
   border-radius: 4px;
@@ -472,7 +472,7 @@
   gap: 8px;
   padding: 32px 12px;
   color: var(--neutral-300);
-  font-size: 13px;
+  font-size: var(--font-md);
   text-align: center;
 }
 .commentRow {
@@ -518,7 +518,7 @@
 .commentDate   { color: var(--neutral-300); font-weight: 400; font-variant-numeric: tabular-nums; }
 .commentEdited {
   margin-left: auto;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   background: var(--neutral-100);
   padding: 1px 6px;
@@ -555,7 +555,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .uploadReq {
@@ -571,7 +571,7 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   padding: 0 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
   outline: none;
   box-sizing: border-box;
@@ -625,8 +625,8 @@
   border: 0.5px solid var(--neutral-150);
 }
 .docCardText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.docName { font-size: 14px; color: var(--neutral-400); }
-.docMeta { font-size: 12px; color: var(--neutral-300); }
+.docName { font-size: var(--font-base); color: var(--neutral-400); }
+.docMeta { font-size: var(--font-sm); color: var(--neutral-300); }
 .docActions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 /* Undecided Pass / Fail pills */
 .passFailPill {
@@ -641,7 +641,7 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-200);
   color: var(--neutral-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   cursor: pointer;
   white-space: nowrap;
 }
@@ -667,7 +667,7 @@
   height: 22px;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   white-space: nowrap;
 }
 .passedBadge {
@@ -700,7 +700,7 @@
   animation: failtt-fade 0.12s ease-out;
 }
 .failTooltipHeading {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   margin-bottom: 6px;
@@ -712,7 +712,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
 }
 .failTooltipList li { line-height: 1.35; }
@@ -720,7 +720,7 @@
   background: var(--neutral-50);
   border-radius: 6px;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1.35;
   color: var(--neutral-300);
 }
@@ -772,7 +772,7 @@
   padding: 6px;
 }
 .assignTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   padding: 6px 8px 4px;
@@ -795,7 +795,7 @@
 .assignName {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -803,7 +803,7 @@
   white-space: nowrap;
 }
 .assignRole {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -842,7 +842,7 @@
   background: var(--primary-50);
   border-color: var(--primary-200);
 }
-.statusLabel { font-size: 14px; }
+.statusLabel { font-size: var(--font-base); }
 
 /* ── Insufficient DOS confirmation modal ────────────────────────────────
    Opened when Support picks the record-level "Insufficient" status. Layout
@@ -870,13 +870,13 @@
   min-width: 0;
 }
 .insufficientTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-500);
   line-height: 1.25;
 }
 .insufficientSubtitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.35;

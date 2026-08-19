@@ -12,8 +12,8 @@
   gap: 2px;
   line-height: 1.2;
 }
-.titleMain { font-size: 15px; font-weight: 600; color: var(--neutral-400); }
-.titleSub  { font-size: 12px; font-weight: 400; color: var(--neutral-300); }
+.titleMain { font-size: 0.9375rem; font-weight: 600; color: var(--neutral-400); }
+.titleSub  { font-size: var(--font-sm); font-weight: 400; color: var(--neutral-300); }
 
 /* ─────────── Overflow popover (kebab → 3 actions) ─────────── */
 .overflowScrim { position: fixed; inset: 0; z-index: 9998; }
@@ -31,8 +31,7 @@
   display: flex; align-items: center; gap: 8px;
   width: 100%; padding: 8px 10px; border-radius: 6px;
   background: none; border: none; cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px; color: var(--neutral-400);
+  font-size: var(--font-md); color: var(--neutral-400);
   text-align: left;
 }
 .overflowItem:hover { background: var(--neutral-50); }
@@ -58,21 +57,20 @@
   width: 100%; padding: 12px 16px;
   background: transparent;
   border: none; cursor: pointer;
-  font-family: 'Inter', sans-serif;
   text-align: left;
 }
 .commonBadge {
-  font-size: 10px; font-weight: 600; letter-spacing: .04em;
+  font-size: var(--font-2xs); font-weight: 600; letter-spacing: .04em;
   color: var(--status-info, #1D4ED8);
   background: rgba(29, 78, 216, 0.12);
   padding: 3px 7px; border-radius: 4px;
 }
 .commonHeaderText {
-  font-size: 13px; font-weight: 500; color: var(--neutral-400);
+  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
 }
 .commonHelper {
   margin-left: auto;
-  font-size: 12px; color: var(--neutral-300);
+  font-size: var(--font-sm); color: var(--neutral-300);
 }
 .commonBody {
   padding: 4px 16px 16px;
@@ -83,14 +81,14 @@
 /* ─────────── Form primitives ─────────── */
 .fieldGroup { margin-bottom: 16px; }
 .fieldLabel {
-  font-size: 13px; font-weight: 500; color: var(--neutral-400);
+  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
   margin: 12px 0 8px; display: flex; align-items: center; gap: 4px;
 }
 .required { color: var(--status-error); }
-.fieldError { font-size: 12px; color: var(--status-error); margin-top: 5px; }
+.fieldError { font-size: var(--font-sm); color: var(--status-error); margin-top: 5px; }
 
 .subSectionLabel {
-  font-size: 13px; font-weight: 500; color: var(--neutral-400);
+  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
   margin: 8px 0;
 }
 .sectionDivider { height: 0.5px; background: var(--neutral-150); margin: 16px 0; }
@@ -100,22 +98,22 @@
   margin-bottom: 12px; cursor: pointer;
 }
 .checkRow input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; cursor: pointer; accent-color: var(--primary-300); }
-.checkLabel { font-size: 13px; color: var(--neutral-400); line-height: 1.5; }
-.checkIndented { padding-left: 22px; font-size: 12px; color: var(--neutral-300); margin: 2px 0 8px; line-height: 1.5; }
+.checkLabel { font-size: var(--font-md); color: var(--neutral-400); line-height: 1.5; }
+.checkIndented { padding-left: 22px; font-size: var(--font-sm); color: var(--neutral-300); margin: 2px 0 8px; line-height: 1.5; }
 
 .radioGroupLabel {
-  font-size: 13px; font-weight: 500; color: var(--neutral-400);
+  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
   margin-bottom: 8px; display: flex; align-items: center; gap: 4px;
 }
 .radioRow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
 .radioRow input[type="radio"] { cursor: pointer; accent-color: var(--primary-300); }
-.radioLabel { font-size: 13px; color: var(--neutral-400); }
+.radioLabel { font-size: var(--font-md); color: var(--neutral-400); }
 
 /* ─────────── Gap groups + accordion (AC-3, AC-5) ─────────── */
 .gapGroup { margin-bottom: 20px; }
 .gapGroupHeader {
   display: flex; align-items: center; gap: 6px;
-  font-size: 12px; font-weight: 500; color: var(--neutral-300);
+  font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300);
   padding: 0 4px 8px;
   letter-spacing: .02em;
 }
@@ -136,22 +134,21 @@
   display: flex; align-items: center; gap: 10px;
   width: 100%; padding: 12px 16px;
   background: transparent; border: none; cursor: pointer;
-  font-family: 'Inter', sans-serif;
   text-align: left;
 }
 .gapAccordionHeader:hover { background: var(--neutral-25, #FAFAFA); }
 .gapAccordionCode {
-  font-size: 11px; font-weight: 600; letter-spacing: .04em;
+  font-size: var(--font-xs); font-weight: 600; letter-spacing: .04em;
   color: var(--neutral-400);
   background: var(--neutral-50); padding: 3px 7px; border-radius: 4px;
 }
 .gapAccordionName {
-  font-size: 14px; font-weight: 500; color: var(--neutral-400);
+  font-size: var(--font-base); font-weight: 500; color: var(--neutral-400);
 }
 .gapAccordionSpacer { flex: 1; }
 .gapAccordionAssignee {
   display: inline-flex; align-items: center; gap: 4px;
-  font-size: 12px; color: var(--primary-300); font-weight: 500;
+  font-size: var(--font-sm); color: var(--primary-300); font-weight: 500;
   white-space: nowrap;
 }
 .gapAccordionEdited {
@@ -161,7 +158,7 @@
 
 /* Gap status chip */
 .gapStatusPill {
-  font-size: 11px; font-weight: 500;
+  font-size: var(--font-xs); font-weight: 500;
   padding: 3px 8px; border-radius: 50px;
   white-space: nowrap;
 }
@@ -175,7 +172,7 @@
 /* Ready-for-Review toggle (no border, just Switch + label) */
 .readyToggle {
   display: inline-flex; align-items: center; gap: 8px;
-  font-size: 12px; font-weight: 500;
+  font-size: var(--font-sm); font-weight: 500;
   white-space: nowrap;
 }
 .readyToggleLabel    { color: var(--neutral-300); }
@@ -188,12 +185,12 @@
 
 .gapPlaceholder {
   padding: 24px 12px;
-  color: var(--neutral-300); font-size: 13px; text-align: center;
+  color: var(--neutral-300); font-size: var(--font-md); text-align: center;
 }
 
 .bpInlineDate {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 12px; color: var(--neutral-300);
+  font-size: var(--font-sm); color: var(--neutral-300);
   margin-bottom: 14px;
 }
 .bpInlineDate span { color: var(--neutral-400); font-weight: 500; }
@@ -216,19 +213,18 @@
 .inputWithSuffix input {
   flex: 1; min-width: 0; border: none;
   padding: 8px 12px; background: transparent;
-  font-size: 13px; color: var(--neutral-400);
-  font-family: 'Inter', sans-serif; outline: none;
+  font-size: var(--font-md); color: var(--neutral-400);
 }
 .inputSuffix {
   display: flex; align-items: center; padding: 0 10px;
   background: var(--neutral-25, #FAFAFA);
   border-left: 0.5px solid var(--neutral-150);
-  font-size: 12px; color: var(--neutral-300); white-space: nowrap;
+  font-size: var(--font-sm); color: var(--neutral-300); white-space: nowrap;
 }
 
 /* ─────────── Shared attachments (AC-10) ─────────── */
 .uploadSection { margin: 8px 0 20px; }
-.uploadLabel { font-size: 13px; font-weight: 500; color: var(--neutral-400); margin-bottom: 10px; line-height: 1.5; }
+.uploadLabel { font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); margin-bottom: 10px; line-height: 1.5; }
 .uploadLabelHelper { font-weight: 400; color: var(--neutral-300); }
 .uploadZone {
   border: 1.5px dashed var(--neutral-150);
@@ -237,31 +233,30 @@
   background: var(--neutral-25, #FAFAFA);
 }
 .uploadZone:hover { border-color: var(--primary-300); background: var(--primary-25); }
-.uploadZoneTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); margin-bottom: 4px; }
-.uploadZoneMeta  { font-size: 12px; color: var(--neutral-300); }
+.uploadZoneTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); margin-bottom: 4px; }
+.uploadZoneMeta  { font-size: var(--font-sm); color: var(--neutral-300); }
 
 /* ─────────── Medications (AC-10) ─────────── */
 .medsSection { margin-bottom: 20px; }
 .medsSectionHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.medsSectionTitle { font-size: 15px; font-weight: 600; color: var(--neutral-400); }
+.medsSectionTitle { font-size: 0.9375rem; font-weight: 600; color: var(--neutral-400); }
 .importBtn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 14px; border-radius: 50px;
   border: 0.5px solid var(--neutral-150); background: var(--neutral-0);
-  font-size: 13px; font-weight: 500; color: var(--neutral-400);
-  cursor: pointer; font-family: 'Inter', sans-serif;
+  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
+  cursor: pointer;
 }
 .importBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
 .medsEmpty {
   border: 0.5px solid var(--neutral-150); border-radius: 8px;
   padding: 28px 16px; text-align: center; margin-bottom: 10px;
 }
-.medsEmptyTitle { font-size: 13px; color: var(--neutral-300); margin: 8px 0 0; }
+.medsEmptyTitle { font-size: var(--font-md); color: var(--neutral-300); margin: 8px 0 0; }
 .medSearchInput {
   width: 100%; padding: 9px 12px;
   border: 0.5px solid var(--neutral-150); border-radius: 7px;
-  font-size: 13px; color: var(--neutral-400);
-  font-family: 'Inter', sans-serif; outline: none;
+  font-size: var(--font-md); color: var(--neutral-400);
   box-sizing: border-box; background: var(--neutral-0);
 }
 .medSearchInput:focus { border-color: var(--primary-300); }
@@ -277,7 +272,7 @@
   padding: 10px 12px; border-radius: 8px;
   background: var(--status-info-light);
   border: 0.5px solid rgba(20, 94, 204, 0.2);
-  font-size: 12px; line-height: 1.5; color: var(--neutral-400);
+  font-size: var(--font-sm); line-height: 1.5; color: var(--neutral-400);
   margin-bottom: 14px;
 }
 .priorDraftBanner strong { color: var(--neutral-400); font-weight: 600; }
@@ -288,8 +283,7 @@
   padding: 6px 12px; border-radius: 7px;
   border: 0.5px dashed var(--neutral-150);
   background: var(--neutral-0);
-  font-size: 12px; font-weight: 500; color: var(--neutral-400);
-  font-family: 'Inter', sans-serif; cursor: pointer;
+  font-size: var(--font-sm); font-weight: 500; color: var(--neutral-400);
   margin-top: 14px;
 }
 .gapDocBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }

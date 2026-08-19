@@ -5,11 +5,11 @@
 .formSection { display: flex; flex-direction: column; gap: 12px; padding: 24px 24px 16px; }
 
 .field { display: flex; flex-direction: column; gap: 6px; }
-.fieldLabel { font-size: 14px; color: var(--neutral-200); font-family: 'Inter', sans-serif; font-weight: 400; }
+.fieldLabel { font-size: var(--font-base); color: var(--neutral-200); font-weight: 400; }
 
 .noteTextarea {
   width: 100%; min-height: 100px; border: 0.5px solid var(--neutral-150); border-radius: 8px;
-  padding: 10px 12px; font-size: 14px; color: var(--neutral-400); font-family: 'Inter', sans-serif;
+  padding: 10px 12px; font-size: var(--font-base); color: var(--neutral-400);
   line-height: 1.5; resize: vertical; outline: none;
 }
 .noteTextarea:focus { border-color: var(--primary-300); }
@@ -18,7 +18,7 @@
 
 /* History section */
 .historySection { display: flex; flex-direction: column; gap: 12px; border-top: 0.5px solid var(--neutral-100); padding: 16px 24px 24px; }
-.historyTitle { font-size: 14px; font-weight: 600; color: var(--neutral-500); font-family: 'Inter', sans-serif; margin: 0; }
+.historyTitle { font-size: var(--font-base); font-weight: 600; color: var(--neutral-500); margin: 0; }
 .historyList { display: flex; flex-direction: column; gap: 0; }
 
 /* History item — timeline track with connecting line */
@@ -30,9 +30,9 @@
 .timelineLineHidden { background: transparent; }
 .historyAvatar { flex-shrink: 0; }
 .historyContent { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 4px 4px 12px; }
-.historyMeta { font-size: 12px; color: var(--neutral-200); font-family: 'Inter', sans-serif; line-height: 1.4; }
-.historyAuthor { font-size: 14px; color: var(--neutral-400); font-family: 'Inter', sans-serif; line-height: 1.5; }
+.historyMeta { font-size: var(--font-sm); color: var(--neutral-200); line-height: 1.4; }
+.historyAuthor { font-size: var(--font-base); color: var(--neutral-400); line-height: 1.5; }
 .historyAuthor strong { font-weight: 600; color: var(--neutral-500); }
 .historyAction { color: var(--neutral-200); font-weight: 400; }
-.historyNote { font-size: 14px; color: var(--neutral-400); font-family: 'Inter', sans-serif; line-height: 1.5; margin-top: 2px; }
-.emptyHistory { font-size: 14px; color: var(--neutral-200); font-family: 'Inter', sans-serif; text-align: center; padding: 32px 0; }
+.historyNote { font-size: var(--font-base); color: var(--neutral-400); line-height: 1.5; margin-top: 2px; }
+.emptyHistory { font-size: var(--font-base); color: var(--neutral-200); text-align: center; padding: 32px 0; }

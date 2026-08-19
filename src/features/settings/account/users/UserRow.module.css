@@ -35,7 +35,7 @@
   min-width: 0;
 }
 .userName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -43,7 +43,7 @@
   text-overflow: ellipsis;
 }
 .userEmail {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   white-space: nowrap;
   overflow: hidden;
@@ -64,7 +64,7 @@
   line-height: 1.2;
 }
 .dateRelative {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 .dateRelativeFresh { color: var(--status-success); }

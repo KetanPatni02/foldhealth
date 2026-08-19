@@ -18,7 +18,7 @@
   gap: 8px;
   background: var(--neutral-50);
   color: var(--neutral-300);
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 /* RHS column — the PatientBanner sits at the top OUTSIDE the scrollable
@@ -95,7 +95,7 @@
 }
 
 .placeholderTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }

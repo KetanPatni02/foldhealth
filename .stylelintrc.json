@@ -14,6 +14,12 @@
       {
         "message": "Do not set font-family — Inter is applied globally. Remove this declaration."
       }
-    ]
+    ],
+    "declaration-property-unit-disallowed-list": [{
+      "font-size": ["px", "em"],
+      "line-height": ["px"]
+    }, {
+      "message": "Use a rem-based design token (var(--font-…)) for font-size, not raw px/em. For line-height, use a unitless ratio (--leading-…). See src/tokens/tokens.css."
+    }]
   }
 }

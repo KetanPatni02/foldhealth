@@ -11,7 +11,7 @@
 }
 
 .label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   white-space: nowrap;

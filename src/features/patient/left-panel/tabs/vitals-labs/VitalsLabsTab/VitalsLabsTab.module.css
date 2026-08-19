@@ -24,10 +24,9 @@
 
 .tableSectionTitle {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .tableSectionActions {
@@ -72,16 +71,14 @@
 .colNameLabel {
   width: 150px;
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .colValuesLabel {
   flex: 1;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .row {
@@ -111,17 +108,15 @@
 }
 
 .rowName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 .rowUnit {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--primary-300);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -139,9 +134,8 @@
 }
 
 .val {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 .valFlag {
@@ -150,9 +144,8 @@
 }
 
 .valDate {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -170,9 +163,8 @@
 .yLabel {
   writing-mode: vertical-lr;
   transform: rotate(180deg);
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   flex-shrink: 0;
   width: 14px;
   text-align: center;
@@ -198,10 +190,9 @@
 }
 
 .graphSectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   flex: 1;
 }
 
@@ -230,10 +221,9 @@
 }
 
 .metricTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .legend {
@@ -259,15 +249,13 @@
 }
 
 .legendLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .metricSub {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   line-height: 1.4;
 }
 
@@ -278,9 +266,8 @@
 }
 
 .xAxisLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   text-align: center;
   margin-top: 4px;
   padding-bottom: 4px;
@@ -310,24 +297,21 @@
 }
 
 .statValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .statUnit {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   margin-left: 2px;
 }
 
 .statLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .statDivider {

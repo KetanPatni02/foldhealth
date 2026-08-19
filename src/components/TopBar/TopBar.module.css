@@ -28,7 +28,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   min-width: 0;
   overflow: hidden;
 }
@@ -42,7 +42,7 @@
   border: none;
   padding: 0;
   font: inherit;
-  font-size: 14px;
+  font-size: var(--font-base);
   cursor: pointer;
 }
 
@@ -126,7 +126,6 @@
   border: none;
   cursor: pointer;
   text-align: left;
-  font-family: 'Inter', sans-serif;
 }
 
 .searchResultItem:hover {
@@ -139,7 +138,7 @@
 }
 
 .searchResultName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -148,7 +147,7 @@
 }
 
 .searchResultMeta {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -158,8 +157,7 @@
 .searchBox input {
   border: none;
   outline: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   width: 100%;
@@ -176,10 +174,9 @@
   color: var(--primary-300);
   border: 0.5px solid var(--primary-200);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   /* The search box is the shrink target — the button keeps its label. */
   flex-shrink: 0;
   white-space: nowrap;
@@ -257,8 +254,7 @@
   color: #fff;
   border: none;
   border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   cursor: pointer;
 }
@@ -274,8 +270,7 @@
   color: var(--primary-300);
   border: 0.5px solid var(--primary-200);
   border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   cursor: pointer;
 }

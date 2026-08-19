@@ -103,14 +103,14 @@
   flex: 1;
   border: none;
   outline: none;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   background: transparent;
   padding: 8px 4px;
 }
 .searchInput::placeholder { color: var(--neutral-200); }
 .searchClose { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; flex-shrink: 0; }
-.alertHeader { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--status-warning-light); font-size: 12px; color: var(--neutral-400); font-family: 'Inter', sans-serif; flex-shrink: 0; border-bottom: 0.5px solid var(--neutral-100); }
+.alertHeader { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--status-warning-light); font-size: var(--font-sm); color: var(--neutral-400); flex-shrink: 0; border-bottom: 0.5px solid var(--neutral-100); }
 /* Quick View / left-panel gaps surface — the tab body previously butted
  * flush against the sticky-note strip; a 12px top gutter separates the
  * first section header ("Care Gaps") from the strip. */
@@ -119,10 +119,10 @@
 .sectionHeader { display: flex; align-items: center; gap: 0; padding: 0; height: 32px; flex-shrink: 0; }
 .collapseToggle { background: none; border: none; cursor: pointer; padding: 0; margin-left: 4px; display: flex; align-items: center; }
 .sectionActions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.sectionTitle { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
-.viewBy { font-size: 12px; color: var(--neutral-300); }
-.dosLabel { font-size: 12px; color: var(--neutral-400); }
-.dosValue { font-size: 12px; color: var(--neutral-300); }
+.sectionTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
+.viewBy { font-size: var(--font-sm); color: var(--neutral-300); }
+.dosLabel { font-size: var(--font-sm); color: var(--neutral-400); }
+.dosValue { font-size: var(--font-sm); color: var(--neutral-300); }
 .filterDivider { width: 0.5px; height: 12px; background: var(--neutral-150); }
 /* Diagnosis Gaps / Alerts section headers sit directly under the previous
  * section's table with no separator — the 16px margin gives each new
@@ -132,7 +132,7 @@
  * collapsed; the icon primitive stays the same for expanded (▼) and
  * collapsed (▶) states. */
 .chevronCollapsed { transform: rotate(-90deg); transition: transform 0.12s ease; }
-.placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--neutral-200); font-size: 13px; font-family: 'Inter', sans-serif; }
+.placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--neutral-200); font-size: var(--font-md); }
 
 /* Smooth collapse transition (grid-template-rows trick) */
 .collapseOuter { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease; overflow: hidden; }

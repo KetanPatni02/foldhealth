@@ -75,14 +75,14 @@
 }
 
 .agentName {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-500);
   line-height: 1.2;
 }
 
 .agentRole {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.2;
@@ -116,14 +116,13 @@
 
 .tabItem {
   padding: 10px 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
   cursor: pointer;
   border: none;
   background: none;
   border-bottom: 2px solid transparent;
-  font-family: 'Inter', sans-serif;
   white-space: nowrap;
   transition: color .12s;
 }
@@ -167,8 +166,7 @@
   flex: 1;
   border: none;
   outline: none;
-  font-size: 14px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   background: transparent;
 }
@@ -182,7 +180,7 @@
   border: none;
   color: var(--neutral-300);
   cursor: pointer;
-  font-size: 16px;
+  font-size: var(--font-lg);
   padding: 0;
   line-height: 1;
 }
@@ -209,12 +207,11 @@
 .queueTable {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
 }
 
 .queueTable thead th {
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   text-align: left;
@@ -229,7 +226,7 @@
 /* All rows: max 50px height (8px TB padding, 12px LR padding) */
 .queueTable tbody td {
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   vertical-align: middle;
@@ -259,7 +256,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--primary-300);
   flex-shrink: 0;
@@ -272,14 +269,14 @@
 }
 
 .memberName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.2;
 }
 
 .memberMeta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-200);
   line-height: 1.2;
@@ -287,14 +284,14 @@
 
 /* ── Duration / Status cells ── */
 .duration {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--status-success);
   font-variant-numeric: tabular-nums;
 }
 
 .durationFailed {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--status-error);
   font-variant-numeric: tabular-nums;
@@ -313,7 +310,7 @@
   border-radius: 4px;
   background: var(--neutral-50);
   border: 0.5px solid rgba(111, 122, 144, 0.1);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -342,13 +339,12 @@
   border-radius: 4px;
   background: var(--neutral-0);
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
 }
 
 .callOrderLabel {
   flex: 1;
   padding: 0 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   line-height: 1.2;
@@ -383,10 +379,9 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   cursor: pointer;
   transition: background .1s;
   white-space: nowrap;
@@ -407,14 +402,14 @@
 }
 
 .emptyTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-400);
   margin: 0;
 }
 
 .emptyDesc {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   margin: 0;
   text-align: center;
@@ -436,7 +431,7 @@
 }
 
 .summaryTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   margin-bottom: 12px;
@@ -458,7 +453,7 @@
 }
 
 .summaryCardLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   display: flex;
@@ -469,7 +464,7 @@
 }
 
 .summaryCardValue {
-  font-size: 20px;
+  font-size: var(--font-2xl);
   font-weight: 600;
   color: var(--neutral-400);
   line-height: 1.2;
@@ -491,7 +486,7 @@
   transform: translateX(-50%);
   background: var(--neutral-0);
   color: var(--neutral-400);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   line-height: 1.4;
   white-space: normal;
@@ -521,10 +516,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
   border: none;
   background: none;
   cursor: pointer;
@@ -603,7 +597,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -628,7 +622,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300, #6f7a90);
   white-space: nowrap;
@@ -762,13 +756,13 @@
 }
 
 .goalProgressLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400);
 }
 
 .goalsMet {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   display: flex;
   align-items: center;
@@ -790,7 +784,7 @@
 }
 
 .goalProgressText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   display: block;
@@ -804,7 +798,7 @@
 
 .goalSectionTitle {
   display: block;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   margin-bottom: 8px;
@@ -843,7 +837,7 @@
 
 .goalCardName {
   display: block;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.3;
@@ -852,14 +846,14 @@
 
 .goalCardDesc {
   display: block;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.5;
 }
 
 .goalCardResult {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   flex-shrink: 0;
   margin-top: 2px;
@@ -892,13 +886,13 @@
 }
 
 .callQualityLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300, #6f7a90);
 }
 
 .callQualityValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400, #3a485f);
 }
@@ -930,13 +924,13 @@
 }
 
 .callQualityMetaLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300, #6f7a90);
 }
 
 .callQualityMetaValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400, #3a485f);
 }
@@ -948,13 +942,13 @@
 }
 
 .callQualitySentimentLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300, #6f7a90);
 }
 
 .callQualitySentimentDesc {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300, #6f7a90);
   line-height: 1.5;

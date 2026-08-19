@@ -78,9 +78,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   flex-shrink: 0;
 }
 
@@ -97,9 +96,8 @@
 }
 
 .stageLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   white-space: nowrap;
 }
 
@@ -151,10 +149,9 @@
 
 /* Validation supporting text */
 .errorText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--status-error, #D72825);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -190,10 +187,9 @@
 
 /* Sub-group heading (Figma: Inter Medium 14px, neutral-300) */
 .groupHeading {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Logo upload ── */
@@ -210,10 +206,9 @@
 }
 
 .orText {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Logo preview (uploaded state) ── */
@@ -259,9 +254,8 @@
   border-radius: 4px;
   background: var(--neutral-50);
   border: 0.5px solid rgba(111,122,144,0.1);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-300);
   cursor: pointer;
 }
@@ -288,10 +282,9 @@
 .dropZone:hover { background: var(--neutral-50); border-color: var(--neutral-200); }
 
 .dropZoneText {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   text-align: center;
 }
 
@@ -308,10 +301,9 @@
 }
 
 .dropZoneMetaText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-200);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Date range row ── */
@@ -322,7 +314,7 @@
 }
 
 .dateArrow {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
   flex-shrink: 0;
 }
@@ -349,9 +341,8 @@
 }
 
 .costSharingAlertText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-400);
   flex: 1;
 }
@@ -373,9 +364,8 @@
 }
 
 .coverageSwitchLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-300);
 }
 
@@ -385,9 +375,8 @@
 }
 
 .coverageSwitchDesc {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-200);
   line-height: 1.4;
 }
@@ -400,9 +389,8 @@
 }
 
 .coverageSectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-400);
   padding: 8px 12px;
   border-bottom: 0.5px solid var(--neutral-150);
@@ -422,9 +410,8 @@
 }
 
 .coverageSubLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-400);
 }
 
@@ -455,10 +442,9 @@
 }
 
 .previewTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500, #16181d);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Logo tiles (Plan Identifiers) — Figma 2012:44664 ── */
@@ -523,10 +509,9 @@
 }
 
 .logoTileUploadLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
   text-align: center;
   white-space: nowrap;
   pointer-events: none;
@@ -550,10 +535,9 @@
 }
 
 .tiersHeaderLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
 }
 
 /* 3-column field grid (Figma cost-sharing) */
@@ -597,10 +581,9 @@
 }
 
 .tierHeaderLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
   white-space: nowrap;
 }
 

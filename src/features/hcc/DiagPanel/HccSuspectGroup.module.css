@@ -24,7 +24,7 @@
 /* ── Head: switchable ICD combobox + counters ── */
 .head { display: flex; align-items: flex-start; gap: 12px; }
 .headMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.lastLine { font-size: 12px; font-weight: 400; line-height: 1.3; color: var(--neutral-300); }
+.lastLine { font-size: var(--font-sm); font-weight: 400; line-height: 1.3; color: var(--neutral-300); }
 .icdComboWrap { min-width: 0; max-width: 440px; }
 .icdSelect {
   display: flex;
@@ -266,7 +266,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
   min-width: 0;
 }
@@ -302,7 +302,7 @@
   flex: 1;
 }
 .comboCheck { margin-left: auto; flex-shrink: 0; display: inline-flex; }
-.comboStatus { padding: 12px 8px; text-align: center; font-size: 13px; color: var(--neutral-200); }
+.comboStatus { padding: 12px 8px; text-align: center; font-size: var(--font-md); color: var(--neutral-200); }
 
 /* ── DOS dropdown (portaled) — date + Provider/POS per encounter ── */
 .dosOverlay {
@@ -333,7 +333,7 @@
 .dosEmpty {
   padding: 12px 6px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
 }
 .dosOption {

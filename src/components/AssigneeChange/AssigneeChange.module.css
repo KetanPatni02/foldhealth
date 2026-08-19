@@ -36,8 +36,8 @@
    chevron sits close to the right — matches the Figma tight-pill spec. */
 .sizeM { padding: 2px 4px; }
 .sizeS { padding: 2px 4px; }
-.sizeS .name { font-size: 12px; }
-.sizeS .textLabel { font-size: 12px; }
+.sizeS .name { font-size: var(--font-sm); }
+.sizeS .textLabel { font-size: var(--font-sm); }
 
 /* Avatar-only mode — no name/role text; the pill hugs the avatar + chevron.
    Per Figma nodes 8629:393 / 8629:419, the inner Avatar is always WHITE
@@ -99,14 +99,14 @@
   flex: 1 1 auto;
 }
 .name {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .role {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -114,7 +114,7 @@
 }
 
 .textLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   white-space: nowrap;
 }
@@ -145,7 +145,7 @@
 }
 
 .menuTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   padding: 2px 6px;
@@ -170,7 +170,7 @@
   background: transparent;
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
 }
 .searchInput::placeholder { color: var(--neutral-200); }
@@ -207,14 +207,14 @@
   flex: 1;
 }
 .userName {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .userRole {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -224,7 +224,7 @@
 .empty {
   padding: 16px 8px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 

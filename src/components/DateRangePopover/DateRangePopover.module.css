@@ -13,13 +13,12 @@
   border: 0.5px solid var(--neutral-100);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  font-family: 'Inter', sans-serif;
   display: flex;
   flex-direction: column;
 }
 
 .heading {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   margin-bottom: 8px;
@@ -56,7 +55,7 @@
 }
 
 .monthLabels span {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-400);
   letter-spacing: 0.2px;
@@ -92,7 +91,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--neutral-200);
 }
@@ -112,12 +111,11 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-md);
   background: transparent;
   border: none;
   color: var(--neutral-400);
   border-radius: 4px;
-  font-family: inherit;
   transition: background 0.12s;
 }
 .cell:hover {

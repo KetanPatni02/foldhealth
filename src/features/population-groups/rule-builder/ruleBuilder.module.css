@@ -29,7 +29,7 @@
   min-width: 0;
 }
 .groupName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-200);
   white-space: nowrap;
@@ -74,7 +74,7 @@
 }
 .ifChip .ifTail,
 .combinatorChip .ifTail { margin-left: 13px; }
-.ifButton { font-size: 14px; }
+.ifButton { font-size: var(--font-base); }
 .addConditionBtn { align-self: flex-start; }
 
 .ifTail {
@@ -118,7 +118,7 @@
   flex-shrink: 0;
   cursor: pointer;
   border: 0.5px solid var(--neutral-150);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
 }
 /* 12px glyph in a 16px box — with the chip's 4px vertical padding that pins
@@ -158,7 +158,7 @@
   border: none;
   background: none;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   cursor: pointer;
@@ -203,7 +203,7 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .popoverTitle {
-  font-size: 20px;
+  font-size: var(--font-2xl);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -226,7 +226,7 @@
 }
 .popoverGroupTitle {
   padding: 2px 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   width: 220px;
@@ -242,7 +242,7 @@
   background: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   text-align: left;
   box-sizing: border-box;
@@ -259,7 +259,7 @@
 .newBadge {
   background: var(--secondary-300);
   color: var(--neutral-0);
-  font-size: 8px;
+  font-size: 0.5rem;
   font-weight: 600;
   padding: 2px 3px;
   border-radius: 4px;
@@ -292,7 +292,7 @@
   gap: 24px;
 }
 .editorTitle {
-  font-size: 24px;
+  font-size: var(--font-3xl);
   font-weight: 400;
   color: var(--neutral-500);
   white-space: nowrap;
@@ -318,11 +318,11 @@
   border-radius: 4px;
   width: 100%;
   box-sizing: border-box;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .editorSectionLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-200);
 }
@@ -336,7 +336,7 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   pointer-events: none;
 }
@@ -376,13 +376,13 @@
   gap: 10px;
 }
 .railTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-500);
   line-height: 1.3;
 }
 .railDescription {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   line-height: 1.5;
 }
@@ -399,14 +399,14 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .railSectionLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-200);
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
 .railCountValue {
-  font-size: 24px;
+  font-size: var(--font-3xl);
   font-weight: 500;
   color: var(--neutral-500);
   line-height: 1.2;
@@ -430,7 +430,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.5;
@@ -457,7 +457,7 @@
   min-width: 0;
 }
 .unityText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   background: linear-gradient(192deg, var(--accent-cyan) 0%, var(--primary-200) 100%);
   -webkit-background-clip: text;
   background-clip: text;
@@ -465,7 +465,7 @@
   white-space: nowrap;
 }
 .unityAlpha {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: var(--neutral-200);
   letter-spacing: 0.5px;
 }
@@ -524,10 +524,10 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
-  line-height: 16px;
+  line-height: 1rem;
   box-sizing: border-box;
 }
 
@@ -538,7 +538,7 @@
   display: inline-flex;
   align-items: center;
   box-sizing: border-box;
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 
 /* Inline-editable group name in the rail */
@@ -550,7 +550,7 @@
   background: none;
   padding: 0;
   text-align: left;
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-500);
   line-height: 1.3;
@@ -576,7 +576,7 @@
   border-radius: 4px;
   background: var(--neutral-0);
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
 }
@@ -663,12 +663,12 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .previewCount {
-  font-size: 28px;
+  font-size: 1.75rem;
   font-weight: 500;
   color: var(--neutral-500);
   padding: 12px;
@@ -680,7 +680,7 @@
   gap: 6px;
   padding: 8px 12px;
   background: var(--status-error-light);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--status-error);
 }
 .previewList {
@@ -691,7 +691,7 @@
 .previewEmpty {
   display: block;
   padding: 12px 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
 }
 .previewRow {
@@ -702,7 +702,7 @@
   gap: 8px;
 }
 .previewName {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   white-space: nowrap;
   overflow: hidden;
@@ -710,7 +710,7 @@
   min-width: 0;
 }
 .previewMeta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   white-space: nowrap;
   flex-shrink: 0;
@@ -718,7 +718,7 @@
 .previewMore {
   display: block;
   padding: 6px 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   text-align: center;
 }
@@ -752,13 +752,13 @@
   background: none;
   cursor: pointer;
   text-align: left;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
 }
 .termItem:hover,
 .termItemActive { background: var(--neutral-50); }
 .termCode {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
   white-space: nowrap;
@@ -772,7 +772,7 @@
 }
 .termEmpty {
   padding: 12px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
   text-align: center;
 }
@@ -788,7 +788,7 @@
   border-radius: 6px;
 }
 .selectedCodeText {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   white-space: nowrap;
   overflow: hidden;
@@ -846,7 +846,7 @@
   flex-shrink: 0;
 }
 .previewCollapsedCount {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -866,7 +866,7 @@
   justify-content: space-between;
 }
 .triggersTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -876,7 +876,7 @@
   gap: 6px;
   padding: 12px 16px;
   background: var(--status-error-light);
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--status-error);
 }
 .triggerCard {
@@ -894,7 +894,7 @@
   gap: 8px;
 }
 .triggerCardName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   flex: 1;
@@ -914,11 +914,11 @@
   padding-left: 32px;
 }
 .triggerCardAction {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 .triggerEventDesc {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   line-height: 1.4;
 }
@@ -932,14 +932,14 @@
   border-top: 0.5px solid var(--neutral-150);
 }
 .exportLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-200);
   text-transform: uppercase;
   letter-spacing: 0.8px;
 }
 .exportCode {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   background: var(--neutral-50);
   border: 0.5px solid var(--neutral-150);

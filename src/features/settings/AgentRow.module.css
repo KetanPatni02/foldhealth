@@ -21,7 +21,7 @@
   min-width: 0;
 }
 .nameLink {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   background: none;
@@ -38,7 +38,7 @@
   text-decoration: underline;
 }
 .role {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   white-space: nowrap;
   overflow: hidden;
@@ -51,7 +51,7 @@
   align-items: center;
   gap: 8px;
   color: var(--neutral-400);
-  font-size: 13px;
+  font-size: var(--font-md);
   white-space: nowrap;
 }
 /* A <button> so the updater's name opens their profile from the keyboard. It is
@@ -81,7 +81,7 @@
   line-height: 1.25;
 }
 .updatedDate {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 .youTag {

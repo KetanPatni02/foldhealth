@@ -25,7 +25,7 @@
   background: var(--neutral-0);
 }
 .title {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -52,7 +52,7 @@
 }
 
 .fieldLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   margin-bottom: 4px;
@@ -84,7 +84,7 @@
   padding-top: 4px;
 }
 .icdTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   line-height: 1.2;
   color: var(--neutral-400);
@@ -102,7 +102,7 @@
   flex-wrap: wrap;
 }
 .hccLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 .metaDivider {
@@ -118,7 +118,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-50);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
 }
 
@@ -136,7 +136,7 @@
   min-width: 0;
 }
 .fieldTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   display: inline-flex;
@@ -178,12 +178,12 @@
   gap: 4px;
 }
 .evidenceHeader {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   padding: 2px 4px 4px 4px;
 }
 .evidenceEmpty {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   padding: 8px 4px;
   font-style: italic;
@@ -197,7 +197,7 @@
 .evidenceName {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
   white-space: nowrap;
   overflow: hidden;
@@ -212,7 +212,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--primary-300);
   align-self: flex-start;
@@ -228,7 +228,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   align-self: flex-start;
   border-radius: 4px;
@@ -273,7 +273,7 @@
   background: var(--primary-25);
 }
 .dropzoneText {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   text-align: center;
@@ -289,6 +289,6 @@
 .dropzoneMeta {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }

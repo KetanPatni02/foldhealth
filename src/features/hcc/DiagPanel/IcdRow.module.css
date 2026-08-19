@@ -11,7 +11,6 @@
   border-radius: 8px;
   background: var(--neutral-0);
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
   transition: background 0.12s, border-color 0.12s;
 }
 .row:hover {
@@ -69,7 +68,7 @@
 
 /* Figma: Inter SemiBold 14 / line-height 1.2, color Primary 300. */
 .code {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   line-height: 1.2;
   color: var(--primary-300);
@@ -84,7 +83,7 @@
 
 /* Figma: Inter Regular 14 / line-height 1.2, color Neutral 400. */
 .desc {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-400);
@@ -99,7 +98,7 @@
    satisfy Fold's clinical-accessibility floor (min 12px) and to Neutral 300
    for adequate contrast. */
 .lastLine {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -126,7 +125,7 @@
   border-radius: 4px;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-300);
@@ -141,7 +140,7 @@
   align-items: center;
   padding: 2px 4px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 400;
   line-height: 1.2;
 }
@@ -177,8 +176,7 @@
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 400;
   color: var(--neutral-0);
   line-height: 1.2;
@@ -196,7 +194,7 @@
   border-radius: 4px;
   background: var(--neutral-50);
   border: 0.5px solid rgba(111, 122, 144, 0.1);
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: var(--neutral-300);
 }
 
@@ -218,7 +216,7 @@
 }
 
 .confidencePanelTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -228,7 +226,7 @@
   align-items: center;
   padding: 2px 7px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--neutral-0);
 }
@@ -239,7 +237,7 @@
   display: flex;
   flex-direction: column;
   gap: 3px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.4;
   color: var(--neutral-400);
 }
@@ -273,8 +271,7 @@
   height: 16px;
   border: none;
   background: transparent;
-  font-family: inherit;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-300);
@@ -324,8 +321,7 @@
   min-width: 32px;
   padding: 0 8px;
   border-radius: 4px;
-  font-family: inherit;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   line-height: 1.2;
   cursor: pointer;
@@ -378,7 +374,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-family: 'Inter', sans-serif;
 }
 
 .meatPanelHeader {
@@ -388,14 +383,14 @@
 }
 
 .meatPanelTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary-300);
 }
 
 .meatHint {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   line-height: 1.45;
 }
@@ -406,8 +401,7 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 6px;
   padding: 8px 10px;
-  font-family: inherit;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.5;
   color: var(--neutral-500);
   resize: vertical;
@@ -431,7 +425,7 @@
   align-items: center;
   gap: 4px;
   margin-top: 2px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
 }
 .dismissExplanation em {
@@ -471,7 +465,6 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: inherit;
   text-align: left;
 }
 
@@ -479,7 +472,7 @@
    as Fold card titles: 14px Medium, Neutral 400. */
 .expandTitle,
 .expandTitleLg {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   line-height: 1.2;
   color: var(--neutral-400);
@@ -500,12 +493,12 @@
 }
 
 .scoreValue {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
 }
 
 .scoreLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
 }
 
@@ -517,7 +510,7 @@
   border-radius: 4px;
   background: var(--primary-50);
   border: 0.5px solid rgba(140, 90, 226, 0.2);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--primary-300);
   margin-left: 4px;
 }
@@ -531,8 +524,7 @@
   background: transparent;
   border-radius: 4px;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   flex-shrink: 0;
@@ -557,7 +549,7 @@
   align-items: center;
   gap: 6px;
   margin-bottom: 2px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   line-height: 1.2;
   color: var(--neutral-400);
@@ -583,7 +575,7 @@
 
 .evidenceText {
   flex: 1;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.5;
@@ -626,7 +618,7 @@
   border-radius: 4px;
   background: var(--status-info-light);
   border: 0.5px solid rgba(20, 94, 204, 0.2);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
 }
 
@@ -636,8 +628,7 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   padding: 8px;
-  font-family: inherit;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   line-height: 1.5;
   resize: vertical;
@@ -669,8 +660,7 @@
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   transition: border-color 0.12s, background 0.12s;
 }

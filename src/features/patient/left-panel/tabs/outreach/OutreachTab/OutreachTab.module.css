@@ -51,7 +51,7 @@
 }
 
 .logForLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -74,7 +74,7 @@
   padding: 0 8px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   background: var(--neutral-0);
@@ -132,7 +132,7 @@
 }
 
 .typeDropdownValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   flex: 1;
   text-align: left;
@@ -164,7 +164,7 @@
   border-left: 2px solid transparent;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   text-align: left;
   transition: background 0.1s;
@@ -210,7 +210,7 @@
 }
 
 .datePickerText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   flex: 1;
   text-align: left;
@@ -220,7 +220,7 @@
 }
 
 .datePickerPlaceholder {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
   flex: 1;
   text-align: left;
@@ -259,7 +259,7 @@
 }
 
 .calendarTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400);
 }
@@ -272,7 +272,7 @@
 }
 
 .calendarDayLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-200);
   padding: 6px 0;
@@ -285,7 +285,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   display: flex;
   align-items: center;
@@ -331,7 +331,7 @@
 }
 
 .timeColLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--neutral-300);
   text-align: center;
@@ -368,7 +368,7 @@
   border: none;
   border-radius: 3px;
   background: none;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   cursor: pointer;
   transition: background 0.1s, color 0.1s;
@@ -405,7 +405,7 @@
   height: 28px;
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   background: none;
@@ -420,7 +420,7 @@
   height: 28px;
   border: none;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-0);
   background: var(--primary-300);
@@ -472,7 +472,7 @@
 }
 
 .callBannerTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -481,7 +481,7 @@
 }
 
 .callBannerSub {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   white-space: nowrap;
   overflow: hidden;
@@ -489,7 +489,7 @@
 }
 
 .callBannerUseBtn {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
   background: none;
@@ -525,7 +525,7 @@
 }
 
 .callDetailsLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-400);
 }
@@ -551,7 +551,7 @@
 }
 
 .callFieldLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   white-space: nowrap;
 }
@@ -575,7 +575,7 @@
 .callDurationInput::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 
 .callDurationUnit {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   white-space: nowrap;
 }
@@ -600,7 +600,7 @@
 }
 
 .sectionLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   white-space: nowrap;
@@ -619,7 +619,7 @@
   border-radius: 4px;
   height: 22px;
   padding: 0 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   cursor: pointer;
   transition: background 0.1s, border-color 0.1s, color 0.1s;
@@ -692,7 +692,7 @@
 }
 
 .notePanelName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -720,7 +720,7 @@
   border-radius: 4px;
   height: 22px;
   padding: 0 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
@@ -757,7 +757,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
 }
 
@@ -779,7 +779,7 @@
 }
 
 .outcomeRowLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-200);
   white-space: nowrap;
@@ -792,7 +792,7 @@
   border-radius: 4px;
   height: 22px;
   padding: 0 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   cursor: pointer;
   transition: opacity 0.1s;
   border: 0.5px solid transparent;
@@ -825,7 +825,7 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   padding: 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   resize: vertical;
   background: var(--neutral-0);
@@ -845,7 +845,7 @@
 }
 
 .actionsLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   white-space: nowrap;
@@ -884,7 +884,7 @@
   border-radius: 4px;
   border: none;
   background: none;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
@@ -943,7 +943,7 @@
 }
 
 .logGroupTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   line-height: 1.2;
@@ -1046,7 +1046,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -1080,7 +1080,7 @@
 }
 
 .logTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-500);
   line-height: 1.2;
@@ -1093,7 +1093,7 @@
   border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
   border-radius: 4px;
   padding: 2px 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--primary-300);
   flex-shrink: 0;
 }
@@ -1111,7 +1111,7 @@
   background: var(--neutral-50);
   border: 0.5px solid var(--neutral-150);
   font-weight: 400;
-  font-size: 11px;
+  font-size: var(--font-xs);
   line-height: 1.3;
   color: var(--neutral-300);
   flex-shrink: 0;
@@ -1144,7 +1144,7 @@
   border: none;
   background: transparent;
   font-weight: 400;
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.2;
   color: var(--neutral-400);
   cursor: pointer;
@@ -1163,7 +1163,7 @@
   border-radius: 999px;
   background: var(--neutral-50);
   font-weight: 400;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   line-height: 1.3;
   color: var(--neutral-300);
 }
@@ -1181,14 +1181,14 @@
 }
 .logExpandedLabel {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.2;
   color: var(--neutral-500);
   margin-bottom: 6px;
 }
 .logExpandedCallMeta {
   font-weight: 400;
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1.45;
   color: var(--neutral-400);
 }
@@ -1203,7 +1203,7 @@
 .logExpandedNoteLabel {
   margin-top: 14px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.2;
   color: var(--neutral-500);
 }
@@ -1220,7 +1220,7 @@
 .logTranscriptCaption {
   font-style: italic;
   font-weight: 400;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.2;
   color: var(--neutral-300);
   margin-bottom: 8px;
@@ -1228,7 +1228,7 @@
 .logTranscriptLine {
   margin: 0 0 8px;
   font-weight: 400;
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1.45;
   color: var(--neutral-500);
 }
@@ -1249,7 +1249,7 @@
   border: none;
   background: transparent;
   font-weight: 500;
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1.2;
   color: var(--primary-300);
   cursor: pointer;
@@ -1259,7 +1259,7 @@
 .logExpandedNote {
   margin: 12px 0 0;
   font-weight: 400;
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1.5;
   color: var(--neutral-400);
 }
@@ -1278,7 +1278,7 @@
   background: var(--neutral-0);
   border-radius: 6px;
   font-weight: 500;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.2;
   color: var(--neutral-400);
   cursor: pointer;
@@ -1294,7 +1294,7 @@
 }
 
 .logOutcome {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   line-height: 1.2;
   white-space: nowrap;
@@ -1320,7 +1320,7 @@
 }
 
 .activityLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.2;

@@ -13,7 +13,7 @@
   padding: 14px 16px;
 }
 .attestationTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--neutral-400);
   text-transform: uppercase;
@@ -21,7 +21,7 @@
   margin-bottom: 8px;
 }
 .attestationText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.6;
@@ -44,8 +44,7 @@
   padding: 8px 12px;
   background: none;
   border: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-400);
   cursor: pointer;
@@ -75,7 +74,7 @@
 /* Section */
 .section { display: flex; flex-direction: column; gap: 12px; }
 .sectionTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--neutral-400);
   text-transform: uppercase;
@@ -95,7 +94,7 @@
 /* Form field */
 .field { display: flex; flex-direction: column; gap: 4px; }
 .label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
   display: flex;
@@ -107,8 +106,7 @@
 .input {
   width: 100%;
   padding: 7px 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   background: var(--neutral-0);
@@ -185,8 +183,7 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   cursor: pointer;
@@ -202,7 +199,7 @@
 }
 
 .signatureHint {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-200);
 }
 
@@ -252,12 +249,12 @@
 .radioDotAccept { background: var(--status-success); }
 .radioDotDecline { background: var(--status-error); }
 
-.consentLabel { font-size: 13px; font-weight: 400; color: var(--neutral-400); line-height: 1.4; }
+.consentLabel { font-size: var(--font-md); font-weight: 400; color: var(--neutral-400); line-height: 1.4; }
 .consentLabelAccept { color: var(--status-success); font-weight: 500; }
 .consentLabelDecline { color: var(--status-error); font-weight: 500; }
 
 .errorMsg {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--status-error);
   margin-top: 2px;
 }
@@ -285,13 +282,13 @@
 .resultIconDecline { background: var(--status-error-light); }
 
 .resultTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-400);
   margin: 0;
 }
 .resultMsg {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   line-height: 1.5;
   margin: 0;

@@ -52,6 +52,13 @@
           if (contrast === 'high') {
             document.documentElement.setAttribute('data-contrast', 'high');
           }
+          // Font-scale: set the root font-size level pre-paint so text
+          // doesn't flash at default size before the store hydrates.
+          var FONT_SCALES = ['smaller', 'small', 'large', 'larger'];
+          var fontScale = localStorage.getItem('fontScale');
+          if (fontScale && FONT_SCALES.indexOf(fontScale) !== -1) {
+            document.documentElement.setAttribute('data-font-scale', fontScale);
+          }
         } catch (e) {
           // localStorage unavailable (private mode, etc.) — fall back to light.
           document.documentElement.setAttribute('data-theme', 'light');

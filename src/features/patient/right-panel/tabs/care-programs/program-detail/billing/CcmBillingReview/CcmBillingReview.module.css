@@ -26,7 +26,7 @@
   border-bottom: 0.5px solid var(--primary-300);
   background: linear-gradient(6deg, var(--primary-100) 1.5%, var(--primary-50) 80%, var(--neutral-0) 99%);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   text-align: left;
 }
@@ -70,7 +70,7 @@
   cursor: pointer;
 }
 .pagerMonth {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   line-height: 1.2;
   padding: 0 4px;
@@ -85,7 +85,7 @@
   border-radius: 4px;
   background: var(--primary-50);
   color: var(--primary-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.2;
 }
 
@@ -114,7 +114,7 @@
   background: transparent;
   color: var(--neutral-200);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.2;
   transition: background .12s, color .12s;
 }
@@ -136,7 +136,7 @@
   border-radius: 4px;
   background: var(--neutral-0);
   color: var(--neutral-200);
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   line-height: 1.2;
 }
@@ -164,7 +164,7 @@
   border: none;
   background: transparent;
   color: var(--primary-300);
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.2;
   cursor: pointer;
 }
@@ -198,14 +198,14 @@
 }
 
 .summaryLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
   line-height: 1.2;
   white-space: nowrap;
 }
 
 .summaryValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400);
   line-height: 1.2;
@@ -213,14 +213,14 @@
 }
 
 .summaryStatusOk {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--status-success);
   line-height: 1.2;
   white-space: nowrap;
 }
 
 .summaryStatusShort {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--status-warning);
   line-height: 1.2;
   white-space: nowrap;
@@ -233,7 +233,7 @@
   padding: 4px 6px;
   background: var(--neutral-50);
   border-top: 0.5px solid var(--neutral-150);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   line-height: 1.2;
 }
@@ -260,7 +260,7 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .monthTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -273,7 +273,7 @@
   background: none;
   border: none;
   color: var(--primary-300);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   padding: 4px 6px;
   border-radius: 6px;
@@ -306,7 +306,7 @@
   text-align: left;
   padding: 8px 10px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   cursor: pointer;
 }
@@ -322,20 +322,20 @@
 }
 .monthLeft { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .monthTotal {
-  font-size: 24px;
+  font-size: var(--font-3xl);
   font-weight: 500;
   color: var(--neutral-500);
   line-height: 1.2;
 }
 .monthTotalLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 .readyRow {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   margin-top: 4px;
 }
@@ -358,7 +358,7 @@
   border: 0.5px solid var(--primary-200);
   border-radius: 8px;
   color: var(--primary-400);
-  font-size: 13px;
+  font-size: var(--font-md);
   cursor: pointer;
   transition: background 0.12s ease;
 }
@@ -373,13 +373,13 @@
   padding-top: 4px;
 }
 .activitiesTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .activitiesHeadRight { display: flex; align-items: center; gap: 8px; }
 .activitiesTotal {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -406,13 +406,13 @@
   justify-content: space-between;
   gap: 12px;
 }
-.activityTitle { font-size: 13px; font-weight: 500; color: var(--neutral-500); }
-.activityDuration { font-size: 12px; font-weight: 500; color: var(--neutral-400); flex-shrink: 0; }
-.activityMeta { font-size: 12px; color: var(--neutral-300); }
+.activityTitle { font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); }
+.activityDuration { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-400); flex-shrink: 0; }
+.activityMeta { font-size: var(--font-sm); color: var(--neutral-300); }
 .metaDot { margin: 0 4px; color: var(--neutral-200); }
 .metaAuthor { color: var(--neutral-400); }
 .activityDesc {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   line-height: 1.5;
   margin: 2px 0 0;
@@ -428,7 +428,7 @@
   background: none;
   border: none;
   color: var(--primary-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   padding: 2px 0;
   cursor: pointer;
 }
@@ -441,12 +441,12 @@
 .historyTable {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 .historyTable thead th {
   text-align: left;
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   background: var(--neutral-25);
@@ -460,17 +460,17 @@
 }
 .historyActionHead { text-align: right; }
 .historyName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .historySub {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   margin-top: 2px;
 }
 .historyAmount {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   white-space: nowrap;
@@ -503,6 +503,6 @@
   gap: 12px;
   padding: 40px 24px;
   color: var(--neutral-300);
-  font-size: 13px;
+  font-size: var(--font-md);
   text-align: center;
 }

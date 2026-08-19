@@ -13,14 +13,13 @@
   border: 0.5px solid var(--neutral-100);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  font-family: 'Inter', sans-serif;
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
 .header {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -30,7 +29,6 @@
   align-items: center;
   justify-content: center;
   gap: 12px;
-  font-family: inherit;
 }
 
 .endcap {
@@ -46,19 +44,19 @@
 }
 
 .endcapValue {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--primary-300);
 }
 
 .endcapUnit {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--primary-300);
   text-transform: lowercase;
 }
 
 .divider {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
   user-select: none;
 }
@@ -117,7 +115,7 @@
 .scale {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   padding: 0 2px;
 }

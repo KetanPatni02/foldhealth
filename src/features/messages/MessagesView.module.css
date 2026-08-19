@@ -45,14 +45,14 @@
 }
 
 .convHeaderTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-500);
   line-height: 1.2;
 }
 
 .convHeaderSub {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--secondary-300);
   line-height: 1.2;
   margin-top: 1px;
@@ -103,10 +103,9 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   cursor: pointer;
-  font-family: inherit;
   transition:
     background var(--duration-instant) var(--ease-hover),
     color var(--duration-instant) var(--ease-hover),
@@ -218,7 +217,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--secondary-300);
   flex-shrink: 0;
@@ -243,7 +242,7 @@
 .convName {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -257,7 +256,7 @@
 }
 
 .convTime {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   flex-shrink: 0;
 }
@@ -271,7 +270,7 @@
 .convPreview {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -281,7 +280,7 @@
 .convUnread {
   background: var(--secondary-300);
   color: var(--neutral-500);
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   padding: 1px 4px;
   border-radius: 4px;
@@ -312,7 +311,7 @@
 }
 
 .emptyConvText {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -322,10 +321,9 @@
   color: #fff;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   cursor: pointer;
-  font-family: inherit;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -357,7 +355,7 @@
 }
 
 .chatHeaderName {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--neutral-500);
   line-height: 1.2;
@@ -367,7 +365,7 @@
 }
 
 .chatHeaderMeta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   margin-top: 2px;
   overflow: hidden;
@@ -405,7 +403,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -466,14 +464,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: var(--font-2xl);
   font-weight: 500;
   color: var(--secondary-300);
 }
 
 .msgDateSep {
   text-align: center;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   padding: 8px 0 4px;
 }
@@ -570,7 +568,7 @@
 }
 
 .msgReplyName {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: var(--primary-300);
   margin-bottom: 2px;
@@ -581,7 +579,7 @@
 }
 
 .msgReplyText {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-400);
   white-space: nowrap;
   overflow: hidden;
@@ -618,14 +616,14 @@
 }
 
 .replyPreviewName {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary-300);
   margin-bottom: 2px;
 }
 
 .replyPreviewText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   white-space: nowrap;
   overflow: hidden;
@@ -651,7 +649,7 @@
 .msgBubble {
   max-width: 500px;
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: var(--font-base);
   line-height: 1.5;
   border-radius: 12px;
   word-break: break-word;
@@ -679,7 +677,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   color: var(--secondary-300);
   flex-shrink: 0;
@@ -727,7 +725,7 @@
 }
 
 .switchLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
@@ -750,9 +748,8 @@
   padding: 6px 10px;
   border: 0.5px solid var(--neutral-300);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
-  font-family: inherit;
   outline: none;
   resize: none;
   line-height: 1.4;
@@ -821,7 +818,7 @@
 }
 
 .noConvText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 
@@ -834,10 +831,9 @@
   color: #fff;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   cursor: pointer;
-  font-family: inherit;
 }
 
 /* ── New chat modal ── */
@@ -874,7 +870,7 @@
 }
 
 .newChatTitle {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -885,9 +881,8 @@
   padding: 0 16px;
   border: none;
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
-  font-family: inherit;
   outline: none;
   flex-shrink: 0;
 }
@@ -931,7 +926,7 @@
 }
 
 .newChatUserName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -940,7 +935,7 @@
 }
 
 .newChatUserEmail {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -950,7 +945,7 @@
 .newChatEmpty {
   padding: 24px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -1023,7 +1018,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: inherit;
   text-decoration: none;
   padding: 2px 0;
@@ -1054,8 +1049,8 @@
   background: var(--primary-50); border: 0.5px solid var(--primary-200); border-radius: 8px;
 }
 .msgFormMain { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 0; }
-.msgFormLabel { font-size: 11px; font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--primary-300); }
-.msgFormName { font-size: 14px; color: var(--neutral-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msgFormLabel { font-size: var(--font-xs); font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--primary-300); }
+.msgFormName { font-size: var(--font-base); color: var(--neutral-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Drag-over state on input area ── */
 .dragOver {

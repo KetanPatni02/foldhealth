@@ -18,13 +18,13 @@
   flex-shrink: 0;
 }
 
-.scheduledSub { font-size: 12px; color: var(--neutral-300); }
+.scheduledSub { font-size: var(--font-sm); color: var(--neutral-300); }
 
 .goalsPill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   position: relative;
@@ -45,14 +45,14 @@
   border-radius: 3px;
 }
 
-.goalsText { font-size: 12px; font-weight: 500; color: var(--neutral-300); }
+.goalsText { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300); }
 
 .attemptsWrapper { position: relative; display: inline-block; }
 .attemptsBadge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
   background: var(--status-error-light);
@@ -62,14 +62,14 @@
   border: 0.5px solid rgba(215,40,37,0.2);
 }
 
-.nextAction { font-size: 13px; color: var(--neutral-400); max-width: 240px; line-height: 1.5; }
-.medDone { display: inline-flex; align-items: center; gap: 3px; color: var(--status-success); font-size: 12px; font-weight: 500; }
+.nextAction { font-size: var(--font-md); color: var(--neutral-400); max-width: 240px; line-height: 1.5; }
+.medDone { display: inline-flex; align-items: center; gap: 3px; color: var(--status-success); font-size: var(--font-sm); font-weight: 500; }
 .medLink {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   color: var(--primary-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
@@ -85,7 +85,7 @@
   align-items: center;
   padding: 3px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   background: var(--neutral-50);
   color: var(--neutral-300);
@@ -125,7 +125,7 @@
   padding: 12px 16px;
   background: var(--neutral-50);
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -135,11 +135,11 @@
   gap: 8px;
   padding: 10px 16px;
   border-bottom: 0.5px solid var(--neutral-100);
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 .goalRow:last-child { border-bottom: none; }
 .goalRowLabel { flex: 1; color: var(--neutral-400); }
-.goalBadge { font-size: 12px; font-weight: 500; padding: 2px 10px; border-radius: 4px; }
+.goalBadge { font-size: var(--font-sm); font-weight: 500; padding: 2px 10px; border-radius: 4px; }
 .goalPass { background: var(--status-success-light); color: var(--status-success); }
 .goalFail { background: var(--status-error-light); color: var(--status-error); }
 
@@ -162,7 +162,7 @@
   padding: 12px 16px;
   background: var(--neutral-50);
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -175,10 +175,10 @@
 }
 .attemptRow:last-child { border-bottom: none; }
 .attemptDetail { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-.attemptOutcome { font-size: 14px; color: var(--neutral-400); }
-.attemptTime { font-size: 12px; color: var(--neutral-200); }
+.attemptOutcome { font-size: var(--font-base); color: var(--neutral-400); }
+.attemptTime { font-size: var(--font-sm); color: var(--neutral-200); }
 .attemptNumBadge {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
   background: var(--status-error-light);
@@ -223,7 +223,7 @@
 .snippetLine {
   display: flex;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   line-height: 1.4;
 }
@@ -267,7 +267,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary-300);
   text-transform: uppercase;
@@ -283,12 +283,12 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 .goalDone { color: var(--neutral-400); }
 .goalPending { color: var(--neutral-300); }
 .goalTime {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-200);
   margin-left: auto;
   font-variant-numeric: tabular-nums;
@@ -303,7 +303,7 @@
 .transcriptMsg {
   padding: 8px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1.5;
 }
 .agentMsg {
@@ -321,12 +321,12 @@
   margin-bottom: 4px;
 }
 .transcriptName {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .transcriptTime {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-200);
   margin-left: auto;
 }

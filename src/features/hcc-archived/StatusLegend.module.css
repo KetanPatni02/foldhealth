@@ -7,11 +7,10 @@
   background: var(--neutral-0);
   flex-shrink: 0;
   flex-wrap: wrap;
-  font-family: 'Inter', sans-serif;
 }
 
 .label {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-200);
   flex-shrink: 0;
@@ -21,6 +20,6 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   white-space: nowrap;
 }

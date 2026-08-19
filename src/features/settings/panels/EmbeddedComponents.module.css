@@ -4,7 +4,7 @@
 .infoBox {
   padding: 10px 14px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.6;
   margin-bottom: 14px;
 }
@@ -40,7 +40,7 @@
 .table th {
   padding: 8px 14px;
   text-align: left;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   border-bottom: 0.5px solid var(--neutral-150);
@@ -52,14 +52,13 @@
   border-bottom: 0.5px solid var(--neutral-100);
   color: var(--neutral-500);
   vertical-align: middle;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 .table tr:last-child td { border-bottom: none; }
 .table tr:hover td { background: var(--primary-25); }
 
 .domainCode {
-  font-size: 11px;
-  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: var(--font-xs);
   background: var(--neutral-50);
   padding: 2px 6px;
   border-radius: 4px;
@@ -67,7 +66,7 @@
 }
 .footerCount {
   margin-top: 8px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-200);
   text-align: right;
 }
@@ -89,10 +88,9 @@
   max-width: 520px;
   width: 100%;
   box-shadow: 0 16px 48px rgba(0,0,0,.2);
-  font-family: 'Inter', sans-serif;
 }
 .modalTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-500);
   margin-bottom: 16px;
@@ -122,7 +120,7 @@
   grid-column: 1 / -1;
 }
 .label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
 }
@@ -130,8 +128,7 @@
   padding: 8px 12px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-md);
   width: 100%;
   outline: none;
   background: var(--neutral-0);
@@ -156,7 +153,7 @@
   max-height: 200px;
 }
 .hint {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-200);
 }
 .hintError {
@@ -173,7 +170,7 @@
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.6;
   color: var(--status-warning);
   border-bottom: 0.5px solid rgba(217,165,11,.2);
@@ -242,11 +239,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: var(--font-xl);
   flex-shrink: 0;
 }
 .compCardName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   display: flex;
@@ -257,7 +254,7 @@
 }
 
 .compCardDesc {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   line-height: 1.5;
   margin-bottom: 10px;
@@ -289,7 +286,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-200);
 }
 
@@ -299,13 +296,13 @@
   padding: 48px 24px;
 }
 .emptyTitle {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--neutral-400);
   margin: 12px 0 4px;
 }
 .emptyDesc {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
 }
 
@@ -322,7 +319,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
 }
 .stepDone { color: var(--primary-300); }
@@ -335,7 +332,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   flex-shrink: 0;
 }
@@ -387,12 +384,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--font-lg);
   flex-shrink: 0;
 }
 .surfaceInfo { flex: 1; min-width: 0; }
-.surfaceName { font-size: 13px; font-weight: 500; color: var(--neutral-500); }
-.surfaceDesc { font-size: 11px; color: var(--neutral-300); }
+.surfaceName { font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); }
+.surfaceDesc { font-size: var(--font-xs); color: var(--neutral-300); }
 .surfaceCheck {
   width: 18px;
   height: 18px;
@@ -402,7 +399,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: transparent;
 }
 .surfaceCardActive .surfaceCheck {
@@ -440,8 +437,8 @@
   border-color: var(--primary-300);
   background: var(--primary-50);
 }
-.placementLabel { font-size: 12px; font-weight: 500; color: var(--neutral-500); }
-.placementDesc { font-size: 10px; color: var(--neutral-300); }
+.placementLabel { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-500); }
+.placementDesc { font-size: var(--font-2xs); color: var(--neutral-300); }
 
 /* ── Config Section ── */
 .configSection {
@@ -458,7 +455,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -470,7 +467,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 .configBody {
   padding: 14px 16px;
@@ -484,7 +481,7 @@
   padding: 7px 10px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   border: 0.5px solid var(--neutral-150);
   transition:
@@ -514,7 +511,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 9px;
+  font-size: 0.5625rem;
   color: transparent;
 }
 .checkItemActive .checkBox,
@@ -530,7 +527,7 @@
   border-radius: 6px;
   border: 0.5px solid var(--neutral-150);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   background: var(--neutral-0);
   transition:
@@ -560,7 +557,7 @@
   height: 4px;
 }
 .sliderValue {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   min-width: 42px;
   text-align: right;
@@ -595,7 +592,7 @@
   margin-bottom: 14px;
 }
 .summaryLabel {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   color: var(--neutral-200);
   letter-spacing: .04em;
@@ -606,7 +603,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 .summaryKey { color: var(--neutral-300); }
 .summaryVal { color: var(--neutral-500); }
@@ -626,7 +623,7 @@
   padding: 5px 12px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   background: var(--neutral-0);
   color: var(--neutral-300);
   cursor: pointer;
@@ -635,7 +632,6 @@
     background var(--duration-fast) var(--ease-hover),
     color var(--duration-fast) var(--ease-hover),
     border-color var(--duration-fast) var(--ease-hover);
-  font-family: 'Inter', sans-serif;
 }
 .previewTab:hover { border-color: var(--primary-200); color: var(--neutral-400); }
 .previewTabActive {
@@ -652,7 +648,7 @@
   padding: 16px 22px;
 }
 .previewHint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   margin-bottom: 12px;
   line-height: 1.6;
@@ -670,11 +666,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--status-warning);
 }
 .externalBannerLink {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: var(--status-warning);
   text-decoration: underline;
   cursor: pointer;
@@ -688,7 +684,7 @@
 }
 .subTab {
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   cursor: pointer;
   border-bottom: 2px solid transparent;
@@ -696,7 +692,6 @@
     background var(--duration-fast) var(--ease-hover),
     color var(--duration-fast) var(--ease-hover),
     border-color var(--duration-fast) var(--ease-hover);
-  font-family: 'Inter', sans-serif;
 }
 .subTab:hover { color: var(--neutral-400); }
 .subTabActive {
@@ -712,7 +707,6 @@
   border-radius: 8px;
   overflow: hidden;
   margin-top: 14px;
-  font-family: 'SF Mono', 'Menlo', monospace;
 }
 .devConsoleHeader {
   padding: 8px 12px;
@@ -723,13 +717,13 @@
   cursor: pointer;
 }
 .devConsoleTitle {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: rgba(255,255,255,.6);
   font-weight: 500;
 }
 .devConsoleBody {
   padding: 12px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: rgba(255,255,255,.8);
   line-height: 1.6;
   max-height: 200px;

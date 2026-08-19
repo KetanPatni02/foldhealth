@@ -7,7 +7,7 @@
   margin-bottom: 12px;
   background: var(--status-error-light);
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--status-error);
 }
 
@@ -21,7 +21,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.8px;
@@ -54,12 +54,12 @@
   gap: 8px;
 }
 .cardName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .cardDesc {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   line-height: 1.4;
 }

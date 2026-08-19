@@ -27,7 +27,7 @@
 }
 
 .countText {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.2;
@@ -58,7 +58,7 @@
 
 .moreTitle {
   padding: 4px 8px 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
 }
@@ -70,13 +70,12 @@
   padding: 0 8px;
   height: 32px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-500);
   cursor: pointer;
   background: none;
   border: none;
-  font-family: 'Inter', sans-serif;
   width: 100%;
   text-align: left;
   transition: background .1s;

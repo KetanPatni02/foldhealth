@@ -50,15 +50,14 @@
 }
 
 .convHeaderTitle {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-500);
   line-height: 1.2;
-  font-family: 'Inter', sans-serif;
 }
 
 .convHeaderSub {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--secondary-300);
   line-height: 1.2;
   margin-top: 1px;
@@ -138,7 +137,6 @@
   background: none;
   border-top: none;
   border-right: none;
-  font-family: 'Inter', sans-serif;
   text-align: left;
 }
 
@@ -186,7 +184,7 @@
 .convName {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -202,13 +200,13 @@
 }
 
 .convTime {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   flex-shrink: 0;
 }
 
 .convPreview {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -227,10 +225,9 @@
 }
 
 .dialLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .dialRow {
@@ -320,7 +317,7 @@
   width: 64px !important;
   height: 64px !important;
   border-radius: 12px !important;
-  font-size: 22px !important;
+  font-size: 1.375rem !important;
   font-weight: 500;
   letter-spacing: 1px;
   position: relative;
@@ -344,8 +341,7 @@
 }
 
 .profileName {
-  font-family: 'Inter', sans-serif;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 500;
   color: var(--neutral-500);
   line-height: 1.3;
@@ -355,8 +351,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   flex-wrap: wrap;
 }
@@ -382,8 +377,7 @@
 /* ── To: row ── */
 .toRow {
   padding: 4px 24px 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 20px;
+  font-size: var(--font-2xl);
   font-weight: 500;
   color: var(--neutral-500);
   flex-shrink: 0;
@@ -401,7 +395,6 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
   min-width: 860px;
 }
 
@@ -443,14 +436,14 @@
 
 .td {
   padding: 8px 14px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   vertical-align: middle;
 }
 
 .dateText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   white-space: nowrap;
 }
@@ -485,7 +478,7 @@
 
 /* Plain text call direction label */
 .callDirText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.3;
@@ -494,7 +487,7 @@
 
 /* Agent name row: bot icon + name */
 .callsAgent {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
   display: flex;
@@ -511,7 +504,7 @@
   min-width: 40px;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   line-height: 1.3;
 }
@@ -535,18 +528,18 @@
 }
 
 .secondaryText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   white-space: nowrap;
 }
 
 .emDash {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
 }
 
 .oohYes {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--status-error);
   font-weight: 500;
 }

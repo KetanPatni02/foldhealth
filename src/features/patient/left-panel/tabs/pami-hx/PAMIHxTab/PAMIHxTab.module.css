@@ -48,10 +48,9 @@
 }
 
 .sectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
 }
 
 .sectionActions {
@@ -88,19 +87,17 @@
 
 .colName {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .colStatus {
   width: 100px;
   flex-shrink: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   padding-left: 16px;
 }
 
@@ -137,9 +134,8 @@
 }
 
 .name {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -151,16 +147,14 @@
 }
 
 .meta {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 .metaDot {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -188,16 +182,14 @@
 }
 
 .statusActive {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: #d72825;
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 .statusNeutral {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -210,9 +202,8 @@
   border: 0.5px solid rgba(111, 122, 144, 0.1);
   padding: 2px 4px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -230,9 +221,8 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--primary-300);
-  font-family: 'Inter', sans-serif;
   padding: 2px 4px;
 }
 
@@ -252,9 +242,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--primary-300);
-  font-family: 'Inter', sans-serif;
   padding: 0;
   white-space: nowrap;
 }
@@ -310,10 +299,9 @@
 
 .historySubTitle {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 
 .subHeaderActions {
@@ -336,9 +324,8 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   padding: 0;
   white-space: nowrap;
 }
@@ -384,23 +371,20 @@
 }
 
 .familyRelation {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 .familyName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-500);
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 .familyDesc {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
   line-height: 1.4;
 }

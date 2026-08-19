@@ -9,7 +9,7 @@
   gap: 6px;
 }
 .label {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }

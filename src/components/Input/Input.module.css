@@ -18,7 +18,7 @@
   border: 0.5px solid var(--neutral-200);
   border-radius: 4px;
   padding: 0 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   background: var(--neutral-0);
@@ -122,7 +122,7 @@
   outline: none;
   background: transparent;
   padding: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-400);
@@ -149,7 +149,7 @@
 }
 
 .trailingText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   white-space: nowrap;
   flex-shrink: 0;
@@ -195,7 +195,7 @@
 }
 
 .characterLimit {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   white-space: nowrap;
   flex-shrink: 0;
@@ -214,7 +214,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-200);
@@ -239,14 +239,14 @@
 }
 
 .helperText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-200);
 }
 
 .errorText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   line-height: 1.2;
   color: var(--status-error);

@@ -8,7 +8,7 @@
 }
 
 .range {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   white-space: nowrap;
 }

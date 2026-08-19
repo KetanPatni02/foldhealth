@@ -13,14 +13,13 @@
   border: 0.5px solid var(--neutral-100);
   border-radius: 8px;
   box-shadow: 0 12px 60px -15px rgba(0, 0, 0, 0.12);
-  font-family: 'Inter', sans-serif;
   display: flex;
   flex-direction: column;
   gap: 0;
 }
 
 .heading {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-200);
   padding: 2px 8px 6px;
@@ -41,7 +40,7 @@
 
 .label {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
 }
 .labelActive {
@@ -89,8 +88,7 @@
   border-radius: 4px;
   border: none;
   background: transparent;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--status-error);
   cursor: pointer;
   text-align: left;

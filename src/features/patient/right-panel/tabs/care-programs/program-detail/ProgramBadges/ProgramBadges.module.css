@@ -11,14 +11,14 @@
   border: 0.5px solid var(--primary-200);
   border-radius: 8px;
   background: var(--primary-100);
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   cursor: default;
   white-space: nowrap;
 }
 .badge:hover,
 .badgeMore:hover { border-color: var(--primary-300); }
-.badgeCode { font-size: 13px; color: var(--neutral-400); }
+.badgeCode { font-size: var(--font-md); color: var(--neutral-400); }
 .badgeMore { justify-content: center; }
 
 /* Hover card / list (Figma 1837-16264). */
@@ -37,7 +37,7 @@
 .detail { display: flex; flex-direction: column; gap: 6px; }
 .detail + .detail { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--neutral-100); }
 .detailHead { display: flex; align-items: center; gap: 6px; }
-.detailCode { font-size: 14px; font-weight: 500; color: var(--neutral-400); }
-.detailStatus { font-size: 13px; font-weight: 500; margin-left: 2px; white-space: nowrap; }
-.detailRow { font-size: 13px; color: var(--neutral-400); white-space: nowrap; }
+.detailCode { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
+.detailStatus { font-size: var(--font-md); font-weight: 500; margin-left: 2px; white-space: nowrap; }
+.detailRow { font-size: var(--font-md); color: var(--neutral-400); white-space: nowrap; }
 .detailLabel { color: var(--neutral-300); }

@@ -6,12 +6,11 @@
   background: var(--primary-100);
   border: 0.5px solid var(--primary-200);
   color: var(--primary-300);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Inter', sans-serif;
 }
 
 .provider {
@@ -21,7 +20,7 @@
   background: var(--secondary-100);
   border: 0.5px solid var(--secondary-200);
   color: var(--secondary-300);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   display: flex;
   align-items: center;
@@ -36,7 +35,7 @@
   background: var(--secondary-100);
   border: 1px solid var(--secondary-200);
   color: var(--secondary-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   display: flex;
   align-items: center;
@@ -54,7 +53,7 @@
   background: var(--neutral-50);
   border: 0.5px solid var(--neutral-150);
   color: var(--neutral-300);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   display: flex;
   align-items: center;
@@ -65,12 +64,12 @@
 /* Design-token size scale (Figma Fold-Pixel-1.0 node 25:4262). Applied on
    top of a variant class (patient / provider / staff / others) so the
    color tokens stay in one place and only the box dimensions change. */
-.sizeXS  { width: 20px; height: 20px; border-radius: 5px;  font-size: 9px;  }
-.sizeS   { width: 24px; height: 24px; border-radius: 6px;  font-size: 10px; }
-.sizeM   { width: 32px; height: 32px; border-radius: 8px;  font-size: 14px; }
-.sizeL   { width: 40px; height: 40px; border-radius: 10px; font-size: 16px; }
-.sizeXL  { width: 48px; height: 48px; border-radius: 12px; font-size: 18px; }
-.sizeDXL { width: 64px; height: 64px; border-radius: 16px; font-size: 24px; }
+.sizeXS  { width: 20px; height: 20px; border-radius: 5px;  font-size: 0.5625rem;  }
+.sizeS   { width: 24px; height: 24px; border-radius: 6px;  font-size: var(--font-2xs); }
+.sizeM   { width: 32px; height: 32px; border-radius: 8px;  font-size: var(--font-base); }
+.sizeL   { width: 40px; height: 40px; border-radius: 10px; font-size: var(--font-lg); }
+.sizeXL  { width: 48px; height: 48px; border-radius: 12px; font-size: var(--font-xl); }
+.sizeDXL { width: 64px; height: 64px; border-radius: 16px; font-size: var(--font-3xl); }
 
 .agent {
   width: 26px;
@@ -80,7 +79,7 @@
   overflow: hidden;
 }
 
-.agent { background: var(--primary-100); border: 0.5px solid var(--primary-200); display: flex; align-items: center; justify-content: center; color: var(--primary-300); font-size: 11px; font-weight: 500; }
+.agent { background: var(--primary-100); border: 0.5px solid var(--primary-200); display: flex; align-items: center; justify-content: center; color: var(--primary-300); font-size: var(--font-xs); font-weight: 500; }
 .agent.erica { background: radial-gradient(circle at 30% 40%, #EF4444, #F97316, #10B981); border: none; }
 .agent.ricardo { background: radial-gradient(circle at 40% 60%, #3B82F6, #6366F1, #1E1B4B); border: none; }
 .agent.maria { background: radial-gradient(circle at 60% 40%, #F59E0B, #EF4444, #7C3AED); border: none; }
@@ -109,7 +108,7 @@
   background: var(--primary-100);
   border: 0.5px solid var(--primary-200);
   color: var(--primary-300);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   display: flex;
   align-items: center;
