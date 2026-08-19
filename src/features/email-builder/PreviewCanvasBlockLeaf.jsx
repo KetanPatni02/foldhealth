@@ -188,7 +188,7 @@ export function renderLeafBlock(type, ctx, { id, props, style, block }) {
             <span key={p.id} title={p.label} style={{ display: 'inline-flex' }}>
               {p.iconUrl
                 ? <img src={p.iconUrl} alt={p.label} width={iconSize} height={iconSize} style={{ display: 'block' }} />
-                : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed var(--neutral-150)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: 'var(--neutral-200)' }}>?</div>}
+                : <div style={{ width: iconSize, height: iconSize, borderRadius: 4, border: '1px dashed var(--neutral-150)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--font-2xs)', color: 'var(--neutral-200)' }}>?</div>}
             </span>
           ))}
         </div>

@@ -1,14 +1,10 @@
 import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
-import { Avatar } from '../../components/Avatar/Avatar';
-import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
-import { Toggle } from '../../components/Toggle/Toggle';
-import { Select } from '../../components/Select/Select';
-import { LABEL_OPTIONS, TITLE_MAX, getInitials, isOverdue, formatDateFriendly, STATUS_LABELS, STATUS_BADGE_VARIANTS } from './TasksView.utils';
+import { Input } from '../../components/Input/Input';
+import { Link } from '../../components/Link/Link';
+import { TITLE_MAX, isOverdue, formatDateFriendly, STATUS_LABELS, STATUS_BADGE_VARIANTS } from './TasksView.utils';
 import { PriorityIcon, CheckIcon } from './TasksViewIcons';
-import { TaskDatePicker, DetailDropdown } from './TasksViewDropdowns';
 import styles from './TasksView.module.css';
 
 export function TaskDetailDrawerSubtasks({
@@ -24,20 +20,28 @@ export function TaskDetailDrawerSubtasks({
               <h4 className={styles.drawerSectionTitle}>
                 Subtasks {subtasks.length > 0 && <span className={styles.subtaskCount}>{completedSubs}/{subtasks.length}</span>}
               </h4>
-              <button className={styles.subtaskAddBtn} onClick={() => setShowAddSubtask(v => !v)}>
-                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+              <Button
+                variant="ghost"
+                size="S"
+                leadingIcon="solar:add-circle-linear"
+                onClick={() => setShowAddSubtask(v => !v)}
+              >
                 Add Subtask
-              </button>
+              </Button>
             </div>
             {subtasks.length > 0 && (
               <div className={styles.subtaskProgressBar}>
-                <div className={styles.subtaskProgressFill} style={{ width: `${(completedSubs / subtasks.length) * 100}%` }} />
+                <div
+                  className={styles.subtaskProgressFill}
+                  style={{ transform: `scaleX(${completedSubs / subtasks.length})` }}
+                />
               </div>
             )}
             {showAddSubtask && (
               <div className={styles.subtaskAddRow}>
-                <input aria-label="Subtask name"
-                  className={styles.subtaskAddInput}
+                <Input
+                  aria-label="Subtask name"
+                  wrapperClassName={styles.subtaskAddInputWrap}
                   placeholder="Enter subtask name..."
                   maxLength={TITLE_MAX}
                   value={subtaskName}
@@ -52,6 +56,7 @@ export function TaskDetailDrawerSubtasks({
             {subtasks.map(sub => (
               <div key={sub.id} className={styles.subtaskCard} onClick={() => onSelectTask?.(sub)}>
                 <button
+                  type="button"
                   className={`${styles.taskCheckbox} ${sub.status === 'completed' ? styles.taskCheckboxChecked : ''}`}
                   aria-label={sub.status === 'completed' ? 'Mark incomplete' : 'Mark complete'}
                   onClick={e => {
@@ -59,7 +64,9 @@ export function TaskDetailDrawerSubtasks({
                     updateTask(sub.id, { status: sub.status === 'completed' ? 'pending' : 'completed' });
                   }}
                 >
-                  {sub.status === 'completed' && <CheckIcon size={13} />}
+                  <span className={styles.taskCheckIcon}>
+                    <CheckIcon size={13} />
+                  </span>
                 </button>
                 <div className={styles.subtaskCardBody}>
                   <div className={styles.subtaskCardRow}>
@@ -97,7 +104,7 @@ export function TaskDetailDrawerSubtasks({
         {task.is_subtask && task.parent_task && (
           <div className={styles.drawerSection}>
             <span className={styles.drawerSectionLabel}>Parent Task</span>
-            <button
+            <Link
               className={styles.subtaskParentLink}
               onClick={() => {
                 const parent = allTasks.find(t => t.id === task.parent_task_id);
@@ -106,7 +113,7 @@ export function TaskDetailDrawerSubtasks({
             >
               <Icon name="solar:link-minimalistic-linear" size={14} color="var(--primary-300)" />
               {task.parent_task}
-            </button>
+            </Link>
           </div>
         )}
     </>

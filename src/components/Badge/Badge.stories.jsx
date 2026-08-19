@@ -71,8 +71,8 @@ export const AllStates = {
   },
   render: () => {
     const cellStyle = { padding: 6, display: 'flex', justifyContent: 'center' };
-    const labelStyle = { padding: '6px 12px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', textTransform: 'capitalize', textAlign: 'right' };
-    const headerStyle = { padding: '6px 12px', fontSize: 11, fontWeight: 600, color: 'var(--neutral-400)', textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center' };
+    const labelStyle = { padding: '6px 12px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', textTransform: 'capitalize', textAlign: 'right' };
+    const headerStyle = { padding: '6px 12px', fontSize: 'var(--font-xs)', fontWeight: 600, color: 'var(--neutral-400)', textTransform: 'uppercase', letterSpacing: 0.5, textAlign: 'center' };
     return (
       <div style={{ padding: 24, fontFamily: 'Inter, sans-serif' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '120px repeat(3, 1fr)', gap: 4, alignItems: 'center' }}>

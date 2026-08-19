@@ -61,7 +61,7 @@ export function AuditLogContent({ entityType, entityId }) {
           const active = filter === f;
           return (
             <button key={f} onClick={() => setFilter(f)} style={{
-              padding: '4px 8px', borderRadius: 4, fontSize: 12,
+              padding: '4px 8px', borderRadius: 4, fontSize: 'var(--font-sm)',
               border: `0.5px solid ${active ? 'var(--primary-300)' : 'var(--neutral-150)'}`,
               background: active ? 'var(--primary-50)' : 'var(--neutral-0)',
               color: active ? 'var(--primary-300)' : 'var(--neutral-300)',
@@ -72,7 +72,7 @@ export function AuditLogContent({ entityType, entityId }) {
         })}
         {filter !== 'all' && (
           <button onClick={() => setFilter('all')} style={{
-            fontSize: 12, color: 'var(--primary-300)', background: 'none', border: 'none',
+            fontSize: 'var(--font-sm)', color: 'var(--primary-300)', background: 'none', border: 'none',
             cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: '4px 0',
           }}>Clear All</button>
         )}
@@ -80,7 +80,7 @@ export function AuditLogContent({ entityType, entityId }) {
 
       {loading && (
         <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--neutral-300)' }}>
-          <div style={{ fontSize: 14 }}>Loading audit log...</div>
+          <div style={{ fontSize: 'var(--font-base)' }}>Loading audit log...</div>
         </div>
       )}
 
@@ -89,7 +89,7 @@ export function AuditLogContent({ entityType, entityId }) {
           {monthGroups.map((group, gi) => (
             <div key={gi}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 2px', marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-400)' }}>{group.label}</span>
+                <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-400)' }}>{group.label}</span>
                 <Icon name="solar:alt-arrow-down-linear" size={13} color="var(--neutral-200)" />
               </div>
               {group.entries.map((entry, ei) => (
@@ -107,8 +107,8 @@ export function AuditLogContent({ entityType, entityId }) {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 16px', color: 'var(--neutral-300)' }}>
               <Icon name="solar:history-linear" size={32} color="var(--neutral-150)" />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-300)' }}>No entries found</div>
-                <div style={{ fontSize: 13, marginTop: 4 }}>
+                <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-300)' }}>No entries found</div>
+                <div style={{ fontSize: 'var(--font-md)', marginTop: 4 }}>
                   {filter !== 'all' ? 'Try adjusting your filter.' : 'Activity will appear here as actions are taken.'}
                 </div>
               </div>
@@ -170,7 +170,7 @@ export function AuditLogDrawer({ entity, onClose }) {
               key={f}
               onClick={() => setFilter(f)}
               style={{
-                padding: '4px 8px', borderRadius: 4, fontSize: 12,
+                padding: '4px 8px', borderRadius: 4, fontSize: 'var(--font-sm)',
                 border: `0.5px solid ${active ? 'var(--primary-300)' : 'var(--neutral-150)'}`,
                 background: active ? 'var(--primary-50)' : 'var(--neutral-0)',
                 color: active ? 'var(--primary-300)' : 'var(--neutral-300)',
@@ -184,7 +184,7 @@ export function AuditLogDrawer({ entity, onClose }) {
         })}
         {filter !== 'all' && (
           <button onClick={() => setFilter('all')} style={{
-            fontSize: 12, color: 'var(--primary-300)', background: 'none', border: 'none',
+            fontSize: 'var(--font-sm)', color: 'var(--primary-300)', background: 'none', border: 'none',
             cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: '4px 0',
           }}>
             Clear All
@@ -195,7 +195,7 @@ export function AuditLogDrawer({ entity, onClose }) {
       {/* Loading state */}
       {loading && (
         <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--neutral-300)' }}>
-          <div style={{ fontSize: 14 }}>Loading audit log...</div>
+          <div style={{ fontSize: 'var(--font-base)' }}>Loading audit log...</div>
         </div>
       )}
 
@@ -205,7 +205,7 @@ export function AuditLogDrawer({ entity, onClose }) {
           {monthGroups.map((group, gi) => (
             <div key={gi}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 2px', marginBottom: 4 }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-400)' }}>{group.label}</span>
+                <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-400)' }}>{group.label}</span>
                 <Icon name="solar:alt-arrow-down-linear" size={13} color="var(--neutral-200)" />
               </div>
               {group.entries.map((entry, ei) => (
@@ -224,8 +224,8 @@ export function AuditLogDrawer({ entity, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 16px', color: 'var(--neutral-300)' }}>
               <Icon name="solar:history-linear" size={32} color="var(--neutral-150)" />
               <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-300)' }}>No entries found</div>
-                <div style={{ fontSize: 13, marginTop: 4 }}>
+                <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-300)' }}>No entries found</div>
+                <div style={{ fontSize: 'var(--font-md)', marginTop: 4 }}>
                   {filter !== 'all' ? 'Try adjusting your filter.' : 'Activity will appear here as actions are taken.'}
                 </div>
               </div>

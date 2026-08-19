@@ -24,7 +24,7 @@ export function SecondaryUserPicker({ selected, onChange, profileUsers, primary 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, flex: 1 }}>
       {selected.map(name => (
-        <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--neutral-400)', background: 'var(--neutral-50)', padding: '2px 8px', borderRadius: 4, border: '0.5px solid var(--neutral-100)' }}>
+        <span key={name} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--font-md)', color: 'var(--neutral-400)', background: 'var(--neutral-50)', padding: '2px 8px', borderRadius: 4, border: '0.5px solid var(--neutral-100)' }}>
           <Avatar variant="assignee" initials={getInitials(name).toUpperCase()} /> {name}
           <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggle(name)} aria-label={`Remove ${name}`}>
             <Icon name="solar:close-linear" size={10} color="var(--neutral-300)" />
@@ -32,7 +32,7 @@ export function SecondaryUserPicker({ selected, onChange, profileUsers, primary 
         </span>
       ))}
       <div style={{ position: 'relative' }}>
-        <button ref={btnRef} className={styles.detailValuePlaceholder} onClick={() => setOpen(v => !v)} style={{ fontSize: 13 }}>
+        <button ref={btnRef} className={styles.detailValuePlaceholder} onClick={() => setOpen(v => !v)} style={{ fontSize: 'var(--font-md)' }}>
           <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" /> {selected.length === 0 ? 'Select Secondary Users' : 'Add More'}
         </button>
         {open && createPortal(
@@ -43,7 +43,7 @@ export function SecondaryUserPicker({ selected, onChange, profileUsers, primary 
                 <button key={name} type="button" role="menuitemcheckbox" aria-checked={selectedSet.has(name)} className={styles.providerItem} onClick={() => toggle(name)} style={{ background: selectedSet.has(name) ? 'var(--primary-25)' : undefined }}>
                   <CheckboxTick checked={selectedSet.has(name)} size={15} />
                   <Avatar variant="assignee" initials={getInitials(name).toUpperCase()} />
-                  <span style={{ fontSize: 14, color: 'var(--neutral-400)' }}>{name}</span>
+                  <span style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-400)' }}>{name}</span>
                 </button>
               ))}
             </div>

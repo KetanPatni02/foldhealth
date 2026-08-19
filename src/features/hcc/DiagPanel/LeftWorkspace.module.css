@@ -6,7 +6,6 @@
   /* Workspace sits on the LEFT of the Diagnosis Gaps section (Paper 1UD1);
      the divider is provided by the right pane's border-left. */
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
   /* Smooth swipe-in when the panel opens (drawer width transitions at the
      same time — see DiagPanel.module.css .panel/.panelExpanded). */
   animation: leftWsSwipeIn 280ms cubic-bezier(0.32, 0.72, 0.36, 1);
@@ -67,8 +66,7 @@
   border-bottom: 2px solid transparent;
   border-radius: 0;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -121,8 +119,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-300);
@@ -176,8 +173,7 @@
   cursor: pointer;
   padding: 6px 8px;
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-500);
   white-space: nowrap;
@@ -191,9 +187,8 @@
 .filterMenuItemActive:hover { background: var(--primary-50); }
 .filterMenuEmpty {
   padding: 8px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }
 .filterMenuClear {
   margin-top: 4px;
@@ -202,8 +197,7 @@
   border-top: 0.5px solid var(--neutral-150);
   background: transparent;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
   text-align: left;
@@ -218,8 +212,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   line-height: 1.2;
   color: var(--primary-300);
@@ -273,26 +266,22 @@
   gap: 6px;
 }
 .outreachType {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .outreachTime {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .outreachOutcome {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
 }
 .outreachBy {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -307,12 +296,11 @@
 .wlTable {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
 }
 .wlTable th {
   text-align: left;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
   background: var(--neutral-25);
@@ -327,7 +315,7 @@
 .wlDescHead { min-width: 180px; text-align: left; }
 .wlGroupRow td {
   padding: 7px 10px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
   background: var(--neutral-50);
@@ -350,12 +338,12 @@
 }
 .wlDescCol { min-width: 180px; text-align: left; vertical-align: top; }
 .wlCode {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--primary-300);
 }
 .wlDesc {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-500);
   line-height: 1.4;
@@ -384,17 +372,17 @@
   min-width: 0;
 }
 .wlWho {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-500);
 }
 .wlWhen {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .wlPending {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
 }
 
@@ -412,7 +400,7 @@
   justify-content: center;
   gap: 6px;
   color: var(--neutral-300);
-  font-size: 13px;
+  font-size: var(--font-md);
   padding: 32px 16px;
   text-align: center;
 }
@@ -434,7 +422,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
   font-variant-numeric: tabular-nums;
@@ -447,8 +435,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   transition: color 0.12s;
 }
@@ -459,7 +446,6 @@
 .timeline {
   display: flex;
   flex-direction: column;
-  font-family: 'Inter', sans-serif;
 }
 
 /* Month header — clickable to expand/collapse the group's entries. */
@@ -468,8 +454,7 @@
   align-items: center;
   gap: 6px;
   padding: 12px 0 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400);
   background: transparent;
@@ -547,7 +532,7 @@
 }
 
 .tlMeta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   line-height: 1.4;
@@ -562,7 +547,7 @@
 }
 
 .tlHeadline {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.4;
@@ -576,8 +561,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -596,8 +580,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--primary-300);
   width: fit-content;
@@ -620,7 +603,7 @@
   align-items: center;
   border-radius: 4px;
   border: 0.5px solid;
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 .pillOpen,
@@ -657,7 +640,7 @@
 /* Outreach tag link */
 .tlTag {
   margin-top: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--status-info);
   cursor: pointer;
 }
@@ -693,13 +676,13 @@
 }
 
 .tlFileName {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
 }
 
 .tlFileType {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
 }
 
@@ -748,12 +731,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
 }
 
 .avatarName {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
 }
 
@@ -782,13 +765,13 @@
 }
 
 .tlDetailHcc {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   line-height: 1.4;
 }
 
 .tlDetailIcd {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.4;
@@ -796,13 +779,13 @@
 }
 
 .tlDetailReason {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   margin-top: 2px;
 }
 
 .tlDetailNote {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   margin-top: 2px;
   padding: 3px 6px;
@@ -835,8 +818,7 @@
   width: 100%;
   border: none;
   outline: none;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
   resize: vertical;
   min-height: 60px;
@@ -861,8 +843,7 @@
   box-sizing: border-box;
   padding: 10px 12px;
   margin-bottom: 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-500);
   background: var(--neutral-0);
@@ -888,8 +869,7 @@
   align-items: center;
   margin-left: 6px;
   padding: 1px 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-300);
   background: var(--neutral-0);
@@ -968,15 +948,14 @@
   background: var(--primary-50);
   color: var(--primary-300);
   font-weight: 500;
-  font-size: 12px;
+  font-size: var(--font-sm);
   line-height: 1.5;
   white-space: nowrap;
 }
 
 /* Comment body text — full-width, multi-line, sits below the meta line. */
 .commentBody {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-500);
   line-height: 1.5;
@@ -997,7 +976,7 @@
   gap: 6px;
 }
 .commentStatusHeader {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -1010,8 +989,7 @@
 /* Inline comment body inside the Activity Log timeline — used when an
    entry is t:'comment'. Plain neutral-300 paragraph under the headline. */
 .tlCommentBody {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
   line-height: 1.5;
@@ -1044,8 +1022,7 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -1059,8 +1036,7 @@
   margin-top: 4px;
 }
 .docHeadlineName {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   flex: 1;
@@ -1078,8 +1054,7 @@
   margin-top: 4px;
 }
 .claimHeadlineNum {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -1097,8 +1072,7 @@
   margin-top: 4px;
 }
 .historyTargetInline {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -1113,20 +1087,19 @@
   border-radius: 8px;
   background: var(--neutral-0);
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
 }
 .dataTableHead {
   background: var(--neutral-25);
   border-bottom: 0.5px solid var(--neutral-150);
   padding: 8px 12px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   letter-spacing: 0.02em;
 }
 .dataTableHead span {
   display: block;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -1134,7 +1107,7 @@
   padding: 10px 12px;
   border-bottom: 0.5px solid var(--neutral-100);
   align-items: center;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
   transition: background 0.12s;
 }
@@ -1195,8 +1168,7 @@
   bottom: 3px;
   left: 50%;
   transform: translateX(-50%);
-  font-family: 'Inter', sans-serif;
-  font-size: 7px;
+  font-size: 0.4375rem;
   font-weight: 600;
   color: var(--neutral-300);
   letter-spacing: 0.04em;
@@ -1208,7 +1180,7 @@
   min-width: 0;
 }
 .docCellName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -1216,7 +1188,7 @@
   white-space: nowrap;
 }
 .docCellMeta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   overflow: hidden;
@@ -1237,17 +1209,17 @@
   min-width: 0;
 }
 .noteCellTime {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .noteCellTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .noteCellMeta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -1265,8 +1237,7 @@
   background: transparent;
   cursor: pointer;
   padding: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--primary-300);
   text-align: left;
@@ -1303,7 +1274,7 @@
 }
 .claimBackBtn:hover { background: var(--neutral-75); }
 .claimDetailTitle {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -1324,7 +1295,7 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .claimSectionTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-400);
 }
@@ -1342,11 +1313,11 @@
   min-width: 0;
 }
 .claimFieldLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 .claimFieldValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   font-variant-numeric: tabular-nums;
@@ -1360,7 +1331,7 @@
 .claimCodeTable thead th {
   padding: 8px 14px;
   text-align: left;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   border-bottom: 0.5px solid var(--neutral-150);
@@ -1368,7 +1339,7 @@
 .claimCodeTable thead th:first-child { width: 130px; }
 .claimCodeTable tbody td {
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   vertical-align: top;
   border-bottom: 0.5px solid var(--neutral-100);
@@ -1390,7 +1361,7 @@
 }
 .historyDos {
   color: var(--neutral-500);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
@@ -1401,12 +1372,12 @@
   min-width: 0;
 }
 .historyHccCode {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .historyHccMeta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -1420,8 +1391,7 @@
   color: var(--primary-300);
   border: 0.5px solid var(--primary-200);
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   cursor: pointer;
   justify-self: start;
@@ -1448,7 +1418,7 @@
   align-items: center;
   justify-content: center;
   color: var(--neutral-200);
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 
 /* ── Filter row trailing slot (Upload / Add Note buttons) ─────────────── */
@@ -1466,8 +1436,7 @@
   border: none;
   background: transparent;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
   white-space: nowrap;
@@ -1495,8 +1464,7 @@
   gap: 12px;
 }
 .docUploaderHeader {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -1515,8 +1483,7 @@
 .docDropZone:hover { background: var(--primary-25); border-color: var(--primary-200); }
 .docDropZoneActive { background: var(--primary-50); border-color: var(--primary-300); }
 .docDropText {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -1525,7 +1492,6 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: inherit;
   font-size: inherit;
   font-weight: 500;
   color: var(--primary-300);
@@ -1536,14 +1502,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .docUploaderError {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
 }
@@ -1551,6 +1515,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Hairline separator so Upload/Cancel read as a distinct action band
+     below the form fields (matches the Drawer footer treatment). */
+  padding-top: 12px;
+  border-top: 0.5px solid var(--neutral-150);
 }
 
 /* File row used in 'uploading' (with progress bar) and 'ready' phases. */
@@ -1576,8 +1544,7 @@
   gap: 2px;
 }
 .docFileRowName {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -1585,8 +1552,7 @@
   white-space: nowrap;
 }
 .docFileRowSize {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -1645,8 +1611,7 @@
   gap: 4px;
 }
 .docUploaderFieldLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -1656,8 +1621,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 8px 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-500);
   background: var(--neutral-0);
@@ -1698,7 +1662,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
   background: var(--neutral-0);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   cursor: pointer;
@@ -1759,14 +1723,12 @@
   flex-wrap: wrap;
 }
 .listTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .listRoleChip {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--primary-300);
   background: var(--primary-50);
@@ -1775,14 +1737,12 @@
   padding: 1px 6px;
 }
 .listMeta {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .listBodyText {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.45;
@@ -1842,8 +1802,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -1867,8 +1826,7 @@
 .claimsHead {
   background: var(--neutral-25);
   border-bottom: 0.5px solid var(--neutral-150);
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   text-transform: uppercase;
@@ -1876,8 +1834,7 @@
 }
 .claimsRow {
   border-bottom: 0.5px solid var(--neutral-100);
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-500);
 }
 .claimsRow:last-child { border-bottom: none; }
@@ -1887,8 +1844,7 @@
   background: transparent;
   cursor: pointer;
   padding: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--primary-300);
   text-align: left;
@@ -1920,8 +1876,7 @@
 .historyRow:last-child { border-bottom: none; }
 .historyRow:hover { background: var(--neutral-25); }
 .historyTime {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   font-variant-numeric: tabular-nums;
@@ -1933,8 +1888,7 @@
   min-width: 0;
 }
 .historyActorName {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -1942,14 +1896,12 @@
   white-space: nowrap;
 }
 .historyActorRole {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .historyTarget {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-500);
   overflow: hidden;

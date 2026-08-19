@@ -78,7 +78,7 @@
 }
 
 .chipTime {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
@@ -90,7 +90,7 @@
 .chipTimeActive { color: var(--status-success); }
 
 .chipRec {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -112,7 +112,7 @@
 .segmentBtn:hover { background: var(--neutral-50); }
 
 .segmentLabel {
-  font-size: 13.5px;
+  font-size: 0.8438rem;
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -150,7 +150,7 @@
 }
 
 .loggedLabel {
-  font-size: 13.5px;
+  font-size: 0.8438rem;
   font-weight: 600;
   line-height: 1.2;
 }
@@ -180,7 +180,7 @@
 }
 
 .logBtnLabel {
-  font-size: 13.5px;
+  font-size: 0.8438rem;
   font-weight: 600;
   line-height: 1.2;
   white-space: nowrap;
@@ -208,7 +208,7 @@
 }
 
 .formTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -220,7 +220,7 @@
 }
 
 .label {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   text-transform: uppercase;

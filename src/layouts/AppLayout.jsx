@@ -11,6 +11,7 @@ import { DegradedBanner } from '../components/DegradedBanner/DegradedBanner';
 import { WorklistTable } from '../features/toc-worklist/WorklistTable';
 import { QueueTable } from '../features/toc-queue/QueueTable';
 import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
+import { TocWorklistTable } from '../features/toc/TocWorklistTable';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
@@ -71,6 +72,7 @@ const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer
 const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer'), 'EditPatientDrawer');
 const AssessmentDrawer     = lz(() => import('../features/toc-queue/AssessmentDrawer'),                    'AssessmentDrawer');
 const OutreachStatusDrawer = lz(() => import('../features/toc-queue/OutreachStatusDrawer'),                'OutreachStatusDrawer');
+const AiTasksDrawer        = lz(() => import('../features/toc/AiTasksDrawer'),                             'AiTasksDrawer');
 // Archived HCC worklist — a frozen fork of the HCC feature (src/features/
 // hcc-archived) so upstream HCC changes never alter it. Lazy so it stays out
 // of the entry chunk.
@@ -86,10 +88,10 @@ function ComingSoonState({ listName }) {
       justifyContent: 'center', padding: '64px 24px', gap: 12,
     }}>
       <Icon name="solar:hourglass-line-linear" size={44} color="var(--neutral-200)" />
-      <p style={{ fontSize: 17, fontWeight: 600, color: 'var(--neutral-400)', margin: 0 }}>
+      <p style={{ fontSize: 'var(--font-xl)', fontWeight: 600, color: 'var(--neutral-400)', margin: 0 }}>
         {listName}
       </p>
-      <p style={{ fontSize: 14, margin: 0, textAlign: 'center', maxWidth: 320, color: 'var(--neutral-300)' }}>
+      <p style={{ fontSize: 'var(--font-base)', margin: 0, textAlign: 'center', maxWidth: 320, color: 'var(--neutral-300)' }}>
         This worklist is coming soon. Check back for updates.
       </p>
     </div>
@@ -100,7 +102,6 @@ function ComingSoonState({ listName }) {
 
 function PopulationView() {
   const subnavCollapsed = useAppStore(s => s.subnavCollapsed);
-  const toggleSubnav = useAppStore(s => s.toggleSubnav);
   const activeTab = useAppStore(s => s.activeTab);
   const showFilterBar = useAppStore(s => s.showFilterBar);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
@@ -147,8 +148,8 @@ function PopulationView() {
   const isSnp = activeSubnavList === 'SNP';
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
-  const TOC_LISTS = ['TOC'];
-  const isToc = TOC_LISTS.includes(activeSubnavList) || (!isHcc && !isHccArchived && !isHedis && !isCcm && !isAwv && !isJsa && !isAllPatients && !isPopulationGroup && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isToc = activeSubnavList === 'TOC IP';
+  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHccArchived && !isHedis && !isCcm && !isAwv && !isJsa && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
@@ -165,8 +166,10 @@ function PopulationView() {
               TOC uses (title tab + right-side action icons) so the two
               worklists share one visual pattern. */}
           {(!chromeless || isCcm) && <TabBar />}
-          {!chromeless && showFilterBar && <FilterBar />}
-          {!isHcc && !isHccArchived && !isHedis && !isCcm && !isSnp && !isAwv && !isJsa && !isAllPatients && !isComingSoon && !isPopulationGroup && activeTab === 'toc-queue' && <QueueSummaryBar />}
+          {!chromeless && showFilterBar && (
+            <FilterBar leading={(isToc || (isTcm && activeTab === 'toc-queue')) ? null : undefined} />
+          )}
+          {isTcm && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isHccArchived
               ? <HccArchivedWorklistTable />
               : isHcc
@@ -184,10 +187,12 @@ function PopulationView() {
                   : isAllPatients
                     ? <AllPatientsTable />
                     : isPopulationGroup
-                      ? <PopulationGroupsView activeFilter={pgFilter} onToggleSidebar={toggleSubnav} />
+                      ? <PopulationGroupsView activeFilter={pgFilter} />
                       : isComingSoon
                         ? <ComingSoonState listName={activeSubnavList} />
-                        : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
+                        : isToc
+                          ? <TocWorklistTable />
+                          : (activeTab === 'toc-worklist' ? <WorklistTable /> : <QueueTable />)}
           {!chromeless && <Pagination />}
         </div>
       </div>
@@ -385,6 +390,7 @@ export function AppLayout() {
   const quickViewPatient = useAppStore(s => s.quickViewPatient);
   const assessmentDrawerPatientId = useAppStore(s => s.assessmentDrawerPatientId);
   const outreachStatusDrawerPatientId = useAppStore(s => s.outreachStatusDrawerPatientId);
+  const aiTasksDrawerPatientId = useAppStore(s => s.aiTasksDrawerPatientId);
   const editingCampaignId = useAppStore(s => s.editingCampaignId);
   const campaignBuilderId = useAppStore(s => s.campaignBuilderId);
   const editingFormId = useAppStore(s => s.editingFormId);
@@ -512,6 +518,7 @@ export function AppLayout() {
         {quickViewPatient && <QuickViewDrawer />}
         {assessmentDrawerPatientId && <AssessmentDrawer />}
         {outreachStatusDrawerPatientId && <OutreachStatusDrawer />}
+        {aiTasksDrawerPatientId && <AiTasksDrawer />}
         <PgProcessingHost />
       </Suspense>
       <Toaster />

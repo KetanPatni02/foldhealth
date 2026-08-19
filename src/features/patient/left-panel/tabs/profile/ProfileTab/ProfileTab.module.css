@@ -39,7 +39,7 @@
 }
 
 .sectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
   line-height: 1.2;
   overflow: hidden;
@@ -81,7 +81,7 @@
 }
 
 .fieldLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   line-height: 1.2;
   white-space: nowrap;
@@ -90,7 +90,7 @@
 }
 
 .fieldValue {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
   line-height: 1.2;
   word-break: break-word;
@@ -134,7 +134,7 @@
 .planBenefitsHeader {
   flex: 1 0 100%;
   padding: 12px 6px 4px 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-500);
   line-height: 1.2;
 }

@@ -81,12 +81,12 @@ function DrawerDemo({ title = "Drawer Title", firstCta, secondCta, children }) {
 function DefaultDemo({ firstCta, secondCta }) {
   return (
     <DrawerDemo firstCta={firstCta} secondCta={secondCta}>
-      <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+      <p style={{ color: "var(--neutral-400)", fontSize: 'var(--font-base)', lineHeight: 1.6, margin: 0 }}>
         This is the shared Drawer component — 700px wide, 8px inset, 16px
         border-radius. Used across the entire app for all side panels (call
         queue, detail view, preferences, HCC diagnosis review, etc.).
       </p>
-      <p style={{ color: "var(--neutral-300)", fontSize: 13, marginTop: 12, marginBottom: 0 }}>
+      <p style={{ color: "var(--neutral-300)", fontSize: 'var(--font-md)', marginTop: 12, marginBottom: 0 }}>
         Click the overlay or the close button to dismiss.
       </p>
     </DrawerDemo>
@@ -159,7 +159,7 @@ function SplitPanesDemo({ firstCta, secondCta }) {
           <div ref={rowRef} style={{ display: 'flex', flex: 1, minHeight: 0, minWidth: 0 }}>
             <div className={splitStyles.leftPane}>
               <span>Document workspace (LHS)</span>
-              <span style={{ fontSize: 12 }}>Grows as you drag the divider right</span>
+              <span style={{ fontSize: 'var(--font-sm)' }}>Grows as you drag the divider right</span>
             </div>
             <div
               className={splitStyles.resizeHandle}
@@ -228,7 +228,7 @@ function PatientBannerDemo({ firstCta, secondCta }) {
             />
           }
         >
-          <p style={{ color: "var(--neutral-400)", fontSize: 14, lineHeight: 1.6, margin: 0 }}>
+          <p style={{ color: "var(--neutral-400)", fontSize: 'var(--font-base)', lineHeight: 1.6, margin: 0 }}>
             The same Drawer shell with a <strong>PatientBanner</strong>
             passed via the <code>banner</code> prop — it stacks between the
             header and the body, full-width, hugging the drawer edges. This

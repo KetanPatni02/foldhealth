@@ -29,10 +29,10 @@ const SURFACE_LABELS = { web: 'Fold Web', sidecar: 'Sidecar', mobile: 'Mobile' }
 
 const thStyle = {
   textAlign: 'left', padding: '8px 16px', color: 'var(--neutral-300)', fontWeight: 500,
-  fontSize: 12, whiteSpace: 'nowrap', borderBottom: '0.5px solid var(--neutral-150)',
+  fontSize: 'var(--font-sm)', whiteSpace: 'nowrap', borderBottom: '0.5px solid var(--neutral-150)',
   background: 'var(--neutral-0)', position: 'sticky', top: 0,
 };
-const tdStyle = { padding: '12px 16px', fontSize: 14, fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
+const tdStyle = { padding: '12px 16px', fontSize: 'var(--font-base)', fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
 
 /* ── 3-dot action dropdown ── */
 function ComponentActionMenu({ comp, onClose, onEdit, onAuditLog, onDuplicate, onRequestDelete }) {
@@ -68,7 +68,7 @@ function ComponentActionMenu({ comp, onClose, onEdit, onAuditLog, onDuplicate, o
 
 const menuItemStyle = {
   display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-  fontSize: 13, fontWeight: 400, color: 'var(--neutral-400)', cursor: 'pointer',
+  fontSize: 'var(--font-md)', fontWeight: 400, color: 'var(--neutral-400)', cursor: 'pointer',
   border: 'none', background: 'none', width: '100%', textAlign: 'left',
   fontFamily: "'Inter', sans-serif", transition: 'background .1s',
 };
@@ -117,7 +117,7 @@ function ComponentRow({ comp, onToggle, onEdit, onPreview, onAuditLog, onDuplica
       <td style={{ ...tdStyle, fontWeight: 500, color: 'var(--neutral-400)' }}>
         <div>
           <div>{comp.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--neutral-300)', fontWeight: 400, marginTop: 1 }}>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', fontWeight: 400, marginTop: 1 }}>
             {comp.category || 'Uncategorized'}
           </div>
         </div>
@@ -127,7 +127,7 @@ function ComponentRow({ comp, onToggle, onEdit, onPreview, onAuditLog, onDuplica
       <td style={tdStyle}>
         <code style={{
           background: 'var(--neutral-50)', padding: '2px 6px', borderRadius: 4,
-          fontSize: 11, fontFamily: "'SF Mono', 'Fira Code', monospace",
+          fontSize: 'var(--font-xs)', fontFamily: "'SF Mono', 'Fira Code', monospace",
           color: 'var(--neutral-400)',
         }}>
           {comp.domain}
@@ -155,7 +155,7 @@ function ComponentRow({ comp, onToggle, onEdit, onPreview, onAuditLog, onDuplica
         {comp.errors24h > 0 ? (
           <span
             title={comp.errors24h >= 3 ? `${comp.errors24h} errors in 24h — component may be misconfigured or domain unreachable` : `${comp.errors24h} warning(s) in 24h — intermittent issues detected`}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: comp.errors24h >= 3 ? 'var(--status-error)' : 'var(--status-warning)', fontSize: 14, fontWeight: 500, cursor: 'help' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: comp.errors24h >= 3 ? 'var(--status-error)' : 'var(--status-warning)', fontSize: 'var(--font-base)', fontWeight: 500, cursor: 'help' }}
           >
             <Icon name={comp.errors24h >= 3 ? 'solar:close-circle-bold' : 'solar:danger-triangle-linear'} size={14} color={comp.errors24h >= 3 ? 'var(--status-error)' : 'var(--status-warning)'} />
             {comp.errors24h}
@@ -223,7 +223,7 @@ function PreviewDrawer({ comp, onClose }) {
             background: 'var(--neutral-0)', cursor: 'pointer', userSelect: 'none',
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--neutral-400)', flex: 1 }}>{comp.name}</span>
+          <span style={{ fontSize: 'var(--font-md)', fontWeight: 500, color: 'var(--neutral-400)', flex: 1 }}>{comp.name}</span>
           <Badge variant="compliance-warn" label="External" />
           <Icon name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="var(--neutral-200)" />
         </button>
@@ -241,13 +241,13 @@ function PreviewDrawer({ comp, onClose }) {
             ) : (
               <div style={{ height: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--neutral-200)' }}>
                 <Icon name="solar:widget-5-linear" size={32} color="var(--neutral-150)" />
-                <div style={{ fontSize: 13 }}>No URL configured for this component</div>
+                <div style={{ fontSize: 'var(--font-md)' }}>No URL configured for this component</div>
               </div>
             )}
             {/* Footer with refresh */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '6px 12px', borderTop: '0.5px solid var(--neutral-100)', fontSize: 11, color: 'var(--status-warning)',
+              padding: '6px 12px', borderTop: '0.5px solid var(--neutral-100)', fontSize: 'var(--font-xs)', color: 'var(--status-warning)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Icon name="solar:link-round-linear" size={12} color="var(--status-warning)" />
@@ -258,9 +258,9 @@ function PreviewDrawer({ comp, onClose }) {
           </>
         )}
       </div>
-      <div style={{ marginTop: 12, fontSize: 12, color: 'var(--neutral-300)' }}>
-        Domain: <code style={{ background: 'var(--neutral-50)', padding: '1px 4px', borderRadius: 3, fontSize: 11 }}>{comp.domain}</code>
-        {' · '}Path: <code style={{ background: 'var(--neutral-50)', padding: '1px 4px', borderRadius: 3, fontSize: 11 }}>{comp.url}</code>
+      <div style={{ marginTop: 12, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
+        Domain: <code style={{ background: 'var(--neutral-50)', padding: '1px 4px', borderRadius: 3, fontSize: 'var(--font-xs)' }}>{comp.domain}</code>
+        {' · '}Path: <code style={{ background: 'var(--neutral-50)', padding: '1px 4px', borderRadius: 3, fontSize: 'var(--font-xs)' }}>{comp.url}</code>
       </div>
     </Drawer>
   );
@@ -334,7 +334,7 @@ export function ComponentLibraryPanel({ searchQuery = '' }) {
         <div style={{
           background: 'var(--status-warning-light)', borderBottom: '0.5px solid color-mix(in srgb, var(--status-warning) 20%, transparent)',
           padding: '10px 16px', display: 'flex', gap: 10, alignItems: 'center',
-          fontSize: 12, lineHeight: 1.6, color: 'var(--status-warning)',
+          fontSize: 'var(--font-sm)', lineHeight: 1.6, color: 'var(--status-warning)',
         }}>
           <Icon name="solar:danger-triangle-bold" size={16} color="var(--status-warning)" style={{ flexShrink: 0 }} />
           <div style={{ flex: 1 }}>
@@ -380,10 +380,10 @@ export function ComponentLibraryPanel({ searchQuery = '' }) {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, color: 'var(--neutral-300)' }}>
                   <Icon name={searchQuery.trim() ? 'solar:magnifer-linear' : 'solar:widget-5-linear'} size={32} color="var(--neutral-150)" />
                   <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>
+                    <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>
                       {searchQuery.trim() ? 'No results found' : 'No components configured yet'}
                     </div>
-                    <div style={{ fontSize: 13, marginTop: 4 }}>
+                    <div style={{ fontSize: 'var(--font-md)', marginTop: 4 }}>
                       {searchQuery.trim()
                         ? <>No components match "<strong>{searchQuery.trim()}</strong>".</>
                         : 'Register a domain first, then create your first embedded component.'}

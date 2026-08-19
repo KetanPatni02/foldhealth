@@ -61,7 +61,7 @@
 .meta {
   margin-top: 28px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-sm);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--neutral-200);

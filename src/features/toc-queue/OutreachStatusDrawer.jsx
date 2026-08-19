@@ -1,22 +1,15 @@
 import { useMemo } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
-import { Badge } from '../../components/Badge/Badge';
-import { Icon } from '../../components/Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
+import { OutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
+import { hasTocOutreachActivity } from '../toc/tocOutcome';
 import styles from './OutreachStatusDrawer.module.css';
 
-const STATUS_BADGE = {
-  'Not Started': { variant: 'pending',     icon: 'solar:hourglass-linear' },
-  'In Progress': { variant: 'in-progress', icon: 'solar:refresh-linear' },
-  'Attempted':   { variant: 'warning',     icon: 'solar:phone-calling-linear' },
-  'Completed':   { variant: 'completed',   icon: 'solar:check-circle-linear' },
-};
-
-// Outreach Status drawer — placeholder shell. Renders patient context + the
-// current outreach_status pill, then a stub body for the outreach history
-// timeline that will replace it in a follow-up pass. Kept parallel to
-// AssessmentDrawer so both feel like siblings.
+/**
+ * TOC queue outreach drawer. Same PatientBanner + OutreachTab the patient
+ * profile Outreach tab uses, framed as the Figma "Patient Outreach" panel.
+ */
 export function OutreachStatusDrawer() {
   const patientId = useAppStore(s => s.outreachStatusDrawerPatientId);
   const close = useAppStore(s => s.closeOutreachStatusDrawer);
@@ -28,13 +21,14 @@ export function OutreachStatusDrawer() {
 
   if (!patient) return null;
 
-  const status = patient.outreachStatus;
-  const cfg = status ? STATUS_BADGE[status] : null;
+  const showActivity = hasTocOutreachActivity(patient);
 
   return (
     <Drawer
-      title="Outreach Status"
+      title="Patient Outreach"
       onClose={close}
+      titleStyle={{ color: 'var(--neutral-500)' }}
+      bodyClassName={styles.drawerBody}
       banner={
         <PatientBanner
           initials={patient.initials}
@@ -45,24 +39,13 @@ export function OutreachStatusDrawer() {
         />
       }
     >
-      <div className={styles.body}>
-        <section className={styles.statusRow}>
-          <span className={styles.statusLabel}>Current status</span>
-          {cfg
-            ? <Badge size="M" variant={cfg.variant} label={status} icon={cfg.icon} />
-            : <span className={styles.statusEmpty}>Not set</span>}
-        </section>
-
-        <section className={styles.placeholder}>
-          <Icon name="solar:phone-calling-linear" size={32} color="var(--neutral-200)" />
-          <p className={styles.placeholderTitle}>Outreach history coming soon</p>
-          <p className={styles.placeholderText}>
-            The full outreach timeline — attempts, channels, call summaries,
-            next scheduled contact, and agent handoffs — will render here.
-            Wire the queries in the next pass.
-          </p>
-        </section>
-      </div>
+      <OutreachTab
+        patientId={patient.id}
+        defaultLogFor="care-program"
+        defaultPrograms={['TCM']}
+        hideActivity={!showActivity}
+        initialLogGroups={showActivity ? undefined : []}
+      />
     </Drawer>
   );
 }

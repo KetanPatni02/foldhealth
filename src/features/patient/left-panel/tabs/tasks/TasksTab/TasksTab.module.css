@@ -5,6 +5,20 @@
   padding: 12px;
 }
 
+.tabFlush {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px 16px 16px;
+}
+
+.empty {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  padding: 24px 0;
+  text-align: center;
+}
+
 /* ── Toolbar: scope tabs + actions ── */
 .toolbar {
   display: flex;
@@ -22,7 +36,7 @@
   border: 0.5px solid transparent;
   border-radius: 4px;
   background: none;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
@@ -44,7 +58,7 @@
   flex-direction: column;
 }
 .sectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   padding: 4px 0 8px;
@@ -62,12 +76,21 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .colHead span {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .row {
   padding: 12px 0;
   border-bottom: 0.5px solid var(--neutral-100);
+}
+
+.rowClickable {
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.rowClickable:hover {
+  background: var(--neutral-50);
 }
 
 /* ── Cells ── */
@@ -102,7 +125,7 @@
   padding-right: 12px;
 }
 .taskTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   line-height: 1.35;
 }
@@ -110,7 +133,7 @@
   color: var(--neutral-500);
 }
 .completedOn {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--status-success);
 }
 .metaRow {
@@ -123,7 +146,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 
@@ -133,7 +156,7 @@
   padding-top: 1px;
 }
 .dueCell {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   white-space: nowrap;
 }

@@ -44,8 +44,8 @@ function renderSharedSavingsTrajectory() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
         {SAVINGS_METADATA.map(m => (
           <div key={m.label}>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{m.label}</div>
-            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)', marginTop: 2 }}>{m.value}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{m.label}</div>
+            <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)', marginTop: 2 }}>{m.value}</div>
           </div>
         ))}
       </div>

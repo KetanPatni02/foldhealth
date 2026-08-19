@@ -8,7 +8,7 @@
   flex: 1;
   min-width: 0;
   padding: 0 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -71,7 +71,7 @@
   min-width: 0;
 }
 .name {
-  font-size: 14px;
+  font-size: var(--font-base);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -79,7 +79,7 @@
   line-height: 1.2;
 }
 .role {
-  font-size: 12px;
+  font-size: var(--font-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -89,7 +89,7 @@
 
 .empty {
   padding: 16px 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   text-align: center;
 }

@@ -30,7 +30,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
 }
 .reqDot {
@@ -64,6 +64,6 @@
   cursor: pointer;
 }
 .efaxLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
 }

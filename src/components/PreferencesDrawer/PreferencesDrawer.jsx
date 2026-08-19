@@ -43,7 +43,7 @@ function MultiSelect({ options, value = [], onChange, placeholder }) {
               <Icon name="solar:close-linear" size={10} color="var(--neutral-300)" />
             </button>
           </span>
-        )) : <span style={{ color: 'var(--neutral-200)', fontSize: 14 }}>{placeholder || 'Select...'}</span>}
+        )) : <span style={{ color: 'var(--neutral-200)', fontSize: 'var(--font-base)' }}>{placeholder || 'Select...'}</span>}
         <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
       </div>
       {open && (
@@ -133,7 +133,7 @@ export function PreferencesDrawer({ onClose }) {
   const initials = getInitials(userName).toUpperCase();
 
   return (
-    <Drawer title="PREFERENCES" onClose={onClose} className={styles.drawerWide} headerStyle={{ padding: '10px 16px', borderBottom: '0.5px solid var(--neutral-150)' }} titleStyle={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.06em', color: 'var(--neutral-300)' }} bodyClassName={styles.drawerBody}>
+    <Drawer title="PREFERENCES" onClose={onClose} className={styles.drawerWide} headerStyle={{ padding: '10px 16px', borderBottom: '0.5px solid var(--neutral-150)' }} titleStyle={{ fontSize: 'var(--font-sm)', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--neutral-300)' }} bodyClassName={styles.drawerBody}>
       <div className={styles.layout}>
         {/* Left sidebar */}
         <div className={styles.sidebar}>

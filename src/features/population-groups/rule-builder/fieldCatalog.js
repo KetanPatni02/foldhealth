@@ -27,6 +27,7 @@ const TEXT_OPS = [
   { name: '=', label: 'is' },
   { name: '!=', label: 'is not' },
   { name: 'contains', label: 'contains' },
+  { name: 'doesNotContain', label: 'does not contain' },
 ];
 
 const LIST_OPS = [
@@ -38,6 +39,51 @@ const DATE_OPS = [
   { name: '<=', label: 'is on or before' },
   { name: '>=', label: 'is on or after' },
   { name: '=', label: 'is on' },
+  { name: '!=', label: 'is not on' },
+];
+
+/* Every operator's logical negation. Seeded rules can carry `not: true`
+   (e.g. the CCRM exclusions); the editor loads such a rule as the negated
+   operator and always saves plain operators, so `not` never needs a
+   separate UI control. */
+export const NEGATED_OP = {
+  '=': '!=', '!=': '=',
+  '>': '<=', '<=': '>',
+  '<': '>=', '>=': '<',
+  contains: 'doesNotContain', doesNotContain: 'contains',
+};
+
+/* Operators for coded terminology fields (ICD-10, SNOMED, CPT, LOINC, RxNorm). */
+const CODED_OPS = [
+  { name: 'hasCode', label: 'has code' },
+  { name: 'notHasCode', label: 'does not have code' },
+];
+
+/* Operators for event-count aggregation fields. */
+const COUNT_OPS = [
+  { name: '>=', label: 'at least' },
+  { name: '<=', label: 'at most' },
+  { name: '>', label: 'more than' },
+  { name: '<', label: 'fewer than' },
+  { name: '=', label: 'exactly' },
+];
+
+/* Standard lookback-unit options for temporal reasoning. */
+export const LOOKBACK_UNITS = [
+  { value: 'days', label: 'Days' },
+  { value: 'weeks', label: 'Weeks' },
+  { value: 'months', label: 'Months' },
+  { value: 'years', label: 'Years' },
+];
+
+/* Event-type options for aggregation conditions. */
+export const EVENT_TYPES = [
+  { value: 'diagnosis', label: 'Diagnoses' },
+  { value: 'procedure', label: 'Procedures' },
+  { value: 'encounter', label: 'Encounters' },
+  { value: 'medication', label: 'Medications' },
+  { value: 'lab', label: 'Lab Results' },
+  { value: 'immunization', label: 'Immunizations' },
 ];
 
 /* Category accents — chip background token + the Solar icon color stays
@@ -46,6 +92,7 @@ export const FIELD_GROUPS = [
   { key: 'personal', label: 'Personal Info', accent: 'var(--accent-light-purple)' },
   { key: 'location', label: 'Location', accent: 'var(--accent-light-pink)' },
   { key: 'medical', label: 'Medical Records', accent: 'var(--accent-light-light-green)' },
+  { key: 'coded', label: 'Coded Conditions', accent: 'var(--accent-light-teal)' },
   { key: 'patientInfo', label: 'Patient Information', accent: 'var(--accent-light-amber)' },
   { key: 'others', label: 'Others', accent: 'var(--accent-light-cyan)' },
 ];
@@ -99,6 +146,22 @@ export const RULE_FIELDS = [
   { key: 'wearable', label: 'Wearable', group: 'patientInfo', icon: 'solar:watch-square-linear',
     profileColumn: 'wearables' /* † */, valueType: 'text', operators: LIST_OPS, isNew: true },
 
+  /* ── Coded Conditions (event-level, ICD-10/SNOMED/CPT/LOINC/RxNorm) ── */
+  { key: 'codedDiagnosis', label: 'Diagnosis (ICD-10)', group: 'coded', icon: 'solar:stethoscope-linear',
+    valueType: 'codedTerm', terminology: 'icd10', eventType: 'diagnosis', operators: CODED_OPS, isNew: true },
+  { key: 'codedDiagnosisSnomed', label: 'Diagnosis (SNOMED)', group: 'coded', icon: 'solar:stethoscope-linear',
+    valueType: 'codedTerm', terminology: 'snomed', eventType: 'diagnosis', operators: CODED_OPS, isNew: true },
+  { key: 'codedProcedure', label: 'Procedure (CPT)', group: 'coded', icon: 'solar:clipboard-add-linear',
+    valueType: 'codedTerm', terminology: 'cpt', eventType: 'procedure', operators: CODED_OPS, isNew: true },
+  { key: 'codedMedication', label: 'Medication (RxNorm)', group: 'coded', icon: 'solar:jar-of-pills-linear',
+    valueType: 'codedTerm', terminology: 'rxnorm', eventType: 'medication', operators: CODED_OPS, isNew: true },
+  { key: 'codedLab', label: 'Lab Test (LOINC)', group: 'coded', icon: 'solar:test-tube-linear',
+    valueType: 'codedTerm', terminology: 'loinc', eventType: 'lab', operators: CODED_OPS, isNew: true },
+  { key: 'observation', label: 'Lab Observation', group: 'coded', icon: 'solar:test-tube-minimalistic-linear',
+    valueType: 'observation', terminology: 'loinc', eventType: 'lab', operators: NUMBER_OPS, isNew: true },
+  { key: 'eventCount', label: 'Event Count', group: 'coded', icon: 'solar:chart-square-linear',
+    valueType: 'eventCount', operators: COUNT_OPS, isNew: true },
+
   /* ── Others ── */
   { key: 'practitioner', label: 'Practitioner', group: 'others', icon: 'solar:user-heart-linear',
     profileColumn: 'care_team', valueType: 'text', operators: LIST_OPS },
@@ -115,20 +178,48 @@ export const FIELD_BY_KEY = Object.fromEntries(RULE_FIELDS.map(f => [f.key, f]))
 export const groupAccent = (groupKey) =>
   FIELD_GROUPS.find(g => g.key === groupKey)?.accent || 'var(--neutral-50)';
 
-/* Human summary of a rule for the node row badges, e.g.
-   ["is more than and equal to 50 Years", "as of 05-27-2024"]. */
+/* Badge descriptors for a rule's node row: [{ text, tone }]. Complex
+   conditions (metrics, negations, qualifiers — e.g. "Vital · Blood Pressure ·
+   is more than 140/90 mmHg") carry an explicit `display` array authored when
+   the rule was built; simple builder-authored rules derive their badges from
+   operator + value. Editing a display-carrying rule through the generic
+   editor replaces it with the derived form. */
 export function ruleSummary(rule) {
+  if (Array.isArray(rule.display)) {
+    return rule.display.map(d => (typeof d === 'string' ? { text: d, tone: 'grey' } : { text: d.text, tone: d.tone || 'grey' }));
+  }
   const field = FIELD_BY_KEY[rule.field];
   if (!field) return [];
   const op = field.operators.find(o => o.name === rule.operator);
   const v = rule.value || {};
   const parts = [];
-  if (op && (v.amount ?? v.text ?? '') !== '') {
+
+  if (field.valueType === 'codedTerm') {
+    if (v.code) {
+      parts.push({ text: `${op?.label || rule.operator} ${v.code}`, tone: 'grey' });
+      if (v.display) parts.push({ text: v.display, tone: 'grey' });
+    }
+  } else if (field.valueType === 'observation') {
+    if (v.analyte?.code) {
+      parts.push({ text: `${v.analyte.display || v.analyte.code}`, tone: 'grey' });
+      if (op && v.numericValue != null) parts.push({ text: `${op.label} ${v.numericValue} ${v.unit || ''}`.trim(), tone: 'grey' });
+    }
+  } else if (field.valueType === 'eventCount') {
+    const evLabel = EVENT_TYPES.find(e => e.value === v.eventType)?.label || v.eventType || 'events';
+    if (op && v.count != null) parts.push({ text: `${op.label} ${v.count} ${evLabel}`, tone: 'grey' });
+    if (v.filter?.code) parts.push({ text: `code ${v.filter.code}`, tone: 'grey' });
+  } else if (op && (v.amount ?? v.text ?? '') !== '') {
     const val = field.valueType === 'number' ? `${v.amount} ${field.unit || ''}`.trim() : v.text;
-    parts.push(`${op.label} ${val}`);
+    parts.push({ text: `${op.label} ${val}`, tone: 'grey' });
   }
+
+  /* Lookback window badge — shared across coded/observation/eventCount */
+  if (v.lookback?.amount) {
+    parts.push({ text: `in last ${v.lookback.amount} ${v.lookback.unit || 'months'}`, tone: 'info' });
+  }
+
   if (field.supportsAsOf && (v.asOfMode === 'today' || v.asOfDate)) {
-    parts.push(`as of ${v.asOfMode === 'today' ? todayLabel() : v.asOfDate}`);
+    parts.push({ text: `as of ${v.asOfMode === 'today' ? todayLabel() : v.asOfDate}`, tone: 'grey' });
   }
   return parts;
 }

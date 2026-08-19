@@ -32,7 +32,7 @@ export function GroupDetailDrawerParticipants(props) {
               onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
               onFocus={() => setSearchOpen(true)}
               placeholder="Search user and care team roles to add in group"
-              style={{ border: 'none', outline: 'none', fontSize: 13, color: 'var(--neutral-400)', fontFamily: "'Inter', sans-serif", flex: 1, background: 'transparent' }}
+              style={{ border: 'none', outline: 'none', fontSize: 'var(--font-md)', color: 'var(--neutral-400)', fontFamily: "'Inter', sans-serif", flex: 1, background: 'transparent' }}
             />
           </div>
 
@@ -50,7 +50,7 @@ export function GroupDetailDrawerParticipants(props) {
                 <div style={{ display: 'flex', borderBottom: '0.5px solid var(--neutral-150)' }}>
                   {['users', 'roles'].map(tab => (
                     <button key={tab} type="button" aria-pressed={searchTab === tab} onClick={() => setSearchTab(tab)} style={{
-                      flex: 1, textAlign: 'center', padding: '10px 0', fontSize: 13, cursor: 'pointer',
+                      flex: 1, textAlign: 'center', padding: '10px 0', fontSize: 'var(--font-md)', cursor: 'pointer',
                       background: 'none', fontFamily: 'inherit',
                       color: searchTab === tab ? 'var(--neutral-500)' : 'var(--neutral-200)',
                       fontWeight: searchTab === tab ? 600 : 400,
@@ -83,8 +83,8 @@ export function GroupDetailDrawerParticipants(props) {
                         <CheckboxTick checked={isSelected} size={16} />
                         <Avatar variant={u.isAgent ? 'agent' : 'assignee'} initials={initials} />
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)' }}>{u.name}</div>
-                          <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{u.role}</div>
+                          <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)' }}>{u.name}</div>
+                          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{u.role}</div>
                         </div>
                       </div>
                     );
@@ -104,7 +104,7 @@ export function GroupDetailDrawerParticipants(props) {
                         }}
                       >
                         <CheckboxTick checked={isSelected} size={16} />
-                        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)' }}>{r.name}</span>
+                        <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)' }}>{r.name}</span>
                       </div>
                     );
                   })}
@@ -119,9 +119,9 @@ export function GroupDetailDrawerParticipants(props) {
           <div style={{ border: '0.5px solid var(--neutral-150)', borderRadius: 4, overflow: 'hidden' }}>
             {/* Header */}
             <div style={{ padding: '10px 14px', borderBottom: '0.5px solid var(--neutral-150)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)' }}>Selected Users and Roles</span>
+              <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)' }}>Selected Users and Roles</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--neutral-300)', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', cursor: 'pointer' }}>
                   <input type="checkbox" checked={enableAll} onChange={e => handleEnableAll(e.target.checked)}
                     style={{ accentColor: 'var(--primary-300)' }} />
                   Enable all 1:1 Chat
@@ -134,8 +134,8 @@ export function GroupDetailDrawerParticipants(props) {
             {selectedUsers.length > 0 && (
               <div style={{ padding: '4px 14px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0' }}>
-                  <span style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Users</span>
-                  <span style={{ fontSize: 11, color: 'var(--neutral-200)', display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Users</span>
+                  <span style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)', display: 'flex', alignItems: 'center', gap: 2 }}>
                     Allow 1:1 Chat
                     <Tooltip
                       maxWidth={200}
@@ -161,11 +161,11 @@ export function GroupDetailDrawerParticipants(props) {
                     }}>
                       <Avatar variant={p.isAgent ? 'agent' : 'assignee'} initials={initials} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, color: 'var(--neutral-500)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-500)', display: 'flex', alignItems: 'center', gap: 6 }}>
                           {p.name}
                           {p.isAgent && <Badge variant="ai-care" label="AI Agent" />}
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{p.role}</div>
+                        <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{p.role}</div>
                       </div>
                       {p.isAgent ? (
                         <Button variant="tertiary" size="S" leadingIcon="solar:settings-linear" trailingIcon="solar:alt-arrow-right-linear" onClick={handleConfigureRules}>
@@ -186,13 +186,13 @@ export function GroupDetailDrawerParticipants(props) {
             {/* Care Team Roles section */}
             {selectedRoles.length > 0 && (
               <div style={{ padding: '4px 14px', paddingBottom: 10 }}>
-                <div style={{ fontSize: 12, color: 'var(--neutral-200)', padding: '6px 0' }}>Care Team Roles</div>
+                <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', padding: '6px 0' }}>Care Team Roles</div>
                 {selectedRoles.map(r => (
                   <div key={r.id} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     padding: '8px 0', borderBottom: '0.5px solid var(--neutral-75)',
                   }}>
-                    <span style={{ fontSize: 14, color: 'var(--neutral-500)' }}>{r.name}</span>
+                    <span style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-500)' }}>{r.name}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <Switch checked={chatEnabled[r.id] || false} onChange={(val) => setChatEnabled(prev => ({ ...prev, [r.id]: val }))} />
                       <ActionButton icon="solar:close-circle-linear" size="L" tooltip="Remove role" onClick={() => removeRole(r.id)} />

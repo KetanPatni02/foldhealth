@@ -6,11 +6,10 @@
   border-bottom: 0.5px solid var(--neutral-150);
   background: var(--neutral-25);
   flex-shrink: 0;
-  font-family: 'Inter', sans-serif;
 }
 
 .label {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   text-transform: uppercase;
@@ -35,7 +34,6 @@
   border-radius: 6px;
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
-  font-family: inherit;
   color: var(--neutral-400);
   white-space: nowrap;
   flex-shrink: 0;
@@ -52,8 +50,7 @@
   background: none;
   border: none;
   padding: 0 4px 0 10px;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: inherit;
   cursor: pointer;
   height: 100%;
@@ -93,7 +90,6 @@
   border: 0.5px solid var(--neutral-100);
   border-radius: 8px;
   box-shadow: 0 12px 60px -15px rgba(0, 0, 0, 0.12);
-  font-family: 'Inter', sans-serif;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -109,8 +105,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  font-family: inherit;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   text-align: left;
   transition: background 0.12s;

@@ -29,7 +29,7 @@
   min-width: 0;
 }
 .groupName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-200);
   white-space: nowrap;
@@ -57,16 +57,24 @@
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  /* Zero gap — the connector tails on the IF and combinator chips must touch
+     the node cards above and below; all breathing room comes from the tails
+     themselves. */
+  gap: 0;
 }
 
-/* IF chip with the little tail divider under it */
+/* IF chip with the little tail divider under it. Chips left-align on one
+   axis and the connector tails sit at a fixed offset (the IF chip's center)
+   so the line runs straight through every chip. */
 .ifChip {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   width: fit-content;
 }
+.ifChip .ifTail,
+.combinatorChip .ifTail { margin-left: 13px; }
+.ifButton { font-size: var(--font-base); }
 .addConditionBtn { align-self: flex-start; }
 
 .ifTail {
@@ -83,7 +91,7 @@
   width: 100%;
   padding: 4px;
   background: var(--neutral-0);
-  border: 1px solid var(--neutral-100);
+  border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   box-sizing: border-box;
 }
@@ -100,19 +108,26 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 12px 4px 4px;
+  height: 24px;
+  box-sizing: border-box;
+  /* Hairline border like the IF / combinator chips; the extra right padding
+     optically balances the icon box on the left so the text doesn't hug the
+     trailing edge. */
+  padding: 4px 8px 4px 4px;
   border-radius: 4px;
   flex-shrink: 0;
   cursor: pointer;
-  border: none;
-  font-size: 14px;
-  color: var(--neutral-300);
+  border: 0.5px solid var(--neutral-150);
+  font-size: var(--font-base);
+  color: var(--neutral-400);
 }
+/* 12px glyph in a 16px box — with the chip's 4px vertical padding that pins
+   the whole chip to 24px, matching the summary badges beside it. */
 .fieldChipIcon {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
+  padding: 2px;
   border-radius: 4px;
 }
 .nodeBadges {
@@ -143,7 +158,7 @@
   border: none;
   background: none;
   padding: 4px 10px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   cursor: pointer;
@@ -188,7 +203,7 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .popoverTitle {
-  font-size: 20px;
+  font-size: var(--font-2xl);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -211,7 +226,7 @@
 }
 .popoverGroupTitle {
   padding: 2px 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   width: 220px;
@@ -227,7 +242,7 @@
   background: none;
   border-radius: 8px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   text-align: left;
   box-sizing: border-box;
@@ -244,7 +259,7 @@
 .newBadge {
   background: var(--secondary-300);
   color: var(--neutral-0);
-  font-size: 8px;
+  font-size: 0.5rem;
   font-weight: 600;
   padding: 2px 3px;
   border-radius: 4px;
@@ -277,7 +292,7 @@
   gap: 24px;
 }
 .editorTitle {
-  font-size: 24px;
+  font-size: var(--font-3xl);
   font-weight: 400;
   color: var(--neutral-500);
   white-space: nowrap;
@@ -303,11 +318,11 @@
   border-radius: 4px;
   width: 100%;
   box-sizing: border-box;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .editorSectionLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-200);
 }
@@ -321,7 +336,7 @@
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   pointer-events: none;
 }
@@ -331,4 +346,607 @@
   height: 16px;
   background: var(--neutral-150);
   flex-shrink: 0;
+}
+
+/* ── Detail mode: left rail (Figma 1:13951) ── */
+.rail {
+  width: 320px;
+  flex-shrink: 0;
+  border-right: 0.5px solid var(--neutral-150);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--neutral-0);
+}
+.railHeader {
+  padding: 16px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.railHeaderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.railHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.railTitle {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--neutral-500);
+  line-height: 1.3;
+}
+.railDescription {
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+  line-height: 1.5;
+}
+.railScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.railCount {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.railSectionLabel {
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.railCountValue {
+  font-size: var(--font-3xl);
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: 1.2;
+}
+.railCriteria {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+.criteriaCard {
+  background: var(--neutral-50);
+  border: 0.5px solid var(--accent-cyan);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.criteriaBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.5;
+}
+.criteriaValue {
+  padding-left: 16px;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.criteriaEmpty {
+  font-weight: 400;
+  color: var(--neutral-200);
+}
+.criteriaFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.unityBrand {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.unityText {
+  font-size: var(--font-sm);
+  background: linear-gradient(192deg, var(--accent-cyan) 0%, var(--primary-200) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  white-space: nowrap;
+}
+.unityAlpha {
+  font-size: var(--font-2xs);
+  color: var(--neutral-200);
+  letter-spacing: 0.5px;
+}
+.criteriaFooterActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Right pane: TabStrip sits above either the members table or the canvas */
+.tabPane {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* canvas + docked editor row inside the tab pane */
+.bodyInner {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Qualified Members rows — composed from the shared worklist row ── */
+.qmRow { composes: row from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.qmTd { composes: td from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.qmMembersTd { composes: membersTd from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.qmStickyLeft { composes: stickyLeft from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.qmPatientCell { composes: patientCell from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.qmPatientName { composes: patientName from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.qmPatientNameLink { composes: patientNameLink from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.qmPatientDemo { composes: patientDemo from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.qmPatientMeta { composes: patientMeta from '../../../components/WorklistShell/WorklistRow.module.css'; }
+
+/* Stacked nodes with the static combinator chip between them (view + edit).
+   Zero gap for the same reason as .canvas — tails must touch the cards. */
+.nodeStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+.combinatorChip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: fit-content;
+}
+/* Equal padding on all sides; 16px line box matches the IF Button's 24px
+   height exactly so the two chip kinds read as one family. */
+.combinatorLabel {
+  padding: 4px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-300);
+  line-height: 1rem;
+  box-sizing: border-box;
+}
+
+/* Node summary badges pinned to a 24px box so they read as one row with the
+   field chip (Badge S is padding-sized and lands at ~22px otherwise). */
+.nodeBadge {
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  font-size: var(--font-base);
+}
+
+/* Inline-editable group name in the rail */
+.railTitleInput {
+  width: 100%;
+}
+.railTitleButton {
+  border: none;
+  background: none;
+  padding: 0;
+  text-align: left;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--neutral-500);
+  line-height: 1.3;
+  cursor: text;
+  width: 100%;
+}
+.railTitleButton:hover { color: var(--neutral-400); }
+
+/* Nested rule group — bracket rail carrying the group combinator, children
+   indented beside it (the Figma's OR/AND brackets). */
+.groupNode {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+.groupBracket {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  flex-shrink: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.groupChildren {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Inline Add Condition card — rendered in flow below the row whose AND/OR
+   started the join (Figma 9:73965), same body as the portal popover. */
+.popoverInline {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 4px;
+}
+
+/* Bottom-of-canvas AND | OR — appends the next condition joined to the last
+   top-level block. */
+.canvasJoin {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: fit-content;
+}
+.canvasJoin .ifTail { margin-left: 13px; }
+.canvasJoin .combo { background: var(--neutral-0); }
+
+/* ── Drag-reorder ── */
+.nodeDragging { opacity: 0.4; }
+.nodeDropBefore { box-shadow: inset 0 2px 0 var(--primary-300); }
+.nodeDropAfter { box-shadow: inset 0 -2px 0 var(--primary-300); }
+
+/* ── Combinator toggle (edit mode) ── */
+.combinatorToggle {
+  cursor: pointer;
+  border: 0.5px solid var(--neutral-150);
+  transition: background 150ms, color 150ms;
+}
+.combinatorToggle:hover { background: var(--primary-50); color: var(--primary-300); }
+
+/* ── Bracket hover actions ── */
+.bracketToggle {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.bracketToggle:hover { color: var(--primary-300); }
+.bracketActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+/* ── Live qualified-member preview panel (edit mode, right side) ── */
+.previewPanel {
+  width: 260px;
+  flex-shrink: 0;
+  border-left: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.previewHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.previewTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.previewCount {
+  font-size: 1.75rem;
+  font-weight: 500;
+  color: var(--neutral-500);
+  padding: 12px;
+  line-height: 1.2;
+}
+.previewError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--status-error-light);
+  font-size: var(--font-sm);
+  color: var(--status-error);
+}
+.previewList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 12px;
+}
+.previewEmpty {
+  display: block;
+  padding: 12px 0;
+  font-size: var(--font-md);
+  color: var(--neutral-200);
+}
+.previewRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 4px 0;
+  gap: 8px;
+}
+.previewName {
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.previewMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.previewMore {
+  display: block;
+  padding: 6px 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+  text-align: center;
+}
+/* ── Terminology search ── */
+.termSearchWrap {
+  width: 100%;
+  position: relative;
+}
+.termSearchInput {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.termDropdown {
+  position: fixed;
+  z-index: 2500;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.termItem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+}
+.termItem:hover,
+.termItemActive { background: var(--neutral-50); }
+.termCode {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--primary-300);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.termTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.termEmpty {
+  padding: 12px;
+  font-size: var(--font-md);
+  color: var(--neutral-200);
+  text-align: center;
+}
+
+/* ── Selected code chip ── */
+.selectedCode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+}
+.selectedCodeText {
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+
+/* ── Lookback window ── */
+.lookbackSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 4px;
+}
+.lookbackToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+}
+.lookbackDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+  transition: border-color 150ms, background 150ms;
+}
+.lookbackDotActive {
+  border-color: var(--primary-300);
+  background: var(--primary-300);
+}
+.lookbackRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Collapsed strip — clickable pill at the right edge */
+.previewCollapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  border: none;
+  border-left: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.previewCollapsedCount {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+/* ── Triggers tab ── */
+.triggersTab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+.triggersHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.triggersTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.triggersError {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  background: var(--status-error-light);
+  font-size: var(--font-md);
+  color: var(--status-error);
+}
+.triggerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.triggerCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.triggerCardName {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+  flex: 1;
+  min-width: 0;
+}
+.triggerCardActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.triggerCardBody {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 32px;
+}
+.triggerCardAction {
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+}
+.triggerEventDesc {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+  line-height: 1.4;
+}
+
+/* ── Export panel (SQL/JsonLogic) ── */
+.exportSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-top: 0.5px solid var(--neutral-150);
+}
+.exportLabel {
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--neutral-200);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.exportCode {
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 120px;
+  overflow-y: auto;
 }

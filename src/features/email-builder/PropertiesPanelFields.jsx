@@ -207,7 +207,7 @@ export function ImageUploader({ currentUrl, onChange, compact }) {
         {uploading ? (
           <div className={styles.imgUploaderEmpty}>
             <Icon name="solar:upload-linear" size={20} color="var(--primary-300)" />
-            <span style={{ fontSize: 11, color: 'var(--neutral-300)', marginTop: 4 }}>Uploading…</span>
+            <span style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-300)', marginTop: 4 }}>Uploading…</span>
           </div>
         ) : currentUrl ? (
           <img src={currentUrl} alt="" className={styles.imgUploaderPreview} />

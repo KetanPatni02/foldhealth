@@ -15,7 +15,6 @@
   padding: 12px;
   min-width: 280px;
   max-width: 420px;
-  font-family: 'Inter', sans-serif;
 }
 .cardBottom { transform: translate(-50%, 0); }
 .cardTop    { transform: translate(-50%, -100%); }
@@ -26,7 +25,7 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   border: 0.5px solid transparent;
   white-space: nowrap;
@@ -38,8 +37,7 @@
 
 /* ── Shared card title ── */
 .cardTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   margin: 0 0 10px 0;
@@ -62,12 +60,12 @@
   gap: 1px;
 }
 .userRowName {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .userRowRole {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -87,12 +85,12 @@
   gap: 1px;
 }
 .breakdownTeam {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .breakdownRole {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -102,7 +100,7 @@
   color: var(--neutral-400);
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
 }

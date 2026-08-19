@@ -4,7 +4,6 @@
   flex-direction: column;
   height: 100vh;
   background: var(--neutral-25, #fafafa);
-  font-family: 'Inter', sans-serif;
   min-width: 0;
   overflow: hidden;
 }
@@ -34,14 +33,14 @@
 }
 
 .title {
-  font-size: 18px;
+  font-size: var(--font-xl);
   font-weight: 600;
   color: var(--neutral-400);
   margin: 0;
 }
 
 .titleInput {
-  font-size: 18px;
+  font-size: var(--font-xl);
   font-weight: 600;
   color: var(--neutral-400);
   margin: 0;
@@ -49,7 +48,6 @@
   background: transparent;
   outline: none;
   padding: 0;
-  font-family: 'Inter', sans-serif;
   min-width: 80px;
   max-width: 320px;
   border-bottom: 1.5px solid transparent;
@@ -63,7 +61,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-200);
   white-space: nowrap;
@@ -94,7 +92,7 @@
 }
 
 .shortcutsTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-500);
 }
@@ -120,7 +118,7 @@
 .shortcutRow:last-child { border-bottom: none; }
 
 .shortcutLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   flex: 1;
@@ -135,7 +133,7 @@
 }
 
 .keySep {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   color: var(--neutral-200);
   font-weight: 500;
 }
@@ -158,7 +156,7 @@
 }
 
 .testEmailLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--neutral-300);
   text-transform: uppercase;
@@ -170,8 +168,7 @@
   padding: 0 12px;
   border: 1px solid var(--neutral-150);
   border-radius: 8px;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   outline: none;
   transition: border-color 0.15s;
@@ -186,7 +183,7 @@
 }
 
 .testEmailRecentsLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   margin-bottom: 2px;
@@ -204,7 +201,7 @@
 .testEmailRecentChip {
   all: unset;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   display: flex;
   align-items: center;
@@ -228,7 +225,7 @@
 }
 
 .testEmailStatus {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   display: flex;
   align-items: center;
@@ -294,8 +291,7 @@
   height: 40px;
   border: none;
   background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-300);
   cursor: pointer;
@@ -355,8 +351,7 @@
   margin: 0;
   background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   text-transform: capitalize;
@@ -382,8 +377,7 @@
   border-radius: 8px;
   background: var(--neutral-0);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   transition:
@@ -413,8 +407,7 @@
   padding: 6px 12px;
   background: var(--primary-300);
   color: #fff;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   border-radius: 6px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
@@ -430,8 +423,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   transition:
     background var(--duration-instant) var(--ease-hover),
@@ -448,7 +440,7 @@
 }
 
 .emptyDropLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   font-weight: 400;
 }
@@ -514,8 +506,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 10px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   text-transform: capitalize;
@@ -541,15 +532,14 @@
 .presetPickerEmpty {
   padding: 20px 12px;
   text-align: center;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
 }
 
 /* Section heading between Your-presets and Built-in groups. */
 .presetPickerSection {
   padding: 12px 4px 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   color: var(--neutral-300);
   letter-spacing: 0.4px;
@@ -585,16 +575,14 @@
   padding: 6px 10px 8px;
 }
 .presetCardTitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.3;
 }
 .presetCardDesc {
   margin-top: 2px;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   line-height: 1.4;
 }
@@ -642,8 +630,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   outline: none;
   box-sizing: border-box;
@@ -660,8 +647,7 @@
   padding: 0 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   border: 0.5px solid var(--neutral-150);
 }
@@ -708,7 +694,6 @@
   background: var(--neutral-0);
   cursor: pointer;
   text-align: left;
-  font-family: 'Inter', sans-serif;
   border-bottom: 0.5px solid var(--neutral-150);
 }
 
@@ -738,14 +723,14 @@
 }
 
 .presetTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.2;
 }
 
 .presetDesc {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   line-height: 1.3;
   margin-top: 2px;
@@ -812,7 +797,7 @@
   gap: 6px;
   padding: 6px 12px;
   cursor: grab;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   transition: background .08s;
   width: fit-content;
@@ -880,8 +865,7 @@
   border: 1px solid var(--primary-300);
   border-radius: 3px;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   outline: none;
 }
@@ -951,12 +935,11 @@
   background: var(--primary-300);
   border-radius: 4px 4px 4px 0;
   padding: 4px 8px;
-  font-family: 'Inter', sans-serif;
   z-index: 5;
 }
 
 .blockToolbarLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: #fff;
   white-space: nowrap;
@@ -1056,8 +1039,7 @@
   gap: 6px;
   color: var(--neutral-300);
   transition: color .12s, border-color .12s;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
 }
 
@@ -1137,8 +1119,7 @@
   padding: 0 12px;
   background: var(--neutral-50, #F6F7F8);
   border-bottom: 0.5px solid var(--neutral-150);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   letter-spacing: 0.2px;
@@ -1168,16 +1149,14 @@
 }
 
 .fieldLabel {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-200);
   line-height: 1.2;
 }
 
 .fieldLabelStrong {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.2;
@@ -1222,8 +1201,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   padding: 0;
@@ -1231,8 +1209,7 @@
 }
 
 .iconInputSuffix {
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   flex-shrink: 0;
 }
@@ -1249,8 +1226,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-50);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   cursor: pointer;
   flex-shrink: 0;
@@ -1272,8 +1248,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
   background: var(--neutral-0, #fff);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   cursor: pointer;
@@ -1304,8 +1279,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   appearance: none;
   -webkit-appearance: none;
@@ -1364,8 +1338,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   padding: 0;
 }
@@ -1451,7 +1424,7 @@
 }
 
 .colorVarPopoverTitle {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   margin-bottom: 6px;
@@ -1474,8 +1447,7 @@
   border: none;
   cursor: pointer;
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   text-align: left;
 }
@@ -1511,8 +1483,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-400);
   outline: none;
 }
@@ -1586,8 +1557,7 @@
   background: rgba(255, 255, 255, 0.9);
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   pointer-events: none;
@@ -1604,8 +1574,7 @@
   padding: 4px 8px;
   border: none;
   background: none;
-  font-size: 11px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-xs);
   color: var(--status-error);
   cursor: pointer;
   border-radius: 4px;
@@ -1619,8 +1588,7 @@
   background: var(--status-warning-light);
   border: 0.5px solid var(--status-warning);
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--status-warning);
 }
 
@@ -1660,8 +1628,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   outline: none;
 }
@@ -1675,8 +1642,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   outline: none;
   flex-shrink: 0;
@@ -1703,8 +1669,7 @@
   border: 0.5px dashed var(--neutral-200);
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
@@ -1730,7 +1695,6 @@
   box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.3),
               0 2px 6px rgba(0, 0, 0, 0.18);
   color: #FFFFFF;
-  font-family: 'Inter', sans-serif;
   user-select: none;
 }
 
@@ -1746,8 +1710,7 @@
   border-radius: 14px;
   cursor: pointer;
   color: #FFFFFF;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
 }
 .selectionToolbarBtn:hover { background: rgba(255, 255, 255, 0.12); }
@@ -1775,8 +1738,7 @@
   border-radius: 14px;
   cursor: pointer;
   color: #FFFFFF;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
 }
 .selectionToolbarStyleBtn:hover { background: rgba(255, 255, 255, 0.12); }
@@ -1803,8 +1765,7 @@
   border-radius: 6px;
   cursor: pointer;
   color: #FFFFFF;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 .selectionToolbarStyleItem:hover { background: rgba(255, 255, 255, 0.1); }
 
@@ -1817,8 +1778,7 @@
   border: 0.5px solid rgba(255, 255, 255, 0.15);
   border-radius: 12px;
   color: #FFFFFF;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   outline: none;
 }
 .selectionToolbarLinkInput::placeholder { color: rgba(255, 255, 255, 0.4); }
@@ -1848,8 +1808,7 @@
   border: 0.5px dashed var(--primary-200);
   border-radius: 6px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-400, #5020A0);
   align-self: flex-start;
@@ -1893,8 +1852,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 10.5px;
+  font-size: 0.6563rem;
   color: var(--neutral-200);
   line-height: 1.2;
 }
@@ -1916,8 +1874,7 @@
   border-radius: 999px;
   background: var(--neutral-0);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
   transition: background 0.12s, border-color 0.12s, color 0.12s;
@@ -1959,8 +1916,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400, #4B5462);
   cursor: pointer;
   user-select: none;
@@ -2029,8 +1985,7 @@
   border: 0.5px solid var(--neutral-200, #8A94A8);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   outline: none;
   resize: vertical;
@@ -2061,8 +2016,7 @@
   background: transparent;
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   cursor: pointer;
 }
@@ -2083,8 +2037,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--primary-300);
   background: var(--primary-25);
   border-bottom: 0.5px solid var(--primary-100);
@@ -2099,8 +2052,7 @@
   color: #fff;
   border: none;
   border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   cursor: pointer;
   flex-shrink: 0;
@@ -2113,8 +2065,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--status-error);
   background: var(--status-error-light);
   border-bottom: 0.5px solid var(--status-error);
@@ -2209,8 +2160,7 @@
 .codePre {
   margin: 0;
   padding: 12px;
-  font-family: 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace;
-  font-size: 11.5px;
+  font-size: 0.7188rem;
   line-height: 1.55;
   color: #E4E5EE;
   background: #1E1E2E;
@@ -2221,7 +2171,6 @@
 }
 
 .codeBlock {
-  font-family: inherit;
   color: #E4E5EE;
 }
 
@@ -2238,8 +2187,7 @@
   background: transparent;
   color: transparent;
   caret-color: #E4E5EE;
-  font-family: 'JetBrains Mono', 'SF Mono', Monaco, Consolas, monospace;
-  font-size: 11.5px;
+  font-size: 0.7188rem;
   line-height: 1.55;
   white-space: pre;
   overflow: hidden;
@@ -2267,8 +2215,7 @@
   display: flex;
   align-items: center;
   padding: 10px 4px 4px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   letter-spacing: 0;
@@ -2289,8 +2236,7 @@
   border: 0.5px dashed var(--primary-200);
   border-radius: 6px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-400, #5020A0);
 }
@@ -2316,8 +2262,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   outline: none;
   box-sizing: border-box;
@@ -2336,8 +2281,7 @@
   padding: 0 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   border: 0.5px solid var(--neutral-150);
 }
@@ -2412,7 +2356,6 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 
 .templateThumb {
@@ -2438,14 +2381,14 @@
 }
 
 .templateLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   text-align: center;
 }
 
 .templateDesc {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-200);
   text-align: center;
@@ -2456,14 +2399,14 @@
   padding: 32px 16px;
   text-align: center;
   color: var(--neutral-300);
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 .bulkHeader {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 10px 16px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary-500);
   background: var(--primary-50);
@@ -2504,8 +2447,7 @@
   padding: 6px 8px;
   border: none;
   background: transparent;
-  font-size: 11px;
-  font-family: inherit;
+  font-size: var(--font-xs);
   color: var(--neutral-500, #3A485F);
   outline: none;
 }
@@ -2549,10 +2491,9 @@
   border: 1px dashed var(--neutral-200, #CED4DD);
   border-radius: 4px;
   background: none;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-400, #7B8499);
   cursor: pointer;
-  font-family: inherit;
 }
 .tableEditorAddBtn:hover {
   border-color: var(--primary-300);
@@ -2742,7 +2683,7 @@
 }
 
 .colWidthLabel {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   color: #fff;
   pointer-events: none;
@@ -2813,7 +2754,7 @@
 }
 
 .colWidthPresetLabel {
-  font-size: 9px;
+  font-size: 0.5625rem;
   font-weight: 500;
   color: var(--neutral-400, #9CA3AF);
   white-space: nowrap;

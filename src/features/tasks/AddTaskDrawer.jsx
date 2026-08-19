@@ -5,7 +5,7 @@ import { useAddTaskDrawer } from './useAddTaskDrawer';
 import { AddTaskDrawerBody } from './AddTaskDrawerBody';
 
 export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated, extraFields }) {
-  const drawer = useAddTaskDrawer({ defaultStatus, initialMember, onClose, onTaskCreated, extraFields });
+  const drawer = useAddTaskDrawer({ defaultStatus, initialMember, onTaskCreated, extraFields });
 
   return (
     <>

@@ -18,6 +18,14 @@
   min-height: 48px;
 }
 
+/* Collapse handle (SubnavToggle) is a 28px ActionButton-L. Shared worklist
+   checkbox cells use 10px left padding + a 16px box, so the checkbox center
+   sits at 18px. 4px bar inset + 14px half-button = 18px — the handle then
+   stacks on the checkbox column on every worklist that passes leadingElement. */
+.tabBar.hasLeading {
+  padding-left: 4px;
+}
+
 .left {
   display: flex;
   align-items: center;
@@ -49,7 +57,7 @@
 }
 
 .title {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-500);
   white-space: nowrap;
@@ -116,7 +124,7 @@
   width: 100%;
   text-align: left;
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   border: none;

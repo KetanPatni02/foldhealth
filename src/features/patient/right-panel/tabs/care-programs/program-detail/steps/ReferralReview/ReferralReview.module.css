@@ -25,7 +25,7 @@
   border: 0.5px solid transparent;
   border-radius: 4px;
   background: none;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
@@ -52,7 +52,7 @@
 .headRow {
   padding: 10px 4px;
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .row {
@@ -62,16 +62,16 @@
 .checkCell { display: flex; align-items: center; }
 
 .providerCell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.providerName { font-size: 14px; color: var(--neutral-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.providerRole { font-size: 13px; color: var(--neutral-300); }
+.providerName { font-size: var(--font-base); color: var(--neutral-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.providerRole { font-size: var(--font-md); color: var(--neutral-300); }
 
-.statusCell { font-size: 14px; color: var(--neutral-400); }
+.statusCell { font-size: var(--font-base); color: var(--neutral-400); }
 .statusWarning { color: var(--status-warning); }
 .statusSuccess { color: var(--status-success); }
 .statusError { color: var(--status-error); }
 
 .attachCell { display: flex; align-items: center; }
-.attachChip { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
+.attachChip { display: inline-flex; align-items: center; gap: 4px; font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .muted { color: var(--neutral-200); }
 
-.createdCell { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
+.createdCell { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }

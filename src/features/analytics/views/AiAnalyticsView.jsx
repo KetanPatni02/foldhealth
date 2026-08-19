@@ -77,7 +77,7 @@ export function AiAnalyticsView({ showToast, editing = false, resetTick = 0 }) {
 
   const renderNlq = () => (
     <Card title="Ask Fold — Natural Language Query Engine" sub="Click an example or type your own question">
-      <div style={{ fontSize: 14, color: 'var(--neutral-300)', marginBottom: 12 }}>
+      <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-300)', marginBottom: 'var(--font-sm)' }}>
         Type any clinical or operational question. Fold Unity translates to structured queries against your data.
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -94,15 +94,15 @@ export function AiAnalyticsView({ showToast, editing = false, resetTick = 0 }) {
   const renderAnomalies = () => (
     <Card title="Anomaly Detection" actions={<Button variant="ghost" size="S" onClick={() => showToast?.('Configuring alert thresholds')}>Configure Thresholds</Button>}>
       {anomalyList.map((a, i) => (
-        <div key={i} className={s.ruleCard} style={{ borderLeft: `3px solid ${a.severity === 'red' ? 'var(--status-error)' : 'var(--status-warning)'}` }}>
+        <div key={i} className={s.ruleCard}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span className={`${s.stPill} ${a.severity === 'red' ? s.stRed : s.stAmber}`}>
               {a.severity === 'red' ? 'Critical' : 'Warning'}
             </span>
-            {a.detected && <span style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{a.detected}</span>}
+            {a.detected && <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{a.detected}</span>}
           </div>
           <div className={s.ruleTrigger} style={{ marginTop: 6, color: 'var(--neutral-500)' }}>{a.title}</div>
-          <div style={{ fontSize: 12, color: 'var(--neutral-300)', lineHeight: 1.55, marginTop: 4 }}>{a.desc}</div>
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', lineHeight: 1.55, marginTop: 4 }}>{a.desc}</div>
           {a.actionLabel && (
             <Button variant={a.severity === 'red' ? 'primary' : 'ghost'} size="S" style={{ marginTop: 8 }} onClick={() => showToast?.(a.actionToast || a.actionLabel)}>
               {a.actionLabel}
@@ -147,7 +147,7 @@ export function AiAnalyticsView({ showToast, editing = false, resetTick = 0 }) {
           </tbody>
         </table>
       </div>
-      <div style={{ marginTop: 12, padding: '0 14px 4px', fontSize: 12, color: 'var(--neutral-200)' }}>
+      <div style={{ marginTop: 12, padding: '0 14px 4px', fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>
         Models retrained bi-weekly on rolling 24-month data. Drift monitoring active. Alert threshold: AUC drop &gt; 0.03.
       </div>
     </Card>

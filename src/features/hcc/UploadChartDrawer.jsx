@@ -10,6 +10,7 @@ import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import { Select } from '../../components/Select/Select';
 import { FailReasonInline } from './ChartDetailDrawerParts';
 import { DOC_TYPES, makeUploadedChartDoc } from './data/chartDocs';
+import { VISIT_TYPES } from './reference/visitTypes';
 import styles from './UploadChartDrawer.module.css';
 
 /**
@@ -46,6 +47,7 @@ export function UploadChartDrawer() {
   const [caption, setCaption] = useState('');
   const [captionTouched, setCaptionTouched] = useState(false);
   const [docType, setDocType] = useState('');
+  const [visitType, setVisitType] = useState('');
   const [initialStatus, setInitialStatus] = useState(null);
   const [failInline, setFailInline] = useState(false);
   const [failDetails, setFailDetails] = useState(null); // { reasons, note } | null
@@ -59,10 +61,12 @@ export function UploadChartDrawer() {
       setCaption(editDoc?.caption || editDoc?.n || '');
       setCaptionTouched(true);
       setDocType(editDoc?.t || '');
+      setVisitType(editDoc?.vt || '');
     } else {
       setCaption('');
       setCaptionTouched(false);
       setDocType('');
+      setVisitType('');
     }
     setFile(null);
     setInitialStatus(null);
@@ -108,12 +112,13 @@ export function UploadChartDrawer() {
         n: caption,
         caption,
         t: docType,
+        vt: visitType || undefined,
       });
       showToast(`Updated ${caption}`);
       handleClose();
       return;
     }
-    const doc = makeUploadedChartDoc(member, { file, caption, docType });
+    const doc = makeUploadedChartDoc(member, { file, caption, docType, visitType });
     addChartDoc(member.id, doc, file);
     if (initialStatus) {
       setChartDocStatus(member.id, doc.id, initialStatus, {
@@ -151,6 +156,7 @@ export function UploadChartDrawer() {
     setCaption('');
     setCaptionTouched(false);
     setDocType('');
+    setVisitType('');
     setInitialStatus(null);
     setFailInline(false);
     setFailDetails(null);
@@ -164,6 +170,7 @@ export function UploadChartDrawer() {
     setCaption('');
     setCaptionTouched(false);
     setDocType('');
+    setVisitType('');
     setInitialStatus(null);
     setFailInline(false);
     setFailDetails(null);
@@ -262,19 +269,35 @@ export function UploadChartDrawer() {
               />
             </div>
 
-            {/* Document Type */}
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>
-                Document Type
-                <span className={styles.required} aria-hidden="true" />
-              </span>
-              <Select
-                className={styles.select}
-                options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
-                value={docType}
-                onChange={setDocType}
-                placeholder="Select Type"
-              />
+            {/* Document Type + Visit Type share one row — Visit Type
+                mirrors the HCC worklist's Visit Type column so a document
+                uploaded from here can be linked back to the same encounter
+                categories the DOS rows show. Visit Type is optional. */}
+            <div className={styles.fieldRow}>
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>
+                  Document Type
+                  <span className={styles.required} aria-hidden="true" />
+                </span>
+                <Select
+                  className={styles.select}
+                  options={DOC_TYPES.map((t) => ({ value: t, label: t }))}
+                  value={docType}
+                  onChange={setDocType}
+                  placeholder="Select Type"
+                />
+              </div>
+
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>Visit Type</span>
+                <Select
+                  className={styles.select}
+                  options={VISIT_TYPES.map((vt) => ({ value: vt, label: vt }))}
+                  value={visitType}
+                  onChange={setVisitType}
+                  placeholder="Select Visit Type"
+                />
+              </div>
             </div>
 
             {/* Review Status — reviewer roles must pick Pass or Fail before

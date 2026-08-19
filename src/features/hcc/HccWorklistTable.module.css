@@ -51,9 +51,9 @@
 /* Static list title — derives from the SubNav worklist name (same 15px/500
    type the old InlineEditable rendered at size L). */
 .listTitle {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 500;
-  line-height: 22px;
+  line-height: 1.375rem;
   color: var(--neutral-500);
   white-space: nowrap;
   overflow: hidden;
@@ -64,14 +64,13 @@
   display: flex;
   align-items: center;
   padding: 10px 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   transition: color 0.15s, border-color 0.15s;
   gap: 6px;
-  font-family: 'Inter', sans-serif;
 }
 .tabItem:hover { color: var(--neutral-400); }
 .tabActive {
@@ -103,8 +102,7 @@
 .searchInput input {
   border: none;
   outline: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   flex: 1;
@@ -116,7 +114,7 @@
   border: none;
   cursor: pointer;
   color: var(--neutral-300);
-  font-size: 16px;
+  font-size: var(--font-lg);
   padding: 0;
   display: flex;
   line-height: 1;
@@ -138,12 +136,11 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
 }
 
 .table thead th {
   padding: 8px 14px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   text-align: left;
@@ -259,7 +256,7 @@
   transform: translateX(-50%);
   background: var(--neutral-500);
   color: var(--neutral-0);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   line-height: 1.2;
   white-space: nowrap;
@@ -305,13 +302,13 @@
   color: var(--neutral-300);
 }
 .emptyTitle {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--neutral-400);
   margin: 0;
 }
 .emptyMessage {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   margin: 0;
   text-align: center;
@@ -392,12 +389,12 @@
   z-index: 2;
 }
 .sectionDividerTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .sectionDividerSubtitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }

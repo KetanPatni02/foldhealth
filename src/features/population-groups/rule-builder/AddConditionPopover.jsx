@@ -5,11 +5,13 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { RULE_FIELDS, FIELD_GROUPS, groupAccent } from './fieldCatalog';
 import styles from './ruleBuilder.module.css';
 
-/* Figma lays the five groups over four columns: Personal Info + Location
-   stack in the first, the rest get one each. */
+/* Groups laid over five columns: Personal Info + Location stack in the first,
+   coded conditions get their own column since they're the primary healthcare
+   conditions, the rest get one each. */
 const COLUMN_LAYOUT = [
   ['personal', 'location'],
   ['medical'],
+  ['coded'],
   ['patientInfo'],
   ['others'],
 ];
@@ -18,7 +20,7 @@ const COLUMN_LAYOUT = [
  * AddConditionPopover — the condition picker (Figma 1:13419). Anchored below
  * the "+ Add Condition" trigger, portal-rendered so the canvas never clips it.
  */
-export function AddConditionPopover({ anchorRect, onSelect, onClose }) {
+export function AddConditionPopover({ anchorRect, inline = false, onSelect, onClose }) {
   const popRef = useRef(null);
 
   useEffect(() => {
@@ -31,10 +33,14 @@ export function AddConditionPopover({ anchorRect, onSelect, onClose }) {
   const top = Math.min((anchorRect?.bottom ?? 80) + 8, window.innerHeight - 420);
   const left = Math.max(12, Math.min(anchorRect?.left ?? 80, window.innerWidth - 990));
 
-  return createPortal(
-    <>
-      <div className={styles.popoverBackdrop} onMouseDown={onClose} aria-hidden="true" />
-      <div ref={popRef} className={styles.popover} style={{ top, left }} role="dialog" aria-label="Add Condition">
+  const card = (
+    <div
+      ref={popRef}
+      className={inline ? styles.popoverInline : styles.popover}
+      style={inline ? undefined : { top, left }}
+      role="dialog"
+      aria-label="Add Condition"
+    >
         <div className={styles.popoverHeader}>
           <span className={styles.popoverTitle}>Add Condition</span>
           <ActionButton icon="solar:close-circle-linear" size="L" tooltip="Close" onClick={onClose} />
@@ -67,7 +73,15 @@ export function AddConditionPopover({ anchorRect, onSelect, onClose }) {
             </div>
           ))}
         </div>
-      </div>
+    </div>
+  );
+
+  if (inline) return card;
+
+  return createPortal(
+    <>
+      <div className={styles.popoverBackdrop} onMouseDown={onClose} aria-hidden="true" />
+      {card}
     </>,
     document.body,
   );

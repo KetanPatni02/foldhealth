@@ -11,7 +11,6 @@
   padding: 16px;
   max-width: 340px;
   min-width: 260px;
-  font-family: 'Inter', sans-serif;
   position: relative;
   animation: tourFadeIn .2s ease;
 }
@@ -68,7 +67,7 @@
 }
 
 .tooltipTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400, #3a485f);
   margin: 0 0 4px;
@@ -76,7 +75,7 @@
 }
 
 .tooltipDesc {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300, #6f7a90);
   margin: 0;
@@ -117,7 +116,7 @@
 }
 
 .stepCount {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-200, #8a94a8);
   margin-left: 6px;

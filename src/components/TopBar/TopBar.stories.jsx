@@ -23,7 +23,7 @@ export const Playground = {
   render: () => (
     <div style={{ minHeight: '100vh', background: 'var(--neutral-0)' }}>
       <TopBar />
-      <div style={{ padding: 24, color: 'var(--neutral-300)', fontSize: 13, fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ padding: 24, color: 'var(--neutral-300)', fontSize: 'var(--font-md)', fontFamily: "'Inter', sans-serif" }}>
         App content sits below the top bar.
       </div>
     </div>

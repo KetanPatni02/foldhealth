@@ -50,6 +50,8 @@ export function Badge({
   icon,
   trailingIcon,
   trailingIconElement,
+  onTrailingIconClick,
+  trailingIconLabel,
   dot,
   className,
   style,
@@ -77,9 +79,22 @@ export function Badge({
       {label}
       {trailingIconElement}
       {!trailingIconElement && trailingIcon && (
-        isDownChevron(trailingIcon)
-          ? <DownChevronIcon size={13} color="currentColor" />
-          : <Icon name={toLinear(trailingIcon)} size={13} />
+        onTrailingIconClick ? (
+          <button
+            type="button"
+            className={styles.trailingButton}
+            aria-label={trailingIconLabel || 'Remove'}
+            onClick={(e) => { e.stopPropagation(); onTrailingIconClick(e); }}
+          >
+            {isDownChevron(trailingIcon)
+              ? <DownChevronIcon size={13} color="currentColor" />
+              : <Icon name={toLinear(trailingIcon)} size={13} />}
+          </button>
+        ) : (
+          isDownChevron(trailingIcon)
+            ? <DownChevronIcon size={13} color="currentColor" />
+            : <Icon name={toLinear(trailingIcon)} size={13} />
+        )
       )}
     </span>
   );

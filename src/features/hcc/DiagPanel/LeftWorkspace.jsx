@@ -3,6 +3,7 @@ import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
@@ -13,6 +14,7 @@ import {
   HISTORY as HISTORY_MOCK,
 } from '../data/ancillary';
 import { getChartDocs, makeUploadedChartDoc } from '../data/chartDocs';
+import { VISIT_TYPES } from '../reference/visitTypes';
 import { ACTIVITY, getActivityFromDb } from '../data/activity';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { dosSourceLetter } from '../dosSource';
@@ -25,7 +27,7 @@ import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
 import { Avatar } from '../../../components/Avatar/Avatar';
-import { FailReasonInline } from '../ChartDetailDrawerParts';
+import { FailReasonInline, EditDocInline } from '../ChartDetailDrawerParts';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope. Counts flow in per-render since
@@ -1245,7 +1247,10 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
   const removeChartDoc = useAppStore(s => s.removeChartDoc);
+  const updateChartDocMeta = useAppStore(s => s.updateChartDocMeta);
   const [confirmDelete, setConfirmDelete] = useState(null); // { id, name } | null
+  const [rowMenu, setRowMenu] = useState(null); // { docId, anchorRect } | null
+  const [editingDocId, setEditingDocId] = useState(null);
   // Single source of truth: `charts` is the RECORD's real docs from
   // hcc_added_charts (member-scoped). Both entry points — UploadChartDrawer
   // and the inline DocumentsUploader — write via addChartDoc, so this list
@@ -1429,39 +1434,84 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
         </div>
         {visibleList.map((d) => {
           const status = DOC_STATUS_BADGE[d.status] || DOC_STATUS_BADGE.pending;
+          const isEditing = editingDocId === d.id;
           return (
-            <div
-              key={d.id}
-              className={[styles.dataTableRow, styles.docsGrid, styles.dataTableRowClickable].join(' ')}
-              role="button"
-              tabIndex={0}
-              onClick={() => setOpenDocId(d.id)}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenDocId(d.id); } }}
-            >
-              <div className={styles.docCell}>
-                <span className={styles.docThumb}>
-                  <Icon name="custom:pdf-file" size={20} color="var(--neutral-400)" />
-                </span>
-                <div className={styles.docCellText}>
-                  <div className={styles.docCellName}>{d.name}</div>
-                  <div className={styles.docCellMeta}>
-                    {[d.type, d.date, d.role ? `${d.uploadedBy} (${d.role})` : d.uploadedBy].filter(Boolean).join(' • ')}
+            <div key={d.id}>
+              <div
+                className={[styles.dataTableRow, styles.docsGrid, styles.dataTableRowClickable].join(' ')}
+                role="button"
+                tabIndex={0}
+                onClick={() => setOpenDocId(d.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenDocId(d.id); } }}
+              >
+                <div className={styles.docCell}>
+                  <span className={styles.docThumb}>
+                    <Icon name="custom:pdf-file" size={20} color="var(--neutral-400)" />
+                  </span>
+                  <div className={styles.docCellText}>
+                    <div className={styles.docCellName}>{d.name}</div>
+                    <div className={styles.docCellMeta}>
+                      {[d.type, d.date, d.role ? `${d.uploadedBy} (${d.role})` : d.uploadedBy].filter(Boolean).join(' • ')}
+                    </div>
                   </div>
                 </div>
+                <Badge size="M" variant={status.variant} label={status.label} />
+                <div className={styles.dataTableActions} onClick={(e) => e.stopPropagation()}>
+                  <ActionButton
+                    icon="solar:menu-dots-linear"
+                    size="S"
+                    tooltip="More actions"
+                    onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setRowMenu(prev => (prev?.docId === d.id ? null : { docId: d.id, anchorRect: r }));
+                    }}
+                  />
+                </div>
               </div>
-              <Badge size="M" variant={status.variant} label={status.label} />
-              <div className={styles.dataTableActions} onClick={(e) => e.stopPropagation()}>
-                <ActionButton
-                  icon="solar:trash-bin-trash-linear"
-                  size="S"
-                  tooltip="Delete document"
-                  onClick={() => setConfirmDelete({ id: d.id, name: d.name })}
-                />
-              </div>
+              {isEditing && (() => {
+                const doc = charts.find(c => c.id === d.id);
+                return (
+                  <EditDocInline
+                    doc={doc}
+                    onCancel={() => setEditingDocId(null)}
+                    onSave={({ caption, docType, visitType }) => {
+                      updateChartDocMeta(member.id, d.id, {
+                        n: caption,
+                        caption,
+                        t: docType,
+                        vt: visitType || undefined,
+                      });
+                      showToast(`Updated ${caption}`);
+                      setEditingDocId(null);
+                    }}
+                  />
+                );
+              })()}
             </div>
           );
         })}
       </div>
+      {rowMenu && (() => {
+        const doc = charts.find(c => c.id === rowMenu.docId);
+        const label = doc?.n || doc?.caption || 'Document';
+        return (
+          <MenuPopover
+            anchorRect={rowMenu.anchorRect}
+            width={168}
+            align="right"
+            items={[
+              { key: 'edit',   icon: 'solar:pen-linear', label: 'Edit' },
+              { key: 'delete', icon: 'solar:trash-bin-2-linear', label: 'Delete', danger: true },
+            ]}
+            onClose={() => setRowMenu(null)}
+            onSelect={(key) => {
+              setRowMenu(null);
+              if (key === 'edit') { setEditingDocId(rowMenu.docId); return; }
+              if (key === 'delete') setConfirmDelete({ id: rowMenu.docId, name: label });
+            }}
+          />
+        );
+      })()}
       {confirmDelete && (
         <ConfirmDialog variant="destructive"
           title="Delete document?"
@@ -1530,6 +1580,7 @@ function DocumentsUploader() {
   const [failInline, setFailInline] = useState(false);
   const [failDetails, setFailDetails] = useState(null); // { reasons, note } | null
   const [category, setCategory] = useState(DOC_CATEGORIES[0]);
+  const [visitType, setVisitType] = useState('');
   const [caption, setCaption] = useState('');
 
   // Simulated upload — progress 0→100 in ~1.2s, then phase='ready'.
@@ -1554,6 +1605,7 @@ function DocumentsUploader() {
     setFile(null); setProgress(0); setError(''); setCaption('');
     setDocStatus(null); setFailInline(false); setFailDetails(null);
     setCategory(DOC_CATEGORIES[0]);
+    setVisitType('');
     setPhase('empty');
   };
 
@@ -1605,6 +1657,7 @@ function DocumentsUploader() {
       file,
       caption: caption.trim(),
       docType: category,
+      visitType,
       status: docStatus,
     });
     addChartDoc(diagPanelMemberId, doc, file);
@@ -1720,6 +1773,10 @@ function DocumentsUploader() {
               placeholder="HCC80 Evidence Document"
             />
           </label>
+          {/* Category + Visit Type share one row — Visit Type mirrors the
+              HCC worklist's Visit Type column so a document uploaded from
+              here can be linked back to the same encounter categories the
+              DOS rows show. Visit Type is optional. */}
           <div className={styles.docUploaderFormRow}>
             <label className={styles.docUploaderField}>
               <span className={styles.docUploaderFieldLabel}>Document Category</span>
@@ -1731,30 +1788,41 @@ function DocumentsUploader() {
                 {DOC_CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </label>
-            {/* Document Status — required. Pass/Fail pills match the pattern
-                from UploadChartDrawer; Fail opens the shared reason picker
-                inline (controlled mode, no Confirm/Cancel — the outer Upload
-                button saves everything on click). */}
-            <div className={styles.docUploaderField}>
-              <span className={styles.docUploaderFieldLabel}>
-                Document Status <span className={styles.docUploaderRequired}>•</span>
-              </span>
-              <div className={styles.docStatusRow}>
-                <button
-                  type="button"
-                  className={[styles.docStatusPill, docStatus === 'Passed' ? styles.docStatusPass : ''].filter(Boolean).join(' ')}
-                  onClick={handlePassClick}
-                >
-                  Pass
-                </button>
-                <button
-                  type="button"
-                  className={[styles.docStatusPill, docStatus === 'Failed' ? styles.docStatusFail : ''].filter(Boolean).join(' ')}
-                  onClick={handleFailClick}
-                >
-                  Fail
-                </button>
-              </div>
+            <label className={styles.docUploaderField}>
+              <span className={styles.docUploaderFieldLabel}>Visit Type</span>
+              <select
+                className={styles.docUploaderSelect}
+                value={visitType}
+                onChange={(e) => setVisitType(e.target.value)}
+              >
+                <option value="">Select Visit Type</option>
+                {VISIT_TYPES.map(vt => <option key={vt} value={vt}>{vt}</option>)}
+              </select>
+            </label>
+          </div>
+          {/* Document Status — required. Pass/Fail pills match the pattern
+              from UploadChartDrawer; Fail opens the shared reason picker
+              inline (controlled mode, no Confirm/Cancel — the outer Upload
+              button saves everything on click). */}
+          <div className={styles.docUploaderField}>
+            <span className={styles.docUploaderFieldLabel}>
+              Document Status <span className={styles.docUploaderRequired}>•</span>
+            </span>
+            <div className={styles.docStatusRow}>
+              <button
+                type="button"
+                className={[styles.docStatusPill, docStatus === 'Passed' ? styles.docStatusPass : ''].filter(Boolean).join(' ')}
+                onClick={handlePassClick}
+              >
+                Pass
+              </button>
+              <button
+                type="button"
+                className={[styles.docStatusPill, docStatus === 'Failed' ? styles.docStatusFail : ''].filter(Boolean).join(' ')}
+                onClick={handleFailClick}
+              >
+                Fail
+              </button>
             </div>
           </div>
           {failInline && (
@@ -1774,13 +1842,13 @@ function DocumentsUploader() {
       <div className={styles.docUploaderActions}>
         <Button
           variant="primary"
-          size="S"
+          size="L"
           disabled={!canSubmit}
           onClick={onSubmit}
         >
           Upload
         </Button>
-        <Button variant="secondary" size="S" onClick={onCancel}>Cancel</Button>
+        <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
       </div>
     </div>
   );

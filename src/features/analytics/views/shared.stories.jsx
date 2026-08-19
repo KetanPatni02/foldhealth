@@ -65,7 +65,7 @@ const WIDGETS = {
   ),
   'card': () => (
     <div style={{ width: 500 }}>
-      <Card title="Quality Summary" sub="YTD 2025" actions={<button style={{ border: 'none', background: 'none', color: 'var(--primary-300)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>Full View →</button>}>
+      <Card title="Quality Summary" sub="YTD 2025" actions={<button style={{ border: 'none', background: 'none', color: 'var(--primary-300)', cursor: 'pointer', fontSize: 'var(--font-md)', fontWeight: 500 }}>Full View →</button>}>
         <ProgressBar label="AWV Completion" value="61%" pct={61} color="amber" sub="Target 80% · 847 unscheduled" />
         <ProgressBar label="Diabetes HbA1c Control" value="72%" pct={72} color="teal" sub="Target 70% ✓" />
         <ProgressBar label="BP Control (<140/90)" value="64%" pct={64} color="purple" sub="Target 70%" />

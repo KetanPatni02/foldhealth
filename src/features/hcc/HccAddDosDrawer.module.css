@@ -252,7 +252,7 @@
 /* ── ICD Codes ──────────────────────────────────────────────────── */
 .icdSection { display: flex; flex-direction: column; gap: 10px; }
 .icdEmptyHint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }

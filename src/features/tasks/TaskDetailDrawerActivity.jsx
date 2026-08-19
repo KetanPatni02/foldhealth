@@ -1,18 +1,11 @@
-import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Button } from '../../components/Button/Button';
-import { Badge } from '../../components/Badge/Badge';
-import { Avatar } from '../../components/Avatar/Avatar';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { Toggle } from '../../components/Toggle/Toggle';
-import { Select } from '../../components/Select/Select';
-import { LABEL_OPTIONS, TITLE_MAX, getInitials, isOverdue, formatDateFriendly, STATUS_LABELS, STATUS_BADGE_VARIANTS } from './TasksView.utils';
-import { PriorityIcon } from './TasksViewIcons';
-import { TaskDatePicker, DetailDropdown } from './TasksViewDropdowns';
+import { TabStrip } from '../../components/TabStrip/TabStrip';
+import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
 import styles from './TasksView.module.css';
 
 export function TaskDetailDrawerActivity({
-  activityToggle, setActivityToggle, activityTab, setActivityTab, handleAddComment, activityLogItems, auditLog,
+  activityToggle, setActivityToggle, activityTab, setActivityTab, handleAddComment, activityLogItems,
 }) {
   return (
     <>
@@ -26,28 +19,25 @@ export function TaskDetailDrawerActivity({
               size="S"
             />
           </div>
-          <div className={styles.activityTabs}>
-            {['All', 'Comments', 'History'].map(tab => (
-              <button
-                key={tab}
-                className={`${styles.activityTabBtn} ${activityTab === tab ? styles.activityTabActive : ''}`}
-                onClick={() => setActivityTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+          <TabStrip
+            items={[
+              { key: 'All', label: 'All' },
+              { key: 'Comments', label: 'Comments' },
+              { key: 'History', label: 'History' },
+            ]}
+            activeKey={activityTab}
+            onChange={setActivityTab}
+            embedded
+          />
 
           {/* Comment input — supports @mentions */}
           <CommentComposer onSubmit={handleAddComment} />
 
-          {/* Activity log — real audit entries */}
-          <div className={styles.activityLog}>
-            {activityLogItems}
-            {auditLog.length === 0 && (
-              <div className={styles.subtaskEmpty}>No activity yet.</div>
-            )}
-          </div>
+          {/* Activity log — real audit entries, rendered by the shared
+              ActivityLog primitive so date • time • by meta line and the
+              typed entry variants (comment / status change / assignee change)
+              match the HCC / HEDIS drawers. */}
+          <ActivityLog entries={activityLogItems} emptyLabel="No activity yet." />
         </div>
     </>
   );

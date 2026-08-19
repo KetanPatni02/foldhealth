@@ -40,7 +40,7 @@ function FoldTooltip({ active, payload, label, prefix = '$', suffix = '' }) {
       boxShadow: 'var(--shadow-card)', border: `1px solid ${COLORS.neutral100}`,
       minWidth: 120,
     }}>
-      <div style={{ fontSize: 12, color: COLORS.neutral200, fontWeight: 500, marginBottom: 6, ...FONT }}>
+      <div style={{ fontSize: 'var(--font-sm)', color: COLORS.neutral200, fontWeight: 500, marginBottom: 6, ...FONT }}>
         {label}
       </div>
       {payload.map((p, i) => (
@@ -48,10 +48,10 @@ function FoldTooltip({ active, payload, label, prefix = '$', suffix = '' }) {
           display: 'flex', alignItems: 'center', gap: 6, marginBottom: i < payload.length - 1 ? 4 : 0,
         }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: COLORS.neutral300, flex: 1, ...FONT }}>
+          <span style={{ fontSize: 'var(--font-sm)', color: COLORS.neutral300, flex: 1, ...FONT }}>
             {p.name || p.dataKey}
           </span>
-          <span style={{ fontSize: 14, color: COLORS.neutral300, fontWeight: 500, ...FONT }}>
+          <span style={{ fontSize: 'var(--font-base)', color: COLORS.neutral300, fontWeight: 500, ...FONT }}>
             {prefix}{typeof p.value === 'number' ? p.value.toLocaleString() : p.value}{suffix}
           </span>
         </div>
@@ -61,7 +61,7 @@ function FoldTooltip({ active, payload, label, prefix = '$', suffix = '' }) {
 }
 
 // ─── Shared axis tick style ───
-const AXIS_TICK = { fontSize: 12, fill: COLORS.neutral200, ...FONT };
+const AXIS_TICK = { fontSize: 'var(--font-sm)', fill: COLORS.neutral200, ...FONT };
 const GRID_STYLE = { stroke: COLORS.neutral100, strokeDasharray: '3 3' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DEFAULT_SAVINGS_VALUES = [0.18, 0.34, 0.48, 0.62, 0.78, 0.88, 0.96, 1.04, 1.12, 1.20, 1.26, 1.32];
@@ -75,7 +75,7 @@ const BENCHMARK_PMPM = 910; // $910 PMPM benchmark — only shown in PMPM mode
 
 function TcocLegend({ isTotal }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '4px 14px 8px', ...FONT, fontSize: 12, color: 'var(--neutral-300)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '4px 14px 8px', ...FONT, fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <span style={{ width: 18, height: 2, background: 'var(--primary-300)', borderRadius: 1, display: 'inline-block' }} />
         {isTotal ? 'Total Cost' : 'Actual PMPM'}
@@ -128,7 +128,7 @@ export function TcocLineChart({ tab, data, mode = 'pmpm' }) {
                 stroke={COLORS.neutral200}
                 strokeDasharray="4 4"
                 strokeWidth={1.5}
-                label={{ value: `$${BENCHMARK_PMPM}`, position: 'right', fill: 'var(--neutral-300)', fontSize: 12, ...FONT }}
+                label={{ value: `$${BENCHMARK_PMPM}`, position: 'right', fill: 'var(--neutral-300)', fontSize: 'var(--font-sm)', ...FONT }}
               />
             )}
             <Line
@@ -179,7 +179,7 @@ export function SavingsAreaChart({ data, targetLabel, targetValue }) {
           <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} tickFormatter={v => `$${v}M`} width={48} />
           <Tooltip content={<FoldTooltip prefix="$" suffix="M" />} />
           {targetValue && (
-            <ReferenceLine y={targetValue} stroke={COLORS.amber} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: targetLabel || 'Target', position: 'right', fill: COLORS.amber, fontSize: 12, ...FONT }} />
+            <ReferenceLine y={targetValue} stroke={COLORS.amber} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: targetLabel || 'Target', position: 'right', fill: COLORS.amber, fontSize: 'var(--font-sm)', ...FONT }} />
           )}
           <Area type="monotone" dataKey="savings" name="Savings" stroke={COLORS.green} strokeWidth={2} fill="url(#savingsGrad)" dot={{ r: 3, fill: COLORS.green, strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.green, stroke: COLORS.white, strokeWidth: 2 }} />
         </AreaChart>
@@ -208,7 +208,7 @@ export function RafTrendLineChart({ data, potential }) {
           <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} domain={['dataMin - 0.01', (potential || 1.15) + 0.01]} width={42} />
           <Tooltip content={<FoldTooltip prefix="" />} />
           {potential && (
-            <ReferenceLine y={potential} stroke={COLORS.primary} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: `Potential ${potential}`, position: 'right', fill: COLORS.primary, fontSize: 12, ...FONT }} />
+            <ReferenceLine y={potential} stroke={COLORS.primary} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: `Potential ${potential}`, position: 'right', fill: COLORS.primary, fontSize: 'var(--font-sm)', ...FONT }} />
           )}
           <Line type="monotone" dataKey="raf" name="Avg RAF" stroke={COLORS.secondary} strokeWidth={2} dot={{ r: 3, fill: COLORS.secondary, strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.secondary, stroke: COLORS.white, strokeWidth: 2 }} />
         </LineChart>
@@ -243,7 +243,7 @@ export function ReadmitTrendLineChart({ data, threshold }) {
           <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} width={42} domain={['dataMin - 1', 'dataMax + 1']} />
           <Tooltip content={<FoldTooltip prefix="" suffix="%" />} />
           {threshold && (
-            <ReferenceLine y={threshold} stroke={COLORS.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: `Threshold ${threshold}%`, position: 'right', fill: COLORS.green, fontSize: 12, ...FONT }} />
+            <ReferenceLine y={threshold} stroke={COLORS.green} strokeDasharray="4 4" strokeWidth={1.5} label={{ value: `Threshold ${threshold}%`, position: 'right', fill: COLORS.green, fontSize: 'var(--font-sm)', ...FONT }} />
           )}
           <Area type="monotone" dataKey="rate" name="Readmit Rate" stroke={COLORS.red} strokeWidth={2} fill="url(#readmitGrad)" dot={{ r: 3, fill: COLORS.red, strokeWidth: 0 }} activeDot={{ r: 5, fill: COLORS.red, stroke: COLORS.white, strokeWidth: 2 }} />
         </AreaChart>

@@ -76,10 +76,10 @@ function StoryFrame({ theme, navStyle }) {
     >
       <Sidebar />
       <div style={{ flex: 1, padding: 24, fontFamily: "'Inter', sans-serif", color: 'var(--neutral-400)' }}>
-        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-500)', marginBottom: 6 }}>
+        <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)', marginBottom: 6 }}>
           Sidebar preview — theme: {theme}, navStyle: {navStyle}
         </div>
-        <p style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.6, maxWidth: 520 }}>
+        <p style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', lineHeight: 1.6, maxWidth: 520 }}>
           Click any nav item to see the pill glide to it (spring-eased ~360ms) and the icon
           crossfade from its linear to its bold Solar variant. Use the Controls tab to switch
           between the Foldhealth default, dark, blue, and Astrana-plum themes, or flip navStyle

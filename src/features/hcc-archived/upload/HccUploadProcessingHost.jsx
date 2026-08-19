@@ -82,12 +82,12 @@ export function HccUploadProcessingHost() {
           }}>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: '#16181D' }}>
+                <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)' }}>
                   Processing Document
                 </span>
                 <SparkleIcon />
               </div>
-              <div style={{ fontSize: 12, color: '#8A94A8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 Running AI extraction on {fileName}
               </div>
             </div>
@@ -136,7 +136,7 @@ export function HccUploadProcessingHost() {
                     <div style={{ width: 16, height: 16, borderRadius: '50%', border: '0.67px solid #8A94A8', background: '#fff', flexShrink: 0 }} />
                   )}
                   <span style={{
-                    fontSize: 14,
+                    fontSize: 'var(--font-base)',
                     color: '#3A485F',
                     fontWeight: 400,
                   }}>
@@ -157,7 +157,7 @@ export function HccUploadProcessingHost() {
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: 0,
                 fontFamily: 'Inter, sans-serif',
-                fontSize: 14, color: '#6F7A90',
+                fontSize: 'var(--font-base)', color: 'var(--neutral-300)',
               }}
             >
               <Icon name="solar:trash-bin-2-linear" size={16} color="#6F7A90" />
@@ -184,10 +184,10 @@ export function HccUploadProcessingHost() {
               <svg width="14" height="11" viewBox="0 0 16 13" fill="none"><path d="M1.5 6.5L5.5 10.5L14.5 1.5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </div>
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <div style={{ fontSize: 14, fontWeight: 500, color: '#16181D' }}>
+              <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)' }}>
                 Document Extracted &amp; Processed
               </div>
-              <div style={{ fontSize: 12, color: '#8A94A8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {fileName}
               </div>
             </div>
@@ -210,7 +210,7 @@ export function HccUploadProcessingHost() {
                 width: '100%', height: 32,
                 background: '#8C5AE2', color: '#fff',
                 border: 'none', borderRadius: 4,
-                fontSize: 14, fontWeight: 500, cursor: 'pointer',
+                fontSize: 'var(--font-base)', fontWeight: 500, cursor: 'pointer',
                 fontFamily: 'Inter, sans-serif',
                 transition: 'background 0.15s',
               }}

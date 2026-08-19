@@ -14,7 +14,7 @@ import styles from './Link.module.css';
  *                                          actions sitting next to a primary one
  *  - onClick    (function)
  *  - className  (string)
- *  - style      (object)   — e.g. { fontSize: 12 }
+ *  - style      (object)   — e.g. { fontSize: 'var(--font-sm)' }
  */
 export function Link({ children, variant = 'primary', onClick, className, style, ...rest }) {
   return (

@@ -5,8 +5,7 @@
   border-radius: 6px;
   background: var(--neutral-0);
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   line-height: 1.2;
   transition: border-color 120ms ease, box-shadow 120ms ease;

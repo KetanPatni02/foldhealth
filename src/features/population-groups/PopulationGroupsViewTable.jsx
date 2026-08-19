@@ -1,11 +1,14 @@
 import { Input as FoldInput } from '../../components/Input/Input';
 import { Button } from '../../components/Button/Button';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Badge } from '../../components/Badge/Badge';
 import { SearchIconButton } from '../../components/SearchIconButton/SearchIconButton';
+import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { PopulationGroupsRow } from './PopulationGroupsRow.jsx';
 import { BulkSelectIcon } from './PopulationGroupsViewPanels.jsx';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
+import { ImportRuleDrawer } from './ImportRuleDrawer';
 import { FOLD_DB_MAP } from './data/fold-db.js';
 
 /* Export a group's members as CSV — same columns the edit drawer's download
@@ -44,15 +47,35 @@ const Input = (props) => <FoldInput {...props} />;
 const POP_COLUMNS = [
   { key: 'select',   showCheckbox: true, sticky: 'left', left: 0, width: 36 },
   { key: 'name',     label: 'Group Name', sticky: 'left', left: 36, width: 420 },
-  { key: 'count',    label: 'Active Members',   sortKey: 'count',      sortType: 'number', width: 130 },
-  { key: 'inactive', label: 'Inactive Members', sortKey: 'inactive',   sortType: 'number', width: 140 },
-  { key: 'type',     label: 'Type', width: 110 },
-  { key: 'created',  label: 'Created Date',     sortKey: '_createdTs', sortType: 'date', width: 130 },
-  { key: 'updated',  label: 'Updated Date',     sortKey: '_updatedTs', sortType: 'date', width: 130 },
+  {
+    key: 'count', label: 'Active Members', sortKey: 'count', sortType: 'number', width: 130,
+    renderCell: (g) => (g.count != null ? g.count : '–'),
+  },
+  {
+    key: 'inactive', label: 'Inactive Members', sortKey: 'inactive', sortType: 'number', width: 140,
+    renderCell: (g) => (g.inactive != null ? g.inactive : '–'),
+  },
+  {
+    key: 'type', label: 'Type', width: 110,
+    renderCell: (g) => (
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        {g.type}
+        {g.status === 'draft' && <Badge tone="warning" size="S" label="Draft" />}
+      </span>
+    ),
+  },
+  {
+    key: 'created', label: 'Created Date', sortKey: '_createdTs', sortType: 'date', width: 130,
+    renderCell: (g) => g.created,
+  },
+  {
+    key: 'updated', label: 'Updated Date', sortKey: '_updatedTs', sortType: 'date', width: 130,
+    renderCell: (g) => g.updated,
+  },
   { key: 'actions',  label: 'Action', sticky: 'right', width: 150 },
 ];
 
-export function PopulationGroupsViewTable({ vm, onToggleSidebar }) {
+export function PopulationGroupsViewTable({ vm, onImportRule }) {
   const {
     searchQuery, setSearchQuery, searchOpen, setSearchOpen,
     checkedRows, setCheckedRows,
@@ -73,12 +96,13 @@ export function PopulationGroupsViewTable({ vm, onToggleSidebar }) {
     });
   };
 
-  /* ── Sub-header ── (left padding tuned so the collapse icon's left edge aligns with the table checkbox) */
+  /* ── Sub-header ── (4px left inset so the 28px collapse handle centers on
+     the 16px table checkbox; same math as SectionTitleBar.hasLeading) */
   const header = (
-    <div style={{ padding:'10px 20px 10px 6px', borderBottom:'0.5px solid var(--neutral-150)', display:'flex', alignItems:'center', flexShrink:0 }}>
+    <div style={{ padding:'10px 20px 10px 4px', borderBottom:'0.5px solid var(--neutral-150)', display:'flex', alignItems:'center', flexShrink:0 }}>
       <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-        <ActionButton icon="solar:sidebar-minimalistic-linear" size="L" tooltip="Collapse sidebar" iconColor="var(--neutral-300)" onClick={onToggleSidebar} />
-        <span style={{ fontSize:16, fontWeight:600, color:'var(--neutral-400)' }}>Population Groups</span>
+        <SubnavToggle />
+        <span style={{ fontSize: 'var(--font-lg)', fontWeight: 600, color:'var(--neutral-400)' }}>Population Groups</span>
       </div>
 
       <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0, marginLeft:'auto' }}>
@@ -103,8 +127,8 @@ export function PopulationGroupsViewTable({ vm, onToggleSidebar }) {
 
         <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
 
-        {/* Import Rule — neutral button, no icon */}
-        <Button variant="secondary" size="L">Import Rule</Button>
+        {/* Import Rule — opens the templates drawer */}
+        <Button variant="secondary" size="L" onClick={onImportRule}>Import Rule</Button>
 
         <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
 
@@ -120,18 +144,22 @@ export function PopulationGroupsViewTable({ vm, onToggleSidebar }) {
     <>
     <WorklistShell
       header={header}
+      worklistKey="population-groups"
       columns={POP_COLUMNS}
       sortKey={pgSortKey}
       sortDir={pgSortDir}
       onSort={pgRequestSort}
       rows={pagedGroups}
-      renderRow={(g) => (
+      renderRow={(g, _i, ctx) => (
         <PopulationGroupsRow
           key={g.id}
           group={g}
+          columns={ctx.orderedColumns}
+          hiddenSet={ctx.hiddenSet}
           selected={checkedRows.has(g.id)}
           onToggle={() => setCheckedRows(prev => { const n = new Set(prev); if (n.has(g.id)) n.delete(g.id); else n.add(g.id); return n; })}
-          onEdit={() => openEditModal(g)}
+          onEdit={() => openEditModal(g, { startInEdit: true })}
+          onRowClick={g.type === 'Dynamic' ? () => openEditModal(g) : undefined}
           onDelete={() => setDeleteTargets([g])}
           onDownload={() => downloadMemberList(g, showToast)}
         />

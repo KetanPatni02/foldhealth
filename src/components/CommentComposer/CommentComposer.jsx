@@ -252,10 +252,9 @@ export function CommentComposer({
         aria-label={effectivePlaceholder}
         contentEditable
         suppressContentEditableWarning
-        className={styles.textarea}
+        className={[styles.textarea, expanded ? styles.textareaExpanded : ''].filter(Boolean).join(' ')}
         data-empty={text.length === 0 ? 'true' : 'false'}
         data-placeholder={effectivePlaceholder}
-        style={{ minHeight: expanded ? 62 : 32 }}
         onInput={handleInput}
         onKeyDown={handleKeyDown}
         onKeyUp={handleSelect}

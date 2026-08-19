@@ -90,9 +90,9 @@ export function ExecutiveTcocSection({
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--neutral-100)' }}>
         {costBySettingInline.map(c => (
           <div key={c.label} style={{ textAlign: 'center', padding: '10px 6px', background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 6 }}>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)', marginBottom: 4 }}>{c.label}</div>
-            <div style={{ fontSize: 20, fontWeight: 500, color: c.color, lineHeight: 1.2 }}>{c.value}</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginTop: 3 }}>{c.note}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginBottom: 4 }}>{c.label}</div>
+            <div style={{ fontSize: 'var(--font-2xl)', fontWeight: 500, color: c.color, lineHeight: 1.2 }}>{c.value}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', marginTop: 3 }}>{c.note}</div>
           </div>
         ))}
       </div>
@@ -142,7 +142,7 @@ export function ExecutiveCareSection({ careProgramData, carePrograms, showToast 
             )}
             {carePrograms.map((p, i) => (
               <tr key={i} style={{ cursor: 'pointer' }} onClick={() => showToast?.(`Navigating to Care Management → Programs → ${p.abbr}`)}>
-                <td className={s.fw600}>{p.abbr}<div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>{p.members} mbrs</div></td>
+                <td className={s.fw600}>{p.abbr}<div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{p.members} mbrs</div></td>
                 <td className={s.r}>
                   <span className={`${s.stPill} ${p.status === 'green' ? s.stGreen : p.status === 'amber' ? s.stAmber : s.stRed}`}>
                     {p.status === 'green' ? 'On Track' : p.status === 'amber' ? 'Review' : 'At Risk'}
@@ -150,7 +150,7 @@ export function ExecutiveCareSection({ careProgramData, carePrograms, showToast 
                 </td>
                 <td className={`${s.r} ${s.mono} ${s.valG}`}>{p.saved}</td>
                 <td className={`${s.r} ${s.mono}`} style={{ fontWeight: 500 }}>{p.roi}</td>
-                <td style={{ fontSize: 12, color: p.status === 'red' ? 'var(--status-error)' : 'var(--status-warning)', maxWidth: 200 }}>{p.alert}</td>
+                <td style={{ fontSize: 'var(--font-sm)', color: p.status === 'red' ? 'var(--status-error)' : 'var(--status-warning)', maxWidth: 200 }}>{p.alert}</td>
               </tr>
             ))}
           </tbody>
@@ -175,20 +175,20 @@ export function ExecutiveSavingsSection({
     >
       <div style={{ display: 'flex', gap: 20, marginBottom: 12, flexWrap: 'wrap', alignItems: 'baseline' }}>
         <div>
-          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--status-success)' }}>{periodMode === 'r12' ? '$1.8M' : '$1.2M'}</div>
-          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Savings {periodMode === 'r12' ? 'Rolling 12M' : 'YTD'}</div>
+          <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: 'var(--status-success)' }}>{periodMode === 'r12' ? '$1.8M' : '$1.2M'}</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 400, color: 'var(--neutral-200)' }}>Savings {periodMode === 'r12' ? 'Rolling 12M' : 'YTD'}</div>
         </div>
         <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
-          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--status-warning)' }}>{periodMode === 'r12' ? '82%' : '78%'}</div>
-          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Prob. of hitting MSR</div>
+          <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: 'var(--status-warning)' }}>{periodMode === 'r12' ? '82%' : '78%'}</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 400, color: 'var(--neutral-200)' }}>Prob. of hitting MSR</div>
         </div>
         <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
-          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--neutral-500)' }}>4.1</div>
-          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Quality Composite</div>
+          <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: 'var(--neutral-500)' }}>4.1</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 400, color: 'var(--neutral-200)' }}>Quality Composite</div>
         </div>
         <div style={{ borderLeft: '1px solid var(--neutral-100)', paddingLeft: 16 }}>
-          <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--neutral-500)' }}>{periodMode === 'r12' ? '$3.8M' : '$3.2M'}</div>
-          <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)' }}>Full-year projection</div>
+          <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: 'var(--neutral-500)' }}>{periodMode === 'r12' ? '$3.8M' : '$3.2M'}</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 400, color: 'var(--neutral-200)' }}>Full-year projection</div>
         </div>
       </div>
       {savingsData === null ? (
@@ -198,7 +198,7 @@ export function ExecutiveSavingsSection({
       ) : (
         <SavingsAreaChart data={savingsTrajectory} targetLabel="MSR $2.8M" targetValue={2.8} />
       )}
-      <div style={{ fontSize: 12, color: 'var(--neutral-200)', padding: '8px 14px 4px', borderTop: '1px solid var(--neutral-100)', marginTop: 8 }}>
+      <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', padding: '8px 14px 4px', borderTop: '1px solid var(--neutral-100)', marginTop: '0.5rem' }}>
         MSSP Track 1B &middot; Performance Year 2025 &middot; Quality composite secures maximum sharing rate
       </div>
     </Card>

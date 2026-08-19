@@ -14,7 +14,7 @@
 
 .td {
   padding: 8px 14px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   vertical-align: middle;
 }
@@ -41,9 +41,9 @@
 }
 
 .memberCell { display: flex; align-items: center; gap: 12px; }
-.memberName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
-.memberDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
-.memberMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+.memberName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.memberDemo { font-size: var(--font-md); font-weight: 400; color: var(--neutral-300); }
+.memberMeta { font-size: var(--font-md); color: var(--neutral-200); margin-top: 3px; }
 
 .rowActions { display: inline-flex; align-items: center; gap: 8px; }
 .actionDivider { width: 1px; height: 16px; background: var(--neutral-150); }
@@ -56,5 +56,5 @@
   padding: 60px 24px;
   color: var(--neutral-300);
 }
-.emptyTitle { margin: 0; font-size: 16px; font-weight: 500; color: var(--neutral-400); }
-.emptyText { margin: 0; font-size: 14px; text-align: center; max-width: 340px; }
+.emptyTitle { margin: 0; font-size: var(--font-lg); font-weight: 500; color: var(--neutral-400); }
+.emptyText { margin: 0; font-size: var(--font-base); text-align: center; max-width: 340px; }

@@ -39,7 +39,7 @@
   background: linear-gradient(142deg, var(--neutral-50) 13%, var(--neutral-100) 91%);
 }
 .emptyText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   line-height: 1.2;
 }

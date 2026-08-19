@@ -113,7 +113,7 @@ function StepTemplateSelect({ agentName, setAgentName, selectedTemplate, setSele
           {filtered.length === 0 && (
             <div className={styles.emptyState}>
               <Icon name="solar:magnifer-linear" size={32} color="var(--neutral-150)" />
-              <p style={{ color: 'var(--neutral-300)', fontSize: 14 }}>No templates match your search</p>
+              <p style={{ color: 'var(--neutral-300)', fontSize: 'var(--font-base)' }}>No templates match your search</p>
             </div>
           )}
         </div>

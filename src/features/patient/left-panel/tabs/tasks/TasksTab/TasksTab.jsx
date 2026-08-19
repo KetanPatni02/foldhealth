@@ -38,11 +38,17 @@ function MetaCounts({ task }) {
   );
 }
 
-function TaskRow({ task, done, onToggle }) {
+function TaskRow({ task, done, onToggle, onClick }) {
   const hasMeta = task.subtasks > 0 || task.attachments > 0 || task.comments > 0;
   return (
-    <div className={styles.row}>
-      <div className={styles.checkCell}>
+    <div
+      className={`${styles.row} ${onClick ? styles.rowClickable : ''}`}
+      onClick={onClick ? () => onClick(task) : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(task); } } : undefined}
+    >
+      <div className={styles.checkCell} onClick={e => e.stopPropagation()}>
         {done ? (
           <button className={styles.checkBtn} onClick={onToggle} aria-label="Mark incomplete">
             <Icon name="solar:check-circle-bold" size={20} color="var(--status-success)" />
@@ -62,7 +68,7 @@ function TaskRow({ task, done, onToggle }) {
   );
 }
 
-function TaskSection({ title, tasks, done, overdue, onToggle }) {
+function TaskSection({ title, tasks, done, overdue, onToggle, onTaskClick }) {
   if (!tasks.length) return null;
   return (
     <div className={styles.section}>
@@ -74,48 +80,68 @@ function TaskSection({ title, tasks, done, overdue, onToggle }) {
         <span className={styles.dueCell}>Due</span>
       </div>
       {tasks.map(t => (
-        <TaskRow key={t.id} task={{ ...t, overdue }} done={done} onToggle={() => onToggle(t.id)} />
+        <TaskRow
+          key={t.id}
+          task={{ ...t, overdue }}
+          done={done}
+          onToggle={() => onToggle(t.id)}
+          onClick={onTaskClick ? () => onTaskClick({ ...t, overdue }, { done, overdue }) : undefined}
+        />
       ))}
     </div>
   );
 }
 
-export function TasksTab() {
-  const [scope, setScope] = useState('My Tasks');
-  const [completedIds, setCompletedIds] = useState(() => new Set());
+export function TasksTab({
+  data = PATIENT_TASKS_MOCK,
+  scopes = SCOPES,
+  hideToolbar = false,
+  completedIds: completedIdsProp,
+  onToggle: onToggleProp,
+  onTaskClick,
+}) {
+  const [scope, setScope] = useState(scopes[0]);
+  const [localCompleted, setLocalCompleted] = useState(() => new Set());
+  const completedIds = completedIdsProp ?? localCompleted;
 
-  const toggle = (id) =>
-    setCompletedIds(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggle = (id) => {
+    if (onToggleProp) { onToggleProp(id); return; }
+    setLocalCompleted(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  };
 
-  const data = PATIENT_TASKS_MOCK;
   // Checking a pending/overdue task removes it from its section (marks it done).
   const pending = data.pending.filter(t => !completedIds.has(t.id));
   const overdue = data.overdue.filter(t => !completedIds.has(t.id));
+  const completed = data.completed || [];
+  const empty = !pending.length && !overdue.length && !completed.length;
 
   return (
-    <div className={styles.tab}>
-      <div className={styles.toolbar}>
-        <div className={styles.scopeTabs}>
-          {SCOPES.map(s => (
-            <button
-              key={s}
-              className={`${styles.scopeTab} ${scope === s ? styles.scopeTabActive : ''}`}
-              onClick={() => setScope(s)}
-            >
-              {s}
-            </button>
-          ))}
+    <div className={hideToolbar ? styles.tabFlush : styles.tab}>
+      {!hideToolbar && (
+        <div className={styles.toolbar}>
+          <div className={styles.scopeTabs}>
+            {scopes.map(s => (
+              <button
+                key={s}
+                className={`${styles.scopeTab} ${scope === s ? styles.scopeTabActive : ''}`}
+                onClick={() => setScope(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <div className={styles.toolbarActions}>
+            <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
+            <ActionButton icon="solar:clipboard-add-linear" size="S" tooltip="Add task" />
+            <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+          </div>
         </div>
-        <div className={styles.toolbarActions}>
-          <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
-          <ActionButton icon="solar:clipboard-add-linear" size="S" tooltip="Add task" />
-          <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-        </div>
-      </div>
+      )}
 
-      <TaskSection title="Pending" tasks={pending} done={false} overdue={false} onToggle={toggle} />
-      <TaskSection title="Overdue" tasks={overdue} done={false} overdue onToggle={toggle} />
-      <TaskSection title="Completed" tasks={data.completed} done onToggle={toggle} />
+      <TaskSection title="Pending" tasks={pending} done={false} overdue={false} onToggle={toggle} onTaskClick={onTaskClick} />
+      <TaskSection title="Overdue" tasks={overdue} done={false} overdue onToggle={toggle} onTaskClick={onTaskClick} />
+      <TaskSection title="Completed" tasks={completed} done onToggle={toggle} onTaskClick={onTaskClick} />
+      {empty && <div className={styles.empty}>No tasks match your search or filters.</div>}
     </div>
   );
 }

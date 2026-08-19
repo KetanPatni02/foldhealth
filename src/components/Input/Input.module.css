@@ -2,17 +2,23 @@
  * Figma: Fold-Pixel, node 25:21239
  *
  * States: Placeholder, Filled, Hover, Focus, Disabled, Error, Error Hover.
- * Structural slots (label, helperText, errorText, password-toggle) are
- * wrapped in `.field` only when actually used — bare inputs stay bare.
+ * Slots (leading icon / priority / trailing text / chevron / trailing
+ * action / trailing button pill / character limit / password toggle) all
+ * render inside `.shell` around the borderless `<input>`.
+ *
+ * Bare-input fast path (`.input` on a top-level <input>) is preserved for
+ * the 20+ callers that pass just a placeholder inside their own container.
  */
+
+/* ── Bare-input fast path ── */
 
 .input {
   height: 32px;
   width: 100%;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: 4px;
   padding: 0 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   background: var(--neutral-0);
@@ -22,97 +28,148 @@
   box-sizing: border-box;
 }
 
-/* :not(:disabled) so disabled fields don't gain the hover border. */
-.input:not(:disabled):hover {
-  border-color: var(--neutral-200);
-}
-
+.input:not(:disabled):hover,
 .input:focus {
   border-color: var(--primary-300);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-300) 12%, transparent);
+  box-shadow: 0 0 0 2px var(--primary-100);
 }
 
 .input::placeholder {
-  color: var(--neutral-200);
+  color: var(--placeholder-text);
   font-weight: 400;
+  /* Chrome/Firefox default `::placeholder` to opacity: 0.55 — force full so
+     the token color hits the pixel we picked. */
+  opacity: 1;
 }
 
 .input:disabled {
   background: var(--neutral-50);
-  color: var(--neutral-200);
+  color: var(--neutral-150);
   border-color: var(--neutral-150);
   cursor: not-allowed;
 }
 .input:disabled::placeholder {
-  color: var(--neutral-200);
+  color: var(--neutral-150);
 }
 
-/* :not(:disabled) so a disabled input keeps its neutral-200 / not-allowed
-   styling — `:read-only` spec-matches disabled inputs too. */
 .input:read-only:not(:disabled) {
   background: var(--neutral-50);
   color: var(--neutral-300);
   cursor: default;
 }
 
-/* Error variant — red border, background lifts to status-error-light on
-   hover to match the Figma "Error, Hover=True" state. */
-.inputError {
+.inputError,
+.inputError:hover,
+.inputError:focus {
   border-color: var(--status-error);
   background: var(--neutral-0);
 }
-.inputError:hover {
-  background: var(--status-error-light);
-  border-color: var(--status-error);
-}
+.inputError:not(:disabled):hover,
 .inputError:focus {
-  border-color: var(--status-error);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-error) 12%, transparent);
+  box-shadow: 0 0 0 2px var(--status-error-light);
 }
 
-/* Reserve room for the trailing icon button (password eye). 32px keeps the
-   button inside the 32px control height without overlapping the caret. */
-.inputWithTrailing {
-  padding-right: 32px;
-}
+/* ── Shell path — used whenever any slot / label / helper is present ── */
 
-/* ── Structural wrapper (only when label / helper / error / trailing) ── */
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.shell {
+  height: 32px;
   width: 100%;
-}
-
-.label {
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--neutral-300);
-}
-
-.required {
-  color: var(--status-error);
-  margin-left: 2px;
-}
-
-.control {
-  position: relative;
   display: flex;
   align-items: center;
+  gap: 8px;
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: 4px;
+  padding: 0 8px;
+  background: var(--neutral-0);
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+  box-sizing: border-box;
+}
+.shell:hover,
+.shell:focus-within {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px var(--primary-100);
 }
 
-.trailingButton {
-  position: absolute;
-  right: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 24px;
-  height: 24px;
+.shellError,
+.shellError:hover,
+.shellError:focus-within {
+  border-color: var(--status-error);
+}
+.shellError:hover,
+.shellError:focus-within {
+  box-shadow: 0 0 0 2px var(--status-error-light);
+}
+
+.shellDisabled,
+.shellDisabled:hover,
+.shellDisabled:focus-within {
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.shellReadonly {
+  background: var(--neutral-50);
+}
+
+/* The <input> inside .shell is borderless — the shell owns the visuals. */
+.inputBorderless {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0;
+  font-size: var(--font-base);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+.inputBorderless::placeholder {
+  color: var(--placeholder-text);
+  font-weight: 400;
+  /* Chrome/Firefox default `::placeholder` to opacity: 0.55 — force full so
+     the token color hits the pixel we picked. */
+  opacity: 1;
+}
+.inputBorderless:disabled {
+  color: var(--neutral-150);
+  cursor: not-allowed;
+}
+.inputBorderless:disabled::placeholder {
+  color: var(--neutral-150);
+}
+
+/* ── Slot styles ── */
+
+.slotIcon {
+  flex-shrink: 0;
+}
+
+.trailingText {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.chevronDown,
+.chevronUp {
+  flex-shrink: 0;
+}
+.chevronUp {
+  transform: rotate(180deg);
+}
+
+.trailingAction {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: none;
   background: transparent;
@@ -121,25 +178,76 @@
   border-radius: 4px;
   transition: color .15s, background-color .15s;
 }
-.trailingButton:hover {
+.trailingAction:hover {
   color: var(--neutral-400);
-  background: var(--neutral-75);
+  background: var(--neutral-50);
 }
-.trailingButton:focus-visible {
+.trailingAction:focus-visible {
   outline: 2px solid var(--primary-300);
   outline-offset: 1px;
 }
 
-.helperText {
-  font-size: 12px;
+/* The trailing button pill is a shared <Button variant="tertiary" size="S">
+   rendered inside the shell — this class only keeps it from stretching in
+   the flex row. All chrome (bg, border, hover, focus) comes from Button. */
+.trailingButtonSlot {
+  flex-shrink: 0;
+}
+
+.characterLimit {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Structural wrapper (label + shell + helper/error) ── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-base);
   font-weight: 400;
-  line-height: 1.3;
-  color: var(--neutral-300);
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+.labelText {
+  color: inherit;
+}
+.labelInfo {
+  flex-shrink: 0;
+  cursor: help;
+}
+
+/* Required indicator — Figma spec uses a 4×4 red dot to the right of the
+   label text, not an asterisk glyph. Kept `aria-hidden` since `required`
+   is already forwarded to the underlying <input> for assistive tech. */
+.required {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+
+.helperText {
+  font-size: var(--font-sm);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-200);
 }
 
 .errorText {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
-  line-height: 1.3;
+  line-height: 1.2;
   color: var(--status-error);
 }

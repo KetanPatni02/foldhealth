@@ -62,7 +62,7 @@ export function QuickViewDrawer() {
       headerRight={headerRight}
       noCloseDivider
       headerStyle={{ padding: '12px', borderBottom: '0.5px solid var(--neutral-150)' }}
-      titleStyle={{ fontSize: 14 }}
+      titleStyle={{ fontSize: 'var(--font-base)' }}
       bodyClassName={styles.drawerBody}
     >
       <div className={styles.stickyTop}>

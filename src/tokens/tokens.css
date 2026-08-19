@@ -31,6 +31,12 @@
   --neutral-400: #3A485F;
   --neutral-300: #4F5A70;
   --neutral-200: #5F6A7E;
+  /* Figma "Grey/200" (#8A94A8). Codebase's --neutral-200 was intentionally
+     darkened for AA body-text contrast, but placeholder/hint text is
+     allowed to sit at a lower ratio per WCAG. Use this token when the
+     Figma spec calls for the lighter grey — inputs use it for the
+     placeholder color at node 25:21239. */
+  --placeholder-text: #8A94A8;
   --neutral-150: #D0D6E1;
   --neutral-100: #E9ECF1;
   --neutral-75:  #F3F4F7;
@@ -143,6 +149,84 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
+   Typography tokens
+   Rem-based type scale. At the default root (16px) every stop
+   lands on a 4px-grid value. Accessibility font-scale levels
+   adjust the root font-size, and all rem values scale together.
+
+   Naming mirrors common DS conventions (2xs → 4xl). The scale
+   is informed by Apple HIG Dynamic Type + Material Design 3,
+   tuned for data-dense healthcare tables:
+     2xs  = 10px — micro labels (sparingly)
+     xs   = 11px — captions, timestamps
+     sm   = 12px — secondary text, table metadata
+     md   = 13px — compact body (table cells)
+     base = 14px — default body for dense UI
+     lg   = 16px — prominent body, form labels
+     xl   = 18px — section subheadings
+     2xl  = 20px — page subheadings
+     3xl  = 24px — page headings
+     4xl  = 32px — display / hero text
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --font-2xs:  0.625rem;   /* 10px */
+  --font-xs:   0.6875rem;  /* 11px */
+  --font-sm:   0.75rem;    /* 12px */
+  --font-md:   0.8125rem;  /* 13px */
+  --font-base: 0.875rem;   /* 14px */
+  --font-lg:   1rem;       /* 16px */
+  --font-xl:   1.125rem;   /* 18px */
+  --font-2xl:  1.25rem;    /* 20px */
+  --font-3xl:  1.5rem;     /* 24px */
+  --font-4xl:  2rem;       /* 32px */
+
+  --leading-tight:  1.2;   /* headings, display text */
+  --leading-normal: 1.4;   /* body text, table cells */
+  --leading-loose:  1.6;   /* long-form reading */
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Spacing tokens (4px grid)
+   Every spacing value must be a multiple of 4. Use these for
+   padding, margin, and gap. Never hand-pick a px value for
+   spacing — reach for a token.
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --space-1:  0.25rem;   /*  4px */
+  --space-2:  0.5rem;    /*  8px */
+  --space-3:  0.75rem;   /* 12px */
+  --space-4:  1rem;      /* 16px */
+  --space-5:  1.25rem;   /* 20px */
+  --space-6:  1.5rem;    /* 24px */
+  --space-8:  2rem;      /* 32px */
+  --space-10: 2.5rem;    /* 40px */
+  --space-12: 3rem;      /* 48px */
+  --space-16: 4rem;      /* 64px */
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Font-scale accessibility levels
+   Applied via `data-font-scale` attribute on <html>. Each
+   level adjusts the root font-size; all rem tokens scale
+   proportionally. The 5 levels mirror Apple's Dynamic Type
+   non-accessibility range (xSmall → xxLarge), mapped to
+   clean percentage steps.
+
+   Level      root-px  scale
+   ─────────  ───────  ─────
+   smaller    14px     87.5%
+   small      15px     93.75%
+   default    16px     100%
+   large      18px     112.5%
+   larger     20px     125%
+   ═══════════════════════════════════════════════════════════ */
+html { font-size: 16px; }
+html[data-font-scale="smaller"] { font-size: 14px; }
+html[data-font-scale="small"]   { font-size: 15px; }
+html[data-font-scale="large"]   { font-size: 18px; }
+html[data-font-scale="larger"]  { font-size: 20px; }
+
+/* ═══════════════════════════════════════════════════════════
    Motion tokens
    Curves and durations for every UI transition. Never hand-type
    a cubic-bezier() or a duration in module CSS — reach for one
@@ -190,6 +274,7 @@
   --neutral-400: #D4D1CB;   /* primary body text — soft warm off-white */
   --neutral-300: #ADA9A2;   /* muted body text — warm grey-tan */
   --neutral-200: #7E7B74;   /* hint / disabled — warm muted (~4.7:1 on page) */
+  --placeholder-text: #9A9791;  /* placeholder hint — matches neutral-200 warmth, softer */
   --neutral-150: #3D3A35;   /* default borders — visible warm */
   --neutral-100: #322F2B;   /* soft borders / dividers */
   --neutral-75:  #2A2724;   /* elevated surface 2 (hovers) */
@@ -359,6 +444,46 @@
    active pill. The active label stays white because the pill is
    always a saturated brand color.
    ═══════════════════════════════════════════════════════════ */
+
+/* ═══════════════════════════════════════════════════════════
+   HIGH-CONTRAST MODE — [data-contrast="high"]
+   Independent of color theme. Boosts the low-contrast rungs of the
+   neutral scale (secondary/hint text, borders) toward the highest
+   rung so labels and dividers read at a glance for older users and
+   low-vision scenarios. Only the muted rungs shift; body text (400)
+   and highest-contrast text (500) stay put so the type hierarchy
+   isn't crushed.
+   ═══════════════════════════════════════════════════════════ */
+
+:root[data-contrast="high"] {
+  /* Light theme — collapse the muted text scale onto black; boost every
+     border/divider rung a large step darker so the whole surface reads
+     high-contrast, not just headings. */
+  --neutral-500: #000000;  /* was #16181D → true black for max text weight */
+  --neutral-400: #000000;  /* was #3A485F → body text goes fully black */
+  --neutral-300: #000000;  /* was #4F5A70 → muted labels match body */
+  --neutral-200: #111827;  /* was #5F6A7E → hint text near-black; one micro-step for hierarchy */
+  --placeholder-text: #374151;  /* placeholder — sits between neutral-200 body and borders */
+  --neutral-150: #374151;  /* was #D0D6E1 → borders go from ghostly to obvious */
+  --neutral-100: #6B7280;  /* was #E9ECF1 → dividers read as real lines */
+  /* neutral-75 / -50 / -25 / -0 intentionally NOT overridden — those are
+     surface tokens (page bg, cards, hover backgrounds). Darkening them
+     turns hovers and letter previews into solid grey. */
+}
+
+:root[data-contrast="high"][data-theme="dark"],
+:root[data-contrast="high"].dark {
+  /* Dark theme — mirror image: collapse the muted warm scale onto the
+     brightest text token, and lift borders far off the surface. */
+  --neutral-500: #FFFFFF;  /* was #EDEAE3 → pure white text on dark */
+  --neutral-400: #FFFFFF;  /* was #D4D1CB → body goes full white */
+  --neutral-300: #FFFFFF;  /* was #ADA9A2 → muted matches body */
+  --neutral-200: #E5E1D8;  /* was #7E7B74 → hint one step down but still bright */
+  --placeholder-text: #CFCABF;  /* placeholder — a touch dimmer than neutral-200 hint */
+  --neutral-150: #B8B2A7;  /* was #3D3A35 → borders lift clearly off surface */
+  --neutral-100: #8A857D;  /* was #322F2B */
+  /* neutral-75 / -50 / -25 / -0 intentionally NOT overridden — surface tokens. */
+}
 
 [data-nav-style="light"] {
   --sidebar-bg:                    var(--neutral-0);

@@ -39,7 +39,7 @@
   border-radius: 999px;
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   white-space: nowrap;
 }
@@ -53,7 +53,7 @@
   border: none;
   cursor: pointer;
   color: var(--primary-300);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -68,7 +68,7 @@
   padding: 0;
   cursor: pointer;
   color: var(--primary-300);
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
 }
 
@@ -84,7 +84,7 @@
   justify-content: space-between;
 }
 .sectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -100,7 +100,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 
@@ -127,7 +127,7 @@
 .intvHead {
   padding: 8px 4px;
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .goalRow,
@@ -140,8 +140,8 @@
 .titleCell { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .rowIcon { display: flex; flex-shrink: 0; }
 .titleText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.title { font-size: 14px; color: var(--neutral-500); }
-.subtitle { font-size: 13px; color: var(--neutral-300); }
+.title { font-size: var(--font-base); color: var(--neutral-500); }
+.subtitle { font-size: var(--font-md); color: var(--neutral-300); }
 
 .linkChip {
   display: inline-flex;
@@ -151,11 +151,11 @@
   flex-shrink: 0;
 }
 .linkChipEmpty { opacity: 0.5; }
-.linkCount { font-size: 11px; color: var(--neutral-300); line-height: 1; }
+.linkCount { font-size: var(--font-xs); color: var(--neutral-300); line-height: 1; }
 
-.valueCell { font-size: 14px; color: var(--neutral-400); }
+.valueCell { font-size: var(--font-base); color: var(--neutral-400); }
 .muted { color: var(--neutral-200); }
-.trendCell { font-size: 14px; color: var(--neutral-300); }
+.trendCell { font-size: var(--font-base); color: var(--neutral-300); }
 .progressCell,
 .adherenceCell { display: flex; align-items: center; }
 .progressRing {
@@ -167,7 +167,7 @@
   border-radius: 50%;
   border: 1.5px solid var(--neutral-150);
   color: var(--neutral-200);
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 .statusCell { display: flex; align-items: center; }
 .statusPill {
@@ -177,7 +177,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   white-space: nowrap;
 }
@@ -192,13 +192,13 @@
   margin-top: 2px;
   border-radius: 4px;
   background: var(--neutral-50);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
 .assigneeCell { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .assigneeName {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   white-space: nowrap;
   overflow: hidden;

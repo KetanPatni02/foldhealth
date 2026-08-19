@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useId, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
@@ -36,12 +36,24 @@ export function Select({
   disabled = false,
   variant = 'default',
   className,
+  wrapperClassName,
   style,
   id,
   menuAlign = 'left',
   searchable = false,
   searchPlaceholder = 'Search…',
   leadingIcon,
+  // Field-wrapper props — parity with `src/components/Input`. Any one of
+  // these promotes the render from a bare trigger to a labelled field
+  // (label + required dot + optional info icon on top, trigger in the
+  // middle, helper/error text at the bottom). Callers that just want the
+  // pill can keep passing nothing extra.
+  label,
+  required = false,
+  showInfo = false,
+  infoText,
+  helperText,
+  errorText,
   // Multi-select mode. When true, `value` is an array of strings and
   // clicking an option toggles it in place — the menu stays open. The
   // trigger label collapses to a count summary once more than one item
@@ -52,6 +64,10 @@ export function Select({
   multiple = false,
   portal = false,
 }) {
+  // Ensure a stable label↔trigger association even when `id` isn't set.
+  const autoId = useId();
+  const triggerId = id || (label ? autoId : undefined);
+  const isError = variant === 'error' || Boolean(errorText);
   const valueArray = multiple ? (Array.isArray(value) ? value : []) : null;
   const valueSet = useMemo(
     () => (multiple ? new Set(Array.isArray(value) ? value : []) : null),
@@ -133,19 +149,22 @@ export function Select({
     ? options.filter(o => (o.searchText != null ? o.searchText : String(o.label)).toLowerCase().includes(q))
     : options;
 
-  return (
-    <div ref={wrapRef} className={[styles.wrap, className || ''].filter(Boolean).join(' ')} style={style}>
+  const needsField = Boolean(label || helperText || errorText);
+
+  const trigger = (
+    <div ref={wrapRef} className={[styles.wrap, needsField ? '' : (className || '')].filter(Boolean).join(' ')} style={style}>
       <button
-        id={id}
+        id={triggerId}
         type="button"
         className={[
           styles.trigger,
-          variant === 'error' ? styles.triggerError : '',
+          isError ? styles.triggerError : '',
           (multiple ? selectedMulti.length === 0 : !selected) ? styles.triggerPlaceholder : '',
         ].filter(Boolean).join(' ')}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
+        aria-invalid={isError || undefined}
         onClick={() => !disabled && setOpen(o => !o)}
       >
         {leadingIcon && (
@@ -157,7 +176,8 @@ export function Select({
             : (selected ? (selected.triggerLabel ?? selected.label) : placeholder)}
         </span>
         <DownChevronIcon
-          size={12}
+          size={14}
+          color={disabled ? 'var(--neutral-150)' : 'var(--neutral-300)'}
           className={open ? styles.chevronOpen : styles.chevron}
         />
       </button>
@@ -250,6 +270,40 @@ export function Select({
             );
           })}
         </ul>
+      )}
+    </div>
+  );
+
+  // Bare-trigger fast path — no label / helper / error requested, so we
+  // return the wrap+trigger as-is. Existing callers that manage their own
+  // <label> (e.g. via the Drawer's local Field wrapper) stay unaffected.
+  if (!needsField) return trigger;
+
+  const activeError = errorText != null ? errorText : null;
+
+  return (
+    <div className={[styles.field, wrapperClassName || className || ''].filter(Boolean).join(' ')}>
+      {label && (
+        <label className={styles.label} htmlFor={triggerId}>
+          <span>{label}</span>
+          {showInfo && (
+            <Icon
+              name="solar:info-circle-linear"
+              size={12}
+              color="var(--neutral-300)"
+              className={styles.labelInfo}
+              title={infoText}
+            />
+          )}
+          {required && <span className={styles.required} aria-hidden="true" />}
+        </label>
+      )}
+      {trigger}
+      {typeof activeError === 'string' && activeError && (
+        <span className={styles.errorText}>{activeError}</span>
+      )}
+      {!activeError && helperText && (
+        <span className={styles.helperText}>{helperText}</span>
       )}
     </div>
   );

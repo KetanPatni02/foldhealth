@@ -8,7 +8,6 @@
   flex-shrink: 0;
   position: relative;
   z-index: 5;
-  font-family: 'Inter', sans-serif;
 }
 
 .chips {
@@ -31,8 +30,7 @@
   border-radius: 6px;
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
-  font-family: inherit;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
@@ -55,7 +53,7 @@
 }
 
 .chipLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 
 .chipValue {
@@ -97,8 +95,7 @@
   border-radius: 4px;
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
@@ -124,8 +121,7 @@
 .linkBtn {
   background: none;
   border: none;
-  font-family: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   cursor: pointer;
   padding: 0;

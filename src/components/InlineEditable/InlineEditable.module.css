@@ -3,7 +3,6 @@
 .text {
   display: inline-flex;
   align-items: center;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-500);
   cursor: text;
   border-radius: 4px;
@@ -34,7 +33,6 @@
 }
 
 .input {
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-500);
   background: var(--neutral-0);
   border: 1.5px solid var(--primary-300);
@@ -55,13 +53,13 @@
 /* ── Sizes ─────────────────────────────────────────────────────────────── */
 
 .size_M {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
-  line-height: 20px;
+  line-height: 1.25rem;
 }
 
 .size_L {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 500;
-  line-height: 22px;
+  line-height: 1.375rem;
 }

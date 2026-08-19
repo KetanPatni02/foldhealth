@@ -85,7 +85,7 @@ export function DesignTabBlocksPrimary({ ctx }) {
                 value={props.html || ''}
                 onChange={e => update(['data', 'props', 'html'], e.target.value)}
                 rows={12}
-                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12 }}
+                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'var(--font-sm)' }}
               />
             </div>
           </Section>

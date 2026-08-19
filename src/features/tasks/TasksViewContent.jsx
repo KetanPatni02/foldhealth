@@ -1,7 +1,11 @@
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { useAppStore } from '../../store/useAppStore';
 import { KanbanBoard, EmptyState } from './TasksViewKanban';
 import { StatusGroup, SkeletonRow } from './TasksViewList';
 import styles from './TasksView.module.css';
+
+// Personal tabs need a signed-in identity to filter against.
+const PERSONAL_TABS = new Set(['assigned', 'created', 'mentions']);
 
 export function TasksViewContent({
   tasksLoading,
@@ -16,6 +20,8 @@ export function TasksViewContent({
   onTaskClick,
   onAddTask,
 }) {
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  const tasksTab = useAppStore(s => s.tasksTab);
   if (tasksLoading && tasks.length === 0) {
     return (
       <div className={styles.tableWrap}>
@@ -37,6 +43,18 @@ export function TasksViewContent({
   }
 
   if (filteredTasks.length === 0) {
+    // A "personal" tab (Assigned to Me / Created by Me / Mentions) with no
+    // signed-in profile always yields zero — tell the user why instead of
+    // sending them chasing a filter that isn't the problem.
+    if (PERSONAL_TABS.has(tasksTab) && !currentUserProfile?.id && !currentUserProfile?.name) {
+      return (
+        <EmptyState
+          title="Sign in to see your tasks"
+          description="Assigned to Me, Created by Me, and Mentions filter against your signed-in profile."
+          icon="solar:user-linear"
+        />
+      );
+    }
     return (
       <EmptyState
         title="No tasks found"

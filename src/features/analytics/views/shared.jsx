@@ -85,7 +85,7 @@ export function EmptyState({ message = 'No data available', icon = 'solar:chart-
     <div style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       gap: 8, padding: '32px 16px', color: 'var(--neutral-300)',
-      fontSize: 13, textAlign: 'center',
+      fontSize: 'var(--font-md)', textAlign: 'center',
     }}>
       <Icon name={icon} size={24} color="var(--neutral-200)" />
       <span>{message}</span>
@@ -117,7 +117,6 @@ export function KpiCard({ value, label, delta, deltaType = 'pos', sub, accentCol
         </span>
       )}
       {sub && <div className={s.kpiSub}>{sub}</div>}
-      {accentColor && <div className={s.kpiAccent} style={{ background: accentColor }} />}
     </div>
   );
 }
@@ -195,7 +194,7 @@ export function ProgressBar({ label, value, pct, color = 'purple', sub }) {
         <span className={s.prValue}>{value}</span>
       </div>
       <div className={s.prTrack}>
-        <div className={`${s.prFill} ${s[color]}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+        <div className={`${s.prFill} ${s[color]}`} style={{ transform: `scaleX(${Math.min(pct, 100) / 100})` }} />
       </div>
       {sub && <div className={s.prSub}>{sub}</div>}
     </div>

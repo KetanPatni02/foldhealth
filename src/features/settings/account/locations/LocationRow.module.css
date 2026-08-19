@@ -9,7 +9,7 @@
 .membersTd    { composes: membersTd    from '../../../../components/WorklistShell/WorklistRow.module.css'; }
 
 .nameCell {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -22,7 +22,7 @@
   line-height: 1.3;
 }
 .addressLine2 {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 

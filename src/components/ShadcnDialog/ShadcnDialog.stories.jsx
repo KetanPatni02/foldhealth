@@ -40,7 +40,7 @@ const EXAMPLES = {
     description: 'Make changes to your profile here. Click save when done.',
     body: (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-        <label style={{ fontSize: 13, color: 'var(--neutral-400)' }}>
+        <label style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-400)' }}>
           Name
           <input
             type="text"
@@ -52,7 +52,7 @@ const EXAMPLES = {
               padding: '6px 10px',
               border: '0.5px solid var(--neutral-150)',
               borderRadius: 4,
-              fontSize: 14,
+              fontSize: 'var(--font-base)',
             }}
           />
         </label>

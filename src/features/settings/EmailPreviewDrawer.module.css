@@ -5,8 +5,8 @@
   gap: 2px;
   line-height: 1.2;
 }
-.titleMain { font-size: 15px; font-weight: 600; color: var(--neutral-400); }
-.titleSub  { font-size: 12px; font-weight: 400; color: var(--neutral-300); }
+.titleMain { font-size: 0.9375rem; font-weight: 600; color: var(--neutral-400); }
+.titleSub  { font-size: var(--font-sm); font-weight: 400; color: var(--neutral-300); }
 
 /* Shared 1×16px divider between action groups in the drawer header. Pair
    with <Drawer noCloseDivider> so the close button doesn't add a second one. */

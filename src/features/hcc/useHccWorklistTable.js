@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { resolveCurrentAssignee } from './HccWorklistRow.utils';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
-import { HCC_COLUMNS, orderColumns } from './columns';
+import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
+import { HCC_COLUMNS } from './columns';
 import { memberMatchesFilters, countActiveFilters } from './filters';
 import { slaDueCategory } from './sla';
 import { GAP_ONLY_FILTER_KEYS } from './HccWorklistTableParts.constants';
@@ -48,24 +49,21 @@ export function useHccWorklistTable() {
   const saveHccFilter = useAppStore(s => s.saveHccFilter);
   const renameHccSavedFilter = useAppStore(s => s.renameHccSavedFilter);
   const openHccHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
-  const hccHiddenCols = useAppStore(s => s.hccHiddenCols);
-  const toggleHccColumn = useAppStore(s => s.toggleHccColumn);
-  const hccColumnOrder = useAppStore(s => s.hccColumnOrder);
-  const reorderHccColumns = useAppStore(s => s.reorderHccColumns);
-  const setHccDefaultColumnKeys = useAppStore(s => s.setHccDefaultColumnKeys);
-  const clearHccColumnOrder = useAppStore(s => s.clearHccColumnOrder);
-  const clearHccHiddenCols = useAppStore(s => s.clearHccHiddenCols);
-
-  // Seed the store's default-key snapshot once so reorderHccColumns has
-  // something to start from before the user has set any custom order.
-  useEffect(() => {
-    setHccDefaultColumnKeys(HCC_COLUMNS.map(c => c.k));
-  }, [setHccDefaultColumnKeys]);
-
-  const orderedColumns = useMemo(
-    () => orderColumns(HCC_COLUMNS, hccColumnOrder),
-    [hccColumnOrder],
-  );
+  // HCC column prefs now flow through the shared worklistColumnPrefs slice
+  // (Supabase-backed, keyed by worklist_key='hcc'). The hook still exposes
+  // toggleHccColumn / reorderHccColumns / clearHccColumnOrder /
+  // clearHccHiddenCols under their historical names so HccWorklistTableView
+  // doesn't need to change. Under the hood they call into the shared slice.
+  const columnPrefs = useWorklistColumns('hcc', HCC_COLUMNS);
+  const orderedColumns = columnPrefs.orderedColumns;
+  const toggleHccColumn = columnPrefs.onToggle;
+  const reorderHccColumns = columnPrefs.onReorder;
+  const clearHccColumnOrder = columnPrefs.onReset;
+  // Historically HCC had separate `clearHccColumnOrder` and
+  // `clearHccHiddenCols` calls; the shared slice resets both at once, so we
+  // alias the second call to a no-op — the first `onReset` already cleared
+  // hidden + order.
+  const clearHccHiddenCols = () => {};
 
   const [filterOpen, setFilterOpen] = useState(true);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
@@ -308,7 +306,7 @@ export function useHccWorklistTable() {
     else clearHccSelected();
   };
 
-  const hiddenSet = useMemo(() => new Set(hccHiddenCols), [hccHiddenCols]);
+  const hiddenSet = columnPrefs.hiddenSet;
   const activeFilterCount = countActiveFilters(hccFilters);
 
   return {

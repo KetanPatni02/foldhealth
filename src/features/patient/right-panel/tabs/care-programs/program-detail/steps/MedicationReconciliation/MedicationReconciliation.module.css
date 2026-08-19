@@ -59,7 +59,7 @@
   gap: 10px;
 }
 .medHeaderTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -78,7 +78,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--primary-300);
   white-space: nowrap;
@@ -93,7 +93,7 @@
   border-radius: 4px;
   background: var(--secondary-300);
   color: var(--neutral-0);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
 }
 .dischargeDivider {
@@ -105,7 +105,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--primary-300);
   white-space: nowrap;
@@ -206,12 +206,12 @@
   gap: 4px;
 }
 .extractedName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .extractedMeta {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .extractedDot {
@@ -227,7 +227,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   white-space: nowrap;
 }
@@ -239,7 +239,7 @@
   transform: rotate(180deg);
 }
 .noteLine {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   margin-top: 2px;
 }
@@ -263,7 +263,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--primary-300);
   white-space: nowrap;
@@ -309,7 +309,7 @@
   align-items: center;
   gap: 8px;
   padding-inline: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -340,7 +340,7 @@
   gap: 6px;
 }
 .medCardName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   overflow: hidden;
@@ -348,7 +348,7 @@
   white-space: nowrap;
 }
 .medCardMeta {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .medCardActions {
@@ -370,7 +370,7 @@
   background: var(--neutral-0);
   border: none;
   padding: 6px 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   cursor: pointer;
 }
@@ -430,7 +430,7 @@
 }
 .headRow {
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .row {
@@ -441,10 +441,10 @@
    close together) grew past its column width, so text touched the next
    column instead of stopping at a gutter. */
 .checkCell { display: flex; align-items: center; padding: 8px; }
-.nameCell { font-size: 14px; color: var(--neutral-500); min-width: 0; padding: 8px; }
-.dateCell { font-size: 14px; color: var(--neutral-300); white-space: nowrap; padding: 8px; }
-.sigCell { font-size: 14px; color: var(--neutral-300); min-width: 0; padding: 8px; }
-.statusCell { font-size: 14px; color: var(--neutral-300); min-width: 0; padding: 8px; }
+.nameCell { font-size: var(--font-base); color: var(--neutral-500); min-width: 0; padding: 8px; }
+.dateCell { font-size: var(--font-base); color: var(--neutral-300); white-space: nowrap; padding: 8px; }
+.sigCell { font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: 8px; }
+.statusCell { font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: 8px; }
 .actionsCell { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px; }
 
 /* Pinned columns — checkbox + medication name hold the left edge, actions
@@ -528,7 +528,7 @@
   transition: opacity var(--duration-base) var(--ease-out);
 }
 .formEyebrow {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
@@ -558,7 +558,7 @@
   border-bottom: none;
 }
 .noteEditorLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
@@ -593,7 +593,7 @@
   gap: 8px;
 }
 .bulkCount {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   white-space: nowrap;
 }
@@ -615,7 +615,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -633,7 +633,7 @@
   cursor: pointer;
 }
 .checkLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   line-height: 1.35;
 }
@@ -662,17 +662,17 @@
   padding-inline: 4px;
 }
 .searchHint {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   white-space: nowrap;
 }
 .searchError {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--status-error);
   padding-inline: 4px;
 }
 .searchEmpty {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   padding: 4px 6px 0;
 }
@@ -686,7 +686,7 @@
   gap: 12px;
 }
 .formMedName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -707,7 +707,7 @@
   min-width: 0;
 }
 .formFieldLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 .formFieldWide {
@@ -730,7 +730,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -770,7 +770,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
 }

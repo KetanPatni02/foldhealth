@@ -6,6 +6,26 @@ export const TABS = [
   { key: 'mentions', label: 'Mentions' },
 ];
 
+// Compose the single-source attribution line for row + kanban cards.
+//
+// A task's origin is exactly ONE of: a user, an automation, an agent, or
+// a care journey — never a combination. `task.meta` sometimes carries
+// that origin (e.g. "Care Journey · Hypertension Control · '24", "Pool :
+// Coder", or a legacy "By : Dr. JeDee Potter" from an older schema); when
+// it does, meta IS the attribution and wins outright. Otherwise we fall
+// back to the mandatory `created_by` field.
+//
+// The prior implementation joined the two with " • " and produced
+// duplicates like "By : Dr. Potter • By : Dr. Potter" on tasks whose meta
+// legacy-encoded the same actor.
+export function buildTaskMetaLine(task) {
+  if (!task) return null;
+  const meta = task.meta?.trim();
+  if (meta && /^(Care Journey|Pool|By)\b/i.test(meta)) return meta;
+  const actor = task.created_by?.trim() || 'Unknown';
+  return `By : ${actor}`;
+}
+
 export function getInitials(name) {
   return name ? name.split(' ').map(w => w[0]).join('').slice(0, 2) : '';
 }
@@ -27,11 +47,10 @@ export const AUDIT_LOG_VERB_MAP = {
 };
 
 export const TASK_FILTER_DEFS = [
-  { key: 'assigned_to', label: 'Assigned to', primary: true, options: [
-    { value: 'Dr. JeDee Potter', label: 'Dr. JeDee Potter' },
-    { value: 'Deborah Hintz', label: 'Deborah Hintz' },
-    { value: 'Dr. Robert Frost', label: 'Dr. Robert Frost' },
-  ]},
+  // Options are populated at runtime from taskProfiles in useTasksView —
+  // see filterDefs's usesProfiles branch. Empty here so the cold-load
+  // dropdown never shows stale seed names.
+  { key: 'assigned_to', label: 'Assigned to', primary: true, options: [] },
   { key: 'view_by', label: 'View By', primary: true, options: [
     { value: 'status', label: 'Status' },
     { value: 'priority', label: 'Priority' },
@@ -42,11 +61,7 @@ export const TASK_FILTER_DEFS = [
     { value: 'priority', label: 'Priority' },
     { value: 'name', label: 'Name' },
   ]},
-  { key: 'created_by', label: 'Created By', primary: true, options: [
-    { value: 'Dr. JeDee Potter', label: 'Dr. JeDee Potter' },
-    { value: 'Deborah Hintz', label: 'Deborah Hintz' },
-    { value: 'Dr. Robert Frost', label: 'Dr. Robert Frost' },
-  ]},
+  { key: 'created_by', label: 'Created By', primary: true, options: [] },
   { key: 'task_status', label: 'Task Status', primary: true, options: [
     { value: 'pending', label: 'Pending' },
     { value: 'missed', label: 'Missed' },

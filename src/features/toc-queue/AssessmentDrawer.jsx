@@ -1,44 +1,45 @@
 import { useMemo } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
-import { Badge } from '../../components/Badge/Badge';
-import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
 import { useAppStore } from '../../store/useAppStore';
+import { AssessmentFormView } from '../patient/right-panel/tabs/care-programs/program-detail/steps/AssessmentFormView/AssessmentFormView';
+import {
+  POST_IP_FORM_NAME,
+  POST_IP_FORM_TITLE,
+  POST_IP_PREFILLED_ANSWERS,
+  buildPostIpForm,
+} from '../forms/postIpAssessment';
 import styles from './AssessmentDrawer.module.css';
 
-// Same enum → Badge variant map QueueRow uses for its pill; keeping it local
-// here (rather than exporting from QueueRow) avoids QueueRow becoming a
-// grab-bag utility module.
-const STATUS_BADGE = {
-  'Not Started': { variant: 'pending',     icon: 'solar:hourglass-linear' },
-  'In Progress': { variant: 'in-progress', icon: 'solar:refresh-linear' },
-  'Completed':   { variant: 'completed',   icon: 'solar:check-circle-linear' },
-  'Overdue':     { variant: 'error',       icon: 'solar:danger-triangle-linear' },
-};
-
-// Assessment drawer — placeholder shell. Renders patient context + the
-// current assessment_status pill, then a stub body describing the sections
-// the drawer will grow into. Real content lands in a follow-up pass; the
-// contract with the row cell (patientId in the store, close via
-// closeAssessmentDrawer) is what stays stable.
+/**
+ * TOC queue assessment drawer. Renders the Post IP Assessment (Astrana
+ * Connect) pre-filled by the TOC agent when the agent has connected with
+ * the patient; otherwise the form opens blank. The form definition lives
+ * in src/features/forms/postIpAssessment.js so the same schema drives the
+ * drawer, Content → Forms, and the builder.
+ */
 export function AssessmentDrawer() {
   const patientId = useAppStore(s => s.assessmentDrawerPatientId);
+  const prefilled = useAppStore(s => s.assessmentDrawerPrefilled);
   const close = useAppStore(s => s.closeAssessmentDrawer);
   const patients = useAppStore(s => s.patients);
+  const showToast = useAppStore(s => s.showToast);
   const patient = useMemo(
     () => patients.find(p => p.id === patientId) || null,
     [patients, patientId],
   );
+  const fallbackForm = useMemo(() => (patient ? buildPostIpForm(patient) : null), [patient]);
 
   if (!patient) return null;
 
-  const status = patient.assessmentStatus;
-  const cfg = status ? STATUS_BADGE[status] : null;
-
   return (
     <Drawer
-      title="Assessment"
+      title="Patient Assessment"
       onClose={close}
+      titleStyle={{ color: 'var(--neutral-500)' }}
+      bodyClassName={styles.drawerBody}
       banner={
         <PatientBanner
           initials={patient.initials}
@@ -49,24 +50,40 @@ export function AssessmentDrawer() {
         />
       }
     >
-      <div className={styles.body}>
-        <section className={styles.statusRow}>
-          <span className={styles.statusLabel}>Current status</span>
-          {cfg
-            ? <Badge size="M" variant={cfg.variant} label={status} icon={cfg.icon} />
-            : <span className={styles.statusEmpty}>Not set</span>}
-        </section>
-
-        <section className={styles.placeholder}>
-          <Icon name="solar:clipboard-list-linear" size={32} color="var(--neutral-200)" />
-          <p className={styles.placeholderTitle}>Assessment details coming soon</p>
-          <p className={styles.placeholderText}>
-            The full post-discharge assessment — risk factors, care goals,
-            medication reconciliation notes, and follow-up tasks — will render
-            here. Wire the queries in the next pass.
-          </p>
-        </section>
+      <div className={styles.formHeader}>
+        <div className={styles.formHeaderText}>
+          <span className={styles.formTitle}>{POST_IP_FORM_TITLE}</span>
+          <span className={styles.formMeta}>
+            {prefilled
+              ? 'Sent by: Robert Fox on 07/11/26 • Filled by: TOC Agent on 08/11/26'
+              : 'Sent by: Robert Fox on 07/11/26 • Awaiting patient outreach'}
+          </span>
+        </div>
+        <div className={styles.formActions}>
+          <ActionButton
+            icon="solar:printer-linear"
+            size="L"
+            tooltip="Print"
+            tooltipBelow
+            onClick={() => window.print()}
+          />
+          <span className={styles.actionDivider} />
+          <Button
+            variant="alt"
+            size="L"
+            onClick={() => showToast('Resend — coming soon')}
+          >
+            Resend
+          </Button>
+        </div>
       </div>
+
+      <AssessmentFormView
+        formName={POST_IP_FORM_NAME}
+        fallbackForm={fallbackForm}
+        initialAnswers={prefilled ? POST_IP_PREFILLED_ANSWERS : null}
+        interpretation={prefilled ? 'Complete' : 'Not Started'}
+      />
     </Drawer>
   );
 }

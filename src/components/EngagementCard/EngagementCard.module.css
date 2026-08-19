@@ -38,7 +38,7 @@
 }
 
 .kicker {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   color: var(--neutral-300);
   letter-spacing: 0.6px;
@@ -105,7 +105,7 @@
 
 .scoreNum {
   font-weight: 600;
-  font-size: 36px;
+  font-size: 2.25rem;
   line-height: 1;
   letter-spacing: -0.04em;
   color: var(--neutral-500);
@@ -115,7 +115,7 @@
 }
 
 .scoreNum .pct {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-300);
   margin-left: 2px;
@@ -125,7 +125,7 @@
 }
 
 .scoreUnit {
-  font-size: 9px;
+  font-size: 0.5625rem;
   color: var(--neutral-300);
   margin-top: 3px;
   letter-spacing: 0.6px;
@@ -141,7 +141,7 @@
 }
 
 .ratingKicker {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   color: var(--neutral-300);
   letter-spacing: 0.6px;
@@ -149,7 +149,7 @@
 }
 
 .ratingValue {
-  font-size: 18px;
+  font-size: var(--font-xl);
   font-weight: 700;
   color: var(--score-color);
   letter-spacing: -0.02em;
@@ -166,7 +166,7 @@
 }
 
 .chip {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   color: var(--neutral-300);
   background: var(--neutral-50);
@@ -188,7 +188,7 @@
 }
 
 .sectionTitle {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   color: var(--neutral-300);
   letter-spacing: 0.6px;
@@ -209,7 +209,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-size: 2.25rem;
   line-height: 1;
   filter: drop-shadow(0 4px 8px rgba(238, 178, 0, 0.28));
   transition: transform 300ms cubic-bezier(.2, .8, .2, 1);
@@ -236,7 +236,7 @@
 }
 
 .sentValue {
-  font-size: 18px;
+  font-size: var(--font-xl);
   font-weight: 700;
   color: var(--sent-color);
   letter-spacing: -0.02em;
@@ -246,7 +246,7 @@
 }
 
 .sentLbl {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   margin-left: 4px;
@@ -254,7 +254,7 @@
 }
 
 .sentTag {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   letter-spacing: 0.4px;
   text-transform: uppercase;
@@ -303,14 +303,14 @@
 }
 
 .talkLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   letter-spacing: 0;
 }
 
 .talkNums {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 700;
   color: var(--neutral-400);
   letter-spacing: -0.01em;
@@ -359,7 +359,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10.5px;
+  font-size: 0.6563rem;
   color: var(--neutral-300);
   font-weight: 400;
   line-height: 1;

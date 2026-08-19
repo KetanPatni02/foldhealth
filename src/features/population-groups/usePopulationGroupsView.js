@@ -25,7 +25,28 @@ export function usePopulationGroupsView({
   const updatePopGroup = useAppStore(s => s.updatePopGroup);
   const deletePopGroup = useAppStore(s => s.deletePopGroup);
   const openPgRuleBuilder = useAppStore(s => s.openPgRuleBuilder);
+  const pgRuleRestoreId = useAppStore(s => s.pgRuleRestoreId);
   useEffect(() => { fetchPopGroups(); }, [fetchPopGroups]);
+
+  /* Deep link: #/population/pop-groups/rule/<id> lands here with only the id
+     recorded — open the detail screen once the group rows exist. Clearing the
+     id even when the group is missing keeps a stale URL from looping. */
+  useEffect(() => {
+    if (!pgRuleRestoreId || popGroups.length === 0) return;
+    const g = popGroups.find(x => x.id === pgRuleRestoreId);
+    useAppStore.setState({ pgRuleRestoreId: null });
+    if (g && g.type === 'Dynamic') {
+      openPgRuleBuilder({
+        groupId: g.id,
+        name: g.name,
+        description: g.description,
+        memberStatus: g.memberStatus,
+        count: g.count,
+        inactive: g.inactive,
+        rule: g.rule || null,
+      });
+    }
+  }, [pgRuleRestoreId, popGroups, openPgRuleBuilder]);
 
   /* Load the real patient directory (all_patients) so CSV uploads are matched
      against the DB rather than the bundled seed. Prefers dob when present;
@@ -188,11 +209,14 @@ export function usePopulationGroupsView({
      The edit flow is being rebuilt as a dedicated "Update Population Group"
      drawer (<UpdatePopGroupDrawer>). The old approach reused the create
      drawer's CSV review state — kept here, commented out, for reference. */
-  const openEditModal = (group) => {
+  const openEditModal = (group, { startInEdit = false } = {}) => {
     // Dynamic groups are defined by a rule, so editing one opens the rule
     // builder with its saved rule; the drawer only fits CSV/static groups.
+    // Row click lands on the read-only detail screen; the Edit pencil jumps
+    // straight into edit mode.
     if (group.type === 'Dynamic') {
       openPgRuleBuilder({
+        startInEdit,
         groupId: group.id,
         name: group.name,
         description: group.description,

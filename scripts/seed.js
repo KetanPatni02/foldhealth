@@ -874,7 +874,7 @@ async function main() {
   {
     const { data: profiles, error: pErr } = await supabase
       .from('p360_profiles')
-      .select('id, patient_id, problems, diagnoses, diagnosis_groups, immunizations, medication_orders, procedures, lab_results, wearables, forms_submitted, membership_status, past_membership_status, engagement_level');
+      .select('id, patient_id, age, sex_at_birth, gender_identity, state, zipcode, problems, diagnoses, diagnosis_groups, immunizations, medication_orders, procedures, lab_results, wearables, forms_submitted, membership_status, past_membership_status, engagement_level');
     if (pErr) {
       console.log(`  ✗ p360 criteria fields: ${pErr.message} — run supabase/pop_group_rule_builder_migration.sql first`);
     } else {
@@ -897,10 +897,42 @@ async function main() {
       const PAST = ['Active', 'Inactive', 'Churned', 'Pending'];
       const ENGAGEMENT = ['High', 'Medium', 'Low', 'Unreachable'];
 
+      // Core demographic criteria fields (age / sex / gender / state / zip)
+      // derive from the profile's identity row — patients for p# ids,
+      // all_patients for FOLD# / ap-# — falling back to deterministic values.
+      // Without these the rule builder's Personal Info and Location
+      // conditions have nothing to evaluate against.
+      const { data: idPts } = await supabase.from('patients').select('id, age, dob, gender, state');
+      const { data: idAps } = await supabase.from('all_patients').select('id, age, dob, gender, state, zip');
+      const identityById = new Map();
+      (idPts || []).forEach(p => identityById.set(p.id, p));
+      (idAps || []).forEach(p => identityById.set(p.id, p));
+      const STATES = ['CA', 'TX', 'NY', 'FL', 'WA', 'AZ', 'IL', 'CO'];
+      const parseAge = (v) => { const m = String(v ?? '').match(/\d{1,3}/); return m ? Number(m[0]) : null; };
+      const ageFromDob = (dob) => {
+        if (!dob) return null;
+        const d = new Date(dob);
+        if (Number.isNaN(d.getTime())) return null;
+        const now = new Date();
+        let a = now.getFullYear() - d.getFullYear();
+        if (now < new Date(now.getFullYear(), d.getMonth(), d.getDate())) a--;
+        return a > 0 && a < 120 ? a : null;
+      };
+      const mapSex = (g) => {
+        const s = String(g || '').toLowerCase();
+        return s.startsWith('m') ? 'Male' : s.startsWith('f') ? 'Female' : null;
+      };
+
       let filled = 0;
       for (const row of profiles || []) {
         const key = row.patient_id || row.id;
+        const idr = identityById.get(row.patient_id) || {};
         const wants = {
+          age: ageFromDob(idr.dob) ?? parseAge(idr.age) ?? (25 + hash(key) % 65),
+          sex_at_birth: mapSex(idr.gender) || pick(key + 's', ['Male', 'Female'])[0],
+          gender_identity: mapSex(idr.gender) || pick(key + 's', ['Male', 'Female'])[0],
+          state: idr.state || pick(key + 'st', STATES)[0],
+          zipcode: idr.zip || String(90001 + hash(key + 'z') % 9000),
           problems: pick(key, PROBLEMS, 2),
           diagnoses: pick(key, DIAGNOSES, 2),
           diagnosis_groups: pick(key, DX_GROUPS, 1),
@@ -925,6 +957,203 @@ async function main() {
         if (!uErr) filled++;
       }
       console.log(`  ✓ p360 criteria fields (${filled} profiles backfilled)`);
+    }
+  }
+
+  // ── Population group activity log ──
+  // Give every group a "created" entry stamped at its created_at so the
+  // History drawer has a trail from day one. Skips groups that already have
+  // any activity, so re-runs never duplicate and real history is preserved.
+  {
+    const { data: groups, error: gErr } = await supabase
+      .from('population_groups').select('id, name, group_type, created_at');
+    const { data: acts, error: aErr } = gErr ? { data: null, error: gErr }
+      : await supabase.from('pop_group_activity').select('group_id');
+    if (gErr || aErr) {
+      console.log(`  ✗ pop_group_activity: ${(gErr || aErr).message} — run supabase/pop_group_activity_migration.sql first`);
+    } else {
+      const have = new Set((acts || []).map(a => a.group_id));
+      const rows = (groups || [])
+        .filter(g => !have.has(g.id))
+        .map(g => ({
+          group_id: g.id,
+          action: 'create',
+          title: 'Population Group Created',
+          detail: `"${g.name}" (${g.group_type})`,
+          actor: 'Fold Demo',
+          created_at: g.created_at,
+        }));
+      if (rows.length === 0) {
+        console.log('  ✓ pop_group_activity (all groups already have history)');
+      } else {
+        const { error } = await supabase.from('pop_group_activity').insert(rows);
+        console.log(error ? `  ✗ pop_group_activity: ${error.message}` : `  ✓ pop_group_activity (${rows.length} created entries)`);
+      }
+    }
+  }
+
+  // ── Rule templates for the Import Rule drawer ──
+  {
+    const TEMPLATES = [
+      {
+        name: 'Diabetes Management',
+        description: 'Patients with diabetes diagnosis and HbA1c above target',
+        category: 'Chronic Care',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-dm-1', field: 'diagnosis', operator: 'contains', value: { text: 'Diabetes' } },
+          { id: 'tpl-dm-2', field: 'labResult', operator: 'contains', value: { text: 'HbA1c' } },
+        ] },
+      },
+      {
+        name: 'Fall Risk — Age 65+',
+        description: 'Seniors at elevated fall risk: age ≥ 65 with a fall-risk problem',
+        category: 'Risk Management',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-fr-1', field: 'patientAge', operator: '>=', value: { amount: 65, asOfMode: 'today' } },
+          { id: 'tpl-fr-2', field: 'problem', operator: 'contains', value: { text: 'Fall Risk' } },
+        ] },
+      },
+      {
+        name: 'Hypertension Screening',
+        description: 'Active patients with hypertension diagnosis',
+        category: 'Chronic Care',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-ht-1', field: 'diagnosis', operator: 'contains', value: { text: 'Hypertension' } },
+          { id: 'tpl-ht-2', field: 'membershipStatus', operator: '=', value: { text: 'Active' } },
+        ] },
+      },
+      {
+        name: 'Disengaged Patients',
+        description: 'Low-engagement patients who may need outreach',
+        category: 'Care Coordination',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-de-1', field: 'patientEngagement', operator: '=', value: { text: 'Low' } },
+          { id: 'tpl-de-2', field: 'membershipStatus', operator: '=', value: { text: 'Active' } },
+        ] },
+      },
+      {
+        name: 'Preventive — Women 50+',
+        description: 'Female patients 50+ for preventive screenings (mammography, colonoscopy)',
+        category: 'Preventive Care',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-pw-1', field: 'patientAge', operator: '>=', value: { amount: 50, asOfMode: 'today' } },
+          { id: 'tpl-pw-2', field: 'sexAtBirth', operator: '=', value: { text: 'Female' } },
+        ] },
+      },
+      {
+        name: 'Uncontrolled Diabetes (ICD-10)',
+        description: 'Patients with Type 2 diabetes (E11.x) and HbA1c ≥ 9.0% in the last 12 months',
+        category: 'Chronic Care',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-ud-1', field: 'codedDiagnosis', operator: 'hasCode', value: { code: 'E11.9', display: 'Type 2 diabetes mellitus, without complications', system: 'icd10' } },
+          { id: 'tpl-ud-2', field: 'observation', operator: '>=', value: { analyte: { code: '4548-4', display: 'Hemoglobin A1c/Hemoglobin.total', system: 'loinc' }, numericValue: 9.0, unit: '%', lookback: { amount: 12, unit: 'months' } } },
+        ] },
+      },
+      {
+        name: 'Frequent ED Utilizers',
+        description: 'Patients with 2+ emergency department visits in the last 6 months',
+        category: 'Risk Management',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-ed-1', field: 'eventCount', operator: '>=', value: { eventType: 'encounter', count: 2, lookback: { amount: 6, unit: 'months' } } },
+          { id: 'tpl-ed-2', field: 'membershipStatus', operator: '=', value: { text: 'Active' } },
+        ] },
+      },
+      {
+        name: 'Statin Therapy Candidates',
+        description: 'Patients on statin medication with LDL ≥ 190 mg/dL',
+        category: 'Preventive Care',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-st-1', field: 'codedMedication', operator: 'hasCode', value: { code: '36567', display: 'Atorvastatin 40 MG Oral Tablet', system: 'rxnorm' } },
+          { id: 'tpl-st-2', field: 'observation', operator: '>=', value: { analyte: { code: '2089-1', display: 'LDL Cholesterol', system: 'loinc' }, numericValue: 190, unit: 'mg/dL', lookback: { amount: 12, unit: 'months' } } },
+        ] },
+      },
+      {
+        name: 'Overdue AWV (65+)',
+        description: 'Medicare patients 65+ with no Annual Wellness Visit in the last 18 months',
+        category: 'Preventive Care',
+        rule: { combinator: 'and', rules: [
+          { id: 'tpl-awv-1', field: 'patientAge', operator: '>=', value: { amount: 65, asOfMode: 'today' } },
+          { id: 'tpl-awv-2', field: 'codedProcedure', operator: 'notHasCode', value: { code: 'G0438', display: 'Annual wellness visit, initial', system: 'cpt', lookback: { amount: 18, unit: 'months' } } },
+        ] },
+      },
+    ];
+    const { data: existing, error: exErr } = await supabase
+      .from('pop_group_rule_templates')
+      .select('name');
+    if (exErr) {
+      console.log(`  ✗ pop_group_rule_templates: ${exErr.message} — run supabase/pop_group_rule_templates_migration.sql first`);
+    } else {
+      const have = new Set((existing || []).map(t => t.name));
+      const rows = TEMPLATES.filter(t => !have.has(t.name));
+      if (rows.length === 0) {
+        console.log(`  ✓ pop_group_rule_templates (all ${TEMPLATES.length} templates already present)`);
+      } else {
+        const { error: tErr } = await supabase.from('pop_group_rule_templates').insert(rows);
+        console.log(tErr
+          ? `  ✗ pop_group_rule_templates: ${tErr.message}`
+          : `  ✓ pop_group_rule_templates (${rows.length} added)`);
+      }
+    }
+  }
+
+  /* ── patient_clinical_events (coded terminology events for healthcare rules) ── */
+  {
+    const CLINICAL_EVENTS = [
+      // Annette Brave — diabetes, labs, medications
+      { patient_id: 'p1', event_type: 'diagnosis', code: 'E11.9', code_system: 'icd10', display: 'Type 2 diabetes mellitus, without complications', effective_date: '2025-08-15', status: 'active' },
+      { patient_id: 'p1', event_type: 'diagnosis', code: 'I10', code_system: 'icd10', display: 'Essential (primary) hypertension', effective_date: '2024-03-10', status: 'active' },
+      { patient_id: 'p1', event_type: 'lab', code: '4548-4', code_system: 'loinc', display: 'Hemoglobin A1c/Hemoglobin.total', effective_date: '2026-05-20', numeric_value: 9.2, unit: '%' },
+      { patient_id: 'p1', event_type: 'lab', code: '2345-7', code_system: 'loinc', display: 'Glucose [Mass/volume] in Serum or Plasma', effective_date: '2026-05-20', numeric_value: 210, unit: 'mg/dL' },
+      { patient_id: 'p1', event_type: 'medication', code: '860975', code_system: 'rxnorm', display: 'Metformin hydrochloride 500 MG', effective_date: '2025-01-15', status: 'active' },
+      { patient_id: 'p1', event_type: 'encounter', code: '99213', code_system: 'cpt', display: 'Office or other outpatient visit', effective_date: '2026-06-01' },
+      { patient_id: 'p1', event_type: 'encounter', code: '99281', code_system: 'cpt', display: 'Emergency department visit, level 1', effective_date: '2026-04-12' },
+      { patient_id: 'p1', event_type: 'encounter', code: '99282', code_system: 'cpt', display: 'Emergency department visit, level 2', effective_date: '2026-03-05' },
+
+      // William Jammy — COPD, labs
+      { patient_id: 'p2', event_type: 'diagnosis', code: 'J44.1', code_system: 'icd10', display: 'Chronic obstructive pulmonary disease with acute exacerbation', effective_date: '2025-11-20', status: 'active' },
+      { patient_id: 'p2', event_type: 'diagnosis', code: 'E78.5', code_system: 'icd10', display: 'Dyslipidemia, unspecified', effective_date: '2024-06-15', status: 'active' },
+      { patient_id: 'p2', event_type: 'lab', code: '2089-1', code_system: 'loinc', display: 'LDL Cholesterol', effective_date: '2026-02-10', numeric_value: 195, unit: 'mg/dL' },
+      { patient_id: 'p2', event_type: 'medication', code: '36567', code_system: 'rxnorm', display: 'Atorvastatin 40 MG Oral Tablet', effective_date: '2025-06-01', status: 'active' },
+      { patient_id: 'p2', event_type: 'procedure', code: 'G0438', code_system: 'cpt', display: 'Annual wellness visit, initial', effective_date: '2025-09-15' },
+
+      // Grace Hill — CHF, multiple encounters
+      { patient_id: 'p3', event_type: 'diagnosis', code: 'I50.9', code_system: 'icd10', display: 'Heart failure, unspecified', effective_date: '2025-04-02', status: 'active' },
+      { patient_id: 'p3', event_type: 'lab', code: '4548-4', code_system: 'loinc', display: 'Hemoglobin A1c/Hemoglobin.total', effective_date: '2026-06-15', numeric_value: 7.1, unit: '%' },
+      { patient_id: 'p3', event_type: 'encounter', code: '99283', code_system: 'cpt', display: 'Emergency department visit, level 3', effective_date: '2026-05-20' },
+      { patient_id: 'p3', event_type: 'encounter', code: '99284', code_system: 'cpt', display: 'Emergency department visit, level 4', effective_date: '2026-07-01' },
+      { patient_id: 'p3', event_type: 'encounter', code: '99285', code_system: 'cpt', display: 'Emergency department visit, level 5', effective_date: '2026-04-05' },
+      { patient_id: 'p3', event_type: 'immunization', code: '135', code_system: 'cvx', display: 'Influenza, high dose', effective_date: '2025-10-01' },
+
+      // Kevin Brown — CKD, labs, meds
+      { patient_id: 'p4', event_type: 'diagnosis', code: 'N18.3', code_system: 'icd10', display: 'Chronic kidney disease, stage 3', effective_date: '2025-07-10', status: 'active' },
+      { patient_id: 'p4', event_type: 'diagnosis', code: 'E11.65', code_system: 'icd10', display: 'Type 2 diabetes mellitus with hyperglycemia', effective_date: '2025-01-20', status: 'active' },
+      { patient_id: 'p4', event_type: 'lab', code: '4548-4', code_system: 'loinc', display: 'Hemoglobin A1c/Hemoglobin.total', effective_date: '2026-07-10', numeric_value: 10.1, unit: '%' },
+      { patient_id: 'p4', event_type: 'lab', code: '2160-0', code_system: 'loinc', display: 'Creatinine [Mass/volume] in Serum or Plasma', effective_date: '2026-07-10', numeric_value: 2.1, unit: 'mg/dL' },
+      { patient_id: 'p4', event_type: 'medication', code: '860975', code_system: 'rxnorm', display: 'Metformin hydrochloride 500 MG', effective_date: '2025-03-01', status: 'active' },
+      { patient_id: 'p4', event_type: 'medication', code: '36567', code_system: 'rxnorm', display: 'Atorvastatin 40 MG Oral Tablet', effective_date: '2025-03-01', status: 'active' },
+
+      // Jessica Clark — healthy, preventive care
+      { patient_id: 'p5', event_type: 'diagnosis', code: 'Z00.00', code_system: 'icd10', display: 'Encounter for general adult medical exam without abnormal findings', effective_date: '2026-01-15' },
+      { patient_id: 'p5', event_type: 'procedure', code: '77067', code_system: 'cpt', display: 'Screening mammography, bilateral', effective_date: '2026-01-15' },
+      { patient_id: 'p5', event_type: 'lab', code: '2089-1', code_system: 'loinc', display: 'LDL Cholesterol', effective_date: '2026-01-15', numeric_value: 120, unit: 'mg/dL' },
+      { patient_id: 'p5', event_type: 'immunization', code: '213', code_system: 'cvx', display: 'SARS-COV-2 (COVID-19) vaccine', effective_date: '2025-11-01' },
+    ];
+
+    const { data: existing, error: exErr } = await supabase
+      .from('patient_clinical_events')
+      .select('id')
+      .limit(1);
+    if (exErr) {
+      console.log(`  ✗ patient_clinical_events: ${exErr.message} — run supabase/patient_clinical_events_migration.sql first`);
+    } else if (existing?.length) {
+      console.log(`  ✓ patient_clinical_events (already seeded)`);
+    } else {
+      const { error: insErr } = await supabase
+        .from('patient_clinical_events')
+        .insert(CLINICAL_EVENTS);
+      console.log(insErr
+        ? `  ✗ patient_clinical_events: ${insErr.message}`
+        : `  ✓ patient_clinical_events (${CLINICAL_EVENTS.length} events seeded)`);
     }
   }
 

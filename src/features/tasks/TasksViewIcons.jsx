@@ -56,7 +56,3 @@ export function PriorityIcon({ priority, size = 24 }) {
   );
 }
 
-export const VIEW_TOGGLE_ITEMS = [
-  { key: 'list', icon: 'solar:list-linear' },
-  { key: 'board', icon: <KanbanIcon size={16} /> },
-];

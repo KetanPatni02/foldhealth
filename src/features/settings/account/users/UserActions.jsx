@@ -21,7 +21,7 @@ export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, on
   }, [menuOpen]);
 
   if (!isAdmin) {
-    return <span style={{ color: 'var(--neutral-200)', fontSize: 13 }}>—</span>;
+    return <span style={{ color: 'var(--neutral-200)', fontSize: 'var(--font-md)' }}>—</span>;
   }
 
   return (

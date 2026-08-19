@@ -6,6 +6,16 @@
 .rowChecked .stickyLeft { background: var(--primary-50) !important; }
 .rowChecked .stickyRight { background: var(--primary-50); }
 
+/* Multi-gap rows (2+ gaps): top-align member and per-member cells so the
+   name / outreach / risk values sit at the top of the tall row instead of
+   floating in the middle. The gap columns are already top-aligned. */
+.rowMultiGap .checkTd,
+.rowMultiGap .memberTd,
+.rowMultiGap .td,
+.rowMultiGap .actionsCell {
+  vertical-align: top;
+}
+
 .stickyLeft {
   position: sticky;
   background: var(--neutral-0);
@@ -31,7 +41,7 @@
 }
 .td {
   padding: 8px 14px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   vertical-align: middle;
@@ -39,7 +49,7 @@
 }
 .tdMuted {
   padding: 8px 14px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
   vertical-align: middle;
   white-space: nowrap;
@@ -47,14 +57,14 @@
 
 /* Member cell */
 .patientCell { display: flex; align-items: center; gap: 12px; }
-.patientName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
 .patientNameLink {
   background: none; border: none; padding: 0;
   font: inherit; color: inherit; cursor: pointer; font-weight: 500;
 }
 .patientNameLink:hover { color: var(--primary-300); text-decoration: underline; }
-.patientDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
-.patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+.patientDemo { font-size: var(--font-md); font-weight: 400; color: var(--neutral-300); }
+.patientMeta { font-size: var(--font-md); color: var(--neutral-200); margin-top: 3px; }
 .foldId { cursor: pointer; transition: color .12s; }
 .foldId:hover { color: var(--primary-300); text-decoration: underline; }
 
@@ -69,7 +79,7 @@
   background: transparent;
   border: none;
   color: var(--neutral-300);
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   text-transform: uppercase;
   letter-spacing: normal;
@@ -94,7 +104,7 @@
   background: var(--neutral-500);
   color: var(--neutral-0);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   z-index: 100;
   pointer-events: none;
@@ -118,7 +128,7 @@
 /* Gap-specific cell — padding removed from <td> so inner items control spacing */
 .tdGap {
   padding: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   vertical-align: top;
@@ -133,22 +143,53 @@
 .gapItems { display: flex; flex-direction: column; }
 .gapItem {
   padding: 8px 14px;
-  min-height: 36px;
+  /* 44px accommodates the AssigneeChange pill (28px height) with the shared
+     8/8 padding. Uses `height` (not min-height) with box-sizing: border-box
+     so the 0.5px separator border between items doesn't accumulate subpixel
+     drift in the Assignee column — every column's per-gap row measures the
+     same, and multi-gap cells stay pixel-aligned across columns. */
+  height: 44px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
 }
 .gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
+
+/* Equal-height footer row rendered by every gap-iterating column when more
+   than MAX_INLINE_GAPS gaps exist — mirrors the HCC dosFooter so the "View
+   More N" button in Total Gaps stays vertically aligned with the empty
+   footer spacers in Gap Status / Assignee / Start Date. */
+.gapFooter {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  border-top: 0.5px solid var(--neutral-150);
+}
+.viewMoreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: 100%;
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: 500 12px/1.2 'Inter', sans-serif;
+  color: var(--neutral-300);
+  text-align: left;
+}
+.viewMoreBtn:hover { color: var(--primary-300); }
 
 /* Gap status */
 
 /* Outreach cell — lifted from src/features/toc-worklist/WorklistRow.module.css */
 .outreachWl { display: flex; flex-direction: column; gap: 4px; }
 .outreachWlMain { display: flex; align-items: center; gap: 6px; }
-.outreachWlText { font-size: 13px; color: var(--neutral-400); }
-.outreachWlDate { font-size: 12px; color: var(--status-success); font-weight: 500; }
-.outreachWlDateMuted { font-size: 12px; color: var(--neutral-200); }
-.outreachWlFailed { font-size: 13px; color: var(--status-error); font-weight: 500; }
-.outreachWlNone { font-size: 13px; color: var(--neutral-200); }
+.outreachWlText { font-size: var(--font-md); color: var(--neutral-400); }
+.outreachWlDate { font-size: var(--font-sm); color: var(--status-success); font-weight: 500; }
+.outreachWlDateMuted { font-size: var(--font-sm); color: var(--neutral-200); }
+.outreachWlFailed { font-size: var(--font-md); color: var(--status-error); font-weight: 500; }
+.outreachWlNone { font-size: var(--font-md); color: var(--neutral-200); }
 .dotsRow { display: flex; align-items: center; gap: 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .dot.success { background: var(--status-success); }
@@ -159,7 +200,7 @@
 .assigneeName {
   display: flex; align-items: center; gap: 6px;
   min-width: 0;
-  font-size: 13px; color: var(--neutral-400);
+  font-size: var(--font-md); color: var(--neutral-400);
 }
 .assigneeName span {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;
@@ -167,25 +208,25 @@
 .assigneeBtn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 0; border: none; background: none;
-  font-size: 13px; font-weight: 400; color: var(--neutral-200);
-  cursor: pointer; font-family: 'Inter', sans-serif;
+  font-size: var(--font-md); font-weight: 400; color: var(--neutral-200);
+  cursor: pointer;
 }
 .assigneeBtn:hover { color: var(--primary-300); }
 
 /* Start date cell */
 .startDateCell { display: flex; flex-direction: column; gap: 2px; }
-.startDateCode { font-size: 12px; color: var(--neutral-300); font-weight: 500; }
-.startDateValue { font-size: 13px; color: var(--neutral-400); white-space: nowrap; }
+.startDateCode { font-size: var(--font-sm); color: var(--neutral-300); font-weight: 500; }
+.startDateValue { font-size: var(--font-md); color: var(--neutral-400); white-space: nowrap; }
 
 /* Numeric cells */
-.numText { font-size: 14px; color: var(--neutral-400); font-variant-numeric: tabular-nums; }
-.muted { color: var(--neutral-200); font-size: 14px; }
+.numText { font-size: var(--font-base); color: var(--neutral-400); font-variant-numeric: tabular-nums; }
+.muted { color: var(--neutral-200); font-size: var(--font-base); }
 
 /* Risk level */
 .riskBadge {
   display: inline-flex; align-items: center;
   padding: 2px 8px; border-radius: 4px;
-  font-size: 12px; font-weight: 500;
+  font-size: var(--font-sm); font-weight: 500;
   border: 0.5px solid transparent; white-space: nowrap;
 }
 

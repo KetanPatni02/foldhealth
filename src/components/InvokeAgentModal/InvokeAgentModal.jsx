@@ -53,7 +53,7 @@ export function InvokeAgentModal() {
           borderBottom: '0.5px solid var(--neutral-150)',
         }}>
           <span style={{
-            flex: 1, fontSize: 14, fontWeight: 500,
+            flex: 1, fontSize: 'var(--font-base)', fontWeight: 500,
             color: 'var(--neutral-400)', fontFamily: "'Inter', sans-serif",
           }}>
             Select Agent to Invoke
@@ -95,10 +95,10 @@ export function InvokeAgentModal() {
                 <Avatar variant="invokeAgent" agentName={agent.name} style={{ width: 32, height: 32, borderRadius: 4, flexShrink: 0 }} />
                 {/* Text */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--neutral-400)', lineHeight: 1.2 }}>
+                  <div style={{ fontSize: 'var(--font-base)', fontWeight: 400, color: 'var(--neutral-400)', lineHeight: 1.2 }}>
                     {agent.name}
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-200)', lineHeight: 1.2, marginTop: 4 }}>
+                  <div style={{ fontSize: 'var(--font-sm)', fontWeight: 400, color: 'var(--neutral-200)', lineHeight: 1.2, marginTop: 4 }}>
                     {agent.role}
                   </div>
                 </div>

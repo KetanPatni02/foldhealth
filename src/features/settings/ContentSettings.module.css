@@ -5,7 +5,6 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
 }
 
 /* A <button> so the filter can be cleared from the keyboard. text-align keeps
@@ -41,7 +40,6 @@
   width: 100%;
   min-width: 880px; /* Below this width the sticky Action column kicks in. */
   border-collapse: collapse;
-  font-family: 'Inter', sans-serif;
   /* table-layout: fixed forces the <col> widths to be respected so we can
      truncate long names/subjects instead of letting them push the layout. */
   table-layout: fixed;
@@ -57,7 +55,7 @@
 .headerRow th {
   padding: 10px 16px;
   text-align: left;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   border-bottom: 0.5px solid var(--neutral-150);
@@ -66,7 +64,7 @@
   /* line-height pinned to the Radix Checkbox's outer dimension (16px inner
      + 2px border = 18px) so toggling bulk-select never changes the header
      row height. The 18px line box is the floor in both states. */
-  line-height: 18px;
+  line-height: 1.125rem;
 }
 
 /* Sticky Action column — stays pinned to the right when the table scrolls
@@ -131,7 +129,7 @@
 }
 
 .nameText {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -140,7 +138,7 @@
 }
 
 .nameDesc {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   white-space: nowrap;
   overflow: hidden;
@@ -241,7 +239,7 @@
 .tdAction    { padding: 10px 16px; }
 
 .cellText {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   white-space: nowrap;
   overflow: hidden;
@@ -251,14 +249,14 @@
 }
 
 .cellMuted {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
 }
 
 /* Subject cell — wraps to two lines, then ellipsises. -webkit-line-clamp is
    the only cross-browser way to multi-line truncate in 2026 without JS. */
 .subjectText {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -316,7 +314,7 @@
   padding: 48px 20px;
   text-align: center;
   color: var(--neutral-300);
-  font-size: 13px;
+  font-size: var(--font-md);
 }
 
 .emptyState p { margin: 10px 0 0; }
@@ -334,14 +332,14 @@
 }
 
 .placeholderTitle {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--neutral-300);
   margin: 0;
 }
 
 .placeholderSub {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
   margin: 0;
 }
@@ -374,8 +372,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   text-align: left;
 }
@@ -424,7 +421,7 @@
 }
 
 .bulkCountText {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   line-height: 1.2;

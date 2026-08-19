@@ -20,17 +20,26 @@ const FEATURES = [
     items: [
       {
         icon: 'solar:clipboard-list-linear',
-        crumbs: ['TOC Worklist'],
-        description: 'Prioritized worklist of patients in transition of care.',
+        crumbs: ['TOC IP'],
+        description: 'Agent-led outreach queue for transition-of-care inpatients.',
+        page: 'population',
+        subnavList: 'TOC IP',
+      },
+      {
+        icon: 'solar:clipboard-list-linear',
+        crumbs: ['TCM Worklist'],
+        description: 'Prioritized worklist of patients in transitional care management.',
         page: 'population',
         tab: 'toc-worklist',
+        subnavList: 'TCM',
       },
       {
         icon: 'solar:users-group-two-rounded-linear',
-        crumbs: ['TOC Queue'],
+        crumbs: ['TCM Queue'],
         description: 'Queue of patients awaiting agent-led outreach.',
         page: 'population',
         tab: 'toc-queue',
+        subnavList: 'TCM',
       },
       {
         icon: 'solar:document-medicine-linear',
@@ -281,8 +290,8 @@ export function HelpPopover({ onClose, onOpenFeedback, onOpenChangelog, changelo
   const handleNavigate = (item) => {
     setActivePage(item.page);
     setCurrentPage(1);
-    if (item.tab) setActiveTab(item.tab);
     if (item.subnavList) setActiveSubnavList(item.subnavList);
+    if (item.tab) setActiveTab(item.tab);
     if (item.settingsNavItem) setSettingsNavItem(item.settingsNavItem);
     if (item.analyticsView) setAnalyticsView(item.analyticsView);
     onClose();

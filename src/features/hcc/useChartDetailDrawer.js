@@ -174,6 +174,7 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   const [upCaption, setUpCaption] = useState('');
   const [upCaptionTouched, setUpCaptionTouched] = useState(false);
   const [upType, setUpType] = useState('');
+  const [upVisitType, setUpVisitType] = useState('');
   const [uploadKey, setUploadKey] = useState(0); // remount UploadDropField to reset it
   // Once a file lands in the drop zone, seed the Caption with the file's
   // name (extension stripped) so the user has a sensible default — unless
@@ -546,13 +547,17 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   const showReviewBanner = effectiveStatus === 'completed';
 
   const resetUpload = () => {
-    setShowUpload(false); setUpFile(null); setUpCaption(''); setUpCaptionTouched(false); setUpType('');
+    setShowUpload(false); setUpFile(null); setUpCaption(''); setUpCaptionTouched(false); setUpType(''); setUpVisitType('');
     setUploadKey(k => k + 1);
   };
   const canSaveUpload = !!(upFile && upCaption.trim() && upType);
   const saveUpload = () => {
     if (!canSaveUpload) return;
-    addChartDoc(member.id, makeUploadedChartDoc(member, { file: upFile, caption: upCaption, docType: upType }), upFile);
+    addChartDoc(
+      member.id,
+      makeUploadedChartDoc(member, { file: upFile, caption: upCaption, docType: upType, visitType: upVisitType }),
+      upFile,
+    );
     showToast(`Uploaded ${upFile.name} to ${member?.name || 'patient'}'s documents.`);
     resetUpload();
   };
@@ -638,6 +643,8 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
     unlinkDoc,
     upCaption,
     upType,
+    upVisitType,
+    setUpVisitType,
     updateChartDocMeta,
     uploadKey,
     charts,

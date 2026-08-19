@@ -23,7 +23,7 @@
 
 .td {
   padding: 8px 14px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   vertical-align: middle;
@@ -37,19 +37,19 @@
 
 /* Members cell */
 .patientCell { display: flex; align-items: center; gap: 12px; }
-.patientName { font-size: 14px; font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
 .patientNameLink {
   background: none; border: none; padding: 0; font: inherit; color: inherit;
   cursor: pointer; font-weight: 500;
 }
 .patientNameLink:hover { color: var(--primary-300); text-decoration: underline; }
-.patientDemo { font-size: 13px; font-weight: 400; color: var(--neutral-300); }
-.patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+.patientDemo { font-size: var(--font-md); font-weight: 400; color: var(--neutral-300); }
+.patientMeta { font-size: var(--font-md); color: var(--neutral-200); margin-top: 3px; }
 .foldId { cursor: pointer; transition: color .12s; }
 .foldId:hover { color: var(--primary-300); text-decoration: underline; }
 .langBadge {
   display: inline-flex; align-items: center; background: transparent;
-  color: var(--neutral-300); border: none; padding: 0; font-size: 13px;
+  color: var(--neutral-300); border: none; padding: 0; font-size: var(--font-md);
   text-transform: uppercase; position: relative; cursor: pointer; transition: color 0.12s;
 }
 .langBadge:hover { color: var(--primary-300); text-decoration: underline; text-underline-offset: 2px; }
@@ -57,17 +57,25 @@
   display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
   transform: translateX(-50%); white-space: nowrap; padding: 6px 10px;
   background: var(--neutral-500); color: var(--neutral-0); border-radius: 6px;
-  font-size: 12px; z-index: 100; pointer-events: none; text-transform: none;
+  font-size: var(--font-sm); z-index: 100; pointer-events: none; text-transform: none;
 }
 .langBadge:hover .langTooltip { display: block; }
 
-/* Status dropdown cells (Program Sub Status / Care Plan Status) */
+/* Status dropdown cells (Program Sub Status) */
 .statusDropdown {
   display: inline-flex; align-items: center; gap: 6px;
   background: none; border: none; padding: 0; cursor: pointer;
-  font-size: 14px; color: var(--neutral-400); white-space: nowrap;
+  font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap;
 }
 .statusDropdown:hover { color: var(--primary-300); }
+
+/* Read-only Care Plan Status text — the column doesn't own an editable
+   affordance, so no chevron / hover / button chrome. */
+.statusText {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
 
 /* Wraps the shared <Badge> so it can act as a click target for the
    status-change MenuPopover. Chrome-free — the badge already carries
@@ -77,17 +85,17 @@
   display: inline-flex; align-items: center;
 }
 
-.dateText { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
-.mutedDash { color: var(--neutral-200); font-size: 14px; }
-.triggerText { font-size: 14px; color: var(--neutral-400); white-space: nowrap; }
-.riskText { font-size: 14px; color: var(--neutral-300); white-space: nowrap; }
+.dateText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
+.mutedDash { color: var(--neutral-200); font-size: var(--font-base); }
+.triggerText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
+.riskText { font-size: var(--font-base); color: var(--neutral-300); white-space: nowrap; }
 
 /* Outreach cell */
 .outreachCell { display: inline-flex; align-items: flex-start; gap: 6px; }
 .outreachNone { display: inline-flex; align-items: center; gap: 6px; }
 .outreachBody { display: inline-flex; flex-direction: column; gap: 2px; }
-.outreachStatus { font-size: 13px; font-weight: 500; color: var(--status-error); }
-.outreachDate { font-size: 13px; color: var(--status-error); }
+.outreachStatus { font-size: var(--font-md); font-weight: 500; color: var(--status-error); }
+.outreachDate { font-size: var(--font-md); color: var(--status-error); }
 .dots { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; }
 .dot { width: 6px; height: 6px; border-radius: 50%; }
 
@@ -99,12 +107,12 @@
    Badge.module.css `.tag-*`). Only the row container + "+N More" chrome
    live here. */
 .tagCell { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.tagMore { font-size: 13px; color: var(--neutral-300); white-space: nowrap; }
+.tagMore { font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
 
 /* Tasks */
 .taskLink {
   background: none; border: none; padding: 0; cursor: pointer;
-  font-size: 14px; font-weight: 500; color: var(--primary-400);
+  font-size: var(--font-base); font-weight: 500; color: var(--primary-400);
 }
 .taskLink:hover { text-decoration: underline; }
 

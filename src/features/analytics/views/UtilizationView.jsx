@@ -33,13 +33,13 @@ function renderUtilizationDeepDive() {
     <Card title="Manager Deep Dive &mdash; Readmission Drivers">
       <div className={s.g2}>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>By DRG</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: '0.5rem' }}>By DRG</div>
           <ProgressBar label="DRG 291 — Heart Failure" value="8 readmits" pct={80} color="red" sub="18.7% readmit rate" />
           <ProgressBar label="DRG 193 — COPD" value="5 readmits" pct={50} color="amber" sub="17.9%" />
           <ProgressBar label="DRG 690 — UTI w/ MCC" value="4 readmits" pct={40} color="amber" sub="16.7%" />
         </div>
         <div>
-          <div style={{ fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: 8 }}>By Avg LOS Before Readmit</div>
+          <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.5px', color: 'var(--neutral-200)', marginBottom: '0.5rem' }}>By Avg LOS Before Readmit</div>
           <ProgressBar label="0–7 days post-discharge" value="42%" pct={84} color="red" sub="Very early — TCM critical" />
           <ProgressBar label="8–14 days" value="31%" pct={62} color="amber" sub="TCM + SNF coordination" />
           <ProgressBar label="15–30 days" value="27%" pct={54} color="green" sub="Late readmit — SNF quality" />
@@ -78,15 +78,15 @@ export function UtilizationView({ showToast, editing = false, resetTick = 0 }) {
   const renderAdtAlert = () => (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10,
-      background: 'var(--status-error-light)', border: '1px solid var(--status-error-light)', borderRadius: 8,
+      background: 'var(--status-error-light)', border: '0.5px solid var(--status-error)', borderRadius: 8,
       padding: '12px 16px'
     }}>
-      <div style={{ fontSize: 18 }}>&#x1F6A8;</div>
+      <div style={{ fontSize: 'var(--font-xl)' }}>&#x1F6A8;</div>
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 500, fontSize: 14, color: 'var(--status-error)' }}>Live ADT Alert &mdash; Manager View</div>
-        <div style={{ fontSize: 12, color: 'var(--status-error)', marginTop: 2 }}>James M. (Tier 5) discharged to Valley SNF. 34% readmit risk. TCM: Maria Chen, RN.</div>
+        <div style={{ fontWeight: 500, fontSize: 'var(--font-base)', color: 'var(--status-error)' }}>Live ADT Alert &mdash; Manager View</div>
+        <div style={{ fontSize: 'var(--font-sm)', color: 'var(--status-error)', marginTop: 2 }}>James M. (Tier 5) discharged to Valley SNF. 34% readmit risk. TCM: Maria Chen, RN.</div>
       </div>
-      <Button variant="primary" size="S" style={{ fontSize: 12 }} onClick={() => showToast?.('Opening ADT detail for James M.')}>View &rarr;</Button>
+      <Button variant="primary" size="S" style={{ fontSize: 'var(--font-sm)' }} onClick={() => showToast?.('Opening ADT detail for James M.')}>View &rarr;</Button>
     </div>
   );
 
@@ -115,7 +115,7 @@ export function UtilizationView({ showToast, editing = false, resetTick = 0 }) {
   const renderReadmit = () => (
     <Card title="Readmission Rate Trend" sub={periodLabel}>
       <ReadmitTrendLineChart data={readmitTrend} threshold={15.0} />
-      <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--neutral-200)', marginTop: 6 }}>
+      <div style={{ display: 'flex', gap: 12, fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', marginTop: 6 }}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 12, height: 2, background: 'var(--status-error)', display: 'inline-block', borderRadius: 2 }} />Readmit Rate</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 14, height: 0, borderTop: '2px dashed var(--neutral-150)', display: 'inline-block' }} />Threshold 15%</span>
       </div>

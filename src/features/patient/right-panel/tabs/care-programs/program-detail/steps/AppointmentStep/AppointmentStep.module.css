@@ -38,7 +38,7 @@
   background: var(--neutral-50);
 }
 .emptyText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
 }
 .actions {
@@ -69,12 +69,12 @@
   cursor: pointer;
 }
 .sectionTitle {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
 .sectionEmpty {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   padding: 4px 22px;
 }
@@ -94,7 +94,7 @@
 .headRow {
   padding: 8px 4px;
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .row {
@@ -103,9 +103,9 @@
 }
 .checkCell { display: flex; align-items: center; }
 .titleCell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.titleText { font-size: 14px; color: var(--neutral-500); }
-.subtitle { font-size: 13px; color: var(--neutral-300); }
-.typeCell { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--neutral-300); }
+.titleText { font-size: var(--font-base); color: var(--neutral-500); }
+.subtitle { font-size: var(--font-md); color: var(--neutral-300); }
+.typeCell { display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-base); color: var(--neutral-300); }
 .recurring {
   display: inline-flex;
   align-items: center;
@@ -115,6 +115,6 @@
   border-radius: 4px;
   background: var(--primary-100);
 }
-.dateCell { display: flex; flex-direction: column; gap: 2px; font-size: 14px; color: var(--neutral-400); }
-.time { font-size: 13px; color: var(--neutral-300); }
-.assigneeCell { font-size: 14px; color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dateCell { display: flex; flex-direction: column; gap: 2px; font-size: var(--font-base); color: var(--neutral-400); }
+.time { font-size: var(--font-md); color: var(--neutral-300); }
+.assigneeCell { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

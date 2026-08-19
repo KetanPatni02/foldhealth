@@ -6,7 +6,7 @@
   padding: 2px 8px;
   border-radius: 4px;
   border: 0.5px solid var(--neutral-150);
-  font-size: 12px;
+  font-size: var(--font-sm);
 }
 
 /* Full-bleed PDF: cancel the Drawer body's default padding so the viewer fills. */

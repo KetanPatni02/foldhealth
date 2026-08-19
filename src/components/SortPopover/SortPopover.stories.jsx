@@ -66,7 +66,7 @@ function Demo(props) {
         onClick={(e) => setRect(rect ? null : e.currentTarget.getBoundingClientRect())}
         style={{
           padding: '6px 12px', borderRadius: 6, border: '1px solid var(--neutral-150)',
-          background: 'var(--neutral-0)', cursor: 'pointer', fontSize: 13, color: 'var(--neutral-400)',
+          background: 'var(--neutral-0)', cursor: 'pointer', fontSize: 'var(--font-md)', color: 'var(--neutral-400)',
         }}
       >
         Sort {sort.key ? `— ${sort.key} ${sort.dir}` : ''}

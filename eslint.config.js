@@ -66,6 +66,10 @@ export default defineConfig([globalIgnores(['dist', 'storybook-static', 'coverag
         selector: "VariableDeclarator[id.name=/.+FilterChip$/][init.callee]",
         message: 'Do not re-implement a filter chip — use the shared src/components/FilterChip so filter badges stay identical app-wide. See CONTRIBUTING.md.',
       },
+      {
+        selector: "Property[key.name='fontSize'][value.type='Literal'][value.raw=/^\\d/]",
+        message: 'Inline fontSize in px — use a rem-based CSS variable (var(--font-…)) via CSS Modules, not a raw number in style={{}}. See src/tokens/tokens.css.',
+      },
     ],
   },
 }, {

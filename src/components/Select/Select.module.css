@@ -3,6 +3,54 @@
   width: 100%;
 }
 
+/* ── Field wrapper (label + trigger + helper/error) ─────────────────────
+   Mirrors src/components/Input's .field so labels, required-dot, and
+   supporting-text sit at the same 14px/--neutral-200 spec across every
+   form control. Update both stylesheets together on any label change. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-base);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+.labelInfo {
+  flex-shrink: 0;
+  cursor: help;
+}
+.required {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+
+.helperText {
+  font-size: var(--font-sm);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+.errorText {
+  font-size: var(--font-sm);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--status-error);
+}
+
+/* Trigger — mirrors Input's `.input` spec: 32px, 0.5px --neutral-200
+   border, 4px radius. Hover + focus + open all flip the border to
+   --primary-300 and paint a solid 2px --primary-100 ring via box-shadow. */
 .trigger {
   display: flex;
   align-items: center;
@@ -11,47 +59,51 @@
   width: 100%;
   height: 32px;
   padding: 0 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: 4px;
   background: var(--neutral-0);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
   text-align: left;
   outline: none;
-  transition: border-color .15s, box-shadow .15s;
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
   line-height: 1.2;
+  box-sizing: border-box;
 }
 
-.trigger:hover { border-color: var(--neutral-200); }
-
+.trigger:hover:not(:disabled),
 .trigger:focus,
 .trigger[aria-expanded="true"] {
   border-color: var(--primary-300);
-  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+  box-shadow: 0 0 0 2px var(--primary-100);
 }
 
 .trigger:disabled {
   background: var(--neutral-50);
-  color: var(--neutral-300);
+  color: var(--neutral-150);
+  border-color: var(--neutral-150);
   cursor: not-allowed;
-  opacity: 0.6;
 }
 
-.triggerError {
-  border-color: var(--status-error);
-  background: var(--status-error-light);
-}
+/* Error variant — red border, and hover/focus/open paint a 2px
+   --status-error-light ring (matches Input's error hover state). */
+.triggerError,
+.triggerError:hover,
 .triggerError:focus,
 .triggerError[aria-expanded="true"] {
   border-color: var(--status-error);
-  box-shadow: 0 0 0 2px rgba(215, 40, 37, 0.12);
+  background: var(--neutral-0);
+}
+.triggerError:not(:disabled):hover,
+.triggerError:focus,
+.triggerError[aria-expanded="true"] {
+  box-shadow: 0 0 0 2px var(--status-error-light);
 }
 
 .triggerPlaceholder .triggerLabel {
-  color: var(--neutral-200);
+  color: var(--placeholder-text);
 }
 
 .triggerLabel {
@@ -131,13 +183,13 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
 }
 .searchInput::placeholder { color: var(--neutral-200); }
 .emptyOption {
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   text-align: center;
 }
@@ -150,8 +202,7 @@
   padding: 8px 10px;
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   line-height: 1.3;
   outline: none;
@@ -163,7 +214,7 @@
 .groupHeader {
   padding: 8px 10px 4px;
   margin-top: 4px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300);
   text-transform: uppercase;

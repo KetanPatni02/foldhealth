@@ -14,11 +14,11 @@ const PROGRAM_VARIANT = { purple: 'ai-care', blue: 'outreach-appointment', amber
 const STATUS_VARIANT = { active: 'status-completed', draft: 'status-queued' };
 
 const GOALS_TH_STYLE = {
-  padding: '8px 16px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+  padding: '8px 16px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)',
   textAlign: 'left', whiteSpace: 'nowrap', borderBottom: '0.5px solid var(--neutral-150)',
   background: 'var(--neutral-0)', position: 'sticky', top: 0,
 };
-const GOALS_TD_STYLE = { padding: '12px 16px', fontSize: 14, fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
+const GOALS_TD_STYLE = { padding: '12px 16px', fontSize: 'var(--font-base)', fontWeight: 400, color: 'var(--neutral-300)', verticalAlign: 'middle' };
 
 function openGoalWizard(id) {
   useAppStore.setState({ goalDetailId: null, goalWizardOpen: true, goalWizardEditId: id });
@@ -61,8 +61,8 @@ function GoalCard({ goal, onOpen, onEdit }) {
         <div className={s.cardStat}>
           {goal.weightedScoring ? (
             <>
-              <div className={s.cardStatVal} style={{ fontSize: 12 }}>
-                {goal.passingScore}<span style={{ fontSize: 10, color: 'var(--neutral-200)' }}>/{totalScore}pt</span>
+              <div className={s.cardStatVal} style={{ fontSize: 'var(--font-sm)' }}>
+                {goal.passingScore}<span style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-200)' }}>/{totalScore}pt</span>
               </div>
               <div className={s.cardStatLabel}>Threshold</div>
             </>
@@ -126,10 +126,10 @@ function GoalsTable({ goals, onOpen, onEdit, onDelete }) {
               >
                 <td style={tdStyle}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <span style={{ fontWeight: 500, fontSize: 14, color: 'var(--neutral-400)' }}>{g.name}</span>
+                    <span style={{ fontWeight: 500, fontSize: 'var(--font-base)', color: 'var(--neutral-400)' }}>{g.name}</span>
                     {g.status === 'draft' && <Badge variant="status-queued" label="Draft" />}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--neutral-300)', maxWidth: 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.description}</div>
+                  <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', maxWidth: 280, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{g.description}</div>
                 </td>
                 <td style={tdStyle}><Badge variant={PROGRAM_VARIANT[g.programColor] || 'ai-care'} label={g.program} /></td>
                 <td style={tdStyle}>
@@ -138,14 +138,14 @@ function GoalsTable({ goals, onOpen, onEdit, onDelete }) {
                       <span key={st.id} style={{ width: 7, height: 7, borderRadius: '50%', display: 'inline-block', background: st.type === 'mandatory' ? 'var(--status-success)' : 'var(--neutral-200)' }} />
                     ))}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--neutral-300)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{mc}R · {cc}O</div>
+                  <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>{mc}R · {cc}O</div>
                 </td>
                 <td style={tdStyle}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <div style={{ background: 'var(--neutral-50)', borderRadius: 20, height: 4, width: 64, overflow: 'hidden', display: 'inline-block', verticalAlign: 'middle' }}>
                       <div style={{ height: '100%', borderRadius: 20, background: pct < 50 ? 'var(--status-warning)' : 'var(--status-success)', width: `${pct}%` }} />
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: pct < 50 ? 'var(--status-warning)' : 'var(--status-success)' }}>{pct}%</span>
+                    <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, fontVariantNumeric: 'tabular-nums', color: pct < 50 ? 'var(--status-warning)' : 'var(--status-success)' }}>{pct}%</span>
                   </div>
                 </td>
                 <td style={{ ...tdStyle, fontVariantNumeric: 'tabular-nums' }}>

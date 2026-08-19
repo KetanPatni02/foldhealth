@@ -15,7 +15,7 @@ import { toast } from '../components/Toast/sonnerToast';
 // chunk. They're only needed when Supabase returns empty or errors.
 import { updateHash } from '../lib/router';
 import { track } from '../lib/tracking';
-import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle } from '../lib/theme';
+import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle, applyContrast, getStoredContrast, applyFontScale, getStoredFontScale } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
 import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
 import { getChartDocs } from '../features/hcc/data/chartDocs';
@@ -563,9 +563,14 @@ const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 const _initialThemeSetting = getStoredTheme();
 const _initialResolvedTheme = getResolvedTheme(_initialThemeSetting);
 const _initialNavStyle = getStoredNavStyle();
-// Apply nav style at module load so it lands before React mounts (the index.html
-// blocking script handles the color theme but not this one yet).
+const _initialContrast = getStoredContrast();
+const _initialFontScale = getStoredFontScale();
+// Apply nav style, contrast, and font scale at module load so they land before
+// React mounts (the index.html blocking script handles the color theme but not
+// these yet).
 applyNavStyle(_initialNavStyle);
+applyContrast(_initialContrast);
+applyFontScale(_initialFontScale);
 
 // ── Settings → Content → Emails: SWR cache ────────────────────────────────
 // Keyed by `${page}|${perPage}|${searchLowercased}|${status}`. Lives at
@@ -740,7 +745,7 @@ const HCC_TRANSITION_LABEL = {
 // Maps a shared-list label to the store-state key that holds its active
 // filter selections. Used by the generic saved-filter actions below so that
 // saving / applying a filter on any list writes to the right slice.
-// Lists not listed here fall back to `activeFilters` (the TOC default).
+// Lists not listed here fall back to `activeFilters` (the TCM / TOC default).
 const LIST_FILTER_KEY = {
   HCC:   'hccFilters',
   HEDIS: 'hedisFilters',
@@ -986,6 +991,28 @@ export const useAppStore = create((set, get) => ({
     track('nav.style_changed', { from, to: next });
     const applied = applyNavStyle(next);
     set({ navStyle: applied });
+  },
+
+  // ─── Contrast ────────────────────────────────────────────────────────
+  // 'default' = normal neutral scale.
+  // 'high'    = boosts muted text + border tokens for easier reading.
+  contrast: _initialContrast,
+  setContrast: (next) => {
+    const from = get().contrast;
+    track('contrast.changed', { from, to: next });
+    const applied = applyContrast(next);
+    set({ contrast: applied });
+  },
+
+  // ─── Font scale ─────────────────────────────────────────────────────
+  // 5 accessibility levels: smaller / small / default / large / larger.
+  // Adjusts root font-size; all rem-based tokens scale proportionally.
+  fontScale: _initialFontScale,
+  setFontScale: (next) => {
+    const from = get().fontScale;
+    track('fontScale.changed', { from, to: next });
+    const applied = applyFontScale(next);
+    set({ fontScale: applied });
   },
 
   // ─── Featurebase (Help → Give Feedback) ─────────────────────────────
@@ -2024,7 +2051,7 @@ export const useAppStore = create((set, get) => ({
 
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
-  activeSubnavList: 'TOC',  // which SubNav list is selected
+  activeSubnavList: 'TCM',  // which SubNav list is selected
 
   // ── Per-user worklist ordering (SubNav drag-and-drop) ──
   // Array of worklist labels in the user's preferred display order. Loaded
@@ -2035,7 +2062,13 @@ export const useAppStore = create((set, get) => ({
   worklistOrder: (() => {
     try {
       const cached = JSON.parse(localStorage.getItem('worklistOrder') || 'null');
-      return Array.isArray(cached) && cached.length > 0 ? cached : null;
+      if (!Array.isArray(cached) || cached.length === 0) return null;
+      // Pre-split caches stored the care-manager list as "TOC"; that list is TCM.
+      if (Array.isArray(cached) && cached.includes('TOC')) {
+        const hasTcm = cached.includes('TCM');
+        return cached.map(l => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l));
+      }
+      return cached;
     } catch { return null; }
   })(),
   worklistOrderLoaded: false,
@@ -2075,7 +2108,12 @@ export const useAppStore = create((set, get) => ({
     // that no longer exist, append any new worklists at the end.
     const known = defaultLabels || [];
     const knownSet = new Set(known);
-    const saved = (order || []).filter(l => knownSet.has(l));
+    let saved = (order || []).filter(l => knownSet.has(l));
+    // Pre-split saved orders used "TOC" for the care-manager worklist (now TCM).
+    if (saved.includes('TOC')) {
+      const hasTcm = saved.includes('TCM');
+      saved = saved.map(l => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l));
+    }
     const savedSet = new Set(saved);
     const merged = [...saved, ...known.filter(l => !savedSet.has(l))];
 
@@ -2372,6 +2410,9 @@ export const useAppStore = create((set, get) => ({
           // Priority: in-memory invoke state > DB state
           agentAssigned: mem?.agentAssigned || base.agentAssigned || '',
           agentRole: mem?.agentRole || base.agentRole || '',
+          aiOutcomeInitiated: mem?.aiOutcomeInitiated ?? base.aiOutcomeInitiated,
+          aiOutcomeStatus: mem?.aiOutcomeStatus ?? base.aiOutcomeStatus,
+          aiOutcomeInvokedAt: mem?.aiOutcomeInvokedAt ?? base.aiOutcomeInvokedAt,
           onCall: mem ? mem.onCall : (base.onCall || false),
           status: mem ? mem.status : base.status,
           callDuration: mem ? mem.callDuration : base.callDuration,
@@ -2502,6 +2543,7 @@ export const useAppStore = create((set, get) => ({
   // ─── Supabase: Persist a patient update ───
   persistPatient: async (id, updates) => {
     const dbUpdates = updatesToDb(updates);
+    if (!Object.keys(dbUpdates).length) return;
     const { error } = await supabase
       .from('patients')
       .update(dbUpdates)
@@ -2741,6 +2783,7 @@ export const useAppStore = create((set, get) => ({
     }
     const saved = popGroupRowToJs(data);
     set(s => ({ popGroups: [saved, ...s.popGroups] }));
+    get().logPopGroupActivity(saved.id, { action: 'create', title: 'Population Group Created', detail: `"${saved.name}" (${saved.type})` });
     return saved;
   },
   updatePopGroup: async (id, updates) => {
@@ -2757,17 +2800,74 @@ export const useAppStore = create((set, get) => ({
     }
     const saved = popGroupRowToJs(data);
     set(s => ({ popGroups: s.popGroups.map(g => g.id === id ? saved : g) }));
+    get().logPopGroupActivity(id, {
+      action: 'override',
+      title: 'rule' in updates && updates.rule != null ? 'Rule Updated' : 'Group Details Updated',
+      detail: `"${saved.name}" — ${saved.count} active member${saved.count === 1 ? '' : 's'}`,
+    });
     return saved;
   },
+  // ── Population group activity log (Supabase-backed, audit trail) ──
+  // Fire-and-forget writes from create/update/delete; the History drawer
+  // fetches per group. Failures only warn — activity must never block the
+  // action it records.
+  logPopGroupActivity: async (groupId, { action, title, detail }) => {
+    const actor = get().currentUserProfile?.name || 'Fold Demo';
+    const { error } = await supabase
+      .from('pop_group_activity')
+      .insert({ group_id: groupId, action, title, detail: detail || null, actor });
+    if (error) console.warn('[store] logPopGroupActivity failed — run supabase/pop_group_activity_migration.sql:', error.message);
+  },
+  fetchPopGroupActivity: async (groupId) => {
+    const { data, error } = await supabase
+      .from('pop_group_activity')
+      .select('*')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.warn('[store] fetchPopGroupActivity failed:', error.message);
+      return [];
+    }
+    return data || [];
+  },
+
   // ── Dynamic group rule builder (full-page takeover) ──
   // Non-null while the builder is open. { groupId } edits a saved Dynamic
   // group's rule; groupId:null is the create flow, carrying the metadata the
   // Create Group drawer collected so save can insert the full row.
   pgRuleBuilder: null,
-  openPgRuleBuilder: (session) => set({ pgRuleBuilder: session }),
-  closePgRuleBuilder: () => set({ pgRuleBuilder: null }),
+  // Deep-link restore: hashToState records the group id here when the URL is
+  // #/population/<pgSlug>/rule/<id>; the pop-groups view opens the builder
+  // once the groups have been fetched.
+  pgRuleRestoreId: null,
+  openPgRuleBuilder: (session) => {
+    set({ pgRuleBuilder: session, pgRuleRestoreId: null });
+    updateHash?.(get());
+  },
+  closePgRuleBuilder: () => {
+    set({ pgRuleBuilder: null, pgRuleRestoreId: null });
+    updateHash?.(get());
+  },
+  // Inline rename from the detail rail — keeps the open session's name in
+  // step so the breadcrumb / rail / sub-bar all update together.
+  setPgRuleBuilderName: (name) => set(s => (
+    s.pgRuleBuilder ? { pgRuleBuilder: { ...s.pgRuleBuilder, name } } : {}
+  )),
 
+  /* Silent count-sync: the rule-builder detail screen evaluates live
+     membership and pushes the real Active/Inactive split back so the table's
+     columns stay honest (profile data changes between visits).  Fire and
+     forget — never blocks the view or toasts the user. */
+  syncPopGroupCounts: async (id, { count, inactive }) => {
+    const { error } = await supabase
+      .from('population_groups')
+      .update({ active_count: count, inactive_count: inactive })
+      .eq('id', id);
+    if (error) { console.warn('[store] syncPopGroupCounts failed:', error.message); return; }
+    set(s => ({ popGroups: s.popGroups.map(g => (g.id === id ? { ...g, count, inactive } : g)) }));
+  },
   deletePopGroup: async (id) => {
+    const name = get().popGroups.find(g => g.id === id)?.name;
     const { error } = await supabase
       .from('population_groups')
       .delete()
@@ -2778,6 +2878,7 @@ export const useAppStore = create((set, get) => ({
       return false;
     }
     set(s => ({ popGroups: s.popGroups.filter(g => g.id !== id) }));
+    get().logPopGroupActivity(id, { action: 'delete', title: 'Population Group Deleted', detail: name ? `"${name}"` : undefined });
     return true;
   },
 
@@ -3192,7 +3293,11 @@ export const useAppStore = create((set, get) => ({
     if (from !== list) track('nav.list_changed', { from, to: list });
     // Any explicit list change pins the session — fetchWorklistOrder's
     // top-of-list auto-landing resets this flag after its own call.
-    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true });
+    // TOC is the standalone queue worklist; TCM keeps the Worklist / Queue tabs.
+    const tabPatch = list === 'TOC IP' ? { activeTab: 'toc-queue' }
+      : list === 'TCM' ? { activeTab: 'toc-worklist' }
+      : {};
+    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true, ...tabPatch });
     updateHash(get);
     // First time we land on the HCC list with no filters yet, seed the
     // role-scoped default queue so users don't stare at the full worklist.
@@ -4139,35 +4244,40 @@ export const useAppStore = create((set, get) => ({
   // Push a real consolidated sign-off task into the existing `tasks` slice so
   // TasksView surfaces it (one task per patient per Submit-for-Review batch).
   // Gap codes ride in `task.labels` to satisfy the Gaps-column filter (AC-8).
-  createCareGapSignOffTask: ({ hedisMemberId, gapCodes, state, pdf } = {}) => {
+  createCareGapSignOffTask: async ({ hedisMemberId, gapCodes, state, pdf } = {}) => {
     track('hedis.signoff_task_created', { memberId: hedisMemberId });
     const member = get().hedisMembers.find(m => m.id === hedisMemberId);
     if (!member || !gapCodes || gapCodes.length === 0) return null;
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 1);
-    const id = `tk-hedis-${hedisMemberId}-${Date.now()}`;
-    const task = {
-      id,
+    const me = get().currentUserProfile;
+    // Route through createTask so this hits Supabase + task_audit_log like
+    // every other task. Actor is the signed-in reviewer if we have one,
+    // otherwise the automation label used by the HEDIS submit path.
+    const payload = {
       name: 'Care Gap Review: Clinical Note',
       description: `Sign off on consolidated note for ${member.name} covering ${gapCodes.length} care gap${gapCodes.length === 1 ? '' : 's'}.`,
       status: 'pending',
       priority: 'medium',
       member: member.name,
       assigned_to: null,
+      assigned_to_id: null,
       pool: 'HEDIS Sign-Off',
       labels: [...gapCodes],
       due_date: dueDate.toISOString().slice(0, 10),
-      created_by: 'Care Manager',
       meta: `HEDIS Sign-Off · ${state || member.state || 'Unknown state'}`,
       hedisMemberId,
       hedisGapCodes: [...gapCodes],
       state: state || member.state,
-      created_at: new Date().toISOString(),
       attachments: pdf ? 1 : 0,
       consolidatedPdf: pdf || null,
+      created_by: me?.name || 'HEDIS Automation',
+      created_by_id: me?.id || null,
     };
-    set(s => ({ tasks: [task, ...s.tasks] }));
-    return task;
+    return get().createTask(payload, {
+      auditUserName: me?.name || 'HEDIS Automation',
+      auditUserId: me?.id || null,
+    });
   },
 
   // Replace the consolidated PDF on an existing sign-off task (reviewer edited
@@ -5934,6 +6044,113 @@ export const useAppStore = create((set, get) => ({
     set({ hccColumnOrder: [] });
   },
 
+  // ── Generic per-worklist column prefs (Supabase + localStorage) ──
+  // Every worklist in the app shares one ColumnConfigPopover; the per-user
+  // hide/reorder state lives here keyed by worklist_key (e.g. 'toc-queue',
+  // 'awv', 'population-groups'). Supabase table: user_worklist_column_prefs
+  // (see supabase/user_worklist_column_prefs_migration.sql). Local storage
+  // seeds the first paint before the DB fetch resolves, matching the
+  // worklistOrder / autoPageSize patterns already in the store.
+  worklistColumnPrefs: (() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('worklistColumnPrefs') || 'null');
+      return (cached && typeof cached === 'object') ? cached : {};
+    } catch { return {}; }
+  })(),
+  worklistColumnPrefsLoaded: false,
+  // Stash per-worklist default key orders once (matches _hccDefaultColumnKeys)
+  // so reorder can seed itself the first time the user drags a row.
+  _worklistDefaultColumnKeys: {},
+  setWorklistDefaultColumnKeys: (worklistKey, keys) => set(s => {
+    if (s._worklistDefaultColumnKeys[worklistKey]?.length) return {};
+    return { _worklistDefaultColumnKeys: { ...s._worklistDefaultColumnKeys, [worklistKey]: keys } };
+  }),
+
+  fetchWorklistColumnPrefs: async () => {
+    if (get().worklistColumnPrefsLoaded) return;
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { data, error } = await supabase
+        .from('user_worklist_column_prefs')
+        .select('worklist_key, column_order, hidden_cols')
+        .eq('user_id', userId);
+      if (!error && Array.isArray(data)) {
+        const merged = { ...get().worklistColumnPrefs };
+        for (const row of data) {
+          merged[row.worklist_key] = {
+            order: Array.isArray(row.column_order) ? row.column_order : [],
+            hidden: Array.isArray(row.hidden_cols) ? row.hidden_cols : [],
+          };
+        }
+        set({ worklistColumnPrefs: merged });
+        try { localStorage.setItem('worklistColumnPrefs', JSON.stringify(merged)); } catch { /* */ }
+      }
+    } catch { /* table may not exist yet — keep local cache */ }
+    set({ worklistColumnPrefsLoaded: true });
+  },
+
+  _persistWorklistColumnPref: async (worklistKey) => {
+    const prefs = get().worklistColumnPrefs[worklistKey];
+    if (!prefs) return;
+    try { localStorage.setItem('worklistColumnPrefs', JSON.stringify(get().worklistColumnPrefs)); } catch { /* */ }
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { error } = await supabase
+        .from('user_worklist_column_prefs')
+        .upsert(
+          {
+            user_id: userId,
+            worklist_key: worklistKey,
+            column_order: prefs.order || [],
+            hidden_cols: prefs.hidden || [],
+          },
+          { onConflict: 'user_id,worklist_key' },
+        );
+      if (error) console.warn('[store] persist column prefs failed — run supabase/user_worklist_column_prefs_migration.sql:', error.message);
+    } catch (e) {
+      console.warn('[store] persist column prefs failed:', e?.message);
+    }
+  },
+
+  toggleWorklistColumn: (worklistKey, colKey) => {
+    track('worklist.column_toggled', { worklist: worklistKey, column: colKey });
+    set(s => {
+      const cur = s.worklistColumnPrefs[worklistKey] || { order: [], hidden: [] };
+      const nextHidden = new Set(cur.hidden);
+      if (nextHidden.has(colKey)) nextHidden.delete(colKey); else nextHidden.add(colKey);
+      const next = { ...s.worklistColumnPrefs, [worklistKey]: { ...cur, hidden: [...nextHidden] } };
+      return { worklistColumnPrefs: next };
+    });
+    get()._persistWorklistColumnPref(worklistKey);
+  },
+
+  reorderWorklistColumn: (worklistKey, fromKey, toKey) => {
+    if (!fromKey || !toKey || fromKey === toKey) return;
+    track('worklist.columns_reordered', { worklist: worklistKey, from: fromKey, to: toKey });
+    set(s => {
+      const cur = s.worklistColumnPrefs[worklistKey] || { order: [], hidden: [] };
+      const base = cur.order.length
+        ? [...cur.order]
+        : (s._worklistDefaultColumnKeys[worklistKey] || []);
+      if (!base.length) return {};
+      const from = base.indexOf(fromKey);
+      const to = base.indexOf(toKey);
+      if (from < 0 || to < 0) return {};
+      base.splice(to, 0, base.splice(from, 1)[0]);
+      const next = { ...s.worklistColumnPrefs, [worklistKey]: { ...cur, order: base } };
+      return { worklistColumnPrefs: next };
+    });
+    get()._persistWorklistColumnPref(worklistKey);
+  },
+
+  resetWorklistColumns: (worklistKey) => {
+    track('worklist.columns_reset', { worklist: worklistKey });
+    set(s => ({
+      worklistColumnPrefs: { ...s.worklistColumnPrefs, [worklistKey]: { order: [], hidden: [] } },
+    }));
+    get()._persistWorklistColumnPref(worklistKey);
+  },
+
   // ─── HCC DOS-level assignment engine ─────────────────────────────────
   // Per-(patient, DOS) assignment state keyed as `${patientId}::${dosDate}`.
   // The shape is defined in features/hcc/assignment/dosState.js. Lifecycle
@@ -7335,7 +7552,9 @@ export const useAppStore = create((set, get) => ({
         },
       };
     });
-    // Persist the metadata change so the row survives reload.
+    // Persist the metadata change so the row survives reload. `visit_type`
+    // is optional in the schema — if the column exists the update lands,
+    // otherwise the warn logs and the in-memory update stays authoritative.
     supabase
       .from('hcc_added_charts')
       .update({
@@ -7343,6 +7562,7 @@ export const useAppStore = create((set, get) => ({
         name: patch.n || patch.caption,
         caption: patch.caption,
         doc_type: patch.t,
+        ...(patch.vt !== undefined ? { visit_type: patch.vt || null } : {}),
       })
       .eq('id', docId)
       .then(({ error }) => {
@@ -8001,13 +8221,22 @@ export const useAppStore = create((set, get) => ({
   // Holds the patient id (not the full object) so state stays in sync when the
   // underlying patient row updates (e.g. status flips) while the drawer is open.
   assessmentDrawerPatientId: null,
-  openAssessmentDrawer: (patientId) => set({ assessmentDrawerPatientId: patientId }),
-  closeAssessmentDrawer: () => set({ assessmentDrawerPatientId: null }),
+  assessmentDrawerPrefilled: true,
+  openAssessmentDrawer: (patientId, opts = {}) => set({
+    assessmentDrawerPatientId: patientId,
+    assessmentDrawerPrefilled: opts.prefilled !== false,
+  }),
+  closeAssessmentDrawer: () => set({ assessmentDrawerPatientId: null, assessmentDrawerPrefilled: true }),
 
   // TOC Queue → Outreach Status drawer — same pattern as the assessment drawer.
   outreachStatusDrawerPatientId: null,
   openOutreachStatusDrawer: (patientId) => set({ outreachStatusDrawerPatientId: patientId }),
   closeOutreachStatusDrawer: () => set({ outreachStatusDrawerPatientId: null }),
+
+  // TOC worklist → AI Tasks drawer — same id-only pattern as assessment / outreach.
+  aiTasksDrawerPatientId: null,
+  openAiTasksDrawer: (patientId) => set({ aiTasksDrawerPatientId: patientId }),
+  closeAiTasksDrawer: () => set({ aiTasksDrawerPatientId: null }),
 
   updatePatient: (id, updates) => {
     // Optimistic local update
@@ -8110,7 +8339,24 @@ export const useAppStore = create((set, get) => ({
     const updated = state.patients.map(p => {
       if (!patientIdSet.has(p.id)) return p;
       const newP = { ...p, agentAssigned: agentName, agentRole };
-      if (p.status !== 'completed' && p.status !== 'failed') {
+      if (agentRole === 'TOC Agent') {
+        newP.aiOutcomeInitiated = true;
+        newP.aiOutcomeStatus = 'Queued';
+        newP.aiOutcomeInvokedAt = new Date().toISOString();
+        newP.outreachStatus = 'Not Started';
+        newP.assessmentStatus = 'Not Started';
+        if (activeCount < MAX_CONCURRENT) {
+          newP.status = 'oncall';
+          newP.onCall = true;
+          newP.callDuration = '00:00';
+          newP.nextAction = 'Live outreach in progress';
+          activeCount++;
+        } else {
+          newP.status = 'queued';
+          newP.onCall = false;
+          newP.nextAction = 'Queued — waiting for available line';
+        }
+      } else if (p.status !== 'completed' && p.status !== 'failed') {
         if (activeCount < MAX_CONCURRENT) {
           newP.status = 'oncall';
           newP.onCall = true;
@@ -8125,12 +8371,16 @@ export const useAppStore = create((set, get) => ({
       }
       return newP;
     });
-    toast.success('TOC Agent Invoked Successfully');
+    toast.success('Agent Invoked Successfully');
     set({ patients: updated, selectedIds: [], showInvokeModal: false, queueTabDot: true });
 
-    // Auto-navigate to the queue tab so users see their invoked patients
-    const { setActiveTab } = get();
-    setActiveTab('toc-queue');
+    // Stay on the TOC worklist (it is the queue) or jump to the TCM queue tab.
+    if (get().activeSubnavList === 'TOC IP') {
+      updateHash(get);
+    } else {
+      set({ activeSubnavList: 'TCM' });
+      get().setActiveTab('toc-queue');
+    }
 
     // Create call records for invoked patients and persist to Supabase
     for (const p of updated) {
@@ -8138,6 +8388,11 @@ export const useAppStore = create((set, get) => ({
         get().persistPatient(p.id, {
           agentAssigned: p.agentAssigned,
           agentRole: p.agentRole,
+          aiOutcomeInitiated: p.aiOutcomeInitiated,
+          aiOutcomeStatus: p.aiOutcomeStatus,
+          aiOutcomeInvokedAt: p.aiOutcomeInvokedAt,
+          outreachStatus: p.outreachStatus,
+          assessmentStatus: p.assessmentStatus,
           status: p.status,
           onCall: p.onCall,
           callDuration: p.callDuration,
@@ -9843,20 +10098,41 @@ export const useAppStore = create((set, get) => ({
   // storms when a caller's effect re-runs on unrelated dependency churn.
   tasksDidFetch: false,
   tasksTab: 'all',
-  tasksFilters: {},
+  // Seed filters + view mode from localStorage so a reload keeps the user's
+  // Sort By / View By / applied chips and their list/board choice. Per-device
+  // UI state — no Supabase round-trip needed.
+  tasksFilters: (() => {
+    try {
+      const raw = localStorage.getItem('tasksFilters');
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch { return {}; }
+  })(),
   showTasksFilterBar: true,
-  tasksViewMode: 'list',
+  tasksViewMode: (() => {
+    try {
+      const saved = localStorage.getItem('tasksViewMode');
+      return saved === 'board' || saved === 'list' ? saved : 'list';
+    } catch { return 'list'; }
+  })(),
 
   setTasksTab: (tab) => set({ tasksTab: tab }),
-  setTasksViewMode: (mode) => set({ tasksViewMode: mode }),
+  setTasksViewMode: (mode) => {
+    set({ tasksViewMode: mode });
+    try { localStorage.setItem('tasksViewMode', mode); } catch { /* private mode */ }
+  },
   toggleTasksFilterBar: () => set(s => ({ showTasksFilterBar: !s.showTasksFilterBar })),
   setTasksFilter: (key, value) => {
     const filters = { ...get().tasksFilters };
     if (value == null) delete filters[key];
     else filters[key] = value;
     set({ tasksFilters: filters });
+    try { localStorage.setItem('tasksFilters', JSON.stringify(filters)); } catch { /* */ }
   },
-  clearTasksFilters: () => set({ tasksFilters: {} }),
+  clearTasksFilters: () => {
+    set({ tasksFilters: {} });
+    try { localStorage.removeItem('tasksFilters'); } catch { /* */ }
+  },
 
   fetchTasks: async () => {
     // Idempotent per session — see `tasksDidFetch`.
@@ -9902,9 +10178,26 @@ export const useAppStore = create((set, get) => ({
     set({ tasks: [...localHedisTasks, ...now], tasksLoading: false });
   },
 
-  createTask: async (task) => {
+  createTask: async (task, opts = {}) => {
     track('task.created', { taskId: task?.id, taskType: task?.type || null });
     const normalized = { ...task };
+
+    // Attribution is mandatory. Resolve in this order: explicit payload →
+    // opts.auditUserName override (used by AI/automation callers) → current
+    // signed-in profile. If none of those give a real actor, refuse — a task
+    // with no known creator would silently escape the audit log.
+    const me = get().currentUserProfile;
+    const resolvedCreatedBy = normalized.created_by || opts.auditUserName || me?.name || null;
+    const resolvedCreatedById = normalized.created_by_id ?? opts.auditUserId ?? me?.id ?? null;
+    if (!resolvedCreatedBy) {
+      console.warn('createTask refused: missing actor (created_by / auditUserName / currentUserProfile)');
+      get().showToast?.('Cannot create task: no user identified');
+      return null;
+    }
+    normalized.created_by = resolvedCreatedBy;
+    normalized.created_by_id = resolvedCreatedById;
+    if (!normalized.created_at) normalized.created_at = new Date().toISOString();
+
     if (normalized.status === 'pending' && isPastDate(normalized.due_date)) {
       normalized.status = 'missed';
       normalized.due_missed = true;
@@ -9921,7 +10214,7 @@ export const useAppStore = create((set, get) => ({
     // Try insert with full schema; if fails due to missing column, retry with reduced payload
     let { data, error } = await supabase.from('tasks').insert(normalized).select().single();
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, ...legacy } = normalized;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = normalized;
       ({ data, error } = await supabase.from('tasks').insert(legacy).select().single());
     }
     if (error) {
@@ -9932,8 +10225,109 @@ export const useAppStore = create((set, get) => ({
     // Merge full payload back so UI keeps client-side fields even if DB ignored them
     const final = { ...normalized, ...data };
     set(s => ({ tasks: s.tasks.map(t => t.id === tempId ? final : t) }));
-    get().logTaskAudit(final.id, 'created', { to: final.name });
+    if (!opts.skipAudit) {
+      get().logTaskAudit(final.id, 'created', {
+        to: final.name,
+        userName: opts.auditUserName || resolvedCreatedBy,
+        userId: opts.auditUserId ?? resolvedCreatedById,
+        createdAt: opts.auditCreatedAt || normalized.created_at,
+      });
+    }
     return final;
+  },
+
+  /** Persist AI TOC program tasks for a patient (idempotent via source_key). */
+  ensureAiTocTasksForPatient: async (patient) => {
+    if (!patient?.id) return { pending: [], overdue: [], completed: [] };
+    const {
+      resolveAiTaskCount,
+      aiTocSourceKey,
+      getAiTocTaskTemplate,
+      buildAiTocCreatePayload,
+      dbTaskToListRow,
+      groupAiTocListRows,
+      tocAgentCreatedAt,
+    } = await import('../features/toc/aiTocTasks');
+
+    const count = resolveAiTaskCount(patient);
+    if (count === 0) return { pending: [], overdue: [], completed: [] };
+
+    const { data: existingRows, error: fetchErr } = await supabase
+      .from('tasks')
+      .select('*')
+      .eq('program_code', 'TOC')
+      .eq('patient_id', patient.id)
+      .order('created_at', { ascending: true });
+    if (fetchErr) console.warn('ensureAiTocTasksForPatient fetch:', fetchErr.message);
+
+    const bySource = new Map();
+    for (const row of existingRows || []) {
+      const key = row.source_key || row.meta;
+      if (key) bySource.set(key, row);
+    }
+
+    const persisted = [];
+    for (let i = 0; i < count; i++) {
+      const template = getAiTocTaskTemplate(i);
+      if (!template) continue;
+      const sourceKey = aiTocSourceKey(patient.id, i);
+      let row = bySource.get(sourceKey);
+      if (!row) {
+        row = await get().createTask(
+          buildAiTocCreatePayload(patient, template, i),
+          {
+            auditUserName: 'TOC Agent',
+            auditUserId: null,
+            auditCreatedAt: tocAgentCreatedAt(patient, i),
+          },
+        );
+        if (!row) {
+          const { data: retryRow } = await supabase
+            .from('tasks')
+            .select('*')
+            .eq('source_key', sourceKey)
+            .maybeSingle();
+          row = retryRow;
+        }
+      }
+      if (row) {
+        const cachedLog = get().taskAuditLogs[row.id] || [];
+        if (!cachedLog.some(l => l.action_type === 'created')) {
+          await get().fetchTaskAuditLog(row.id);
+          const fetched = get().taskAuditLogs[row.id] || [];
+          if (!fetched.some(l => l.action_type === 'created')) {
+            await get().logTaskAudit(row.id, 'created', {
+              to: row.name,
+              userName: 'TOC Agent',
+              userId: null,
+              createdAt: tocAgentCreatedAt(patient, i),
+            });
+          }
+        }
+      }
+      if (row) persisted.push(row);
+    }
+
+    if (persisted.length) {
+      set((s) => {
+        const persistedIds = new Set(persisted.map(t => String(t.id)));
+        const rest = s.tasks.filter(t => !(
+          t.program_code === 'TOC'
+          && t.patient_id === patient.id
+          && persistedIds.has(String(t.id))
+        ));
+        const merged = [...rest];
+        for (const t of persisted) {
+          const idx = merged.findIndex(x => String(x.id) === String(t.id));
+          if (idx >= 0) merged[idx] = { ...merged[idx], ...t };
+          else merged.push(t);
+        }
+        return { tasks: merged };
+      });
+    }
+
+    const listRows = persisted.map((row, i) => dbTaskToListRow(row, getAiTocTaskTemplate(i)));
+    return groupAiTocListRows(listRows);
   },
 
   updateTask: async (id, updates) => {
@@ -9952,12 +10346,16 @@ export const useAppStore = create((set, get) => ({
         final.due_missed = true;
         final.completed_at = null;
       } else if (updates.status === 'pending') {
+        // An explicit user move to pending (drag a Missed card to Pending,
+        // uncheck a completed task, …) is intent — respect it. If the due
+        // date is still in the past, bump it forward to today so (a) the row
+        // actually reads as pending and (b) the fetch-time sweeper does not
+        // flip it back to missed on the next reload.
         if (overdue) {
-          final.status = 'missed';
-          final.due_missed = true;
-        } else {
-          final.due_missed = false;
+          const d = new Date();
+          final.due_date = `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
         }
+        final.due_missed = false;
         final.completed_at = null;
       }
     }
@@ -9976,12 +10374,13 @@ export const useAppStore = create((set, get) => ({
     // Try DB update; gracefully retry without unknown columns
     let { error } = await supabase.from('tasks').update({ ...final, updated_at: new Date().toISOString() }).eq('id', id);
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, ...legacy } = final;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = final;
       ({ error } = await supabase.from('tasks').update({ ...legacy, updated_at: new Date().toISOString() }).eq('id', id));
     }
     if (error) {
       console.warn('Update task error (optimistic update kept):', error.message);
     }
+    const dbOk = !error;
 
     // Audit logging
     if (prev) {
@@ -10009,9 +10408,27 @@ export const useAppStore = create((set, get) => ({
           get().logTaskAudit(id, 'renamed', { field: 'name', from: prev.name, to: val });
         }
       });
+
+      // If we auto-bumped the due_date while re-opening a missed task,
+      // record the implicit change so the drawer history stays truthful.
+      if (
+        !('due_date' in updates)
+        && final.due_date
+        && prev.due_date
+        && final.due_date !== prev.due_date
+      ) {
+        get().logTaskAudit(id, 'due_date_changed', {
+          field: 'due_date',
+          from: prev.due_date,
+          to: final.due_date,
+        });
+      }
     }
 
-    return true;
+    // Report DB success to the caller so it can differentiate a mirrored
+    // optimistic update from a persisted one. Prior contract always returned
+    // `true`, which meant `handleTaskMove` toasted success on failed writes.
+    return dbOk;
   },
 
   deleteTask: async (id) => {
@@ -10144,6 +10561,7 @@ export const useAppStore = create((set, get) => ({
 
   fetchTaskAuditLog: async (taskId) => {
     if (!taskId) return [];
+    const cached = get().taskAuditLogs[taskId] || [];
     const { data, error } = await supabase
       .from('task_audit_log')
       .select('*')
@@ -10151,10 +10569,11 @@ export const useAppStore = create((set, get) => ({
       .order('created_at', { ascending: false });
     if (error) {
       console.warn('task_audit_log fetch failed (run migration?):', error.message);
-      return get().taskAuditLogs[taskId] || [];
+      return cached;
     }
-    set(s => ({ taskAuditLogs: { ...s.taskAuditLogs, [taskId]: data || [] } }));
-    return data || [];
+    const merged = data?.length ? data : cached;
+    set(s => ({ taskAuditLogs: { ...s.taskAuditLogs, [taskId]: merged } }));
+    return merged;
   },
 
   logTaskAudit: async (taskId, actionType, opts = {}) => {
@@ -10162,13 +10581,13 @@ export const useAppStore = create((set, get) => ({
     const me = get().currentUserProfile;
     const entry = {
       task_id: taskId,
-      user_name: me?.name || 'System',
-      user_id: me?.id || null,
+      user_name: opts.userName || me?.name || 'System',
+      user_id: opts.userId !== undefined ? opts.userId : (me?.id || null),
       action_type: actionType,
       field_name: opts.field || null,
       from_value: opts.from != null ? String(opts.from) : null,
       to_value: opts.to != null ? String(opts.to) : null,
-      created_at: new Date().toISOString(),
+      created_at: opts.createdAt || new Date().toISOString(),
     };
     set(s => {
       const existing = s.taskAuditLogs[taskId] || [];

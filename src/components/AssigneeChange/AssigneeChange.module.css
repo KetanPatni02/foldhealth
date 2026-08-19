@@ -6,7 +6,7 @@
 .root {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   background: transparent;
   border: none;
   padding: 4px 8px;
@@ -31,6 +31,64 @@
   width: fit-content;
 }
 
+/* Size tokens (Figma Fold-Pixel-1.0 node 8629:178). The pill hugs its
+   content on both sides so the avatar sits close to the left edge and the
+   chevron sits close to the right — matches the Figma tight-pill spec. */
+.sizeM { padding: 2px 4px; }
+.sizeS { padding: 2px 4px; }
+.sizeS .name { font-size: var(--font-sm); }
+.sizeS .textLabel { font-size: var(--font-sm); }
+
+/* Avatar-only mode — no name/role text; the pill hugs the avatar + chevron.
+   Per Figma nodes 8629:393 / 8629:419, the inner Avatar is always WHITE
+   (not the default peach/grey fill), and the OUTER pill carries the tint:
+     • assigned   default → secondary-100 (peach halo)
+     • assigned   hover   → secondary-200
+     • unassigned default → transparent  (white tile with neutral-150 border)
+     • unassigned hover   → neutral-150   (deeper grey halo)
+     • disabled   any     → neutral-75    (uniform dim)
+   Chevron is always visible in this mode — it's the only affordance
+   signaling the pill is a trigger. */
+.avatarOnly {
+  width: fit-content;
+  padding: 2px;
+  gap: 0;
+}
+.avatarOnly.assigned {
+  max-width: none;
+  background: var(--secondary-100);
+}
+.avatarOnly .avatarInner {
+  background: var(--neutral-0);
+}
+.avatarOnly .chevron { opacity: 1; }
+.avatarOnly.assigned:hover,
+.avatarOnly.assigned:focus-visible {
+  background: var(--secondary-200);
+}
+.avatarOnly.unassigned {
+  background: var(--neutral-50);
+}
+.avatarOnly.unassigned:hover,
+.avatarOnly.unassigned:focus-visible {
+  background: var(--neutral-150);
+}
+.avatarOnly.disabled {
+  background: var(--neutral-75);
+}
+
+/* Disabled — non-interactive, muted, no chevron reveal. */
+.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.disabled:hover,
+.disabled:focus-visible {
+  background: transparent;
+}
+.disabled:hover .chevron,
+.disabled:focus-visible .chevron { opacity: 0; }
+
 /* Assigned — text column between the avatar and the chevron. min-width:0 lets
    the name and role shrink so `text-overflow: ellipsis` actually engages. */
 .textBody {
@@ -41,35 +99,22 @@
   flex: 1 1 auto;
 }
 .name {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .role {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Unassigned — outlined 24×24 slot mirroring the provider avatar footprint,
-   with a person outline icon inside. */
-.unassignedSlot {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 1px solid var(--neutral-150);
-  background: var(--neutral-0);
-  flex-shrink: 0;
-}
 .textLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   white-space: nowrap;
 }
@@ -100,7 +145,7 @@
 }
 
 .menuTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   padding: 2px 6px;
@@ -125,7 +170,7 @@
   background: transparent;
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
 }
 .searchInput::placeholder { color: var(--neutral-200); }
@@ -162,14 +207,14 @@
   flex: 1;
 }
 .userName {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .userRole {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -179,6 +224,74 @@
 .empty {
   padding: 16px 8px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
+}
+
+/* ── Hover tooltip (avatar-only variant) ─────────────────────────────────
+   Fixed position; JS-set top/left, then transform anchors the bottom edge
+   to the trigger and centres the card horizontally. Mirrors Figma node
+   50:297369 (small white card + tail) so it matches the HCC assignee tip. */
+.tooltip {
+  position: fixed;
+  z-index: 9600;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  animation: assigneeTooltipIn 0.14s ease;
+}
+@keyframes assigneeTooltipIn {
+  from { opacity: 0; transform: translate(-50%, calc(-100% + 4px)); }
+  to   { opacity: 1; transform: translate(-50%, -100%); }
+}
+.tooltipCard {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  background: var(--neutral-0);
+  border-radius: 4px;
+  box-shadow: var(--shadow-popover);
+  backdrop-filter: blur(4px);
+}
+.tooltipTail {
+  display: block;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--neutral-0);
+  margin: 0 auto;
+}
+.tooltipAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  line-height: 1.2;
+  flex-shrink: 0;
+  border: 0.5px solid var(--secondary-200);
+  background: var(--secondary-50);
+  color: var(--secondary-300);
+}
+.tooltipText {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+.tooltipName {
+  font-size: var(--font-2xs);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.tooltipRole {
+  font-size: var(--font-2xs);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-200);
+  white-space: nowrap;
 }

@@ -89,6 +89,10 @@ export function SectionTitleBar({
 
   rightExtras,
   leftExtras,
+  // Rendered at the very start of the left cluster — used by every worklist
+  // to inject the shared SubnavToggle so a "collapse sidebar" handle appears
+  // consistently before the title.
+  leadingElement,
   className,
 }) {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -96,11 +100,16 @@ export function SectionTitleBar({
   const rightRef = useRef(null);
   const hasAction = (key) => actions.includes(key);
 
-  const cls = [styles.tabBar, className || ''].filter(Boolean).join(' ');
+  const cls = [
+    styles.tabBar,
+    leadingElement ? styles.hasLeading : '',
+    className || '',
+  ].filter(Boolean).join(' ');
 
   return (
     <div className={cls} ref={barRef}>
       <div className={styles.left}>
+        {leadingElement}
         {variant === 'tabs' && (
           <TabsSection
             tabs={tabs}

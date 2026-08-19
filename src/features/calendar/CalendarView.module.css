@@ -34,12 +34,11 @@
 }
 
 .monthTitle {
-  font-size: 18px;
+  font-size: var(--font-xl);
   font-weight: 600;
   color: var(--neutral-400);
   margin: 0;
   white-space: nowrap;
-  font-family: 'Inter', sans-serif;
 }
 
 /* View tabs (Week / Day / Month) */
@@ -52,9 +51,8 @@
 
 .viewTab {
   padding: 4px 12px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-300);
   background: var(--neutral-0);
   border: none;
@@ -83,9 +81,8 @@
   padding: 4px 12px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-400);
   background: var(--neutral-0);
   cursor: pointer;
@@ -101,7 +98,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   cursor: pointer;
   white-space: nowrap;
@@ -172,7 +169,7 @@
 
 /* Reduce day name and date number size */
 .calendarWrap :global(.sx__week-grid__day-name) {
-  font-size: 11px !important;
+  font-size: var(--font-xs) !important;
   font-weight: 500 !important;
   text-transform: uppercase;
   color: var(--neutral-300) !important;
@@ -180,7 +177,7 @@
 }
 
 .calendarWrap :global(.sx__week-grid__date-number) {
-  font-size: 14px !important;
+  font-size: var(--font-base) !important;
   font-weight: 500 !important;
   color: var(--neutral-400) !important;
 }
@@ -203,7 +200,6 @@
 
 /* ── Schedule-x theme overrides to match Fold design ── */
 .calendarWrap :global(.sx__calendar) {
-  font-family: 'Inter', sans-serif !important;
   height: 100% !important;
   --sx-color-primary: var(--primary-300);
   --sx-color-primary-container: var(--primary-100);
@@ -240,8 +236,7 @@
 
 /* Day headers */
 .calendarWrap :global(.sx__time-grid-day__header) {
-  font-family: 'Inter', sans-serif !important;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
 }
@@ -249,7 +244,7 @@
 /* Events — let schedule-x handle the left border color per calendar type */
 .calendarWrap :global(.sx__event) {
   border-radius: 4px !important;
-  font-size: 12px !important;
+  font-size: var(--font-sm) !important;
   padding: 4px 6px !important;
   cursor: pointer;
   transition: box-shadow 0.12s, filter 0.12s;
@@ -267,7 +262,7 @@
   border-left: 1.5px dashed var(--primary-300) !important;
   background: rgba(140, 90, 226, 0.06) !important;
   color: var(--primary-300) !important;
-  font-size: 11px !important;
+  font-size: var(--font-xs) !important;
   font-weight: 500 !important;
   box-shadow: none !important;
 }
@@ -278,9 +273,8 @@
   top: 4px;
   left: 0;
   width: 48px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   color: var(--neutral-200);
   letter-spacing: 0.02em;
   text-align: center;
@@ -387,8 +381,7 @@
   border: 0.5px solid var(--neutral-100);
   border-radius: 4px;
   background: var(--neutral-0);
-  font-size: 12px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   cursor: pointer;
   min-width: 120px;
@@ -424,8 +417,7 @@
 .userPickerSearch input {
   border: none;
   outline: none;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   flex: 1;
   background: transparent;
@@ -440,8 +432,7 @@
   border: none;
   border-radius: 4px;
   background: none;
-  font-size: 13px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   cursor: pointer;
   text-align: left;
@@ -465,9 +456,8 @@
   border-radius: 4px;
   background: rgba(140, 90, 226, 0.06);
   color: var(--primary-300);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   display: flex;
   align-items: center;
   padding-left: 6px;

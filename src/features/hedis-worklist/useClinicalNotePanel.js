@@ -73,7 +73,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     showToast('Draft saved');
   };
 
-  const handleSubmitForReview = () => {
+  const handleSubmitForReview = async () => {
     setSubmitted(true);
     const readyCodes = collectReadyCodes();
     if (!dateOfService) { showToast('Date of Service is required'); return; }
@@ -90,7 +90,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       title: 'Submitted for review', detail: `Ready gaps: ${readyCodes.join(', ')}`,
       actor: CURRENT_USER, icon: 'solar:upload-square-linear', gapCodes: readyCodes, attachment: pdf,
     });
-    createCareGapSignOffTask({ hedisMemberId: member.id, gapCodes: readyCodes, state: member.state, pdf });
+    await createCareGapSignOffTask({ hedisMemberId: member.id, gapCodes: readyCodes, state: member.state, pdf });
     showToast(`Submitted for review — ${readyCodes.length} gap${readyCodes.length === 1 ? '' : 's'} → Submitted`);
     onClose();
   };

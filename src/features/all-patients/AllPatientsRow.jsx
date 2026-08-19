@@ -85,13 +85,122 @@ function AttributesCell({ row }) {
   );
 }
 
-export function AllPatientsRow({ row, isSelected, onSelect }) {
+/**
+ * Middle-column defs for All Patients. Each carries `renderCell(row, ctx)`
+ * so hide + reorder in the Show Columns popover ripple through the body.
+ * Sticky checkbox / Members / Actions columns stay hardcoded around this
+ * band.
+ *
+ * ctx shape: { showToast }
+ */
+export const ALL_PATIENTS_MIDDLE_COLUMNS = [
+  {
+    key: 'contact',
+    label: 'Contact Info',
+    renderCell: (row) => (
+      <div className={styles.contactCell}>
+        <span className={styles.contactLine}>
+          <Icon name="solar:letter-linear" size={13} color="var(--neutral-300)" />
+          {row.email || <span className={styles.dash}>—</span>}
+        </span>
+        <span className={styles.contactLine}>
+          <Icon name="solar:phone-linear" size={13} color="var(--neutral-300)" />
+          {row.phone || <span className={styles.dash}>—</span>}
+        </span>
+      </div>
+    ),
+  },
+  {
+    key: 'location',
+    label: 'Location',
+    renderCell: (row) => {
+      const location = row.city && row.state ? `${row.city}, ${row.state}` : (row.location || '—');
+      return <span className={rowStyles.dateText}>{location}</span>;
+    },
+  },
+  {
+    key: 'tags',
+    label: 'Tags',
+    renderCell: (row) => <TagList tags={row.tags} />,
+  },
+  {
+    key: 'attributes',
+    label: 'Attributes',
+    renderCell: (row) => <AttributesCell row={row} />,
+  },
+  {
+    key: 'chronicConditions',
+    label: 'Chronic Conditions',
+    renderCell: (row) => <ConditionList conditions={row.chronicConditions} />,
+  },
+  {
+    key: 'pcp',
+    label: 'PCP',
+    renderCell: (row) => (
+      row.pcp ? (
+        <div className={rowStyles.assigneeCell}>
+          <Avatar variant="staff" initials={row.pcpInitials || row.pcp.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} />
+          <span style={{ fontSize: 'var(--font-md)' }}>{row.pcp}</span>
+        </div>
+      ) : (
+        <span className={styles.dash}>—</span>
+      )
+    ),
+  },
+  {
+    key: 'lastVisit',
+    label: 'Last Visit',
+    renderCell: (row) => <span className={rowStyles.dateText}>{row.lastVisit || '—'}</span>,
+  },
+  {
+    key: 'activeCareProgram',
+    label: 'Active Care Program',
+    renderCell: (row) => (
+      row.activeCareProgram
+        ? <Badge variant="toc-engaged" label={row.activeCareProgram} />
+        : <span className={styles.dash}>—</span>
+    ),
+  },
+  {
+    key: 'ccmConsent',
+    label: 'CCM Consent',
+    renderCell: (row) => {
+      const ccm = row.ccmConsent;
+      return (
+        <Badge
+          variant={ccm === true ? 'compliance-pass' : ccm === false ? 'compliance-fail' : 'compliance-na'}
+          label={ccm === true ? 'Yes' : ccm === false ? 'No' : 'N/A'}
+        />
+      );
+    },
+  },
+  {
+    key: 'apcmConsent',
+    label: 'APCM Consent',
+    renderCell: (row) => {
+      const apcm = row.apcmConsent;
+      return (
+        <Badge
+          variant={apcm === true ? 'compliance-pass' : apcm === false ? 'compliance-fail' : 'compliance-na'}
+          label={apcm === true ? 'Yes' : apcm === false ? 'No' : 'N/A'}
+        />
+      );
+    },
+  },
+];
+
+export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }) {
   const showToast = useAppStore(s => s.showToast);
   const startHccUpload = useAppStore(s => s.startHccUpload);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const openQuickView = useAppStore(s => s.openQuickView);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropBtnRef = useRef(null);
+
+  const middleCols = (columns || ALL_PATIENTS_MIDDLE_COLUMNS)
+    .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
+  const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
+  const cellCtx = { showToast };
 
   const handleDropdownToggle = (e) => {
     e.stopPropagation();
@@ -129,9 +238,6 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
     showToast(`${key} – coming soon`);
   };
 
-  const location = row.city && row.state ? `${row.city}, ${row.state}` : (row.location || '—');
-  const ccm = row.ccmConsent;
-  const apcm = row.apcmConsent;
   const ageDisplay = ageDisplayOf(row);
 
   // Same QuickView payload shape as WorklistRow (TOC) / HCC — age in the
@@ -194,60 +300,11 @@ export function AllPatientsRow({ row, isSelected, onSelect }) {
           </div>
         </div>
       </td>
-      <td className={rowStyles.td}>
-        <div className={styles.contactCell}>
-          <span className={styles.contactLine}>
-            <Icon name="solar:letter-linear" size={13} color="var(--neutral-300)" />
-            {row.email || <span className={styles.dash}>—</span>}
-          </span>
-          <span className={styles.contactLine}>
-            <Icon name="solar:phone-linear" size={13} color="var(--neutral-300)" />
-            {row.phone || <span className={styles.dash}>—</span>}
-          </span>
-        </div>
-      </td>
-      <td className={rowStyles.td}>
-        <span className={rowStyles.dateText}>{location}</span>
-      </td>
-      <td className={rowStyles.td}>
-        <TagList tags={row.tags} />
-      </td>
-      <td className={rowStyles.td}>
-        <AttributesCell row={row} />
-      </td>
-      <td className={rowStyles.td}>
-        <ConditionList conditions={row.chronicConditions} />
-      </td>
-      <td className={rowStyles.td}>
-        {row.pcp ? (
-          <div className={rowStyles.assigneeCell}>
-            <Avatar variant="staff" initials={row.pcpInitials || row.pcp.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} />
-            <span style={{ fontSize: 13 }}>{row.pcp}</span>
-          </div>
-        ) : (
-          <span className={styles.dash}>—</span>
-        )}
-      </td>
-      <td className={rowStyles.td}>
-        <span className={rowStyles.dateText}>{row.lastVisit || '—'}</span>
-      </td>
-      <td className={rowStyles.td}>
-        {row.activeCareProgram
-          ? <Badge variant="toc-engaged" label={row.activeCareProgram} />
-          : <span className={styles.dash}>—</span>}
-      </td>
-      <td className={rowStyles.td}>
-        <Badge
-          variant={ccm === true ? 'compliance-pass' : ccm === false ? 'compliance-fail' : 'compliance-na'}
-          label={ccm === true ? 'Yes' : ccm === false ? 'No' : 'N/A'}
-        />
-      </td>
-      <td className={rowStyles.td}>
-        <Badge
-          variant={apcm === true ? 'compliance-pass' : apcm === false ? 'compliance-fail' : 'compliance-na'}
-          label={apcm === true ? 'Yes' : apcm === false ? 'No' : 'N/A'}
-        />
-      </td>
+      {visibleMiddle.map(col => (
+        <td key={col.key} data-col-key={col.key} className={rowStyles.td}>
+          {col.renderCell(row, cellCtx)}
+        </td>
+      ))}
       <td className={`${rowStyles.td} ${rowStyles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={rowStyles.actionsCell}>
           <ActionButton

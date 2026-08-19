@@ -30,7 +30,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-success);
 }
@@ -48,7 +48,7 @@
   border: none;
   cursor: pointer;
   color: var(--neutral-300);
-  font-size: 16px;
+  font-size: var(--font-lg);
   padding: 2px;
   border-radius: 4px;
   display: flex;
@@ -64,7 +64,7 @@
 }
 
 .patientName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -76,14 +76,14 @@
   padding: 0;
   margin-left: 4px;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--font-md);
   cursor: pointer;
 }
 
 .openPatientBtn:hover { text-decoration: underline; }
 
 .patientMeta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   margin-top: 1px;

@@ -111,10 +111,10 @@ export function PopulationView({ showToast, editing = false, resetTick = 0 }) {
           <div key={i} style={{ background: 'var(--neutral-0)', border: '1px solid var(--neutral-150)', borderRadius: 8, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Icon name={bm.icon} size={18} color="var(--primary-300)" />
-              <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>{bm.label}</span>
+              <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>{bm.label}</span>
             </div>
-            <div style={{ fontSize: 24, fontWeight: 500, color: 'var(--neutral-500)' }}>{bm.count.toLocaleString()}</div>
-            <div style={{ fontSize: 12, color: 'var(--neutral-200)' }}>members</div>
+            <div style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: 'var(--neutral-500)' }}>{bm.count.toLocaleString()}</div>
+            <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>members</div>
             <Button variant="ghost" size="S" style={{ alignSelf: 'flex-start', marginTop: 4 }} onClick={() => showToast?.(bm.toast)}>
               View List &rarr;
             </Button>

@@ -2,7 +2,6 @@
   display: flex;
   align-items: center;
   gap: 0;
-  font-family: 'Inter', sans-serif;
 }
 
 .segment {
@@ -22,7 +21,7 @@
 }
 
 .roleLabel {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;

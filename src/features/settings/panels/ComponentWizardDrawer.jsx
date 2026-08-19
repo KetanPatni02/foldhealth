@@ -222,7 +222,7 @@ function WidgetOrderList({ tab, newWidgetName, order, onChange }) {
 
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 500, color: '#6F7A90', marginBottom: 6 }}>{tab}</div>
+      <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 6 }}>{tab}</div>
       <div style={{ border: '0.5px solid var(--neutral-150)', borderRadius: 8, overflow: 'hidden' }}>
         {items.map((item, i) => {
           const isNew = item === newWidgetName && i === items.indexOf(newWidgetName);
@@ -254,11 +254,11 @@ function WidgetOrderList({ tab, newWidgetName, order, onChange }) {
                 userSelect: 'none',
               }}
             >
-              <span style={{ color: 'var(--neutral-200)', fontSize: 14, flexShrink: 0 }}>⋮⋮</span>
-              <span style={{ flex: 1, fontSize: 14, color: isNew ? 'var(--primary-300)' : '#3A485F', fontWeight: isNew ? 500 : 400 }}>{item}</span>
+              <span style={{ color: 'var(--neutral-200)', fontSize: 'var(--font-base)', flexShrink: 0 }}>⋮⋮</span>
+              <span style={{ flex: 1, fontSize: 'var(--font-base)', color: isNew ? 'var(--primary-300)' : 'var(--neutral-400)', fontWeight: isNew ? 500 : 400 }}>{item}</span>
               {isNew && (
                 <span style={{
-                  fontSize: 11, fontWeight: 500, color: 'var(--primary-300)',
+                  fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--primary-300)',
                   background: 'var(--primary-100)', padding: '2px 6px', borderRadius: 4,
                 }}>New Widget</span>
               )}
@@ -266,7 +266,7 @@ function WidgetOrderList({ tab, newWidgetName, order, onChange }) {
           );
         })}
       </div>
-      <div style={{ fontSize: 11, color: 'var(--neutral-200)', marginTop: 4 }}>
+      <div style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)', marginTop: 4 }}>
         Drag to reorder. Your widget will appear at position {(items.indexOf(newWidgetName) + 1) || items.length}.
       </div>
     </div>
@@ -288,8 +288,8 @@ function StepSurfaces({ data, onChange }) {
 
   return (
     <div>
-      <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>
-        Select surfaces <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--neutral-300)' }}>(multi-select)</span>
+      <div style={{ fontSize: 'var(--font-md)', fontWeight: 500, marginBottom: '0.5rem' }}>
+        Select surfaces <span style={{ fontSize: 'var(--font-sm)', fontWeight: 400, color: 'var(--neutral-300)' }}>(multi-select)</span>
       </div>
       <div className={s.surfaceGrid}>
         {WIZARD_SURFACES.map(sf => {
@@ -423,7 +423,7 @@ function StepSurfaces({ data, onChange }) {
             {/* Action menu config */}
             {data.webPlacement === 'action-menu' && (
               <div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 8 }}>Apply to which action menus?</div>
+                <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: '0.5rem' }}>Apply to which action menus?</div>
                 <div className={s.modalGrid} style={{ gap: 6, marginBottom: 12 }}>
                   {ACTION_MENU_LOCATIONS.map(loc => {
                     const active = data.actionMenus?.includes(loc.key);
@@ -444,7 +444,7 @@ function StepSurfaces({ data, onChange }) {
                     );
                   })}
                 </div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 6 }}>Worklists</div>
+                <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 6 }}>Worklists</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                   {WORKLIST_OPTIONS.map(wl => {
                     const active = data.worklists?.includes(wl);
@@ -516,8 +516,8 @@ function StepSurfaces({ data, onChange }) {
                         style={{ padding: 12, borderRadius: 8, flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}
                         onClick={() => onChange({ sidecarPlacement: pl.value })}
                       >
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{pl.label}</div>
-                        <div style={{ fontSize: 11, opacity: .7 }}>{pl.description}</div>
+                        <div style={{ fontSize: 'var(--font-md)', fontWeight: 500 }}>{pl.label}</div>
+                        <div style={{ fontSize: 'var(--font-xs)', opacity: .7 }}>{pl.description}</div>
                       </button>
                     );
                   })}
@@ -574,8 +574,8 @@ function StepSurfaces({ data, onChange }) {
                     style={{ padding: 12, borderRadius: 8, flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}
                     onClick={() => onChange({ mobilePlacement: pl.value })}
                   >
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{pl.label}</div>
-                    <div style={{ fontSize: 11, opacity: .7 }}>{pl.description}</div>
+                    <div style={{ fontSize: 'var(--font-md)', fontWeight: 500 }}>{pl.label}</div>
+                    <div style={{ fontSize: 'var(--font-xs)', opacity: .7 }}>{pl.description}</div>
                   </button>
                 );
               })}
@@ -629,7 +629,7 @@ function StepContext({ data, onChange }) {
         </FormField>
       </div>
 
-      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 8 }}>
+      <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: '0.5rem' }}>
         JWT context scope — fields sent to this component
       </div>
       <div className={s.modalGrid} style={{ gap: 6, marginBottom: 16 }}>
@@ -670,11 +670,11 @@ function StepContext({ data, onChange }) {
             {data.webPlacement === 'side-drawer' && data.drawerWidth ? ` (${data.drawerWidth}px)` : ''}
           </div>
           <div className={s.summaryKey}>URL</div>
-          <div className={s.summaryVal} style={{ fontFamily: "'SF Mono', monospace", fontSize: 11 }}>{fullUrl || '—'}</div>
+          <div className={s.summaryVal} style={{ fontFamily: "'SF Mono', monospace", fontSize: 'var(--font-xs)' }}>{fullUrl || '—'}</div>
           <div className={s.summaryKey}>Token lifetime</div><div className={s.summaryVal}>{data.tokenLifetime} min</div>
           <div className={s.summaryKey}>Context scope</div><div className={s.summaryVal}>{selectedFieldCount} of {totalFieldCount} fields</div>
         </div>
-        <div className={s.infoAmber} style={{ marginTop: 12, fontSize: 11 }}>
+        <div className={s.infoAmber} style={{ marginTop: 12, fontSize: 'var(--font-xs)' }}>
           Saved as disabled. Enable from the library after testing in preview mode.
         </div>
       </div>
@@ -740,12 +740,12 @@ function StepConfigure({ data, onChange, embedDomains }) {
           style={{
             display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '10px 12px',
             background: 'var(--neutral-50)', border: 'none', cursor: 'pointer',
-            fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, color: 'var(--neutral-400)',
+            fontFamily: "'Inter', sans-serif", fontSize: 'var(--font-md)', fontWeight: 500, color: 'var(--neutral-400)',
           }}
         >
           <Icon name={advancedOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={14} color="#6F7A90" />
           Additional Settings
-          <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--neutral-200)', marginLeft: 'auto' }}>
+          <span style={{ fontSize: 'var(--font-xs)', fontWeight: 400, color: 'var(--neutral-200)', marginLeft: 'auto' }}>
             {advancedOpen ? 'Collapse' : 'Expand'}
           </span>
         </button>
@@ -780,7 +780,7 @@ function StepConfigure({ data, onChange, embedDomains }) {
 
             {/* JWT Context Scope */}
             <div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#6F7A90', marginBottom: 6 }}>
+              <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 6 }}>
                 JWT context scope
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -843,7 +843,7 @@ function StepPreview({ data, onChange, embedDomains }) {
             background: 'var(--neutral-0)', cursor: 'pointer', userSelect: 'none',
           }}
         >
-          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--neutral-400)', flex: 1 }}>{data.name || 'Widget'}</span>
+          <span style={{ fontSize: 'var(--font-md)', fontWeight: 500, color: 'var(--neutral-400)', flex: 1 }}>{data.name || 'Widget'}</span>
           <Icon name={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-down-linear'} size={12} color="#8A94A8" />
         </button>
 
@@ -860,7 +860,7 @@ function StepPreview({ data, onChange, embedDomains }) {
                     background: 'var(--neutral-0)', zIndex: 1,
                   }}>
                     <div style={{ width: 24, height: 24, border: '2px solid var(--neutral-100)', borderTopColor: 'var(--primary-300)', borderRadius: '50%', animation: 'spin .8s linear infinite' }} />
-                    <span style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Loading preview...</span>
+                    <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Loading preview...</span>
                   </div>
                 )}
                 <iframe
@@ -879,7 +879,7 @@ function StepPreview({ data, onChange, embedDomains }) {
                 background: 'var(--neutral-50)', color: 'var(--neutral-200)',
               }}>
                 <Icon name="solar:widget-5-linear" size={32} color="var(--neutral-200)" />
-                <div style={{ fontSize: 13 }}>Select a domain and enter a path to see a live preview</div>
+                <div style={{ fontSize: 'var(--font-md)' }}>Select a domain and enter a path to see a live preview</div>
               </div>
             )}
 
@@ -887,7 +887,7 @@ function StepPreview({ data, onChange, embedDomains }) {
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '6px 12px', borderTop: '0.5px solid var(--neutral-100)',
-              background: 'var(--neutral-0)', fontSize: 11, color: 'var(--neutral-200)',
+              background: 'var(--neutral-0)', fontSize: 'var(--font-xs)', color: 'var(--neutral-200)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Icon name="solar:link-round-linear" size={12} color="#D9A50B" />
@@ -901,14 +901,14 @@ function StepPreview({ data, onChange, embedDomains }) {
 
       {/* Height control slider */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 12, fontWeight: 500, color: '#6F7A90', whiteSpace: 'nowrap' }}>Widget height</span>
+        <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', whiteSpace: 'nowrap' }}>Widget height</span>
         <input
           aria-label="Widget height"
           type="range" min={150} max={600} step={10} value={previewHeight}
           onChange={e => onChange({ previewHeight: Number(e.target.value) })}
           style={{ width: '100%', height: 8, accentColor: 'var(--primary-300)', cursor: 'pointer', background: 'var(--neutral-100)', borderRadius: 4, border: 'none', outline: 'none', WebkitAppearance: 'none', MozAppearance: 'none' }}
         />
-        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-400)', minWidth: 40, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{previewHeight}px</span>
+        <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-400)', minWidth: 40, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{previewHeight}px</span>
       </div>
 
       {/* ── Save Summary ── */}
@@ -925,7 +925,7 @@ function StepPreview({ data, onChange, embedDomains }) {
             ].filter(Boolean).join(' · ') || '—'}
           </div>
           <div className={s.summaryKey}>URL</div>
-          <div className={s.summaryVal} style={{ fontFamily: "'SF Mono', monospace", fontSize: 11 }}>{fullUrl || '—'}</div>
+          <div className={s.summaryVal} style={{ fontFamily: "'SF Mono', monospace", fontSize: 'var(--font-xs)' }}>{fullUrl || '—'}</div>
           <div className={s.summaryKey}>Token lifetime</div><div className={s.summaryVal}>{data.tokenLifetime} min</div>
           <div className={s.summaryKey}>Context scope</div><div className={s.summaryVal}>{selectedFieldCount} of {totalFieldCount} fields</div>
         </div>
@@ -934,7 +934,7 @@ function StepPreview({ data, onChange, embedDomains }) {
           display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '6px 10px',
           borderRadius: 6, background: 'var(--status-warning-light)',
           border: '0.5px solid rgba(217,165,11,.15)',
-          fontSize: 11, color: 'var(--status-warning)',
+          fontSize: 'var(--font-xs)', color: 'var(--status-warning)',
         }}>
           <Icon name="solar:info-circle-linear" size={14} color="var(--status-warning)" style={{ flexShrink: 0 }} />
           Saved as disabled. Enable from the library after testing in preview mode.

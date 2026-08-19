@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--status-error);
 }
@@ -53,7 +53,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   flex-wrap: wrap;
@@ -61,13 +61,13 @@
 
 .callLine1Detail { font-weight: 400; color: var(--neutral-300); }
 .callTimer { font-weight: 500; color: var(--status-success); font-variant-numeric: tabular-nums; }
-.dot { color: var(--neutral-200); font-size: 10px; }
+.dot { color: var(--neutral-200); font-size: var(--font-2xs); }
 
 .callLine2 {
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   margin-top: 4px;
 }
@@ -87,13 +87,12 @@
   gap: 6px;
   padding: 8px 14px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   border: 1px solid var(--neutral-150);
   background: #fff;
   color: var(--neutral-400);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   transition:
     background var(--duration-fast) var(--ease-hover),
     color var(--duration-fast) var(--ease-hover),
@@ -134,7 +133,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -155,13 +154,13 @@
   gap: 10px;
   padding: 10px 0;
   border-bottom: 0.5px solid var(--neutral-100);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .goalRow:last-child { border-bottom: none; }
 .goalRow.completed { color: var(--neutral-400); }
 .goalLabel { flex: 1; }
-.goalTime { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--status-success); font-weight: 500; }
+.goalTime { display: flex; align-items: center; gap: 4px; font-size: var(--font-sm); color: var(--status-success); font-weight: 500; }
 
 /* ── Transcript Section ── */
 .transcriptSection { padding-top: 8px; }
@@ -186,9 +185,9 @@
 }
 
 .msgContent { display: flex; flex-direction: column; gap: 2px; max-width: 80%; }
-.msgSender { font-size: 12px; font-weight: 500; color: var(--neutral-300); }
+.msgSender { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300); }
 .msgBubble {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   line-height: 1.5;
   padding: 10px 14px;
@@ -196,14 +195,14 @@
   background: #f0f2f5;
 }
 .message.patient .msgBubble { background: var(--primary-300); color: #fff; }
-.msgTime { font-size: 11px; color: var(--neutral-200); }
+.msgTime { font-size: var(--font-xs); color: var(--neutral-200); }
 
 .typing {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 10px 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   font-style: italic;
 }

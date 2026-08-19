@@ -3,7 +3,6 @@
   border-radius: 8px;
   background: var(--neutral-0);
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Header (single line: title · badges · chevron) ─────────────────── */
@@ -17,7 +16,6 @@
   background: var(--neutral-0);
   border: none;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
   text-align: left;
   transition: background 0.12s;
 }
@@ -26,7 +24,7 @@
 .cardTitle {
   flex: 1;
   min-width: 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   line-height: 1.3;
@@ -60,8 +58,7 @@
   align-items: center;
   padding: 2px 7px;
   border-radius: 4px;
-  font-size: 12px;
-  font-family: 'Inter', sans-serif;
+  font-size: var(--font-sm);
   border: 0.5px solid transparent;
 }
 .statePillOpen {
@@ -85,7 +82,7 @@
   border-radius: 4px;
   background: var(--neutral-0);
   border: 0.5px solid rgba(111, 122, 144, 0.18);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
@@ -99,7 +96,7 @@
   background: var(--neutral-50);
   border: 0.5px solid var(--neutral-100);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
@@ -120,7 +117,7 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   cursor: pointer;
   transition: background 0.12s;
@@ -152,7 +149,7 @@
   padding: 5px 12px;
   background: var(--neutral-50);
   border-bottom: 0.5px solid var(--neutral-100);
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
 }
 
@@ -168,7 +165,7 @@
   border-radius: 4px;
   background: var(--primary-50);
   border: 0.5px solid rgba(140, 90, 226, 0.2);
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--primary-300);
 }
 
@@ -178,7 +175,7 @@
   gap: 8px;
   padding: 8px 12px;
   background: var(--neutral-50);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -195,6 +192,6 @@
 .empty {
   padding: 16px 12px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
 }

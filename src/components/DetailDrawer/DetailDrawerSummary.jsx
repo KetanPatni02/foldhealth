@@ -45,7 +45,7 @@ function SummaryContent({ data, animate }) {
             margin: l.kind === 'heading' ? (i === 0 ? '0 0 6px' : '12px 0 6px') : '3px 0',
             paddingLeft: l.kind === 'item' ? 16 : 0,
             position: 'relative',
-            fontSize: 13.5,
+            fontSize: 'var(--font-md)',
             fontWeight: l.kind === 'heading' ? 600 : 400,
             color: 'var(--neutral-400)',
             lineHeight: 1.5,
@@ -84,7 +84,7 @@ export function DetailDrawerSummary({
           <span className={styles.sparkle}>
             <Icon name="solar:magic-stick-3-bold" size={14} />
           </span>
-          <span className={styles.aiGradientText} style={{ fontSize: 13, fontWeight: 600 }}>
+          <span className={styles.aiGradientText} style={{ fontSize: 'var(--font-md)', fontWeight: 600 }}>
             Unity-Generated Call Summary
           </span>
           <span className={`${styles.chevron} ${open ? styles.chevronOpen : ''}`}>
@@ -92,7 +92,7 @@ export function DetailDrawerSummary({
           </span>
         </div>
         {isRefreshing && (
-          <span style={{ fontSize: 12, color: 'var(--neutral-300)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span className={styles.liveBars}><span /><span /><span /><span /></span>
             <span className={styles.aiGradientText} style={{ fontWeight: 500 }}>Regenerating…</span>
           </span>
@@ -100,7 +100,7 @@ export function DetailDrawerSummary({
       </button>
 
       {open && !callSummary && (
-        <div style={{ padding: '16px', fontSize: 13, color: 'var(--neutral-300)', textAlign: 'center' }}>
+        <div style={{ padding: '16px', fontSize: 'var(--font-md)', color: 'var(--neutral-300)', textAlign: 'center' }}>
           No call summary generated yet. Summary will appear after a completed call.
         </div>
       )}

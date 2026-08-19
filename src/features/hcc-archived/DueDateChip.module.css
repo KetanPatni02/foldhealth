@@ -9,8 +9,7 @@
   border-radius: 6px;
   border: 0.5px solid var(--neutral-150);
   background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
   cursor: pointer;
@@ -51,11 +50,10 @@
   border: 0.5px solid var(--neutral-100);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  font-family: 'Inter', sans-serif;
 }
 
 .popHeader {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
   margin-bottom: 10px;
@@ -77,11 +75,10 @@
   padding: 2px 0;
   cursor: pointer;
   text-align: left;
-  font-family: inherit;
 }
 
 .optionLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
 }
 
@@ -116,8 +113,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   cursor: pointer;
   transition: background 0.12s;

@@ -7,7 +7,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { Select } from '../../components/Select/Select';
-import { LABEL_OPTIONS, TITLE_MAX, getInitials, isOverdue, formatDateFriendly, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_OPTIONS } from './TasksView.utils';
+import { LABEL_OPTIONS, TITLE_MAX, getInitials, isOverdue, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_OPTIONS } from './TasksView.utils';
 import { PriorityIcon } from './TasksViewIcons';
 import { TaskDatePicker, DetailDropdown } from './TasksViewDropdowns';
 import styles from './TasksView.module.css';
@@ -92,7 +92,8 @@ export function TaskDetailDrawerDetails({
                   variant="overflow"
                   label={l}
                   trailingIcon="solar:close-circle-linear"
-                  onClick={() => {
+                  trailingIconLabel={`Remove ${l}`}
+                  onTrailingIconClick={() => {
                     updateTask(task.id, { labels: labels.filter(x => x !== l) });
                     showToast(`Label "${l}" removed`);
                   }}

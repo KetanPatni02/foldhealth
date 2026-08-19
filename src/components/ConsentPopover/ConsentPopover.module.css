@@ -20,7 +20,7 @@
 
 .headerTitle {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   overflow: hidden;
@@ -55,7 +55,7 @@
 
 .sectionTitle {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   overflow: hidden;
@@ -88,11 +88,11 @@
 }
 
 .rowLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
 }
 
 .rowStatus {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
 }

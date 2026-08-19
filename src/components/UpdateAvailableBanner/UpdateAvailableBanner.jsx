@@ -24,14 +24,14 @@ export function UpdateAvailableBanner() {
       padding: '8px 16px',
       background: 'var(--primary-50)',
       borderBottom: '1px solid rgba(140, 90, 226, 0.2)',
-      fontSize: 13,
+      fontSize: 'var(--font-md)',
       color: 'var(--primary-300)',
       fontWeight: 500,
       boxShadow: '0 1px 4px rgba(0, 0, 0, 0.06)',
     }}>
       <Icon name="solar:refresh-circle-linear" size={16} />
       A new version of Fold Health is available.
-      <span style={{ fontWeight: 400, fontSize: 12, marginLeft: 4, color: 'var(--neutral-400)' }}>
+      <span style={{ fontWeight: 400, fontSize: 'var(--font-sm)', marginLeft: 4, color: 'var(--neutral-400)' }}>
         Refresh to load the latest — leaving this tab on the old build can cause blank screens on navigation.
       </span>
       <Button

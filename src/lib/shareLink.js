@@ -28,7 +28,9 @@ export function sectionSlugFromState(state) {
 
   if (activePage === 'population' || !activePage) {
     if (activeSubnavList && LIST_TO_SLUG[activeSubnavList]) return LIST_TO_SLUG[activeSubnavList];
-    return activeTab === 'toc-queue' ? 'toc-queue' : 'toc';
+    if (activeSubnavList === 'TOC IP') return 'toc';
+    if (activeSubnavList === 'TCM') return activeTab === 'toc-queue' ? 'tcm-queue' : 'tcm';
+    return activeTab === 'toc-queue' ? 'tcm-queue' : 'tcm';
   }
 
   // Top-level workspaces share their page name as the slug.

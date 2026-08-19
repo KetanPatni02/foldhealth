@@ -15,8 +15,6 @@ import styles from './CcmWorklistRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi', ch: 'Chinese' };
 
-// Status → shared Badge variant. Same variants TOC uses for its status
-// column so the visual language stays consistent across all worklists.
 const STATUS_VARIANT = {
   'New':             { variant: 'toc-new',       label: 'New',             icon: 'solar:star-bold' },
   'Engaged':         { variant: 'toc-engaged',   label: 'Engaged',         icon: 'solar:link-round-bold' },
@@ -36,7 +34,117 @@ const formatMins = (seconds) => {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')} Mins`;
 };
 
-export function CcmWorklistRow({ member, isSelected, onSelect }) {
+/**
+ * Middle-column defs for CCM. Each carries `renderCell(member, ctx)` so
+ * the Show Columns popover can hide + reorder columns and the row body
+ * follows along. Sticky checkbox / Members / Actions columns stay
+ * hardcoded around this band.
+ *
+ * ctx shape: { openBilling }
+ */
+export const CCM_MIDDLE_COLUMNS = [
+  {
+    key: 'status',
+    label: 'Status',
+    renderCell: (m) => <StatusBadge status={m.status} />,
+  },
+  {
+    key: 'nextActionDue',
+    label: 'Next Action Due',
+    renderCell: (m) => (
+      <span className={`${styles.dateText} ${m.nextActionOverdue ? styles.overdue : ''}`}>
+        {m.nextActionDue || '—'}
+      </span>
+    ),
+  },
+  {
+    key: 'outreach',
+    label: 'Outreach',
+    renderCell: (m) => (
+      m.outreachStatus ? (
+        <div className={styles.outreachCell}>
+          <Icon name="solar:phone-calling-bold" size={15} color="var(--status-success)" />
+          <div>
+            <div className={styles.outreachStatus}>{m.outreachStatus}</div>
+            {m.outreachDate && <div className={styles.outreachDate}>{m.outreachDate}</div>}
+          </div>
+        </div>
+      ) : (
+        <div className={styles.outreachCell}>
+          <Icon name="solar:phone-linear" size={15} color="var(--neutral-200)" />
+          <span className={styles.outreachNone}>—</span>
+        </div>
+      )
+    ),
+  },
+  {
+    key: 'assignee',
+    label: 'Assignee',
+    renderCell: (m) => (
+      m.assigneeName ? (
+        <div className={styles.assigneeCell}>
+          <Avatar variant="assignee" initials={m.assigneeInitials || m.assigneeName.slice(0, 2).toUpperCase()} />
+          <span className={styles.assigneeName}>{m.assigneeName}</span>
+        </div>
+      ) : (
+        <span className={styles.assignPlaceholder}>
+          <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
+          Assign User
+        </span>
+      )
+    ),
+  },
+  {
+    key: 'startDate',
+    label: 'Start Date',
+    renderCell: (m) => <span className={styles.dateText}>{m.startDate || '—'}</span>,
+  },
+  {
+    key: 'lastAdmission',
+    label: 'Last Admission',
+    renderCell: (m) => <span className={styles.dateText}>{m.lastAdmission || '—'}</span>,
+  },
+  {
+    key: 'billableMins',
+    label: 'Billable Mins',
+    stopRowClickPropagation: true,
+    renderCell: (m, ctx) => (
+      <button type="button" className={styles.billableMins} onClick={ctx.openBilling}>
+        {formatMins(m.billableSeconds)}
+      </button>
+    ),
+  },
+  {
+    key: 'unloggedMins',
+    label: 'Unlogged Mins',
+    renderCell: (m) => <span className={styles.unloggedMins}>{formatMins(m.unloggedSeconds)}</span>,
+  },
+  {
+    key: 'riskLevel',
+    label: 'Risk Level',
+    renderCell: (m) => (
+      m.riskLevel
+        ? <Badge size="M" variant={`lace-${m.riskLevel.toLowerCase()}`} label={m.riskLevel} />
+        : <span className={styles.mutedDash}>—</span>
+    ),
+  },
+  {
+    key: 'taskCount',
+    label: 'Task',
+    renderCell: (m) => (
+      m.taskCount
+        ? <span className={styles.taskBadge}>{m.taskCount} Task</span>
+        : <span className={styles.mutedDash}>—</span>
+    ),
+  },
+  {
+    key: 'carePlanStatus',
+    label: 'Care Plan Status',
+    renderCell: (m) => <span className={styles.carePlanText}>{m.carePlanStatus || '—'}</span>,
+  },
+];
+
+export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelect }) {
   const openQuickView = useAppStore(s => s.openQuickView);
   const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const showToast = useAppStore(s => s.showToast);
@@ -45,6 +153,10 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
   const [billingOpen, setBillingOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtnRef = useRef(null);
+
+  const middleCols = (columns || CCM_MIDDLE_COLUMNS)
+    .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
+  const visibleMiddle = hiddenSet ? middleCols.filter(c => !hiddenSet.has(c.key)) : middleCols;
 
   const toggleMenu = (e) => {
     e.stopPropagation();
@@ -78,14 +190,11 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
     showToast(`${key} – coming soon`);
   };
 
-  // Billable Mins cell → same-page drawer overlay (quick peek).
   const openBilling = (e) => {
     e.stopPropagation();
     setBillingOpen(true);
   };
 
-  // Action-row document icon → navigate INTO the patient profile and open
-  // the CCM care program on landing. Different intent than the peek drawer.
   const openInCarePlan = (e) => {
     e.stopPropagation();
     if (!m.patientId) {
@@ -115,6 +224,8 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
       language: m.language,
     });
   };
+
+  const cellCtx = { openBilling };
 
   return (
     <>
@@ -149,66 +260,16 @@ export function CcmWorklistRow({ member, isSelected, onSelect }) {
         </div>
       </td>
 
-      <td className={styles.td}><StatusBadge status={m.status} /></td>
-
-      <td className={styles.td}>
-        <span className={`${styles.dateText} ${m.nextActionOverdue ? styles.overdue : ''}`}>
-          {m.nextActionDue || '—'}
-        </span>
-      </td>
-
-      <td className={styles.td}>
-        {m.outreachStatus ? (
-          <div className={styles.outreachCell}>
-            <Icon name="solar:phone-calling-bold" size={15} color="var(--status-success)" />
-            <div>
-              <div className={styles.outreachStatus}>{m.outreachStatus}</div>
-              {m.outreachDate && <div className={styles.outreachDate}>{m.outreachDate}</div>}
-            </div>
-          </div>
-        ) : (
-          <div className={styles.outreachCell}>
-            <Icon name="solar:phone-linear" size={15} color="var(--neutral-200)" />
-            <span className={styles.outreachNone}>—</span>
-          </div>
-        )}
-      </td>
-
-      <td className={styles.td}>
-        {m.assigneeName ? (
-          <div className={styles.assigneeCell}>
-            <Avatar variant="assignee" initials={m.assigneeInitials || m.assigneeName.slice(0, 2).toUpperCase()} />
-            <span className={styles.assigneeName}>{m.assigneeName}</span>
-          </div>
-        ) : (
-          <span className={styles.assignPlaceholder}>
-            <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
-            Assign User
-          </span>
-        )}
-      </td>
-
-      <td className={styles.td}><span className={styles.dateText}>{m.startDate || '—'}</span></td>
-      <td className={styles.td}><span className={styles.dateText}>{m.lastAdmission || '—'}</span></td>
-
-      <td className={styles.td} onClick={openBilling}>
-        <button type="button" className={styles.billableMins} onClick={openBilling}>
-          {formatMins(m.billableSeconds)}
-        </button>
-      </td>
-      <td className={styles.td}><span className={styles.unloggedMins}>{formatMins(m.unloggedSeconds)}</span></td>
-
-      <td className={styles.td}>
-        {m.riskLevel
-          ? <Badge size="M" variant={`lace-${m.riskLevel.toLowerCase()}`} label={m.riskLevel} />
-          : <span className={styles.mutedDash}>—</span>}
-      </td>
-
-      <td className={styles.td}>
-        {m.taskCount ? <span className={styles.taskBadge}>{m.taskCount} Task</span> : <span className={styles.mutedDash}>—</span>}
-      </td>
-
-      <td className={styles.td}><span className={styles.carePlanText}>{m.carePlanStatus || '—'}</span></td>
+      {visibleMiddle.map(col => (
+        <td
+          key={col.key}
+          data-col-key={col.key}
+          className={styles.td}
+          onClick={col.stopRowClickPropagation ? (e) => e.stopPropagation() : undefined}
+        >
+          {col.renderCell(m, cellCtx)}
+        </td>
+      ))}
 
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>

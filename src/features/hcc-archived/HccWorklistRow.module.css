@@ -10,8 +10,7 @@
   vertical-align: middle;
   padding: 8px 14px;
   height: 59px;            /* matches TOC WorklistRow natural row height */
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -63,7 +62,7 @@
   gap: 12px;
 }
 .patientName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -82,12 +81,12 @@
   text-decoration: underline;
 }
 .patientDemo {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .patientMeta {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
   margin-top: 3px;
 }
@@ -105,7 +104,7 @@
   color: var(--neutral-300);
   border: none;
   padding: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   letter-spacing: normal;
   text-transform: uppercase;
@@ -136,7 +135,7 @@
   background: var(--neutral-500);
   color: var(--neutral-0);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   letter-spacing: normal;
   text-transform: none;
@@ -178,7 +177,7 @@
 
 /* ── Last Visit cell — purple date + visits count ── */
 .lastVisitDate {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--primary-300);
   font-variant-numeric: tabular-nums;
@@ -186,7 +185,7 @@
 }
 .lastVisitMeta {
   /* Matches prototype: dotted-underlined clickable visit count */
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   white-space: nowrap;
   text-decoration: underline dotted;
@@ -243,7 +242,7 @@
 
 /* Non-claim variant — plain grey date (no button wrapper) */
 .lastVisitDateMuted {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300);
   font-variant-numeric: tabular-nums;
@@ -252,7 +251,7 @@
 
 /* ── Create Date cell — date + due line with clock icon ── */
 .dateText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -261,7 +260,7 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   white-space: nowrap;
 }
@@ -275,7 +274,7 @@
   background: var(--primary-50);
   border: 0.5px solid rgba(140, 90, 226, 0.2);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--primary-300);
   width: max-content;
@@ -284,7 +283,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   white-space: nowrap;
 }
@@ -297,7 +296,7 @@
 
 /* ── Role status cells ── */
 .roleName {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   white-space: nowrap;
   overflow: hidden;
@@ -307,7 +306,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   white-space: nowrap;
   color: var(--neutral-300);
   /* Visible label below the role name is the *date*; the status is encoded
@@ -315,7 +314,7 @@
      the icon meanings. */
 }
 .roleDate {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   font-variant-numeric: tabular-nums;
 }
@@ -324,12 +323,11 @@
   align-items: center;
   gap: 4px;
   padding: 4px 6px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
   border: none;
   background: transparent;
   cursor: pointer;
-  font-family: inherit;
   border-radius: 4px;
   transition: background 0.12s, color 0.12s;
 }
@@ -351,10 +349,9 @@
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.02);
   padding: 6px;
-  font-family: 'Inter', sans-serif;
 }
 .roleAssignTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   padding: 6px 8px 4px;
@@ -377,7 +374,7 @@
 .roleAssignName {
   flex: 1;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -385,14 +382,14 @@
   white-space: nowrap;
 }
 .roleAssignRole {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--neutral-300);
   white-space: nowrap;
 }
 .roleAssignEmpty {
   padding: 10px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   text-align: center;
 }
@@ -405,7 +402,7 @@
   padding: 2px 6px;
   border: 0.5px solid transparent;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   white-space: nowrap;
   min-width: 22px;
@@ -421,7 +418,7 @@
   background: var(--neutral-0);
   border: 0.5px solid rgba(111, 122, 144, 0.1);
   border-radius: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   min-width: 22px;
   justify-content: center;
@@ -432,7 +429,7 @@
 .numText,
 .codeText,
 .providerText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   white-space: nowrap;
   overflow: hidden;
@@ -467,7 +464,7 @@
   line-height: 1.2;
 }
 .assigneeName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -475,7 +472,7 @@
   text-overflow: ellipsis;
 }
 .assigneeRole {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -496,7 +493,7 @@
   flex-shrink: 0;
 }
 .assigneeNameMuted {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -568,7 +565,6 @@
   border-radius: 10px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
   animation: openIcdsFade 0.15s ease;
 }
 @keyframes openIcdsFade {
@@ -585,7 +581,7 @@
   justify-content: space-between;
 }
 .openIcdsTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--neutral-400);
   letter-spacing: 0.02em;
@@ -603,7 +599,7 @@
   color: var(--status-warning);
   border: 0.5px solid rgba(217, 165, 11, 0.25);
   border-radius: 10px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
 }
 
@@ -616,7 +612,7 @@
 .openIcdsEmpty {
   padding: 20px 14px;
   color: var(--neutral-300);
-  font-size: 12px;
+  font-size: var(--font-sm);
   text-align: center;
 }
 
@@ -631,9 +627,8 @@
 .openIcdsRow:last-child { border-bottom: none; }
 
 .openIcdsCode {
-  font-family: 'Inter', sans-serif;
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   color: var(--primary-300);
   background: var(--primary-50);
@@ -650,7 +645,7 @@
   gap: 3px;
 }
 .openIcdsDesc {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   line-height: 1.35;
 }
@@ -658,7 +653,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   align-items: center;
 }
@@ -670,7 +665,7 @@
   color: var(--status-warning);
   border: 0.5px solid rgba(217, 165, 11, 0.2);
   border-radius: 3px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -686,8 +681,7 @@
   border: none;
   padding: 2px 0;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
   display: inline-flex;

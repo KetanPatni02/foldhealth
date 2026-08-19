@@ -9,7 +9,6 @@
   background: var(--primary-50);
   border-bottom: 0.5px solid var(--neutral-100, #e9ecf1);
   flex-shrink: 0;
-  font-family: 'Inter', sans-serif;
 }
 
 /* Compact header row */
@@ -39,7 +38,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 400;
   color: var(--primary-300, #8c5ae2);
   flex-shrink: 0;
@@ -54,7 +53,7 @@
 }
 
 .name {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400, #3a485f);
   line-height: 1.2;
@@ -67,7 +66,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-300, #6f7a90);
   line-height: 1.2;
@@ -135,7 +134,7 @@
 }
 
 .sectionTitle {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 600;
   color: var(--neutral-400, #3a485f);
   margin-bottom: 8px;
@@ -152,7 +151,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300, #6f7a90);
   line-height: 1.4;
@@ -171,7 +170,7 @@
   display: inline-flex;
   align-items: center;
   gap: 3px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--status-error);
 }
@@ -185,14 +184,13 @@
 }
 
 .conditionSelect {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400, #3a485f);
   border: 0.5px solid var(--neutral-150, #d0d6e1);
   border-radius: 4px;
   padding: 4px 8px;
   background: var(--neutral-0, #fff);
-  font-family: 'Inter', sans-serif;
   cursor: pointer;
 }
 
@@ -204,7 +202,7 @@
 }
 
 .synopsisText {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400, #3a485f);
   line-height: 1.6;
@@ -212,14 +210,13 @@
 }
 
 .seeMore {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300, #8c5ae2);
   border: none;
   background: none;
   cursor: pointer;
   padding: 0;
-  font-family: 'Inter', sans-serif;
   margin-bottom: 10px;
   display: block;
 }
@@ -243,7 +240,7 @@
 }
 
 .poweredBy {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   color: var(--neutral-300, #6f7a90);
 }
@@ -255,7 +252,7 @@
 }
 
 .generatedAt {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 400;
   color: var(--primary-300, #8c5ae2);
 }

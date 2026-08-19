@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { WorklistRow } from './WorklistRow';
+import { WorklistRow, WORKLIST_MIDDLE_COLUMNS } from './WorklistRow';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { ErrorState } from '../../components/ErrorState/ErrorState';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
+import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
+import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
 
 function EmptySearch() {
   return (
@@ -15,10 +17,10 @@ function EmptySearch() {
       padding: '64px 24px', gap: 12, color: 'var(--neutral-300)',
     }}>
       <Icon name="solar:magnifer-linear" size={40} color="var(--neutral-200)" />
-      <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--neutral-400)', margin: 0 }}>
+      <p style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-400)', margin: 0 }}>
         No results found
       </p>
-      <p style={{ fontSize: 14, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+      <p style={{ fontSize: 'var(--font-base)', margin: 0, textAlign: 'center', maxWidth: 320 }}>
         No members match your current filters. Try adjusting the filters or clearing them.
       </p>
     </div>
@@ -76,7 +78,7 @@ function SectionHeader({ section, count, colSpan, isExpanded, onToggle, hasMore 
       }}>
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
-          fontSize: 13, fontWeight: 500, color: section.color,
+          fontSize: 'var(--font-md)', fontWeight: 500, color: section.color,
           fontFamily: "'Inter', sans-serif",
         }}>
           {section.dot ? (
@@ -89,7 +91,7 @@ function SectionHeader({ section, count, colSpan, isExpanded, onToggle, hasMore 
           )}
           {section.label}
           <span style={{
-            fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)',
+            fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-300)',
             background: 'var(--neutral-100)', padding: '1px 6px',
             borderRadius: 4, marginLeft: 2,
           }}>
@@ -100,7 +102,7 @@ function SectionHeader({ section, count, colSpan, isExpanded, onToggle, hasMore 
               onClick={(e) => { e.stopPropagation(); onToggle(); }}
               style={{
                 marginLeft: 'auto', background: 'none', border: 'none',
-                fontSize: 12, fontWeight: 500, color: 'var(--primary-300)',
+                fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--primary-300)',
                 cursor: 'pointer', fontFamily: "'Inter', sans-serif",
                 display: 'inline-flex', alignItems: 'center', gap: 4,
               }}
@@ -183,10 +185,19 @@ export function WorklistTable() {
     else clearSelected();
   };
 
-  // Shared sticky-top styling merged into each HeaderCell so the header
-  // row stays pinned when the table body scrolls. HeaderCell already
-  // handles background / padding / typography.
-  const colCount = 12;
+  // Column prefs — WorklistTable is bespoke (doesn't ride WorklistShell), so
+  // we call useWorklistColumns directly for the middle-column band. The
+  // sticky checkbox / Members / Actions columns bracket it.
+  const columnPrefs = useWorklistColumns('tcm-worklist', WORKLIST_MIDDLE_COLUMNS);
+  const visibleMiddle = columnPrefs.visibleColumns;
+  const orderedColumnsForRow = useMemo(() => (
+    [{ key: 'select', showCheckbox: true, sticky: 'left' },
+     { key: 'members', label: 'Members', sticky: 'left' },
+     ...columnPrefs.orderedColumns,
+     { key: 'actions', label: 'Actions', sticky: 'right' }]
+  ), [columnPrefs.orderedColumns]);
+  // colCount = checkbox + members + visible middle + actions
+  const colCount = 2 + visibleMiddle.length + 1;
 
   if (patientsLoading) return <TableSkeleton rows={perPage} />;
   if (patientsError) return <ErrorState title="Failed to load patients" message={patientsError} onRetry={fetchPatients} />;
@@ -222,7 +233,14 @@ export function WorklistTable() {
 
       for (const p of visible) {
         rows.push(
-          <WorklistRow key={p.id} patient={p} isSelected={selectedIdSet.has(p.id)} onSelect={selectPatient} />
+          <WorklistRow
+            key={p.id}
+            patient={p}
+            columns={orderedColumnsForRow}
+            hiddenSet={columnPrefs.hiddenSet}
+            isSelected={selectedIdSet.has(p.id)}
+            onSelect={selectPatient}
+          />
         );
       }
     }
@@ -235,7 +253,7 @@ export function WorklistTable() {
         <thead>
           <tr>
             <th style={{
-              padding: '8px 10px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+              padding: '8px 10px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)',
               borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
               width: 36, position: 'sticky', top: 0, left: 0, zIndex: 4,
               textAlign: 'left', whiteSpace: 'nowrap', userSelect: 'none',
@@ -243,23 +261,46 @@ export function WorklistTable() {
               <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
             </th>
             <HeaderCell label="Members" style={{ ...HEADER_STICKY_STYLE, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }} />
-            <HeaderCell label="LACE Acuity" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="Outreach Window" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="TOC Status" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="Outreach" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="Next Outreach" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="Start Date" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="Last Admission" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="Assignee" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="Agent Assigned" style={HEADER_STICKY_STYLE} />
-            <HeaderCell label="Actions" style={{ ...HEADER_STICKY_STYLE, width: 100, right: 0, zIndex: 3 }} />
+            {visibleMiddle.map(col => (
+              <HeaderCell key={col.key} label={col.label} style={HEADER_STICKY_STYLE} />
+            ))}
+            <th
+              style={{
+                ...HEADER_STICKY_STYLE,
+                padding: '8px 10px',
+                background: 'var(--neutral-0)',
+                width: 140,
+                right: 0,
+                zIndex: 3,
+                textAlign: 'left',
+                fontSize: 'var(--font-sm)',
+                fontWeight: 500,
+                color: 'var(--neutral-300)',
+              }}
+            >
+              <ColumnsHeaderButton
+                columns={columnPrefs.orderedColumns}
+                hiddenSet={columnPrefs.hiddenSet}
+                onToggle={columnPrefs.onToggle}
+                onReorder={columnPrefs.onReorder}
+                onReset={columnPrefs.onReset}
+                label="Actions"
+              />
+            </th>
           </tr>
         </thead>
         <tbody>
           {viewBy === 'status'
             ? buildStatusGroupedRows()
             : paginatedPatients.map(p => (
-                <WorklistRow key={p.id} patient={p} isSelected={selectedIdSet.has(p.id)} onSelect={selectPatient} />
+                <WorklistRow
+                  key={p.id}
+                  patient={p}
+                  columns={orderedColumnsForRow}
+                  hiddenSet={columnPrefs.hiddenSet}
+                  isSelected={selectedIdSet.has(p.id)}
+                  onSelect={selectPatient}
+                />
               ))
           }
         </tbody>

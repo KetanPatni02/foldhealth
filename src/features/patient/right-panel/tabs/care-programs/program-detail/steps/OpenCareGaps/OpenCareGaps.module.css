@@ -14,7 +14,7 @@
   gap: 4px;
 }
 .sectionLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   padding: 4px 4px 0;
 }
@@ -33,7 +33,7 @@
 .headRow {
   padding: 8px 4px;
   border-bottom: 0.5px solid var(--neutral-150);
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .row {
@@ -42,8 +42,8 @@
 }
 
 .checkCell { display: flex; align-items: center; }
-.titleCell { font-size: 14px; color: var(--neutral-500); min-width: 0; }
-.statusCell { font-size: 14px; color: var(--neutral-300); }
+.titleCell { font-size: var(--font-base); color: var(--neutral-500); min-width: 0; }
+.statusCell { font-size: var(--font-base); color: var(--neutral-300); }
 
 .assigneeCell { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .assigneeName {
@@ -52,7 +52,7 @@
   padding: 0;
   font: inherit;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--status-success);
   white-space: nowrap;
 }
@@ -65,7 +65,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   white-space: nowrap;
 }

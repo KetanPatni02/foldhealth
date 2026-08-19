@@ -30,9 +30,8 @@
 }
 
 .cardViewLabel {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   text-align: center;
 }
 
@@ -81,10 +80,9 @@
 }
 
 .cardLogoPlaceholder {
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   color: #16181d;
-  font-family: 'Inter', sans-serif;
 }
 
 /* Group badge — colors from theme via inline style */
@@ -97,9 +95,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -131,19 +128,17 @@
 
 /* Figma: label 12px Regular #6F7A90 */
 .cardFieldLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: #6f7a90;
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 /* Figma: value 16px SemiBold #16181D */
 .cardFieldValue {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: #16181d;
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -172,19 +167,17 @@
 
 /* Figma: label 10px Regular #6F7A90 */
 .cardMetaLabel {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 400;
   color: #6f7a90;
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
 /* Figma: value 12px Medium #16181D */
 .cardMetaValue {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: #16181d;
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
 }
 
@@ -214,9 +207,8 @@
 /* Footer motto bar — bg/color from theme via inline style */
 .cardFooterBar {
   padding: 4px 12px;
-  font-size: 8px;
+  font-size: 0.5rem;
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
   text-align: center;
   line-height: 1.2;
   flex-shrink: 0;
@@ -298,10 +290,9 @@
 }
 
 .backNote {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-style: italic;
   color: #3a485f;
-  font-family: 'Inter', sans-serif;
   line-height: 1.2;
   margin: 0;
   width: 100%;
@@ -341,7 +332,6 @@
   border-radius: 4px;
   background: var(--neutral-0);
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 
 .themeSelectLeft {
@@ -359,10 +349,9 @@
 }
 
 .themeSelectLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -405,10 +394,9 @@
 }
 
 .themeOptionLabel {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
-  font-family: 'Inter', sans-serif;
 }
 
 .themeOptionLabelActive {
@@ -417,8 +405,7 @@
 
 /* Static theme indicator in view-only mode */
 .themeStaticLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-300);
-  font-family: 'Inter', sans-serif;
 }

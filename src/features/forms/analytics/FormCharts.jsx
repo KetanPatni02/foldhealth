@@ -11,19 +11,19 @@ import {
 import { SERIES_COLORS } from './formAnalyticsUi';
 
 const FONT = { fontFamily: "'Inter', sans-serif" };
-const AXIS_TICK = { fontSize: 12, fill: 'var(--neutral-200)', ...FONT };
+const AXIS_TICK = { fontSize: 'var(--font-sm)', fill: 'var(--neutral-200)', ...FONT };
 const GRID = { stroke: 'var(--neutral-100)', strokeDasharray: '3 3' };
 
 function FoldTooltip({ active, payload, label, suffix = '' }) {
   if (!active || !payload?.length) return null;
   return (
     <div style={{ background: 'var(--neutral-0)', borderRadius: 8, padding: '8px 12px', boxShadow: 'var(--shadow-card)', border: '1px solid var(--neutral-100)', minWidth: 100 }}>
-      {label != null && <div style={{ fontSize: 12, color: 'var(--neutral-200)', fontWeight: 500, marginBottom: 4, ...FONT }}>{label}</div>}
+      {label != null && <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)', fontWeight: 500, marginBottom: 4, ...FONT }}>{label}</div>}
       {payload.map((p, i) => (
         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color || p.payload?.fill, flexShrink: 0 }} />
-          <span style={{ fontSize: 12, color: 'var(--neutral-300)', flex: 1, ...FONT }}>{p.name || p.dataKey}</span>
-          <span style={{ fontSize: 13, color: 'var(--neutral-400)', fontWeight: 500, ...FONT }}>{p.value}{suffix}</span>
+          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', flex: 1, ...FONT }}>{p.name || p.dataKey}</span>
+          <span style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-400)', fontWeight: 500, ...FONT }}>{p.value}{suffix}</span>
         </div>
       ))}
     </div>
@@ -48,7 +48,7 @@ export function DonutChart({ data, colors = SERIES_COLORS, height = 220, innerRa
           strokeWidth={2}
           label={({ value }) => value}
           labelLine={false}
-          style={{ fontSize: 12, ...FONT }}
+          style={{ fontSize: 'var(--font-sm)', ...FONT }}
         >
           {rows.map((d, i) => <Cell key={i} fill={d.color || colors[i % colors.length]} />)}
         </Pie>
@@ -83,7 +83,7 @@ export function AvgScoreLineChart({ data, height = 260, yLabel = '% of Satisfact
         <CartesianGrid {...GRID} />
         <XAxis dataKey="month" tick={AXIS_TICK} axisLine={{ stroke: 'var(--neutral-150)' }} tickLine={false} />
         <YAxis tick={AXIS_TICK} axisLine={false} tickLine={false} width={40}
-          label={{ value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: 'var(--neutral-200)', ...FONT }, dy: 50 }} />
+          label={{ value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: 'var(--font-xs)', fill: 'var(--neutral-200)', ...FONT }, dy: 50 }} />
         <Tooltip content={<FoldTooltip />} />
         <Line type="monotone" dataKey="value" name="Average" stroke="var(--primary-300)" strokeWidth={2}
           dot={{ r: 3, fill: 'var(--primary-300)', strokeWidth: 0 }}

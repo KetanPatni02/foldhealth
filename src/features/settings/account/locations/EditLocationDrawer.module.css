@@ -9,7 +9,7 @@
 }
 
 .title {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 600;
   color: var(--neutral-400);
 }
@@ -29,7 +29,7 @@
   gap: 8px;
   padding: 6px 12px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-300);
   background: var(--neutral-50);
@@ -50,7 +50,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 600;
   background: var(--neutral-0);
   color: var(--neutral-300);
@@ -93,7 +93,7 @@
 }
 
 .label {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 .required { color: var(--status-error); }
@@ -106,7 +106,7 @@
 
 .empty {
   padding: 8px 10px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   background: var(--neutral-50);
   border-radius: 6px;
@@ -147,7 +147,7 @@
   justify-content: center;
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   cursor: pointer;

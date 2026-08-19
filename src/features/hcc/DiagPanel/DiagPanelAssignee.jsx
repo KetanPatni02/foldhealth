@@ -1,4 +1,5 @@
 import { Icon } from '../../../components/Icon/Icon';
+import { AssigneeChange } from '../../../components/AssigneeChange/AssigneeChange';
 import { RoleTooltip } from '../RoleTooltip';
 import { RoleAssigneePicker } from '../RoleAssigneePicker';
 import { ROLE_LABEL } from '../assignment/astranaStaff';
@@ -19,20 +20,13 @@ function UnassignedAssignTrigger({ role, memberId, dosDate }) {
           initials="—"
           variant="staff"
         >
-          <button
-            type="button"
+          <AssigneeChange
             ref={ref}
+            avatarOnly
+            unassigned
             onClick={onClick}
-            style={{
-              width: 24, height: 24, borderRadius: 6,
-              background: 'var(--neutral-50)',
-              border: '0.5px dashed var(--neutral-200)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, cursor: 'pointer', padding: 0,
-            }}
-          >
-            <Icon name="solar:user-plus-rounded-linear" size={14} color="var(--neutral-300)" />
-          </button>
+            ariaLabel={`Assign ${ROLE_LABEL[role] || role}`}
+          />
         </RoleTooltip>
       )}
     />
@@ -95,7 +89,7 @@ export function AssigneeAvatar({ member, dosState, currentDos, locked = false })
             width: 24, height: 24, borderRadius: 6,
             background: 'var(--secondary-100)', border: '0.5px solid var(--secondary-200)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, fontSize: 10, fontWeight: 500, color: 'var(--secondary-300)',
+            flexShrink: 0, fontSize: 'var(--font-2xs)', fontWeight: 500, color: 'var(--secondary-300)',
             cursor: 'default', padding: 0,
           }}
         >
@@ -119,21 +113,17 @@ export function AssigneeAvatar({ member, dosState, currentDos, locked = false })
           initials={a.initials}
           variant="staff"
         >
-          <button
-            type="button"
+          {/* `name`/`role` intentionally omitted on AssigneeChange so its
+              internal avatar-only tooltip stays quiet — the wrapping
+              RoleTooltip already carries the hover card, and firing both
+              would render two tips over the same trigger. */}
+          <AssigneeChange
             ref={ref}
+            avatarOnly
+            initials={a.initials}
             onClick={onClick}
-            title="Change assignee"
-            style={{
-              width: 24, height: 24, borderRadius: 6,
-              background: 'var(--secondary-100)', border: '0.5px solid var(--secondary-200)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, fontSize: 10, fontWeight: 500, color: 'var(--secondary-300)',
-              cursor: 'pointer', padding: 0,
-            }}
-          >
-            {a.initials}
-          </button>
+            ariaLabel={`Change ${ROLE_LABEL[a.role] || a.role} assignee (currently ${a.name})`}
+          />
         </RoleTooltip>
       )}
     />

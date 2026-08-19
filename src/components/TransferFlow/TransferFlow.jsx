@@ -14,12 +14,12 @@ const DEPARTMENTS = [
 
 const s = {
   card: { border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 14, marginBottom: 12, background: '#fff' },
-  title: { fontSize: 13, fontWeight: 500, color: 'var(--neutral-400)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 },
+  title: { fontSize: 'var(--font-md)', fontWeight: 500, color: 'var(--neutral-400)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 },
   deptRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '0.5px solid var(--neutral-100)', cursor: 'pointer' },
   deptDot: (avail) => ({ width: 8, height: 8, borderRadius: '50%', background: avail ? 'var(--status-success)' : 'var(--status-error)', flexShrink: 0 }),
-  deptLabel: { flex: 1, fontSize: 13, color: 'var(--neutral-400)' },
-  deptPhone: { fontSize: 12, color: 'var(--neutral-300)' },
-  deptUnavail: { fontSize: 11, color: 'var(--status-error)' },
+  deptLabel: { flex: 1, fontSize: 'var(--font-md)', color: 'var(--neutral-400)' },
+  deptPhone: { fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' },
+  deptUnavail: { fontSize: 'var(--font-xs)', color: 'var(--status-error)' },
   transferringCard: { border: '1px solid #bbf7d0', borderRadius: 8, padding: 16, background: '#f0fdf4', marginBottom: 12, textAlign: 'center' },
   failureCard: { border: '1px solid rgba(215,40,37,0.3)', borderRadius: 8, padding: 16, background: 'var(--status-error-light)', marginBottom: 12 },
   callbackCard: { border: '0.5px solid rgba(20,94,204,0.3)', borderRadius: 8, padding: 14, background: 'var(--status-info-light)', marginBottom: 12 },
@@ -55,18 +55,18 @@ export function TransferringState({ department, onCancel }) {
   return (
     <div style={s.transferringCard}>
       <div style={{ marginBottom: 8 }}>
-        <Icon name="solar:phone-calling-bold" size={24} color="#059669" />
+        <Icon name="solar:phone-calling-bold" size={24} color="var(--status-success)" />
       </div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: '#059669', marginBottom: 4 }}>Transferring Call</div>
-      <div style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 8 }}>
+      <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--status-success)', marginBottom: 4 }}>Transferring Call</div>
+      <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', marginBottom: '0.5rem' }}>
         Connecting to {department?.label || 'department'}...
       </div>
-      <div style={{ fontSize: 12, color: 'var(--neutral-300)', fontStyle: 'italic', marginBottom: 12 }}>
+      <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)', fontStyle: 'italic', marginBottom: 'var(--font-sm)' }}>
         "Please hold while I transfer you to our {department?.label?.toLowerCase() || 'care'} team."
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 12 }}>
         <Icon name="solar:music-notes-bold" size={14} color="var(--primary-300)" />
-        <span style={{ fontSize: 12, color: 'var(--primary-300)' }}>Hold music playing</span>
+        <span style={{ fontSize: 'var(--font-sm)', color: 'var(--primary-300)' }}>Hold music playing</span>
       </div>
       <Button variant="dangerFilled" size="L" fullWidth leadingIcon="solar:close-circle-bold" onClick={onCancel}>
         Cancel Transfer
@@ -80,9 +80,9 @@ export function TransferFailure({ reason, onRetry, onCallback }) {
     <div style={s.failureCard}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <Icon name="solar:danger-triangle-bold" size={16} color="var(--status-error)" />
-        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--status-error)' }}>Transfer Failed</span>
+        <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--status-error)' }}>Transfer Failed</span>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 12 }}>
+      <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', marginBottom: 'var(--font-sm)' }}>
         {reason || 'Unable to connect to the department. The line may be busy or unavailable.'}
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -102,9 +102,9 @@ export function NoHumanAvailable({ onCallback, onMessage }) {
     <div style={s.failureCard}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
         <Icon name="solar:users-group-rounded-bold" size={16} color="var(--status-warning)" />
-        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--status-warning)' }}>No Agent Available</span>
+        <span style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--status-warning)' }}>No Agent Available</span>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--neutral-300)', marginBottom: 12 }}>
+      <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', marginBottom: 'var(--font-sm)' }}>
         All human agents are currently busy. You can offer the patient a callback or leave a message.
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
@@ -115,7 +115,7 @@ export function NoHumanAvailable({ onCallback, onMessage }) {
           Leave Message
         </Button>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--neutral-200)', marginTop: 8, textAlign: 'center' }}>
+      <div style={{ fontSize: 'var(--font-xs)', color: 'var(--neutral-200)', marginTop: '0.5rem', textAlign: 'center' }}>
         SLA: Callback within 30 minutes
       </div>
     </div>
@@ -128,9 +128,9 @@ export function CallbackOffer({ patientName, onSchedule, onDismiss }) {
     <div style={s.callbackCard}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
         <Icon name="solar:clock-circle-bold" size={14} color="var(--status-info)" />
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--status-info)' }}>Schedule Callback</span>
+        <span style={{ fontSize: 'var(--font-md)', fontWeight: 500, color: 'var(--status-info)' }}>Schedule Callback</span>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--neutral-400)', marginBottom: 10 }}>
+      <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-400)', marginBottom: 'var(--font-2xs)' }}>
         Schedule a callback for {patientName || 'this patient'}:
       </div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
@@ -166,9 +166,9 @@ export function PostTransferFeedback({ onSubmit }) {
     <div style={s.feedbackCard}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
         <Icon name="solar:clipboard-check-bold" size={14} color="var(--status-success)" />
-        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--status-success)' }}>Post-Transfer Feedback</span>
+        <span style={{ fontSize: 'var(--font-md)', fontWeight: 500, color: 'var(--status-success)' }}>Post-Transfer Feedback</span>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--neutral-400)', marginBottom: 8 }}>Transfer Outcome:</div>
+      <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-400)', marginBottom: '0.5rem' }}>Transfer Outcome:</div>
       <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
         {['resolved', 'escalated', 'callback'].map(o => (
           <Button
@@ -182,7 +182,7 @@ export function PostTransferFeedback({ onSubmit }) {
           </Button>
         ))}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 13, color: 'var(--neutral-400)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, fontSize: 'var(--font-md)', color: 'var(--neutral-400)' }}>
         <Switch checked={sendSurvey} onChange={setSendSurvey} />
         Send SMS satisfaction survey
       </div>

@@ -49,8 +49,8 @@ export function PgProcessingHost() {
           <div style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', borderBottom:'0.5px solid var(--neutral-100)' }}>
             <Avatar variant="icon" size={32} backgroundColor="var(--primary-100)" borderColor="var(--primary-200)" icon={<TableIcon color="var(--primary-300)" size={16} />} />
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:14, fontWeight:600, color:'var(--neutral-400)' }}>Processing File</div>
-              <div style={{ fontSize:14, color:'var(--neutral-200)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pgSession.fileName || pgSession.segName || 'New Group'}</div>
+              <div style={{ fontSize: 'var(--font-base)', fontWeight: 600, color:'var(--neutral-400)' }}>Processing File</div>
+              <div style={{ fontSize: 'var(--font-base)', color:'var(--neutral-200)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pgSession.fileName || pgSession.segName || 'New Group'}</div>
             </div>
             <ActionButton icon="solar:maximize-square-linear" size="L" tooltip="Expand" onClick={expand} />
           </div>
@@ -71,7 +71,7 @@ export function PgProcessingHost() {
                   ) : (
                     <div style={{ width:20, height:20, borderRadius:'50%', border:'1.5px solid var(--neutral-150)', flexShrink:0 }} />
                   )}
-                  <span style={{ fontSize:14, color: done?'var(--status-success)' : active?'var(--primary-300)' : 'var(--neutral-200)', fontWeight: (done||active)?500:400, transition:'color 0.2s' }}>
+                  <span style={{ fontSize: 'var(--font-base)', color: done?'var(--status-success)' : active?'var(--primary-300)' : 'var(--neutral-200)', fontWeight: (done||active)? 500: 400, transition:'color 0.2s' }}>
                     {step}
                   </span>
                 </div>
@@ -87,8 +87,8 @@ export function PgProcessingHost() {
               <svg width="16" height="13" viewBox="0 0 16 13" fill="none"><path d="M1.5 6.5L5.5 10.5L14.5 1.5" stroke="var(--neutral-0)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:14, fontWeight:600, color:'var(--neutral-400)' }}>File Extracted &amp; Processed</div>
-              <div style={{ fontSize:14, color:'var(--neutral-300)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pgSession.fileName || pgSession.segName}</div>
+              <div style={{ fontSize: 'var(--font-base)', fontWeight: 600, color:'var(--neutral-400)' }}>File Extracted &amp; Processed</div>
+              <div style={{ fontSize: 'var(--font-base)', color:'var(--neutral-300)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{pgSession.fileName || pgSession.segName}</div>
             </div>
             <ActionButton icon="solar:close-circle-linear" size="L" onClick={() => closePgSession()} />
           </div>

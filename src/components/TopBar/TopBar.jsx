@@ -139,8 +139,8 @@ function ProfilePopover({ user, onClose, onPreferences }) {
           }} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--neutral-500)', lineHeight: 1.2 }}>{displayName}</div>
-          <div style={{ fontSize: 13, color: 'var(--neutral-300)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</div>
+          <div style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-500)', lineHeight: 1.2 }}>{displayName}</div>
+          <div style={{ fontSize: 'var(--font-md)', color: 'var(--neutral-300)', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</div>
         </div>
       </div>
 
@@ -149,11 +149,11 @@ function ProfilePopover({ user, onClose, onPreferences }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12, padding: '8px 0', borderTop: '0.5px solid var(--neutral-100)', borderBottom: '0.5px solid var(--neutral-100)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
-              <label htmlFor={`${uid}-first-name`} style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 2, display: 'block' }}>First Name</label>
+              <label htmlFor={`${uid}-first-name`} style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 2, display: 'block' }}>First Name</label>
               <Input id={`${uid}-first-name`} value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First" autoFocus />
             </div>
             <div>
-              <label htmlFor={`${uid}-last-name`} style={{ fontSize: 11, fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 2, display: 'block' }}>Last Name</label>
+              <label htmlFor={`${uid}-last-name`} style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 2, display: 'block' }}>Last Name</label>
               <Input id={`${uid}-last-name`} value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last" />
             </div>
           </div>
@@ -183,7 +183,7 @@ function ProfilePopover({ user, onClose, onPreferences }) {
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 2, padding: 0,
                   border: 'none', background: 'none', cursor: 'pointer',
-                  fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500,
+                  fontFamily: "'Inter', sans-serif", fontSize: 'var(--font-base)', fontWeight: 500,
                   color: 'var(--primary-300)',
                 }}
               >
@@ -215,7 +215,7 @@ function ProfilePopover({ user, onClose, onPreferences }) {
           borderRadius: 12, padding: 12, boxShadow: 'var(--shadow-popover)',
           fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', padding: '0 4px' }}>Choose Role</span>
+          <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', padding: '0 4px' }}>Choose Role</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {hccRolesForUser.map(a => {
               const sel = account === a;
@@ -226,7 +226,7 @@ function ProfilePopover({ user, onClose, onPreferences }) {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 8, padding: 8,
                     borderRadius: 8, border: 'none', cursor: 'pointer', width: '100%',
-                    textAlign: 'left', fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 500,
+                    textAlign: 'left', fontFamily: "'Inter', sans-serif", fontSize: 'var(--font-base)', fontWeight: 500,
                     background: sel ? 'var(--primary-50)' : 'none',
                     color: sel ? 'var(--primary-300)' : 'var(--neutral-400)',
                     transition: 'background .1s',
@@ -257,7 +257,7 @@ const menuItemStyle = {
   display: 'flex', alignItems: 'center', gap: 8, padding: 8,
   borderRadius: 8, border: 'none', background: 'none', cursor: 'pointer',
   width: '100%', textAlign: 'left', fontFamily: "'Inter', sans-serif",
-  fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)', transition: 'background .1s',
+  fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)', transition: 'background .1s',
 };
 
 // Map settingsNavItem → breadcrumb label so the URL/section state drives what
@@ -470,7 +470,7 @@ export function TopBar() {
             <>
               <span className={styles.breadcrumbLink}>Population</span>
               <span className={styles.sep}>/</span>
-              <span className={styles.breadcrumbCurrent}>{activeSubnavList || 'TOC'}</span>
+              <span className={styles.breadcrumbCurrent}>{activeSubnavList || 'TCM'}</span>
             </>
           )}
         </nav>

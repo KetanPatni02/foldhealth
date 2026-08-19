@@ -7,7 +7,6 @@
   border-radius: 12px;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
   overflow: hidden;
-  font-family: 'Inter', sans-serif;
   animation: vpFadeInUp var(--duration-fast) var(--ease-out);
 }
 
@@ -37,7 +36,7 @@
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-base);
   flex-shrink: 0;
 }
 
@@ -47,14 +46,14 @@
 }
 
 .name {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400);
   line-height: 1.2;
 }
 
 .meta {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-300);
   margin-top: 3px;
 }
@@ -68,7 +67,7 @@
 
 .sample {
   padding: 6px 16px 14px;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   font-style: italic;
   line-height: 1.45;
@@ -123,7 +122,7 @@
 }
 
 .timer {
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-300);
   margin-top: 5px;
   font-variant-numeric: tabular-nums;
@@ -131,7 +130,7 @@
 
 .footnote {
   padding: 8px 16px 10px;
-  font-size: 11px;
+  font-size: var(--font-xs);
   color: var(--neutral-200);
   border-top: 1px solid var(--neutral-100);
   background: var(--neutral-50);

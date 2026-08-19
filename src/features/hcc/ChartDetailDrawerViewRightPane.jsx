@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { RoleTooltip } from './RoleTooltip';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
@@ -21,6 +22,7 @@ import {
 } from './ChartDetailDrawerParts';
 import { STATUS_OPTIONS, STATUS_BADGE } from './ChartDetailDrawer.utils';
 import { DOC_TYPES } from './data/chartDocs';
+import { VISIT_TYPES } from './reference/visitTypes';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import styles from './ChartDetailDrawer.module.css';
 import { ChartDetailDrawerViewDocList } from './ChartDetailDrawerViewDocList';
@@ -35,6 +37,7 @@ export function ChartDetailDrawerViewRightPane(p) {
     dosExpanded, setDosExpanded, dosList, m, canDeleteDos, setDosToDelete,
     showUpload, setShowUpload, commentsCountForMember, leftPanel, setLeftPanel,
     uploadKey, setUpFile, upCaption, setUpCaption, setUpCaptionTouched, upType, setUpType,
+    upVisitType, setUpVisitType,
     canSaveUpload, saveUpload, resetUpload,
   } = p;
 
@@ -95,10 +98,16 @@ export function ChartDetailDrawerViewRightPane(p) {
                         <span className={styles.dmAvatar}>{supportInitials}</span>
                       </span>
                     ) : (
-                      <button type="button" ref={dmRef} className={styles.dmBadge} onClick={openAssign} aria-label={supportName}>
-                        <span className={styles.dmAvatar}>{supportInitials}</span>
-                        <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--secondary-300)" />
-                      </button>
+                      // name/role omitted so AssigneeChange's internal avatar-only
+                      // tooltip stays quiet — the outer RoleTooltip already carries
+                      // the hover card.
+                      <AssigneeChange
+                        ref={dmRef}
+                        avatarOnly
+                        initials={supportInitials}
+                        onClick={openAssign}
+                        ariaLabel={supportName}
+                      />
                     )}
                   </RoleTooltip>
                 ) : (
@@ -230,6 +239,19 @@ export function ChartDetailDrawerViewRightPane(p) {
                       value={upType}
                       onChange={setUpType}
                       placeholder="Select Type"
+                    />
+                  </div>
+                  {/* Visit Type — mirrors the HCC worklist's Visit Type column
+                      so a document uploaded here can be linked back to the
+                      same encounter categories the DOS rows show. Optional. */}
+                  <div className={styles.uploadField}>
+                    <span className={styles.uploadLabel}>Visit Type</span>
+                    <Select
+                      className={styles.uploadSelect}
+                      options={VISIT_TYPES.map((vt) => ({ value: vt, label: vt }))}
+                      value={upVisitType}
+                      onChange={setUpVisitType}
+                      placeholder="Select Visit Type"
                     />
                   </div>
                   <div className={styles.uploadActions}>

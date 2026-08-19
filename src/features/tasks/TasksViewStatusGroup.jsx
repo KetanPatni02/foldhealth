@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Badge } from '../../components/Badge/Badge';
@@ -11,11 +11,11 @@ export function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskC
   const [page, setPage] = useState(0);
   const label = labelProp || STATUS_LABELS[status];
   const totalPages = Math.max(1, Math.ceil(tasks.length / PAGE_SIZE));
-  // Reset to a valid page when the task list shrinks/grows past current page
-  useEffect(() => {
-    if (page >= totalPages) setPage(Math.max(0, totalPages - 1));
-  }, [totalPages, page]);
-  const paginated = tasks.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  // Clamp the requested page inline — if the list shrunk past `page`, we
+  // page from the last valid page instead. Same shape as `safePage` in
+  // TasksViewListSection.jsx; avoids the setState-in-effect cascade.
+  const safePage = Math.min(page, totalPages - 1);
+  const paginated = tasks.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
   return (
     <div className={styles.statusGroup}>
@@ -50,11 +50,11 @@ export function StatusGroup({ status, label: labelProp, tasks, onToggle, onTaskC
           {paginated.map(t => <TaskRow key={t.id} task={t} onToggle={onToggle} onTaskClick={onTaskClick} hideAssignedTo={hideAssignedTo} hideMember={hideMember} />)}
           {totalPages > 1 && (
             <div className={styles.pagination}>
-              <button className={styles.pageBtn} disabled={page === 0} onClick={() => setPage(p => p - 1)} aria-label="Previous page">
+              <button className={styles.pageBtn} disabled={safePage === 0} onClick={() => setPage(safePage - 1)} aria-label="Previous page">
                 <Icon name="solar:alt-arrow-left-linear" size={14} />
               </button>
-              <span className={styles.pageInfo}>{page + 1} / {totalPages}</span>
-              <button className={styles.pageBtn} disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)} aria-label="Next page">
+              <span className={styles.pageInfo}>{safePage + 1} / {totalPages}</span>
+              <button className={styles.pageBtn} disabled={safePage >= totalPages - 1} onClick={() => setPage(safePage + 1)} aria-label="Next page">
                 <Icon name="solar:alt-arrow-right-linear" size={14} />
               </button>
             </div>

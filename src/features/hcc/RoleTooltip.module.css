@@ -12,7 +12,6 @@
   position: fixed;
   z-index: 9600;
   transform: translate(-50%, -100%);
-  font-family: 'Inter', sans-serif;
   pointer-events: none;
   animation: tooltipIn 0.14s ease;
 }
@@ -60,7 +59,7 @@
   width: 24px;
   height: 24px;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 500;
   line-height: 1.2;
   flex-shrink: 0;
@@ -92,7 +91,7 @@
 }
 
 .name {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-400);
@@ -100,7 +99,7 @@
 }
 
 .role {
-  font-size: 10px;
+  font-size: var(--font-2xs);
   font-weight: 400;
   line-height: 1.2;
   color: var(--neutral-200);

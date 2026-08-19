@@ -1,9 +1,11 @@
 import { useMemo, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { AllPatientsRow } from './AllPatientsRow';
+import { AllPatientsRow, ALL_PATIENTS_MIDDLE_COLUMNS } from './AllPatientsRow';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
+import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
 
 const CITIES = [
   ['Queens', 'NY'], ['Brooklyn', 'NY'], ['Manhattan', 'NY'], ['Bronx', 'NY'],
@@ -38,7 +40,7 @@ function pick(arr, seed) { return arr[seed % arr.length]; }
 const normMemberId = (v) => (v || '').toString().replace(/^#/, '').trim().toLowerCase();
 
 const TH_STYLE = {
-  padding: '8px 14px', fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)',
+  padding: '8px 14px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)',
   borderBottom: '1px solid var(--neutral-150)', background: 'var(--neutral-0)',
   position: 'sticky', top: 0, zIndex: 2, textAlign: 'left',
   whiteSpace: 'nowrap', userSelect: 'none',
@@ -223,6 +225,16 @@ export function AllPatientsTable() {
     else clearSelected();
   };
 
+  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  const columnPrefs = useWorklistColumns('all-patients', ALL_PATIENTS_MIDDLE_COLUMNS);
+  const visibleMiddle = columnPrefs.visibleColumns;
+  const orderedColumnsForRow = useMemo(() => (
+    [{ key: 'select', showCheckbox: true, sticky: 'left' },
+     { key: 'members', label: 'Members', sticky: 'left' },
+     ...columnPrefs.orderedColumns,
+     { key: 'actions', label: 'Actions', sticky: 'right' }]
+  ), [columnPrefs.orderedColumns]);
+
   if (allPatientsLoading && baseRows.length === 0) return <TableSkeleton rows={perPage} />;
 
   return (
@@ -234,17 +246,19 @@ export function AllPatientsTable() {
               <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
             </th>
             <th style={{ ...TH_STYLE, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '1px solid var(--neutral-150)' }}>Members</th>
-            <th style={TH_STYLE}>Contact Info</th>
-            <th style={TH_STYLE}>Location</th>
-            <th style={TH_STYLE}>Tags</th>
-            <th style={TH_STYLE}>Attributes</th>
-            <th style={TH_STYLE}>Chronic Conditions</th>
-            <th style={TH_STYLE}>PCP</th>
-            <th style={TH_STYLE}>Last Visit</th>
-            <th style={TH_STYLE}>Active Care Program</th>
-            <th style={TH_STYLE}>CCM Consent</th>
-            <th style={TH_STYLE}>APCM Consent</th>
-            <th style={{ ...TH_STYLE, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3 }}>Actions</th>
+            {visibleMiddle.map(col => (
+              <th key={col.key} style={TH_STYLE}>{col.label}</th>
+            ))}
+            <th style={{ ...TH_STYLE, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3, textAlign: 'left' }}>
+              <ColumnsHeaderButton
+                columns={columnPrefs.orderedColumns}
+                hiddenSet={columnPrefs.hiddenSet}
+                onToggle={columnPrefs.onToggle}
+                onReorder={columnPrefs.onReorder}
+                onReset={columnPrefs.onReset}
+                label="Actions"
+              />
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -252,6 +266,8 @@ export function AllPatientsTable() {
             <AllPatientsRow
               key={row.id}
               row={row}
+              columns={orderedColumnsForRow}
+              hiddenSet={columnPrefs.hiddenSet}
               isSelected={selectedIdSet.has(row.id)}
               onSelect={selectOne}
             />
@@ -265,10 +281,10 @@ export function AllPatientsTable() {
           padding: '64px 24px', gap: 12, color: 'var(--neutral-300)',
         }}>
           <Icon name="solar:users-group-two-rounded-linear" size={40} color="var(--neutral-200)" />
-          <p style={{ fontSize: 16, fontWeight: 500, color: 'var(--neutral-400)', margin: 0 }}>
+          <p style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-400)', margin: 0 }}>
             {searchQuery ? 'No results found' : 'No patients yet'}
           </p>
-          <p style={{ fontSize: 14, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+          <p style={{ fontSize: 'var(--font-base)', margin: 0, textAlign: 'center', maxWidth: 320 }}>
             {searchQuery ? 'Try adjusting your search.' : 'Patients from TOC and HCC worklists will appear here.'}
           </p>
         </div>

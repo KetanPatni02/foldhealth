@@ -8,7 +8,7 @@
   gap: 12px;
 }
 .header {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
@@ -27,7 +27,7 @@
 .dropZone:hover { background: var(--primary-25); border-color: var(--primary-200); }
 .dropZoneActive { background: var(--primary-50); border-color: var(--primary-300); }
 .dropText {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -46,12 +46,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
 .error {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--status-error);
 }
@@ -94,7 +94,7 @@
   bottom: 3px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 7px;
+  font-size: 0.4375rem;
   font-weight: 600;
   color: var(--neutral-300);
   letter-spacing: 0.04em;
@@ -107,7 +107,7 @@
   gap: 2px;
 }
 .fileRowName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
   overflow: hidden;
@@ -115,7 +115,7 @@
   white-space: nowrap;
 }
 .fileRowSize {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -174,7 +174,7 @@
   gap: 4px;
 }
 .fieldLabel {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
 }
@@ -184,7 +184,7 @@
   width: 100%;
   box-sizing: border-box;
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-500);
   background: var(--neutral-0);

@@ -41,7 +41,7 @@ export function BulkSelectIcon({ size = 20 }) {
    The structure stays stable (always Tooltip-wrapped) so the measured span node never swaps out;
    the tooltip only opens when the text is actually truncated. */
 const GROUP_NAME_STYLE = {
-  fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)', lineHeight: 1.4, minWidth: 0,
+  fontSize: 'var(--font-base)', fontWeight: 400, color: 'var(--neutral-400)', lineHeight: 1.4, minWidth: 0,
   display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word',
 };
 
@@ -208,7 +208,7 @@ export function DrawerSelect({ value, onChange, options, placeholder, disabled =
           borderRadius:6,
           background: disabled ? 'var(--neutral-50)' : 'var(--neutral-0)',
           display:'flex', alignItems:'center', gap:4,
-          fontSize:14, fontFamily:'Inter, sans-serif',
+          fontSize: 'var(--font-base)', fontFamily:'Inter, sans-serif',
           cursor: disabled ? 'not-allowed' : 'pointer',
           boxShadow: open ? '0 0 0 3px var(--primary-100)' : 'none',
           transition:'border-color 0.15s, box-shadow 0.15s',
@@ -227,7 +227,7 @@ export function DrawerSelect({ value, onChange, options, placeholder, disabled =
           {options.map(opt => (
             <div key={opt.value}
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              style={{ padding:'7px 10px', fontSize:14, fontFamily:'Inter, sans-serif',
+              style={{ padding:'7px 10px', fontSize: 'var(--font-base)', fontFamily:'Inter, sans-serif',
                 color:'var(--neutral-400)', cursor:'pointer', borderRadius:4, marginBottom:2,
                 background: value === opt.value ? 'var(--primary-50)' : 'var(--neutral-0)',
                 border: value === opt.value ? '0.5px solid var(--primary-200)' : '0.5px solid transparent',
@@ -239,7 +239,7 @@ export function DrawerSelect({ value, onChange, options, placeholder, disabled =
           ))}
         </div>
       )}
-      {hint && <div style={{ fontSize:12, color:'var(--neutral-200)', marginTop:4 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 'var(--font-sm)', color:'var(--neutral-200)', marginTop: 4 }}>{hint}</div>}
     </div>
   );
 }
@@ -282,12 +282,12 @@ export function FigmaMatchedSection({ patients, expanded, onToggle, allDone }) {
           const initials  = ((nameParts[0]?.[0] || '') + (nameParts[1]?.[0] || '')).toUpperCase();
           return (
             <div key={p.id || i} style={{ padding:'8px 12px', borderBottom:'0.5px solid var(--neutral-100)', display:'flex', alignItems:'center', gap:10, fontFamily:'Inter,sans-serif' }}>
-              <div style={{ width:28, height:28, borderRadius:4, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:400, color:'var(--primary-300)', flexShrink:0 }}>
+              <div style={{ width:28, height:28, borderRadius:4, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 'var(--font-xs)', fontWeight:400, color:'var(--primary-300)', flexShrink: 0 }}>
                 {initials}
               </div>
               <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)' }}>{p.name}</div>
-                <div style={{ fontSize:14, fontWeight:400, color:'var(--neutral-200)' }}>{p.id} · {fmtAge(p.dob)}</div>
+                <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color:'var(--neutral-400)' }}>{p.name}</div>
+                <div style={{ fontSize: 'var(--font-base)', fontWeight: 400, color:'var(--neutral-200)' }}>{p.id} · {fmtAge(p.dob)}</div>
               </div>
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink:0 }}>
                 <circle cx="8" cy="8" r="8" fill="var(--status-success)"/>
@@ -303,12 +303,12 @@ export function FigmaMatchedSection({ patients, expanded, onToggle, allDone }) {
 
 const FIGMA_INCORRECT_INPUT_ST = {
   flex: 1, height: 32, border: 'none', background: 'transparent',
-  padding: '0 8px', fontSize: 14, outline: 'none',
+  padding: '0 8px', fontSize: 'var(--font-base)', outline: 'none',
   fontFamily: 'Inter,sans-serif', color: 'var(--neutral-400)', boxSizing: 'border-box',
   minWidth: 0,
 };
 const FIGMA_INCORRECT_HDR_COLS = ['Patient ID', 'First Name', 'Last Name', 'Date of Birth', 'Actions'];
-const DUPLICATE_COL_HDR = { fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', fontFamily: 'Inter,sans-serif' };
+const DUPLICATE_COL_HDR = { fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', fontFamily: 'Inter,sans-serif' };
 
 export function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, matchedIds }) {
   const [foldId,    setFoldId]    = React.useState(row.rawId    || '');
@@ -406,7 +406,7 @@ export function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, match
             padding: '4px 12px',
             display: 'flex', alignItems: 'center',
           }}>
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--neutral-300)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h}</span>
+            <span style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h}</span>
           </div>
         ))}
       </div>
@@ -436,7 +436,7 @@ export function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, match
         <div style={{ width: 130, flexShrink: 0, padding: '2px 12px 8px 12px', display: 'flex', alignItems: 'center' }}>
           <button
             onClick={handleRemoveWithAnim}
-            style={{ height: 30, padding: '0 10px', border: '0.5px solid var(--neutral-200)', borderRadius: 4, background: 'var(--neutral-0)', color: 'var(--neutral-300)', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
+            style={{ height: 30, padding: '0 10px', border: '0.5px solid var(--neutral-200)', borderRadius: 4, background: 'var(--neutral-0)', color: 'var(--neutral-300)', fontSize: 'var(--font-sm)', fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', transition: 'background 0.15s' }}
             onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--neutral-0)'}
           >
@@ -448,14 +448,14 @@ export function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, match
       {/* Match suggestion */}
       {displayLabel && matchPat && (
         <div style={{ padding: '4px 15px 12px' }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: alreadyMatched ? 'var(--neutral-200)' : 'var(--neutral-400)', marginBottom: 6 }}>{displayLabel}</div>
+          <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: alreadyMatched ? 'var(--neutral-200)' : 'var(--neutral-400)', marginBottom: 6 }}>{displayLabel}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 8, background: 'var(--primary-25)', border: '0.5px solid var(--primary-200)', borderRadius: 8 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 4, background: 'var(--primary-100)', border: '0.5px solid var(--primary-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 400, color: 'var(--primary-300)', flexShrink: 0 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 4, background: 'var(--primary-100)', border: '0.5px solid var(--primary-200)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--font-xs)', fontWeight: 400, color: 'var(--primary-300)', flexShrink: 0 }}>
               {matchPat.name.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--neutral-400)' }}>{matchPat.name}</div>
-              <div style={{ display: 'flex', gap: 2, alignItems: 'center', fontSize: 14, color: 'var(--neutral-200)' }}>
+              <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>{matchPat.name}</div>
+              <div style={{ display: 'flex', gap: 2, alignItems: 'center', fontSize: 'var(--font-base)', color: 'var(--neutral-200)' }}>
                 <span>{matchPat.id}</span>
                 <span>•</span>
                 <span>{fmtAge(matchPat.dob)}</span>
@@ -472,7 +472,7 @@ export function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, match
                   document.body.appendChild(_t);
                   setTimeout(() => { _t.style.opacity = '0'; _t.style.transition = 'opacity 0.3s'; setTimeout(() => _t.remove(), 350); }, 2500);
                 }}
-                style={{ height: 32, padding: '0 14px', border: '0.5px solid var(--primary-200)', borderRadius: 6, background: 'var(--primary-100)', color: 'var(--primary-300)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', flexShrink: 0, transition: 'background 0.15s, border-color 0.15s, color 0.15s' }}
+                style={{ height: 32, padding: '0 14px', border: '0.5px solid var(--primary-200)', borderRadius: 6, background: 'var(--primary-100)', color: 'var(--primary-300)', fontSize: 'var(--font-md)', fontWeight: 500, cursor: 'pointer', fontFamily: 'Inter,sans-serif', whiteSpace: 'nowrap', flexShrink: 0, transition: 'background 0.15s, border-color 0.15s, color 0.15s' }}
                 onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-300)'; e.currentTarget.style.borderColor = 'var(--primary-300)'; e.currentTarget.style.color = 'var(--neutral-0)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'var(--primary-100)'; e.currentTarget.style.borderColor = 'var(--primary-200)'; e.currentTarget.style.color = 'var(--primary-300)'; }}
               >
@@ -487,13 +487,13 @@ export function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, match
       {loading && !matchPat && (
         <div style={{ padding: '4px 15px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
           <Spinner size={13} color="var(--primary-300)" />
-          <span style={{ fontSize: 12, color: 'var(--neutral-200)' }}>Looking up…</span>
+          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>Looking up…</span>
         </div>
       )}
 
       {/* No match found — Patient ID entered but not in DB */}
       {hasError && !loading && foldId.length > 4 && (
-        <div style={{ padding: '0 15px 10px', fontSize: 13, fontWeight: 500, color: 'var(--status-error)' }}>
+        <div style={{ padding: '0 15px 10px', fontSize: 'var(--font-md)', fontWeight: 500, color: 'var(--status-error)' }}>
           No match found.
         </div>
       )}
@@ -507,7 +507,7 @@ export function FigmaIncorrectRow({ row, onAdd, onRemove, isLast, onToast, match
               <path d="M8 5v3.5" stroke="var(--status-error)" strokeWidth="1.4" strokeLinecap="round"/>
               <circle cx="8" cy="11" r="0.7" fill="var(--status-error)"/>
             </svg>
-            <span style={{ fontSize:12, fontWeight:400, color:'var(--neutral-400)', lineHeight:1.2 }}>
+            <span style={{ fontSize: 'var(--font-sm)', fontWeight:400, color:'var(--neutral-400)', lineHeight: 1.2 }}>
               Enter Correct Fold ID and {incorrectOtherField} to see matches.
             </span>
           </div>
@@ -626,15 +626,15 @@ export function FigmaDuplicateSection({ entries, matched, expanded, onToggle, on
                         overflow:'hidden',
                       }}
                     >
-                      <div style={{ flex:1, minWidth:0, padding:'0 12px 0 21px', fontSize:14, color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.rawId}</div>
-                      <div style={{ flex:1, minWidth:0, padding:'0 12px', fontSize:14, color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.rawFn}</div>
-                      <div style={{ flex:1, minWidth:0, padding:'0 12px', fontSize:14, color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.rawLn}</div>
-                      <div style={{ flex:1, minWidth:0, padding:'0 12px', fontSize:14, color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.rawDob}</div>
+                      <div style={{ flex:1, minWidth:0, padding:'0 12px 0 21px', fontSize: 'var(--font-base)', color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.rawId}</div>
+                      <div style={{ flex:1, minWidth:0, padding:'0 12px', fontSize: 'var(--font-base)', color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.rawFn}</div>
+                      <div style={{ flex:1, minWidth:0, padding:'0 12px', fontSize: 'var(--font-base)', color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.rawLn}</div>
+                      <div style={{ flex:1, minWidth:0, padding:'0 12px', fontSize: 'var(--font-base)', color:'var(--neutral-400)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{row.rawDob}</div>
                       <div style={{ width:130, flexShrink:0, padding:'0 12px', display:'flex', alignItems:'center' }}>
                         {/* Remove Entry always in DOM but invisible when not selected — preserves height */}
                         <button
                           onClick={e => { e.stopPropagation(); if (isSelected) handleRemove(rawId, row.key, row.entryId); }}
-                          style={{ height:30, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:4, background:'var(--neutral-0)', color:'var(--neutral-300)', fontSize:12, fontWeight:500, cursor: isSelected ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', transition:'background 0.15s', opacity: isSelected ? 1 : 0, pointerEvents: isSelected ? 'auto' : 'none' }}
+                          style={{ height:30, padding:'0 10px', border:'0.5px solid var(--neutral-200)', borderRadius:4, background:'var(--neutral-0)', color:'var(--neutral-300)', fontSize: 'var(--font-sm)', fontWeight:500, cursor: isSelected ? 'pointer' : 'default', fontFamily:'Inter,sans-serif', whiteSpace:'nowrap', transition:'background 0.15s', opacity: isSelected ? 1 : 0, pointerEvents: isSelected ? 'auto' : 'none' }}
                           onMouseEnter={e => { if (isSelected) e.currentTarget.style.background='var(--neutral-50)'; }}
                           onMouseLeave={e => e.currentTarget.style.background='var(--neutral-0)'}
                         >
@@ -661,22 +661,22 @@ export function PreviewPanel({ patients, onBack }) {
       {/* Header */}
       <div style={{ padding:'10px 14px', background:'var(--primary-50)', borderBottom:'0.5px solid var(--primary-100)', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
         <div>
-          <div style={{ fontSize:14, fontWeight:600, color:'var(--neutral-400)', display:'flex', alignItems:'center', gap:7 }}>
+          <div style={{ fontSize: 'var(--font-base)', fontWeight:600, color:'var(--neutral-400)', display:'flex', alignItems:'center', gap: 7 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--primary-300)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             Population Group Preview
           </div>
-          <div style={{ fontSize:13, color:'var(--neutral-300)', marginTop:2 }}>
+          <div style={{ fontSize: 'var(--font-md)', color:'var(--neutral-300)', marginTop: 2 }}>
             <span style={{ color:'var(--primary-300)', fontWeight:500 }}>{patients.length}</span> patients will be added to this group
           </div>
         </div>
-        <button onClick={onBack} style={{ fontSize:13, color:'var(--neutral-300)', background:'none', border:'0.5px solid var(--neutral-150)', borderRadius:5, cursor:'pointer', padding:'4px 9px', fontFamily:'Inter, sans-serif', display:'flex', alignItems:'center', gap:4 }}>
+        <button onClick={onBack} style={{ fontSize: 'var(--font-md)', color:'var(--neutral-300)', background:'none', border:'0.5px solid var(--neutral-150)', borderRadius:5, cursor:'pointer', padding:'4px 9px', fontFamily:'Inter, sans-serif', display:'flex', alignItems:'center', gap: 4 }}>
           ← Back
         </button>
       </div>
       {/* Column headers */}
       <div style={{ display:'grid', gridTemplateColumns:GRID, padding:'5px 14px', background:'var(--neutral-50)', borderBottom:'0.5px solid var(--neutral-150)', gap:8, flexShrink:0 }}>
         {['#','Patient','DOB','MRN','Source'].map((h,hi) => (
-          <div key={hi} style={{ fontSize:12, fontWeight:500, color:'var(--neutral-300)' }}>{h}</div>
+          <div key={hi} style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color:'var(--neutral-300)' }}>{h}</div>
         ))}
       </div>
       {/* Patient rows */}
@@ -686,17 +686,17 @@ export function PreviewPanel({ patients, onBack }) {
             style={{ display:'grid', gridTemplateColumns:GRID, padding:'7px 14px', borderBottom: i < patients.length-1 ? '0.5px solid var(--neutral-100)' : 'none', background:'var(--neutral-0)', alignItems:'center', gap:8, transition:'background 0.1s' }}
             onMouseEnter={e => e.currentTarget.style.background='var(--primary-25)'}
             onMouseLeave={e => e.currentTarget.style.background='var(--neutral-0)'}>
-            <div style={{ fontSize:13, color:'var(--neutral-200)', fontWeight:400 }}>{i+1}</div>
+            <div style={{ fontSize: 'var(--font-md)', color:'var(--neutral-200)', fontWeight: 400 }}>{i+1}</div>
             <div style={{ display:'flex', alignItems:'center', gap:7, minWidth:0 }}>
-              <div style={{ width:28, height:28, borderRadius:4, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:400, color:'var(--primary-300)', flexShrink:0 }}>
+              <div style={{ width:28, height:28, borderRadius:4, background:'var(--primary-100)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 'var(--font-xs)', fontWeight:400, color:'var(--primary-300)', flexShrink: 0 }}>
                 {p.name.split(' ').map(n=>n[0]).join('').slice(0,2)}
               </div>
-              <span style={{ fontSize:13, color:'var(--neutral-400)', fontWeight:500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</span>
+              <span style={{ fontSize: 'var(--font-md)', color:'var(--neutral-400)', fontWeight: 500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</span>
             </div>
-            <div style={{ fontSize:13, color:'var(--neutral-300)' }}>{p.dob || '—'}</div>
-            <div style={{ fontSize:13, color:'var(--neutral-300)' }}>{p.mrn || '—'}</div>
+            <div style={{ fontSize: 'var(--font-md)', color:'var(--neutral-300)' }}>{p.dob || '—'}</div>
+            <div style={{ fontSize: 'var(--font-md)', color:'var(--neutral-300)' }}>{p.mrn || '—'}</div>
             <div>
-              <span style={{ fontSize:12, fontWeight:500, padding:'2px 6px', borderRadius:4,
+              <span style={{ fontSize: 'var(--font-sm)', fontWeight:500, padding:'2px 6px', borderRadius: 4,
                 color: p.source==='Matched' ? 'var(--status-success)' : 'var(--primary-300)',
                 background: p.source==='Matched' ? 'var(--status-success-light)' : 'var(--primary-100)',
                 border:`0.5px solid ${p.source==='Matched'?'var(--status-success)':'var(--primary-200)'}`,
@@ -707,7 +707,7 @@ export function PreviewPanel({ patients, onBack }) {
       </div>
       {/* Footer */}
       <div style={{ padding:'8px 14px', borderTop:'0.5px solid var(--primary-100)', background:'var(--primary-25)', display:'flex', alignItems:'center', flexShrink:0 }}>
-        <span style={{ fontSize:13, color:'var(--neutral-300)' }}>
+        <span style={{ fontSize: 'var(--font-md)', color:'var(--neutral-300)' }}>
           <span style={{ color:'var(--primary-300)', fontWeight:500 }}>{patients.length}</span> patients ready — click <strong>Create</strong> in the header to save.
         </span>
       </div>
@@ -726,8 +726,8 @@ export function FilePreviewCard({ fileName, sizeMB, onReplace }) {
           <TableIcon color="var(--neutral-300)" size={18} />
         </div>
         <div style={{ flex:'1 0 0', minWidth:0 }}>
-          <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fileName}</div>
-          <div style={{ fontSize:14, fontWeight:400, color:'var(--neutral-200)', lineHeight:1.2, marginTop:2 }}>{sizeMB} MB</div>
+          <div style={{ fontSize: 'var(--font-base)', fontWeight:500, color:'var(--neutral-400)', lineHeight: 1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{fileName}</div>
+          <div style={{ fontSize: 'var(--font-base)', fontWeight:400, color:'var(--neutral-200)', lineHeight:1.2, marginTop: 2 }}>{sizeMB} MB</div>
         </div>
       </div>
       {onReplace && (
@@ -768,13 +768,13 @@ export function MatchedRow({ p, isLast, onRemove }) {
       style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 12px', borderBottom: isLast ? 'none' : '0.5px solid var(--neutral-100)', background: (hover || confirmOpen) ? 'var(--primary-25)' : 'transparent', transition:'background 0.1s' }}
     >
       <div style={{ display:'flex', alignItems:'center', gap:8, flex:'1 0 0', minWidth:0 }}>
-        <div style={{ width:40, height:40, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:16, fontWeight:400, color:'var(--primary-300)' }}>
+        <div style={{ width:40, height:40, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize: 'var(--font-lg)', fontWeight: 400, color:'var(--primary-300)' }}>
           {initials}
         </div>
         <div style={{ flex:'1 0 0', minWidth:0 }}>
-          <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+          <div style={{ fontSize: 'var(--font-base)', fontWeight:500, color:'var(--neutral-400)', lineHeight: 1.2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
           {/* ID • Age(DOB) — full identity, shown consistently in review + edit */}
-          <div style={{ display:'flex', alignItems:'center', gap:2, fontSize:14, fontWeight:400, color:'var(--neutral-200)', lineHeight:1.2, marginTop:4, whiteSpace:'nowrap', overflow:'hidden' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:2, fontSize: 'var(--font-base)', fontWeight:400, color:'var(--neutral-200)', lineHeight:1.2, marginTop: 4, whiteSpace:'nowrap', overflow:'hidden' }}>
             <span style={{ overflow:'hidden', textOverflow:'ellipsis' }}>{p.id}</span>
             <span>•</span>
             <span>{fmtAge(p.dob)}</span>
@@ -833,7 +833,7 @@ export function AddPatientSearch({ matched, onAdd }) {
           onChange={e => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           placeholder="Search and Add Patients"
-          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
+          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize: 'var(--font-base)', fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
         />
       </div>
       {open && results.length > 0 && (
@@ -846,12 +846,12 @@ export function AddPatientSearch({ matched, onAdd }) {
               onMouseEnter={e => e.currentTarget.style.background = 'var(--neutral-50)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >
-              <div style={{ width:32, height:32, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:13, color:'var(--primary-300)' }}>
+              <div style={{ width:32, height:32, borderRadius:8, background:'var(--primary-50)', border:'0.5px solid var(--primary-200)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize: 'var(--font-md)', color:'var(--primary-300)' }}>
                 {(p.name || '').split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
               </div>
               <div style={{ minWidth:0 }}>
-                <div style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
-                <div style={{ fontSize:12, color:'var(--neutral-200)', whiteSpace:'nowrap' }}>{p.id} • {fmtAge(p.dob)}</div>
+                <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color:'var(--neutral-400)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
+                <div style={{ fontSize: 'var(--font-sm)', color:'var(--neutral-200)', whiteSpace:'nowrap' }}>{p.id} • {fmtAge(p.dob)}</div>
               </div>
             </div>
           ))}
@@ -874,7 +874,7 @@ export function AllMatchedPanel({ matched, uploadFile, onReupload, heading = 'Al
   const shown = matched;
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16, fontFamily:'Inter, sans-serif', width:'100%', height:'100%', minHeight:0, boxSizing:'border-box', paddingTop:4 }}>
-      <p style={{ margin:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)', flexShrink:0 }}>File Processing Summary</p>
+      <p style={{ margin:0, fontSize: 'var(--font-lg)', fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)', flexShrink: 0 }}>File Processing Summary</p>
 
       {uploadFile && (
         <FilePreviewCard fileName={uploadFile.name} sizeMB={(uploadFile.size/1048576).toFixed(1)} onReplace={onReupload} />
@@ -891,7 +891,7 @@ export function AllMatchedPanel({ matched, uploadFile, onReupload, heading = 'Al
           value={query}
           onChange={e => setQuery(e.target.value)}
           placeholder="Search Patients"
-          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize:14, fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
+          style={{ flex:1, border:'none', outline:'none', background:'transparent', fontSize: 'var(--font-base)', fontFamily:'Inter, sans-serif', color:'var(--neutral-400)' }}
         />
       </div>
       */}
@@ -899,7 +899,7 @@ export function AllMatchedPanel({ matched, uploadFile, onReupload, heading = 'Al
       {/* Review / extracted list — hugs its content; caps at the drawer bottom and scrolls internally */}
       <div style={{ border:'0.5px solid var(--neutral-150)', borderRadius:8, background:'var(--neutral-0)', overflow:'hidden', width:'100%', flex:'0 1 auto', minHeight:0, display:'flex', flexDirection:'column' }}>
         <div style={{ display:'flex', alignItems:'center', gap:4, padding:'8px 12px', borderBottom:'0.5px solid var(--neutral-150)', background:'linear-gradient(90deg, var(--status-success-light) 0%, var(--neutral-0) 100%)', flexShrink:0 }}>
-          <span style={{ fontSize:14, fontWeight:500, color:'var(--neutral-400)', lineHeight:1.2 }}>Review Population Group</span>
+          <span style={{ fontSize: 'var(--font-base)', fontWeight:500, color:'var(--neutral-400)', lineHeight: 1.2 }}>Review Population Group</span>
           <Badge label={String(matched.length)} style={{ background:'var(--status-success)', color:'var(--neutral-0)', borderColor:'var(--status-success)' }} />
         </div>
 
@@ -929,11 +929,11 @@ export function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload
   if (!hasIssues && matchSummary.matched.length === 0) {
     return (
       <div style={{ display:'flex', flexDirection:'column', gap:8, padding:'12px 0', fontFamily:'Inter, sans-serif', width:'100%', boxSizing:'border-box' }}>
-        <p style={{ margin:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)' }}>File Processing Summary</p>
+        <p style={{ margin:0, fontSize: 'var(--font-lg)', fontWeight:500, lineHeight: 1.2, color:'var(--neutral-500)' }}>File Processing Summary</p>
         <FilePreviewCard fileName={uploadFile.name} sizeMB={(uploadFile.size/1048576).toFixed(1)} onReplace={onReupload} />
         <div style={{ border:'0.5px solid rgba(215,40,37,0.4)', borderRadius:12, padding:48, display:'flex', flexDirection:'column', gap:16, alignItems:'center', background:'linear-gradient(162.29deg, var(--status-error-light) 1.82%, var(--neutral-0) 61.18%)' }}>
           <FileErrorIllustration />
-          <p style={{ margin:0, fontSize:14, lineHeight:1.4, color:'var(--neutral-400)', textAlign:'center' }}>
+          <p style={{ margin:0, fontSize: 'var(--font-base)', lineHeight: 1.4, color:'var(--neutral-400)', textAlign:'center' }}>
             We couldn't read any patient records from this file. Ensure it's a <strong>CSV</strong> with
             {' '}<strong>Patient ID, First Name, Last Name, DOB</strong> columns, then reupload.
           </p>
@@ -1004,7 +1004,7 @@ export function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload
 
       {/* Heading 1433:10241 — Inter Medium 16 / var(--neutral-500) / lh 1.2 */}
       <div style={{ display:'flex', alignItems:'center', width:'100%' }}>
-        <p style={{ margin:0, flex:'1 0 0', minWidth:0, fontSize:16, fontWeight:500, lineHeight:1.2, color:'var(--neutral-500)', wordBreak:'break-word' }}>
+        <p style={{ margin:0, flex:'1 0 0', minWidth:0, fontSize: 'var(--font-lg)', fontWeight:500, lineHeight: 1.2, color:'var(--neutral-500)', wordBreak:'break-word' }}>
           File Processing Summary
         </p>
       </div>
@@ -1021,7 +1021,7 @@ export function NewModePanel({ matchSummary, uploadFile, csvAllClear, onReupload
         <FileErrorIllustration />
 
         {/* Body 1433:10246 — 14 / var(--neutral-400) / lh 1.2 / center */}
-        <p style={{ margin:0, width:'100%', fontSize:14, lineHeight:1.2, color:'var(--neutral-400)', textAlign:'center', wordBreak:'break-word' }}>
+        <p style={{ margin:0, width:'100%', fontSize: 'var(--font-base)', lineHeight: 1.2, color:'var(--neutral-400)', textAlign:'center', wordBreak:'break-word' }}>
           Your file has entries with{' '}
           <span style={{ color:'var(--status-error)', fontWeight:500 }}>incorrect</span>{' '}
           <span style={{ color:'var(--status-error)', fontWeight:500 }}>details</span>{' '}

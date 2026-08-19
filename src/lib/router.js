@@ -1,5 +1,5 @@
 /**
- * Hash-based router for the TOC Worklist prototype.
+ * Hash-based router for the Fold Health prototype.
  * Bidirectional sync between URL hash and Zustand store.
  */
 import { PROFILE_TABS } from '../features/patient/data/programActivityMock';
@@ -172,7 +172,8 @@ export function stateToHash(state) {
   }
 
   const LIST_TO_URL = {
-    'TOC': 'toc',
+    'TOC IP': 'toc',
+    'TCM': 'tcm',
     'Day Optimizer': 'day-optimizer',
     'Review HRA': 'review-hra',
     'IP Visits': 'ip-visits',
@@ -194,6 +195,14 @@ export function stateToHash(state) {
     'pg:Dynamic': 'population-groups-dynamic'
   };
 
+  // Dynamic group rule/detail screen — survives refresh:
+  // #/population/<pgSlug>/rule/<groupId>
+  if (state.pgRuleBuilder?.groupId) {
+    const listSlug = LIST_TO_URL[state.activeSubnavList];
+    const pgSlug = listSlug && listSlug.startsWith('population-groups') ? listSlug : 'population-groups';
+    return buildHash('population', pgSlug, 'rule', state.pgRuleBuilder.groupId);
+  }
+
   // Patient detail view
   if (state.selectedPatientId) {
     // Prefer the fold/member id in the URL — it survives worklist ids
@@ -213,7 +222,13 @@ export function stateToHash(state) {
     return buildHash('population', 'patient', patientKey, ...subSegs);
   }
 
-  if (state.activeSubnavList && state.activeSubnavList !== 'TOC') {
+  if (state.activeSubnavList === 'TOC IP') {
+    return buildHash('population', 'toc');
+  }
+  if (state.activeSubnavList === 'TCM') {
+    return buildHash('population', activeTab === 'toc-queue' ? 'tcm-queue' : 'tcm');
+  }
+  if (state.activeSubnavList && state.activeSubnavList !== 'TOC IP') {
     // HEDIS has its own top-level path
     if (state.activeSubnavList === 'HEDIS') {
       return buildHash('hedis');
@@ -225,6 +240,11 @@ export function stateToHash(state) {
   }
 
   return buildHash('population', activeTab || 'toc-worklist');
+}
+
+function tabForListSlug(section, list) {
+  if (list === 'TOC IP' || section === 'tcm-queue' || section === 'toc-queue') return 'toc-queue';
+  return 'toc-worklist';
 }
 
 // ── Map parsed route → store state updates ──
@@ -385,7 +405,11 @@ export function hashToState(route, state = null) {
   updates.activePage = 'population';
 
   const URL_TO_LIST = {
-    'toc': 'TOC',
+    'toc': 'TOC IP',
+    'tcm': 'TCM',
+    'tcm-queue': 'TCM',
+    'toc-worklist': 'TCM',
+    'toc-queue': 'TCM',
     'day-optimizer': 'Day Optimizer',
     'review-hra': 'Review HRA',
     'ip-visits': 'IP Visits',
@@ -413,10 +437,22 @@ export function hashToState(route, state = null) {
     applyPatientSubRoute(updates, route.id, route.sub, route.extra);
     return updates;
   }
+  // Dynamic group detail deep link: #/population/<pgSlug>/rule/<groupId>.
+  // The group row may not be fetched yet, so this only records the id —
+  // usePopulationGroupsView opens the builder once popGroups arrive.
+  if (route.section && URL_TO_LIST[route.section] && route.tab === 'rule' && route.id) {
+    updates.activePage = 'population';
+    updates.activeSubnavList = URL_TO_LIST[route.section];
+    updates.activeTab = tabForListSlug(route.section, URL_TO_LIST[route.section]);
+    updates._subnavNavigated = true;
+    updates.pgRuleRestoreId = route.id;
+    return updates;
+  }
+
   // New patient URL: #/population/<listSlug>/patient/<memberId>[/<tab>[/<program>[/<step>]]]
   if (route.section && URL_TO_LIST[route.section] && route.tab === 'patient' && route.id) {
     updates.activeSubnavList = URL_TO_LIST[route.section];
-    updates.activeTab = 'toc-worklist';
+    updates.activeTab = tabForListSlug(route.section, URL_TO_LIST[route.section]);
     updates._subnavNavigated = true;
     updates.selectedPatientId = findPatientIdByMemberId(state, route.id) || route.id;
     applyPatientSubRoute(updates, route.sub, route.extra, route.extra2);
@@ -426,19 +462,14 @@ export function hashToState(route, state = null) {
 
   if (route.section && URL_TO_LIST[route.section]) {
     updates.activeSubnavList = URL_TO_LIST[route.section];
-    updates.activeTab = 'toc-worklist'; // Default to worklist view within lists
-    // Mark the selection as user-driven so fetchWorklistOrder's "land the
-    // user on the top worklist" fallback doesn't clobber it after refresh
-    // (that fallback only fires when _subnavNavigated is still false).
+    updates.activeTab = tabForListSlug(route.section, URL_TO_LIST[route.section]);
     updates._subnavNavigated = true;
     return updates;
   }
 
-  // Default TOC routes: toc-worklist or toc-queue — also lock the selection
-  // so a refresh on /#/toc or /#/toc-queue stays on TOC even when the
-  // saved worklist order puts something else first.
-  updates.activeSubnavList = 'TOC';
-  updates.activeTab = route.section === 'toc-queue' ? 'toc-queue' : 'toc-worklist';
+  // Bare #/population (or unknown section) lands on TCM worklist.
+  updates.activeSubnavList = 'TCM';
+  updates.activeTab = 'toc-worklist';
   updates._subnavNavigated = true;
   return updates;
 }

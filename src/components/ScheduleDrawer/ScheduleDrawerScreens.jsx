@@ -13,7 +13,7 @@ export function BookingSuccessScreen() {
         <circle cx="40" cy="40" r="36" stroke="#009B53" strokeWidth="4" fill="none" />
         <path d="M24 40L36 52L56 28" stroke="#009B53" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       </svg>
-      <span style={{ fontSize: 24, fontWeight: 500, color: 'var(--neutral-400)', fontFamily: 'Inter, sans-serif' }}>Appointment Booked Successfully</span>
+      <span style={{ fontSize: 'var(--font-3xl)', fontWeight: 500, color: 'var(--neutral-400)', fontFamily: 'Inter, sans-serif' }}>Appointment Booked Successfully</span>
     </div>
   );
 }

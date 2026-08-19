@@ -68,6 +68,98 @@ export function initNavStyle() {
   return value;
 }
 
+/**
+ * Contrast setting — independent of color theme.
+ * 'default' keeps the standard neutral scale.
+ * 'high'    boosts text and border tokens for easier reading (older users,
+ *           low-vision scenarios) via [data-contrast="high"] in tokens.css.
+ */
+export const CONTRAST_STORAGE_KEY = 'contrast';
+export const CONTRAST_VALUES = ['default', 'high'];
+
+export function getStoredContrast() {
+  try {
+    const v = localStorage.getItem(CONTRAST_STORAGE_KEY);
+    return CONTRAST_VALUES.includes(v) ? v : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+export function persistContrast(value) {
+  try {
+    localStorage.setItem(CONTRAST_STORAGE_KEY, value);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+/** Apply contrast to <html>. 'default' removes the attribute entirely. */
+export function applyContrast(value) {
+  if (typeof document === 'undefined') return value;
+  const safe = CONTRAST_VALUES.includes(value) ? value : 'default';
+  const root = document.documentElement;
+  if (safe === 'default') root.removeAttribute('data-contrast');
+  else root.setAttribute('data-contrast', safe);
+  persistContrast(safe);
+  return safe;
+}
+
+export function initContrast() {
+  const value = getStoredContrast();
+  applyContrast(value);
+  return value;
+}
+
+/**
+ * Font-scale setting — independent of color theme.
+ * 5 accessibility levels that adjust the root font-size so all rem-based
+ * tokens scale proportionally. Mirrors Apple's Dynamic Type non-accessibility
+ * range (xSmall → xxLarge), mapped to clean percentage steps.
+ *
+ *   smaller  → 14px (87.5%)
+ *   small    → 15px (93.75%)
+ *   default  → 16px (100%)
+ *   large    → 18px (112.5%)
+ *   larger   → 20px (125%)
+ */
+export const FONT_SCALE_STORAGE_KEY = 'fontScale';
+export const FONT_SCALE_VALUES = ['smaller', 'small', 'default', 'large', 'larger'];
+
+export function getStoredFontScale() {
+  try {
+    const v = localStorage.getItem(FONT_SCALE_STORAGE_KEY);
+    return FONT_SCALE_VALUES.includes(v) ? v : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+export function persistFontScale(value) {
+  try {
+    localStorage.setItem(FONT_SCALE_STORAGE_KEY, value);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+/** Apply font-scale to <html>. 'default' removes the attribute entirely. */
+export function applyFontScale(value) {
+  if (typeof document === 'undefined') return value;
+  const safe = FONT_SCALE_VALUES.includes(value) ? value : 'default';
+  const root = document.documentElement;
+  if (safe === 'default') root.removeAttribute('data-font-scale');
+  else root.setAttribute('data-font-scale', safe);
+  persistFontScale(safe);
+  return safe;
+}
+
+export function initFontScale() {
+  const value = getStoredFontScale();
+  applyFontScale(value);
+  return value;
+}
+
 /** Resolve a setting ('system') down to an actual rendered theme. */
 export function getResolvedTheme(setting) {
   if (setting === 'system') {

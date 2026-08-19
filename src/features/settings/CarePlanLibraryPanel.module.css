@@ -22,7 +22,7 @@
 .tdUpdated,
 .tdActions {
   padding: 12px 16px;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-300);
   vertical-align: middle;
 }
@@ -34,7 +34,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   text-align: left;
@@ -62,7 +62,7 @@
   gap: 12px;
   padding: 48px 0;
   color: var(--neutral-300);
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 
 /* ── Row kebab menu ── */
@@ -92,7 +92,7 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   text-align: left;
 }
@@ -111,7 +111,7 @@
   margin-bottom: 16px;
 }
 .formLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-400);
 }
@@ -136,7 +136,7 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
 }
@@ -159,7 +159,7 @@
   min-width: 0;
 }
 .listEmpty {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   padding: 8px 0;
 }

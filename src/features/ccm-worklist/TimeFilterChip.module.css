@@ -24,7 +24,7 @@
 }
 
 .header {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-500);
   padding: 2px 4px;
@@ -56,7 +56,7 @@
   border: none;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-400);
   text-align: left;
 }

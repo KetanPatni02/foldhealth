@@ -16,8 +16,8 @@ export function ErrorState({ title, message, onRetry, icon }) {
         }}>
           <Icon name={icon || 'solar:danger-triangle-bold'} size={28} color="var(--status-error)" />
         </div>
-        <div style={{ fontSize: 16, fontWeight: 500, color: 'var(--neutral-400)' }}>{title || 'Something went wrong'}</div>
-        <div style={{ fontSize: 14, color: 'var(--neutral-300)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-400)' }}>{title || 'Something went wrong'}</div>
+        <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-300)', lineHeight: 1.5 }}>
           {message || 'An unexpected error occurred. Please try again or contact support if the problem persists.'}
         </div>
         {onRetry && (

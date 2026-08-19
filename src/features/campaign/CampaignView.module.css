@@ -6,7 +6,6 @@
   min-width: 0;
   overflow: hidden;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
 }
 
 /* ── Page header ── */
@@ -16,7 +15,7 @@
 }
 
 .pageTitle {
-  font-size: 20px;
+  font-size: var(--font-2xl);
   font-weight: 600;
   color: var(--neutral-400);
   margin: 0 0 10px;
@@ -59,7 +58,7 @@
 
 .headerRow th {
   padding: 8px 12px;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   text-align: left;
@@ -99,12 +98,12 @@
 }
 
 .sectionLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
 }
 
 .sectionCount {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   font-weight: 400;
 }
@@ -187,7 +186,6 @@
   background: none;
   border: none;
   padding: 0;
-  font-family: 'Inter', sans-serif;
   cursor: pointer;
   text-align: left;
   color: inherit;
@@ -198,7 +196,7 @@
 .nameLink:hover .nameText { color: var(--primary-300); }
 
 .nameText {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -207,7 +205,7 @@
 }
 
 .descText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
   margin: 0;
   white-space: nowrap;
@@ -226,7 +224,7 @@
 }
 
 .audienceNum {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
 }
 
@@ -236,7 +234,7 @@
 }
 
 .dash {
-  font-size: 16px;
+  font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-200);
 }
@@ -245,7 +243,7 @@
 .tdMetric { padding: 8px 12px; }
 
 .metricNum {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
   white-space: nowrap;
@@ -256,7 +254,7 @@
 .tdDuration { padding: 8px 12px; }
 
 .cellText {
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
 }
 
@@ -264,7 +262,7 @@
 .tdProgress { padding: 8px 12px; }
 
 .execLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   line-height: 1.2;
 }
@@ -292,7 +290,7 @@
 }
 
 .progressPct {
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-200);
   white-space: nowrap;
   min-width: 26px;
@@ -325,7 +323,7 @@
 
 .emptyState p {
   margin: 10px 0 0;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-200);
 }
 
@@ -372,8 +370,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
   background: var(--neutral-0);
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
   cursor: pointer;
@@ -397,7 +394,7 @@
 .pageBtnActive:hover { background: var(--primary-300) !important; }
 
 .pageDots {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-200);
   padding: 0 4px;
 }
@@ -415,12 +412,12 @@
 }
 
 .perPageLabel {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
 }
 
 .goToPage {
-  font-size: 13px;
+  font-size: var(--font-md);
   color: var(--neutral-300);
   margin-left: 8px;
   cursor: pointer;

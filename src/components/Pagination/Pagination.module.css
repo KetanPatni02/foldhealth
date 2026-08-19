@@ -20,9 +20,8 @@
   background: var(--neutral-0);
   color: var(--neutral-400);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
 }
 
 .btn:hover:not(:disabled) { background: var(--neutral-50); }
@@ -32,7 +31,7 @@
 
 .ellipsis {
   color: var(--neutral-300);
-  font-size: 14px;
+  font-size: var(--font-base);
 }
 
 /* Sizing wrapper for the shared <Select> — trigger chrome comes from the
@@ -53,8 +52,7 @@
   padding: 0 8px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   color: var(--neutral-400);
   background: var(--neutral-0);
   outline: none;
@@ -77,8 +75,7 @@
   color: var(--primary-300);
   border: 0.5px solid var(--primary-200);
   border-radius: 6px;
-  font-family: 'Inter', sans-serif;
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   cursor: pointer;
 }

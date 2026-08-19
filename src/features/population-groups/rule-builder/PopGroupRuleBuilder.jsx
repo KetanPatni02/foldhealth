@@ -1,18 +1,153 @@
-import { useState } from 'react';
-import { add, remove, update } from 'react-querybuilder';
+import { useEffect, useState } from 'react';
+import { add } from 'react-querybuilder';
 import { useAppStore } from '../../../store/useAppStore';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
+import { TabStrip } from '../../../components/TabStrip/TabStrip';
+import { Drawer } from '../../../components/Drawer/Drawer';
+import { ActivityLog } from '../../../components/ActivityLog/ActivityLog';
+import { toActivityLogEntries } from '../../hedis-worklist/CareGapDetailDrawer.utils';
 import { AddConditionPopover } from './AddConditionPopover';
 import { ConditionEditorPanel } from './ConditionEditorPanel';
+import { QualifiedPreviewPanel } from './QualifiedPreviewPanel';
+import { RuleSummaryPanel } from './RuleSummaryPanel';
+import { QualifiedMembersTable } from './QualifiedMembersTable';
+import { TriggersTab } from './TriggersTab';
+import { useQualifiedMembers } from './useQualifiedMembers';
+import { toSQL, toJsonLogic } from './formatQueryBridge';
 import { FIELD_BY_KEY, groupAccent, ruleSummary } from './fieldCatalog';
 import styles from './ruleBuilder.module.css';
 
 let ruleSeq = 0;
 const nextRuleId = () => `rb-${Date.now()}-${ruleSeq++}`;
+
+const EMPTY_QUERY = { combinator: 'and', rules: [] };
+
+/* ── Recursive tree helpers ──
+   Rules can nest ({ combinator, rules }) — the Figma's flagship example is a
+   tree of OR groups under a top-level AND. The rqb add/remove/update helpers
+   are path-based; these id-based equivalents keep the editor working on
+   leaves at any depth. */
+const isGroup = (node) => Array.isArray(node?.rules);
+
+/* Seeded rule trees may carry groups without ids; every structural edit
+   (drag, toggle, ungroup) addresses nodes by id, so normalize on load. */
+function withIds(node, prefix = 'n') {
+  if (!isGroup(node)) return node;
+  return {
+    ...node,
+    id: node.id || `${prefix}-g`,
+    rules: node.rules.map((child, i) => withIds(child, `${node.id || prefix}-${i}`)),
+  };
+}
+
+function findRuleById(node, id) {
+  for (const child of node.rules || []) {
+    if (child.id === id) return child;
+    if (isGroup(child)) {
+      const hit = findRuleById(child, id);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+function updateRuleById(node, id, patch) {
+  return {
+    ...node,
+    rules: (node.rules || []).map(child => {
+      if (child.id === id) return { ...child, ...patch };
+      return isGroup(child) ? updateRuleById(child, id, patch) : child;
+    }),
+  };
+}
+
+function removeRuleById(node, id) {
+  return {
+    ...node,
+    rules: (node.rules || [])
+      .filter(child => child.id !== id)
+      .map(child => (isGroup(child) ? removeRuleById(child, id) : child))
+      // drop groups emptied by the removal
+      .filter(child => !isGroup(child) || child.rules.length > 0),
+  };
+}
+
+/* Insert `newRule` joined to the rule with `targetId` by `combinator`:
+   same combinator as the parent group (or single-child parent) → insert as a
+   sibling right after it; different combinator → wrap the pair in a new
+   subgroup, which is how a mixed AND/OR chain becomes a tree. */
+function addJoinedRule(node, targetId, combinator, newRule) {
+  const idx = (node.rules || []).findIndex(child => child.id === targetId);
+  if (idx >= 0) {
+    if (node.combinator === combinator || node.rules.length === 1) {
+      const rules = [...node.rules];
+      rules.splice(idx + 1, 0, newRule);
+      return { ...node, combinator: node.rules.length === 1 ? combinator : node.combinator, rules };
+    }
+    const rules = [...node.rules];
+    rules[idx] = { id: `${targetId}-g`, combinator, rules: [node.rules[idx], newRule] };
+    return { ...node, rules };
+  }
+  return {
+    ...node,
+    rules: (node.rules || []).map(child => (isGroup(child) ? addJoinedRule(child, targetId, combinator, newRule) : child)),
+  };
+}
+
+/* Flip a group's AND/OR. Works on the root (id undefined match) or any
+   nested group by id. */
+function setCombinatorById(node, id, combinator) {
+  if (!isGroup(node)) return node;
+  if (node.id === id) return { ...node, combinator };
+  return { ...node, rules: node.rules.map(child => setCombinatorById(child, id, combinator)) };
+}
+
+/* Dissolve a bracket: splice the group's children into its parent where the
+   group sat. */
+function ungroupById(node, id) {
+  if (!isGroup(node)) return node;
+  return {
+    ...node,
+    rules: node.rules.flatMap(child => {
+      if (isGroup(child) && child.id === id) return child.rules;
+      return [ungroupById(child, id)];
+    }),
+  };
+}
+
+/* Insert an already-built node before/after the target leaf. */
+function insertRelativeTo(node, targetId, moved, position) {
+  if (!isGroup(node)) return node;
+  const idx = node.rules.findIndex(child => child.id === targetId);
+  if (idx >= 0) {
+    const rules = [...node.rules];
+    rules.splice(position === 'before' ? idx : idx + 1, 0, moved);
+    return { ...node, rules };
+  }
+  return { ...node, rules: node.rules.map(child => insertRelativeTo(child, targetId, moved, position)) };
+}
+
+/* Drag-reorder: lift the dragged leaf out of the tree, then drop it
+   before/after the target leaf — cross-group moves fall out for free, and
+   removeRuleById already dissolves any group the move emptied. */
+function moveRuleById(node, dragId, targetId, position) {
+  if (dragId === targetId) return node;
+  const moved = findRuleById(node, dragId);
+  if (!moved || !findRuleById(node, targetId)) return node;
+  return insertRelativeTo(removeRuleById(node, dragId), targetId, moved, position);
+}
+
+function everyLeaf(node, pred) {
+  return (node.rules || []).every(child => (isGroup(child) ? everyLeaf(child, pred) : pred(child)));
+}
+
+function countLeaves(node) {
+  return (node.rules || []).reduce((n, child) => n + (isGroup(child) ? countLeaves(child) : 1), 0);
+}
 
 /* Six-dot grip — Solar has no drag-handle glyph, so this is the one custom
    SVG in the builder (dots, so fill rather than stroke). */
@@ -26,63 +161,218 @@ function GripIcon() {
   );
 }
 
+/* One rule row. `readOnly` strips every actionable trigger — no chip click,
+   no AND/OR toggle, no add/remove — leaving the same visual anatomy. */
+function RuleNode({ rule, readOnly, combinator, onOpenEditor, onJoin, onRemove, drag }) {
+  const field = FIELD_BY_KEY[rule.field];
+  if (!field) return null;
+  const summary = ruleSummary(rule);
+  const chipInner = (
+    <>
+      <span className={styles.fieldChipIcon} style={{ background: groupAccent(field.group) }}>
+        <Icon name={field.icon} size={12} color="var(--neutral-400)" />
+      </span>
+      {field.label}
+    </>
+  );
+  const dropPos = drag?.overId === rule.id ? drag.overPos : null;
+  return (
+    <div
+      className={[
+        styles.node,
+        dropPos === 'before' ? styles.nodeDropBefore : '',
+        dropPos === 'after' ? styles.nodeDropAfter : '',
+        drag?.dragId === rule.id ? styles.nodeDragging : '',
+      ].filter(Boolean).join(' ')}
+      onDragOver={readOnly ? undefined : (e) => { e.preventDefault(); drag?.onOver(rule.id, e); }}
+      onDragLeave={readOnly ? undefined : () => drag?.onLeave(rule.id)}
+      onDrop={readOnly ? undefined : (e) => { e.preventDefault(); drag?.onDrop(rule.id, e); }}
+    >
+      <span
+        className={styles.dragHandle}
+        draggable={!readOnly}
+        onDragStart={readOnly ? undefined : (e) => { e.dataTransfer.effectAllowed = 'move'; drag?.onStart(rule.id); }}
+        onDragEnd={readOnly ? undefined : () => drag?.onEnd()}
+      ><GripIcon /></span>
+      {readOnly ? (
+        <span className={styles.fieldChip} style={{ background: groupAccent(field.group), cursor: 'default' }}>
+          {chipInner}
+        </span>
+      ) : (
+        <button
+          type="button"
+          className={styles.fieldChip}
+          style={{ background: groupAccent(field.group) }}
+          onClick={onOpenEditor}
+        >
+          {chipInner}
+        </button>
+      )}
+      <span className={styles.nodeBadges}>
+        {summary.map(b => <Badge key={b.text} tone={b.tone} size="S" label={b.text} className={styles.nodeBadge} />)}
+      </span>
+      {!readOnly && (
+        <span className={styles.nodeRight}>
+          <span className={styles.combo}>
+            <button
+              type="button"
+              className={`${styles.comboBtn} ${combinator === 'and' ? styles.comboBtnActive : ''}`}
+              onClick={() => onJoin('and')}
+            >AND</button>
+            <span className={styles.comboDivider} />
+            <button
+              type="button"
+              className={`${styles.comboBtn} ${combinator === 'or' ? styles.comboBtnActive : ''}`}
+              onClick={() => onJoin('or')}
+            >OR</button>
+          </span>
+          <ActionButton
+            icon="solar:trash-bin-minimalistic-linear"
+            size="S"
+            tooltip="Remove condition"
+            onClick={onRemove}
+          />
+        </span>
+      )}
+    </div>
+  );
+}
+
 /**
- * PopGroupRuleBuilder — full-page takeover for defining a Dynamic population
- * group as a rule tree (Figma 1:3915 / 9:44005). The query state is a
- * react-querybuilder RuleGroupType ({ combinator, rules }); add/remove/update
- * go through the library's immutability helpers so the stored shape stays
- * portable to formatQuery when rule evaluation lands.
+ * PopGroupRuleBuilder — full-page takeover for dynamic population groups.
+ *
+ * Three modes:
+ *  - create — from the Create Group drawer: bare canvas + Cancel/Next
+ *    sub-bar (Figma 1:3915 / 9:44005).
+ *  - view   — clicking a saved Dynamic group: read-only detail screen with
+ *    the summary rail, TabStrip (Qualified Members / Rule Design) and no
+ *    actionable rule triggers (Figma 1:13951).
+ *  - edit   — the Edit pencil (rail or table row): same editable canvas as
+ *    create; Next saves and drops back to view, Cancel reverts.
+ *
+ * Query state is react-querybuilder's { combinator, rules } tree, mutated
+ * only through the library's add/remove/update helpers.
  */
 export function PopGroupRuleBuilder() {
   const session = useAppStore(s => s.pgRuleBuilder);
   const closePgRuleBuilder = useAppStore(s => s.closePgRuleBuilder);
   const createPopGroup = useAppStore(s => s.createPopGroup);
   const updatePopGroup = useAppStore(s => s.updatePopGroup);
+  const syncPopGroupCounts = useAppStore(s => s.syncPopGroupCounts);
+  const setPgRuleBuilderName = useAppStore(s => s.setPgRuleBuilderName);
+  const fetchPopGroupActivity = useAppStore(s => s.fetchPopGroupActivity);
   const showToast = useAppStore(s => s.showToast);
 
-  const [query, setQuery] = useState(() => session?.rule || { combinator: 'and', rules: [] });
+  const [savedQuery, setSavedQuery] = useState(() => withIds(session?.rule || EMPTY_QUERY));
+  const [query, setQuery] = useState(() => withIds(session?.rule || EMPTY_QUERY));
+  const [mode, setMode] = useState(() => (session?.groupId ? (session.startInEdit ? 'edit' : 'view') : 'create'));
   const [editingRuleId, setEditingRuleId] = useState(null);
   const [pickerRect, setPickerRect] = useState(null);
+  // { ruleId, combinator } while an AND/OR click is waiting for a field pick —
+  // the picker renders inline below that row (Figma 9:73965).
+  const [pendingJoin, setPendingJoin] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('design');
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [activity, setActivity] = useState(null); // null = not fetched
+  // Live match preview while editing — collapsible right-side panel.
+  const [previewOpen, setPreviewOpen] = useState(true);
+  // { dragId, overId, overPos } while a condition row is being dragged.
+  const [dragging, setDragging] = useState(null);
+  const { members, count, loading: membersLoading, error: membersError, refresh } = useQualifiedMembers(query);
+
+  const groupId = session?.groupId;
+  useEffect(() => {
+    if (!historyOpen || !groupId) return;
+    let cancelled = false;
+    fetchPopGroupActivity(groupId).then(rows => { if (!cancelled) setActivity(rows); });
+    return () => { cancelled = true; };
+  }, [historyOpen, groupId, fetchPopGroupActivity]);
+
+  /* Keep the table's Active/Inactive columns honest: whenever the detail
+     screen evaluates a saved group's rule, write the real split back if the
+     stored counts drifted (profile data changes between visits). */
+  const membershipReady = !membersLoading && !membersError && mode === 'view' && !!groupId && members != null;
+  const liveActive = membershipReady ? members.filter(m => String(m.membershipStatus).toLowerCase() !== 'inactive').length : null;
+  const liveInactive = membershipReady ? members.length - liveActive : null;
+  useEffect(() => {
+    if (!membershipReady) return;
+    if (liveActive === session?.count && liveInactive === session?.inactive) return;
+    syncPopGroupCounts(groupId, { count: liveActive, inactive: liveInactive });
+  }, [membershipReady, liveActive, liveInactive, groupId, session?.count, session?.inactive, syncPopGroupCounts]);
 
   if (!session) return null;
 
-  const rules = query.rules;
-  const editingIndex = rules.findIndex(r => r.id === editingRuleId);
-  const editingRule = editingIndex >= 0 ? rules[editingIndex] : null;
+  const isView = mode === 'view';
+  const editingRule = editingRuleId ? findRuleById(query, editingRuleId) : null;
+
+  /* One drag session: the grip starts it, any other leaf row is a drop
+     target — top half inserts before, bottom half after. */
+  const drag = isView ? null : {
+    dragId: dragging?.dragId,
+    overId: dragging?.overId,
+    overPos: dragging?.overPos,
+    onStart: (id) => setDragging({ dragId: id }),
+    onEnd: () => setDragging(null),
+    onOver: (id, e) => {
+      setDragging(d => {
+        if (!d || d.dragId === id) return d;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pos = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+        if (d.overId === id && d.overPos === pos) return d;
+        return { ...d, overId: id, overPos: pos };
+      });
+    },
+    onLeave: (id) => setDragging(d => (d?.overId === id ? { ...d, overId: null, overPos: null } : d)),
+    onDrop: (id, e) => {
+      if (dragging?.dragId && dragging.dragId !== id) {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pos = e.clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+        setQuery(q => moveRuleById(q, dragging.dragId, id, pos));
+      }
+      setDragging(null);
+    },
+  };
 
   const addCondition = (field) => {
     const rule = { id: nextRuleId(), field: field.key, operator: field.operators[0].name, value: {} };
-    setQuery(q => add(q, rule, []));
-    setPickerRect(null);
+    if (pendingJoin) {
+      setQuery(q => addJoinedRule(q, pendingJoin.ruleId, pendingJoin.combinator, rule));
+      setPendingJoin(null);
+    } else {
+      setQuery(q => add(q, rule, []));
+      setPickerRect(null);
+    }
     setEditingRuleId(rule.id);
   };
 
-  const removeRule = (index) => {
-    const removed = rules[index];
-    setQuery(q => remove(q, [index]));
-    if (removed?.id === editingRuleId) setEditingRuleId(null);
+  const commitRule = (id, patch) => {
+    // Editing through the generic panel replaces any authored `display`
+    // badges with the derived operator+value form, and clears `not` — the
+    // editor expresses negation through the operator itself, so a leftover
+    // flag would double-negate.
+    setQuery(q => updateRuleById(q, id, { operator: patch.operator, value: patch.value, display: undefined, not: undefined }));
   };
 
-  const commitRule = (index, patch) => {
-    setQuery(q => {
-      let next = update(q, 'operator', patch.operator, [index]);
-      next = update(next, 'value', patch.value, [index]);
-      return next;
-    });
-  };
-
-  const setCombinator = (value) => setQuery(q => update(q, 'combinator', value, []));
-
-  /* A rule is complete once its editor has committed a value. */
   const isComplete = (r) => {
     const v = r.value || {};
     return (v.amount ?? v.text ?? '') !== '';
   };
-  const canSaveGroup = rules.length > 0 && rules.every(isComplete);
+  const canSaveGroup = countLeaves(query) > 0 && everyLeaf(query, isComplete);
 
-  const handleNext = async () => {
-    if (!canSaveGroup || saving) return;
+  const handleCancel = () => {
+    if (mode === 'create') { closePgRuleBuilder(); return; }
+    setQuery(savedQuery);
+    setEditingRuleId(null);
+    setPickerRect(null);
+    setMode('view');
+  };
+
+  /* Save the group. `status: 'active'` is the Next button (fully validated
+     rule); `status: 'draft'` is Save as Draft — incomplete conditions are
+     allowed, the group just parks with a Draft badge until finished. */
+  const handleSave = async (status) => {
+    if (saving) return;
     setSaving(true);
     const payload = {
       name: session.name,
@@ -94,123 +384,272 @@ export function PopGroupRuleBuilder() {
       count: session.count ?? 0,
       inactive: session.inactive ?? 0,
       rule: query,
+      status,
     };
-    const saved = session.groupId
-      ? await updatePopGroup(session.groupId, payload)
+    const saved = groupId
+      ? await updatePopGroup(groupId, payload)
       : await createPopGroup(payload);
     setSaving(false);
     if (!saved) return; // store already toasted the failure
-    showToast(session.groupId ? 'Population Group Updated Successfully' : 'Population Group Added Successfully');
-    closePgRuleBuilder();
+    showToast(status === 'draft'
+      ? 'Population Group Saved as Draft'
+      : (groupId ? 'Population Group Updated Successfully' : 'Population Group Added Successfully'));
+    if (mode === 'create') { closePgRuleBuilder(); return; }
+    setSavedQuery(query);
+    setActivity(null); // stale — refetch next time the drawer opens
+    setEditingRuleId(null);
+    setMode('view');
   };
 
-  return (
-    <div className={styles.view}>
-      {/* Sub-bar: group identity + Cancel / Next */}
-      <div className={styles.subBar}>
-        <div className={styles.subBarName}>
-          <Avatar type="icon" variant="patient" iconName="solar:users-group-rounded-linear" size="XS" />
-          <span className={styles.groupName}>{session.name}</span>
-          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => showToast('Rename — coming soon')} />
-        </div>
-        <div className={styles.subBarActions}>
-          <Button variant="secondary" size="L" onClick={closePgRuleBuilder}>Cancel</Button>
-          <Button variant="primary" size="L" disabled={!canSaveGroup || saving} onClick={handleNext}>
-            {saving ? 'Saving…' : 'Next'}
-          </Button>
-        </div>
-      </div>
+  /* Inline rename from the rail — persists against the SAVED rule (not the
+     draft) so renaming mid-edit can't leak unsaved conditions. */
+  const handleRename = async (name) => {
+    const saved = await updatePopGroup(groupId, {
+      name,
+      description: session.description || '',
+      type: 'Dynamic',
+      filterType: 'dynamic',
+      memberStatus: session.memberStatus || 'All Status',
+      memberIds: [],
+      count: session.count ?? 0,
+      inactive: session.inactive ?? 0,
+      rule: savedQuery,
+    });
+    if (!saved) return false;
+    setPgRuleBuilderName(name);
+    setActivity(null); // rename is logged — refetch on next open
+    return true;
+  };
 
-      <div className={styles.body}>
-        <div className={styles.canvas}>
-          {/* IF chip with its tail */}
-          <div className={styles.ifChip}>
-            <Button variant="secondary" size="S">IF</Button>
-            <span className={styles.ifTail} />
-          </div>
+  /* Recursively render a group's children: leaves as RuleNodes, subgroups as
+     an indented block with a bracket carrying the group's combinator (the
+     Figma's OR brackets). Combinator chips sit between siblings. */
+  /* AND↔OR flip for a group — the root chip and nested brackets share it. */
+  const toggleCombinator = (group) => {
+    const next = (group.combinator || 'and') === 'and' ? 'or' : 'and';
+    setQuery(q => (q.id === group.id || group === query
+      ? { ...q, combinator: next }
+      : setCombinatorById(q, group.id, next)));
+  };
 
-          {rules.map((rule, index) => {
-            const field = FIELD_BY_KEY[rule.field];
-            if (!field) return null;
-            const summary = ruleSummary(rule);
-            return (
-              <div key={rule.id} className={styles.node}>
-                <span className={styles.dragHandle}><GripIcon /></span>
+  const renderChildren = (group, depth) => group.rules.map((child, index) => (
+    <div key={child.id || index} className={styles.nodeStack}>
+      {/* Inside a bracketed group the bracket already names the combinator —
+          chips between siblings only at the top level, like the Figma. In
+          edit mode the chip is a toggle: clicking flips the join. */}
+      {index > 0 && depth === 0 && (
+        <div className={styles.combinatorChip}>
+          <span className={styles.ifTail} />
+          {isView ? (
+            <span className={styles.combinatorLabel}>{(group.combinator || 'and').toUpperCase()}</span>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.combinatorLabel} ${styles.combinatorToggle}`}
+              title={`Switch to ${(group.combinator || 'and') === 'and' ? 'OR' : 'AND'}`}
+              onClick={() => toggleCombinator(group)}
+            >{(group.combinator || 'and').toUpperCase()}</button>
+          )}
+          <span className={styles.ifTail} />
+        </div>
+      )}
+      {isGroup(child) ? (
+        <div className={styles.groupNode}>
+          <div className={styles.groupBracket}>
+            {isView ? (
+              <span>{(child.combinator || 'and').toUpperCase()}</span>
+            ) : (
+              <>
                 <button
                   type="button"
-                  className={styles.fieldChip}
-                  style={{ background: groupAccent(field.group) }}
-                  onClick={() => setEditingRuleId(rule.id)}
-                >
-                  <span className={styles.fieldChipIcon} style={{ background: groupAccent(field.group) }}>
-                    <Icon name={field.icon} size={16} color="var(--neutral-400)" />
-                  </span>
-                  {field.label}
-                </button>
-                <span className={styles.nodeBadges}>
-                  {summary.map(text => <Badge key={text} tone="grey" size="S" label={text} />)}
-                </span>
-                <span className={styles.nodeRight}>
-                  <span className={styles.combo}>
-                    <button
-                      type="button"
-                      className={`${styles.comboBtn} ${query.combinator === 'and' ? styles.comboBtnActive : ''}`}
-                      onClick={() => setCombinator('and')}
-                    >AND</button>
-                    <span className={styles.comboDivider} />
-                    <button
-                      type="button"
-                      className={`${styles.comboBtn} ${query.combinator === 'or' ? styles.comboBtnActive : ''}`}
-                      onClick={() => setCombinator('or')}
-                    >OR</button>
-                    <span className={styles.comboDivider} />
-                    <button
-                      type="button"
-                      className={styles.comboBtn}
-                      aria-label="Add condition"
-                      onClick={(e) => setPickerRect(e.currentTarget.getBoundingClientRect())}
-                    ><Icon name="solar:add-circle-linear" size={14} color="currentColor" /></button>
-                  </span>
+                  className={styles.bracketToggle}
+                  title={`Switch to ${(child.combinator || 'and') === 'and' ? 'OR' : 'AND'}`}
+                  onClick={() => toggleCombinator(child)}
+                >{(child.combinator || 'and').toUpperCase()}</button>
+                <span className={styles.bracketActions}>
+                  <ActionButton
+                    icon="solar:link-broken-minimalistic-linear"
+                    size="S"
+                    tooltip="Ungroup — merge conditions into the parent"
+                    onClick={() => setQuery(q => ungroupById(q, child.id))}
+                  />
                   <ActionButton
                     icon="solar:trash-bin-minimalistic-linear"
                     size="S"
-                    tooltip="Remove condition"
-                    onClick={() => removeRule(index)}
+                    tooltip="Remove group and its conditions"
+                    onClick={() => setQuery(q => removeRuleById(q, child.id))}
                   />
                 </span>
-              </div>
-            );
-          })}
-
-          {rules.length === 0 && (
-            <Button
-              variant="tertiary"
-              size="S"
-              leadingIcon="solar:add-circle-linear"
-              className={styles.addConditionBtn}
-              onClick={(e) => setPickerRect(e.currentTarget.getBoundingClientRect())}
-            >
-              Add Condition
-            </Button>
-          )}
+              </>
+            )}
+          </div>
+          <div className={styles.groupChildren}>{renderChildren(child, depth + 1)}</div>
         </div>
+      ) : (
+        <RuleNode
+          rule={child}
+          readOnly={isView}
+          combinator={group.combinator}
+          drag={drag}
+          onOpenEditor={() => setEditingRuleId(child.id)}
+          onJoin={(comb) => setPendingJoin({ ruleId: child.id, combinator: comb })}
+          onRemove={() => setQuery(q => removeRuleById(q, child.id))}
+        />
+      )}
+      {pendingJoin?.ruleId === child.id && (
+        <AddConditionPopover
+          inline
+          onSelect={addCondition}
+          onClose={() => setPendingJoin(null)}
+        />
+      )}
+    </div>
+  ));
 
-        {editingRule && (
-          <ConditionEditorPanel
-            key={editingRule.id}
-            rule={editingRule}
-            onSave={(patch) => commitRule(editingIndex, patch)}
-            onClose={() => setEditingRuleId(null)}
-          />
-        )}
+  const canvas = (
+    <div className={styles.canvas}>
+      <div className={styles.ifChip}>
+        <Button variant="secondary" size="S" className={styles.ifButton}>IF</Button>
+        <span className={styles.ifTail} />
       </div>
 
-      {pickerRect && (
+      {renderChildren(query, 0)}
+
+      {!isView && query.rules.length > 0 && (
+        <div className={styles.canvasJoin}>
+          <span className={styles.ifTail} />
+          <span className={styles.combo}>
+            <button type="button" className={styles.comboBtn}
+              onClick={() => setPendingJoin({ ruleId: query.rules[query.rules.length - 1].id, combinator: 'and' })}>AND</button>
+            <span className={styles.comboDivider} />
+            <button type="button" className={styles.comboBtn}
+              onClick={() => setPendingJoin({ ruleId: query.rules[query.rules.length - 1].id, combinator: 'or' })}>OR</button>
+          </span>
+        </div>
+      )}
+
+      {countLeaves(query) === 0 && !isView && (
+        <Button
+          variant="tertiary"
+          size="S"
+          leadingIcon="solar:add-circle-linear"
+          className={styles.addConditionBtn}
+          onClick={(e) => setPickerRect(e.currentTarget.getBoundingClientRect())}
+        >
+          Add Condition
+        </Button>
+      )}
+      {countLeaves(query) === 0 && isView && (
+        <span className={styles.criteriaEmpty}>No conditions defined yet — use Edit to add some.</span>
+      )}
+    </div>
+  );
+
+  return (
+    <div className={styles.view}>
+      {/* Sub-bar only while editing — the view state is read-only (Figma 1:13951 has no action bar). */}
+      {!isView && (
+        <div className={styles.subBar}>
+          <div className={styles.subBarName}>
+            <Avatar type="icon" variant="patient" iconName="solar:users-group-rounded-linear" size="XS" />
+            <span className={styles.groupName}>{session.name}</span>
+          </div>
+          <div className={styles.subBarActions}>
+            <Button variant="secondary" size="L" onClick={handleCancel}>Cancel</Button>
+            {/* Drafts can save with incomplete conditions — the group parks
+                with a Draft badge; Next demands a fully valid rule. */}
+            <Button variant="secondary" size="L" disabled={countLeaves(query) === 0 || saving} onClick={() => handleSave('draft')}>
+              Save as Draft
+            </Button>
+            <Button variant="primary" size="L" disabled={!canSaveGroup || saving} onClick={() => handleSave('active')}>
+              {saving ? 'Saving…' : (mode === 'edit' ? 'Save' : 'Next')}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className={styles.body}>
+        {isView && (
+          <RuleSummaryPanel
+            session={session}
+            query={query}
+            qualifiedCount={membersLoading ? null : count}
+            onEdit={() => { setMode('edit'); setActiveTab('design'); }}
+            onRename={handleRename}
+            onHistory={() => setHistoryOpen(true)}
+            onRefresh={refresh}
+            showToast={showToast}
+          />
+        )}
+        <div className={styles.tabPane}>
+          {isView && (
+            <TabStrip
+              fullWidth={false}
+              items={[
+                { key: 'members', label: 'Qualified Members', count: membersLoading ? '…' : count },
+                { key: 'design', label: 'Rule Design' },
+                { key: 'triggers', label: 'Triggers' },
+              ]}
+              activeKey={activeTab}
+              onChange={setActiveTab}
+            />
+          )}
+          {isView && activeTab === 'members' ? (
+            <QualifiedMembersTable members={members} loading={membersLoading} error={membersError} onRetry={refresh} />
+          ) : isView && activeTab === 'triggers' ? (
+            <TriggersTab groupId={groupId} showToast={showToast} />
+          ) : (
+            <div className={styles.bodyInner}>
+              {canvas}
+              {!isView && editingRule && (
+                <ConditionEditorPanel
+                  key={editingRule.id}
+                  rule={editingRule}
+                  onSave={(patch) => commitRule(editingRule.id, patch)}
+                  onClose={() => setEditingRuleId(null)}
+                />
+              )}
+              {!isView && (
+                <QualifiedPreviewPanel
+                  open={previewOpen}
+                  onToggle={() => setPreviewOpen(o => !o)}
+                  members={members}
+                  count={count}
+                  loading={membersLoading}
+                  error={membersError}
+                  onRetry={refresh}
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!isView && pickerRect && (
         <AddConditionPopover
           anchorRect={pickerRect}
           onSelect={addCondition}
           onClose={() => setPickerRect(null)}
         />
+      )}
+
+      {historyOpen && (
+        <Drawer title="Activity Log" onClose={() => setHistoryOpen(false)}>
+          {activity === null
+            ? <span className={styles.criteriaEmpty}>Loading activity…</span>
+            : (
+              <ActivityLog
+                entries={toActivityLogEntries(activity.map(a => ({
+                  when: a.created_at,
+                  actor: a.actor,
+                  t: a.action,
+                  title: a.title,
+                  note: a.detail || undefined,
+                })))}
+                emptyLabel="No changes recorded for this group yet."
+              />
+            )}
+        </Drawer>
       )}
     </div>
   );

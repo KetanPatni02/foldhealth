@@ -52,7 +52,7 @@
 }
 .td {
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   vertical-align: middle;
@@ -60,7 +60,7 @@
 }
 .tdWrap {
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-400);
   vertical-align: top;
@@ -70,13 +70,13 @@
 }
 
 /* Em dash placeholder */
-.emDash { font-size: 12px; color: var(--neutral-200); }
+.emDash { font-size: var(--font-sm); color: var(--neutral-200); }
 
 /* Member cell — mirrors TOC Worklist (WorklistRow.module.css). */
 .patientCell { display: flex; align-items: center; gap: 12px; }
 .patientInfo { display: flex; flex-direction: column; align-items: flex-start; }
 .patientName {
-  font-size: 14px;
+  font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
   white-space: nowrap;
@@ -87,7 +87,7 @@
   text-align: left;
 }
 .patientName:hover { color: var(--primary-300); text-decoration: underline; }
-.patientMeta { font-size: 13px; color: var(--neutral-200); margin-top: 3px; }
+.patientMeta { font-size: var(--font-md); color: var(--neutral-200); margin-top: 3px; }
 .foldId { cursor: pointer; transition: color .12s; }
 .foldId:hover { color: var(--primary-300); text-decoration: underline; }
 
@@ -99,8 +99,7 @@
   padding: 0;
   background: transparent;
   border: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 400;
   color: var(--neutral-300);
   cursor: pointer;
@@ -122,7 +121,7 @@
   background: var(--neutral-500);
   color: var(--neutral-0);
   border-radius: 6px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   letter-spacing: normal;
   text-transform: none;
@@ -147,7 +146,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
   text-decoration: none;
@@ -155,7 +154,6 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font-family: 'Inter', sans-serif;
 }
 .ehrLink:hover { text-decoration: underline; }
 
@@ -165,7 +163,7 @@
   align-items: center;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: .01em;
@@ -181,7 +179,7 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   color: var(--neutral-400);
   cursor: pointer;
 }
@@ -194,7 +192,7 @@
    so users can distinguish provider-marked from user-marked-this-session. */
 .chronicProviderTag {
   color: var(--status-success);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -207,7 +205,7 @@
   gap: 3px;
   margin-left: 6px;
   color: var(--status-warning);
-  font-size: 11px;
+  font-size: var(--font-xs);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -216,7 +214,7 @@
 /* CPT live-preview: baseline (strikethrough) → live badge + fee + (i) trigger. */
 .cptInline { display: inline-flex; align-items: center; gap: 6px; }
 .cptFee {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
   font-variant-numeric: tabular-nums;
@@ -231,8 +229,7 @@
   padding: 0;
   border: none;
   background: none;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--primary-300);
   cursor: pointer;
@@ -263,7 +260,7 @@
   cursor: default;
 }
 .reasonTitle {
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-300);
   white-space: normal;
@@ -283,7 +280,7 @@
   left: 0;
   width: 272px;
   padding: 6px 10px;
-  font-size: 12px;
+  font-size: var(--font-sm);
   font-weight: 400;
   color: var(--neutral-0);
   background: var(--neutral-500);
@@ -304,11 +301,11 @@
 }
 .reasonTitleWrap:hover .reasonTooltip { display: block; }
 
-.noReason { font-size: 12px; color: var(--neutral-200); }
+.noReason { font-size: var(--font-sm); color: var(--neutral-200); }
 
 /* Provider cell */
 .providerCell { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.providerName { font-size: 13px; color: var(--neutral-400); }
+.providerName { font-size: var(--font-md); color: var(--neutral-400); }
 
 /* Comment cell */
 .commentTd {
@@ -330,8 +327,7 @@
   background: transparent;
   padding: 0;
   margin: 0;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
+  font-size: var(--font-md);
   line-height: 1.4;
   color: var(--neutral-400);
   outline: none;

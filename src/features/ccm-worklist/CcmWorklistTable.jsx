@@ -7,7 +7,9 @@ import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
-import { CcmWorklistRow } from './CcmWorklistRow';
+import { CcmWorklistRow, CCM_MIDDLE_COLUMNS } from './CcmWorklistRow';
+import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
+import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
 import {
   TimeFilterPopover,
 } from './TimeFilterChip';
@@ -153,7 +155,7 @@ const CCM_MORE_FILTER_ITEMS = CCM_FILTER_DEFS.map(fd => ({
 
 const thStyle = {
   padding: '8px 14px',
-  fontSize: 12,
+  fontSize: 'var(--font-sm)',
   fontWeight: 500,
   color: 'var(--neutral-300)',
   borderBottom: '0.5px solid var(--neutral-150)',
@@ -283,7 +285,16 @@ export function CcmWorklistTable() {
     isTimeFilterActive(billableFilter) ||
     isTimeFilterActive(unloggedFilter);
 
-  const colCount = 14;
+  // Column prefs — bespoke table, wire useWorklistColumns directly.
+  const columnPrefs = useWorklistColumns('ccm', CCM_MIDDLE_COLUMNS);
+  const visibleMiddle = columnPrefs.visibleColumns;
+  const orderedColumnsForRow = useMemo(() => (
+    [{ key: 'select', showCheckbox: true, sticky: 'left' },
+     { key: 'members', label: 'Members', sticky: 'left' },
+     ...columnPrefs.orderedColumns,
+     { key: 'actions', label: 'Actions', sticky: 'right' }]
+  ), [columnPrefs.orderedColumns]);
+  const colCount = 2 + visibleMiddle.length + 1;
 
   return (
     <div className={styles.wrap}>
@@ -402,19 +413,18 @@ export function CcmWorklistTable() {
                 <th style={{ ...thStyle, padding: '8px 12px', position: 'sticky', top: 0, left: 36, zIndex: 4, borderRight: '0.5px solid var(--neutral-150)' }}>
                   Members
                 </th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Next Action Due</th>
-                <th style={thStyle}>Outreach</th>
-                <th style={thStyle}>Assignee</th>
-                <th style={thStyle}>Start Date</th>
-                <th style={thStyle}>Last Admission</th>
-                <th style={thStyle}>Billable Mins</th>
-                <th style={thStyle}>Unlogged Mins</th>
-                <th style={thStyle}>Risk Level</th>
-                <th style={thStyle}>Task</th>
-                <th style={thStyle}>Care Plan Status</th>
-                <th style={{ ...thStyle, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3, textAlign: 'right' }}>
-                  Actions
+                {visibleMiddle.map(col => (
+                  <th key={col.key} style={thStyle}>{col.label}</th>
+                ))}
+                <th style={{ ...thStyle, width: 140, position: 'sticky', top: 0, right: 0, zIndex: 3, textAlign: 'left' }}>
+                  <ColumnsHeaderButton
+                    columns={columnPrefs.orderedColumns}
+                    hiddenSet={columnPrefs.hiddenSet}
+                    onToggle={columnPrefs.onToggle}
+                    onReorder={columnPrefs.onReorder}
+                    onReset={columnPrefs.onReset}
+                    label="Actions"
+                  />
                 </th>
               </tr>
             </thead>
@@ -423,6 +433,8 @@ export function CcmWorklistTable() {
                 <CcmWorklistRow
                   key={m.id}
                   member={m}
+                  columns={orderedColumnsForRow}
+                  hiddenSet={columnPrefs.hiddenSet}
                   isSelected={selectedIds.has(m.id)}
                   onSelect={toggleOne}
                 />

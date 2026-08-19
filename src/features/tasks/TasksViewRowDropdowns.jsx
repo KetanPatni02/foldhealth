@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
@@ -9,20 +9,21 @@ import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
 import { useAppStore } from '../../store/useAppStore';
-import { toast } from '../../components/Toast/sonnerToast';
 import {
   STATUS_ORDER, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_ORDER, PRIORITY_LABELS,
-  getInitials, isOverdue, formatDateFriendly, PAGE_SIZE,
 } from './TasksView.utils';
-import { SubtaskIcon, PriorityIcon } from './TasksViewIcons';
-import { TaskDatePicker } from './TasksViewDropdowns';
+import { PriorityIcon } from './TasksViewIcons';
+import { usePopoverPosition } from './usePopoverPosition';
 import styles from './TasksView.module.css';
+
+const ACTION_MENU_WIDTH = 180;
 
 export function RowActionMenu({ task }) {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [pdfPreview, setPdfPreview] = useState(null);
   const btnRef = useRef(null);
+  const pos = usePopoverPosition(btnRef, open);
   const updateTask = useAppStore(s => s.updateTask);
   const deleteTask = useAppStore(s => s.deleteTask);
   const showToast = useAppStore(s => s.showToast);
@@ -71,11 +72,11 @@ export function RowActionMenu({ task }) {
       <button className={styles.actionMenuBtn} onClick={e => { e.stopPropagation(); setOpen(v => !v); }} aria-label="Task actions">
         <Icon name="solar:menu-dots-bold" size={16} color="var(--neutral-300)" />
       </button>
-      {open && createPortal(
+      {open && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={e => { e.stopPropagation(); setOpen(false); }}>
           <div
             className={styles.actionMenuDropdown}
-            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().right - 180, zIndex: 9999 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left + pos.width - ACTION_MENU_WIDTH, zIndex: 9999 }}
             onClick={e => e.stopPropagation()}
           >
             {actions.map(a => (
@@ -156,6 +157,7 @@ export function RowAssignDropdown({ task }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
+  const pos = usePopoverPosition(btnRef, open);
   const updateTask = useAppStore(s => s.updateTask);
   const showToast = useAppStore(s => s.showToast);
   const taskProfiles = useAppStore(s => s.taskProfiles);
@@ -206,11 +208,11 @@ export function RowAssignDropdown({ task }) {
           Assign
         </button>
       )}
-      {open && createPortal(
+      {open && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={e => { e.stopPropagation(); setOpen(false); setSearch(''); }}>
           <div
             className={styles.simpleDropdown}
-            style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }}
+            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
             onClick={e => e.stopPropagation()}
           >
             <div className={styles.dropdownSearch}>

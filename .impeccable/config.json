@@ -1,0 +1,59 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "src/features/population-groups/rule-builder/ruleBuilder.module.css"
+        ],
+        "createdAt": "2026-08-17T13:28:59.725Z",
+        "reason": "Figma spec 1:13951 node 1:13996: Powered by Unity brand wordmark uses this exact gradient (accent-cyan to primary-200) via bg-clip-text"
+      },
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-08-17T13:37:54.965Z",
+        "reason": "Inter is a pinned brand commitment for Fold Health — CLAUDE.md and PRODUCT.md both require it as the only font"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "width",
+        "files": [
+          "src/features/population-groups/popgroups.css"
+        ],
+        "createdAt": "2026-08-18T08:22:20.702Z",
+        "reason": "Intentional drawer-width animation for CSV upload two-column expand; transform: scaleX breaks child layout, fires rarely"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "width",
+        "files": [
+          "src/features/patient/right-panel/tabs/care-programs/program-detail/steps/AssessmentFormView/AssessmentFormView.module.css"
+        ],
+        "createdAt": "2026-08-18T10:31:40.560Z",
+        "reason": "Progress-bar fill: width is the intended property for a determinate track, not a layout animation to avoid"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "background",
+        "files": [
+          "src/features/population-groups/popgroups.css"
+        ],
+        "createdAt": "2026-08-19T08:12:02.738Z",
+        "reason": "background is a paint-only property, not a layout property — no thrash"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "width",
+        "files": [
+          "src/features/forms/render/FormRenderer.module.css"
+        ],
+        "createdAt": "2026-08-19T10:00:00.000Z",
+        "reason": "Progress-bar fill: width is the intended property for a determinate track, not a layout animation to avoid"
+      }
+    ]
+  }
+}
