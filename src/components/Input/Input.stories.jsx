@@ -22,8 +22,8 @@ export default {
     },
     type: {
       control: 'select',
-      options: ['text', 'email', 'password', 'number', 'tel', 'url', 'search'],
-      description: 'Native input type. Drives inputMode + autoComplete defaults.',
+      options: ['text', 'email', 'password', 'number', 'tel', 'url', 'search', 'date', 'time', 'datetime-local'],
+      description: 'Native input type. Drives inputMode + autoComplete defaults. Date/time types delegate the calendar/clock UI to the browser while keeping Input\'s field chrome.',
     },
     // Label row
     showLabel: { control: 'boolean', description: 'Storybook-only toggle for the Title slot. Renders `label` when true.' },
@@ -194,10 +194,13 @@ export const Types = {
       <Input label="Website" type="url" placeholder="https://…" />
       <Input label="Age" type="number" placeholder="0" min={0} max={120} />
       <Input label="Search" type="search" placeholder="Search patients" />
+      <Input label="Date of Birth" type="date" />
+      <Input label="Appointment Time" type="time" />
+      <Input label="Follow-up" type="datetime-local" />
     </div>
   ),
   parameters: {
-    docs: { description: { story: 'Each `type` wires inputMode + autoComplete for the right mobile keyboard and password-manager behaviour. Password gets an inline eye toggle when `showPasswordToggle` is set.' } },
+    docs: { description: { story: 'Each `type` wires inputMode + autoComplete for the right mobile keyboard and password-manager behaviour. Password gets an inline eye toggle when `showPasswordToggle` is set. Date/time types keep Input\'s field chrome and let the browser render the native calendar/clock — `src/components/DatePicker` delegates to `<Input type="date">` under the hood so every date row across the app looks identical to a text row.' } },
   },
 };
 
