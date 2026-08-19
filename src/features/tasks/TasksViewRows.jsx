@@ -383,12 +383,12 @@ export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
       </td>
 
       {!hideAssignedTo && (
-        <td className={styles.td} onClick={e => e.stopPropagation()}>
+        <td className={styles.td} style={{ width: 200, minWidth: 200 }} onClick={e => e.stopPropagation()}>
           <AssignedToCell task={task} />
         </td>
       )}
 
-      <td className={styles.td} onClick={e => e.stopPropagation()}>
+      <td className={styles.td} style={{ width: 210, minWidth: 210 }} onClick={e => e.stopPropagation()}>
         <MemberCell task={task} />
       </td>
 
