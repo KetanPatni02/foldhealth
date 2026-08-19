@@ -130,17 +130,20 @@ export function useTasksView() {
   const meId = currentUserProfile?.id || null;
   const meName = currentUserProfile?.name || null;
 
-  const matchAssignee = useCallback((t) => {
-    if (!meId && !meName) return false;
-    if (t.assigned_to_id) return t.assigned_to_id === meId;
-    return !!meName && t.assigned_to === meName;
-  }, [meId, meName]);
+  // Match on id OR display name — never id-else-name. `profiles` holds one row
+  // per email a person has signed up with, so the same human appears with
+  // several ids; a task can carry any of those ids and still be theirs. Legacy
+  // rows carry only a name (no id at all). Short-circuiting on `assigned_to_id`
+  // hid both cases from "Assigned to Me".
+  const matchAssignee = useCallback(
+    (t) => (!!meId && t.assigned_to_id === meId) || (!!meName && t.assigned_to === meName),
+    [meId, meName],
+  );
 
-  const matchCreator = useCallback((t) => {
-    if (!meId && !meName) return false;
-    if (t.created_by_id) return t.created_by_id === meId;
-    return !!meName && t.created_by === meName;
-  }, [meId, meName]);
+  const matchCreator = useCallback(
+    (t) => (!!meId && t.created_by_id === meId) || (!!meName && t.created_by === meName),
+    [meId, meName],
+  );
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
