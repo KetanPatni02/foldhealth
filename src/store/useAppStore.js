@@ -6933,6 +6933,11 @@ export const useAppStore = create((set, get) => ({
   diagClaimDos: null,
   openHccClaimForDos: (dos) => set({ diagLeftPanel: 'claims', diagActivityIcd: null, diagClaimDos: dos || null }),
   clearDiagClaimDos: () => set({ diagClaimDos: null }),
+  // Claims tab — id of the currently previewed claim (Figma 10891:325889).
+  // Mirrors the docs tab's `diagOpenDocId` pattern so LeftWorkspace can
+  // hide the filter row while a claim detail is on-screen.
+  diagOpenClaimId: null,
+  setDiagOpenClaimId: (id) => set({ diagOpenClaimId: id || null }),
 
   // Documents tab — inline uploader widget toggle. Replaces the old drawer
   // open for the in-drawer Upload button (Figma 278:162482).
@@ -8451,6 +8456,10 @@ export const useAppStore = create((set, get) => ({
     diagLeftPanel: opts.leftPanel ?? null,
     diagActivityIcd: opts.activityIcd ?? null,
     diagViewMode: 'ICD',
+    // Pre-seed left-side preview so the drawer's first render already shows
+    // the claim/doc detail instead of flashing the tab's list view.
+    diagClaimDos: opts.claimDos ?? null,
+    diagOpenDocId: opts.openDocId ?? null,
   }),
   closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null, diagOpenDocId: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),

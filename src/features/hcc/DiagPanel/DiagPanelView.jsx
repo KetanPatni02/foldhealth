@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { BulkBar } from '../../../components/BulkBar/BulkBar';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
@@ -35,14 +36,27 @@ export function DiagPanelView(props) {
     confirmReject,
   } = props;
 
+  // Progressive expansion: the drawer opens at right-pane-only width first
+  // (LeftWorkspace mounted but at 0 width thanks to flex), then widens
+  // leftward. As the drawer's width transition runs, LeftWorkspace fills
+  // the newly-opened left space via `flex: 1 1 auto`. No slide, no gap.
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    if (!diagLeftPanel) { setExpanded(false); return; }
+    const t = setTimeout(() => setExpanded(true), 260);
+    return () => clearTimeout(t);
+  }, [diagLeftPanel]);
+  const initialWidth = rhsWidth != null ? rhsWidth + 1 : 641;
+
   if (!member) return null;
 
   return (
     <Drawer
       title={<span className={styles.drawerTitle}>Diagnosis Gaps Details</span>}
       onClose={closeDiagPanel}
-      className={[styles.panel, diagLeftPanel ? styles.panelExpanded : ''].join(' ')}
-      bodyClassName={[styles.body, diagLeftPanel ? styles.bodyExpanded : ''].join(' ')}
+      width={diagLeftPanel ? initialWidth : undefined}
+      className={[styles.panel, expanded ? styles.panelExpanded : ''].join(' ')}
+      bodyClassName={[styles.body, expanded ? styles.bodyExpanded : ''].join(' ')}
       headerStyle={{ display: 'none' }}
     >
       <div className={styles.titleRow}>
@@ -57,7 +71,7 @@ export function DiagPanelView(props) {
           <>
             <LeftWorkspace
               active={diagLeftPanel}
-              icdScope={diagActivityIcd ? (activeIcdCode ?? diagActivityIcd) : null}
+              icdScope={activeIcdCode ?? diagActivityIcd ?? null}
               onChange={setDiagTab}
               onClose={() => { setFocusIdx(-1); setDiagLeftPanel(null); }}
               member={member}
@@ -76,7 +90,7 @@ export function DiagPanelView(props) {
         )}
         <div
           className={diagLeftPanel ? styles.rightPane : styles.rightPaneFull}
-          style={diagLeftPanel && rhsWidth != null ? { flex: `0 0 ${rhsWidth}px` } : undefined}
+          style={diagLeftPanel ? { flex: `0 0 ${rhsWidth ?? 640}px` } : undefined}
         >
           <DiagPanelViewHeader {...props} />
           <DiagPanelViewToolbar {...props} />

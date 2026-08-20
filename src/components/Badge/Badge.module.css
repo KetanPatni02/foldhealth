@@ -18,10 +18,14 @@
   align-self: center;
 }
 
-/* Sizes — mirror Figma "Badge" node 24:1678 (S=18px, M=22px, L=30px). */
-.sizeS { padding: 1px 8px;  font-size: var(--font-sm); }
-.sizeM { padding: 2px 10px; font-size: var(--font-base); }
-.sizeL { padding: 4px 12px; font-size: var(--font-lg); border-radius: 6px; }
+/* Sizes — S=22px / M=24px / L=28px height (locked so padding + font can't
+   drift the overall dimensions). Padding uses --space-1 (4px) / --space-2
+   (8px) — the token system's 4px grid has no 6px stop, so M's horizontal
+   padding lands at 8px (closest token) and L uses --space-2 all round.
+   box-sizing: border-box so the 0.5px border sits inside the target height. */
+.sizeS { height: 22px; padding: var(--space-1);                font-size: var(--font-sm);   box-sizing: border-box; }
+.sizeM { height: 24px; padding: var(--space-1) var(--space-2); font-size: var(--font-base); box-sizing: border-box; }
+.sizeL { height: 28px; padding: var(--space-2);                font-size: var(--font-lg);   box-sizing: border-box; border-radius: 6px; }
 
 /* Tones — the 10 canonical Types from the Figma matrix. Uses design-token
    backgrounds + color-mix borders (matches the pattern from .status-ready,

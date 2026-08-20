@@ -5,6 +5,8 @@ import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { Icon } from '../../../components/Icon/Icon';
 import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
+import { Button } from '../../../components/Button/Button';
+import { Badge } from '../../../components/Badge/Badge';
 import { useIcdSearch } from '../../../lib/icd/useIcdSearch';
 import { DismissReasonForm } from './DismissReasonForm';
 import { reviewedByLabel } from '../reviewedBy';
@@ -209,8 +211,8 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
       </div>
 
       <div className={styles.chips}>
-        <span className={styles.hccChip}>{(icd.hcc || '').split(' - ')[0] || 'No HCC'}</span>
-        {icd.type && <span className={styles.suspectChip}>{icd.type}</span>}
+        <Badge tone="grey" size="S" label={(icd.hcc || '').split(' - ')[0] || 'No HCC'} />
+        {icd.type && <Badge tone="primary" size="S" label={icd.type} />}
       </div>
 
       <div className={styles.dosRow}>
@@ -251,26 +253,26 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
               {/* Match the ICD-card action row: icon-only 24-tall buttons in
                   Accept (primary tinted) / Dismiss (neutral) / more-menu shape. */}
               <Tooltip label={canAct ? 'Missed Opportunity' : (disabledReason || 'Select an ICD and DOS first')}>
-                <button
-                  type="button"
-                  className={[styles.missedBtn, canAct ? '' : styles.disabledAction].filter(Boolean).join(' ')}
+                <Button
+                  variant="alt"
+                  size="S"
+                  iconOnly
+                  leadingIcon="solar:flag-linear"
                   aria-label="Missed Opportunity"
                   disabled={!canAct}
                   onClick={canAct ? missed : undefined}
-                >
-                  <Icon name="solar:flag-linear" size={13} color="currentColor" />
-                </button>
+                />
               </Tooltip>
               <Tooltip label={canAct ? 'Dismiss' : (disabledReason || 'Select an ICD and DOS first')}>
-                <button
-                  type="button"
-                  className={[styles.dismissBtn, dismissOpen ? styles.dismissBtnActive : '', canAct ? '' : styles.disabledAction].filter(Boolean).join(' ')}
+                <Button
+                  variant="secondary"
+                  size="S"
+                  iconOnly
                   aria-label="Dismiss"
                   disabled={!canAct}
                   onClick={canAct ? () => setDismissOpen(v => !v) : undefined}
-                >
-                  <CloseIcon size={13} color="currentColor" />
-                </button>
+                  leadingIconElement={<CloseIcon size={13} color="currentColor" />}
+                />
               </Tooltip>
               <Tooltip label={canAct ? 'More actions' : (disabledReason || 'Select an ICD and DOS first')}>
                 <button
