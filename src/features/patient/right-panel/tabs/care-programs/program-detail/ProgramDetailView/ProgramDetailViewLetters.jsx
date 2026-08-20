@@ -1,12 +1,26 @@
 import { Icon } from '../../../../../../../components/Icon/Icon';
+import { AddIconMinimalist } from '../../../../../../../components/Icon/AddIconMinimalist';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { Button } from '../../../../../../../components/Button/Button';
 import { SearchBar } from '../../../../../../../components/SearchBar/SearchBar';
+import { Toggle } from '../../../../../../../components/Toggle/Toggle';
 import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
 import { Checkbox } from '../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
+import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { LETTER_SUB_TABS } from './ProgramDetailView.utils';
 import styles from './ProgramDetailView.module.css';
+
+// Column widths preserved from the hand-rolled <table> this replaced.
+const LETTER_COLUMNS = [
+  { key: 'select', label: '', showCheckbox: true, width: 36 },
+  { key: 'fileName', label: 'File Name' },
+  { key: 'fileType', label: 'File Type' },
+  { key: 'sentVia', label: 'Sent Via' },
+  { key: 'lastSent', label: 'Last Sent' },
+  { key: 'sentBy', label: 'Sent By' },
+  { key: 'actions', label: '', width: 72 },
+];
 
 export function ProgramDetailViewLetters({
   letterSearchOpen,
@@ -52,15 +66,11 @@ export function ProgramDetailViewLetters({
             <>
               <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setLetterSearchOpen(true)} />
               <span className={styles.tabDivider} />
-              {LETTER_SUB_TABS.map(tab => (
-                <button key={tab}
-                  className={`${styles.contentTab} ${activeLetterTab === tab ? styles.contentTabActive : ''}`}
-                  onClick={() => setActiveLetterTab(tab)}>{tab}</button>
-              ))}
+              <Toggle size="S" items={LETTER_SUB_TABS} active={activeLetterTab} onChange={setActiveLetterTab} />
               <div style={{ flex: 1 }} />
             </>
           )}
-          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" onClick={() => setAddLetterOpen(true)} />
+          <ActionButton size="S" tooltip="Add" onClick={() => setAddLetterOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" active={letterFiltersOpen}
             iconColor={letterFiltersOpen ? 'var(--primary-300)' : undefined}
             onClick={() => setLetterFiltersOpen(v => !v)} />
@@ -82,62 +92,47 @@ export function ProgramDetailViewLetters({
           </div>
         )}
 
-        <div className={styles.tableWrap}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th className={styles.checkCell}>
-                  <Checkbox checked={someLettersSelected ? 'indeterminate' : allLettersSelected}
-                    onCheckedChange={toggleAllLetters} aria-label="Select all letters" />
-                </th>
-                <th>File Name</th>
-                <th>File Type</th>
-                <th>Sent Via</th>
-                <th>Last Sent</th>
-                <th>Sent By</th>
-                <th aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {shownLetters.length === 0 && (
-                <tr>
-                  <td colSpan={7} className={styles.lettersEmptyCell}>
-                    <RingEmptyState icon="solar:letter-linear" label="No Letters" />
-                  </td>
-                </tr>
-              )}
-              {shownLetters.map(letter => (
-                <tr key={letter.id} className={selectedLetters.has(letter.id) ? styles.rowSelected : undefined}>
-                  <td className={styles.checkCell}>
-                    <Checkbox checked={selectedLetters.has(letter.id)}
-                      onCheckedChange={() => toggleLetter(letter.id)}
-                      aria-label={`Select ${letter.fileName}`} />
-                  </td>
-                  <td className={`${styles.fileNameCell} ${styles.clickable}`}
-                    onClick={() => previewLetter?.(letter)}>{letter.fileName}</td>
-                  <td className={styles.colMuted}>{letter.fileType}</td>
-                  <td>
-                    <span className={styles.viaChips}>
-                      {letter.sentVia.map(v => <span key={v} className={styles.viaChip}>{v}</span>)}
-                    </span>
-                  </td>
-                  <td>{letter.lastSent}</td>
-                  <td>{letter.sentBy}</td>
-                  <td className={styles.rowActionsCell}>
-                    {selectedLetters.size === 0 && (
-                      <div className={styles.rowActions}>
-                        <ActionButton icon="solar:plain-linear" size="S" tooltip="Send letter"
-                          onClick={() => setSendTarget({ letterName: letter.fileName, clearOnSent: false })} />
-                        <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More actions"
-                          onClick={(e) => setRowMenu({ id: letter.id, rect: e.currentTarget.getBoundingClientRect() })} />
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <WorklistShell
+          embedded
+          header={null}
+          columns={LETTER_COLUMNS}
+          rows={shownLetters}
+          selectedIds={[...selectedLetters]}
+          onSelectAll={toggleAllLetters}
+          onClearSelection={() => setSelectedLetters(new Set())}
+          emptyState={<RingEmptyState icon="solar:letter-linear" label="No Letters" />}
+          minTableWidth={0}
+          renderRow={letter => (
+            <tr key={letter.id}
+              className={`${styles.letterRow} ${selectedLetters.has(letter.id) ? styles.rowSelected : ''}`}>
+              <td className={styles.checkCell}>
+                <Checkbox checked={selectedLetters.has(letter.id)}
+                  onCheckedChange={() => toggleLetter(letter.id)}
+                  aria-label={`Select ${letter.fileName}`} />
+              </td>
+              <td className={`${styles.letterCell} ${styles.fileNameCell} ${styles.clickable}`}
+                onClick={() => previewLetter?.(letter)}>{letter.fileName}</td>
+              <td className={`${styles.letterCell} ${styles.colMuted}`}>{letter.fileType}</td>
+              <td className={styles.letterCell}>
+                <span className={styles.viaChips}>
+                  {letter.sentVia.map(v => <span key={v} className={styles.viaChip}>{v}</span>)}
+                </span>
+              </td>
+              <td className={styles.letterCell}>{letter.lastSent}</td>
+              <td className={styles.letterCell}>{letter.sentBy}</td>
+              <td className={`${styles.letterCell} ${styles.rowActionsCell}`}>
+                {selectedLetters.size === 0 && (
+                  <div className={styles.rowActions}>
+                    <ActionButton icon="solar:plain-linear" size="S" tooltip="Send letter"
+                      onClick={() => setSendTarget({ letterName: letter.fileName, clearOnSent: false })} />
+                    <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More actions"
+                      onClick={(e) => setRowMenu({ id: letter.id, rect: e.currentTarget.getBoundingClientRect() })} />
+                  </div>
+                )}
+              </td>
+            </tr>
+          )}
+        />
       </div>
 
       {isLettersPane && selectedLetters.size > 0 && (

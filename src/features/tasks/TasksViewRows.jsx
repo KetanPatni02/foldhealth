@@ -315,7 +315,7 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
 }
 
 /* ── Table-mode row (WorklistShell) ── */
-export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
+export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMember }) {
   const isCompleted = task.status === 'completed';
   const labels = Array.isArray(task.labels) ? task.labels : [];
   const updateTask = useAppStore(s => s.updateTask);
@@ -388,9 +388,11 @@ export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
         </td>
       )}
 
-      <td className={styles.td} onClick={e => e.stopPropagation()}>
-        <MemberCell task={task} />
-      </td>
+      {!hideMember && (
+        <td className={styles.td} onClick={e => e.stopPropagation()}>
+          <MemberCell task={task} />
+        </td>
+      )}
 
       <td className={styles.td} onClick={e => e.stopPropagation()}>
         <RowLabelDropdown task={task}>
@@ -414,7 +416,7 @@ export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo }) {
         </RowLabelDropdown>
       </td>
 
-      <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
+      <td className={styles.tdActionsCell} onClick={e => e.stopPropagation()}>
         <RowActionMenu task={task} />
       </td>
     </tr>

@@ -1,6 +1,7 @@
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Button } from '../../../../../../../../components/Button/Button';
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { CARE_GAP_SECTIONS_EXTENDED } from '../../../../../../data/careGapsMock';
 import styles from './OpenCareGaps.module.css';
 
@@ -17,16 +18,26 @@ const GAP_META = {
   rf2: { action: 'Schedule' },
 };
 
+// Columns mirror the grid this table used to be: 32 / fill / 90 / 160 / 120.
+const GAP_COLUMNS = [
+  { key: 'select', label: '', showCheckbox: true, width: 32 },
+  { key: 'title', label: 'Title' },
+  { key: 'status', label: 'Status', width: 90 },
+  { key: 'assignee', label: 'Assignee', width: 160 },
+  { key: 'action', label: 'Action', width: 120 },
+];
+
 function GapRow({ item }) {
   const meta = GAP_META[item.id] || {};
   return (
-    <div className={styles.row}>
-      <span className={styles.checkCell} onClick={e => e.stopPropagation()}>
+    <tr className={styles.row}>
+      <td className={styles.checkCell} onClick={e => e.stopPropagation()}>
         <Checkbox aria-label={`Select ${item.title}`} />
-      </span>
-      <span className={styles.titleCell}>{item.title}</span>
-      <span className={styles.statusCell}>{item.status}</span>
-      <span className={styles.assigneeCell}>
+      </td>
+      <td className={styles.titleCell}>{item.title}</td>
+      <td className={styles.statusCell}>{item.status}</td>
+      <td className={styles.assigneeCell}>
+        <span className={styles.assigneeInner}>
         {meta.assignee ? (
           <>
             <Icon name="solar:user-rounded-linear" size={15} color="var(--status-success)" />
@@ -38,11 +49,12 @@ function GapRow({ item }) {
             Assign
           </button>
         )}
-      </span>
-      <span className={styles.actionCell}>
+        </span>
+      </td>
+      <td className={styles.actionCell}>
         <Button variant="tertiary" size="S">{meta.action || 'Add Value'}</Button>
-      </span>
-    </div>
+      </td>
+    </tr>
   );
 }
 
@@ -52,16 +64,14 @@ export function OpenCareGaps() {
       {CARE_GAP_SECTIONS_EXTENDED.map(section => (
         <div key={section.title} className={styles.section}>
           <div className={styles.sectionLabel}>{section.title}</div>
-          <div className={styles.table}>
-            <div className={styles.headRow}>
-              <span className={styles.checkCell} />
-              <span className={styles.titleCell}>Title</span>
-              <span className={styles.statusCell}>Status</span>
-              <span className={styles.assigneeCell}>Assignee</span>
-              <span className={styles.actionCell}>Action</span>
-            </div>
-            {section.items.map(item => <GapRow key={item.id} item={item} />)}
-          </div>
+          <WorklistShell
+            embedded
+            header={null}
+            columns={GAP_COLUMNS}
+            rows={section.items}
+            renderRow={item => <GapRow key={item.id} item={item} />}
+            minTableWidth={0}
+          />
         </div>
       ))}
     </div>

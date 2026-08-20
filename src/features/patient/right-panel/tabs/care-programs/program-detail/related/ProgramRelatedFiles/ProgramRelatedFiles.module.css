@@ -21,26 +21,6 @@
   flex-shrink: 0;
 }
 /* Tabs — match the Letters step (.contentTab / .contentTabActive). */
-.tab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  padding: 4px 6px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.tab:hover { background: var(--neutral-50); }
-.tabActive {
-  color: var(--neutral-400);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-}
 .spacer { flex: 1; }
 
 /* Filter chips row — toggled by the toolbar's Filter button. */
@@ -85,35 +65,28 @@
 }
 
 /* ── Table ── */
-.table {
-  display: flex;
-  flex-direction: column;
-}
-.headRow,
+/* Cells live in a WorklistShell <table> now; the grid tracks moved to the
+   column defs. Horizontal padding matches the shell's <th> (12px; 10px on the
+   checkbox) so headers sit directly above their content. */
 .row {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) 160px 180px;
-  align-items: center;
-  column-gap: 8px;
-}
-.headRow {
-  padding: 10px 4px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-base);
-  font-weight: 400;
-  color: var(--neutral-300);
-}
-.row {
-  padding: 12px 4px;
   border-bottom: 0.5px solid var(--neutral-100);
 }
-.checkCell { display: flex; align-items: center; }
-.nameCell { font-size: var(--font-base); color: var(--neutral-500); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.checkCell,
+.nameCell,
+.typeCell,
+.updatedCell {
+  padding: 12px;
+  vertical-align: middle;
+  font-size: var(--font-base);
+}
+.checkCell { width: 36px; padding-left: 10px; padding-right: 10px; }
+.nameCell { color: var(--neutral-500); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .clickable { cursor: pointer; }
 .nameCell.clickable:hover { text-decoration: underline; }
 .card.clickable:hover { border-color: var(--primary-300); }
-.typeCell { font-size: var(--font-base); color: var(--neutral-300); }
-.updatedCell { display: flex; flex-direction: column; gap: 2px; }
+.typeCell { color: var(--neutral-300); }
+.updatedCell { white-space: nowrap; }
+.updatedBy, .updatedDate { display: block; }
 .updatedBy { font-size: var(--font-base); color: var(--neutral-400); }
 .updatedDate { font-size: var(--font-md); color: var(--neutral-300); }
 

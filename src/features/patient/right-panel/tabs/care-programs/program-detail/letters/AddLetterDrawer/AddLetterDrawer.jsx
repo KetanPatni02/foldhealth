@@ -7,7 +7,7 @@ import { Toggle } from '../../../../../../../../components/Toggle/Toggle';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { HeaderCell } from '../../../../../../../../components/HeaderCell/HeaderCell';
+import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import styles from './AddLetterDrawer.module.css';
 
 // MM/DD/YYYY → epoch (for the Last updated sort).
@@ -26,6 +26,14 @@ const VIEW_ITEMS = [
   { key: 'list', icon: 'solar:list-linear' },
 ];
 const EMPTY_LETTERS = [];
+
+// Mirrors the grid this table replaced: 32 / fill / 130 / 160.
+const LETTER_COLUMNS = [
+  { key: 'select', label: '', showCheckbox: true, width: 32 },
+  { key: 'name', label: 'File Name' },
+  { key: 'lastSent', label: 'Last updated', sortKey: 'lastSent', sortType: 'date', width: 130 },
+  { key: 'actions', label: 'Actions', width: 160 },
+];
 
 function LetterThumb() {
   return <Avatar type="icon" variant="others" iconName="solar:document-text-linear" size="M" />;
@@ -89,27 +97,35 @@ export function AddLetterDrawer({ letters = EMPTY_LETTERS, addedIds, onAdd, onPr
       </div>
 
       {view === 'list' ? (
-        <div className={styles.table}>
-          <div className={styles.headRow}>
-            <span className={styles.checkCell} />
-            <HeaderCell label="File Name" align="left" className={styles.colHeader} />
-            <HeaderCell label="Last updated" sortField="lastSent" sortType="date" activeKey={sortKey} activeDir={sortDir} onSort={handleSort} align="left" className={styles.colHeader} />
-            <HeaderCell label="Actions" align="left" className={styles.colHeader} />
-          </div>
-          {rows.map(l => (
-            <div key={l.id} className={styles.row}>
-              <span className={styles.checkCell} onClick={e => e.stopPropagation()}>
+        <WorklistShell
+          embedded
+          header={null}
+          columns={LETTER_COLUMNS}
+          rows={rows}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={handleSort}
+          selectedIds={[...selected]}
+          onSelectAll={() => setSelected(prev => (prev.size === rows.length ? new Set() : new Set(rows.map(r => r.id))))}
+          onClearSelection={() => setSelected(new Set())}
+          emptyState={<div className={styles.empty}>No letters match your filters.</div>}
+          minTableWidth={0}
+          renderRow={l => (
+            <tr key={l.id} className={styles.row}>
+              <td className={styles.checkCell} onClick={e => e.stopPropagation()}>
                 <Checkbox checked={selected.has(l.id)} onCheckedChange={() => toggle(l.id)} aria-label={`Select ${l.fileName}`} />
-              </span>
-              <span className={styles.nameCol}>
-                <LetterThumb />
-                <span className={styles.nameBlock}>
-                  <span className={styles.name}>{l.fileName}</span>
-                  <span className={styles.subtype}>{l.fileType}</span>
+              </td>
+              <td className={styles.nameCol}>
+                <span className={styles.nameInner}>
+                  <LetterThumb />
+                  <span className={styles.nameBlock}>
+                    <span className={styles.name}>{l.fileName}</span>
+                    <span className={styles.subtype}>{l.fileType}</span>
+                  </span>
                 </span>
-              </span>
-              <span className={styles.dateCol}>{l.lastSent || '—'}</span>
-              <span className={styles.actionsCol}>
+              </td>
+              <td className={styles.dateCol}>{l.lastSent || '—'}</td>
+              <td className={styles.actionsCol}>
                 <span className={styles.actions}>
                   <AddButton letter={l} added={isAdded(l.id)} onAdd={onAdd} />
                   <span className={styles.actionDivider} />
@@ -117,11 +133,10 @@ export function AddLetterDrawer({ letters = EMPTY_LETTERS, addedIds, onAdd, onPr
                   <span className={styles.actionDivider} />
                   <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" onClick={() => onDownload(l)} />
                 </span>
-              </span>
-            </div>
-          ))}
-          {rows.length === 0 && <div className={styles.empty}>No letters match your filters.</div>}
-        </div>
+              </td>
+            </tr>
+          )}
+        />
       ) : (
         <div className={styles.grid}>
           {rows.map(l => (

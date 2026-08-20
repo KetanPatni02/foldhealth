@@ -181,9 +181,17 @@
 }
 .extractedRowExiting,
 .medRowExiting {
-  animation: rowExit 450ms var(--ease-out) forwards;
-  overflow: hidden;
+  /* A <tr> is display: table-row, which ignores max-height / padding /
+     overflow — so the shared rowExit keyframes' collapse phase can't apply
+     here. Table rows fade and slide out over the same 450ms and are removed
+     on animationend; the div-based discharge rows still collapse. */
+  animation: rowExitFade 450ms var(--ease-out) forwards;
   pointer-events: none;
+}
+@keyframes rowExitFade {
+  0%   { opacity: 1; transform: translateX(0); }
+  55%  { opacity: 0; transform: translateX(100%); }
+  100% { opacity: 0; transform: translateX(100%); }
 }
 .extractedRow:last-child {
   border-bottom: none;
@@ -398,40 +406,19 @@
 
 /* ── Medications table ── */
 /* The only horizontally-scrolling region. */
-.tableScroll {
-  overflow-x: auto;
+/* Outer container establishes the query context the expanded note strip uses
+   (100cqi) so it fills the *visible* pane, not the table's 980px scroll width.
+   It sits outside WorklistShell's own scroller, so 100cqi measures the pane. */
+.tableOuter {
   min-width: 0;
-  /* Container context so the note strip can size itself to the visible pane
-     (100cqi) rather than the table's much wider min-width. */
   container-type: inline-size;
+  container-name: medRecon;
 }
-/* min-width is the sum of every fixed track plus the name column's 200px
-   floor (32+200+139+139+260+110+100). Above that the table just fills the
-   pane and the name column's 1fr soaks up the slack; below it the table
-   holds this width and .tableScroll scrolls. Keep in sync with
-   grid-template-columns below. */
-.table {
-  display: flex;
-  flex-direction: column;
-  min-width: 980px;
-}
-/* Date tracks are 123px + 16px cell padding, status is 94px + 16px, so the
-   inline editors drop in at their exact widths without reflowing the row.
-   The actions track is sized to what the button cluster actually measures
-   (Note icon + divider + kebab + cell padding). None can be `max-content` —
-   every row is its own grid, so the header labels and the data rows would
-   resolve to different widths and the columns would misalign. Widen the
-   actions track again if the Stop/Continue toggle comes back. */
-.headRow,
-.row {
-  display: grid;
-  grid-template-columns: 32px minmax(200px, 1fr) 139px 139px 260px 110px 100px;
-  align-items: center;
-}
-.headRow {
-  border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-base);
-  color: var(--neutral-300);
+/* Dim the header alongside the rows while a full-row edit is open. */
+.tableOuterDimmed th {
+  opacity: 0.45;
+  filter: blur(1px);
+  pointer-events: none;
 }
 .row {
   border-bottom: 0.5px solid var(--neutral-100);
@@ -440,12 +427,31 @@
    cell's content (e.g. Sig wrapping to two lines, Status + Actions sitting
    close together) grew past its column width, so text touched the next
    column instead of stopping at a gutter. */
-.checkCell { display: flex; align-items: center; padding: 8px; }
-.nameCell { font-size: var(--font-base); color: var(--neutral-500); min-width: 0; padding: 8px; }
-.dateCell { font-size: var(--font-base); color: var(--neutral-300); white-space: nowrap; padding: 8px; }
-.sigCell { font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: 8px; }
-.statusCell { font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: 8px; }
-.actionsCell { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px; }
+/* 8px vertical keeps the row rhythm; horizontal matches WorklistShell's own
+   <th> (12px, and 10px on the checkbox) so headers sit above their content. */
+.checkCell { padding: 8px 10px; vertical-align: middle; }
+.nameCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-500); min-width: 0; padding: 8px 12px; }
+/* Long compound names (Clinimix-style ingredient lists) would otherwise grow
+   the row indefinitely — clamp to two lines and hand the full text to a
+   tooltip. Tooltip's own wrapper is inline-flex, so it needs min-width:0 to
+   let the clamped child shrink inside the cell. */
+.nameTooltip {
+  min-width: 0;
+  max-width: 100%;
+}
+.nameClamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.dateCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); white-space: nowrap; padding: 8px 12px; }
+.sigCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: 8px 12px; }
+.statusCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: 8px 12px; }
+.actionsCell { min-width: 0; padding: 8px 12px; vertical-align: middle; }
+/* Inner flex — `display: flex` on a <td> would break table column sizing. */
+.actionsInner { display: flex; align-items: center; gap: 8px; }
 
 /* Pinned columns — checkbox + medication name hold the left edge, actions
    hold the right, while the middle (dates / sig / status) scrolls under
@@ -535,6 +541,11 @@
 /* ── Inline note editor — Figma 2529:16692 ──
    Expands under the medication row it belongs to, in both the card and table
    views. Full-bleed grey strip, indented to sit under the med name. */
+/* The note / full-row-edit strips are their own <tr> spanning every column. */
+.noteCell,
+.medEditCell {
+  padding: 0;
+}
 .noteEditor {
   display: flex;
   flex-direction: column;
@@ -557,6 +568,36 @@
 .medCardRowNoteOpen {
   border-bottom: none;
 }
+/* Label on the left, autosave state pinned far right. */
+.noteEditorHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.noteSaveState {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+}
+.noteSpinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid var(--neutral-150);
+  border-top-color: var(--primary-300);
+  border-radius: 50%;
+  animation: noteSpin 600ms linear infinite;
+  flex-shrink: 0;
+}
+@keyframes noteSpin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .noteSpinner { animation: none; }
+}
+
 .noteEditorLabel {
   font-size: var(--font-md);
   color: var(--neutral-300);
@@ -777,4 +818,28 @@
 .formCancel:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+/* Inline date editor — the browser paints its own calendar glyph on
+   `type="date"`; hide it so only the Input's Solar trailing action shows.
+   The field still opens the native picker via showPicker(). */
+.cellDateInput::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+  margin: 0;
+}
+
+/* "View / Add Note" text link closing the card's sig line (Figma 2081:59790).
+   Chevron points up while the note strip is expanded. */
+.noteLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--font-base);
+  font-weight: 400;
+  vertical-align: baseline;
+}
+.noteLinkChevronOpen {
+  transform: rotate(180deg);
 }

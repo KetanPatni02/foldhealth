@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { AddIconMinimalist } from '../../../../../../../../components/Icon/AddIconMinimalist';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { CARE_PLAN_MOCK } from '../../../../../../data/carePlanMock';
@@ -117,7 +118,7 @@ export function CarePlanView() {
               <Icon name="solar:chart-2-linear" size={16} color="var(--neutral-300)" />
               Trends
             </button>
-            <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add goal" />
+            <ActionButton size="S" tooltip="Add goal"><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
         <div className={styles.table}>
@@ -138,7 +139,7 @@ export function CarePlanView() {
         <div className={styles.sectionHead}>
           <span className={styles.sectionTitle}>Interventions</span>
           <div className={styles.sectionActions}>
-            <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add intervention" />
+            <ActionButton size="S" tooltip="Add intervention"><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
         <div className={styles.table}>

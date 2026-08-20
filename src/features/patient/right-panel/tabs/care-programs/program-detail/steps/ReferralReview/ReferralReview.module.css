@@ -20,58 +20,38 @@
   background: var(--neutral-150);
   flex-shrink: 0;
 }
-.tab {
-  padding: 4px 10px;
-  border: 0.5px solid transparent;
-  border-radius: 4px;
-  background: none;
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.tabActive {
-  color: var(--neutral-500);
-  border-color: var(--neutral-150);
-  background: var(--neutral-0);
-}
 .spacer { flex: 1; }
 
 /* ── Table ── */
-.table {
-  display: flex;
-  flex-direction: column;
-}
-.headRow,
+/* Cells live in a WorklistShell <table> now; the grid tracks moved to the
+   column defs. Horizontal padding matches the shell's <th> (12px, 10px on
+   the checkbox) so headers sit directly above their content. */
 .row {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) minmax(0, 1fr) 150px 140px 170px;
-  align-items: center;
-  column-gap: 8px;
-}
-.headRow {
-  padding: 10px 4px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-}
-.row {
-  padding: 12px 4px;
   border-bottom: 0.5px solid var(--neutral-100);
 }
-.checkCell { display: flex; align-items: center; }
+.checkCell,
+.providerCell,
+.statusCell,
+.attachCell,
+.createdCell {
+  padding: 12px;
+  vertical-align: middle;
+  font-size: var(--font-base);
+}
+.checkCell { width: 36px; padding-left: 10px; padding-right: 10px; }
 
-.providerCell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.providerCell { min-width: 0; }
+.providerName, .providerRole { display: block; }
 .providerName { font-size: var(--font-base); color: var(--neutral-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .providerRole { font-size: var(--font-md); color: var(--neutral-300); }
 
-.statusCell { font-size: var(--font-base); color: var(--neutral-400); }
+.statusCell { color: var(--neutral-400); }
 .statusWarning { color: var(--status-warning); }
 .statusSuccess { color: var(--status-success); }
 .statusError { color: var(--status-error); }
 
-.attachCell { display: flex; align-items: center; }
+
 .attachChip { display: inline-flex; align-items: center; gap: 4px; font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .muted { color: var(--neutral-200); }
 
-.createdCell { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
+.createdCell { color: var(--neutral-400); white-space: nowrap; }

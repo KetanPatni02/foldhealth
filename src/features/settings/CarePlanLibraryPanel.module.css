@@ -20,6 +20,9 @@
 .tdDescription,
 .tdCount,
 .tdUpdated,
+.tdType,
+.tdLinked,
+.tdMuted,
 .tdActions {
   padding: 12px 16px;
   font-size: var(--font-base);
@@ -29,6 +32,26 @@
 .tdCheck {
   padding-right: 0;
 }
+
+/* Pin the identity + actions columns so only the middle of the table scrolls
+   sideways. WorklistShell only applies sticky to the <th>s — body cells are
+   the caller's job — so the <td>s need it here or the columns drift under the
+   scrolling content. Each cell paints its own background (otherwise scrolled
+   content shows through) and repeats the row's bottom border, which the
+   background would otherwise cover. */
+.tdCheck,
+.tdName,
+.tdActions {
+  position: sticky;
+  z-index: 2;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.tdCheck { left: 0; }
+.tdName { left: 0; }
+/* Tables that lead with a checkbox column (44px) push the name column past it. */
+.tdNameOffset { left: 44px; }
+.tdActions { right: 0; }
 .nameLink {
   background: none;
   border: none;
@@ -44,6 +67,17 @@
   flex-wrap: wrap;
   gap: 4px;
 }
+/* Linked Items — three count chips split by hairline dividers
+   (Figma 14181:316573). */
+.linkedCell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tdMuted {
+  white-space: nowrap;
+}
+
 .actionCell {
   display: flex;
   align-items: center;

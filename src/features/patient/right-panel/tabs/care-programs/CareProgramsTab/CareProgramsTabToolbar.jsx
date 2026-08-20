@@ -1,4 +1,5 @@
 import { Icon } from '../../../../../../components/Icon/Icon';
+import { AddIconMinimalist } from '../../../../../../components/Icon/AddIconMinimalist';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { SearchBar } from '../../../../../../components/SearchBar/SearchBar';
@@ -23,7 +24,7 @@ export function CareProgramsTabToolbar({
         ref={npBtnRef}
         variant="tertiary"
         size="L"
-        leadingIcon="solar:add-circle-linear"
+        leadingIconElement={<AddIconMinimalist size={16} />}
         trailingIconElement={<DownChevronIcon size={16} />}
         onClick={() => setNpOpen(o => !o)}
       >

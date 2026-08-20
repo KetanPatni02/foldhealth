@@ -1905,6 +1905,28 @@ export const useAppStore = create((set, get) => ({
   // Always stamps `lastUpdated` to today so the Last Updated column reflects
   // the most recent modification. Optimistic local update + fire-and-forget
   // Supabase upsert, mirroring addCareProgram.
+  // Discharge-imported medications the user has already seen. The "New" badge
+  // shows through the first viewing of the step and is dropped on the next.
+  // Session-only — not persisted yet.
+  viewedNewMedIds: {},          // { [patientId]: string[] }
+  markNewMedsViewed: (patientId, ids) => set(s => {
+    const prev = s.viewedNewMedIds[patientId] || [];
+    const merged = [...new Set([...prev, ...ids])];
+    if (merged.length === prev.length) return {};
+    return { viewedNewMedIds: { ...s.viewedNewMedIds, [patientId]: merged } };
+  }),
+
+  // Med Recon checklist ticks, keyed by patient. Lives in the store rather
+  // than the step component because the Sign control (in the program header)
+  // gates on every box being ticked. Session-only — not persisted yet.
+  medReconChecks: {},           // { [patientId]: { [checkId]: true } }
+  setMedReconCheck: (patientId, checkId, value) => set(s => ({
+    medReconChecks: {
+      ...s.medReconChecks,
+      [patientId]: { ...(s.medReconChecks[patientId] || {}), [checkId]: value },
+    },
+  })),
+
   updateCareProgram: (patientId, programId, patch) => {
     if (!patientId || !programId) return;
     const now = new Date();

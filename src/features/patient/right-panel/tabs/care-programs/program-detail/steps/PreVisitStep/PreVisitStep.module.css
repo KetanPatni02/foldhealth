@@ -133,46 +133,37 @@
   border-radius: 6px;
   overflow: hidden;
 }
-.careHeadRow,
+/* Care Team cells live in a WorklistShell <table> now; the grid tracks moved
+   to the column defs. The Role column's vertical rule is on the body cells
+   here and on the header via the column's `thStyle`. */
 .careRow {
-  display: grid;
-  grid-template-columns: 290px 1fr 40px;
-  align-items: center;
   border-bottom: 0.5px solid var(--neutral-150);
 }
-.careRow {
-  min-height: 40px;
-}
-.careHeadCell {
+.careRole,
+.careProvider,
+.careActionCol {
   padding: 8px 12px;
+  vertical-align: middle;
   font-size: var(--font-base);
-  font-weight: 500;
-  color: var(--neutral-300);
-}
-.careHeadRow .careHeadCell:first-child,
-.careRow .careRole {
-  border-right: 0.5px solid var(--neutral-150);
-  align-self: stretch;
-  display: flex;
-  align-items: center;
 }
 .careRole {
-  padding: 8px 12px;
-  font-size: var(--font-base);
+  width: 290px;
   color: var(--neutral-500);
+  border-right: 0.5px solid var(--neutral-150);
 }
 .careProvider {
+  color: var(--neutral-500);
+}
+/* Inner flex keeps the avatar + name aligned — `display: flex` on a <td>
+   would break table column sizing. */
+.careProviderInner {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  font-size: var(--font-base);
-  color: var(--neutral-500);
 }
 .careActionCol {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 40px;
+  text-align: center;
 }
 .addRoleRow {
   display: flex;

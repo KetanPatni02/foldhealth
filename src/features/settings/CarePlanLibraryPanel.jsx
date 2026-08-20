@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { Fragment, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { Badge } from '../../components/Badge/Badge';
@@ -52,10 +52,30 @@ const INITIAL_TEMPLATES = [
 ];
 
 const INITIAL_GOALS = [
-  { id: 'goal-1', title: 'A1C below 7%', description: 'Reassess quarterly via lab draw.', updatedAt: daysAgo(3) },
-  { id: 'goal-2', title: 'Blood pressure under 130/80', description: 'Home BP log reviewed weekly.', updatedAt: daysAgo(5) },
-  { id: 'goal-3', title: 'No readmission within 30 days', description: 'Weekly weight + symptom check-in.', updatedAt: daysAgo(9) },
-  { id: 'goal-4', title: 'Improve medication adherence', description: 'Target 90%+ per pharmacy refill data.', updatedAt: daysAgo(14) },
+  {
+    id: 'goal-1', title: 'A1C below 7%', description: 'Reassess quarterly via lab draw.',
+    type: 'Clinical', targetValue: '< 7.0 %', duration: '3 Months',
+    conditions: ['Diabetes'], linked: { interventions: 3, barriers: 1, tasks: 2 },
+    createdAt: daysAgo(120), updatedAt: daysAgo(3),
+  },
+  {
+    id: 'goal-2', title: 'Blood pressure under 130/80', description: 'Home BP log reviewed weekly.',
+    type: 'Clinical', targetValue: '< 130/80 mmHg', duration: '1 Month',
+    conditions: ['Hypertension'], linked: { interventions: 2, barriers: 2, tasks: 1 },
+    createdAt: daysAgo(96), updatedAt: daysAgo(5),
+  },
+  {
+    id: 'goal-3', title: 'No readmission within 30 days', description: 'Weekly weight + symptom check-in.',
+    type: 'Outcome', targetValue: '0 readmissions', duration: '1 Month',
+    conditions: ['CHF', 'COPD'], linked: { interventions: 4, barriers: 1, tasks: 3 },
+    createdAt: daysAgo(61), updatedAt: daysAgo(9),
+  },
+  {
+    id: 'goal-4', title: 'Improve medication adherence', description: 'Target 90%+ per pharmacy refill data.',
+    type: 'Behavioral', targetValue: '≥ 90 % PDC', duration: '6 Months',
+    conditions: ['General'], linked: { interventions: 2, barriers: 3, tasks: 2 },
+    createdAt: daysAgo(45), updatedAt: daysAgo(14),
+  },
 ];
 
 const INITIAL_BARRIERS = [
@@ -112,6 +132,28 @@ const TEMPLATE_COLUMNS = [
   { key: 'createdOn', label: 'Created On', sortKey: 'createdAt', sortType: 'date', width: 200 },
   { key: 'updated', label: 'Last Update', sortKey: 'updatedAt', sortType: 'date', width: 200 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 156 },
+];
+
+// Figma 14181:316571 — checkbox, Goals Title, Type, Linked Items, Target
+// Value, Duration, Chronic Conditions, Created On, Actions. Widths are the
+// design's min/max column bounds.
+const GOAL_COLUMNS = [
+  { key: 'select', label: '', showCheckbox: true, width: 44 },
+  { key: 'title', label: 'Goals Title', sortKey: 'title', sortType: 'alpha', sticky: 'left', left: 0, width: 280 },
+  { key: 'type', label: 'Type', sortKey: 'type', sortType: 'alpha', width: 120 },
+  { key: 'linked', label: 'Linked Items', width: 140 },
+  { key: 'target', label: 'Target Value', width: 200 },
+  { key: 'duration', label: 'Duration', width: 120 },
+  { key: 'conditions', label: 'Chronic Conditions', sortKey: 'conditions', sortType: 'alpha', width: 250 },
+  { key: 'createdOn', label: 'Created On', sortKey: 'createdAt', sortType: 'date', width: 220 },
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 156 },
+];
+
+// The three count chips in the Linked Items cell, in the design's order.
+const LINKED_KINDS = [
+  { key: 'interventions', icon: 'solar:clipboard-list-linear', label: 'Interventions' },
+  { key: 'barriers', icon: 'solar:shield-warning-linear', label: 'Barriers' },
+  { key: 'tasks', icon: 'solar:checklist-minimalistic-linear', label: 'Tasks' },
 ];
 
 const SIMPLE_COLUMNS = [
@@ -218,7 +260,36 @@ export function CarePlanLibraryPanel() {
     return [...base].sort((a, b) => valueOf(a).localeCompare(valueOf(b)) * dir);
   }, [templates, searchValue, templateSort]);
 
-  const filteredGoals = useMemo(() => filterByTitleAndDescription(goals, searchValue), [goals, searchValue]);
+  const [goalSort, setGoalSort] = useState({ key: 'title', dir: 'asc' });
+  const [selectedGoalIds, setSelectedGoalIds] = useState([]);
+  const [goalPage, setGoalPage] = useState(1);
+  const [goalPerPage, setGoalPerPage] = useState(10);
+
+  const filteredGoals = useMemo(() => {
+    const list = filterByTitleAndDescription(goals, searchValue);
+    const { key, dir } = goalSort;
+    if (!key) return list;
+    const val = (g) => (key === 'conditions' ? (g.conditions || []).join(', ')
+      : key === 'createdAt' ? new Date(g.createdAt || 0).getTime()
+        : (g[key] || ''));
+    return [...list].sort((a, b) => {
+      const av = val(a); const bv = val(b);
+      const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv));
+      return dir === 'desc' ? -cmp : cmp;
+    });
+  }, [goals, searchValue, goalSort]);
+
+  const pagedGoals = useMemo(
+    () => filteredGoals.slice((goalPage - 1) * goalPerPage, goalPage * goalPerPage),
+    [filteredGoals, goalPage, goalPerPage],
+  );
+
+  const handleGoalSort = (key) => setGoalSort(prev => (
+    prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+  ));
+  const toggleGoal = (id) => setSelectedGoalIds(prev => (
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  ));
   const filteredBarriers = useMemo(() => filterByTitleAndDescription(barriers, searchValue), [barriers, searchValue]);
 
   const closeDrawer = () => setDraft(null);
@@ -260,8 +331,16 @@ export function CarePlanLibraryPanel() {
         showToast(`"${draft.title.trim()}" updated`);
       } else {
         const id = `${draft.kind}-${nextId++}`;
+        const stamp = new Date().toISOString();
         setList(prev => [...prev, {
-          id, title: draft.title.trim(), description: draft.description.trim(), updatedAt: new Date().toISOString(),
+          id, title: draft.title.trim(), description: draft.description.trim(),
+          // Goals carry the extra table columns; the drawer only edits
+          // title/description today, so the rest start empty rather than
+          // undefined (which would render as blank instead of "—"/0).
+          ...(draft.kind === 'goal'
+            ? { type: '', targetValue: '', duration: '', conditions: [], linked: { interventions: 0, barriers: 0, tasks: 0 }, createdAt: stamp }
+            : {}),
+          updatedAt: stamp,
         }]);
         showToast(`"${draft.title.trim()}" created`);
       }
@@ -293,6 +372,14 @@ export function CarePlanLibraryPanel() {
     showToast(`"${t.name}" duplicated`);
   };
 
+  const duplicateGoal = (g) => {
+    const id = `goal-${Date.now()}`;
+    setGoals(prev => [
+      { ...g, id, title: `${g.title} (Copy)`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      ...prev,
+    ]);
+  };
+
   const addGoalRow = () => setDraft(d => ({ ...d, goals: [...d.goals, { id: `g-${Date.now()}`, title: '', subtitle: '' }] }));
   const updateGoalRow = (id, patch) => setDraft(d => ({ ...d, goals: d.goals.map(g => (g.id === id ? { ...g, ...patch } : g)) }));
   const removeGoalRow = (id) => setDraft(d => ({ ...d, goals: d.goals.filter(g => g.id !== id) }));
@@ -306,7 +393,7 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
         <Checkbox aria-label={`Select ${t.name}`} />
       </td>
-      <td className={styles.tdName}>
+      <td className={`${styles.tdName} ${styles.tdNameOffset}`}>
         <button type="button" className={styles.nameLink} onClick={() => openEditTemplate(t)}>{t.name}</button>
       </td>
       <td className={styles.tdConditions}>
@@ -323,6 +410,58 @@ export function CarePlanLibraryPanel() {
           <ActionButton icon="solar:copy-linear" size="S" tooltip="Duplicate" onClick={() => duplicateTemplate(t)} />
           <div className={styles.vDivider} />
           <TemplateRowMenu onDelete={() => setDeleteTarget({ kind: 'template', id: t.id, name: t.name })} />
+        </div>
+      </td>
+    </tr>
+  );
+
+  const renderGoalRow = (g) => (
+    <tr key={g.id} className={styles.row}>
+      <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
+        <Checkbox
+          checked={selectedGoalIds.includes(g.id)}
+          onCheckedChange={() => toggleGoal(g.id)}
+          aria-label={`Select ${g.title}`}
+        />
+      </td>
+      <td className={`${styles.tdName} ${styles.tdNameOffset}`}>
+        <button type="button" className={styles.nameLink} onClick={() => openEditSimple('goal', g)}>{g.title}</button>
+      </td>
+      <td className={styles.tdType}>
+        {g.type ? <Badge tone="grey" size="S" label={g.type} /> : '—'}
+      </td>
+      <td className={styles.tdLinked} onClick={e => e.stopPropagation()}>
+        <div className={styles.linkedCell}>
+          {LINKED_KINDS.map((k, i) => (
+            <Fragment key={k.key}>
+              {i > 0 && <div className={styles.vDivider} />}
+              <ActionButton
+                icon={k.icon}
+                size="S"
+                count={String(g.linked?.[k.key] ?? 0)}
+                tooltip={`${g.linked?.[k.key] ?? 0} ${k.label}`}
+              />
+            </Fragment>
+          ))}
+        </div>
+      </td>
+      <td className={styles.tdMuted}>{g.targetValue || '—'}</td>
+      <td className={styles.tdMuted}>{g.duration || '—'}</td>
+      <td className={styles.tdConditions}>
+        <div className={styles.chipRow}>
+          {(g.conditions || []).length
+            ? g.conditions.map(c => <Badge key={c} tone="grey" size="S" label={c} />)
+            : '—'}
+        </div>
+      </td>
+      <td className={styles.tdMuted}>{formatDateTime(g.createdAt)}</td>
+      <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
+        <div className={styles.actionCell}>
+          <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditSimple('goal', g)} />
+          <div className={styles.vDivider} />
+          <ActionButton icon="solar:copy-linear" size="S" tooltip="Duplicate" onClick={() => duplicateGoal(g)} />
+          <div className={styles.vDivider} />
+          <TemplateRowMenu onDelete={() => setDeleteTarget({ kind: 'goal', id: g.id, name: g.title })} />
         </div>
       </td>
     </tr>
@@ -388,9 +527,22 @@ export function CarePlanLibraryPanel() {
         {activeTab === 'goals' && (
           <WorklistShell
             header={null}
-            columns={SIMPLE_COLUMNS}
-            rows={filteredGoals}
-            renderRow={renderSimpleRow('goal')}
+            columns={GOAL_COLUMNS}
+            rows={pagedGoals}
+            renderRow={renderGoalRow}
+            sortKey={goalSort.key}
+            sortDir={goalSort.dir}
+            onSort={handleGoalSort}
+            selectedIds={selectedGoalIds}
+            onSelectAll={() => setSelectedGoalIds(
+              selectedGoalIds.length === pagedGoals.length ? [] : pagedGoals.map(g => g.id),
+            )}
+            onClearSelection={() => setSelectedGoalIds([])}
+            page={goalPage}
+            perPage={goalPerPage}
+            totalItems={filteredGoals.length}
+            onPageChange={setGoalPage}
+            onPageSizeChange={(n) => { setGoalPerPage(n); setGoalPage(1); }}
             emptyState={
               <div className={styles.emptyState}>
                 <Icon name={meta.emptyIcon} size={32} color="var(--neutral-150)" />
@@ -401,7 +553,7 @@ export function CarePlanLibraryPanel() {
                 </p>
               </div>
             }
-            minTableWidth={900}
+            minTableWidth={1530}
           />
         )}
         {activeTab === 'barriers' && (

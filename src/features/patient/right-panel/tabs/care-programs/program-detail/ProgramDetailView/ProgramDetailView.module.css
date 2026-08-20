@@ -450,56 +450,20 @@
   white-space: nowrap;
 }
 .letterClearAll:hover { text-decoration: underline; }
-.lettersEmptyCell { padding: 24px 0; border-bottom: none; }
 .tabDivider {
   width: 0.5px;
   height: 16px;
   background: var(--neutral-150);
   flex-shrink: 0;
 }
-.contentTab {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
-  padding: 4px 6px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.contentTab:hover { background: rgba(22,24,29,0.05); }
-.contentTabActive {
-  color: var(--neutral-400);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-}
 
 /* ── Letters table ── */
-.tableWrap { flex: 1; overflow: auto; }
-.table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.table thead th {
-  padding: 10px 12px;
-  font-size: var(--font-base);
-  font-weight: 400;
-  color: var(--neutral-300);
-  text-align: left;
-  white-space: nowrap;
-  background: var(--neutral-0);
-  border-bottom: 0.5px solid var(--neutral-150);
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-.table tbody tr { border-bottom: 0.5px solid var(--neutral-100); }
-.table tbody tr:hover { background: var(--primary-25); }
-.table tbody td {
+/* Letters rows live in a WorklistShell <table> now, so these rules key off the
+   row/cell classes directly instead of a local `.table` ancestor. Padding
+   matches the shell's own <th> so headers sit above their content. */
+.letterRow { border-bottom: 0.5px solid var(--neutral-100); }
+.letterRow:hover { background: var(--primary-25); }
+.letterCell {
   padding: 10px 12px;
   font-size: var(--font-base);
   color: var(--neutral-400);
@@ -507,14 +471,14 @@
   vertical-align: middle;
 }
 /* Select column — narrow; the shared Checkbox aligns to the row middle. */
-.checkCell { width: 36px; }
+.checkCell { width: 36px; padding-left: 10px; padding-right: 10px; vertical-align: middle; }
 .checkCell > * { vertical-align: middle; }
 /* Selected row (bulk-action mode) — Figma 439:612596: primary-100 fill,
    primary-200 bottom border, 2px primary-300 left accent, primary-300 name. */
-.table tbody tr.rowSelected,
-.table tbody tr.rowSelected:hover { background: var(--primary-100); border-bottom-color: var(--primary-200); }
-.table tbody tr.rowSelected .checkCell { box-shadow: inset 2px 0 0 var(--primary-300); }
-.table tbody tr.rowSelected .fileNameCell { color: var(--primary-300); }
+.letterRow.rowSelected,
+.letterRow.rowSelected:hover { background: var(--primary-100); border-bottom-color: var(--primary-200); }
+.letterRow.rowSelected .checkCell { box-shadow: inset 2px 0 0 var(--primary-300); }
+.letterRow.rowSelected .fileNameCell { color: var(--primary-300); }
 /* Per-row actions (send + more) — revealed on row hover when no bulk
    selection is active. Keeps its column width so the layout doesn't shift. */
 .rowActionsCell { width: 72px; text-align: right; white-space: nowrap; }
