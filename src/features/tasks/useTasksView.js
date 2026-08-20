@@ -84,6 +84,8 @@ export function useTasksView() {
   const setTasksViewMode = useAppStore(s => s.setTasksViewMode);
   const pendingAddTask = useAppStore(s => s.pendingAddTask);
   const clearPendingAddTask = useAppStore(s => s.clearPendingAddTask);
+  const pendingOpenTaskId = useAppStore(s => s.pendingOpenTaskId);
+  const clearPendingOpenTaskId = useAppStore(s => s.clearPendingOpenTaskId);
   const fetchTaskProfiles = useAppStore(s => s.fetchTaskProfiles);
   const fetchTaskLabels = useAppStore(s => s.fetchTaskLabels);
   const fetchTaskPools = useAppStore(s => s.fetchTaskPools);
@@ -125,22 +127,54 @@ export function useTasksView() {
     setShowAddDrawer(true);
     clearPendingAddTask();
   }, [pendingAddTask, clearPendingAddTask]);
+
+  // Clicking a task notification in the bell sets `pendingOpenTaskId` and
+  // navigates here. Nothing consumed it before, so the click landed on the
+  // Tasks page but never opened the task it was about.
+  //
+  // Deliberately does NOT clear the signal until the task is found: arriving
+  // from another page means this runs before `fetchTasks` has resolved, and
+  // clearing on a miss would drop the request on the floor. Leaving it set
+  // makes the effect re-run when `tasks` lands.
+  useEffect(() => {
+    if (pendingOpenTaskId == null) return;
+    const match = tasks.find(t => String(t.id) === String(pendingOpenTaskId));
+    if (!match) return;
+    setSelectedTask(match);
+    clearPendingOpenTaskId();
+  }, [pendingOpenTaskId, tasks, clearPendingOpenTaskId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const meId = currentUserProfile?.id || null;
   const meName = currentUserProfile?.name || null;
 
-  const matchAssignee = useCallback((t) => {
-    if (!meId && !meName) return false;
-    if (t.assigned_to_id) return t.assigned_to_id === meId;
-    return !!meName && t.assigned_to === meName;
+  // Match on id OR display name — never id-else-name. `profiles` holds one row
+  // per email a person has signed up with, so the same human appears with
+  // several ids; a task can carry any of those ids and still be theirs. Legacy
+  // rows carry only a name (no id at all). Short-circuiting on `assigned_to_id`
+  // hid both cases from "Assigned to Me".
+  const matchAssignee = useCallback(
+    (t) => (!!meId && t.assigned_to_id === meId) || (!!meName && t.assigned_to === meName),
+    [meId, meName],
+  );
+
+  // Mentions now carry a picked profile id (`mention_ids`, written by
+  // CommentComposer) as well as the display name. Match on either: the id is
+  // exact, and the name still covers rows written before ids were captured.
+  // The name compare is case-insensitive because the legacy regex path stored
+  // whatever the user typed — real rows contain both "fold demo" and
+  // "Fold Demo", and the old exact compare silently missed the lowercase one.
+  const matchMentioned = useCallback((t) => {
+    if (meId && Array.isArray(t.mention_ids) && t.mention_ids.includes(meId)) return true;
+    if (!meName || !Array.isArray(t.mentions)) return false;
+    const meLower = meName.toLowerCase();
+    return t.mentions.some(m => (m || '').toLowerCase() === meLower);
   }, [meId, meName]);
 
-  const matchCreator = useCallback((t) => {
-    if (!meId && !meName) return false;
-    if (t.created_by_id) return t.created_by_id === meId;
-    return !!meName && t.created_by === meName;
-  }, [meId, meName]);
+  const matchCreator = useCallback(
+    (t) => (!!meId && t.created_by_id === meId) || (!!meName && t.created_by === meName),
+    [meId, meName],
+  );
 
   const filteredTasks = useMemo(() => {
     let result = tasks;
@@ -148,7 +182,7 @@ export function useTasksView() {
     if (tasksTab === 'assigned') result = result.filter(matchAssignee);
     else if (tasksTab === 'pool') result = result.filter(t => t.pool && !t.assigned_to && !t.assigned_to_id);
     else if (tasksTab === 'created') result = result.filter(matchCreator);
-    else if (tasksTab === 'mentions') result = meName ? result.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)) : [];
+    else if (tasksTab === 'mentions') result = result.filter(matchMentioned);
 
     Object.entries(tasksFilters).forEach(([key, value]) => {
       if (!value) return;
@@ -165,15 +199,15 @@ export function useTasksView() {
     });
 
     return result;
-  }, [tasks, tasksTab, tasksFilters, meName, taskProfiles, matchAssignee, matchCreator]);
+  }, [tasks, tasksTab, tasksFilters, taskProfiles, matchAssignee, matchCreator, matchMentioned]);
 
   const tabCounts = useMemo(() => ({
     all: tasks.length,
     assigned: tasks.filter(matchAssignee).length,
     pool: tasks.filter(t => t.pool && !t.assigned_to && !t.assigned_to_id).length,
     created: tasks.filter(matchCreator).length,
-    mentions: meName ? tasks.filter(t => Array.isArray(t.mentions) && t.mentions.includes(meName)).length : 0,
-  }), [tasks, meName, matchAssignee, matchCreator]);
+    mentions: tasks.filter(matchMentioned).length,
+  }), [tasks, matchAssignee, matchCreator, matchMentioned]);
 
   const handleToggle = useCallback((task) => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';

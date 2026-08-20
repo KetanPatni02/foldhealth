@@ -31,13 +31,13 @@
 .actionCell {
   /* Horizontal padding matches WorklistShell's own <th> (0 12px) so header
      labels sit directly above their cell content. */
-  padding: 10px 12px;
+  padding: var(--space-2) var(--space-3);
   vertical-align: middle;
   font-size: var(--font-base);
 }
 
 /* The shell's checkbox <th> uses 10px, not 12px. */
-.checkCell { width: 32px; padding-left: 10px; padding-right: 10px; }
+.checkCell { width: 32px; padding-left: var(--space-2); padding-right: var(--space-2); }
 .titleCell { color: var(--neutral-500); min-width: 0; }
 .statusCell { color: var(--neutral-300); white-space: nowrap; }
 
@@ -47,7 +47,7 @@
 .assigneeInner {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .assigneeName {
   background: none;

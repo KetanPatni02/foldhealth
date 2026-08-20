@@ -13,17 +13,17 @@ const DEPARTMENTS = [
 ];
 
 const s = {
-  card: { border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 14, marginBottom: 12, background: '#fff' },
+  card: { border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 14, marginBottom: 12, background: 'var(--neutral-0)' },
   title: { fontSize: 'var(--font-md)', fontWeight: 500, color: 'var(--neutral-400)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 },
   deptRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '0.5px solid var(--neutral-100)', cursor: 'pointer' },
   deptDot: (avail) => ({ width: 8, height: 8, borderRadius: '50%', background: avail ? 'var(--status-success)' : 'var(--status-error)', flexShrink: 0 }),
   deptLabel: { flex: 1, fontSize: 'var(--font-md)', color: 'var(--neutral-400)' },
   deptPhone: { fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' },
   deptUnavail: { fontSize: 'var(--font-xs)', color: 'var(--status-error)' },
-  transferringCard: { border: '1px solid #bbf7d0', borderRadius: 8, padding: 16, background: '#f0fdf4', marginBottom: 12, textAlign: 'center' },
+  transferringCard: { border: '1px solid color-mix(in srgb, var(--status-success) 25%, transparent)', borderRadius: 8, padding: 16, background: 'var(--status-success-light)', marginBottom: 12, textAlign: 'center' },
   failureCard: { border: '1px solid rgba(215,40,37,0.3)', borderRadius: 8, padding: 16, background: 'var(--status-error-light)', marginBottom: 12 },
   callbackCard: { border: '0.5px solid rgba(20,94,204,0.3)', borderRadius: 8, padding: 14, background: 'var(--status-info-light)', marginBottom: 12 },
-  feedbackCard: { border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 14, background: '#fafbff', marginBottom: 12 },
+  feedbackCard: { border: '0.5px solid var(--neutral-150)', borderRadius: 8, padding: 14, background: 'var(--neutral-25)', marginBottom: 12 },
 };
 
 export function DepartmentSelector({ onSelect, onCancel }) {

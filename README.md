@@ -37,6 +37,80 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Real-time task notifications (assignment + @mention)** — the bell never
+  worked, for three independent reasons. The two producers lived in
+  `updateTask`/`createTask` and read `currentUserProfile` — the *actor* — then
+  asked "is the new assignee me?", so assigning a task to someone else
+  notified nobody and the only case that ever fired was assigning to yourself.
+  `notifications` was also an in-memory array, so even a correct notification
+  died on reload and could never reach another device; and `pendingOpenTaskId`
+  was written but never consumed, so clicking a notification navigated to
+  Tasks without opening the task. Notifications are now rows in
+  `public.notifications`, emitted by a `tasks_emit_notifications` trigger
+  addressed to the assignee or the mentioned profile (the producer belongs
+  below the client for the same reason task attribution does), delivered over
+  Supabase Realtime on a per-user channel that RLS self-filters. Mentions
+  resolve by case-insensitive name because that is what `tasks.mentions`
+  stores. Read/dismiss persist; the unread badge is DB-truth. Three recovery
+  paths keep it honest — refetch on (re)subscribe, on tab refocus/`online`,
+  and on popover open — because a `postgres_changes` binding that dies (or is
+  created before the table is published) delivers silence forever and none of
+  the socket-level triggers fire in that state.
+
+- **Typography: root font size now scales with the viewport** — the root
+  font-size was a hard-coded `16px`, so a 13" laptop and a 27" 4K panel got
+  identical CSS px and wildly different apparent text size. It's now
+  `clamp(1rem, 0.866rem + 0.134vw, 1.1875rem)`: flat 16px through every laptop
+  width (≤1600px — no regression), then 16.4px at 1920, 17.3px at 2560, capped
+  at 19px from 3840 up. Every `--font-*` and `--space-*` token is rem-based, so
+  the whole type ramp and token spacing move together. The 5 `data-font-scale`
+  accessibility levels became *multipliers* (0.875 → 1.25) instead of absolute
+  px, so they compose with the fluid base rather than overriding it — at laptop
+  widths they still resolve to exactly 14/15/16/18/20px. Deliberately keyed to
+  viewport width, not `devicePixelRatio`: a CSS px is already
+  density-independent, so DPR says nothing about apparent size. Each clamp arm
+  keeps a `rem` term so the browser's own font-size preference still wins
+  (WCAG 1.4.4).
+
+- **Tasks: "Assigned to Me" dropped tasks that were yours** — `matchAssignee`
+  short-circuited on `assigned_to_id`, so it never fell back to a name match.
+  `profiles` holds one row per email a person signed up with (three are named
+  "Alok Kumar"), so a task carrying a different profile id for the same human
+  was silently excluded. Now matches id **or** display name; same for
+  `matchCreator`. Also made pool and assignee mutually exclusive: pooling a task
+  clears its assignee and assigning an owner clears the pool (what `claimTask`
+  already did), so a pooled-and-assigned task can no longer end up invisible in
+  both the pool tab and the Claim button.
+
+- **Calendar: slot clicks snap to 30-min slots + faster load** — clicking a
+  timeslot now books the slot the hover preview shows (schedule-x reports the
+  raw pixel time, e.g. 3:13; we snap it down to :00/:30 before it reaches the
+  Schedule drawer and the dashed selection). Calendar libs now load in
+  parallel instead of a sequential import waterfall, the grid setup (hover
+  ghost, past-day overlays, scroll-to-now) polls for readiness instead of
+  waiting a fixed 800ms, and `isResponsive: false` stops schedule-x from
+  silently hijacking week view into day view when it mounts mid-layout.
+  Location/Status filter chips actually filter now, and month view finally
+  dims past days (the old selector matched nothing in schedule-x v4).
+
+- **Calendar: vanishing-appointment fix + schedule-x v4 cleanup** — opening and
+  closing an appointment drawer used to silently delete the last appointment
+  from the grid: `clearSelection()` called the events plugin's `remove()` for a
+  selection event that didn't exist, and schedule-x's `remove()` does
+  `splice(findIndex(...), 1)`, so a missing id splices at `-1` and drops the
+  final event. It's guarded with an existence check now. Cancelled styling and
+  the dashed new-slot block are declarative (`_options.additionalClasses`)
+  instead of a `querySelector` chain fired at 100/300/600ms and again at
+  300/800/1500ms, so they paint correctly on the first frame — the dashed
+  selection style had in fact never applied, because `.sx__event--selection`
+  isn't a class v4 emits. Navigation repaints run off schedule-x's
+  `onRangeUpdate` rather than a `setTimeout(50)` guess, the now-line ticks each
+  minute instead of freezing at page load, the Location/Status filter options
+  come from the same constants the booking form writes (the calendar's own
+  copies had drifted — `Fold Health, NY` vs `Fold Health, New York`, so any
+  location selection matched zero rows), and the four empty `catch {}` blocks
+  and the dead `buildCalendars` helper are gone.
+
 - **Dynamic group detail screen + qualified members + activity log** —
   clicking a Dynamic group row opens its read-only detail screen (Figma
   1-13951): left rail with the group summary, live qualified-member count and

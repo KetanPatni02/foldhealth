@@ -98,7 +98,7 @@ export function AddTaskDrawerBody({
                 const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
                 return (
                   <>
-                    <Avatar variant="assignee" initials={initials} className={styles.avatarXs} />
+                    <Avatar variant="assignee" initials={initials} size="S" />
                     <span>{label}</span>
                   </>
                 );
@@ -106,7 +106,7 @@ export function AddTaskDrawerBody({
             >
               {assignedTo ? (
                 <>
-                  <Avatar variant="assignee" initials={(assignedTo || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} className={styles.avatarXs} />
+                  <Avatar variant="assignee" initials={(assignedTo || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} size="S" />
                   <span>{currentUserProfile?.name === assignedTo ? `${assignedTo} (You)` : assignedTo}</span>
                 </>
               ) : (
@@ -144,7 +144,7 @@ export function AddTaskDrawerBody({
               const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
               return (
                 <>
-                  <Avatar variant="patient" initials={initials} className={styles.avatarXs} />
+                  <Avatar variant="patient" initials={initials} size="S" />
                   <span>{val}</span>
                 </>
               );
@@ -152,7 +152,7 @@ export function AddTaskDrawerBody({
           >
             {member ? (
               <>
-                <Avatar variant="patient" initials={(member || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} className={styles.avatarXs} />
+                <Avatar variant="patient" initials={(member || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} size="S" />
                 <span>{member}</span>
               </>
             ) : (

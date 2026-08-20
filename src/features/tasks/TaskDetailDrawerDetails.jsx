@@ -28,14 +28,16 @@ export function TaskDetailDrawerDetails({
               options={assigneeNames}
               onSelect={v => {
                 const picked = (taskProfiles || []).find(p => p.name === v);
-                updateTask(task.id, { assigned_to: v, assigned_to_id: picked?.id || null });
+                // Same claim semantics as the row cell — an owner and a pool
+                // are mutually exclusive.
+                updateTask(task.id, { assigned_to: v, assigned_to_id: picked?.id || null, pool: null });
                 showToast(`Assigned to ${v}`);
               }}
               renderOption={opt => (
-                <><Avatar variant="assignee" initials={getInitials(opt)} className={styles.avatarXs} /> {opt}</>
+                <><Avatar variant="assignee" initials={getInitials(opt)} size="S" /> {opt}</>
               )}
             >
-              <Avatar variant="assignee" initials={assigneeInitials} className={styles.avatarXs} />
+              <Avatar variant="assignee" initials={assigneeInitials} size="S" />
               <span>{task.assigned_to || '—'}</span>
             </DetailDropdown>
           </div>
@@ -46,7 +48,14 @@ export function TaskDetailDrawerDetails({
               options={['— None —', ...taskPools.map(p => p.name)]}
               onSelect={v => {
                 const next = v === '— None —' ? null : v;
-                updateTask(task.id, { pool: next });
+                // A pooled task is unclaimed by definition — both the "My Task
+                // Pool" tab and the Claim button require no assignee. Pooling
+                // without dropping the assignee left the task invisible in
+                // both places. Mirrors the Add Task drawer, which already
+                // nulls the assignee whenever a pool is picked.
+                updateTask(task.id, next
+                  ? { pool: next, assigned_to: null, assigned_to_id: null }
+                  : { pool: null });
                 showToast(next ? `Pool set to ${next}` : 'Removed from pool');
               }}
             />
@@ -76,10 +85,10 @@ export function TaskDetailDrawerDetails({
               options={memberOptionsForDrawer}
               onSelect={v => { updateTask(task.id, { member: v }); showToast(`Member set to ${v}`); }}
               renderOption={opt => (
-                <><Avatar variant="patient" initials={getInitials(opt)} className={styles.avatarXs} /> {opt}</>
+                <><Avatar variant="patient" initials={getInitials(opt)} size="S" /> {opt}</>
               )}
             >
-              <Avatar variant="patient" initials={memberInitials} className={styles.avatarXs} />
+              <Avatar variant="patient" initials={memberInitials} size="S" />
               <span>{task.member}</span>
             </DetailDropdown>
           </div>

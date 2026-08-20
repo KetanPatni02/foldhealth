@@ -17,9 +17,12 @@
     ],
     "declaration-property-unit-disallowed-list": [{
       "font-size": ["px", "em"],
-      "line-height": ["px"]
+      "line-height": ["px"],
+      "/^padding(-.+)?$/": ["px", "em"],
+      "/^margin(-.+)?$/": ["px", "em"],
+      "/^(row-|column-)?gap$/": ["px", "em"]
     }, {
-      "message": "Use a rem-based design token (var(--font-…)) for font-size, not raw px/em. For line-height, use a unitless ratio (--leading-…). See src/tokens/tokens.css."
+      "message": "Use a design token: font-size → var(--font-…), line-height → --leading-…, and spacing (padding / margin / gap) → var(--space-…). Raw px/em fragments the rhythm. See src/tokens/tokens.css."
     }]
   }
 }

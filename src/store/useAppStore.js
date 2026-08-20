@@ -53,6 +53,33 @@ function reportPersistFailure(op, error) {
   }
 }
 
+// public.notifications row → the shape the bell popover already renders.
+// `persisted: true` is what separates a DB-backed notification from a local
+// ephemeral one, which decides whether read/dismiss also writes to Supabase.
+function mapNotificationRow(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    body: row.body || '',
+    action: row.action || null,
+    taskId: row.task_id ?? null,
+    read: !!row.read,
+    ts: row.created_at ? Date.parse(row.created_at) : Date.now(),
+    actorName: row.actor_name || null,
+    persisted: true,
+  };
+}
+
+// Merge notification lists newest-first, keeping one entry per id. Incoming
+// rows win over what's already held, so a refetch refreshes read state
+// instead of resurrecting a stale copy.
+function mergeNotifications(incoming, existing) {
+  const byId = new Map();
+  for (const n of [...existing, ...incoming]) byId.set(n.id, n);
+  return [...byId.values()].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
+}
+
 // Persist a per-(ICD × DOS) coder action to hcc_gap_dos_actions. The
 // row key is deterministic (`${member}|${code}|${dos}`) so the same
 // helper handles both first-write inserts and subsequent updates via
@@ -1049,6 +1076,17 @@ export const useAppStore = create((set, get) => ({
 
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"
   pendingAddTask: null,
+
+  // Pending "open this task's drawer" request — set by NotificationsPopover
+  // (or a copied task link) and consumed by TasksView on mount.
+  pendingOpenTaskId: null,
+  openTaskFromNotification: (taskId) => {
+    set({ activePage: 'tasks', pendingOpenTaskId: taskId });
+    try {
+      if (typeof window !== 'undefined') window.location.hash = `#/tasks?taskId=${taskId}`;
+    } catch { /* */ }
+  },
+  clearPendingOpenTaskId: () => set({ pendingOpenTaskId: null }),
 
   // Top-level navigation (sidebar) — restored from sessionStorage
   activePage: _savedPage === 'builder' ? 'settings' : _savedPage,
@@ -2370,22 +2408,135 @@ export const useAppStore = create((set, get) => ({
   // Newest-first array of { id, type, title, body, ts, read, action }.
   // The `action` is a string the popover maps to a side-effect (e.g.
   // 'openHccReview' → expandHccUpload + nav).
+  //
+  // Two kinds live in this one list:
+  //   • persisted (`persisted: true`) — rows from public.notifications,
+  //     addressed to this user by the `tasks_emit_notifications` trigger.
+  //     These survive reloads and arrive on other devices in real time.
+  //   • ephemeral — local-only announcements about something that just
+  //     happened in THIS tab (HCC extraction finished, a chat message
+  //     landed). There is no recipient to address them to, so they stay
+  //     in memory and die with the tab. That is deliberate, not a gap.
   notifications: [],
+  notificationsLoading: false,
+  notificationsDidFetch: false,
+  _notificationsChannel: null,
+
+  /** Ephemeral, this-tab-only. Persisted rows arrive via realtime instead. */
   addNotification: (n) => set(s => ({
     notifications: [
       { id: n.id || `n-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, ts: Date.now(), read: false, ...n },
       ...(s.notifications || []),
     ].slice(0, 50),  // keep the last 50
   })),
-  markNotificationRead: (id) => set(s => ({
-    notifications: (s.notifications || []).map(n => n.id === id ? { ...n, read: true } : n),
-  })),
-  markAllNotificationsRead: () => set(s => ({
-    notifications: (s.notifications || []).map(n => ({ ...n, read: true })),
-  })),
-  dismissNotification: (id) => set(s => ({
-    notifications: (s.notifications || []).filter(n => n.id !== id),
-  })),
+
+  /**
+   * Load this user's persisted notifications, replacing the persisted slice
+   * while leaving ephemeral entries alone. Safe to call repeatedly — it is
+   * the recovery path for anything realtime missed while the socket was
+   * down, so it runs on subscribe, on reconnect, and on tab refocus.
+   */
+  fetchNotifications: async () => {
+    const me = get().currentUserProfile;
+    if (!me?.id) return;
+    set({ notificationsLoading: true });
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('id, type, title, body, action, task_id, read, created_at, actor_name')
+      .eq('recipient_id', me.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) {
+      // Table missing (migration not run yet) or blocked — keep whatever is
+      // already on screen rather than blanking the panel.
+      console.warn('notifications fetch failed (run migration?):', error.message);
+      set({ notificationsLoading: false, notificationsDidFetch: true });
+      return;
+    }
+    const rows = (data || []).map(mapNotificationRow);
+    set(s => ({
+      notifications: mergeNotifications(rows, (s.notifications || []).filter(n => !n.persisted)),
+      notificationsLoading: false,
+      notificationsDidFetch: true,
+    }));
+  },
+
+  /**
+   * Subscribe to this user's notification inserts. RLS already scopes the
+   * table to the recipient, and the `filter` narrows the wire traffic too.
+   *
+   * Robustness: the SUBSCRIBED callback refetches. A postgres_changes channel
+   * delivers nothing for the window it was disconnected, so reconnecting
+   * without a refetch leaves a permanent hole in the list. Re-running fetch
+   * on every (re)subscribe closes it.
+   */
+  subscribeNotifications: () => {
+    const me = get().currentUserProfile;
+    if (!me?.id) return () => {};
+    get()._notificationsChannel?.unsubscribe();
+    const ch = supabase
+      .channel(`notifications:${me.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'notifications',
+        filter: `recipient_id=eq.${me.id}`,
+      }, (payload) => {
+        if (!payload?.new) return;
+        const row = mapNotificationRow(payload.new);
+        set(s => ({
+          // Realtime can redeliver, and a refetch may have already inserted
+          // this id — dedupe rather than showing the same thing twice.
+          notifications: mergeNotifications([row], (s.notifications || []).filter(n => n.id !== row.id)),
+        }));
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') get().fetchNotifications();
+      });
+    set({ _notificationsChannel: ch });
+    return () => { ch.unsubscribe(); set({ _notificationsChannel: null }); };
+  },
+
+  markNotificationRead: async (id) => {
+    const target = (get().notifications || []).find(n => n.id === id);
+    if (target?.read) return;
+    set(s => ({
+      notifications: (s.notifications || []).map(n => n.id === id ? { ...n, read: true } : n),
+    }));
+    if (!target?.persisted) return;
+    const { error } = await supabase.from('notifications').update({ read: true }).eq('id', id);
+    if (error) {
+      console.warn('mark notification read failed:', error.message);
+      set(s => ({
+        notifications: (s.notifications || []).map(n => n.id === id ? { ...n, read: false } : n),
+      }));
+    }
+  },
+
+  markAllNotificationsRead: async () => {
+    const prev = get().notifications || [];
+    const unreadPersisted = prev.filter(n => !n.read && n.persisted).map(n => n.id);
+    set({ notifications: prev.map(n => ({ ...n, read: true })) });
+    if (unreadPersisted.length === 0) return;
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .in('id', unreadPersisted);
+    if (error) {
+      console.warn('mark all notifications read failed:', error.message);
+      set({ notifications: prev });
+    }
+  },
+
+  dismissNotification: async (id) => {
+    const prev = get().notifications || [];
+    const target = prev.find(n => n.id === id);
+    set({ notifications: prev.filter(n => n.id !== id) });
+    if (!target?.persisted) return;
+    const { error } = await supabase.from('notifications').delete().eq('id', id);
+    if (error) {
+      console.warn('dismiss notification failed:', error.message);
+      set({ notifications: prev });
+    }
+  },
   callTimerRef: null,
   detailPatient: null,
   detailPatientCalls: [],
@@ -8690,6 +8841,30 @@ export const useAppStore = create((set, get) => ({
     set({ appointmentsLoading: false });
   },
 
+  // Signal-based drawer opener (mirrors pendingAddTask / pendingOpenTaskId
+  // pattern). Set by NotificationsPopover on an "openAppointment" action;
+  // consumed and cleared by useCalendarView.
+  pendingOpenAppointmentId: null,
+  openAppointmentFromNotification: (appointmentId) => {
+    set({ activePage: 'calendar', pendingOpenAppointmentId: appointmentId });
+    try {
+      if (typeof window !== 'undefined') window.location.hash = '#/calendar';
+    } catch { /* */ }
+  },
+  clearPendingOpenAppointmentId: () => set({ pendingOpenAppointmentId: null }),
+
+  // Local helper — returns true when the appointment's primary_user or any
+  // secondary_users entry matches the signed-in user's display name. No
+  // uuid-based owner is stored on the row (see calendar survey notes), so
+  // name-match is the only join we can do.
+  _appointmentInvolvesMe: (appt) => {
+    const me = get().currentUserProfile;
+    if (!me?.name || !appt) return false;
+    if (appt.primary_user === me.name) return true;
+    if (Array.isArray(appt.secondary_users) && appt.secondary_users.includes(me.name)) return true;
+    return false;
+  },
+
   createAppointment: async (appt) => {
     const { data, error } = await supabase
       .from('appointments')
@@ -8699,16 +8874,48 @@ export const useAppStore = create((set, get) => ({
     if (error) { console.error('Create appointment error:', error); return null; }
     // Refresh list
     get().fetchAppointments();
+    // Notify me if I'm listed on the appointment — but not when I created
+    // the invite myself (the store surfaces that via the drawer instead).
+    if (data && get()._appointmentInvolvesMe(data)) {
+      const me = get().currentUserProfile;
+      const scheduler = data.created_by_name || data.created_by;
+      if (!scheduler || scheduler !== me?.name) {
+        get().addNotification?.({
+          type: 'appointment.assigned',
+          title: 'You were added to an appointment',
+          body: `${data.appointment_type_name || 'Appointment'}${data.patient_name ? ` · ${data.patient_name}` : ''}`,
+          action: 'openAppointment',
+          appointmentId: data.id,
+        });
+      }
+    }
     return data;
   },
 
   updateAppointment: async (id, updates) => {
+    const prev = get().appointments.find(a => a.id === id) || null;
     const { error } = await supabase
       .from('appointments')
       .update(updates)
       .eq('id', id);
     if (error) { console.error('Update appointment error:', error); return false; }
     get().fetchAppointments();
+    // Notify me if this update newly puts me on the appointment (name
+    // becomes primary_user, or gets added to secondary_users).
+    if (prev) {
+      const wasMine = get()._appointmentInvolvesMe(prev);
+      const nextAppt = { ...prev, ...updates };
+      const nowMine = get()._appointmentInvolvesMe(nextAppt);
+      if (nowMine && !wasMine) {
+        get().addNotification?.({
+          type: 'appointment.assigned',
+          title: 'You were added to an appointment',
+          body: `${nextAppt.appointment_type_name || 'Appointment'}${nextAppt.patient_name ? ` · ${nextAppt.patient_name}` : ''}`,
+          action: 'openAppointment',
+          appointmentId: id,
+        });
+      }
+    }
     return true;
   },
 
@@ -10255,6 +10462,10 @@ export const useAppStore = create((set, get) => ({
         createdAt: opts.auditCreatedAt || normalized.created_at,
       });
     }
+    // Assignment notifications are emitted by the `tasks_emit_notifications`
+    // trigger (supabase/notifications_migration.sql), addressed to the
+    // assignee. They are deliberately NOT raised here: this code runs in the
+    // assigner's browser, so it could only ever notify the assigner.
     return final;
   },
 
@@ -10393,11 +10604,28 @@ export const useAppStore = create((set, get) => ({
 
     set(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, ...final } : t) }));
 
-    // Try DB update; gracefully retry without unknown columns
+    // Try DB update; gracefully retry without unknown columns.
+    //
+    // The retry drops ONLY the column PostgREST actually named, which it does
+    // in the error ("Could not find the 'mention_ids' column of 'tasks' in the
+    // schema cache"). The previous retry stripped a fixed list of
+    // maybe-missing columns, so introducing one new column silently dropped
+    // every other name on that list too — adding `mention_ids` to it meant an
+    // @mention write lost its `mentions` names as collateral damage on any DB
+    // that hadn't run the migration yet, with no error surfaced. Falls back to
+    // the blunt list when the message names nothing parseable.
     let { error } = await supabase.from('tasks').update({ ...final, updated_at: new Date().toISOString() }).eq('id', id);
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = final;
-      ({ error } = await supabase.from('tasks').update({ ...legacy, updated_at: new Date().toISOString() }).eq('id', id));
+      const named = /'([a-z0-9_]+)' column/i.exec(error.message || '')?.[1];
+      let retry;
+      if (named && named in final) {
+        retry = { ...final };
+        delete retry[named];
+      } else {
+        const { parent_task_id, pool, mentions, mention_ids, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = final;
+        retry = legacy;
+      }
+      ({ error } = await supabase.from('tasks').update({ ...retry, updated_at: new Date().toISOString() }).eq('id', id));
     }
     if (error) {
       console.warn('Update task error (optimistic update kept):', error.message);
@@ -10445,6 +10673,19 @@ export const useAppStore = create((set, get) => ({
           to: final.due_date,
         });
       }
+
+      // Assignment and @mention notifications are emitted by the
+      // `tasks_emit_notifications` trigger (see
+      // supabase/notifications_migration.sql), addressed to the assignee or
+      // the mentioned profile.
+      //
+      // They used to be raised here, and could not work: this runs in the
+      // ACTOR's browser against `currentUserProfile`, so "was the new
+      // assignee me?" is false in every case that matters. Assigning a task
+      // to someone else notified nobody; the only thing that ever fired was
+      // assigning to yourself. Emitting from the database instead means the
+      // row is addressed to whoever it is actually about, survives a reload,
+      // and reaches their other devices over realtime.
     }
 
     // Report DB success to the caller so it can differentiate a mirrored

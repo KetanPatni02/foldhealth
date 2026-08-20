@@ -83,7 +83,7 @@ export function KanbanCardContent({ task, onToggle }) {
         {/* Row 5: Member (patient) + Assigned to (staff) */}
         <div className={styles.cardPeople}>
           <div className={styles.cardPerson}>
-            <Avatar variant="patient" initials={memberInitials} className={styles.avatarXs} />
+            <Avatar variant="patient" initials={memberInitials} size="S" />
             <span
               className={`${styles.personName} ${styles.memberLink}`}
               onClick={(e) => {
@@ -100,7 +100,7 @@ export function KanbanCardContent({ task, onToggle }) {
           </div>
           {task.assigned_to && (
             <div className={styles.cardPerson}>
-              <Avatar variant="assignee" initials={assigneeInitials} className={styles.avatarXs} />
+              <Avatar variant="assignee" initials={assigneeInitials} size="S" />
               <span className={styles.personName}>{task.assigned_to}</span>
             </div>
           )}

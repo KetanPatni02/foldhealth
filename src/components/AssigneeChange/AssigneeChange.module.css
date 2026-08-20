@@ -32,7 +32,13 @@
 }
 
 /* Opt-in: let the pill fill its parent width instead of the fixed 140px.
-   Used by table rows where the containing cell owns the column width. */
+   Used by table rows where the containing cell owns the column width.
+   Bare `.fillContainer` rule ensures the class name is exported by the
+   CSS module — compound selectors alone don't guarantee that. */
+.fillContainer {
+  width: 100%;
+  max-width: 100%;
+}
 .fillContainer.assigned {
   width: 100%;
   max-width: 100%;

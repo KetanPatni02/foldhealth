@@ -8,8 +8,8 @@
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
+  gap: var(--space-4);
+  padding: var(--space-4);
   /* Drives the .formGrid breakpoint below — width tracks whatever's actually
      available, whether that's because the left gaps panel is open or the
      drawer itself resized, not one specific toggle. */
@@ -46,17 +46,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .medHeaderLeft {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .medHeaderRight {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
 }
 .medHeaderTitle {
   font-size: var(--font-base);
@@ -68,12 +68,12 @@
 .discharge {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .dischargeLink {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   background: none;
   border: none;
   padding: 0;
@@ -89,7 +89,7 @@
   justify-content: center;
   min-width: 18px;
   height: 18px;
-  padding: 0 5px;
+  padding: 0 var(--space-1);
   border-radius: 4px;
   background: var(--secondary-300);
   color: var(--neutral-0);
@@ -146,8 +146,8 @@
 .extractedRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 0.5px solid var(--neutral-150);
 }
 /* Row exit — used when a discharge suggestion is dismissed and when a saved
@@ -200,8 +200,8 @@
    matching the manual-add form card (white bg, purple-200 border) rather
    than blending into the row stack around it. */
 .extractedEditRow {
-  margin: 8px;
-  padding: 12px;
+  margin: var(--space-2);
+  padding: var(--space-3);
   background: var(--neutral-0);
   border: 1px solid var(--primary-200);
   border-radius: 8px;
@@ -211,7 +211,7 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .extractedName {
   font-size: var(--font-base);
@@ -230,7 +230,7 @@
 .viewNoteLink {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-1);
   background: none;
   border: none;
   padding: 0;
@@ -249,7 +249,7 @@
 .noteLine {
   font-size: var(--font-base);
   color: var(--neutral-300);
-  margin-top: 2px;
+  margin-top: var(--space-1);
 }
 .noteLabel {
   color: var(--neutral-400);
@@ -258,7 +258,7 @@
 .extractedActions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-3);
   flex-shrink: 0;
 }
 .extractedDivider {
@@ -282,7 +282,7 @@
   justify-content: center;
   background: none;
   border: none;
-  padding: 4px;
+  padding: var(--space-1);
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.12s;
@@ -298,7 +298,7 @@
 .empty {
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  padding: var(--space-3);
   border: 1px dashed var(--neutral-150);
   border-radius: 8px;
 }
@@ -310,13 +310,13 @@
 .medCardSection {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .medCardSelectAll {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-inline: 4px;
+  gap: var(--space-2);
+  padding-inline: var(--space-1);
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
@@ -328,8 +328,8 @@
 .medCardRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 4px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .medCardRow:last-child {
@@ -340,12 +340,12 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 .medCardNameRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .medCardName {
   font-size: var(--font-base);
@@ -362,7 +362,7 @@
 .medCardActions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 /* "Stop | Continue" segmented pair — bordered container, divider between
@@ -377,7 +377,7 @@
 .medStopContinue button {
   background: var(--neutral-0);
   border: none;
-  padding: 6px 8px;
+  padding: var(--space-2) var(--space-2);
   font-size: var(--font-base);
   color: var(--neutral-300);
   cursor: pointer;
@@ -427,10 +427,12 @@
    cell's content (e.g. Sig wrapping to two lines, Status + Actions sitting
    close together) grew past its column width, so text touched the next
    column instead of stopping at a gutter. */
-/* 8px vertical keeps the row rhythm; horizontal matches WorklistShell's own
-   <th> (12px, and 10px on the checkbox) so headers sit above their content. */
-.checkCell { padding: 8px 10px; vertical-align: middle; }
-.nameCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-500); min-width: 0; padding: 8px 12px; }
+/* Vertical padding keeps the row rhythm; horizontal matches WorklistShell's
+   own <th> (--space-3, and 10px on the checkbox — no token for 10) so headers
+   sit directly above their content. `display: flex` is gone from these cells:
+   they're <td>s now, and flex on a table cell breaks column sizing. */
+.checkCell { padding: var(--space-2); vertical-align: middle; }
+.nameCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-500); min-width: 0; padding: var(--space-2) var(--space-3); }
 /* Long compound names (Clinimix-style ingredient lists) would otherwise grow
    the row indefinitely — clamp to two lines and hand the full text to a
    tooltip. Tooltip's own wrapper is inline-flex, so it needs min-width:0 to
@@ -446,12 +448,12 @@
   overflow: hidden;
   overflow-wrap: anywhere;
 }
-.dateCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); white-space: nowrap; padding: 8px 12px; }
-.sigCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: 8px 12px; }
-.statusCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: 8px 12px; }
-.actionsCell { min-width: 0; padding: 8px 12px; vertical-align: middle; }
+.dateCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); white-space: nowrap; padding: var(--space-2) var(--space-3); }
+.sigCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: var(--space-2) var(--space-3); }
+.statusCell { vertical-align: middle; font-size: var(--font-base); color: var(--neutral-300); min-width: 0; padding: var(--space-2) var(--space-3); }
+.actionsCell { min-width: 0; padding: var(--space-2) var(--space-3); vertical-align: middle; }
 /* Inner flex — `display: flex` on a <td> would break table column sizing. */
-.actionsInner { display: flex; align-items: center; gap: 8px; }
+.actionsInner { display: flex; align-items: center; gap: var(--space-2); }
 
 /* Pinned columns — checkbox + medication name hold the left edge, actions
    hold the right, while the middle (dates / sig / status) scrolls under
@@ -478,8 +480,8 @@
 .cellEditTrigger {
   display: block;
   width: 100%;
-  margin: -4px;
-  padding: 4px;
+  margin: calc(var(--space-1) * -1);
+  padding: var(--space-1);
   background: none;
   border: none;
   border-radius: 6px;
@@ -524,7 +526,7 @@
 /* Pairs with .addPanel, which supplies the white card chrome — this only
    adds the breathing room the surrounding rows would otherwise provide. */
 .medEditRow {
-  margin: 8px 0;
+  margin: var(--space-2) 0;
 }
 .medRowDimmed {
   filter: blur(1px);
@@ -549,9 +551,9 @@
 .noteEditor {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   background: var(--neutral-50);
-  padding: 8px 12px 12px 20px;
+  padding: var(--space-2) var(--space-3) var(--space-3) var(--space-5);
   border-bottom: 0.5px solid var(--neutral-100);
   box-sizing: border-box;
   /* Fill the visible pane instead of the table's full scroll width, and stay
@@ -573,12 +575,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .noteSaveState {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-size: var(--font-md);
   color: var(--neutral-300);
 }
@@ -622,8 +624,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
   background: var(--neutral-0);
   border-radius: 8px;
   box-shadow: var(--shadow-bulk-bar);
@@ -631,7 +633,7 @@
 .bulkSelect {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .bulkCount {
   font-size: var(--font-base);
@@ -649,13 +651,13 @@
 .checklist {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding-top: 8px;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
 }
 .checklistTitle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-2);
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
@@ -670,7 +672,7 @@
 .checkItem {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--space-3);
   cursor: pointer;
 }
 .checkLabel {
@@ -690,17 +692,17 @@
   border: 1px solid var(--primary-200);
   border-radius: 8px;
   background: var(--neutral-0);
-  padding: 12px;
+  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .searchRow {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-inline: 4px;
+  gap: var(--space-2);
+  padding-inline: var(--space-1);
 }
 .searchHint {
   font-size: var(--font-sm);
@@ -710,12 +712,12 @@
 .searchError {
   font-size: var(--font-md);
   color: var(--status-error);
-  padding-inline: 4px;
+  padding-inline: var(--space-1);
 }
 .searchEmpty {
   font-size: var(--font-md);
   color: var(--neutral-300);
-  padding: 4px 6px 0;
+  padding: var(--space-1) var(--space-2) 0;
 }
 
 /* ── Form phase (a medication picked from search) ──────────────────
@@ -724,14 +726,14 @@
 .formCard {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 .formMedName {
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
 }
-.required { color: var(--status-error); margin-left: 2px; }
+.required { color: var(--status-error); margin-left: var(--space-1); }
 
 /* Status + Start Date pair up by default; Sig spans the full width below
    them. Once the container is wide enough (e.g. the left gaps panel is
@@ -739,12 +741,12 @@
 .formGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px 12px;
+  gap: var(--space-3) var(--space-3);
 }
 .formField {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   min-width: 0;
 }
 .formFieldLabel {
@@ -765,7 +767,7 @@
 .formAddNoteLink {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   align-self: flex-start;
   background: none;
   border: none;
@@ -778,7 +780,7 @@
 .formNoteBox {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-2);
 }
 .formNoteHeader {
   display: flex;
@@ -791,15 +793,15 @@
   justify-content: center;
   background: none;
   border: none;
-  padding: 2px;
+  padding: var(--space-1);
   cursor: pointer;
 }
 
 .formActions {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-top: 4px;
+  gap: var(--space-3);
+  padding-top: var(--space-1);
 }
 .formDivider {
   width: 0.5px;
@@ -835,7 +837,7 @@
 .noteLink {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: var(--space-1);
   font-size: var(--font-base);
   font-weight: 400;
   vertical-align: baseline;

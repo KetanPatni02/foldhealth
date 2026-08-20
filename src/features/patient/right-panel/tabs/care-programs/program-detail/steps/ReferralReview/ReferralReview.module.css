@@ -34,11 +34,11 @@
 .statusCell,
 .attachCell,
 .createdCell {
-  padding: 12px;
+  padding: var(--space-3);
   vertical-align: middle;
   font-size: var(--font-base);
 }
-.checkCell { width: 36px; padding-left: 10px; padding-right: 10px; }
+.checkCell { width: 36px; padding-left: var(--space-2); padding-right: var(--space-2); }
 
 .providerCell { min-width: 0; }
 .providerName, .providerRole { display: block; }

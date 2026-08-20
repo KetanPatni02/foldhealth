@@ -159,7 +159,7 @@
 /* Checkbox header matches shared WorklistRow.checkTd (10px) so the 16px
    box sits at the same inset as every body checkbox and the SubnavToggle. */
 .thCheck {
-  padding: 0 10px;
+  padding: 0 var(--space-2);
 }
 
 .emptyDefault {

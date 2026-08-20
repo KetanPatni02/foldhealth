@@ -103,13 +103,13 @@
   height: 48px;
   /* Horizontal padding matches WorklistShell's own <th> (0 12px, and 0 10px on
      the checkbox column) so header labels sit directly above cell content. */
-  padding: 0 12px;
+  padding: 0 var(--space-3);
   font-size: var(--font-base);
   color: var(--neutral-300);
   vertical-align: middle;
   white-space: nowrap;
 }
-.checkCell { width: 28px; padding-left: 10px; padding-right: 10px; }
+.checkCell { width: 28px; padding-left: var(--space-2); padding-right: var(--space-2); }
 
 /* Trailing three-dot cell — the button is revealed on row hover (or while its
    menu is open) and sits flush to the right edge. */

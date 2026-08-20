@@ -36,7 +36,7 @@ import { FormAnalyticsPanel } from '../analytics/FormAnalyticsPanel';
 import { FormSettings } from './FormSettings';
 
 const DEFAULT_SETTINGS = {
-  layout: 'entire-page', fontFamily: 'Inter', background: '#FFFFFF',
+  layout: 'entire-page', fontFamily: 'Inter', background: 'var(--neutral-0)',
   header: { enabled: false }, footer: { enabled: false },
   start: { enabled: true, title: '', description: '', buttonLabel: 'Start' },
   end: { enabled: true, title: 'Thank you!', description: 'Your response has been recorded.' },

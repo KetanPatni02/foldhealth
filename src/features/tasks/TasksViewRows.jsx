@@ -53,7 +53,10 @@ export function AssignedToCell({ task }) {
 
   const onSelect = (u) => {
     const realName = u._realName || u.name;
-    updateTask(task.id, { assigned_to: realName, assigned_to_id: u.id || null });
+    // Giving a pooled task an owner IS claiming it — the store's claimTask()
+    // clears `pool` for exactly this reason. Leaving it set would keep the
+    // task advertised as unclaimed work in the pool tab.
+    updateTask(task.id, { assigned_to: realName, assigned_to_id: u.id || null, pool: null });
     showToast(`Assigned to ${realName}`);
   };
 
@@ -383,13 +386,13 @@ export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo, hide
       </td>
 
       {!hideAssignedTo && (
-        <td className={styles.td} onClick={e => e.stopPropagation()}>
+        <td className={styles.td} style={{ width: 170, minWidth: 170 }} onClick={e => e.stopPropagation()}>
           <AssignedToCell task={task} />
         </td>
       )}
 
       {!hideMember && (
-        <td className={styles.td} onClick={e => e.stopPropagation()}>
+        <td className={styles.td} style={{ width: 210, minWidth: 210 }} onClick={e => e.stopPropagation()}>
           <MemberCell task={task} />
         </td>
       )}

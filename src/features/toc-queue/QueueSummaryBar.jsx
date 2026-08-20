@@ -6,7 +6,7 @@ const cardStyle = {
   flex: 1,
   minWidth: 140,
   padding: '12px 16px',
-  background: '#fff',
+  background: 'var(--neutral-0)',
   border: '0.5px solid var(--neutral-150)',
   borderRadius: 8,
   display: 'flex',

@@ -11,6 +11,7 @@ import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreview
 import { useAppStore } from '../../store/useAppStore';
 import {
   STATUS_ORDER, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_ORDER, PRIORITY_LABELS,
+  getInitials,
 } from './TasksView.utils';
 import { PriorityIcon } from './TasksViewIcons';
 import { usePopoverPosition } from './usePopoverPosition';
@@ -199,7 +200,7 @@ export function RowAssignDropdown({ task }) {
     <div ref={btnRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
       {task.assigned_to ? (
         <button className={styles.assignPill} aria-label={`Assigned to ${task.assigned_to}. Click to change.`}>
-          <Icon name="solar:user-linear" size={14} color="var(--neutral-300)" />
+          <Avatar variant="assignee" initials={getInitials(task.assigned_to)} size="S" />
           <span>{task.assigned_to}</span>
         </button>
       ) : (
@@ -229,7 +230,7 @@ export function RowAssignDropdown({ task }) {
               const initials = (p.name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
               return (
                 <button key={p.id || p.name} className={styles.simpleDropItem} onClick={() => pick(p)}>
-                  <Avatar variant="assignee" initials={initials} className={styles.avatarXs} />
+                  <Avatar variant="assignee" initials={initials} size="S" />
                   <span>{p.label}</span>
                 </button>
               );

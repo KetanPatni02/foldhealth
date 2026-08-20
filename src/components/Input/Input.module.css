@@ -142,6 +142,19 @@
   color: var(--neutral-150);
 }
 
+/* Date/time types render the Fold-brand picker glyph inside the shell's
+   trailing slot; the browser's native `::-webkit-calendar-picker-indicator`
+   is removed so only our icon shows. Clicking the trailing-slot button
+   calls `input.showPicker()` explicitly, so we don't need the native
+   indicator to remain a click target. */
+.inputNativePickerHidden::-webkit-calendar-picker-indicator {
+  display: none;
+}
+/* Firefox uses `::-moz-calendar-picker-indicator` for the same UA glyph. */
+.inputNativePickerHidden::-moz-calendar-picker-indicator {
+  display: none;
+}
+
 /* ── Slot styles ── */
 
 .slotIcon {

@@ -1,26 +1,11 @@
 import { useState } from 'react';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { PriorityIcon } from '../../../../../../components/PriorityIcon/PriorityIcon';
 import { PATIENT_TASKS_MOCK } from '../../../../data/patientTasksMock';
 import styles from './TasksTab.module.css';
 
 const SCOPES = ['My Tasks', "Patient's Task"];
-
-// Priority indicator (P column): high = red double-up, medium = amber equals,
-// low = blue double-down.
-function PriorityIcon({ level }) {
-  if (level === 'high') {
-    return <Icon name="solar:double-alt-arrow-up-linear" size={16} color="var(--status-error)" />;
-  }
-  if (level === 'low') {
-    return <Icon name="solar:double-alt-arrow-down-linear" size={16} color="var(--status-info)" />;
-  }
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M6 9.5h12M6 14.5h12" stroke="var(--status-warning)" strokeWidth="1" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 function MetaCounts({ task }) {
   return (
@@ -62,7 +47,7 @@ function TaskRow({ task, done, onToggle, onClick }) {
         {done && <span className={styles.completedOn}>Completed on {task.completedOn}</span>}
         {hasMeta && <MetaCounts task={task} />}
       </div>
-      <div className={styles.pCell}><PriorityIcon level={task.priority} /></div>
+      <div className={styles.pCell}><PriorityIcon priority={task.priority} size={16} /></div>
       <div className={`${styles.dueCell} ${task.overdue ? styles.dueOverdue : ''}`}>{task.due}</div>
     </div>
   );

@@ -415,11 +415,11 @@ function DateGroupStats({ calls }) {
     <div className={styles.dateGroupStats}>
       <span>{total} calls</span>
       <span className={styles.dot}>&bull;</span>
-      <span style={{ color: '#009b53' }}>{successful} successful</span>
+      <span style={{ color: 'var(--status-success)' }}>{successful} successful</span>
       {failed > 0 && (
         <>
           <span className={styles.dot}>&bull;</span>
-          <span style={{ color: '#D72825' }}>{failed} failed</span>
+          <span style={{ color: 'var(--status-error)' }}>{failed} failed</span>
         </>
       )}
     </div>

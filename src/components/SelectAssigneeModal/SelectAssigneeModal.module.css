@@ -1,13 +1,13 @@
 .header {
   display: flex;
   align-items: center;
-  gap: 24px;
-  padding: 8px 8px 0;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-2) 0;
 }
 .headerTitle {
   flex: 1;
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 var(--space-2);
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
@@ -16,14 +16,14 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px;
+  gap: var(--space-2);
+  padding: var(--space-2);
 }
 
 .list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
   /* ~5.5 rows at 48px so a long roster scrolls instead of growing the dialog
      past the viewport. */
   max-height: 264px;
@@ -33,13 +33,13 @@
 .row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   width: 100%;
   /* min-height, not height: the list is a flex column, so a fixed height gets
      shrunk away and rows with a two-line role collapse into each other. */
   min-height: 48px;
   flex-shrink: 0;
-  padding: 4px 8px;
+  padding: var(--space-1) var(--space-2);
   border: none;
   border-radius: 4px;
   background: transparent;
@@ -66,7 +66,7 @@
 .info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-1);
   flex: 1;
   min-width: 0;
 }
@@ -88,7 +88,7 @@
 }
 
 .empty {
-  padding: 16px 8px;
+  padding: var(--space-4) var(--space-2);
   font-size: var(--font-base);
   color: var(--neutral-300);
   text-align: center;
@@ -96,7 +96,7 @@
 
 .footer {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 /* Both buttons pass fullWidth (100%), so without flex basis the first one
    claims the whole row and pushes Confirm outside the dialog's overflow clip. */

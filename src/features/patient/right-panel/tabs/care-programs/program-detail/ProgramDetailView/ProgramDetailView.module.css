@@ -471,7 +471,7 @@
   vertical-align: middle;
 }
 /* Select column — narrow; the shared Checkbox aligns to the row middle. */
-.checkCell { width: 36px; padding-left: 10px; padding-right: 10px; vertical-align: middle; }
+.checkCell { width: 36px; padding-left: var(--space-2); padding-right: var(--space-2); vertical-align: middle; }
 .checkCell > * { vertical-align: middle; }
 /* Selected row (bulk-action mode) — Figma 439:612596: primary-100 fill,
    primary-200 bottom border, 2px primary-300 left accent, primary-300 name. */
