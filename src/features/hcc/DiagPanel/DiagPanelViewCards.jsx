@@ -171,6 +171,7 @@ export function DiagPanelViewCards(p) {
             <IcdDosCard
               key={`card-${icd.code}-${i}`}
               icd={icd}
+              currentDos={p.currentDos}
               focusKey={focusKey}
               onFocusRow={handleFocusRow}
               selectedKeys={selectedKeys}

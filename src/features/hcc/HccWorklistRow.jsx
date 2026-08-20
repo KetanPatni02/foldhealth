@@ -37,6 +37,8 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
   const openHccUploadDrawer = useAppStore(s => s.openHccUploadDrawer);
   const openAddDos = useAppStore(s => s.openHccAddDos);
   const openClaimPreview = useAppStore(s => s.openHccClaimPreview);
+  const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
+  const openHccClaimForDos = useAppStore(s => s.openHccClaimForDos);
   const justAddedHccMemberId = useAppStore(s => s.justAddedHccMemberId);
   const justAdded = justAddedHccMemberId === member.id;
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
@@ -96,7 +98,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns }) {
   };
 
   const hasDoc = (charts?.length || 0) > 0;
-  const innerCtx = { member, openClaimPreview, openDiagPanel, hasDoc };
+  const innerCtx = { member, openClaimPreview, openDiagPanel, hasDoc, charts, setDiagOpenDocId, openHccClaimForDos };
 
   const rejectedStatuses = new Set(['Rejected', 'Reject']);
   const dosState = dosStateFor(member);

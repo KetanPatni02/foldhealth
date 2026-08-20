@@ -37,6 +37,7 @@ export default {
     icon: { control: 'text', description: 'Optional leading Solar icon name (e.g. solar:check-circle-bold)' },
     trailingIcon: { control: 'text', description: 'Optional trailing Solar icon name' },
     dot: { control: 'boolean', description: 'Show leading colored dot' },
+    chevron: { control: 'boolean', description: 'Show the shared DownChevronIcon trailing (popover-trigger badges).' },
     variant: {
       control: 'select',
       options: [
@@ -53,7 +54,7 @@ export default {
 };
 
 export const Playground = {
-  args: { tone: 'primary', size: 'M', label: 'Badge', hover: false, dot: false },
+  args: { tone: 'primary', size: 'M', label: 'Badge', hover: false, dot: false, chevron: false },
   render: (args) => <Badge {...args} />,
 };
 
@@ -114,6 +115,8 @@ export const Slots = {
       <Badge tone="success" size="M" label="Enrolled" dot />
       <Badge tone="success" size="M" label="Enrolled" icon="solar:check-circle-bold" />
       <Badge tone="warning" size="M" label="Attempted" trailingIcon="solar:alt-arrow-down-linear" />
+      <Badge tone="primary" size="M" label="DOS" chevron />
+      <Badge tone="grey" size="M" label="Recorded By" chevron />
       <Badge tone="error" size="M" label="3" />
     </div>
   ),

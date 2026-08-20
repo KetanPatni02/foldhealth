@@ -129,7 +129,14 @@
 .deleteBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* ── DOS rows ── */
-.rows { display: flex; flex-direction: column; }
+.rows {
+  display: flex;
+  flex-direction: column;
+  /* Breathing room between the header meta (HCC + Already Accepted) and
+     the first DOS row so the row-selected highlight doesn't butt up
+     against the badges. */
+  padding-top: var(--space-1);
+}
 .row {
   display: flex;
   align-items: center;
@@ -192,6 +199,23 @@
   font: 400 11px/1.3 'Inter', sans-serif;
   color: var(--secondary-300);
   flex-shrink: 0;
+}
+
+/* Header meta row — sits under "Last Reviewed by" and hosts the ICD's
+   HCC chip and (when any DOS on the card is accepted) the green
+   "Already Accepted" pill. Grouping badges here rather than repeating
+   the HCC chip per row keeps the DOS rows lean and gives coders one
+   at-a-glance signal that the code is closed for the group. */
+.headMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Both header meta chips (HCC + Already-Accepted Badge) share the same
+   20px height so the row reads as one unit, not two mismatched pills. */
+.headMeta > * {
+  height: 20px;
+  box-sizing: border-box;
 }
 
 /* ── Row actions ── */

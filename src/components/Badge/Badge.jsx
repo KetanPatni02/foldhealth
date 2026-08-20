@@ -36,6 +36,10 @@ function isDownChevron(name) {
  *   • icon — leading Solar icon name
  *   • trailingIcon — trailing Solar icon name
  *   • trailingIconElement — trailing custom node (wins over trailingIcon)
+ *   • chevron — when true, renders the shared DownChevronIcon trailing.
+ *              Handy for popover-trigger badges without threading a Solar
+ *              name through. Ignored when `trailingIcon` or
+ *              `trailingIconElement` is already provided.
  */
 export function Badge({
   tone,
@@ -52,6 +56,7 @@ export function Badge({
   trailingIconElement,
   onTrailingIconClick,
   trailingIconLabel,
+  chevron = false,
   dot,
   className,
   style,
@@ -62,6 +67,9 @@ export function Badge({
   const toneClass = tone ? styles[`tone-${tone}`] || styles[`tone${tone[0].toUpperCase()}${tone.slice(1)}`] || '' : '';
   const sizeClass = size ? styles[`size${size}`] || '' : '';
   const hoverClass = hover ? styles.hover : '';
+  // Chevron pairs with the badge's size — L=16, M=14, S=12; unspecified size
+  // stays at the legacy 13.
+  const chevronPx = size === 'L' ? 16 : size === 'M' ? 14 : size === 'S' ? 12 : 13;
 
   return (
     <span
@@ -73,7 +81,7 @@ export function Badge({
       {dot && <span className={styles.dot} />}
       {icon && (
         isDownChevron(icon)
-          ? <DownChevronIcon size={13} color="currentColor" />
+          ? <DownChevronIcon size={chevronPx} color="currentColor" />
           : <Icon name={toLinear(icon)} size={13} />
       )}
       {label}
@@ -87,14 +95,17 @@ export function Badge({
             onClick={(e) => { e.stopPropagation(); onTrailingIconClick(e); }}
           >
             {isDownChevron(trailingIcon)
-              ? <DownChevronIcon size={13} color="currentColor" />
+              ? <DownChevronIcon size={chevronPx} color="currentColor" />
               : <Icon name={toLinear(trailingIcon)} size={13} />}
           </button>
         ) : (
           isDownChevron(trailingIcon)
-            ? <DownChevronIcon size={13} color="currentColor" />
+            ? <DownChevronIcon size={chevronPx} color="currentColor" />
             : <Icon name={toLinear(trailingIcon)} size={13} />
         )
+      )}
+      {!trailingIconElement && !trailingIcon && chevron && (
+        <DownChevronIcon size={chevronPx} color="currentColor" />
       )}
     </span>
   );

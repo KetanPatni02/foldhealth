@@ -1,22 +1,16 @@
 .wrap {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   /* Workspace sits on the LEFT of the Diagnosis Gaps section (Paper 1UD1);
      the divider is provided by the right pane's border-left. */
   background: var(--neutral-0);
-  /* Smooth swipe-in when the panel opens (drawer width transitions at the
-     same time — see DiagPanel.module.css .panel/.panelExpanded). */
-  animation: leftWsSwipeIn 280ms cubic-bezier(0.32, 0.72, 0.36, 1);
-  will-change: transform, opacity;
-}
-@keyframes leftWsSwipeIn {
-  from { transform: translateX(-40px); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .wrap { animation: none; }
+  /* The workspace has NO width transition of its own — its width follows
+     the drawer's width transition via flex layout (the right pane is
+     fixed-width, so all remaining drawer width flows here). Clip content
+     so nothing spills while the pane is narrow during the expansion. */
+  overflow: hidden;
 }
 
 /* ── Tab bar ──────────────────────────────────────────────────────────── */
@@ -29,6 +23,10 @@
   border-bottom: 0.5px solid var(--neutral-100);
   background: var(--neutral-0);
   flex-shrink: 0;
+  /* Fixed height so the embedded TabStrip (which stretches to fill the
+     parent) keeps the original tab row height instead of collapsing to
+     its bare line-height. */
+  height: 40px;
 }
 
 /* Marker class on the ActionButton-based collapse trigger so the tab bar
@@ -1449,6 +1447,28 @@
   padding: 2px 6px;
 }
 .filterTrailingBtnActive:hover { text-decoration: none; }
+
+/* Dashed "Upload Document" CTA — the primary way to add a document from
+   the Documents tab, patterned after the "Add Secondary Insurance"
+   dashed button in EditPatientDrawer. Sits above the table listing. */
+.uploadCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-4) var(--space-6);
+  margin-bottom: var(--space-2);
+  background: var(--primary-50);
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  color: var(--primary-300);
+  font-size: var(--font-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.uploadCta:hover { background: var(--primary-100); }
 
 /* ── Inline document uploader widget — Figma 278:162482 ─────────────────
    Grey-tinted card with drop-zone, supported-format hint, Upload/Cancel.
