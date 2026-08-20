@@ -7,6 +7,7 @@ import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
+import { Select } from '../../../components/Select/Select';
 import { useIcdSearch } from '../../../lib/icd/useIcdSearch';
 import { DismissReasonForm } from './DismissReasonForm';
 import { reviewedByLabel } from '../reviewedBy';
@@ -66,8 +67,6 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
   // immediately (Accept / Reject / Defer / Missed) without opening the picker.
   // Multiple DOS → the user must pick one via the dropdown.
   const [dos, setDos] = useState(() => (dosList.length === 1 ? dosList[0]?.date || '' : ''));
-  const [dosOpen, setDosOpen] = useState(false);
-  const dosBtnRef = useRef(null);
   const singleDos = dosList.length === 1;
   useEffect(() => {
     // Keep pre-selection in sync if dosList later resolves to a single entry.
@@ -87,7 +86,6 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
   // card is inert (dimmed, no pointer events), so close anything it had open.
   useEffect(() => {
     if (bulkDisabled) {
-      setDosOpen(false);
       setMenuPos(null);
       setDismissOpen(false);
     }
@@ -216,20 +214,28 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
       </div>
 
       <div className={styles.dosRow}>
-        <button
-          ref={dosBtnRef}
-          type="button"
-          className={[styles.dosButton, dos ? styles.dosButtonActive : ''].filter(Boolean).join(' ')}
+        <Select
+          className={styles.dosSelect}
+          options={dosList.map((d) => {
+            const provider = d.provider || member?.rp || '—';
+            const posCode = d.pos || d.posDesc || member?.pos || member?.posDesc || '—';
+            return {
+              value: d.date,
+              triggerLabel: d.date,
+              searchText: `${d.date} ${provider} ${posCode}`,
+              label: (
+                <span className={styles.dosOptionText}>
+                  <span className={styles.dosOptionDate}>{d.date}</span>
+                  <span className={styles.dosOptionMeta}>Provider: {provider} · POS: {posCode}</span>
+                </span>
+              ),
+            };
+          })}
+          value={dos}
+          onChange={(v) => setDos(v)}
+          placeholder="Select DOS"
           disabled={!!action || singleDos || !roleAllowsIcdActions || reviewLocked}
-          onClick={() => (singleDos || !roleAllowsIcdActions || reviewLocked ? null : setDosOpen(o => !o))}
-          title={disabledReason
-            || (singleDos ? 'Only encounter available' : 'Select a DOS')}
-        >
-          <span>{dos || 'Select DOS'}</span>
-          {!singleDos && (
-            <Icon name="solar:alt-arrow-down-linear" size={13} color={dos ? 'var(--primary-300)' : 'var(--neutral-300)'} />
-          )}
-        </button>
+        />
         {/* stopPropagation so ICD-action button clicks (Missed / Dismiss /
             More / Undo) don't bubble to the parent Suspect card's
             toggleSelect handler — the card would otherwise switch the
@@ -290,16 +296,6 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
           )}
         </div>
 
-        {dosOpen && (
-          <DosDropdown
-            anchorRef={dosBtnRef}
-            dosList={dosList}
-            member={member}
-            selected={dos}
-            onSelect={(d) => { setDos(d); setDosOpen(false); }}
-            onClose={() => setDosOpen(false)}
-          />
-        )}
       </div>
 
       {dismissOpen && (
@@ -342,34 +338,41 @@ function ResolvedPill({ action }) {
   return <span className={styles.warnPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>;
 }
 
-// ── ICD combobox — button opens a dropdown with an in-dropdown search field.
-// The current code is pre-selected; typing searches the live WHO ICD-11 API.
+// ── ICD combobox — shared Select in searchable mode, backed by the live
+// WHO ICD-11 API via useIcdSearch's external query control. The current
+// code is pre-selected and shown as the sole option until the user types.
 function IcdCombobox({ code, desc, onSelect, disabled = false }) {
-  const btnRef = useRef(null);
-  const [open, setOpen] = useState(false);
+  const { query, setQuery, results, loading } = useIcdSearch({ minChars: 2 });
+  const searching = query.trim().length >= 2;
+  const list = searching ? results.filter(r => r.code) : [{ code, title: desc }];
+  const options = list.map((r) => ({
+    value: r.code,
+    triggerLabel: `${r.code} ${r.title}`,
+    searchText: `${r.code} ${r.title}`,
+    label: (
+      <span className={styles.comboOptionText}>
+        <span className={styles.comboCode}>{r.code}</span>
+        <span className={styles.comboTitle}>{r.title}</span>
+      </span>
+    ),
+  }));
   return (
-    <div className={styles.icdComboWrap}>
-      <button
-        ref={btnRef}
-        type="button"
-        className={styles.icdSelect}
-        title={disabled ? 'Support role cannot code ICDs' : 'Switch to a corrected ICD code'}
-        disabled={disabled}
-        onClick={() => (disabled ? null : setOpen(o => !o))}
-      >
-        <span className={styles.icdSelectText}>{code} {desc}</span>
-        <Icon name="solar:alt-arrow-down-linear" size={13} color="var(--neutral-300)" />
-      </button>
-      {open && (
-        <IcdComboPopover
-          anchorRef={btnRef}
-          currentCode={code}
-          currentDesc={desc}
-          onSelect={(picked) => { onSelect(picked); setOpen(false); }}
-          onClose={() => setOpen(false)}
-        />
-      )}
-    </div>
+    <Select
+      className={styles.icdSelectWrap}
+      options={options}
+      value={code}
+      onChange={(v) => {
+        const picked = list.find(r => r.code === v);
+        if (picked) onSelect(picked);
+      }}
+      disabled={disabled}
+      searchable
+      query={query}
+      onQueryChange={setQuery}
+      searchLoading={loading}
+      emptyText="No matching ICD codes"
+      searchPlaceholder="Search ICD code or description…"
+    />
   );
 }
 

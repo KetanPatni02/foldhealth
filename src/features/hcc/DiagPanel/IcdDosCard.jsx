@@ -196,17 +196,25 @@ export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selec
         </div>
         <div className={styles.counters} onClick={(e) => e.stopPropagation()}>
           <Tooltip label="Comments">
-            <button type="button" className={styles.counter} onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}>
-              <Icon name="solar:chat-round-line-linear" size={14} />
+            <Button
+              variant="ghost"
+              size="S"
+              leadingIcon="solar:chat-round-line-linear"
+              onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}
+            >
               {commentsCount}
-            </button>
+            </Button>
           </Tooltip>
           <span className={styles.counterDivider} />
           <Tooltip label="History">
-            <button type="button" className={styles.counter} onClick={(e) => { e.stopPropagation(); openIcdPanel('history', icd.code); }}>
-              <Icon name="custom:history" size={14} />
+            <Button
+              variant="ghost"
+              size="S"
+              leadingIconElement={<Icon name="custom:history" size={14} />}
+              onClick={(e) => { e.stopPropagation(); openIcdPanel('history', icd.code); }}
+            >
               {historyCount}
-            </button>
+            </Button>
           </Tooltip>
           {isManualIcd && (
             <>

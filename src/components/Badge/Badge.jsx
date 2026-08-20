@@ -67,9 +67,9 @@ export function Badge({
   const toneClass = tone ? styles[`tone-${tone}`] || styles[`tone${tone[0].toUpperCase()}${tone.slice(1)}`] || '' : '';
   const sizeClass = size ? styles[`size${size}`] || '' : '';
   const hoverClass = hover ? styles.hover : '';
-  // Chevron pairs with the badge's size — L=16, M=14, S=12; unspecified size
-  // stays at the legacy 13.
-  const chevronPx = size === 'L' ? 16 : size === 'M' ? 14 : size === 'S' ? 12 : 13;
+  // Icons (leading, trailing, chevron) scale with the badge's size — S=14,
+  // M=16, L=20. Unspecified size stays at the legacy 13.
+  const iconPx = size === 'L' ? 20 : size === 'M' ? 16 : size === 'S' ? 14 : 13;
 
   return (
     <span
@@ -81,8 +81,8 @@ export function Badge({
       {dot && <span className={styles.dot} />}
       {icon && (
         isDownChevron(icon)
-          ? <DownChevronIcon size={chevronPx} color="currentColor" />
-          : <Icon name={toLinear(icon)} size={13} />
+          ? <DownChevronIcon size={iconPx} color="currentColor" />
+          : <Icon name={toLinear(icon)} size={iconPx} />
       )}
       {label}
       {trailingIconElement}
@@ -95,17 +95,17 @@ export function Badge({
             onClick={(e) => { e.stopPropagation(); onTrailingIconClick(e); }}
           >
             {isDownChevron(trailingIcon)
-              ? <DownChevronIcon size={chevronPx} color="currentColor" />
-              : <Icon name={toLinear(trailingIcon)} size={13} />}
+              ? <DownChevronIcon size={iconPx} color="currentColor" />
+              : <Icon name={toLinear(trailingIcon)} size={iconPx} />}
           </button>
         ) : (
           isDownChevron(trailingIcon)
-            ? <DownChevronIcon size={chevronPx} color="currentColor" />
-            : <Icon name={toLinear(trailingIcon)} size={13} />
+            ? <DownChevronIcon size={iconPx} color="currentColor" />
+            : <Icon name={toLinear(trailingIcon)} size={iconPx} />
         )
       )}
       {!trailingIconElement && !trailingIcon && chevron && (
-        <DownChevronIcon size={chevronPx} color="currentColor" />
+        <DownChevronIcon size={iconPx} color="currentColor" />
       )}
     </span>
   );

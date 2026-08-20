@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { Badge } from '../../../components/Badge/Badge';
 import { toast } from '../../../components/Toast/sonnerToast';
 import { getStatusSpec, statusDisplayLabel, ROLE_STATUS_OPTIONS, ALL_STATUS_OPTIONS } from '../statusSpec';
@@ -75,11 +74,12 @@ export function DosStatusMenu({ value, onChange, disabled = false, disabledReaso
         title={disabled ? disabledReason : undefined}
       >
         <Badge
-          size="L"
+          size="M"
           style={{ color: spec.color, background: spec.bg, borderColor: spec.border }}
+          chevron={!disabled}
           label={(
             <>
-              <StatusIcon status={value} size={11} color={spec.color} />
+              <StatusIcon status={value} size={12} color={spec.color} />
               <span className={styles.label}>{statusDisplayLabel(value)}</span>
               {!disabled && (
                 <span className={styles.divider} style={{ background: `${spec.color}60` }} />
@@ -89,7 +89,7 @@ export function DosStatusMenu({ value, onChange, disabled = false, disabledReaso
           trailingIconElement={
             disabled
               ? <Icon name="solar:lock-keyhole-minimalistic-linear" size={16} color={spec.color} />
-              : <DownChevronIcon size={16} color={spec.color} />
+              : undefined
           }
         />
       </button>

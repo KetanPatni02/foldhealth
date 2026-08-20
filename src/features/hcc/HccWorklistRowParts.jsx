@@ -149,11 +149,13 @@ export function HccEvidenceCell({ charts, onClick, onMouseEnter, onMouseLeave, o
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      <div className={styles.evidenceBadge}>
-        <Icon name="solar:document-text-linear" size={12} color="var(--primary-300)" />
-        <span>{count}</span>
-        <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--primary-300)" />
-      </div>
+      <Badge
+        tone="primary"
+        size="M"
+        icon="solar:document-text-linear"
+        label={String(count)}
+        chevron
+      />
       <div className={styles.evidenceStatus}>
         {uniform ? (
           <>
@@ -436,15 +438,13 @@ export function OpenIcdsCell({ member, onOpenWithCode }) {
 export function RafImpactCell({ value, ru }) {
   if (value == null) return <span className={styles.muted}>—</span>;
   const positive = ru !== false; // default to positive/up unless explicitly false
-  const color = positive ? 'var(--status-success)' : 'var(--status-error)';
-  const bg    = positive ? 'var(--status-success-light)' : 'var(--status-error-light)';
-  const border = positive ? 'rgba(0,155,83,0.2)' : 'rgba(215,40,37,0.2)';
-  const arrow = positive ? 'solar:arrow-up-linear' : 'solar:arrow-down-linear';
   return (
-    <span className={styles.rafImpactBadge} style={{ color, background: bg, borderColor: border }}>
-      <span>{value}</span>
-      <Icon name={arrow} size={12} color={color} />
-    </span>
+    <Badge
+      tone={positive ? 'success' : 'error'}
+      size="M"
+      label={String(value)}
+      trailingIcon={positive ? 'solar:arrow-up-linear' : 'solar:arrow-down-linear'}
+    />
   );
 }
 
