@@ -42,6 +42,14 @@ export function Select({
   menuAlign = 'left',
   searchable = false,
   searchPlaceholder = 'Search…',
+  // External search control — when both are provided, the caller owns the
+  // query string and Select stops filtering `options` client-side (it just
+  // renders whatever the caller passes in). Used for async remote search
+  // (e.g. WHO ICD-11 API in the HCC drawer).
+  query: queryProp,
+  onQueryChange,
+  searchLoading = false,
+  emptyText,
   leadingIcon,
   // Field-wrapper props — parity with `src/components/Input`. Any one of
   // these promotes the render from a bare trigger to a labelled field
@@ -78,7 +86,10 @@ export function Select({
   // 'bottom' by default; flipped to 'top' when the trigger sits too close
   // to the bottom of the viewport for the 240px menu to fit downward.
   const [menuPlacement, setMenuPlacement] = useState('bottom');
-  const [query, setQuery] = useState('');
+  const externalQuery = typeof queryProp === 'string' && typeof onQueryChange === 'function';
+  const [internalQuery, setInternalQuery] = useState('');
+  const query = externalQuery ? queryProp : internalQuery;
+  const setQuery = externalQuery ? onQueryChange : setInternalQuery;
   const wrapRef = useRef(null);
   const menuRef = useRef(null);
   const searchRef = useRef(null);
@@ -144,8 +155,10 @@ export function Select({
   const q = query.trim().toLowerCase();
   // Options may carry a `searchText` (plain string) so `label` can be a
   // rich node (e.g. two-line code + description) while search still matches
-  // both. Falls back to the label when it's a string.
-  const shownOptions = searchable && q
+  // both. Falls back to the label when it's a string. With external search
+  // control the caller filters the option list, so client-side filtering
+  // is skipped entirely.
+  const shownOptions = (searchable && q && !externalQuery)
     ? options.filter(o => (o.searchText != null ? o.searchText : String(o.label)).toLowerCase().includes(q))
     : options;
 
@@ -215,7 +228,9 @@ export function Select({
             </li>
           )}
           {shownOptions.length === 0 && (
-            <li className={styles.emptyOption} aria-disabled>No matches</li>
+            <li className={styles.emptyOption} aria-disabled>
+              {searchLoading ? 'Searching…' : (emptyText || 'No matches')}
+            </li>
           )}
           {shownOptions.map((opt, i) => {
             // Non-interactive section header — used by callers that want to
