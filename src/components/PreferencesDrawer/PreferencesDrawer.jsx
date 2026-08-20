@@ -1,10 +1,19 @@
 import { useState, useEffect, useCallback, useId } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAppStore } from '../../store/useAppStore';
-import { isCapitalizedName, isValidNamePart } from '../../lib/nameValidation';
+import { isCapitalizedName } from '../../lib/nameValidation';
+import {
+  PROFILE_FIELD_TYPES,
+  PROFILE_FIELD_VALIDATORS,
+  PROFILE_GENDER_OPTIONS,
+  PROFILE_LANGUAGE_OPTIONS,
+  sanitizeProfileForDb,
+  validateProfileForm,
+} from '../../lib/profileValidation';
 import { Icon } from '../Icon/Icon';
 import { Drawer } from '../Drawer/Drawer';
 import { Input } from '../Input/Input';
+import { Textarea } from '../Textarea/Textarea';
 import { Button } from '../Button/Button';
 import { Avatar } from '../Avatar/Avatar';
 import { Badge } from '../Badge/Badge';
@@ -19,46 +28,10 @@ const PREF_TABS = [
   { key: 'account', icon: 'solar:user-circle-linear', label: 'Account & Profile' },
 ];
 
-const ADMIN_ROLES = ['Business/Practice Owner', 'Operations/Clinical Analyst', 'Employer'];
-const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say'];
-const LANGUAGE_OPTIONS = ['English', 'Spanish', 'Cantonese', 'Mandarin', 'Vietnamese', 'Korean', 'Tagalog', 'Arabic', 'French', 'Hindi'];
-
 function getInitials(name) {
   if (!name) return '??';
   const parts = name.trim().split(/\s+/);
   return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
-}
-
-/* ── Multi-select (reused from AccountPanel pattern) ── */
-function MultiSelect({ options, value = [], onChange, placeholder }) {
-  const [open, setOpen] = useState(false);
-  const valueSet = new Set(value);
-  const toggle = (opt) => onChange(valueSet.has(opt) ? value.filter(v => v !== opt) : [...value, opt]);
-  return (
-    <div style={{ position: 'relative' }}>
-      <div className={styles.tagInput} onClick={() => setOpen(v => !v)} style={{ cursor: 'pointer' }}>
-        {value.length > 0 ? value.map(v => (
-          <span key={v} className={styles.tag}>
-            {v}
-            <button className={styles.tagClose} onClick={e => { e.stopPropagation(); toggle(v); }} aria-label={`Remove ${v}`}>
-              <Icon name="solar:close-linear" size={10} color="var(--neutral-300)" />
-            </button>
-          </span>
-        )) : <span style={{ color: 'var(--neutral-200)', fontSize: 'var(--font-base)' }}>{placeholder || 'Select...'}</span>}
-        <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" style={{ marginLeft: 'auto', flexShrink: 0 }} />
-      </div>
-      {open && (
-        <div className={styles.multiSelectDropdown}>
-          {options.map(opt => (
-            <label key={opt} className={styles.multiSelectOption}>
-              <input type="checkbox" checked={valueSet.has(opt)} onChange={() => toggle(opt)} />
-              <span>{opt}</span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function PreferencesDrawer({ onClose }) {
@@ -68,6 +41,7 @@ export function PreferencesDrawer({ onClose }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({});
+  const [fieldErrors, setFieldErrors] = useState({});
   const showToast = useAppStore(s => s.showToast);
   const logAudit = useAppStore(s => s.logAudit);
 
@@ -85,7 +59,7 @@ export function PreferencesDrawer({ onClose }) {
             first_name: data.first_name || user.user_metadata?.first_name || '',
             last_name: data.last_name || user.user_metadata?.last_name || '',
             middle_name: data.middle_name || '',
-            date_of_birth: data.date_of_birth || '',
+            date_of_birth: data.date_of_birth ? String(data.date_of_birth).slice(0, 10) : '',
             gender: data.gender || '',
             bio: data.bio || '',
             mobile: data.mobile || data.phone || '',
@@ -105,27 +79,27 @@ export function PreferencesDrawer({ onClose }) {
     })();
   }, []);
 
-  const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const set = (key, val) => {
+    setForm(f => ({ ...f, [key]: val }));
+    if (fieldErrors[key]) {
+      setFieldErrors(e => {
+        const next = { ...e };
+        delete next[key];
+        return next;
+      });
+    }
+  };
 
   const handleSave = async () => {
     if (!profile) return;
-    // This form was the one unguarded write path for a user's own name — the
-    // Invite drawer and Account panel already validated, so a self-edit here
-    // could clear or lowercase a name that those flows would have rejected.
-    if (!isValidNamePart(form.first_name) || !isValidNamePart(form.last_name)) {
-      showToast('First and last name are required and must start with a capital letter');
+    const { valid, errors } = validateProfileForm(form);
+    if (!valid) {
+      setFieldErrors(errors);
+      showToast(Object.values(errors)[0]);
       return;
     }
-    const updates = {
-      full_name: `${form.first_name} ${form.last_name}`.trim(),
-      ...form,
-    };
-    // This is a self-update, so it must never carry authorization columns —
-    // the spread above would happily forward anything that lands in `form`.
-    // The database enforces this too; stripping here keeps the request honest.
-    delete updates.role;
-    delete updates.admin_role;
-    delete updates.clinical_roles;
+    setFieldErrors({});
+    const updates = sanitizeProfileForDb(form);
     const { error } = await supabase.from('profiles').update(updates).eq('id', profile.id);
     if (!error) {
       // Also update auth metadata
@@ -225,11 +199,12 @@ export function PreferencesDrawer({ onClose }) {
                       value={form.first_name}
                       onChange={e => set('first_name', e.target.value)}
                       placeholder="First name"
-                      variant={form.first_name && !isCapitalizedName(form.first_name) ? 'error' : 'default'}
+                      maxLength={PROFILE_FIELD_TYPES.first_name.maxLength}
+                      validate={PROFILE_FIELD_VALIDATORS.first_name}
+                      validateOn="blur"
+                      errorText={fieldErrors.first_name}
+                      variant={fieldErrors.first_name || (form.first_name && !isCapitalizedName(form.first_name)) ? 'error' : 'default'}
                     />
-                    {form.first_name && !isCapitalizedName(form.first_name) && (
-                      <span className={styles.fieldError}>Must start with a capital letter</span>
-                    )}
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-last-name`}>Last Name *</label>
@@ -238,47 +213,88 @@ export function PreferencesDrawer({ onClose }) {
                       value={form.last_name}
                       onChange={e => set('last_name', e.target.value)}
                       placeholder="Last name"
-                      variant={form.last_name && !isCapitalizedName(form.last_name) ? 'error' : 'default'}
+                      maxLength={PROFILE_FIELD_TYPES.last_name.maxLength}
+                      validate={PROFILE_FIELD_VALIDATORS.last_name}
+                      validateOn="blur"
+                      errorText={fieldErrors.last_name}
+                      variant={fieldErrors.last_name || (form.last_name && !isCapitalizedName(form.last_name)) ? 'error' : 'default'}
                     />
-                    {form.last_name && !isCapitalizedName(form.last_name) && (
-                      <span className={styles.fieldError}>Must start with a capital letter</span>
-                    )}
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-gender`}>Gender</label>
                     <Select
                       id={`${uid}-gender`}
-                      options={GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
+                      options={PROFILE_GENDER_OPTIONS.map(g => ({ value: g, label: g }))}
                       value={form.gender || undefined}
                       onChange={v => set('gender', v)}
                       placeholder="Select gender"
+                      portal
+                      variant={fieldErrors.gender ? 'error' : 'default'}
+                      errorText={fieldErrors.gender}
                     />
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-dob`}>Date of Birth</label>
-                    <div className={styles.dateInputWrap}>
-                      <input id={`${uid}-dob`} type="date" className={styles.dateInput} value={form.date_of_birth || ''} onChange={e => set('date_of_birth', e.target.value)} />
-                    </div>
+                    <Input
+                      id={`${uid}-dob`}
+                      type="date"
+                      value={form.date_of_birth || ''}
+                      onChange={e => set('date_of_birth', e.target.value)}
+                      validate={PROFILE_FIELD_VALIDATORS.date_of_birth}
+                      validateOn="blur"
+                      errorText={fieldErrors.date_of_birth}
+                      variant={fieldErrors.date_of_birth ? 'error' : 'default'}
+                    />
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-mobile`}>Mobile Number</label>
-                    <Input id={`${uid}-mobile`} value={form.mobile} onChange={e => set('mobile', e.target.value)} placeholder="+1 234 567 890" />
+                    <Input
+                      id={`${uid}-mobile`}
+                      type="tel"
+                      value={form.mobile}
+                      onChange={e => set('mobile', e.target.value)}
+                      placeholder="+1 234 567 890"
+                      maxLength={PROFILE_FIELD_TYPES.mobile.maxLength}
+                      validate={PROFILE_FIELD_VALIDATORS.mobile}
+                      validateOn="blur"
+                      errorText={fieldErrors.mobile}
+                      variant={fieldErrors.mobile ? 'error' : 'default'}
+                    />
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-email`}>Email</label>
-                    <Input id={`${uid}-email`} value={form.email} disabled />
+                    <Input id={`${uid}-email`} type="email" value={form.email} disabled />
                   </div>
                 </div>
 
                 <div className={styles.formField} style={{ marginTop: 16 }}>
-                  {/* Not a <label>: MultiSelect's trigger is a div, which htmlFor can't target. */}
-                  <span className={styles.formLabel}>Languages</span>
-                  <MultiSelect options={LANGUAGE_OPTIONS} value={form.languages} onChange={v => set('languages', v)} placeholder="Select languages..." />
+                  <label className={styles.formLabel} htmlFor={`${uid}-languages`}>Languages</label>
+                  <Select
+                    id={`${uid}-languages`}
+                    multiple
+                    searchable
+                    portal
+                    options={PROFILE_LANGUAGE_OPTIONS.map(l => ({ value: l, label: l }))}
+                    value={form.languages || []}
+                    onChange={v => set('languages', v)}
+                    placeholder="Select languages..."
+                    variant={fieldErrors.languages ? 'error' : 'default'}
+                    errorText={fieldErrors.languages}
+                  />
                 </div>
 
                 <div className={styles.formField} style={{ marginTop: 16 }}>
                   <label className={styles.formLabel} htmlFor={`${uid}-bio`}>Bio</label>
-                  <textarea id={`${uid}-bio`} className={styles.formTextarea} rows={3} value={form.bio} onChange={e => set('bio', e.target.value)} placeholder="Brief bio..." />
+                  <Textarea
+                    id={`${uid}-bio`}
+                    rows={3}
+                    value={form.bio}
+                    onChange={e => set('bio', e.target.value)}
+                    placeholder="Brief bio..."
+                    maxLength={PROFILE_FIELD_TYPES.bio.maxLength}
+                    variant={fieldErrors.bio ? 'error' : 'default'}
+                  />
+                  {fieldErrors.bio && <span className={styles.fieldError}>{fieldErrors.bio}</span>}
                 </div>
 
                 {/* Address */}
@@ -286,23 +302,72 @@ export function PreferencesDrawer({ onClose }) {
                 <div className={styles.formGrid}>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-address1`}>Address Line 1</label>
-                    <Input id={`${uid}-address1`} value={form.address_line1} onChange={e => set('address_line1', e.target.value)} placeholder="Street address" />
+                    <Input
+                      id={`${uid}-address1`}
+                      value={form.address_line1}
+                      onChange={e => set('address_line1', e.target.value)}
+                      placeholder="Street address"
+                      maxLength={PROFILE_FIELD_TYPES.address_line1.maxLength}
+                      validate={PROFILE_FIELD_VALIDATORS.address_line1}
+                      validateOn="blur"
+                      errorText={fieldErrors.address_line1}
+                      variant={fieldErrors.address_line1 ? 'error' : 'default'}
+                    />
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-address2`}>Address Line 2</label>
-                    <Input id={`${uid}-address2`} value={form.address_line2} onChange={e => set('address_line2', e.target.value)} placeholder="Apt, suite" />
+                    <Input
+                      id={`${uid}-address2`}
+                      value={form.address_line2}
+                      onChange={e => set('address_line2', e.target.value)}
+                      placeholder="Apt, suite"
+                      maxLength={PROFILE_FIELD_TYPES.address_line2.maxLength}
+                      validate={PROFILE_FIELD_VALIDATORS.address_line2}
+                      validateOn="blur"
+                      errorText={fieldErrors.address_line2}
+                      variant={fieldErrors.address_line2 ? 'error' : 'default'}
+                    />
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-city`}>City</label>
-                    <Input id={`${uid}-city`} value={form.city} onChange={e => set('city', e.target.value)} placeholder="City" />
+                    <Input
+                      id={`${uid}-city`}
+                      value={form.city}
+                      onChange={e => set('city', e.target.value)}
+                      placeholder="City"
+                      maxLength={PROFILE_FIELD_TYPES.city.maxLength}
+                      validate={PROFILE_FIELD_VALIDATORS.city}
+                      validateOn="blur"
+                      errorText={fieldErrors.city}
+                      variant={fieldErrors.city ? 'error' : 'default'}
+                    />
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-state`}>State</label>
-                    <Input id={`${uid}-state`} value={form.state} onChange={e => set('state', e.target.value)} placeholder="State" />
+                    <Input
+                      id={`${uid}-state`}
+                      value={form.state}
+                      onChange={e => set('state', e.target.value)}
+                      placeholder="State"
+                      maxLength={PROFILE_FIELD_TYPES.state.maxLength}
+                      validate={PROFILE_FIELD_VALIDATORS.state}
+                      validateOn="blur"
+                      errorText={fieldErrors.state}
+                      variant={fieldErrors.state ? 'error' : 'default'}
+                    />
                   </div>
                   <div className={styles.formField}>
                     <label className={styles.formLabel} htmlFor={`${uid}-zip`}>Zip Code</label>
-                    <Input id={`${uid}-zip`} value={form.zip_code} onChange={e => set('zip_code', e.target.value)} placeholder="12345" />
+                    <Input
+                      id={`${uid}-zip`}
+                      value={form.zip_code}
+                      onChange={e => set('zip_code', e.target.value)}
+                      placeholder="12345"
+                      validate={PROFILE_FIELD_VALIDATORS.zip_code}
+                      validateOn="blur"
+                      errorText={fieldErrors.zip_code}
+                      variant={fieldErrors.zip_code ? 'error' : 'default'}
+                    />
                   </div>
                 </div>
 
