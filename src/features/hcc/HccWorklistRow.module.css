@@ -411,6 +411,11 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  /* Fill the td so flex-start children always pin to the column's left
+     edge — without this, `<button>` shrinks to fit its widest child
+     (the status text), and the badge above visually shifts right or
+     left depending on that text's width. */
+  width: 100%;
   background: none;
   border: none;
   padding: 0;
@@ -426,8 +431,11 @@
 /* Cancel the S-badge's internal 4px padding-left so its icon lines up with
    the dot in the "All Passed" status row below. Without this the badge
    sits 4px to the right of the status text — visually mis-aligned even
-   though both are technically flex-start. */
+   though both are technically flex-start. Also force align-self so the
+   Badge component's own align-self:center doesn't win (which was letting
+   the badge drift with the button width). */
 .evidenceTrigger > :first-child {
+  align-self: flex-start;
   margin-left: calc(var(--space-1) * -1);
 }
 .evidenceTrigger:hover {

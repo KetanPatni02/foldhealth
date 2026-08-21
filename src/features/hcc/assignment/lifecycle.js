@@ -219,6 +219,17 @@ export function initializeDos(map, patient, dos, opts = {}) {
     // Already initialized (either by engine or by hydrate) — idempotent.
     return { nextMap: putState(map, state), events: [] };
   }
+  // Auto-picking Support was previously unconditional on init — which meant
+  // *opening* a DOS (Eye icon → DiagPanel mount → initializeHccPatient) would
+  // silently pin a Support user (usually the top-capacity Astrana pick,
+  // "E. Johnson"). Opening a record must be read-only, so callers now have
+  // to opt in explicitly (`opts.autoAssignSupport: true`) — e.g. the workflow
+  // that actually starts Support work. View-path callers omit the flag and
+  // the DOS stays Unassigned until a user picks someone from the row's
+  // Assign menu.
+  if (!opts.autoAssignSupport) {
+    return { nextMap: putState(map, state), events: [] };
+  }
   const { state: assigned, picked } = autoAssignRole(
     putState(map, state), state, patient, dos, 'support', STATUS.AWAITING, 'initial'
   );

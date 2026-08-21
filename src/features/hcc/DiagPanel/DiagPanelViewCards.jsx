@@ -18,8 +18,12 @@ export function DiagPanelViewCards(p) {
     dosExpanded, setDosExpanded, enabledDates, dosList, disabledDos, setDisabledDos,
     openHccClaimForDos, diagnosisGapsLoading, cardIcds, actedSuspects, pendingSuspects, q,
     focusKey, handleFocusRow, selectedKeys, toggleSelected, openDismissKey, setOpenDismissKey,
-    advanceFocusAfterAction, stageLocked, rejectionLockReason,
+    advanceFocusAfterAction, stageLocked, rejectionLockReason, recordsRequestLockReason,
   } = p;
+  // A single reason string surfaced on every locked control below. Rejection
+  // is the more specific / terminal explanation, so it wins over the
+  // records-request pending one when both would apply.
+  const lockReason = rejectionLockReason || recordsRequestLockReason;
   return (
     <>
       {/* ── Body: ICD-first cards + HCC suspect groups + collapsed history ── */}
@@ -180,7 +184,7 @@ export function DiagPanelViewCards(p) {
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
               reviewLocked={stageLocked || isDosRejected}
-              lockReason={rejectionLockReason}
+              lockReason={lockReason}
             />
           ))}
           {/* Acted suspects graduate into the associated list as normal cards. */}
@@ -196,7 +200,7 @@ export function DiagPanelViewCards(p) {
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
               reviewLocked={stageLocked || isDosRejected}
-              lockReason={rejectionLockReason}
+              lockReason={lockReason}
             />
           ))}
 
@@ -212,7 +216,7 @@ export function DiagPanelViewCards(p) {
               dosList={dosList}
               member={member}
               reviewLocked={stageLocked || isDosRejected}
-              lockReason={rejectionLockReason}
+              lockReason={lockReason}
               bulkDisabled={bulkMode}
             />
           ))}

@@ -130,9 +130,13 @@ export function HccEvidenceCell({ charts, onClick, onMouseEnter, onMouseLeave, o
       </Button>
     );
   }
-  // Status line (Figma 4680:138476): when every chart shares a status,
-  // show a single dot + "All Passed / Pending / Failed"; when mixed, show
-  // per-status dots with counts (●2 ●1).
+  // Status line reads per-doc statuses — same source as the doc popover and
+  // the Doc Review drawer, so the three surfaces never disagree. Uniform
+  // (all passed / all failed / all pending) → single dot + label; mixed →
+  // per-status dots with counts (●2 ●1). Doc statuses are seeded in
+  // generateDefaultCharts to follow Support's engine status (Completed →
+  // Passed, Reject → Failed, otherwise Pending), so an unreviewed row can
+  // never advertise "All Passed" and a completed row never "All Pending".
   const count = charts.length;
   const list = charts.map(d => (d.status || 'pending').toLowerCase());
   const pass = list.filter(s => s === 'passed').length;
