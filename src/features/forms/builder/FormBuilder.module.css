@@ -163,6 +163,14 @@
 }
 .subField:hover { background: var(--neutral-50); border-color: var(--neutral-150); }
 .subFieldSel { border-color: var(--primary-200); background: var(--neutral-0); }
+.consentCanvasItem {
+  gap: var(--space-2); padding: var(--space-3); border-color: var(--neutral-150);
+  background: var(--neutral-0); cursor: pointer;
+}
+.consentCanvasHead {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+}
+.consentCanvasItem .qDesc { line-height: var(--leading-loose); }
 
 /* ── Properties ─────────────────────────────────────────────────────────── */
 .props {
@@ -238,6 +246,48 @@
   display: flex; align-items: center; gap: 6px; border: none; background: none;
   cursor: pointer; color: var(--primary-300); font-size: var(--font-base); padding: 4px 0; margin-top: 2px;
 }
+
+/* Member Consent health component configuration */
+.consentDivider { height: 0.5px; background: var(--neutral-150); margin: 0.375rem 0; }
+.consentSectionHead { display: flex; flex-direction: column; gap: var(--space-1); }
+.consentSectionTitle { font-size: var(--font-base); font-weight: 600; color: var(--neutral-400); }
+.consentSectionHead .propHint { margin: 0; line-height: 1.45; }
+/* Category = section title, "Required" = column header, so each row carries a
+   single checkbox per column instead of a checkbox nested under a checkbox. */
+.consentGroup { --consent-req-col: 3.5rem; display: flex; flex-direction: column; }
+.consentGroupHead {
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: 0 var(--space-2) var(--space-1); margin-top: var(--space-1);
+}
+.consentGroupTitle {
+  font-size: var(--font-sm); font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--neutral-300);
+}
+.consentGroupCount { flex: 1 1 0; font-size: var(--font-sm); color: var(--neutral-200); }
+.consentGroupCol {
+  width: var(--consent-req-col); flex-shrink: 0; text-align: center;
+  font-size: var(--font-sm); color: var(--neutral-200);
+}
+.consentRow {
+  display: flex; align-items: center; gap: var(--space-2); min-width: 0;
+  min-height: 2.125rem; padding: 0 var(--space-2); border-radius: 6px;
+}
+.consentRow:hover { background: var(--neutral-50); }
+.consentRowName {
+  flex: 1 1 0; min-width: 0; color: var(--neutral-500); font-size: var(--font-base);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.consentRowOff .consentRowName { color: var(--neutral-200); }
+.consentRowReq {
+  width: var(--consent-req-col); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.consentAddForm {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-3); border: 0.5px solid var(--neutral-150); border-radius: 8px;
+  background: var(--neutral-50);
+}
+.consentAddActions { display: flex; align-items: center; gap: var(--space-2); }
 
 /* ── Field inputs (shared canvas/preview) ───────────────────────────────── */
 /* Shared primitives (Input/Textarea/Select) fill their field column. */

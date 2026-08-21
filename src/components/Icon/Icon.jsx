@@ -22,6 +22,7 @@ import { BulkSelectIcon } from './BulkSelectIcon';
 import { BulkSelectCloseIcon } from './BulkSelectCloseIcon';
 import { UploadIcon } from './UploadIcon';
 import { TableIcon } from './TableIcon';
+import { MemberConsentIcon } from './MemberConsentIcon';
 
 export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:filter') return <FilterIcon size={size} color={color} />;
@@ -34,6 +35,7 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:bulk-select-close') return <BulkSelectCloseIcon size={size} color={color} />;
   if (name === 'custom:upload') return <UploadIcon size={size} color={color} />;
   if (name === 'custom:table') return <TableIcon size={size} color={color} />;
+  if (name === 'custom:member-consent') return <MemberConsentIcon size={size} color={color} />;
   if (name === 'custom:sms') return <SmsIcon size={size} color={color} />;
   if (name === 'custom:expand-drawer') return <ExpandDrawerIcon size={size} />;
   if (name === 'custom:call-pcp') return <CallPcpIcon size={size} color={color} />;

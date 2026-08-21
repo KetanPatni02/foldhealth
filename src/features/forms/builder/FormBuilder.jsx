@@ -24,9 +24,16 @@ import { Textarea } from '../../../components/Textarea/Textarea';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
+import { Badge } from '../../../components/Badge/Badge';
+import { Select } from '../../../components/Select/Select';
 import { useAppStore } from '../../../store/useAppStore';
 import { PALETTE_TABS, paletteFor } from './componentCatalog';
 import { instantiateInstrument } from './validatedInstruments';
+import {
+  CONSENT_CATEGORY_OPTIONS,
+  createCustomConsentItem,
+  syncConsentQuestions,
+} from './memberConsent';
 import { formShareLink, copyToClipboard } from '../formLink';
 import { FieldInput } from './FieldInput';
 import { ScorePanel } from './ScorePanel';
@@ -77,7 +84,7 @@ function removeField(items, id) {
 }
 
 // ── Palette ─────────────────────────────────────────────────────────────────
-function PaletteCard({ entry }) {
+function PaletteCard({ entry, onInsert }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette:${entry.key}`, data: { entry },
   });
@@ -86,6 +93,8 @@ function PaletteCard({ entry }) {
       ref={setNodeRef}
       className={styles.palItem}
       style={{ opacity: isDragging ? 0.4 : 1 }}
+      title={`Drag or double-click to add ${entry.label}`}
+      onDoubleClick={() => onInsert(entry)}
       {...listeners}
       {...attributes}
     >
@@ -113,7 +122,7 @@ function DotsGrid() {
   );
 }
 
-function Palette({ tab, setTab, search, setSearch, custom }) {
+function Palette({ tab, setTab, search, setSearch, custom, onInsert }) {
   const list = paletteFor(tab, custom).filter((e) =>
     e.label.toLowerCase().includes(search.trim().toLowerCase()),
   );
@@ -144,7 +153,7 @@ function Palette({ tab, setTab, search, setSearch, custom }) {
             {tab === 'custom' ? 'Mark a field “reusable” to save it here.' : 'No components match.'}
           </div>
         ) : (
-          list.map((entry) => <PaletteCard key={entry.key} entry={entry} />)
+          list.map((entry) => <PaletteCard key={entry.key} entry={entry} onInsert={onInsert} />)
         )}
       </div>
     </aside>
@@ -156,23 +165,50 @@ function QuestionBlock({ field, selectedId, onSelect }) {
   // A group renders its title + nested fields (each selectable); a leaf renders
   // its label + inert input preview.
   if (field.type === 'group') {
+    const isMemberConsent = field.healthKey === 'memberConsent';
     return (
       <div className={styles.groupBlock}>
         <div className={styles.groupTitle}>{field.text}</div>
+        {field.description ? <div className={styles.qDesc}>{field.description}</div> : null}
         <div className={styles.groupFields}>
           {(field.items || []).map((sub) => (
-            <button
+            <div
               key={sub.linkId}
-              className={`${styles.subField} ${selectedId === sub.linkId ? styles.subFieldSel : ''}`}
-              onClick={(e) => { e.stopPropagation(); onSelect(sub.linkId); }}
+              role="button"
+              tabIndex={0}
+              className={[
+                styles.subField,
+                isMemberConsent ? styles.consentCanvasItem : '',
+                !isMemberConsent && selectedId === sub.linkId ? styles.subFieldSel : '',
+              ].filter(Boolean).join(' ')}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect(isMemberConsent ? field.linkId : sub.linkId);
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' && e.key !== ' ') return;
+                e.preventDefault();
+                e.stopPropagation();
+                onSelect(isMemberConsent ? field.linkId : sub.linkId);
+              }}
             >
               {sub.type !== 'display' && (
-                <span className={styles.qLabel}>
-                  {sub.text}{sub.required && <span className={styles.req}>*</span>}
+                <span className={styles.consentCanvasHead}>
+                  <span className={styles.qLabel}>
+                    {sub.text}{sub.required && <span className={styles.req}>*</span>}
+                  </span>
+                  {isMemberConsent && (
+                    <Badge
+                      size="S"
+                      tone={sub.consentCategory === 'program' ? 'info' : 'secondary'}
+                      label={sub.consentCategory === 'program' ? 'Care Program' : 'Service Line'}
+                    />
+                  )}
                 </span>
               )}
+              {sub.description ? <span className={styles.qDesc}>{sub.description}</span> : null}
               <FieldInput field={sub} interactive={false} />
-            </button>
+            </div>
           ))}
         </div>
       </div>
@@ -264,6 +300,195 @@ function CheckRow({ label, checked, onChange }) {
   );
 }
 
+function ConsentProperties({ field, onPatch }) {
+  const uid = useId();
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newCategory, setNewCategory] = useState('program');
+  const [nameError, setNameError] = useState('');
+  const consentItems = field.consentItems || [];
+
+  const commitItems = (nextItems) => {
+    onPatch({
+      consentItems: nextItems,
+      items: syncConsentQuestions(field.items, nextItems, assignIds),
+    });
+  };
+
+  const patchItem = (id, patch) => {
+    commitItems(consentItems.map((item) => (
+      item.id === id ? { ...item, ...patch } : item
+    )));
+  };
+
+  const toggleIncluded = (item, included) => {
+    patchItem(item.id, {
+      included,
+      ...(!included ? { mandatory: false } : {}),
+    });
+  };
+
+  const addItem = () => {
+    const name = newName.trim();
+    if (!name) {
+      setNameError('Enter a consent type name.');
+      return;
+    }
+    commitItems([...consentItems, createCustomConsentItem(name, newCategory)]);
+    setNewName('');
+    setNewCategory('program');
+    setNameError('');
+    setAdding(false);
+  };
+
+  return (
+    <aside className={styles.props}>
+      <div className={styles.propsHeader}>Member Consent</div>
+      <div className={styles.propsBody}>
+        <label className={styles.propLabel} htmlFor={`${uid}-label`}>Label</label>
+        <Input
+          id={`${uid}-label`}
+          className={styles.ctl}
+          value={field.text || ''}
+          onChange={(e) => onPatch({ text: e.target.value })}
+        />
+
+        <CheckRow
+          label="Is this field required?"
+          checked={field.required}
+          onChange={(required) => onPatch({ required })}
+        />
+        <CheckRow
+          label="Make this component reusable"
+          checked={field.reusable}
+          onChange={(reusable) => onPatch({ reusable })}
+        />
+        <CheckRow
+          label="Share with patient"
+          checked={field.shareWithPatient}
+          onChange={(shareWithPatient) => onPatch({ shareWithPatient })}
+        />
+
+        <label className={styles.propLabel} htmlFor={`${uid}-description`}>Description</label>
+        <Textarea
+          id={`${uid}-description`}
+          className={styles.ctl}
+          rows={3}
+          placeholder="Add description"
+          value={field.description || ''}
+          onChange={(e) => onPatch({ description: e.target.value })}
+        />
+
+        <div className={styles.consentDivider} />
+        <div className={styles.consentSectionHead}>
+          <span className={styles.consentSectionTitle}>Consent items on this form</span>
+          <span className={styles.propHint}>
+            Pick the items to show, then mark which ones the member must answer.
+          </span>
+        </div>
+
+        {CONSENT_CATEGORY_OPTIONS.map(({ value, label }) => {
+          const rows = consentItems.filter((item) => item.category === value);
+          if (!rows.length) return null;
+          const shown = rows.filter((item) => item.included).length;
+          return (
+            <div key={value} className={styles.consentGroup}>
+              <div className={styles.consentGroupHead}>
+                <span className={styles.consentGroupTitle}>{label}</span>
+                <span className={styles.consentGroupCount}>{shown}/{rows.length}</span>
+                <span className={styles.consentGroupCol}>Required</span>
+              </div>
+              {rows.map((item) => (
+                <div
+                  key={item.id}
+                  className={`${styles.consentRow} ${item.included ? '' : styles.consentRowOff}`}
+                >
+                  <Checkbox
+                    checked={!!item.included}
+                    onCheckedChange={(checked) => toggleIncluded(item, !!checked)}
+                    aria-label={`Show ${item.name} on this form`}
+                  />
+                  <span className={styles.consentRowName} title={item.name}>{item.name}</span>
+                  {item.custom && (
+                    <ActionButton
+                      icon="solar:trash-bin-trash-linear"
+                      size="S"
+                      tooltip="Remove"
+                      tooltipLeft
+                      onClick={() => commitItems(consentItems.filter((i) => i.id !== item.id))}
+                    />
+                  )}
+                  <span className={styles.consentRowReq}>
+                    <Checkbox
+                      checked={!!item.mandatory}
+                      disabled={!item.included}
+                      aria-label={`${item.name} response is required`}
+                      onCheckedChange={(checked) => patchItem(item.id, { mandatory: !!checked })}
+                    />
+                  </span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+
+        {adding ? (
+          <div className={styles.consentAddForm}>
+            <Input
+              label="Consent type name"
+              value={newName}
+              placeholder="e.g. Palliative Care"
+              errorText={nameError}
+              validateOn="none"
+              onChange={(e) => {
+                setNewName(e.target.value);
+                if (nameError) setNameError('');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addItem();
+                }
+              }}
+            />
+            <Select
+              label="Category"
+              value={newCategory}
+              options={CONSENT_CATEGORY_OPTIONS}
+              onChange={setNewCategory}
+              portal
+            />
+            <div className={styles.consentAddActions}>
+              <Button variant="primary" size="L" onClick={addItem}>Add item</Button>
+              <Button
+                variant="ghost"
+                size="L"
+                onClick={() => {
+                  setAdding(false);
+                  setNewName('');
+                  setNameError('');
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="secondary"
+            size="L"
+            fullWidth
+            leadingIcon="solar:add-circle-linear"
+            onClick={() => setAdding(true)}
+          >
+            Add consent type
+          </Button>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 function Properties({ field, onPatch, settings, onSettingsChange }) {
   const uid = useId();
   if (!field) {
@@ -274,6 +499,9 @@ function Properties({ field, onPatch, settings, onSettingsChange }) {
         <FormSettings settings={settings} onChange={onSettingsChange} />
       </aside>
     );
+  }
+  if (field.healthKey === 'memberConsent') {
+    return <ConsentProperties field={field} onPatch={onPatch} />;
   }
   // Validated instruments are locked: show their config read-only.
   if (field.locked) {
@@ -452,6 +680,32 @@ export function FormBuilder() {
 
   const selectedField = useMemo(() => (selectedId ? findField(fields, selectedId) : null), [fields, selectedId]);
 
+  const insertEntry = (entry, overId = null) => {
+    if (!entry) return;
+    const insertAt = (prev, field) => {
+      const idx = overId ? prev.findIndex((f) => f.linkId === overId) : -1;
+      if (idx === -1) return [...prev, field];
+      const next = [...prev];
+      next.splice(idx, 0, field);
+      return next;
+    };
+
+    if (entry.validated) {
+      const { field, score, criticalTriggers } = instantiateInstrument(entry.instrument);
+      setFields((prev) => insertAt(prev, field));
+      setScoring((prev) => ({
+        scores: [...(prev?.scores || []), score],
+        criticalTriggers: [...(prev?.criticalTriggers || []), ...criticalTriggers],
+      }));
+      setSelectedId(field.linkId);
+      return;
+    }
+
+    const newField = assignIds(entry.make());
+    setFields((prev) => insertAt(prev, newField));
+    setSelectedId(newField.linkId);
+  };
+
   const handleDragStart = (e) => {
     const id = String(e.active.id);
     if (id.startsWith('palette:')) setActiveDrag(e.active.data.current?.entry || null);
@@ -466,31 +720,7 @@ export function FormBuilder() {
     if (activeId.startsWith('palette:')) {
       const entry = active.data.current?.entry;
       if (!entry) return;
-      const overId = String(over.id);
-      const insertAt = (prev, field) => {
-        const idx = prev.findIndex((f) => f.linkId === overId);
-        if (idx === -1) return [...prev, field];
-        const next = [...prev];
-        next.splice(idx, 0, field);
-        return next;
-      };
-
-      // Validated instrument: add the locked field group AND register its
-      // score + critical triggers into the form's scoring.
-      if (entry.validated) {
-        const { field, score, criticalTriggers } = instantiateInstrument(entry.instrument);
-        setFields((prev) => insertAt(prev, field));
-        setScoring((prev) => ({
-          scores: [...(prev?.scores || []), score],
-          criticalTriggers: [...(prev?.criticalTriggers || []), ...criticalTriggers],
-        }));
-        setSelectedId(field.linkId);
-        return;
-      }
-
-      const newField = assignIds(entry.make());
-      setFields((prev) => insertAt(prev, newField));
-      setSelectedId(newField.linkId);
+      insertEntry(entry, String(over.id));
       return;
     }
     // Reorder existing top-level cards.
@@ -563,7 +793,14 @@ export function FormBuilder() {
           onDragCancel={() => setActiveDrag(null)}
         >
           <div className={styles.body}>
-            <Palette tab={paletteTab} setTab={setPaletteTab} search={search} setSearch={setSearch} custom={[]} />
+            <Palette
+              tab={paletteTab}
+              setTab={setPaletteTab}
+              search={search}
+              setSearch={setSearch}
+              custom={[]}
+              onInsert={insertEntry}
+            />
             <Canvas fields={fields} selectedId={selectedId} onSelect={setSelectedId} onDelete={deleteField} />
             <Properties field={selectedField} onPatch={patchSelected} settings={settings} onSettingsChange={setSettings} />
           </div>
