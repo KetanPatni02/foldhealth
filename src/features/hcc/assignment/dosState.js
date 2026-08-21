@@ -92,6 +92,21 @@ export function blankDosState(patientId, dosDate, renderingProvider = null, pos 
     sampling: { reviewer2: null },
     billingReady: false,
     asmGenerated: false,
+    // Provenance for records created via +ICD from QA / Compliance:
+    //   originatorRole      — 'reviewer' | 'reviewer2' when a QA / Compliance
+    //                         user added the ICD; null for pipeline records.
+    //   originatorAssignee  — snapshot of that user's staff id so the DOS can
+    //                         be returned to the same person on Coder complete
+    //                         (bypasses the QA / Compliance sampling picker).
+    //   manuallyAdded       — true iff the DOS was created via +ICD (worklist
+    //                         chip). Independent of originatorRole so a Coder
+    //                         adding a code doesn't get the QA-return branch.
+    //   visitType           — snapshot of the DOS's Visit Type at creation time
+    //                         (used for downstream routing rules).
+    originatorRole: null,
+    originatorAssignee: null,
+    manuallyAdded: false,
+    visitType: null,
     activity: [],
   };
 }
@@ -233,5 +248,12 @@ export function hydrateFromMember(member, dosDate, _idx = 0, renderingProvider =
       { by: 'hydrate', reason: 'seed-from-member' },
     );
   }
+  // Carry the row-level manual/originator markers through to the DOS state
+  // so a page reload doesn't lose the "QA-created" provenance.
+  if (member.manuallyAdded) state = { ...state, manuallyAdded: true };
+  if (member.originatorRole) state = { ...state, originatorRole: member.originatorRole };
+  if (member.originatorAssignee) state = { ...state, originatorAssignee: member.originatorAssignee };
+  const dosVt = member.dos_list?.find(d => d.date === dosDate)?.vt || member.vt || member.visitType || null;
+  if (dosVt) state = { ...state, visitType: dosVt };
   return state;
 }

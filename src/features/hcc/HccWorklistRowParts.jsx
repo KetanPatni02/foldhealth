@@ -151,7 +151,7 @@ export function HccEvidenceCell({ charts, onClick, onMouseEnter, onMouseLeave, o
     >
       <Badge
         tone="primary"
-        size="M"
+        size="S"
         icon="solar:document-text-linear"
         label={String(count)}
         chevron

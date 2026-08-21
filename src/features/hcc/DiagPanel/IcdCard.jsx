@@ -2,8 +2,9 @@ import { useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { POS_BY_VT, PROVIDER_POOL_BY_VT } from '../reference/visitTypes';
-import { DOS_CUSTOM, isDosOnAnyRow, canSaveCard, buildEffectiveDosOptions, resolveDosEntry, populateFieldsFromEntry } from './IcdCard.utils';
+import { DOS_CUSTOM, isDosOnAnyRow, canSaveCard, buildEffectiveDosOptions, resolveDosEntry, populateFieldsFromEntry, todayIso } from './IcdCard.utils';
 import { IcdCardBody } from './IcdCardBody';
+import { SelectNewDosPopover } from './SelectNewDosPopover';
 import styles from './NewDiagGapPanel.module.css';
 
 /**
@@ -21,10 +22,15 @@ export function IcdCard({
   onUpdate, onRemove, onSave,
 }) {
   const [dragOver, setDragOver] = useState(false);
-  // Hidden native date input drives the "+ Custom Date" affordance so the OS
-  // calendar opens directly when the user picks it, instead of surfacing a
-  // secondary field they have to click into.
-  const customDateRef = useRef(null);
+  // Anchor ref for the DOS field — SelectNewDosPopover positions itself
+  // against this so the calendar view sits exactly where the Select's
+  // dropdown was.
+  const dosFieldRef = useRef(null);
+  // Two-view popover state: when the user picks "+ Add New DOS" in the
+  // Select, the list dismisses and this calendar view opens with a back
+  // arrow that returns them to the list.
+  const [customDosOpen, setCustomDosOpen] = useState(false);
+  const [customAnchorRect, setCustomAnchorRect] = useState(null);
 
   const priorOccurrences = useMemo(() => {
     if (!card.pick?.code || !member?.dos_list) return 0;
@@ -68,10 +74,13 @@ export function IcdCard({
 
   const handleDosSelect = (nextValueOrList) => {
     // singleAction items (Custom Date) still come through as a scalar in
-    // multi mode. Route to the picker.
+    // multi mode. Snapshot the field's DOMRect and open the Select New DOS
+    // calendar view — replaces the native OS picker with an in-app popover
+    // that matches Figma (back arrow + month grid).
     if (nextValueOrList === DOS_CUSTOM) {
-      customDateRef.current?.showPicker?.();
-      customDateRef.current?.click?.();
+      const rect = dosFieldRef.current?.getBoundingClientRect() || null;
+      setCustomAnchorRect(rect);
+      setCustomDosOpen(true);
       return;
     }
     handleDosMultiChange(Array.isArray(nextValueOrList) ? nextValueOrList : [nextValueOrList]);
@@ -187,7 +196,7 @@ export function IcdCard({
           showDropzone={showDropzone}
           saveDisabled={saveDisabled}
           dragOver={dragOver}
-          customDateRef={customDateRef}
+          dosFieldRef={dosFieldRef}
           onUpdate={onUpdate}
           onRemove={onRemove}
           onSave={onSave}
@@ -199,6 +208,20 @@ export function IcdCard({
           onDrop={onDrop}
         />
       )}
+      <SelectNewDosPopover
+        open={customDosOpen}
+        anchorRect={customAnchorRect}
+        max={todayIso()}
+        onBack={() => {
+          setCustomDosOpen(false);
+          // Return to the DOS Select's list — click the trigger button
+          // inside the DOS field wrapper so the dropdown re-opens as if
+          // the user had clicked it themselves.
+          const trigger = dosFieldRef.current?.querySelector('button[aria-expanded]');
+          setTimeout(() => trigger?.click(), 0);
+        }}
+        onSelect={(iso) => { handleCustomDate(iso); setCustomDosOpen(false); }}
+      />
     </div>
   );
 }

@@ -3,16 +3,14 @@ import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Button } from '../../../components/Button/Button';
 import { Select } from '../../../components/Select/Select';
-import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { DemoPhiStrip } from '../../../components/DemoPhiStrip/DemoPhiStrip';
-import { todayIso } from './IcdCard.utils';
 import styles from './NewDiagGapPanel.module.css';
 
 export function IcdCardBody({
   card, memberDocs, effectiveDosOptions, providerOptions, providerAll,
   posOptions, vtOptions, docTypeOptions, dosIsExisting, showEvidenceList,
-  showDropzone, saveDisabled, dragOver, customDateRef,
+  showDropzone, saveDisabled, dragOver, dosFieldRef,
   onUpdate, onRemove, onSave, handleDosSelect, handleCustomDate, handleVtChange,
   toggleLinkedDoc, setDragOver, onDrop,
 }) {
@@ -22,7 +20,7 @@ export function IcdCardBody({
   return (
     <>
           <div className={styles.formGrid}>
-            <div className={styles.field}>
+            <div className={styles.field} ref={dosFieldRef}>
               <label className={styles.fieldTitle} htmlFor={`${uid}-dos`}>
                 DOS <span className={styles.required}>•</span>
               </label>
@@ -33,12 +31,6 @@ export function IcdCardBody({
                 value={card.dosList.map(d => d.value)}
                 onChange={handleDosSelect}
                 placeholder="Select Date of Service"
-              />
-              <DatePicker
-                ref={customDateRef}
-                hidden
-                max={todayIso()}
-                onSelect={handleCustomDate}
               />
             </div>
             <div className={styles.field}>
