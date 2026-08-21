@@ -5,6 +5,8 @@ import { Icon } from '../../../components/Icon/Icon';
 import { useIcdSearch } from '../../../lib/icd/useIcdSearch';
 import styles from './ruleBuilder.module.css';
 
+const TERM_LABELS = { icd10: 'ICD-10', snomed: 'SNOMED', cpt: 'CPT', loinc: 'LOINC', rxnorm: 'RxNorm' };
+
 /**
  * TerminologySearch — autocomplete for coded healthcare terminologies.
  *
@@ -89,7 +91,6 @@ export function TerminologySearch({
     else if (e.key === 'Escape') setOpen(false);
   };
 
-  const TERM_LABELS = { icd10: 'ICD-10', snomed: 'SNOMED', cpt: 'CPT', loinc: 'LOINC', rxnorm: 'RxNorm' };
   const termLabel = TERM_LABELS[terminology] || terminology;
 
   return (

@@ -66,6 +66,11 @@
 }
 
 .clearIcon {
+  appearance: none;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;

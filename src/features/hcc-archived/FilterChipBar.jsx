@@ -85,11 +85,15 @@ export function FilterChipBar({ onSaveFilter }) {
                 <>
                   <span className={styles.divider} aria-hidden="true">|</span>
                   <span className={styles.chipValue}>{summarize(k, vals)}</span>
+                  {/* span, not <button>: the chip trigger is already a <button>
+                      and nested interactive elements are invalid HTML. */}
                   <span
                     className={styles.clearIcon}
                     role="button"
+                    tabIndex={0}
                     aria-label={`Clear ${item.label} filter`}
                     onClick={(e) => { e.stopPropagation(); setHccFilter(k, []); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setHccFilter(k, []); } }}
                   >
                     <Icon name="solar:close-circle-linear" size={12} color="var(--primary-300)" />
                   </span>

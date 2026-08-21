@@ -52,6 +52,10 @@ export function SelectNewDosPopover({ open, anchorRect, onBack, onSelect, max })
     setPlacement({ top, left, width: Math.max(280, anchorRect.width) });
   }, [open, anchorRect]);
 
+  // Deferred mousedown arming (skips the in-flight opening click); teardown
+  // clears the timer AND removes the listener either way — the scanner's
+  // cleanup matcher can't see through the setTimeout indirection.
+  // react-doctor-disable-next-line react-doctor/effect-needs-cleanup
   useEffect(() => {
     if (!open) return;
     const onDown = (e) => {

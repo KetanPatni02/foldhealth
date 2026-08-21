@@ -52,7 +52,6 @@ export function ReviewProgressPopover({
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
         role="tooltip"
-        aria-label="Review progress"
       >
         <div className={styles.titleRow}>
           <span className={styles.title}>Review Progress</span>
