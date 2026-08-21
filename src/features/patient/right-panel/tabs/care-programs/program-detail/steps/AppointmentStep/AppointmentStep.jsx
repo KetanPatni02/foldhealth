@@ -1,52 +1,63 @@
 import { useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { AddIconMinimalist } from '../../../../../../../../components/Icon/AddIconMinimalist';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { Button } from '../../../../../../../../components/Button/Button';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ScheduleDrawer } from '../../../../../../../../components/ScheduleDrawer/ScheduleDrawer';
 import { toast } from '../../../../../../../../components/Toast/sonnerToast';
+import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from './AppointmentStep.module.css';
+
+// Mirrors the grid this table replaced: 32 / fill / 140 / 140 / 160.
+const APPT_COLUMNS = [
+  { key: 'select', label: '', showCheckbox: true, width: 32 },
+  { key: 'title', label: 'Title' },
+  { key: 'type', label: 'Type', width: 140 },
+  { key: 'dateTime', label: 'Date & Time', width: 140 },
+  { key: 'assignee', label: 'Assignee', width: 160 },
+];
 
 // One appointment/reminder row of the Upcoming / Program-related tables.
 function ApptRow({ appt }) {
   return (
-    <div className={styles.row}>
-      <span className={styles.checkCell} onClick={e => e.stopPropagation()}>
+    <tr className={styles.row}>
+      <td className={styles.checkCell} onClick={e => e.stopPropagation()}>
         <Checkbox aria-label={`Select ${appt.title}`} />
-      </span>
-      <span className={styles.titleCell}>
+      </td>
+      <td className={styles.titleCell}>
         <span className={styles.titleText}>{appt.title}</span>
         <span className={styles.subtitle}>{appt.subtitle}</span>
-      </span>
-      <span className={styles.typeCell}>
-        {appt.type}
-        {appt.recurring && (
-          <span className={styles.recurring}><Icon name="solar:refresh-linear" size={12} color="var(--primary-300)" /></span>
-        )}
-      </span>
-      <span className={styles.dateCell}>
+      </td>
+      <td className={styles.typeCell}>
+        <span className={styles.typeInner}>
+          {appt.type}
+          {appt.recurring && (
+            <span className={styles.recurring}><Icon name="solar:refresh-linear" size={12} color="var(--primary-300)" /></span>
+          )}
+        </span>
+      </td>
+      <td className={styles.dateCell}>
         <span>{appt.date}</span>
         <span className={styles.time}>{appt.time}</span>
-      </span>
-      <span className={styles.assigneeCell}>{appt.assignee}</span>
-    </div>
+      </td>
+      <td className={styles.assigneeCell}>{appt.assignee}</td>
+    </tr>
   );
 }
 
 function ApptTable({ rows }) {
   return (
-    <div className={styles.table}>
-      <div className={styles.headRow}>
-        <span className={styles.checkCell} />
-        <span className={styles.titleCell}>Title</span>
-        <span className={styles.typeCell}>Type</span>
-        <span className={styles.dateCell}>Date &amp; Time</span>
-        <span className={styles.assigneeCell}>Assignee</span>
-      </div>
-      {rows.map(a => <ApptRow key={a.id} appt={a} />)}
-    </div>
+    <WorklistShell
+      embedded
+      header={null}
+      columns={APPT_COLUMNS}
+      rows={rows}
+      renderRow={a => <ApptRow key={a.id} appt={a} />}
+      minTableWidth={0}
+    />
   );
 }
 
@@ -88,7 +99,7 @@ export function AppointmentStep({ patientId, programCode }) {
         <div className={styles.section}>
           <div className={styles.sectionHead}>
             <span className={styles.sectionTitle}>Program related appointments</span>
-            <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Schedule appointment" onClick={() => setScheduleOpen(true)} />
+            <ActionButton size="S" tooltip="Schedule appointment" onClick={() => setScheduleOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
           <ApptTable rows={programAppts} />
         </div>
@@ -116,7 +127,7 @@ export function AppointmentStep({ patientId, programCode }) {
             <span className={styles.sectionTitle}>Upcoming Appointments &amp; Reminders</span>
           </button>
           {upcomingOpen && (
-            <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" onClick={() => setScheduleOpen(true)} />
+            <ActionButton size="S" tooltip="Add" onClick={() => setScheduleOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           )}
         </div>
         {upcomingOpen && (

@@ -1,6 +1,7 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Button } from '../../../../../../../../components/Button/Button';
+import { AddIconMinimalist } from '../../../../../../../../components/Icon/AddIconMinimalist';
 import { Input } from '../../../../../../../../components/Input/Input';
 import { Select } from '../../../../../../../../components/Select/Select';
 import { DatePicker } from '../../../../../../../../components/DatePicker/DatePicker';
@@ -14,13 +15,21 @@ import { SearchBar } from '../../../../../../../../components/SearchBar/SearchBa
 import { DocumentUploader, FileRow } from '../../../../../../../../components/DocumentUploader/DocumentUploader';
 import { CloseButton } from '../../../../../../../../components/CloseButton/CloseButton';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
+import { Tooltip } from '../../../../../../../../components/Tooltip/Tooltip';
+import { Link } from '../../../../../../../../components/Link/Link';
+import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { Toggle } from '../../../../../../../../components/Toggle/Toggle';
 import { TableIcon } from '../../../../../../../../components/Icon/TableIcon';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { searchMedications } from '../../../../../../../../lib/openfda';
+import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { MED_RECON_MOCK } from '../../../../../../data/medReconMock';
+
+// Stable identity — a fresh {} from the selector would re-render every tick.
+const EMPTY_CHECKS = {};
+const EMPTY_VIEWED = [];
 import styles from './MedicationReconciliation.module.css';
 
 const STATUS_OPTIONS = [
@@ -69,6 +78,19 @@ const ADD_NEW_MENU_ITEMS = [
 
 // Active Medications view toggle — mirrors the list/grid Toggle used on
 // Program Related Files.
+// Table columns — widths carried over from the grid tracks this replaced
+// (32 / name fills / 110 / 139 / 139 / 260 / 100). The name column takes no
+// width so it soaks up slack above the 980px min, exactly like the old 1fr.
+const MED_COLUMNS = [
+  { key: 'select', label: '', showCheckbox: true, width: 32, sticky: 'left', left: 0 },
+  { key: 'name', label: 'Medication Name', sticky: 'left', left: 32 },
+  { key: 'status', label: 'Status', width: 110 },
+  { key: 'start', label: 'Start Date', width: 139 },
+  { key: 'stop', label: 'Stop Date', width: 139 },
+  { key: 'sig', label: 'Sig', width: 260 },
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 100 },
+];
+
 const MED_VIEW_ITEMS = [
   // Passed as an element, not a `custom:table` name, so the glyph inherits the
   // Toggle's active/hover text color instead of TableIcon's neutral default.
@@ -324,12 +346,36 @@ export function MedicationReconciliation() {
     if (patientId) fetchPatientMedications(patientId);
   }, [patientId, fetchPatientMedications]);
 
-  const medications = storedMeds || [];
+  const viewedNewMedIds = useAppStore(s => s.viewedNewMedIds[patientId]) || EMPTY_VIEWED;
+  const markNewMedsViewed = useAppStore(s => s.markNewMedsViewed);
+
+  // Badge lifetime: a discharge-imported med keeps its "New" badge for the
+  // whole of the first visit, and is marked viewed on the way out — so the
+  // badge doesn't vanish under the user mid-read. Tracked in a ref (written
+  // and read only inside effects) so rendering stays a pure derivation of
+  // `viewedNewMedIds`.
+  const unseenNewMedIdsRef = useRef([]);
+  // Memoised so the `New`-badge effect below doesn't re-run every render on a
+  // fresh [] identity.
+  const medications = useMemo(() => storedMeds || [], [storedMeds]);
+
+  useEffect(() => {
+    unseenNewMedIdsRef.current = medications
+      .filter(m => m.source === 'discharge_import' && !viewedNewMedIds.includes(m.id))
+      .map(m => m.id);
+  }, [medications, viewedNewMedIds]);
+
+  useEffect(() => () => {
+    if (unseenNewMedIdsRef.current.length > 0) {
+      markNewMedsViewed(patientId, unseenNewMedIdsRef.current);
+    }
+  }, [patientId, markNewMedsViewed]);
 
   // Checklist stays local — it's not persisted yet. Items come from the
   // mock (labels only); every box starts unchecked regardless of the mock's
   // `checked` field.
-  const [checks, setChecks] = useState({});
+  const checks = useAppStore(s => s.medReconChecks[patientId]) || EMPTY_CHECKS;
+  const setMedReconCheck = useAppStore(s => s.setMedReconCheck);
 
   // Which Active Medications rows have their "View Note" expanded — keyed
   // by medication id, matches Figma 2556:46848.
@@ -632,24 +678,63 @@ export function MedicationReconciliation() {
     }
   };
 
-  const commitNote = (m) => {
+  // Autosave: each keystroke restarts a 700ms timer, then writes. The strip
+  // shows "Saving…" while the write is in flight and "Saved" once it lands, so
+  // the user never has to guess whether a note survived. Blur flushes any
+  // pending timer so a quick click-away can't drop the last edit.
+  const [noteStatus, setNoteStatus] = useState({}); // { [medId]: 'saving' | 'saved' }
+  const noteTimers = useRef({});
+
+  const saveNote = useCallback(async (m, draft) => {
     if (!patientId) return;
-    const draft = noteDrafts[m.id] ?? '';
     if (draft === (m.note || '')) return;
-    updatePatientMedication(patientId, m.id, { note: draft });
+    setNoteStatus(s0 => ({ ...s0, [m.id]: 'saving' }));
+    await updatePatientMedication(patientId, m.id, { note: draft });
+    setNoteStatus(s0 => ({ ...s0, [m.id]: 'saved' }));
+  }, [patientId, updatePatientMedication]);
+
+  const queueNoteSave = (m, draft) => {
+    clearTimeout(noteTimers.current[m.id]);
+    noteTimers.current[m.id] = setTimeout(() => saveNote(m, draft), 700);
   };
+
+  const commitNote = (m) => {
+    clearTimeout(noteTimers.current[m.id]);
+    saveNote(m, noteDrafts[m.id] ?? '');
+  };
+
+  // Clear any timer still pending when the step unmounts.
+  useEffect(() => {
+    const timers = noteTimers.current;
+    return () => Object.values(timers).forEach(clearTimeout);
+  }, []);
 
   // The Note action badges the number of notes on the med. There's a single
   // `note` field today, so that's 1 or nothing — `count` is left undefined
   // when empty so ActionButton skips the badge entirely.
   const noteCount = (m) => (m.note?.trim() ? 1 : undefined);
 
+  // Tooltip reflects what the action will do: read an existing note, or start one.
+  const noteTooltip = (m) => (m.note?.trim() ? 'View Note' : 'Add Note');
+
   const renderNoteEditor = (m) => (
     <div className={styles.noteEditor}>
-      <span className={styles.noteEditorLabel}>Note</span>
+      <div className={styles.noteEditorHead}>
+        <span className={styles.noteEditorLabel}>Note</span>
+        {noteStatus[m.id] && (
+          <span className={styles.noteSaveState}>
+            {noteStatus[m.id] === 'saving' && <span className={styles.noteSpinner} aria-hidden="true" />}
+            {noteStatus[m.id] === 'saving' ? 'Saving' : 'Saved'}
+          </span>
+        )}
+      </div>
       <Textarea
         value={noteDrafts[m.id] ?? ''}
-        onChange={e => setNoteDrafts(d => ({ ...d, [m.id]: e.target.value }))}
+        onChange={e => {
+          const v = e.target.value;
+          setNoteDrafts(d => ({ ...d, [m.id]: v }));
+          queueNoteSave(m, v);
+        }}
         onBlur={() => commitNote(m)}
         placeholder="Add a note"
         rows={2}
@@ -663,6 +748,27 @@ export function MedicationReconciliation() {
   // blur or Enter, and Escape abandons the edit.
   const [editingCell, setEditingCell] = useState(null); // { id, field }
   const [cellDraft, setCellDraft] = useState('');
+
+  // Inline date editor — the DS Input rather than a bare <input type="date">,
+  // with a Solar calendar as the trailing action. The field keeps type="date"
+  // so the browser's own picker still drives it; the trailing button calls
+  // showPicker() and the native indicator is hidden in CSS.
+  const CellDateInput = ({ label, value, onSelect }) => {
+    const ref = useRef(null);
+    return (
+      <Input
+        ref={ref}
+        type="date"
+        aria-label={label}
+        value={value || ''}
+        onChange={e => onSelect(e.target.value)}
+        trailingAction="solar:calendar-linear"
+        trailingActionLabel={`Open ${label.toLowerCase()} calendar`}
+        onTrailingAction={() => ref.current?.showPicker?.()}
+        className={styles.cellDateInput}
+      />
+    );
+  };
 
   const isEditingCell = (m, field) => editingCell?.id === m.id && editingCell?.field === field;
 
@@ -901,7 +1007,7 @@ export function MedicationReconciliation() {
         </div>
       ) : (
         <button type="button" className={styles.formAddNoteLink} onClick={openNote}>
-          <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
+          <AddIconMinimalist size={14} color="var(--primary-300)" />
           Add Note
         </button>
       )}
@@ -1147,12 +1253,25 @@ export function MedicationReconciliation() {
               <div className={styles.medCardText}>
                 <div className={styles.medCardNameRow}>
                   <span className={styles.medCardName}>{m.name}</span>
-                  {m.source === 'discharge_import' && (
+                  {m.source === 'discharge_import' && !viewedNewMedIds.includes(m.id) && (
                     <Badge tone="primary" size="S" label="New" />
                   )}
                 </div>
                 <div className={styles.medCardMeta}>
-                  {m.start} - {m.stop || '—'} <span className={styles.extractedDot}>•</span> {m.sig || '—'}
+                  {m.status || 'Active'} <span className={styles.extractedDot}>•</span> {m.start} - {m.stop || '—'} <span className={styles.extractedDot}>•</span> {m.sig || '—'}
+                  {' '}<span className={styles.extractedDot}>•</span>{' '}
+                  <Link
+                    variant="secondary"
+                    className={styles.noteLink}
+                    onClick={e => { e.stopPropagation(); toggleNote(m); }}
+                  >
+                    {m.note?.trim() ? 'View Note' : 'Add Note'}
+                    <DownChevronIcon
+                      size={14}
+                      color="currentColor"
+                      className={openNoteIds.has(m.id) ? styles.noteLinkChevronOpen : undefined}
+                    />
+                  </Link>
                 </div>
               </div>
               <div className={styles.medCardActions}>
@@ -1180,7 +1299,7 @@ export function MedicationReconciliation() {
                 <ActionButton
                   icon="solar:document-text-linear"
                   size="S"
-                  tooltip="Note"
+                  tooltip={noteTooltip(m)}
                   count={noteCount(m)}
                   onClick={() => toggleNote(m)}
                 />
@@ -1198,30 +1317,26 @@ export function MedicationReconciliation() {
           </div>
         </div>
       ) : (
-        <div className={styles.tableScroll}>
-        <div className={styles.table}>
-          <div className={`${styles.headRow} ${editingMedId ? styles.medRowDimmed : ''}`}>
-            <span className={styles.checkCell} onClick={e => e.stopPropagation()}>
-              <Checkbox
-              checked={someMedsSelected ? 'indeterminate' : allMedsSelected}
-              onCheckedChange={toggleAllMeds}
-              aria-label="Select all medications"
-              disabled={medications.length === 0}
-            />
-            </span>
-            <span className={styles.nameCell}>Medication Name</span>
-            <span className={styles.dateCell}>Start Date</span>
-            <span className={styles.dateCell}>Stop Date</span>
-            <span className={styles.sigCell}>Sig</span>
-            <span className={styles.statusCell}>Status</span>
-            <span className={styles.actionsCell}>Actions</span>
-          </div>
-          {medications.map(m => (
+        <div className={`${styles.tableOuter} ${editingMedId ? styles.tableOuterDimmed : ''}`}>
+        <WorklistShell
+          embedded
+          header={null}
+          columns={MED_COLUMNS}
+          rows={medications}
+          selectedIds={[...selectedMedIds]}
+          onSelectAll={toggleAllMeds}
+          onClearSelection={() => setSelectedMedIds(new Set())}
+          minTableWidth={980}
+          renderRow={m => (
             <Fragment key={m.id}>
             {editingMedId === m.id ? (
-            <div className={`${styles.addPanel} ${styles.medEditRow}`}>{formCard}</div>
+            <tr>
+              <td colSpan={MED_COLUMNS.length} className={styles.medEditCell}>
+                <div className={`${styles.addPanel} ${styles.medEditRow}`}>{formCard}</div>
+              </td>
+            </tr>
             ) : (
-            <div
+            <tr
               className={[
                 styles.row,
                 openNoteIds.has(m.id) ? styles.rowNoteOpen : '',
@@ -1230,37 +1345,53 @@ export function MedicationReconciliation() {
               ].filter(Boolean).join(' ')}
               onAnimationEnd={() => { if (exitingMedIds.has(m.id)) finishMedExit(m.id); }}
             >
-              <span className={styles.checkCell} onClick={e => e.stopPropagation()}>
+              <td className={styles.checkCell} onClick={e => e.stopPropagation()}>
                 <Checkbox
                   checked={selectedMedIds.has(m.id)}
                   onCheckedChange={() => toggleMed(m.id)}
                   aria-label={`Select ${m.name}`}
                 />
-              </span>
-              <span className={styles.nameCell}>{m.name}</span>
-              <span className={styles.dateCell}>
+              </td>
+              <td className={styles.nameCell}>
+                <Tooltip label={m.name} maxWidth={420} className={styles.nameTooltip}>
+                  <span className={styles.nameClamp}>{m.name}</span>
+                </Tooltip>
+              </td>
+              <td className={styles.statusCell}>
+                {isEditingCell(m, 'status') ? (
+                  <span ref={cellEditRef} className={styles.cellEditStatus}>
+                    <Select
+                      options={STATUS_OPTIONS}
+                      value={cellDraft}
+                      onChange={v => commitCell(m, 'status', v)}
+                      portal
+                    />
+                  </span>
+                ) : cellTrigger(m, 'status', m.status || 'Active')}
+              </td>
+              <td className={styles.dateCell}>
                 {isEditingCell(m, 'start') ? (
                   <span ref={cellEditRef} className={styles.cellEditDate}>
-                    <DatePicker
+                    <CellDateInput
+                      label="Start date"
                       value={cellDraft}
-                      aria-label="Start date"
                       onSelect={v => commitCell(m, 'start', v)}
                     />
                   </span>
                 ) : cellTrigger(m, 'start', m.start || '—')}
-              </span>
-              <span className={styles.dateCell}>
+              </td>
+              <td className={styles.dateCell}>
                 {isEditingCell(m, 'stop') ? (
                   <span ref={cellEditRef} className={styles.cellEditDate}>
-                    <DatePicker
+                    <CellDateInput
+                      label="Stop date"
                       value={cellDraft}
-                      aria-label="Stop date"
                       onSelect={v => commitCell(m, 'stop', v)}
                     />
                   </span>
                 ) : cellTrigger(m, 'stop', m.stop || '—')}
-              </span>
-              <span className={styles.sigCell}>
+              </td>
+              <td className={styles.sigCell}>
                 {isEditingCell(m, 'sig') ? (
                   <span ref={cellEditRef}>
                     <Input
@@ -1279,60 +1410,35 @@ export function MedicationReconciliation() {
                     />
                   </span>
                 ) : cellTrigger(m, 'sig', m.sig || '—')}
-              </span>
-              <span className={styles.statusCell}>
-                {isEditingCell(m, 'status') ? (
-                  <span ref={cellEditRef} className={styles.cellEditStatus}>
-                    <Select
-                      options={STATUS_OPTIONS}
-                      value={cellDraft}
-                      onChange={v => commitCell(m, 'status', v)}
-                      portal
-                    />
-                  </span>
-                ) : cellTrigger(m, 'status', m.status || 'Active')}
-              </span>
-              <span className={styles.actionsCell}>
-                {/* Stop/Continue toggle — commented out for now.
-                <div className={styles.medStopContinue}>
-                  <button
-                    type="button"
-                    className={m.status === 'Stopped' ? styles.stopActive : ''}
-                    onClick={() => stopMedication(m)}
-                    disabled={m.status === 'Stopped'}
-                  >
-                    Stop
-                  </button>
-                  <button
-                    type="button"
-                    className={continuedIds.has(m.id) ? styles.continueActive : ''}
-                    onClick={() => continueMedication(m)}
-                    disabled={m.status === 'Stopped'}
-                  >
-                    Continue
-                  </button>
+              </td>
+              <td className={styles.actionsCell}>
+                <div className={styles.actionsInner}>
+                  <ActionButton
+                    icon="solar:document-text-linear"
+                    size="S"
+                    tooltip={noteTooltip(m)}
+                    count={noteCount(m)}
+                    onClick={() => toggleNote(m)}
+                  />
+                  <span className={styles.extractedDivider} />
+                  <MedRowMenu
+                    onEdit={() => editMedication(m)}
+                    onDelete={() => setDeleteTarget(m)}
+                  />
                 </div>
-                <span className={styles.extractedDivider} />
-                */}
-                <ActionButton
-                  icon="solar:document-text-linear"
-                  size="S"
-                  tooltip="Note"
-                  count={noteCount(m)}
-                  onClick={() => toggleNote(m)}
-                />
-                <span className={styles.extractedDivider} />
-                <MedRowMenu
-                  onEdit={() => editMedication(m)}
-                  onDelete={() => setDeleteTarget(m)}
-                />
-              </span>
-            </div>
+              </td>
+            </tr>
             )}
-            {editingMedId !== m.id && openNoteIds.has(m.id) && renderNoteEditor(m)}
+            {editingMedId !== m.id && openNoteIds.has(m.id) && (
+              <tr className={styles.noteRow}>
+                <td colSpan={MED_COLUMNS.length} className={styles.noteCell}>
+                  {renderNoteEditor(m)}
+                </td>
+              </tr>
+            )}
             </Fragment>
-          ))}
-        </div>
+          )}
+        />
         </div>
       )}
 
@@ -1346,7 +1452,7 @@ export function MedicationReconciliation() {
           <label key={c.id} className={styles.checkItem}>
             <Checkbox
               checked={!!checks[c.id]}
-              onCheckedChange={v => setChecks(prev => ({ ...prev, [c.id]: v === true }))}
+              onCheckedChange={v => setMedReconCheck(patientId, c.id, v === true)}
             />
             <span className={`${styles.checkLabel} ${checks[c.id] ? styles.checkLabelDone : ''}`}>{c.label}</span>
           </label>

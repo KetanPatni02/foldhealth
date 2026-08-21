@@ -66,6 +66,20 @@
 }
 
 /* Table scroll container */
+/* Embedded mode — see the `embedded` prop. Height follows content and the
+   parent keeps the scroll, so several tables can stack in one scroller. */
+.shellEmbedded {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+}
+.tableScrollEmbedded {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
 .tableScroll {
   flex: 1;
   min-height: 0;
@@ -145,7 +159,7 @@
 /* Checkbox header matches shared WorklistRow.checkTd (10px) so the 16px
    box sits at the same inset as every body checkbox and the SubnavToggle. */
 .thCheck {
-  padding: 0 10px;
+  padding: 0 var(--space-2);
 }
 
 .emptyDefault {

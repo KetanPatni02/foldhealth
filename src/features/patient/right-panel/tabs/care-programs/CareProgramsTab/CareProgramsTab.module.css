@@ -89,37 +89,27 @@
 .clearAll:hover { text-decoration: underline; }
 
 /* ── Table ── */
-.tableWrap { flex: 1; overflow: auto; }
-.table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 900px;
-}
-.table thead th {
-  height: 32px;
-  padding: 0 8px;
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: var(--neutral-300);
-  text-align: left;
-  white-space: nowrap;
-  background: var(--neutral-0);
-  border-bottom: 0.5px solid var(--neutral-150);
-  position: sticky;
-  top: 0;
-  z-index: 2;
-}
-.table tbody tr { border-bottom: 0.5px solid var(--neutral-100); }
-.table tbody tr:hover { background: var(--primary-25); }
-.table tbody td {
+/* Rows live in a WorklistShell <table> now, so these rules key off the row /
+   cell classes directly instead of a local `.table` ancestor. */
+.clickableRow { cursor: pointer; border-bottom: 0.5px solid var(--neutral-100); }
+.clickableRow:hover { background: var(--primary-25); }
+.checkCell,
+.programCell,
+.statusCell,
+.dateCell,
+.assigneeCell,
+.pcpCell,
+.actionsCell {
   height: 48px;
-  padding: 0 8px;
+  /* Horizontal padding matches WorklistShell's own <th> (0 12px, and 0 10px on
+     the checkbox column) so header labels sit directly above cell content. */
+  padding: 0 var(--space-3);
   font-size: var(--font-base);
   color: var(--neutral-300);
   vertical-align: middle;
   white-space: nowrap;
 }
-.checkCell { width: 28px; padding-left: 4px !important; padding-right: 6px !important; }
+.checkCell { width: 28px; padding-left: var(--space-2); padding-right: var(--space-2); }
 
 /* Trailing three-dot cell — the button is revealed on row hover (or while its
    menu is open) and sits flush to the right edge. */
@@ -128,7 +118,6 @@
 .clickableRow:hover .rowMenuBtn,
 .rowMenuBtnOpen { opacity: 1; }
 .programCell { min-width: 280px; }
-.clickableRow { cursor: pointer; }
 .programName { display: flex; align-items: center; gap: 8px; }
 .nameBlock { display: flex; flex-direction: column; gap: 2px; }
 .nameText { font-size: var(--font-base); color: var(--neutral-500); }

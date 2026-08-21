@@ -95,6 +95,12 @@ export function WorklistShell({
   onPageChange,
   onPageSizeChange,
   minTableWidth = 900,
+  // Auto-height mode. The default shell fills its pane (flex: 1) and owns an
+  // internal scroller — correct for a full-page worklist, wrong for a table
+  // stacked with siblings inside a parent that already scrolls (care-gap
+  // sections, pre-visit blocks). `embedded` drops the flex/overflow so the
+  // table grows to its content and the parent keeps the scroll.
+  embedded = false,
   // When provided, WorklistShell handles column preferences end-to-end:
   //   • orders/filters `columns` per the user's saved prefs
   //   • injects a "Show / hide columns" button into the last column's header
@@ -156,7 +162,7 @@ export function WorklistShell({
   const rowCtx = { visibleColumns: activeCustomisable, hiddenSet, orderedColumns: orderedColumnsForRow };
 
   return (
-    <div className={styles.shell}>
+    <div className={embedded ? `${styles.shell} ${styles.shellEmbedded}` : styles.shell}>
       {header !== undefined ? header : (
         /* Default header (mirrors src/layouts/TabBar): title as an active
            tab on the left, right-side action icons with dividers. Callers
@@ -217,7 +223,7 @@ export function WorklistShell({
       {/* Table body — sticky-left checkbox + Members col, sticky-right
           Actions col by convention. Callers control which columns are
           sticky via `sticky: 'left' | 'right'` on the column def. */}
-      <div className={styles.tableScroll}>
+      <div className={embedded ? `${styles.tableScroll} ${styles.tableScrollEmbedded}` : styles.tableScroll}>
         {loading ? (
           <TableSkeleton rows={perPage || 10} columns={columns.length || 8} />
         ) : (

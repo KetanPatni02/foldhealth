@@ -2,16 +2,28 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { WorklistShell } from '../../../../../../components/WorklistShell/WorklistShell';
 import { RoleAssigneePicker } from '../../../../../hcc/RoleAssigneePicker';
 import { ProgramStatusRing } from '../program-detail/ProgramStatusRing/ProgramStatusRing.jsx';
 import { stepProgress } from './CareProgramsTab.utils';
 import styles from './CareProgramsTab.module.css';
 
+// Column widths carried over from the hand-rolled <table> this replaced.
+const PROGRAM_COLUMNS = [
+  { key: 'select', label: '', showCheckbox: true, width: 28 },
+  { key: 'name', label: 'Program Name', width: 280 },
+  { key: 'status', label: 'Status', width: 150 },
+  { key: 'startDate', label: 'Start Date', width: 130 },
+  { key: 'endDate', label: 'End Date', width: 130 },
+  { key: 'lastUpdated', label: 'Last Updated', width: 130 },
+  { key: 'assignee', label: 'Assignee', width: 170 },
+  { key: 'pcp', label: 'PCP', width: 180 },
+  { key: 'actions', label: '', width: 40 },
+];
+
 export function CareProgramsTabTable({
   visible,
   selectedIdSet,
-  allSelected,
-  someSelected,
   toggleAll,
   toggleOne,
   openProgram,
@@ -21,29 +33,15 @@ export function CareProgramsTabTable({
   rowMenuId,
 }) {
   return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th className={styles.checkCell}>
-              <Checkbox
-                checked={someSelected ? 'indeterminate' : allSelected}
-                onCheckedChange={toggleAll}
-                aria-label="Select all programs"
-              />
-            </th>
-            <th className={styles.programCell}>Program Name</th>
-            <th className={styles.statusCell}>Status</th>
-            <th className={styles.dateCell}>Start Date</th>
-            <th className={styles.dateCell}>End Date</th>
-            <th className={styles.dateCell}>Last Updated</th>
-            <th className={styles.assigneeCell}>Assignee</th>
-            <th className={styles.pcpCell}>PCP</th>
-            <th className={styles.actionsCell} aria-label="Actions" />
-          </tr>
-        </thead>
-        <tbody>
-          {visible.map(p => (
+    <WorklistShell
+      header={null}
+      columns={PROGRAM_COLUMNS}
+      rows={visible}
+      selectedIds={[...selectedIdSet]}
+      onSelectAll={toggleAll}
+      onClearSelection={() => toggleAll(false)}
+      minTableWidth={900}
+      renderRow={p => (
             <tr key={p.id} className={styles.clickableRow} onClick={() => openProgram(p)}>
               <td className={styles.checkCell} onClick={e => e.stopPropagation()}>
                 <Checkbox
@@ -107,9 +105,7 @@ export function CareProgramsTabTable({
                 />
               </td>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+      )}
+    />
   );
 }

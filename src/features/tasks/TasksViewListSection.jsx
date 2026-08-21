@@ -3,16 +3,34 @@ import { Badge } from '../../components/Badge/Badge';
 import { SectionPagination } from '../../components/SectionPagination/SectionPagination';
 import { useAppStore } from '../../store/useAppStore';
 import { PROG_TASKS_PER_PAGE } from './TasksView.utils';
-import { TaskRow } from './TasksViewRows';
+import { TaskTableRow } from './TasksViewRows';
 import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
+import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import styles from './TasksView.module.css';
+
+// Column widths carried over from the grid this table replaced (.colCheck 48,
+// .colTask min 260, .colP 60, .colStatus 110, .colDue 130, .colAssigned 200,
+// .colMember 210, Labels 160 in this embedded context, .colActions 48).
+// Task Title (+ its check) pins left and Actions pins right, matching the old
+// pinLeft0 / pinLeftCheck / pinRight0 behaviour.
+const progTaskColumns = ({ hideAssignedTo, hideMember }) => [
+  { key: 'check', label: '', width: 48, sticky: 'left', left: 0 },
+  { key: 'task', label: 'Tasks', width: 300, sticky: 'left', left: 48 },
+  { key: 'p', label: 'P', width: 60, align: 'center' },
+  { key: 'status', label: 'Status', width: 110 },
+  { key: 'due', label: 'Due Date', width: 130 },
+  ...(hideAssignedTo ? [] : [{ key: 'assigned', label: 'Assigned To', width: 200 }]),
+  ...(hideMember ? [] : [{ key: 'member', label: 'Member', width: 210 }]),
+  { key: 'labels', label: 'Labels', width: 160 },
+  { key: 'actions', label: '', width: 48, sticky: 'right' },
+];
 
 /**
  * ProgramTaskSection — one "Open"/"Completed" section: a title, then the shared
- * Tasks table header + TaskRows in a fixed ~5-row scroll box, with the Task
- * Title (+ check) pinned left and the action column pinned right. Reuses the
- * standard TaskRow so rows look exactly like the Tasks module. When the section
- * has no tasks it shows the ring empty state instead of the table.
+ * Tasks table in a WorklistShell, with the Task Title (+ check) pinned left and
+ * the action column pinned right. Reuses TaskTableRow so rows look exactly like
+ * the Tasks module. When the section has no tasks it shows the ring empty state
+ * instead of the table.
  */
 export function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAssignedTo, hideMember, emptyLabel }) {
   const [page, setPage] = useState(1);
@@ -34,30 +52,23 @@ export function ProgramTaskSection({ title, tasks, onToggle, onTaskClick, hideAs
         </div>
       ) : (
         <>
-          <div className={`${styles.progScroll} ${hideMember ? styles.tableNoMember : ''}`}>
-            <div className={`${styles.tableHeader} ${styles.progHeader}`}>
-              <div className={`${styles.thCell} ${styles.colCheck} ${styles.pinLeft0}`} />
-              <div className={`${styles.thCell} ${styles.colTask} ${styles.pinLeftCheck}`}>Tasks</div>
-              <div className={`${styles.thCell} ${styles.colP}`}>P</div>
-              <div className={`${styles.thCell} ${styles.colStatus}`}>Status</div>
-              <div className={`${styles.thCell} ${styles.colDue}`}>Due Date</div>
-              {!hideAssignedTo && <div className={`${styles.thCell} ${styles.colAssigned}`}>Assigned To</div>}
-              {!hideMember && <div className={`${styles.thCell} ${styles.colMember}`}>Member</div>}
-              <div className={`${styles.thCell} ${styles.colLabels}`}>Labels</div>
-              <div className={`${styles.thCell} ${styles.colActions} ${styles.pinRight0}`} />
-            </div>
-            {pageTasks.map(t => (
-              <TaskRow
+          <WorklistShell
+            embedded
+            header={null}
+            columns={progTaskColumns({ hideAssignedTo, hideMember })}
+            rows={pageTasks}
+            minTableWidth={hideMember ? 1032 : 1242}
+            renderRow={t => (
+              <TaskTableRow
                 key={t.id}
                 task={t}
                 onToggle={onToggle}
                 onTaskClick={onTaskClick}
                 hideAssignedTo={hideAssignedTo}
                 hideMember={hideMember}
-                pinnedEnds
               />
-            ))}
-          </div>
+            )}
+          />
           {tasks.length > PROG_TASKS_PER_PAGE && (
             <SectionPagination
               page={safePage}

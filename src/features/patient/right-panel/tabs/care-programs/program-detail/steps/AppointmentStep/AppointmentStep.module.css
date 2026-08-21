@@ -80,32 +80,30 @@
 }
 
 /* ── Appointments table ── */
-.table {
-  display: flex;
-  flex-direction: column;
-}
-.headRow,
+/* Cells live in a WorklistShell <table> now; the grid tracks moved to the
+   column defs. Horizontal padding matches the shell's <th> (12px; 10px on the
+   checkbox) so headers sit directly above their content. */
 .row {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 140px 140px 160px;
-  align-items: center;
-  column-gap: 8px;
-}
-.headRow {
-  padding: 8px 4px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-}
-.row {
-  padding: 10px 4px;
   border-bottom: 0.5px solid var(--neutral-100);
 }
-.checkCell { display: flex; align-items: center; }
-.titleCell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.checkCell,
+.titleCell,
+.typeCell,
+.dateCell,
+.assigneeCell {
+  padding: var(--space-2) var(--space-3);
+  vertical-align: middle;
+  font-size: var(--font-base);
+}
+.checkCell { width: 32px; padding-left: var(--space-2); padding-right: var(--space-2); }
+.titleCell { min-width: 0; }
+.titleText, .subtitle, .dateCell > span, .time { display: block; }
 .titleText { font-size: var(--font-base); color: var(--neutral-500); }
 .subtitle { font-size: var(--font-md); color: var(--neutral-300); }
-.typeCell { display: inline-flex; align-items: center; gap: 6px; font-size: var(--font-base); color: var(--neutral-300); }
+.typeCell { color: var(--neutral-300); }
+/* Inner flex keeps the label + recurring badge on one line — `display: flex`
+   on a <td> would break table column sizing. */
+.typeInner { display: inline-flex; align-items: center; gap: var(--space-2); }
 .recurring {
   display: inline-flex;
   align-items: center;
@@ -115,6 +113,6 @@
   border-radius: 4px;
   background: var(--primary-100);
 }
-.dateCell { display: flex; flex-direction: column; gap: 2px; font-size: var(--font-base); color: var(--neutral-400); }
+.dateCell { color: var(--neutral-400); }
 .time { font-size: var(--font-md); color: var(--neutral-300); }
-.assigneeCell { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.assigneeCell { color: var(--neutral-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

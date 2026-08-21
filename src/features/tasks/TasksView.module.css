@@ -1798,6 +1798,17 @@
   cursor: pointer;
 }
 .taskTr:hover { background: var(--primary-25); }
+/* Pin Task Title (+ its check) left and the action column right while the
+   middle columns scroll — WorklistShell only makes the <th>s sticky, so the
+   body cells need it here. Each pinned cell paints its own background (and
+   repeats the hover tint) or scrolled content shows through. */
+.taskTr .tdCheck { position: sticky; left: 0; z-index: 2; background: var(--neutral-0); }
+.taskTr .tdTask { position: sticky; left: 48px; z-index: 2; background: var(--neutral-0); }
+.taskTr .tdActionsCell { position: sticky; right: 0; z-index: 2; background: var(--neutral-0); }
+.taskTr:hover .tdCheck,
+.taskTr:hover .tdTask,
+.taskTr:hover .tdActionsCell { background: var(--primary-25); }
+.tdActionsCell { width: 48px; text-align: center; vertical-align: middle; }
 .taskTr:hover .actionMenuBtn { opacity: 1; }
 
 .td {

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { AddIconMinimalist } from '../../../../../../../../components/Icon/AddIconMinimalist';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
+import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { RadioButton } from '../../../../../../../../components/RadioButton/RadioButton';
 import { preVisitForProgram } from '../../../../../../data/programActivityMock';
 import styles from './PreVisitStep.module.css';
@@ -61,29 +63,42 @@ function StackCell({ label, value }) {
   );
 }
 
+// Care Team columns — mirrors the grid this table replaced: 290 / fill / 40.
+// The Role column keeps its vertical rule via `thStyle` on the header and
+// `.careRole` on the body cells.
+const CARE_TEAM_COLUMNS = [
+  { key: 'role', label: 'Role', width: 290, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
+  { key: 'providers', label: 'Providers' },
+  { key: 'action', label: '', width: 40 },
+];
+
 function CareTeam({ rows, showAddRole }) {
   return (
     <div className={styles.careTable}>
-      <div className={styles.careHeadRow}>
-        <span className={styles.careHeadCell}>Role</span>
-        <span className={styles.careHeadCell}>Providers</span>
-        <span className={styles.careActionCol} />
-      </div>
-      {rows.map(r => (
-        <div key={r.role} className={styles.careRow}>
-          <span className={styles.careRole}>{r.role}</span>
-          <span className={styles.careProvider}>
-            <Avatar variant="staff" size={24} initials={r.initials} />
-            <span className={styles.careName}>{r.name}</span>
-          </span>
-          <span className={styles.careActionCol}>
-            <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
-          </span>
-        </div>
-      ))}
+      <WorklistShell
+        embedded
+        header={null}
+        columns={CARE_TEAM_COLUMNS}
+        rows={rows}
+        minTableWidth={0}
+        renderRow={r => (
+          <tr key={r.role} className={styles.careRow}>
+            <td className={styles.careRole}>{r.role}</td>
+            <td className={styles.careProvider}>
+              <span className={styles.careProviderInner}>
+                <Avatar variant="staff" size={24} initials={r.initials} />
+                <span className={styles.careName}>{r.name}</span>
+              </span>
+            </td>
+            <td className={styles.careActionCol}>
+              <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+            </td>
+          </tr>
+        )}
+      />
       {showAddRole && (
         <button type="button" className={styles.addRoleRow}>
-          <Icon name="solar:add-circle-linear" size={16} color="var(--neutral-300)" />
+          <AddIconMinimalist size={16} color="var(--neutral-300)" />
           <span>Add New Role</span>
         </button>
       )}

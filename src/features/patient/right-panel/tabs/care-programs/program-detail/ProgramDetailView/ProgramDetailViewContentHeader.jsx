@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
+import { AddIconMinimalist } from '../../../../../../../components/Icon/AddIconMinimalist';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { Button } from '../../../../../../../components/Button/Button';
 import { Link } from '../../../../../../../components/Link/Link';
@@ -9,12 +10,15 @@ import { PenIcon } from '../../../../../../../components/Icon/PenIcon';
 import { SearchBar } from '../../../../../../../components/SearchBar/SearchBar';
 import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
 import { todayMMDDYYYY } from '../../../../../../tasks/TasksView.utils';
+import { MED_RECON_MOCK } from '../../../../../data/medReconMock';
 import { EMPTY_TASK_FILTERS } from './ProgramDetailView.utils';
 import styles from './ProgramDetailView.module.css';
 
 // Sign dropdown actions — Figma SNP-Story 3039:621576. "Send for Sign Off"
 // carries the right-chevron submenu affordance from the design; its submenu
 // isn't specced yet, so selecting it currently has no handler.
+const EMPTY_CHECKS = {};
+
 const SIGN_MENU_ITEMS = [
   { key: 'sign-self', iconElement: <PenIcon size={16} color="var(--neutral-400)" />, label: 'Sign (Self)' },
   { key: 'sign-np', iconElement: <PenIcon size={16} color="var(--neutral-400)" />, label: 'Sign (NP)' },
@@ -78,6 +82,11 @@ export function ProgramDetailViewContentHeader({
       ? `Sign-off task assigned to ${user.name}`
       : 'Could not create the sign-off task');
   };
+
+  // Signing is gated on the mandatory Medication Checklist — every box has to
+  // be ticked before Sign / Send for Sign Off is available.
+  const medReconChecks = useAppStore(s => s.medReconChecks[s.selectedPatientId]) || EMPTY_CHECKS;
+  const medReconChecklistDone = MED_RECON_MOCK.checklist.every(c => medReconChecks[c.id]);
 
   const medReconSignedBy = program?.medReconSignedBy || null;
   const medReconSignature = medReconSignedBy
@@ -153,7 +162,7 @@ export function ProgramDetailViewContentHeader({
             <>
               <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" />
               <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" />
-              <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear">Add Care Plan</Button>
+              <Button variant="secondary" size="L" leadingIconElement={<AddIconMinimalist size={16} />}>Add Care Plan</Button>
               <Button variant="alt" size="L" leadingIcon="solar:pen-2-linear">Sign &amp; Share</Button>
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </>
@@ -173,6 +182,13 @@ export function ProgramDetailViewContentHeader({
                   menuWidth={220}
                   menuAriaLabel="Sign options"
                   onMenuSelect={(key) => {
+                    // The Medication Checklist is mandatory — the control stays
+                    // enabled so the reason is discoverable, and the attempt
+                    // surfaces it rather than a dead button.
+                    if (!medReconChecklistDone) {
+                      showToast?.('Complete Medication Checklist to sign.');
+                      return;
+                    }
                     if (key === 'send-sign-off') setSignOffOpen(true);
                     else if (key === 'sign-self') signMedRecon('Self');
                     else if (key === 'sign-np') signMedRecon('NP');
@@ -198,7 +214,7 @@ export function ProgramDetailViewContentHeader({
                 <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setTaskSearchOpen(true)} />
               )}
               <span className={styles.headerDivider} />
-              <Button variant="tertiary" size="L" leadingIcon="solar:add-circle-linear" onClick={() => setAddTaskOpen(true)}>Add Task</Button>
+              <Button variant="tertiary" size="L" leadingIconElement={<AddIconMinimalist size={16} />} onClick={() => setAddTaskOpen(true)}>Add Task</Button>
               <span className={styles.headerDivider} />
               <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" active={taskFiltersOpen}
                 iconColor={taskFiltersOpen ? 'var(--primary-300)' : undefined}

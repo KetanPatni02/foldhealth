@@ -10,6 +10,7 @@ import { RingEmptyState } from '../../../../../../../../components/RingEmptyStat
 import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
 import { DateRangePopover } from '../../../../../../../../components/DateRangePopover/DateRangePopover';
 import { ImagePreviewOverlay } from '../../../../../../../../components/ImagePreviewOverlay/ImagePreviewOverlay';
+import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { resolveFileKind } from '../../../../../../../../components/FilePreview/FilePreview.utils';
 import { ProgramDocPreviewDrawer } from '../ProgramDocPreviewDrawer/ProgramDocPreviewDrawer';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
@@ -23,6 +24,14 @@ const VIEW_ITEMS = [
 ];
 
 const EMPTY_FILE_FILTERS = { fileType: [], lastUpdated: [], dateAdded: [] };
+
+// Mirrors the grid this table replaced: 36 / fill / 160 / 180.
+const FILE_COLUMNS = [
+  { key: 'select', label: '', showCheckbox: true, width: 36 },
+  { key: 'name', label: 'File Name' },
+  { key: 'type', label: 'File Type', width: 160 },
+  { key: 'updated', label: 'Last Updated', width: 180 },
+];
 
 const todayMMDDYYYY = () => {
   const d = new Date();
@@ -109,8 +118,6 @@ export function ProgramRelatedFiles({ programCode, patientId }) {
     [filtered, q],
   );
 
-  const allSelected = rows.length > 0 && rows.every(r => selected.has(r.id));
-  const someSelected = rows.some(r => selected.has(r.id)) && !allSelected;
   const toggleAll = () => setSelected(prev => (prev.size === rows.length ? new Set() : new Set(rows.map(r => r.id))));
   const toggleOne = (id) => setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
 
@@ -148,15 +155,7 @@ export function ProgramRelatedFiles({ programCode, patientId }) {
           <>
             <ActionButton icon="solar:magnifer-linear" size="S" tooltip="Search" onClick={() => setSearchOpen(true)} />
             <span className={styles.tabDivider} />
-            {SUB_TABS.map(tab => (
-              <button
-                key={tab}
-                className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ''}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
+            <Toggle size="S" items={SUB_TABS} active={activeTab} onChange={setActiveTab} />
             <div className={styles.spacer} />
           </>
         )}
@@ -228,30 +227,30 @@ export function ProgramRelatedFiles({ programCode, patientId }) {
           ))}
         </div>
       ) : (
-        <div className={styles.table}>
-          <div className={styles.headRow}>
-            <span className={styles.checkCell}>
-              <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={toggleAll} aria-label="Select all files" />
-            </span>
-            <span className={styles.nameCell}>File Name</span>
-            <span className={styles.typeCell}>File Type</span>
-            <span className={styles.updatedCell}>Last Updated</span>
-          </div>
-          {rows.map(f => (
-            <div key={f.id} className={styles.row}>
-              <span className={styles.checkCell}>
+        <WorklistShell
+          embedded
+          header={null}
+          columns={FILE_COLUMNS}
+          rows={rows}
+          selectedIds={[...selected]}
+          onSelectAll={toggleAll}
+          onClearSelection={() => setSelected(new Set())}
+          minTableWidth={0}
+          renderRow={f => (
+            <tr key={f.id} className={styles.row}>
+              <td className={styles.checkCell}>
                 <Checkbox checked={selected.has(f.id)} onCheckedChange={() => toggleOne(f.id)} aria-label={`Select ${f.name}`} />
-              </span>
-              <span className={`${styles.nameCell} ${isPreviewable(f) ? styles.clickable : ''}`}
-                onClick={isPreviewable(f) ? () => setPreviewDoc(f) : undefined}>{f.name}</span>
-              <span className={styles.typeCell}>{f.type}</span>
-              <span className={styles.updatedCell}>
+              </td>
+              <td className={`${styles.nameCell} ${isPreviewable(f) ? styles.clickable : ''}`}
+                onClick={isPreviewable(f) ? () => setPreviewDoc(f) : undefined}>{f.name}</td>
+              <td className={styles.typeCell}>{f.type}</td>
+              <td className={styles.updatedCell}>
                 <span className={styles.updatedBy}>{f.updatedBy}</span>
                 <span className={styles.updatedDate}>{f.updatedDate}</span>
-              </span>
-            </div>
-          ))}
-        </div>
+              </td>
+            </tr>
+          )}
+        />
       )}
 
       {previewDoc && (previewKindOf(previewDoc) === 'image'

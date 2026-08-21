@@ -167,8 +167,6 @@ export function CareProgramsTab() {
   const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const visibleIds = visible.map(p => p.id);
   const visibleIdSet = useMemo(() => new Set(visibleIds), [visibleIds]);
-  const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedIdSet.has(id));
-  const someSelected = selectedIds.some(id => visibleIdSet.has(id)) && !allSelected;
   const toggleAll = (checked) =>
     setSelectedIds(checked
       ? [...new Set([...selectedIds, ...visibleIds])]
@@ -208,8 +206,6 @@ export function CareProgramsTab() {
         <CareProgramsTabTable
           visible={visible}
           selectedIdSet={selectedIdSet}
-          allSelected={allSelected}
-          someSelected={someSelected}
           toggleAll={toggleAll}
           toggleOne={toggleOne}
           openProgram={openProgram}

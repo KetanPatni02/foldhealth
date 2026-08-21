@@ -19,33 +19,36 @@
   padding: 4px 4px 0;
 }
 
-.table {
-  display: flex;
-  flex-direction: column;
-}
-.headRow,
+/* Cells now live in a WorklistShell <table>; the grid tracks moved to the
+   column defs. Padding/typography are preserved from the old grid rows. */
 .row {
-  display: grid;
-  grid-template-columns: 32px minmax(0, 1fr) 90px 160px 120px;
-  align-items: center;
-  column-gap: 8px;
-}
-.headRow {
-  padding: 8px 4px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-}
-.row {
-  padding: 10px 4px;
   border-bottom: 0.5px solid var(--neutral-100);
 }
+.checkCell,
+.titleCell,
+.statusCell,
+.assigneeCell,
+.actionCell {
+  /* Horizontal padding matches WorklistShell's own <th> (0 12px) so header
+     labels sit directly above their cell content. */
+  padding: var(--space-2) var(--space-3);
+  vertical-align: middle;
+  font-size: var(--font-base);
+}
 
-.checkCell { display: flex; align-items: center; }
-.titleCell { font-size: var(--font-base); color: var(--neutral-500); min-width: 0; }
-.statusCell { font-size: var(--font-base); color: var(--neutral-300); }
+/* The shell's checkbox <th> uses 10px, not 12px. */
+.checkCell { width: 32px; padding-left: var(--space-2); padding-right: var(--space-2); }
+.titleCell { color: var(--neutral-500); min-width: 0; }
+.statusCell { color: var(--neutral-300); white-space: nowrap; }
 
-.assigneeCell { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.assigneeCell { min-width: 0; white-space: nowrap; }
+/* Inner flex keeps the icon + name on one baseline with the old 6px gap —
+   `display: flex` on a <td> would break table column sizing. */
+.assigneeInner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
 .assigneeName {
   background: none;
   border: none;
@@ -70,4 +73,4 @@
   white-space: nowrap;
 }
 
-.actionCell { display: flex; align-items: center; }
+

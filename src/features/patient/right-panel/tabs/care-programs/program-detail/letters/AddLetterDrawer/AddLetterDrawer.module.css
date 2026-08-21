@@ -27,26 +27,27 @@
 .searchBox input::placeholder { color: var(--neutral-200); }
 
 /* ── List ── */
-.table { display: flex; flex-direction: column; }
-.headRow, .row {
-  display: grid;
-  grid-template-columns: 32px minmax(0,1fr) 130px 160px;
-  align-items: center;
-  column-gap: 8px;
+/* Cells live in a WorklistShell <table> now; the grid tracks moved to the
+   column defs, and the shell owns header padding (so the old .colHeader
+   padding override is gone). */
+.row { border-bottom: 0.5px solid var(--neutral-100); }
+.checkCell,
+.nameCol,
+.dateCol,
+.actionsCol {
+  padding: var(--space-2) var(--space-3);
+  vertical-align: middle;
+  font-size: var(--font-base);
 }
-.headRow { padding: 8px 4px; border-bottom: 0.5px solid var(--neutral-150); font-size: var(--font-base); color: var(--neutral-300); }
-.row { padding: 10px 4px; border-bottom: 0.5px solid var(--neutral-100); }
-.checkCell { display: flex; align-items: center; }
-.nameCol { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.nameBlock { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.checkCell { width: 32px; padding-left: var(--space-2); padding-right: var(--space-2); }
+.nameCol { min-width: 0; }
+/* Inner flex holds the thumb + name stack — `display: flex` on a <td> would
+   break table column sizing. */
+.nameInner { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.nameBlock { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .name { font-size: var(--font-base); color: var(--neutral-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .subtype { font-size: var(--font-md); color: var(--neutral-300); }
-.dateCol { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
-.actionsCol { display: flex; align-items: center; justify-content: flex-start; }
-/* SortableHeader <th> ships 8px 12px padding; zero it so the header label
-   lines up with the grid cell content and the row's own padding controls
-   vertical rhythm. */
-.colHeader { padding: 0 !important; }
+.dateCol { color: var(--neutral-400); white-space: nowrap; }
 
 .actions { display: inline-flex; align-items: center; gap: 8px; }
 /* Fixed width so the button doesn't resize between "Add" and "Added"; text centered. */
