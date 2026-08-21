@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { GoalDetailDrawer } from '../settings/panels/GoalDetailDrawer';
+import { GoalDetailDrawer } from '../settings/agents/goals/GoalDetailDrawer';
 import { SECTIONS, DEFAULT_FORM } from './ConfigurePanelParts.constants';
 import { ConfigurePanelSections } from './ConfigurePanelSections';
 import styles from './ConfigurePanel.module.css';

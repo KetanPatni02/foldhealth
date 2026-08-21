@@ -157,11 +157,12 @@ export function AlertsMonitoringCard({ dragHandleClassName }) {
     // If nothing is explicitly assigned, fall back to patients that carry
     // open tasks for me — still real platform rows, just task-derived.
     if (rows.length === 0 && meName) {
-      const taskNames = new Set(
-        tasks
-          .filter(t => t.status !== 'completed' && matchTaskAssignee(t, meId, meName) && t.member)
-          .map(t => normName(t.member)),
-      );
+      const taskNames = new Set();
+      for (const t of tasks) {
+        if (t.status !== 'completed' && matchTaskAssignee(t, meId, meName) && t.member) {
+          taskNames.add(normName(t.member));
+        }
+      }
       rows = [...merged.values()].filter(r => taskNames.has(normName(r.name)));
     }
 

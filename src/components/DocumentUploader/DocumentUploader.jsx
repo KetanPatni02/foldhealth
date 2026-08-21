@@ -121,8 +121,10 @@ export function DocumentUploader({
       <div className={styles.header}>Upload Document</div>
       <input
         ref={inputRef}
+        id="document-upload-input"
         type="file"
         accept={accept}
+        aria-label="Upload document"
         className={styles.dropInput}
         onChange={onPicked}
       />
@@ -130,12 +132,12 @@ export function DocumentUploader({
       {phase === 'empty' && (
         <>
           <label
+            htmlFor="document-upload-input"
             className={[styles.dropZone, drag ? styles.dropZoneActive : ''].join(' ')}
             onDragEnter={(e) => { e.preventDefault(); setDrag(true); }}
             onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
             onDragLeave={() => setDrag(false)}
             onDrop={onDrop}
-            onClick={pick}
           >
             <Icon name="solar:upload-minimalistic-linear" size={20} color="var(--neutral-300)" />
             <span className={styles.dropText}>

@@ -280,7 +280,6 @@ export function FailedBadgeWithTooltip({ details }) {
       {rect && hasContent && createPortal(
         <div
           role="tooltip"
-          aria-label="Fail reasons"
           className={styles.failTooltip}
           style={style}
         >

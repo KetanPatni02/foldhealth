@@ -42,6 +42,7 @@ export function FontSubstitutionDialog() {
     <div
       role="dialog"
       aria-modal="true"
+      aria-label="Font substitution"
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(15, 23, 42, 0.4)',
