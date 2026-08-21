@@ -55,24 +55,10 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
   const account = useAppStore(s => s.hccUserRole);
   const setAccount = useAppStore(s => s.setHccUserRole);
   const [showRoles, setShowRoles] = useState(false);
-  // Roles this user actually has — fetched from profiles.clinical_roles.
-  // The role switcher only lists HCC roles that overlap this set, so a
-  // user without any HCC role assigned can't accidentally act as one.
-  const [assignedRoles, setAssignedRoles] = useState(null);
-  useEffect(() => {
-    if (!user?.id) { setAssignedRoles([]); return; }
-    let alive = true;
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('clinical_roles')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (alive) setAssignedRoles(data?.clinical_roles || []);
-    })();
-    return () => { alive = false; };
-  }, [user?.id]);
-  const assignedHccRoles = (assignedRoles || []).filter(r => ALL_HCC_ROLES.includes(r));
+  // Same profiles row fetchPlatformUsers already loaded for pickers /
+  // notifications. Used to be a third GET of `clinical_roles` on every page.
+  const assignedRoles = useAppStore(s => s.currentUserClinicalRoles) || [];
+  const assignedHccRoles = assignedRoles.filter(r => ALL_HCC_ROLES.includes(r));
   // In dev we always let the switcher offer every HCC role — it lets us
   // exercise every workflow without touching profiles.clinical_roles in the
   // DB. In prod we keep the gate: users see only the roles they actually
@@ -341,9 +327,15 @@ export function TopBar() {
   const awvMembers = useAppStore(s => s.awvMembers) || [];
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers) || [];
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers) || [];
+  const jsaMembers = useAppStore(s => s.jsaMembers) || [];
   const allPatients = useAppStore(s => s.allPatients) || [];
   const fetchPatients = useAppStore(s => s.fetchPatients);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
+  const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
+  const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchJsaMembers = useAppStore(s => s.fetchJsaMembers);
   const openQuickView = useAppStore(s => s.openQuickView);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
 
@@ -369,10 +361,25 @@ export function TopBar() {
   // fetch while the user is still moving toward it, and focus covers keyboard
   // users. A page load where nobody searches costs nothing. Both fetches are
   // store-guarded single-fire, so calling this repeatedly is free.
+  // The worklist slices are in here for a reason worth stating: SubNav used to
+  // fetch all of them on every Population route, and this index quietly rode
+  // along on that. SubNav now fetches badge counts only, so if search did not
+  // warm them itself, coverage would silently fall from 152 patients to the
+  // ~120 in `all_patients` — and `all_patients` is NOT a superset of the
+  // worklists (measured: 136 of the 152 union keys are absent from it, same id
+  // format, genuinely a different cohort). Losing search hits is a much worse
+  // outcome than a one-time fetch on first search, so they load on intent
+  // instead of on every page load. All store-guarded single-fire.
   const warmSearchIndex = useCallback(() => {
     fetchPatients();
     fetchAllPatients();
-  }, [fetchPatients, fetchAllPatients]);
+    fetchHccMembers?.();
+    fetchAwvMembers?.();
+    fetchCcmWorklistMembers?.();
+    fetchSnpWorklistMembers?.();
+    fetchJsaMembers?.();
+  }, [fetchPatients, fetchAllPatients, fetchHccMembers, fetchAwvMembers,
+      fetchCcmWorklistMembers, fetchSnpWorklistMembers, fetchJsaMembers]);
 
   // Unified search index. Priority order matters twice over: profile-backed
   // slices come first so their rows win the dedupe (their ids resolve in
@@ -407,9 +414,10 @@ export function TopBar() {
     add(awvMembers, true);
     add(ccmWorklistMembers, true);
     add(snpWorklistMembers, true);
+    add(jsaMembers, true);
     add(allPatients, false);
     return index;
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, allPatients]);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, allPatients]);
 
   const searchResults = searchQuery.trim().length >= 2
     ? searchIndex.filter(p => {

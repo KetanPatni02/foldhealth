@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
@@ -22,6 +22,8 @@ export function QueueTable({
   const patients = useAppStore(s => s.patients);
   const patientsLoading = useAppStore(s => s.patientsLoading);
   const callDetails = useAppStore(s => s.callDetails);
+  const fetchPatients = useAppStore(s => s.fetchPatients);
+  const fetchCallDetails = useAppStore(s => s.fetchCallDetails);
   const searchQuery = useAppStore(s => s.searchQuery);
   const selectedIds = useAppStore(s => s.selectedIds);
   const selectPatient = useAppStore(s => s.selectPatient);
@@ -29,6 +31,16 @@ export function QueueTable({
   const clearSelected = useAppStore(s => s.clearSelected);
 
   const isToc = worklistKey === 'toc';
+
+  // This table reads `patients` and `callDetails` but never fetched either —
+  // it relied on SubNav prefetching them for every Population route, which is
+  // why `call_details` (101.9 KB) loaded on HCC, CCM, SNP and the rest. SubNav
+  // now fetches counts only, so the view that renders the data owns fetching
+  // it. Both actions are store-guarded single-fire.
+  useEffect(() => {
+    fetchPatients();
+    fetchCallDetails();
+  }, [fetchPatients, fetchCallDetails]);
 
   const columns = useMemo(() => [
     { key: 'select', showCheckbox: true, sticky: 'left', left: 0, width: 36 },

@@ -84,18 +84,30 @@ export function useHccWorklistTable() {
   useEffect(() => { fetchHccAddedCharts(); }, [fetchHccAddedCharts]);
   useEffect(() => { fetchHccChartStatus(); }, [fetchHccChartStatus]);
   useEffect(() => { fetchHccRemovedCharts(); }, [fetchHccRemovedCharts]);
-  // Populate the patients slice on mount if it's still empty — Population
-  // may not have landed on any patient-backed view yet in this session.
-  // fetchPatients is idempotent enough (a duplicate call just re-fetches);
-  // guarding on length avoids the second network round-trip.
+  // The five patient slices below feed exactly one thing: the "Patients
+  // Without Open Gaps" section, which returns [] unless the user is actively
+  // searching (see `patientsWithoutGaps` — `if (!q) return []`). They used to
+  // be fetched on mount, five separate effects, which cost ~183 KB
+  // (all_patients 100.6 + patients 51.3 + awv 14.7 + snp 9.4 + ccm 6.6) to
+  // populate a section that renders nothing on arrival. It was the single
+  // biggest item in HCC's load and the reason HCC issued 38 requests where
+  // the other worklists issued ~25.
+  //
+  // Now they load on the first keystroke. Every one of these fetchers is
+  // store-guarded single-fire, so re-running this effect as the query changes
+  // costs nothing after the first pass, and the length checks they used to
+  // carry (read before the fetch resolves, so two callers both fired) are
+  // gone with them.
+  const needsPatientSources = (searchQuery?.trim().length || 0) > 0;
   useEffect(() => {
-    if (patients.length === 0) fetchPatients();
-  }, [patients.length, fetchPatients]);
-  // Prime the other worklist slices we source empty-patient rows from.
-  useEffect(() => { if ((awvMembers?.length || 0) === 0) fetchAwvMembers?.(); }, [awvMembers?.length, fetchAwvMembers]);
-  useEffect(() => { if ((ccmWorklistMembers?.length || 0) === 0) fetchCcmWorklistMembers?.(); }, [ccmWorklistMembers?.length, fetchCcmWorklistMembers]);
-  useEffect(() => { if ((snpWorklistMembers?.length || 0) === 0) fetchSnpWorklistMembers?.(); }, [snpWorklistMembers?.length, fetchSnpWorklistMembers]);
-  useEffect(() => { if ((allPatients?.length || 0) === 0) fetchAllPatients?.(); }, [allPatients?.length, fetchAllPatients]);
+    if (!needsPatientSources) return;
+    fetchPatients();
+    fetchAwvMembers?.();
+    fetchCcmWorklistMembers?.();
+    fetchSnpWorklistMembers?.();
+    fetchAllPatients?.();
+  }, [needsPatientSources, fetchPatients, fetchAwvMembers, fetchCcmWorklistMembers,
+      fetchSnpWorklistMembers, fetchAllPatients]);
 
   // If we landed on the HCC tab via the router (hash sync) rather than
   // through setActiveSubnavList, no default filter was applied. Seed the
