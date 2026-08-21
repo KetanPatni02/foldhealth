@@ -763,7 +763,9 @@ const HCC_TRANSITION_LABEL = {
   rejectDos:             'DOS Rejected',
   completeCoder:         'Coding Completed',
   requestRecords:        'Records Requested',
+  requestRecordsFrom:    'Records Requested',
   recordsReceived:       'Records Received',
+  recordsReceivedFor:    'Records Received',
   completeReviewer:      'QA Completed',
   completeReviewer2:     'Compliance Completed',
   returnDos:             'DOS Returned',
@@ -6511,6 +6513,21 @@ export const useAppStore = create((set, get) => ({
         case 'reassignRole':
           result = fn(s.hccDosAssignments, patient, dos, payload.role, payload.staffId, actor, payload.reason);
           break;
+        case 'requestRecordsFrom':
+          // Role-agnostic records request: QA / Compliance / Coder → Coder /
+          // Support Team. Passes note through for the activity log.
+          result = fn(
+            s.hccDosAssignments, patient, dos,
+            payload.requesterRole, payload.destinationRole, actor,
+            { note: payload.note },
+          );
+          break;
+        case 'recordsReceivedFor':
+          // Rarely invoked directly — the completeSupport / completeCoder
+          // cascade fires this automatically when a records_request targets
+          // them. Exposed here for completeness / manual overrides.
+          result = fn(s.hccDosAssignments, patient, dos, payload.requesterRole, actor);
+          break;
         case 'completeReviewer2':
           // Takes the full config (not just samplingRates) — completeReviewer2
           // also runs the Phase 0 (WR7) validateAsmReadinessConfig guard, which
@@ -6569,12 +6586,31 @@ export const useAppStore = create((set, get) => ({
       // same set() call.
       queueMicrotask(() => {
         const transitionLabel = HCC_TRANSITION_LABEL[kind] || kind;
+        // Records-request transitions carry extra routing info (requester
+        // role → destination role) that makes the audit line legible. All
+        // other transitions just show the plain label.
+        const ROLE_LABEL_H = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'Compliance' };
+        let headline = `DOS ${dosDate} — ${transitionLabel}`;
+        if (kind === 'requestRecordsFrom') {
+          const from = ROLE_LABEL_H[payload.requesterRole] || payload.requesterRole;
+          const to   = ROLE_LABEL_H[payload.destinationRole] || payload.destinationRole;
+          headline = `DOS ${dosDate} — ${transitionLabel} — ${from} → ${to}`;
+        } else if (kind === 'recordsReceivedFor') {
+          const requester = ROLE_LABEL_H[payload.requesterRole] || payload.requesterRole;
+          headline = `DOS ${dosDate} — ${transitionLabel} — returned to ${requester}`;
+        }
         useAppStore.getState().addActivityEntry({
           _memberId: patientId,
           t: 'status_dos',
           by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
           dos: dosDate,
-          headline: `DOS ${dosDate} — ${transitionLabel}`,
+          headline,
+          // Persist the routing context on the entry so downstream views
+          // (e.g. the Records Requested badge in the DOS-header pill) can
+          // read it directly instead of parsing the headline text.
+          ...(payload.requesterRole || payload.destinationRole
+            ? { requesterRole: payload.requesterRole, destinationRole: payload.destinationRole, note: payload.note }
+            : {}),
         });
         // Emit one row per role whose status changed — including engine
         // cascades (e.g. Support Completed auto-flipping Coder to In
@@ -6668,6 +6704,16 @@ export const useAppStore = create((set, get) => ({
   hccRequestRecords: (pid, dos, actor) => {
     track('hcc.records_requested', { memberId: pid });
     return useAppStore.getState().transitionHccDos(pid, dos, 'requestRecords', { actor });
+  },
+  // Role-agnostic Records Requested: QA / Compliance / Coder can request
+  // records from Coder or Support Team. `note` is optional context for the
+  // activity log. Fires under the same telemetry event as the legacy
+  // Coder-only wrapper so downstream dashboards stay consistent.
+  hccRequestRecordsFrom: (pid, dos, requesterRole, destinationRole, actor, opts = {}) => {
+    track('hcc.records_requested', { memberId: pid, requesterRole, destinationRole });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'requestRecordsFrom', {
+      requesterRole, destinationRole, actor, note: opts.note,
+    });
   },
   hccRecordsReceived: (pid, dos, actor) => {
     track('hcc.records_received', { memberId: pid });

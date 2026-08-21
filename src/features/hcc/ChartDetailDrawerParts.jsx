@@ -46,6 +46,15 @@ export function StatusIcon({ status, size = 16 }) {
           <path d="M5.6 5.6l4.8 4.8M10.4 5.6l-4.8 4.8" stroke="var(--status-error)" strokeLinecap="round" />
         </svg>
       );
+    case 'returned':
+      // Support is under a records-request cycle — mirror the DiagPanel's
+      // Returned/Rebuttal state (secondary-toned undo glyph).
+      return (
+        <svg {...common}>
+          <circle cx="8" cy="8" r="7" fill="var(--secondary-100)" stroke="var(--secondary-300)" />
+          <path d="M6 6.5 4.5 8 6 9.5M4.7 8h4.4a2 2 0 0 1 2 2v.5" stroke="var(--secondary-300)" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        </svg>
+      );
     case 'action-needed':
     default:
       return (

@@ -1,0 +1,137 @@
+/* RecordsRequestDialog — QA / Compliance role picker (Figma ICD-Import
+   5723-171525). Radios stacked with a hairline between them, optional
+   comment box with a 0/150 counter, Cancel outlined on the left and
+   Request Record filled on the right. No close-X in header — Cancel is
+   the only exit. */
+
+.dialog {
+  padding: var(--space-4);
+  max-width: 360px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Header — title + description stacked, no close button. Rely on the
+   title's tight line-height for the ~2px visual gap the Figma calls for
+   (the token grid only descends to 4px). */
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.title {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--neutral-500);
+  line-height: var(--leading-tight);
+  margin: 0;
+}
+.subtitle {
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: var(--leading-normal);
+  margin: 0;
+}
+
+/* Radio group — hairline between options, no outer border. */
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+}
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-align: left;
+  width: 100%;
+}
+.option + .option {
+  border-top: 0.5px solid var(--neutral-150);
+}
+.option:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Custom radio circle — outline when idle, filled purple dot when active. */
+.radio {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--neutral-200);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color .12s;
+}
+.radioActive { border-color: var(--primary-300); }
+.radioDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--primary-300);
+}
+
+.optionText {
+  display: flex;
+  flex-direction: column;
+  /* Tight label→description gap — tokens only go down to 4px, so tighten
+     via the description's line-height instead of an explicit gap. */
+  min-width: 0;
+}
+.optionLabel {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: var(--leading-tight);
+}
+.optionDescription {
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: var(--leading-normal);
+}
+
+/* Optional comment — label above, textarea with a 0/150 counter overlaid
+   in the bottom-right corner. Matches Figma's compact treatment. */
+.commentField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.commentLabel {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: var(--leading-tight);
+}
+.commentBox {
+  position: relative;
+}
+.commentCounter {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  pointer-events: none;
+}
+
+/* Actions — Cancel left (secondary), Request Record right (primary). Each
+   button flexes to fill half the row so the pair spans the dialog width,
+   matching Figma's edge-to-edge treatment. */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.actions > * { flex: 1; }
