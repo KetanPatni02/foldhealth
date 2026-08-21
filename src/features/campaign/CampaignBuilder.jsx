@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { renderEmailHtml } from '../email-builder/patchEmailHtml';
 import { Icon } from '../../components/Icon/Icon';
@@ -10,20 +10,21 @@ import { Input } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { Select } from '../../components/Select/Select';
 import { Toggle } from '../../components/Toggle/Toggle';
+import { RadioButton } from '../../components/RadioButton/RadioButton';
 import { makeInitialDocument } from '../email-builder/initialDocument';
 import styles from './CampaignBuilder.module.css';
 
 // Static option lists — would come from Supabase audience / sender tables in
 // production. Kept here so the screen renders without extra fetches.
 const AUDIENCE_OPTIONS = [
-  { id: 'all-patients',   label: 'All Patients' },
-  { id: 'diabetics',      label: 'Diabetics (HbA1c > 9)' },
-  { id: 'maternal',       label: 'Maternal Care' },
-  { id: 'pediatric',      label: 'Pediatric' },
-  { id: 'cardiac',        label: 'Cardiac Care' },
-  { id: 'over-65',        label: 'Patients over 65' },
-  { id: 'rosewood',       label: 'Rosewood Clinic' },
-  { id: 'rome-office',    label: 'Rome Office' },
+  { value: 'all-patients',   label: 'All Patients' },
+  { value: 'diabetics',      label: 'Diabetics (HbA1c > 9)' },
+  { value: 'maternal',       label: 'Maternal Care' },
+  { value: 'pediatric',      label: 'Pediatric' },
+  { value: 'cardiac',        label: 'Cardiac Care' },
+  { value: 'over-65',        label: 'Patients over 65' },
+  { value: 'rosewood',       label: 'Rosewood Clinic' },
+  { value: 'rome-office',    label: 'Rome Office' },
 ];
 
 const SENDER_OPTIONS = [
@@ -118,8 +119,7 @@ export function CampaignBuilder() {
         </div>
         <div className={styles.leftScroll}>
           <FieldGroup>
-            <FieldRow>
-              <Label htmlFor="campaign-name" required>Campaign Name</Label>
+            <div className={styles.aiRow}>
               <button
                 className={styles.aiBtn}
                 onClick={() => showToast('Write with AI — coming soon')}
@@ -128,7 +128,7 @@ export function CampaignBuilder() {
                 <Icon name="solar:magic-stick-3-linear" size={14} color="var(--primary-300)" />
                 Write with AI
               </button>
-            </FieldRow>
+            </div>
             {(() => {
               // "Untitled Campaign" is the placeholder name we INSERT into the
               // DB when the user first opens the builder. Treat it as empty for
@@ -136,16 +136,16 @@ export function CampaignBuilder() {
               // disagree.
               const displayName = campaign.name === 'Untitled Campaign' ? '' : (campaign.name || '');
               return (
-                <>
-                  <Input
-                    id="campaign-name"
-                    placeholder="Enter Campaign Name"
-                    value={displayName}
-                    maxLength={60}
-                    onChange={e => set({ name: e.target.value })}
-                  />
-                  <CharCount value={displayName} max={60} />
-                </>
+                <Input
+                  id="campaign-name"
+                  label="Campaign Name"
+                  required
+                  characterLimit={60}
+                  maxLength={60}
+                  placeholder="Enter Campaign Name"
+                  value={displayName}
+                  onChange={e => set({ name: e.target.value })}
+                />
               );
             })()}
           </FieldGroup>
@@ -164,12 +164,16 @@ export function CampaignBuilder() {
           <SectionTitle>Select Audience</SectionTitle>
 
           <FieldGroup>
-            <Label required>Include</Label>
-            <ChipMultiSelect
+            <Select
+              multiple
+              searchable
+              label="Include"
+              required
               options={AUDIENCE_OPTIONS}
               value={campaign.audienceInclude || []}
               onChange={v => set({ audienceInclude: v })}
               placeholder="Search or Select Audience"
+              searchPlaceholder="Search or Select Audience"
             />
             {(campaign.audienceExclude || []).length === 0 ? (
               <button className={styles.linkBtn} onClick={() => set({ audienceExclude: ['__placeholder__'] })} type="button">
@@ -177,15 +181,16 @@ export function CampaignBuilder() {
                 Add Exclusion
               </button>
             ) : (
-              <>
-                <Label>Exclude</Label>
-                <ChipMultiSelect
-                  options={AUDIENCE_OPTIONS}
-                  value={(campaign.audienceExclude || []).filter(v => v !== '__placeholder__')}
-                  onChange={v => set({ audienceExclude: v.length === 0 ? [] : v })}
-                  placeholder="Search or Select Audience to exclude"
-                />
-              </>
+              <Select
+                multiple
+                searchable
+                label="Exclude"
+                options={AUDIENCE_OPTIONS}
+                value={(campaign.audienceExclude || []).filter(v => v !== '__placeholder__')}
+                onChange={v => set({ audienceExclude: v.length === 0 ? [] : v })}
+                placeholder="Search or Select Audience to exclude"
+                searchPlaceholder="Search or Select Audience to exclude"
+              />
             )}
           </FieldGroup>
 
@@ -195,6 +200,7 @@ export function CampaignBuilder() {
               <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-200)" />
             </FieldRow>
             <RadioGroup
+              name="send-via"
               options={CHANNELS}
               value={(campaign.sendVia || ['email'])[0]}
               onChange={v => set({ sendVia: [v], channel: v })}
@@ -202,13 +208,10 @@ export function CampaignBuilder() {
           </FieldGroup>
 
           <FieldGroup>
-            <FieldRow>
-              <Label>Campaign Start Date</Label>
-              <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-200)" />
-            </FieldRow>
             <div className={styles.startModeRow}>
               <RadioGroup
                 inline
+                name="start-mode"
                 options={[
                   { key: 'immediately', label: 'Immediately' },
                   { key: 'scheduled',   label: 'Schedule for Later' },
@@ -218,9 +221,11 @@ export function CampaignBuilder() {
               />
             </div>
             {campaign.startMode === 'scheduled' && (
-              <input
+              <Input
                 type="date"
-                className={styles.dateInput}
+                label="Campaign Start Date"
+                showInfo
+                infoText="When this campaign starts sending"
                 aria-label="Campaign start date"
                 value={fromIsoToInput(campaign.startAt)}
                 onChange={e => set({ startAt: toIsoOrNull(e.target.value) })}
@@ -229,14 +234,13 @@ export function CampaignBuilder() {
           </FieldGroup>
 
           <FieldGroup>
-            <Label required>Campaign End Date</Label>
-            <input
+            <Input
               type="date"
-              className={styles.dateInput}
+              label="Campaign End Date"
+              required
               aria-label="Campaign end date"
               value={fromIsoToInput(campaign.endDate)}
               onChange={e => set({ endDate: toIsoOrNull(e.target.value) })}
-              placeholder="Select the End Date"
             />
           </FieldGroup>
         </div>
@@ -283,8 +287,9 @@ export function CampaignBuilder() {
 
         <div className={styles.senderRow}>
           <FieldCol>
-            <Label required>Sender Name</Label>
             <Select
+              label="Sender Name"
+              required
               options={SENDER_OPTIONS}
               value={campaign.senderName}
               onChange={v => set({ senderName: v })}
@@ -292,8 +297,9 @@ export function CampaignBuilder() {
             />
           </FieldCol>
           <FieldCol>
-            <Label required>Send From</Label>
             <Select
+              label="Send From"
+              required
               options={SEND_FROM_OPTIONS}
               value={campaign.sendFrom}
               onChange={v => set({ sendFrom: v })}
@@ -305,8 +311,9 @@ export function CampaignBuilder() {
         <div className={styles.previewWrap}>
           <div className={styles.previewCard}>
             <div className={styles.previewSubjectRow}>
-              <Label required>Subject Line</Label>
               <Input
+                label="Subject Line"
+                required
                 placeholder="Enter your Subject Line"
                 value={campaign.subjectLine || ''}
                 onChange={e => set({ subjectLine: e.target.value })}
@@ -362,106 +369,22 @@ function Label({ children, required, htmlFor }) {
 function SectionTitle({ children }) {
   return <h3 className={styles.sectionTitle}>{children}</h3>;
 }
-function CharCount({ value, max }) {
-  const len = (value || '').length;
-  return <span className={styles.charCount}>{len}/{max}</span>;
-}
 
 // ── Radio group ─────────────────────────────────────────────────────────
-function RadioGroup({ options, value, onChange, inline }) {
+function RadioGroup({ options, value, onChange, inline, name }) {
   return (
     <div className={inline ? styles.radioInline : styles.radioStack}>
-      {options.map(opt => {
-        const selected = opt.key === value;
-        return (
-          <button
-            key={opt.key}
-            type="button"
-            role="radio"
-            aria-checked={selected}
-            className={[styles.radioOption, selected ? styles.radioOptionSelected : ''].join(' ')}
-            onClick={() => onChange(opt.key)}
-          >
-            <span className={[styles.radioDot, selected ? styles.radioDotSelected : ''].join(' ')} />
-            {opt.icon && <Icon name={opt.icon} size={14} color={selected ? 'var(--primary-300)' : 'var(--neutral-300)'} />}
-            <span className={styles.radioLabel}>{opt.label}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Chip multi-select ───────────────────────────────────────────────────
-function ChipMultiSelect({ options, value, onChange, placeholder }) {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const ref = useRef(null);
-  const selectedIds = value || [];
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const selectedSet = new Set(selectedIds);
-  const available = options.filter(o => !selectedSet.has(o.id) && o.label.toLowerCase().includes(query.toLowerCase()));
-  const labelFor = id => options.find(o => o.id === id)?.label || id;
-
-  const toggle = (id) => {
-    if (selectedIds.includes(id)) onChange(selectedIds.filter(x => x !== id));
-    else onChange([...selectedIds, id]);
-  };
-
-  return (
-    <div ref={ref} className={styles.chipSelect}>
-      <div className={styles.chipSelectControl} onClick={() => setOpen(true)}>
-        {selectedIds.length === 0 && !open ? (
-          <span className={styles.chipPlaceholder}>{placeholder}</span>
-        ) : (
-          <>
-            {selectedIds.map(id => (
-              <span key={id} className={styles.chip}>
-                {labelFor(id)}
-                <CloseButton
-                  size={12}
-                  onClick={e => { e.stopPropagation(); toggle(id); }}
-                  className={styles.chipRemove}
-                  label={`Remove ${labelFor(id)}`}
-                />
-              </span>
-            ))}
-            {open && (
-              <input
-                autoFocus
-                className={styles.chipInput}
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                placeholder={selectedIds.length === 0 ? placeholder : ''}
-              />
-            )}
-          </>
-        )}
-        <span className={styles.chipChevron}>
-          <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />
+      {options.map(opt => (
+        <span key={opt.key} className={styles.radioItem}>
+          <RadioButton
+            name={name}
+            label={opt.label}
+            checked={opt.key === value}
+            onChange={() => onChange(opt.key)}
+          />
+          {opt.icon && <Icon name={opt.icon} size={14} color="var(--neutral-300)" />}
         </span>
-      </div>
-      {open && available.length > 0 && (
-        <div className={styles.chipDropdown}>
-          {available.map(o => (
-            <button
-              key={o.id}
-              type="button"
-              className={styles.chipOption}
-              onClick={() => { toggle(o.id); setQuery(''); }}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      )}
+      ))}
     </div>
   );
 }
