@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '../../store/useAppStore';
+import { Button } from '../../components/Button/Button';
 import { GoalDetailDrawer } from '../settings/agents/goals/GoalDetailDrawer';
 import { SECTIONS, DEFAULT_FORM } from './ConfigurePanelParts.constants';
 import { ConfigurePanelSections } from './ConfigurePanelSections';
@@ -42,7 +43,7 @@ function buildForm(agent, builderConfig) {
  */
 function ConfigureForm({ agent, initialForm, expanded, toggleExpanded, setGoalDetailId, saveAgentConfig, showToast, onSave }) {
   const [form, setForm] = useState(initialForm);
-  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
 
   const updateField = useCallback((field, value) => {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -62,14 +63,16 @@ function ConfigureForm({ agent, initialForm, expanded, toggleExpanded, setGoalDe
     });
   };
 
+  // Previously this handler existed but was never rendered — the Configure
+  // tab had no save affordance at all and every edit was lost on unmount.
   const handleSave = async () => {
-    if (!agent?.id || savingRef.current) return;
-    savingRef.current = true;
-    let ok = false;
+    if (!agent?.id || saving) return;
+    setSaving(true);
+    let ok;
     try {
       ok = await saveAgentConfig(agent.id, form);
     } finally {
-      savingRef.current = false;
+      setSaving(false);
     }
     if (ok) showToast('Configuration saved');
     else showToast('Failed to save configuration');
@@ -77,15 +80,22 @@ function ConfigureForm({ agent, initialForm, expanded, toggleExpanded, setGoalDe
   };
 
   return (
-    <ConfigurePanelSections
-      form={form}
-      expanded={expanded}
-      toggleExpanded={toggleExpanded}
-      updateField={updateField}
-      toggleArrayItem={toggleArrayItem}
-      toggleGoal={toggleGoal}
-      setGoalDetailId={setGoalDetailId}
-    />
+    <>
+      <ConfigurePanelSections
+        form={form}
+        expanded={expanded}
+        toggleExpanded={toggleExpanded}
+        updateField={updateField}
+        toggleArrayItem={toggleArrayItem}
+        toggleGoal={toggleGoal}
+        setGoalDetailId={setGoalDetailId}
+      />
+      <div className={styles.saveBar}>
+        <Button variant="primary" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving…' : 'Save Configuration'}
+        </Button>
+      </div>
+    </>
   );
 }
 

@@ -23,11 +23,13 @@ function DragDots({ className, onPointerDown }) {
 export const ConversationNode = memo(function ConversationNode({ data, id }) {
   const config = getNodeConfig(data.nodeType);
   const transitions = data.transitions || [];
-  const builderSelectedNode = useAppStore(s => s.builderSelectedNode);
-  const activeTransitionIdx = useAppStore(s => s.builderActiveTransition);
+  // Scoped boolean selectors: subscribing to raw builderSelectedNode would
+  // re-render EVERY canvas node on each selection change; this way only the
+  // node gaining/losing selection re-renders.
+  const isThisNodeSelected = useAppStore(s => s.builderSelectedNode === id);
+  const activeTransitionIdx = useAppStore(s => (s.builderSelectedNode === id ? s.builderActiveTransition : null));
   const setActiveTransition = useAppStore(s => s.setBuilderActiveTransition);
   const updateNodeData = useAppStore(s => s.updateNodeData);
-  const isThisNodeSelected = builderSelectedNode === id;
 
   // Shake animation for already-selected clicks
   const [shakeIdx, setShakeIdx] = useState(null);

@@ -307,16 +307,22 @@ export function useAgentCanvas() {
   // version bump — just keeps the draft on disk so a reload doesn't
   // lose work. Skipped while loading and while an explicit save is in
   // flight to avoid racing.
+  //
+  // The JSON snapshot is taken INSIDE the debounce callback, not in the
+  // effect body: nodes/edges change identity on every drag frame, and
+  // stringifying the whole flow at frame rate was measurable jank. Arming
+  // a timer per frame is cheap; serialization now happens once per quiet
+  // 1.5s window.
   useEffect(() => {
     if (!builderFlow || saving) return;
-    const snapshot = JSON.stringify({ nodes, edges });
-    if (snapshot === lastSavedSnapshot.current) return;
     // `cancelled` guards the writes that happen after the await, which can
     // land long after this effect has torn down.
     let cancelled = false;
     clearTimeout(autoSaveTimer.current);
-    setAutoSaveStatus('idle');
     autoSaveTimer.current = setTimeout(async () => {
+      if (cancelled) return;
+      const snapshot = JSON.stringify({ nodes, edges });
+      if (snapshot === lastSavedSnapshot.current) return;
       setAutoSaveStatus('saving');
       const viewport = reactFlowInstance.current?.getViewport() || { x: 0, y: 0, zoom: 1 };
       await saveFlow(nodes, edges, viewport);
