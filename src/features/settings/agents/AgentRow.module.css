@@ -1,0 +1,120 @@
+/* Agents-table row — composes from the shared row shell so it reads
+   identically to every other worklist (hover tint, sticky columns,
+   load-in animation, hairline dividers). */
+
+.row          { composes: row from '../../../components/WorklistShell/WorklistRow.module.css'; cursor: pointer; }
+.stickyLeft   { composes: stickyLeft from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyRight  { composes: stickyRight from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.td           { composes: td from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.membersTd    { composes: membersTd from '../../../components/WorklistShell/WorklistRow.module.css'; }
+
+/* Primary identity cell — avatar + name + role stack. */
+.nameCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nameInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.nameLink {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nameLink:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+}
+.role {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Model + "Last Updated By" cells share a tight nowrap column style. */
+.modelCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--neutral-400);
+  font-size: var(--font-md);
+  white-space: nowrap;
+}
+/* A <button> so the updater's name opens their profile from the keyboard. It is
+   inline text inside a flex stack, so it keeps shrink-to-fit sizing — only the
+   button chrome and text alignment need neutralising. */
+.userLink {
+  display: inline;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+.userLink:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 2px; border-radius: 2px; }
+.userLink:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
+}
+
+/* Last Updated By — name on top, date underneath in the secondary tone. */
+.updatedStack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.25;
+}
+.updatedDate {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.youTag {
+  color: var(--neutral-300);
+  font-weight: 400;
+}
+
+/* Actions cell — the <td> IS the flex container. Dropping the wrapping
+   div lets the cell shrink to its content, so the sticky-right column
+   only takes up exactly what the ActionButtons + dividers need.
+   Right padding is 0 so the last icon (More) sits flush with the row's
+   right edge. */
+.actionsTd {
+  composes: td from '../../../components/WorklistShell/WorklistRow.module.css';
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  /* Zero right padding so the "More" icon sits flush with the row's
+     right edge — no dead space between the last button and the border. */
+  padding-right: 0;
+}
+
+/* Status cell — hugs the Switch (~32px) with tight 8px symmetric padding
+   so the column shrinks to just what the Switch needs. */
+.statusTd {
+  composes: td from '../../../components/WorklistShell/WorklistRow.module.css';
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.actionDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}

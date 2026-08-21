@@ -50,7 +50,12 @@ export function LocationsTab({ tabsForBar, activeTab, setActiveTab }) {
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(null); // location object flagged for delete
 
-  useEffect(() => { fetchLocations(); }, [fetchLocations]);
+  // The store's fetched flag makes this a once-per-session query; the
+  // upsert/remove mutations keep the local copy in sync afterwards.
+  useEffect(() => {
+    if (fetched) return;
+    fetchLocations();
+  }, [fetched, fetchLocations]);
 
   const filtered = useMemo(() => {
     if (!searchVal.trim()) return locations;

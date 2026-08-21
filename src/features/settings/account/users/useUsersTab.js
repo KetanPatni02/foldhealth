@@ -90,7 +90,14 @@ export function useUsersTab() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  // One profiles query per session — revisiting the Users tab reuses the
+  // local list; mutations (toggle/invite/edit) keep it in sync.
+  const fetchedRef = useRef(false);
+  useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    fetchUsers();
+  }, [fetchUsers]);
 
   const toggleUserStatus = async (user) => {
     if (!isCurrentUserAdmin) {

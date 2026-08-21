@@ -2492,6 +2492,7 @@ export const useAppStore = create((set, get) => ({
   // Chat Groups (Messages > Chat Settings)
   chatGroupsData: null,
   chatGroupsLoading: true,
+  chatGroupsFetched: false,
   chatGroupDetailId: null,
   agentRulesGroupId: null,
   businessHoursOpen: false,
@@ -2507,6 +2508,7 @@ export const useAppStore = create((set, get) => ({
   // Agents (settings)
   agents: [],
   agentsLoading: true,
+  agentsFetched: false,
   settingsTab: _savedSettingsTab || 'agents',
   showCreateAgent: false,
 
@@ -3064,7 +3066,7 @@ export const useAppStore = create((set, get) => ({
     if (error) {
       console.warn('chat_groups fetch failed, using fallback:', error.message);
       console.warn('Supabase chat_groups fetch failed:', error.message);
-      set({ chatGroupsData: [], chatGroupsLoading: false });
+      set({ chatGroupsData: [], chatGroupsLoading: false, chatGroupsFetched: true });
     } else {
       const mapped = data.map(row => ({
         id: row.id,
@@ -3078,7 +3080,7 @@ export const useAppStore = create((set, get) => ({
         hasAgent: row.has_agent || false,
         agentName: row.agent_name || '',
       }));
-      set({ chatGroupsData: mapped, chatGroupsLoading: false });
+      set({ chatGroupsData: mapped, chatGroupsLoading: false, chatGroupsFetched: true });
     }
   },
 
@@ -3715,7 +3717,7 @@ export const useAppStore = create((set, get) => ({
 
     if (error) {
       console.warn('Failed to fetch agents:', error.message);
-      set({ agents: [], agentsLoading: false });
+      set({ agents: [], agentsLoading: false, agentsFetched: true });
     } else {
       // Sort by numeric part of id for consistent order
       data.sort((a, b) => {
@@ -3723,7 +3725,7 @@ export const useAppStore = create((set, get) => ({
         const nb = parseInt(b.id.replace(/\D/g, ''), 10);
         return na - nb;
       });
-      set({ agents: data, agentsLoading: false });
+      set({ agents: data, agentsLoading: false, agentsFetched: true });
     }
   },
 
