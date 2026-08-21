@@ -2150,6 +2150,89 @@ export const useAppStore = create((set, get) => ({
   // only auto-lands on the top worklist while this is still false.
   _subnavNavigated: false,
 
+  // ─── Worklist badge counts (SubNav) ─────────────────────────────────
+  // SubNav shows a row count beside every worklist. It used to get those by
+  // fetching every worklist table IN FULL on mount — ~166 KB of rows to
+  // render seven integers, and it happened on every Population route, so
+  // opening the 9-row CCM worklist pulled HCC, AWV, SNP, JSA and patients
+  // too. These queries ask only for the id columns the counts need: 6.7 KB
+  // for identical numbers, measured against the live tables.
+  //
+  // Why not PostgREST's `head: true` + `count: 'exact'`, which would be ~0
+  // bytes: two of these counts aren't row counts. HCC stores one row per
+  // coding record, so its badge is a DISTINCT count over member_id (53 rows
+  // → 51 patients), and the All Patients badge is a union of normalized
+  // member ids across every slice. Neither is expressible as a count header,
+  // so we pull the id column and reduce client-side. The other five badges
+  // could use a head count, but issuing them the same way keeps one code
+  // path instead of two.
+  worklistCounts: null,
+  worklistCountsDidFetch: false,
+  fetchWorklistCounts: async () => {
+    if (get().worklistCountsDidFetch) return;
+    set({ worklistCountsDidFetch: true });
+
+    const [hcc, awv, ccm, snp, jsa, pts] = await Promise.all([
+      supabase.from('hcc_members_v2').select('id, member_id'),
+      supabase.from('awv_members').select('id, member_id'),
+      supabase.from('ccm_worklist_members').select('id, member_id'),
+      supabase.from('snp_worklist_members').select('id, member_id'),
+      supabase.from('jsa_members').select('id, member_id'),
+      supabase.from('patients').select('id, member_id, agent_assigned'),
+    ]);
+
+    const results = [hcc, awv, ccm, snp, jsa, pts];
+    if (results.some(r => r.error)) {
+      // Release the guard so the next mount retries. Badges fall back to
+      // whatever slices happen to be loaded, which is what they showed before
+      // this fetch existed.
+      console.warn('[store] fetchWorklistCounts failed:',
+        results.find(r => r.error)?.error?.message);
+      set({ worklistCountsDidFetch: false });
+      return;
+    }
+
+    // Same normalization SubNav and useHccWorklistTable use for the union key
+    // — # stripped, trimmed, lowercased. member_id is the one identity field
+    // every worklist shares; fall back to the row id so a member without one
+    // still counts once.
+    const norm = (v) => String(v ?? '').replace(/^#/, '').trim().toLowerCase();
+    const keys = (rows) => {
+      const s = new Set();
+      for (const r of rows || []) {
+        const k = norm(r.member_id || r.id);
+        if (k) s.add(k);
+      }
+      return s;
+    };
+
+    // HEDIS has no count query here on purpose: its badge reads from the
+    // local HEDIS_MEMBERS constant, so the number needs no network at all —
+    // but it does belong in the All Patients union.
+    const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
+
+    const hccKeys = keys(hcc.data);
+    const union = new Set();
+    for (const set_ of [hccKeys, keys(awv.data), keys(ccm.data), keys(snp.data),
+                        keys(jsa.data), keys(pts.data), keys(HEDIS_MEMBERS)]) {
+      for (const k of set_) union.add(k);
+    }
+
+    set({
+      worklistCounts: {
+        hccUnique: hccKeys.size,
+        awv: (awv.data || []).length,
+        ccm: (ccm.data || []).length,
+        snp: (snp.data || []).length,
+        jsa: (jsa.data || []).length,
+        hedis: HEDIS_MEMBERS.length,
+        tcm: (pts.data || []).length,
+        tocIp: (pts.data || []).filter(p => p.agent_assigned).length,
+        allPatients: union.size,
+      },
+    });
+  },
+
   // Boot-safe identity for worklist prefs. auth.getUser() validates against
   // the server and returns null on cold load while the persisted JWT is
   // still refreshing — which made fetch read the wrong row ("order resets
@@ -3928,8 +4011,11 @@ export const useAppStore = create((set, get) => ({
   hedisMembers: [],
   hedisLoading: false,
   setHedisMembers: (members) => set({ hedisMembers: members }),
+  // Single-fire guard — see `ccmWorklistDidFetch`. Also had none.
+  hedisDidFetch: false,
   fetchHedisMembers: async () => {
-    set({ hedisLoading: true });
+    if (useAppStore.getState().hedisDidFetch) return;
+    set({ hedisDidFetch: true, hedisLoading: true });
     const { data, error } = await supabase
       .from('hedis_members')
       .select('*')
@@ -3937,7 +4023,11 @@ export const useAppStore = create((set, get) => ({
     if (error || !data?.length) {
       if (error) console.warn('fetchHedisMembers — falling back to local mock:', error.message);
       const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
-      set({ hedisMembers: HEDIS_MEMBERS, hedisLoading: false });
+      set({
+        hedisMembers: HEDIS_MEMBERS,
+        hedisLoading: false,
+        ...(error ? { hedisDidFetch: false } : {}),
+      });
       return;
     }
     set({
@@ -4064,8 +4154,13 @@ export const useAppStore = create((set, get) => ({
   // ─── CCM Worklist (shared list) ─────────────────────────────────────────
   ccmWorklistMembers: [],
   ccmWorklistLoading: false,
+  // Single-fire guard, same shape and reason as `patientsDidFetch`. This had
+  // no guard at all: SubNav and the CCM view both call it on mount, so with
+  // StrictMode it ran four times per navigation.
+  ccmWorklistDidFetch: false,
   fetchCcmWorklistMembers: async () => {
-    set({ ccmWorklistLoading: true });
+    if (useAppStore.getState().ccmWorklistDidFetch) return;
+    set({ ccmWorklistDidFetch: true, ccmWorklistLoading: true });
     const { data, error } = await supabase
       .from('ccm_worklist_members')
       .select('*')
@@ -4073,7 +4168,14 @@ export const useAppStore = create((set, get) => ({
     if (error || !data?.length) {
       if (error) console.warn('fetchCcmWorklistMembers — falling back:', error.message);
       const { CCM_WORKLIST_MEMBERS } = await import('../features/ccm-worklist/data/mock');
-      set({ ccmWorklistMembers: CCM_WORKLIST_MEMBERS, ccmWorklistLoading: false });
+      // Release the guard only on a real error, so a transient network blip
+      // does not pin the session to mock data. An empty table is a stable
+      // condition — retrying it every mount would just re-fetch nothing.
+      set({
+        ccmWorklistMembers: CCM_WORKLIST_MEMBERS,
+        ccmWorklistLoading: false,
+        ...(error ? { ccmWorklistDidFetch: false } : {}),
+      });
       return;
     }
     set({
@@ -4118,8 +4220,11 @@ export const useAppStore = create((set, get) => ({
   // ─── SNP worklist ──────────────────────────────────────────────────────
   snpWorklistMembers: [],
   snpWorklistLoading: false,
+  // Single-fire guard — see `ccmWorklistDidFetch`. Also had none.
+  snpWorklistDidFetch: false,
   fetchSnpWorklistMembers: async () => {
-    set({ snpWorklistLoading: true });
+    if (useAppStore.getState().snpWorklistDidFetch) return;
+    set({ snpWorklistDidFetch: true, snpWorklistLoading: true });
     const { data, error } = await supabase
       .from('snp_worklist_members')
       .select('*')
@@ -4127,7 +4232,11 @@ export const useAppStore = create((set, get) => ({
     if (error || !data?.length) {
       if (error) console.warn('fetchSnpWorklistMembers — falling back:', error.message);
       const { SNP_WORKLIST_MEMBERS } = await import('../features/snp-worklist/data/mock');
-      set({ snpWorklistMembers: SNP_WORKLIST_MEMBERS, snpWorklistLoading: false });
+      set({
+        snpWorklistMembers: SNP_WORKLIST_MEMBERS,
+        snpWorklistLoading: false,
+        ...(error ? { snpWorklistDidFetch: false } : {}),
+      });
       return;
     }
     set({
@@ -5975,9 +6084,13 @@ export const useAppStore = create((set, get) => ({
     } catch { return []; }
   })(),
   awvMembersLoading: false,
+  // `awvMembers.length > 0` was the guard, which is read *before* the first
+  // fetch resolves — two callers in the same tick both saw 0 and both fetched.
+  // A boolean set synchronously before the await closes that window.
+  awvMembersDidFetch: false,
   fetchAwvMembers: async () => {
-    if (useAppStore.getState().awvMembers.length > 0) return;
-    set({ awvMembersLoading: true });
+    if (useAppStore.getState().awvMembersDidFetch) return;
+    set({ awvMembersDidFetch: true, awvMembersLoading: true });
 
     const { data, error } = await supabase
       .from('awv_members')
@@ -5987,7 +6100,11 @@ export const useAppStore = create((set, get) => ({
     if (error || !data || data.length === 0) {
       console.warn('fetchAwvMembers error or empty — falling back to local mock:', error?.message);
       const { AWV_MEMBERS } = await import('../features/awv-worklist/data/mock');
-      set({ awvMembers: AWV_MEMBERS, awvMembersLoading: false });
+      set({
+        awvMembers: AWV_MEMBERS,
+        awvMembersLoading: false,
+        ...(error ? { awvMembersDidFetch: false } : {}),
+      });
       return;
     }
 
@@ -6061,9 +6178,11 @@ export const useAppStore = create((set, get) => ({
   // selection stay isolated from AWV. Backed by jsa_members in Supabase.
   jsaMembers: [],
   jsaMembersLoading: false,
+  // Same racy length-check as awvMembers had — see `awvMembersDidFetch`.
+  jsaMembersDidFetch: false,
   fetchJsaMembers: async () => {
-    if (useAppStore.getState().jsaMembers.length > 0) return;
-    set({ jsaMembersLoading: true });
+    if (useAppStore.getState().jsaMembersDidFetch) return;
+    set({ jsaMembersDidFetch: true, jsaMembersLoading: true });
 
     const { data, error } = await supabase
       .from('jsa_members')
@@ -6073,7 +6192,11 @@ export const useAppStore = create((set, get) => ({
     if (error || !data || data.length === 0) {
       console.warn('fetchJsaMembers error or empty — falling back to local mock:', error?.message);
       const { JSA_MEMBERS } = await import('../features/jsa-worklist/data/mock');
-      set({ jsaMembers: JSA_MEMBERS, jsaMembersLoading: false });
+      set({
+        jsaMembers: JSA_MEMBERS,
+        jsaMembersLoading: false,
+        ...(error ? { jsaMembersDidFetch: false } : {}),
+      });
       return;
     }
 

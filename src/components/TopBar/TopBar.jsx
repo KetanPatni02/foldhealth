@@ -344,6 +344,10 @@ export function TopBar() {
   const allPatients = useAppStore(s => s.allPatients) || [];
   const fetchPatients = useAppStore(s => s.fetchPatients);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
+  const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
+  const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
   const openQuickView = useAppStore(s => s.openQuickView);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
 
@@ -369,10 +373,24 @@ export function TopBar() {
   // fetch while the user is still moving toward it, and focus covers keyboard
   // users. A page load where nobody searches costs nothing. Both fetches are
   // store-guarded single-fire, so calling this repeatedly is free.
+  // The worklist slices are in here for a reason worth stating: SubNav used to
+  // fetch all of them on every Population route, and this index quietly rode
+  // along on that. SubNav now fetches badge counts only, so if search did not
+  // warm them itself, coverage would silently fall from 152 patients to the
+  // ~120 in `all_patients` — and `all_patients` is NOT a superset of the
+  // worklists (measured: 136 of the 152 union keys are absent from it, same id
+  // format, genuinely a different cohort). Losing search hits is a much worse
+  // outcome than a one-time fetch on first search, so they load on intent
+  // instead of on every page load. All store-guarded single-fire.
   const warmSearchIndex = useCallback(() => {
     fetchPatients();
     fetchAllPatients();
-  }, [fetchPatients, fetchAllPatients]);
+    fetchHccMembers?.();
+    fetchAwvMembers?.();
+    fetchCcmWorklistMembers?.();
+    fetchSnpWorklistMembers?.();
+  }, [fetchPatients, fetchAllPatients, fetchHccMembers, fetchAwvMembers,
+      fetchCcmWorklistMembers, fetchSnpWorklistMembers]);
 
   // Unified search index. Priority order matters twice over: profile-backed
   // slices come first so their rows win the dedupe (their ids resolve in

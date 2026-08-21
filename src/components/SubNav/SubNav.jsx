@@ -30,13 +30,8 @@ export function SubNav({ collapsed }) {
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers || []);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers || []);
   const jsaMembers = useAppStore(s => s.jsaMembers || []);
-  const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
-  const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
-  const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
-  const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
-  const fetchJsaMembers = useAppStore(s => s.fetchJsaMembers);
-  const fetchPatients = useAppStore(s => s.fetchPatients);
-  const fetchCallDetails = useAppStore(s => s.fetchCallDetails);
+  const worklistCounts = useAppStore(s => s.worklistCounts);
+  const fetchWorklistCounts = useAppStore(s => s.fetchWorklistCounts);
   const fetchWorklistOrder = useAppStore(s => s.fetchWorklistOrder);
   const saveWorklistOrder = useAppStore(s => s.saveWorklistOrder);
   const fetchWorklistColumnPrefs = useAppStore(s => s.fetchWorklistColumnPrefs);
@@ -44,20 +39,19 @@ export function SubNav({ collapsed }) {
   const clearSelected = useAppStore(s => s.clearSelected);
   const clearHccSelected = useAppStore(s => s.clearHccSelected);
 
-  // Prefetch every worklist on mount so counts show up right away. Also
-  // triggers `fetchPatients` + `fetchCallDetails` here (rather than inside
-  // WorklistTable / QueueTable) so the TOC queue works when the user lands
-  // there before ever visiting the worklist tab, and so tab switches don't
-  // remount those effects and re-fire the same requests. The fetch actions
-  // are idempotent (guarded by *DidFetch flags in the store).
+  // Counts only. This used to call fetchHccMembers + fetchAwvMembers +
+  // fetchCcmWorklistMembers + fetchSnpWorklistMembers + fetchJsaMembers +
+  // fetchPatients + fetchCallDetails on mount, which meant every Population
+  // route pulled every worklist table in full: opening the 9-row CCM list
+  // transferred ~275 KB, ~40x what the screen renders, and HCC came to 38
+  // requests. The badges were the only reason — seven integers.
+  //
+  // fetchWorklistCounts asks for just the id columns those integers need
+  // (6.7 KB, measured). Each worklist's own view fetches its own rows, which
+  // it already did. fetchCallDetails moved to the TCM queue that actually
+  // reads it.
   useEffect(() => {
-    fetchHccMembers();
-    fetchAwvMembers();
-    fetchCcmWorklistMembers();
-    fetchSnpWorklistMembers();
-    fetchJsaMembers();
-    fetchPatients();
-    fetchCallDetails();
+    fetchWorklistCounts();
     fetchWorklistOrder(WORKLIST_LABELS);
     fetchWorklistColumnPrefs();
   }, []);
@@ -83,31 +77,45 @@ export function SubNav({ collapsed }) {
   // IDs the same way the table dedupes (see `dedupedMembers` in
   // useHccWorklistTable). Every other list is already one-row-per-patient.
   const hccUniquePatientCount = useMemo(() => {
+    // Prefer the loaded slice so the badge tracks edits live (archive a
+    // record, the count moves). `worklistCounts` is the cheap fallback for
+    // every list the user has not opened yet.
+    if (hccMembers.length === 0) return worklistCounts?.hccUnique ?? 0;
     const seen = new Set();
     for (const m of hccMembers) {
       const k = (m?.memberId || m?.id || '').toString().replace(/^#/, '').trim().toLowerCase();
       if (k) seen.add(k);
     }
     return seen.size;
-  }, [hccMembers]);
+  }, [hccMembers, worklistCounts]);
 
   // Lists with a backing worklist (TOC, HCC, HEDIS, CCM, SNP, Annual Visit)
   // show real row counts; the rest have no data source yet and show 0.
   const getCounts = useMemo(() => {
+    // Loaded slice wins so the badge stays live while the user works in a
+    // list; `worklistCounts` covers the lists they have not opened. A slice
+    // that is genuinely empty and a slice that is merely not fetched are
+    // indistinguishable by length, so an empty list shows its counted value
+    // (also 0) — same answer either way.
+    const wc = worklistCounts;
+    const pick = (slice, counted) => (slice.length > 0 ? slice.length : (counted ?? 0));
     const counts = {};
     for (const list of WORKLISTS) {
       if (list.view === 'hcc') counts[list.label] = hccUniquePatientCount;
       else if (list.view === 'hedis') counts[list.label] = HEDIS_MEMBERS.length;
-      else if (list.view === 'ccm') counts[list.label] = ccmWorklistMembers.length;
-      else if (list.view === 'snp') counts[list.label] = snpWorklistMembers.length;
-      else if (list.view === 'jsa') counts[list.label] = jsaMembers.length;
-      else if (list.label === 'Annual Visit') counts[list.label] = awvMembers.length;
-      else if (list.label === 'TCM') counts[list.label] = patients.length;
-      else if (list.label === 'TOC IP') counts[list.label] = patients.filter(p => p.agentAssigned).length;
-      else counts[list.label] = 0;
+      else if (list.view === 'ccm') counts[list.label] = pick(ccmWorklistMembers, wc?.ccm);
+      else if (list.view === 'snp') counts[list.label] = pick(snpWorklistMembers, wc?.snp);
+      else if (list.view === 'jsa') counts[list.label] = pick(jsaMembers, wc?.jsa);
+      else if (list.label === 'Annual Visit') counts[list.label] = pick(awvMembers, wc?.awv);
+      else if (list.label === 'TCM') counts[list.label] = pick(patients, wc?.tcm);
+      else if (list.label === 'TOC IP') {
+        counts[list.label] = patients.length > 0
+          ? patients.filter(p => p.agentAssigned).length
+          : (wc?.tocIp ?? 0);
+      } else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers]);
+  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, worklistCounts]);
 
   // Unique patient count across every worklist. Different worklists use
   // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a
@@ -115,8 +123,14 @@ export function SubNav({ collapsed }) {
   // field every worklist shares. Patients missing a memberId fall back to
   // their row id so they still count once.
   const allPatientsCount = useMemo(() => {
+    // Every slice is empty until the user opens a worklist, so the union has
+    // to come from `worklistCounts` — which computes it the same way, over
+    // the same normalized key, from the id-only queries. Once slices ARE
+    // loaded we recompute locally so the badge tracks live edits; the union
+    // still needs the counted value as its floor, because a locally-computed
+    // union over one loaded slice would undercount every list still unfetched.
     const seen = new Set();
-    const collect = (rows) => rows.forEach(r => {
+    const collect = (rows) => (rows || []).forEach(r => {
       const key = (r?.memberId || r?.id || '').toString().replace(/^#/, '').trim().toLowerCase();
       if (key) seen.add(key);
     });
@@ -127,8 +141,8 @@ export function SubNav({ collapsed }) {
     collect(ccmWorklistMembers);
     collect(snpWorklistMembers);
     collect(jsaMembers);
-    return seen.size;
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers]);
+    return Math.max(seen.size, worklistCounts?.allPatients ?? 0);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, worklistCounts]);
 
   const sections = useMemo(() => [
     {
