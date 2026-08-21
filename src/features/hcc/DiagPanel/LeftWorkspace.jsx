@@ -7,6 +7,7 @@ import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
+import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
   COMMENTS as COMMENTS_MOCK,
   NOTES as NOTES_MOCK,
@@ -125,10 +126,15 @@ export function LeftWorkspace({
   const openDocId = useAppStore(s => s.diagOpenDocId);
   const setOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const isPreviewingDoc = active === 'documents' && !!openDocId;
+  // Same treatment for the Claims tab — hide the filter row while a
+  // specific claim's detail view is on-screen; filters only make sense
+  // on the claims listing.
+  const openClaimId = useAppStore(s => s.diagOpenClaimId);
+  const isPreviewingClaim = active === 'claims' && !!openClaimId;
   // Every filtered tab uses the same 5-chip filter set (DOS / HCC / ICD /
   // Recorded By / Date). Docs tab hides the row while a document is being
   // previewed — filters only make sense on the listing.
-  const showFilterRow = FILTERED_TABS.has(active) && !isPreviewingDoc;
+  const showFilterRow = FILTERED_TABS.has(active) && !isPreviewingDoc && !isPreviewingClaim;
 
   // Real chart list for THIS record — same source the worklist Documents
   // column uses, so the tab count matches the column count exactly.
@@ -276,22 +282,18 @@ export function LeftWorkspace({
           className={styles.collapseBtn}
         />
         <span className={styles.tabBarDivider} />
-        <div className={styles.tabRow}>
-          {tabs.map((t) => {
-            const isActive = active === t.key;
+        <TabStrip
+          items={tabs.map((t) => {
             const count = countForTab(t);
-            return (
-              <button
-                key={t.key}
-                type="button"
-                className={[styles.tab, isActive ? styles.tabActive : ''].join(' ')}
-                onClick={() => onChange(t.key)}
-              >
-                <span>{count != null ? `${t.label}(${count})` : t.label}</span>
-              </button>
-            );
+            return {
+              key: t.key,
+              label: typeof count === 'number' ? `${t.label}(${count})` : t.label,
+            };
           })}
-        </div>
+          activeKey={active}
+          onChange={onChange}
+          embedded
+        />
       </div>
 
       <div className={styles.body}>
@@ -306,7 +308,10 @@ export function LeftWorkspace({
             onChange={setFilter}
             onClearAll={clearAllFilters}
             trailing={
-              active === 'documents' ? <DocumentsTrailingAction member={member} /> :
+              // Documents tab's Upload lives below the table as a dashed
+              // CTA now (matches the "Add Secondary Insurance" pattern) —
+              // no trailing filter-row button anymore.
+              active === 'documents' ? null :
               null
             }
           />
@@ -1246,6 +1251,7 @@ const EMPTY_CHARTS = [];
 function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setOpenDocId, filters }) {
   const showToast = useAppStore(s => s.showToast);
   const uploaderOpen = useAppStore(s => s.hccDocsUploaderOpen);
+  const toggleUploader = useAppStore(s => s.toggleHccDocsUploader);
   const removeChartDoc = useAppStore(s => s.removeChartDoc);
   const updateChartDocMeta = useAppStore(s => s.updateChartDocMeta);
   const [confirmDelete, setConfirmDelete] = useState(null); // { id, name } | null
@@ -1426,6 +1432,20 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
   return (
     <div className={styles.scroll}>
       {uploaderOpen && <DocumentsUploader />}
+      {/* Dashed "Upload Document" CTA — the primary way to add a document
+          from this tab, matching the "Add Secondary Insurance" pattern
+          from EditPatientDrawer. Hides while the inline uploader is open;
+          the uploader's own Cancel closes back to this CTA. */}
+      {!uploaderOpen && (
+        <button
+          type="button"
+          className={styles.uploadCta}
+          onClick={toggleUploader}
+        >
+          <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
+          <span>Upload Document</span>
+        </button>
+      )}
       <div className={styles.dataTable}>
         <div className={[styles.dataTableHead, styles.docsGrid].join(' ')}>
           <span>Document Name</span>
@@ -1979,7 +1999,20 @@ function claimForDos(dos) {
 function ClaimsTab({ member, filters, claims }) {
   // Clicking a claim opens its detail IN THIS SAME panel (Figma 10891:325889)
   // with a back arrow — no separate overlapping drawer.
-  const [selected, setSelected] = useState(null);
+  // Seed from `diagClaimDos` synchronously so the drawer's first render already
+  // shows the detail view — avoids the list-→-detail flash when a worklist
+  // claim DOS opens the panel.
+  const [selected, setSelected] = useState(() => {
+    const dos = useAppStore.getState().diagClaimDos;
+    return dos ? claimForDos(dos) : null;
+  });
+  // Mirror the preview state to the store so LeftWorkspace can hide the
+  // filter row while the detail view is on-screen (parity with Docs).
+  const setDiagOpenClaimId = useAppStore(s => s.setDiagOpenClaimId);
+  useEffect(() => {
+    setDiagOpenClaimId(selected?.id || null);
+    return () => setDiagOpenClaimId(null);
+  }, [selected, setDiagOpenClaimId]);
   // A DOS row's "Claim" link sets diagClaimDos; consume it once (clearing the
   // flag) so the detail auto-opens and re-clicking the same DOS re-triggers.
   const claimDos = useAppStore((s) => s.diagClaimDos);
@@ -2432,10 +2465,13 @@ function HistoryTab({ member, filters }) {
     const hccName = hccStr.split(' - ')[1] || hccStr.replace(/^HCC\s*\d+\s*-?\s*/, '') || '';
     return (member.dos_list || []).map((d) => {
       const key = `${activityIcd}|${d.date}`;
+      // `hccGapDosActions` stores a plain enum string per key, not an
+      // object — the earlier `action?.action` shape read undefined on
+      // every row, so ICD Status always fell through to the "—" dash.
       const action = dosActions[key];
       const icdStatus =
-        action?.action === 'accept'  ? 'accepted'  :
-        action?.action === 'dismiss' ? 'dismissed' :
+        action === 'accepted' ? 'accepted'  :
+        action === 'rejected' ? 'dismissed' :
         'open';
       return {
         id: key,

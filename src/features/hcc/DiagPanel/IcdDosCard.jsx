@@ -6,6 +6,8 @@ import { Icon } from '../../../components/Icon/Icon';
 import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Badge } from '../../../components/Badge/Badge';
+import { Button } from '../../../components/Button/Button';
 import { DismissReasonForm } from './DismissReasonForm';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { reviewedByLabel } from '../reviewedBy';
@@ -31,7 +33,7 @@ import styles from './IcdDosCard.module.css';
  * @param {string} [props.openDismissKey] `${code}|${dos}` whose form is open
  * @param {(key:string|null)=>void} [props.onOpenDismiss]
  */
-export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed, reviewLocked = false, lockReason = null }) {
+export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selectedKeys, onToggleSelect, openDismissKey, onOpenDismiss, onActed, reviewLocked = false, lockReason = null }) {
   const openIcdPanel = useAppStore(s => s.openIcdPanel);
   const diagActivityIcd = useAppStore(s => s.diagActivityIcd);
   const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
@@ -59,29 +61,32 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
     }
   }, [isJustAdded]);
 
-  // Live ICD-scoped counters for the header pills. Comments are keyed by
-  // `icd`; activity entries carry an `icds` array. When the DB slice is
-  // unpopulated, fall back to the seeded `icd.cmts` and DOS-entry count so
-  // the badges never render an under-count during the first paint.
+  // Live ICD-scoped counter for the Comments pill. Comments are keyed by
+  // `icd`; when the DB slice is unpopulated, fall back to the seeded
+  // `icd.cmts` so the badge never under-counts during the first paint.
   const dbComments = useAppStore(s => s.hccDiagComments);
-  const memberName = useAppStore(s => {
-    const id = s.diagPanelMemberId;
-    return id ? s.hccMembers.find(m => m.id === id)?.name : null;
-  });
-  const memberActivity = useAppStore(s => (memberName ? s.hccActivityLog[memberName] : null));
   const commentsCount = useMemo(() => {
     if (!Array.isArray(dbComments) || dbComments.length === 0) {
       return icd.cmts ?? 0;
     }
     return dbComments.filter(c => c?.icd === icd.code).length;
   }, [dbComments, icd.code, icd.cmts]);
-  const historyCount = useMemo(() => {
-    const list = Array.isArray(memberActivity) ? memberActivity : [];
-    const scoped = list.filter(e => Array.isArray(e?.icds) && e.icds.includes(icd.code)).length;
-    return scoped || (icd.entries?.length ?? 0);
-  }, [memberActivity, icd.code, icd.entries]);
+  // History tab renders one row per DOS the ICD is on for this member,
+  // so the counter has to match that — otherwise the "7" on the card
+  // opens a tab with 3 rows and the reviewer wonders what disappeared.
+  // Activity-log scoping was the old source of truth but it counts
+  // events (comments, edits, per-DOS status changes) — a different unit
+  // than the tab's per-DOS rowcount.
+  const historyCount = useMemo(() => icd.entries?.length ?? 0, [icd.entries]);
 
   const hccShort = (icd.hcc || '').split(' - ')[0].trim();
+  const hccLabel = hccShort
+    ? (/^hcc\s*not\s*linked$/i.test(hccShort) ? hccShort : `${hccShort} (V28)`)
+    : 'No HCC';
+  // `icd.hcc` looks like "HCC 58 - Major Depressive Disorder" — take the
+  // right half as the tooltip content on the header chip so hovering the
+  // "HCC N (V28)" badge reveals the full category name.
+  const hccDesc = (icd.hcc || '').split(' - ').slice(1).join(' - ').trim();
   // Doc-panel selection — drives the source-document toggle below.
   const isSelected = diagActivityIcd === icd.code;
   // The ICD currently being worked on = the one that owns the focused DOS.
@@ -91,6 +96,27 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
   const allActed = icd.entries.length > 0
     && icd.entries.every(e => !!dosActions[`${icd.code}|${e.dos}`]);
   const isCompleted = allActed && !isActive;
+  // Header status pill — surfaces when the ICD was acted on (accepted OR
+  // dismissed) on ANOTHER created-date DOS in the SAME calendar year as
+  // the drawer's current DOS. HCC codes close per year, so a prior-year
+  // acceptance doesn't close this year's review; the same-year filter
+  // keeps the badge to a true "already closed for this year" signal.
+  // `currentDos` comes from the drawer's `member.dos_list[0].date` via
+  // DiagPanelViewCards. Accepted wins over dismissed if both exist —
+  // the positive closure is the more useful signal.
+  const currentYear = currentDos ? String(currentDos).split('/')[2] : null;
+  // Extract calendar year from a MM/DD/YYYY string.
+  const yearOf = (dos) => String(dos).split('/')[2];
+  const acceptedDos = currentYear ? (icd.entries.find(e => (
+    e.dos !== currentDos
+    && yearOf(e.dos) === currentYear
+    && dosActions[`${icd.code}|${e.dos}`] === 'accepted'
+  ))?.dos || null) : null;
+  const dismissedDos = (!acceptedDos && currentYear) ? (icd.entries.find(e => (
+    e.dos !== currentDos
+    && yearOf(e.dos) === currentYear
+    && dosActions[`${icd.code}|${e.dos}`] === 'rejected'
+  ))?.dos || null) : null;
 
   // Selecting an ICD expands the drawer and opens the source-document
   // preview on the left, scoped to this code. Clicking again deselects.
@@ -145,20 +171,50 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
               Last Reviewed by {reviewedByLabel(icd.by)} • {icd.last}
             </div>
           )}
+          <div className={styles.headMeta}>
+            <Tooltip label={hccDesc}>
+              <Badge tone="grey" size="S" label={hccLabel} />
+            </Tooltip>
+
+            {acceptedDos && (
+              <Badge
+                tone="success"
+                size="S"
+                icon="solar:check-circle-linear"
+                label={`Already Accepted on ${acceptedDos}`}
+              />
+            )}
+            {dismissedDos && (
+              <Badge
+                tone="error"
+                size="S"
+                icon="solar:close-circle-linear"
+                label={`Already Dismissed on ${dismissedDos}`}
+              />
+            )}
+          </div>
         </div>
         <div className={styles.counters} onClick={(e) => e.stopPropagation()}>
           <Tooltip label="Comments">
-            <button type="button" className={styles.counter} onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}>
-              <Icon name="solar:chat-round-line-linear" size={14} />
+            <Button
+              variant="ghost"
+              size="S"
+              leadingIcon="solar:chat-round-line-linear"
+              onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}
+            >
               {commentsCount}
-            </button>
+            </Button>
           </Tooltip>
           <span className={styles.counterDivider} />
           <Tooltip label="History">
-            <button type="button" className={styles.counter} onClick={(e) => { e.stopPropagation(); openIcdPanel('history', icd.code); }}>
-              <Icon name="custom:history" size={14} />
+            <Button
+              variant="ghost"
+              size="S"
+              leadingIconElement={<Icon name="custom:history" size={14} />}
+              onClick={(e) => { e.stopPropagation(); openIcdPanel('history', icd.code); }}
+            >
               {historyCount}
-            </button>
+            </Button>
           </Tooltip>
           {isManualIcd && (
             <>
@@ -197,7 +253,6 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
               rowKey={key}
               entry={entry}
               icd={icd}
-              hccShort={hccShort}
               action={dosActions[key] || null}
               meta={dosMeta[key] || null}
               focused={focusKey === key}
@@ -250,7 +305,7 @@ export function IcdDosCard({ icd, focusKey, onFocusRow, selectedKeys, onToggleSe
 }
 
 function DosActionRow({
-  rowKey, entry, icd, hccShort, action, meta, focused, onFocusRow, selected, dismissOpen,
+  rowKey, entry, icd, action, meta, focused, onFocusRow, selected, dismissOpen,
   onToggleSelect, onAccept, onOpenDismiss, onCloseDismiss, onConfirmDismiss,
   onUndo, onMissed, onDefer, onRemoveDos, reviewLocked = false, lockReason = null,
 }) {
@@ -330,11 +385,6 @@ function DosActionRow({
           />
         )}
         <span className={styles.dosDate}>{entry.dos}</span>
-        <span className={styles.hccChip}>
-          {hccShort
-            ? (/^hcc\s*not\s*linked$/i.test(hccShort) ? hccShort : `${hccShort} (V28)`)
-            : 'No HCC'}
-        </span>
         {entry.claimed && (
           <button
             type="button"
@@ -421,26 +471,26 @@ function DosActionRow({
           ) : (
             <>
               <Tooltip label={canReview ? 'Accept (A)' : (disabledReason || 'Accept')}>
-                <button
-                  type="button"
-                  className={[styles.acceptBtn, canReview ? '' : styles.disabledAction].filter(Boolean).join(' ')}
+                <Button
+                  variant="alt"
+                  size="S"
+                  iconOnly
                   aria-label="Accept"
                   disabled={!canReview}
                   onClick={canReview ? onAccept : undefined}
-                >
-                  <CheckIcon size={15} color="currentColor" />
-                </button>
+                  leadingIconElement={<CheckIcon size={15} color="currentColor" />}
+                />
               </Tooltip>
               <Tooltip label={canReview ? 'Dismiss (X)' : (disabledReason || 'Dismiss')}>
-                <button
-                  type="button"
-                  className={[styles.rejectBtn, dismissOpen ? styles.rejectBtnActive : '', canReview ? '' : styles.disabledAction].filter(Boolean).join(' ')}
+                <Button
+                  variant="secondary"
+                  size="S"
+                  iconOnly
                   aria-label="Dismiss"
                   disabled={!canReview}
                   onClick={!canReview ? undefined : (dismissOpen ? onCloseDismiss : onOpenDismiss)}
-                >
-                  <CloseIcon size={13} color="currentColor" />
-                </button>
+                  leadingIconElement={<CloseIcon size={13} color="currentColor" />}
+                />
               </Tooltip>
             </>
           )}

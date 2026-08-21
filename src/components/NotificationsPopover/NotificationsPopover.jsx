@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
+import { canAskBrowserNotifications, requestBrowserNotifications } from '../../lib/browserNotifications';
 import boneStyles from '../TableSkeleton/TableSkeleton.module.css';
 import styles from './NotificationsPopover.module.css';
 
@@ -41,6 +42,9 @@ function NotificationSkeleton({ count = 3 }) {
  */
 export function NotificationsPopover({ onClose, anchorRef }) {
   const ref = useRef(null);
+  // Read once on open — Notification.permission is not reactive, so this is
+  // re-evaluated when the popover mounts and after the user answers.
+  const [canAsk, setCanAsk] = useState(canAskBrowserNotifications);
   const notifications = useAppStore(s => s.notifications) || [];
   const loading = useAppStore(s => s.notificationsLoading);
   const didFetch = useAppStore(s => s.notificationsDidFetch);
@@ -54,6 +58,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
   const openAppointmentFromNotification = useAppStore(s => s.openAppointmentFromNotification);
   const setPendingChatUserEmail = useAppStore(s => s.setPendingChatUserEmail);
+  const openPreferencesFromNotification = useAppStore(s => s.openPreferencesFromNotification);
 
   // Refetch on open. The realtime subscription is the fast path, not the
   // source of truth: a binding created before the table was published — or
@@ -91,6 +96,10 @@ export function NotificationsPopover({ onClose, anchorRef }) {
     } else if (n.action === 'openChat' && n.chatUserEmail) {
       setActivePage?.('messages');
       setPendingChatUserEmail?.(n.chatUserEmail);
+    } else if (n.action === 'openProfileName') {
+      // Land the user on the form that fixes it, rather than telling them to
+      // go find it.
+      openPreferencesFromNotification?.();
     }
     onClose?.();
   };
@@ -109,6 +118,25 @@ export function NotificationsPopover({ onClose, anchorRef }) {
           </button>
         )}
       </div>
+
+      {/* Opt-in for OS-level delivery. Deliberately a control the user
+          clicks rather than an auto-prompt on mount: Safari requires user
+          activation for requestPermission(), and a prompt the user dismisses
+          can get the origin permanently auto-blocked in Chrome. Disappears
+          once the choice is made either way. */}
+      {canAsk && (
+        <button
+          type="button"
+          className={styles.enablePush}
+          onClick={async () => {
+            await requestBrowserNotifications();
+            setCanAsk(canAskBrowserNotifications());
+          }}
+        >
+          <Icon name="solar:bell-bing-linear" size={14} color="var(--primary-300)" />
+          Get these on other tabs
+        </button>
+      )}
 
       {/* Cold load only — `didFetch` keeps the skeleton from flashing on
           background resyncs (tab refocus, realtime reconnect), which would
@@ -160,6 +188,7 @@ function iconForType(type) {
   if (type === 'appointment.assigned') return 'solar:calendar-linear';
   if (type === 'message.received') return 'solar:chat-round-linear';
   if (type === 'hcc.extraction_complete') return 'solar:document-text-linear';
+  if (type === 'profile.name_incomplete') return 'solar:user-id-linear';
   return 'solar:bell-linear';
 }
 

@@ -14,6 +14,7 @@ import { toast } from '../components/Toast/sonnerToast';
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
 import { updateHash } from '../lib/router';
+import { showBrowserNotification } from '../lib/browserNotifications';
 import { track } from '../lib/tracking';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle, applyContrast, getStoredContrast, applyFontScale, getStoredFontScale } from '../lib/theme';
 import { createBlock, createBlockTree, collectBlockTree, buildParentMap, cloneBlockTree, extractSubtree, cloneStoredTree } from '../features/email-builder/blockHelpers';
@@ -1087,6 +1088,14 @@ export const useAppStore = create((set, get) => ({
     } catch { /* */ }
   },
   clearPendingOpenTaskId: () => set({ pendingOpenTaskId: null }),
+
+  // One-shot signal for "open Preferences on the profile fields". The
+  // `profile.name_incomplete` notification needs to land the user on the form
+  // that fixes it; PreferencesDrawer's open state is local to TopBar, so the
+  // store carries the request the same way pendingOpenTaskId does.
+  pendingOpenPreferences: false,
+  openPreferencesFromNotification: () => set({ pendingOpenPreferences: true }),
+  clearPendingOpenPreferences: () => set({ pendingOpenPreferences: false }),
 
   // Top-level navigation (sidebar) — restored from sessionStorage
   activePage: _savedPage === 'builder' ? 'settings' : _savedPage,
@@ -2482,11 +2491,26 @@ export const useAppStore = create((set, get) => ({
       }, (payload) => {
         if (!payload?.new) return;
         const row = mapNotificationRow(payload.new);
+        const known = (get().notifications || []).some(n => n.id === row.id);
         set(s => ({
           // Realtime can redeliver, and a refetch may have already inserted
           // this id — dedupe rather than showing the same thing twice.
           notifications: mergeNotifications([row], (s.notifications || []).filter(n => n.id !== row.id)),
         }));
+        // OS-level banner for when the app isn't the visible tab. Guarded on
+        // `known` so a redelivery (or a row a refetch already surfaced) does
+        // not re-banner something the user has seen.
+        if (known) return;
+        showBrowserNotification({
+          title: row.title,
+          body: row.actorName ? `${row.actorName} · ${row.body}` : row.body,
+          tag: `notification-${row.id}`,
+          onClick: () => {
+            if (row.action === 'openTask' && row.taskId != null) {
+              get().openTaskFromNotification?.(row.taskId);
+            }
+          },
+        });
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') get().fetchNotifications();
@@ -2810,6 +2834,84 @@ export const useAppStore = create((set, get) => ({
 
   // Chat Groups actions
   setMessagesUnreadCount: (n) => set({ messagesUnreadCount: n }),
+
+  /**
+   * Unread direct-message count for the Messages nav badge.
+   *
+   * `messagesUnreadCount` has existed with a setter for a while and nothing
+   * ever called it, so the badge was permanently 0 — the Sidebar was reading
+   * state no writer produced. This is that writer.
+   *
+   * Counted server-side (head + exact) rather than by pulling rows: the badge
+   * only needs a number, and the inbox can be long.
+   */
+  fetchMessagesUnreadCount: async () => {
+    const me = get().currentUserProfile;
+    if (!me?.id) return;
+    const { count, error } = await supabase
+      .from('direct_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('recipient_id', me.id)
+      .is('read_at', null);
+    if (error) {
+      console.warn('unread message count failed:', error.message);
+      return;
+    }
+    set({ messagesUnreadCount: count || 0 });
+  },
+
+  /**
+   * Keep that count live. Subscribes to both INSERT (a message arrives) and
+   * UPDATE (ChatArea stamps `read_at` when a conversation is opened, which
+   * has to make the badge go down as well as up), and recounts on either.
+   *
+   * Recounting instead of incrementing/decrementing locally: the same account
+   * can be open in another tab or device marking things read, and a counter
+   * that drifts on a badge is worse than one extra cheap query.
+   */
+  subscribeUnreadMessages: () => {
+    const me = get().currentUserProfile;
+    if (!me?.id) return () => {};
+    get()._unreadMessagesChannel?.unsubscribe();
+    const recount = () => get().fetchMessagesUnreadCount();
+    const ch = supabase
+      .channel(`unread-messages:${me.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'direct_messages',
+        filter: `recipient_id=eq.${me.id}`,
+      }, (payload) => {
+        recount();
+        const row = payload?.new;
+        if (!row || row.read_at) return;
+        // Sender's display name, best-effort from whichever roster is loaded.
+        const s = get();
+        const from = (s.platformUsers || []).find(u => u.id === row.sender_id)
+          || (s.taskProfiles || []).find(u => u.id === row.sender_id);
+        showBrowserNotification({
+          title: from?.name ? `New message from ${from.name}` : 'New message',
+          body: (row.content || '').slice(0, 120) || 'Sent an attachment',
+          // Tag by sender so a burst from one person collapses to the latest
+          // banner instead of stacking one per message.
+          tag: `message-${row.sender_id}`,
+          onClick: () => {
+            const email = from?.email || null;
+            get().setActivePage?.('messages');
+            if (email) get().setPendingChatUserEmail?.(email);
+          },
+        });
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'direct_messages',
+        filter: `recipient_id=eq.${me.id}`,
+      }, recount)
+      // Same reasoning as the notifications channel: a postgres_changes
+      // binding delivers nothing for the window it was disconnected, so
+      // recount on every (re)subscribe rather than trusting the socket.
+      .subscribe((status) => { if (status === 'SUBSCRIBED') recount(); });
+    set({ _unreadMessagesChannel: ch });
+    return () => { ch.unsubscribe(); set({ _unreadMessagesChannel: null }); };
+  },
+  _unreadMessagesChannel: null,
   setPendingChatUserEmail: (email) => set({ pendingChatUserEmail: email }),
   setMessageTab: (tab) => { set({ messageTab: tab }); updateHash(get); },
   setChatGroupDetailId: (id) => {
@@ -6861,6 +6963,11 @@ export const useAppStore = create((set, get) => ({
   diagClaimDos: null,
   openHccClaimForDos: (dos) => set({ diagLeftPanel: 'claims', diagActivityIcd: null, diagClaimDos: dos || null }),
   clearDiagClaimDos: () => set({ diagClaimDos: null }),
+  // Claims tab — id of the currently previewed claim (Figma 10891:325889).
+  // Mirrors the docs tab's `diagOpenDocId` pattern so LeftWorkspace can
+  // hide the filter row while a claim detail is on-screen.
+  diagOpenClaimId: null,
+  setDiagOpenClaimId: (id) => set({ diagOpenClaimId: id || null }),
 
   // Documents tab — inline uploader widget toggle. Replaces the old drawer
   // open for the in-drawer Upload button (Figma 278:162482).
@@ -8379,6 +8486,10 @@ export const useAppStore = create((set, get) => ({
     diagLeftPanel: opts.leftPanel ?? null,
     diagActivityIcd: opts.activityIcd ?? null,
     diagViewMode: 'ICD',
+    // Pre-seed left-side preview so the drawer's first render already shows
+    // the claim/doc detail instead of flashing the tab's list view.
+    diagClaimDos: opts.claimDos ?? null,
+    diagOpenDocId: opts.openDocId ?? null,
   }),
   closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null, diagOpenDocId: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),

@@ -542,13 +542,16 @@
 }
 
 /* Holds the two panes side-by-side beneath the full-width title row. When
-   the workspace is closed, this just wraps the single (full-width) pane. */
+   the workspace is closed, this just wraps the single (full-width) pane.
+   `overflow: hidden` clips the LeftWorkspace during its slide-out-from-
+   behind-the-right-pane opening animation. */
 .contentRow {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: row;
   align-items: stretch;
+  overflow: hidden;
 }
 
 /* When the workspace is closed, the right pane is the whole drawer body. */

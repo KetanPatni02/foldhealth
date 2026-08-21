@@ -1,23 +1,18 @@
-.pill {
+/* Transparent button that wraps the shared Badge so the whole pill remains
+   clickable. Padding/colors live on the Badge itself. */
+.pillWrap {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
-  min-width: 22px;
-  border-radius: 4px;
-  border: 0.5px solid;
-  background: var(--neutral-0);
+  padding: 0;
+  border: none;
+  background: transparent;
   cursor: pointer;
-  font-size: var(--font-base);
-  font-weight: 400;
   transition: filter 0.12s;
 }
-.pill:hover { filter: brightness(0.97); }
+.pillWrap:hover { filter: brightness(0.97); }
 
-.pillDisabled {
-  cursor: default;
-}
-.pillDisabled:hover { filter: none; }
+.pillWrapDisabled { cursor: default; }
+.pillWrapDisabled:hover { filter: none; }
 
 .dot {
   width: 12px;

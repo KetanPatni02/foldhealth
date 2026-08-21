@@ -11,6 +11,7 @@ import { ThemePicker } from '../ThemePicker/ThemePicker';
 import { NotificationsPopover } from '../NotificationsPopover/NotificationsPopover';
 import { useAppStore } from '../../store/useAppStore';
 import { formatFoldId, matchesFoldId } from '../../lib/foldId';
+import { formatBadgeCount } from '../../lib/formatBadgeCount';
 import { supabase } from '../../lib/supabase';
 import styles from './TopBar.module.css';
 
@@ -39,7 +40,7 @@ function getUserDisplayName(user) {
 // profile actually carries in profiles.clinical_roles.
 const ALL_HCC_ROLES = ['Support', 'Coder', 'QA', 'Compliance'];
 
-function ProfilePopover({ user, onClose, onPreferences }) {
+function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
   const uid = useId();
   const popoverRef = useRef(null);
   const [editing, setEditing] = useState(false);
@@ -88,11 +89,15 @@ function ProfilePopover({ user, onClose, onPreferences }) {
 
   useEffect(() => {
     const close = (e) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target)) onClose();
+      if (popoverRef.current?.contains(e.target)) return;
+      // Ignore mousedown on the avatar trigger — it fires before the button's
+      // click toggle and would close-then-reopen the popover.
+      if (anchorRef?.current?.contains(e.target)) return;
+      onClose();
     };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
   const initials = getUserInitials(user);
   const displayName = getUserDisplayName(user);
@@ -276,9 +281,14 @@ export function TopBar() {
   const showCreateNew = useAppStore(s => s.showCreateNew);
   const setShowCreateNew = useAppStore(s => s.setShowCreateNew);
   const btnRef = useRef(null);
+  const profileBtnRef = useRef(null);
   const searchRef = useRef(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  // A `profile.name_incomplete` notification click sets this in the store;
+  // consume it once and open Preferences, where the name fields live.
+  const pendingOpenPreferences = useAppStore(s => s.pendingOpenPreferences);
+  const clearPendingOpenPreferences = useAppStore(s => s.clearPendingOpenPreferences);
   const [showSchedule, setShowSchedule] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const bellRef = useRef(null);
@@ -287,6 +297,18 @@ export function TopBar() {
   const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+
+  /* eslint-disable react-hooks/set-state-in-effect --
+   * One-shot external signal from the store: the notification click sets it,
+   * we consume it and clear it. Matches the rule's own "subscribe to external
+   * state, setState in the callback that reacts" carve-out, and the same
+   * pattern useTasksView uses for pendingAddTask / pendingOpenTaskId. */
+  useEffect(() => {
+    if (!pendingOpenPreferences) return;
+    setShowPreferences(true);
+    clearPendingOpenPreferences();
+  }, [pendingOpenPreferences, clearPendingOpenPreferences]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data?.user || null));
@@ -526,7 +548,11 @@ export function TopBar() {
             tooltip="Notifications"
             onClick={() => setShowNotifications(v => !v)}
           />
-          {unreadCount > 0 && <span className={styles.bellBadge} aria-label={`${unreadCount} unread`} />}
+          {unreadCount > 0 && (
+            <span className={styles.bellBadge} aria-label={`${unreadCount} unread`}>
+              {formatBadgeCount(unreadCount)}
+            </span>
+          )}
           {showNotifications && (
             <NotificationsPopover
               anchorRef={bellRef}
@@ -551,6 +577,7 @@ export function TopBar() {
         <Button variant="tertiary" size="L" onClick={() => setShowSchedule(true)}>Schedule</Button>
         <div style={{ position: 'relative' }}>
           <button
+            ref={profileBtnRef}
             onClick={() => setShowProfile(v => !v)}
             title="Profile"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
@@ -558,7 +585,12 @@ export function TopBar() {
             <Avatar variant="staff" initials={initials} />
           </button>
           {showProfile && (
-            <ProfilePopover user={user} onClose={() => setShowProfile(false)} onPreferences={() => setShowPreferences(true)} />
+            <ProfilePopover
+              user={user}
+              anchorRef={profileBtnRef}
+              onClose={() => setShowProfile(false)}
+              onPreferences={() => setShowPreferences(true)}
+            />
           )}
         </div>
       </div>

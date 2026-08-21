@@ -109,6 +109,11 @@
 .dosButtonActive { border-color: var(--primary-300); color: var(--neutral-500); }
 
 .dosActions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+
+/* Constrain the shared Select trigger to the same footprint the hand-rolled
+   .dosButton used, so the row keeps its "DOS pill + inline actions" shape
+   instead of the Select stretching to the row's full width. */
+.dosSelect { flex: 0 0 auto; width: 200px; }
 .dismissBtnActive { background: var(--neutral-100); color: var(--neutral-400); }
 
 /* Resolved-state pills + undo + reason link */

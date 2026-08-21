@@ -21,17 +21,25 @@ function isRoleResolved(s) { return RESOLVED_STATUSES.has(s); }
 // Inner content (NOT the <td>) for each DOS-level column, given one
 // dos_list entry. The main row wraps these in a stacked `<td>`.
 export const DOS_INNER = {
-  dos: (entry, { openClaimPreview, member, hasDoc }) => {
+  dos: (entry, { openDiagPanel, member, hasDoc, charts }) => {
     const isClaim = dosSourceLetter(entry.date, hasDoc) === 'C';
+    const handleOpen = () => {
+      if (isClaim) {
+        openDiagPanel(member.id, {
+          leftPanel: 'claims', initialDos: entry.date, claimDos: entry.date,
+        });
+      } else {
+        const doc = (charts || []).find(c => c.date === entry.date) || (charts || [])[0];
+        openDiagPanel(member.id, {
+          leftPanel: 'documents', initialDos: entry.date, openDocId: doc?.id ?? null,
+        });
+      }
+    };
     return (
       <span className={styles.dosItem}>
-        {isClaim ? (
-          <button type="button" className={styles.lastVisitDateBtn} onClick={() => openClaimPreview?.(member, entry.date)}>
-            <span className={styles.lastVisitDate}>{entry.date}</span>
-          </button>
-        ) : (
+        <button type="button" className={styles.lastVisitDateBtn} onClick={handleOpen}>
           <span className={styles.lastVisitDate}>{entry.date}</span>
-        )}
+        </button>
         <DosSourceBadge date={entry.date} hasDoc={hasDoc} />
       </span>
     );

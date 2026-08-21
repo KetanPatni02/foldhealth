@@ -100,7 +100,17 @@
   align-self: stretch;
   height: 100%;
   align-items: stretch;
+  /* Take remaining space in the parent header and scroll horizontally when
+     tab count outgrows the container (e.g. when History pushes the last tab
+     off-screen in a narrow drawer). Hide the scrollbar for a clean look —
+     users still drag/scroll horizontally. */
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.embedded::-webkit-scrollbar { display: none; }
+.embedded .tabItem { flex-shrink: 0; }
 
 .tabBar.embedded .tabItem {
   height: 100%;

@@ -123,6 +123,8 @@
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .emptyBody {
@@ -132,6 +134,46 @@
   padding: 20px;
   font-size: var(--font-sm);
   color: var(--neutral-300);
+}
+
+.widgetEmpty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-5);
+  text-align: center;
+  min-height: calc(var(--space-16) * 2 + var(--space-5));
+}
+
+.widgetEmptyIcon {
+  width: var(--space-12);
+  height: var(--space-12);
+  border-radius: 50%;
+  background: var(--primary-100);
+  border: 0.5px solid var(--primary-200);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-1);
+}
+
+.widgetEmptyTitle {
+  margin: 0;
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.widgetEmptyDesc {
+  margin: 0;
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: var(--leading-normal);
+  max-width: calc(var(--space-16) * 4 + var(--space-10));
 }
 
 /* ── Welcome card ── */
@@ -309,7 +351,29 @@
   color: #ffdc7a;
 }
 
-/* ── Alerts & Monitoring patient row ── */
+/* ── My Worklist patient row ── */
+.patientRowBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.patientRowBtn:last-child {
+  border-bottom: none;
+}
+
+.patientRowBtn:hover {
+  background: var(--neutral-50);
+}
+
 .patientRow {
   display: flex;
   align-items: center;
@@ -387,6 +451,13 @@
 .badge.missed { color: var(--status-error); border-color: var(--status-error-light); }
 .badge.alert { color: var(--secondary-300); border-color: var(--secondary-200); }
 .badge.task { color: var(--primary-300); border-color: var(--primary-200); }
+.taskBadgeBtn {
+  cursor: pointer;
+  background: var(--neutral-0);
+}
+.taskBadgeBtn:hover {
+  background: var(--primary-50);
+}
 .badge.message { color: var(--neutral-400); }
 
 /* ── Assigned to me ── */
@@ -582,6 +653,24 @@
 }
 
 /* ── Tasks ── */
+.taskRowBtn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.taskRowBtn:last-child { border-bottom: none; }
+
+.taskRowBtn:hover { background: var(--neutral-50); }
+
 .taskRow {
   display: flex;
   align-items: flex-start;
@@ -599,6 +688,14 @@
   border-radius: 50%;
   flex-shrink: 0;
   margin-top: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.taskCheckDone {
+  border-color: var(--primary-300);
+  background: var(--primary-300);
 }
 
 .taskBody {
@@ -610,6 +707,11 @@
   font-size: var(--font-md);
   color: var(--neutral-500);
   line-height: 1.4;
+}
+
+.taskTitleDone {
+  color: var(--neutral-300);
+  text-decoration: line-through;
 }
 
 .taskMeta {
@@ -631,8 +733,11 @@
 .taskDue.later { color: var(--neutral-400); }
 .taskDue.done { color: var(--status-success); }
 
-.priorityFlag {
-  color: var(--secondary-300);
+.tasksLoading {
+  padding: var(--space-6) var(--space-4);
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+  text-align: center;
 }
 
 /* ── Quick Notes ── */

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
+import { Badge } from '../../../components/Badge/Badge';
 import { toast } from '../../../components/Toast/sonnerToast';
 import { getStatusSpec, statusDisplayLabel, ROLE_STATUS_OPTIONS, ALL_STATUS_OPTIONS } from '../statusSpec';
 import { StatusIcon } from '../StatusIcon';
@@ -68,23 +69,29 @@ export function DosStatusMenu({ value, onChange, disabled = false, disabledReaso
       <button
         ref={triggerRef}
         type="button"
-        className={[styles.pill, disabled ? styles.pillDisabled : ''].join(' ')}
-        style={{ color: spec.color, background: spec.bg, borderColor: spec.border }}
+        className={[styles.pillWrap, disabled ? styles.pillWrapDisabled : ''].join(' ')}
         onClick={pos ? close : open}
         title={disabled ? disabledReason : undefined}
       >
-        <span className={styles.iconLeading}>
-          <StatusIcon status={value} size={11} color={spec.color} />
-        </span>
-        <span className={styles.label}>{statusDisplayLabel(value)}</span>
-        {disabled ? (
-          <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color={spec.color} />
-        ) : (
-          <>
-            <span className={styles.divider} style={{ background: `${spec.color}60` }} />
-            <Icon name="solar:alt-arrow-down-linear" size={12} color={spec.color} />
-          </>
-        )}
+        <Badge
+          size="M"
+          style={{ color: spec.color, background: spec.bg, borderColor: spec.border }}
+          chevron={!disabled}
+          label={(
+            <>
+              <StatusIcon status={value} size={12} color={spec.color} />
+              <span className={styles.label}>{statusDisplayLabel(value)}</span>
+              {!disabled && (
+                <span className={styles.divider} style={{ background: `${spec.color}60` }} />
+              )}
+            </>
+          )}
+          trailingIconElement={
+            disabled
+              ? <Icon name="solar:lock-keyhole-minimalistic-linear" size={16} color={spec.color} />
+              : undefined
+          }
+        />
       </button>
       {pos && (
         <Menu

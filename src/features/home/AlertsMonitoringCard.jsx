@@ -1,87 +1,269 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';
+import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
+import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer';
+import { HomeWidgetEmpty } from './HomeWidgetEmpty';
 import styles from './HomeView.module.css';
 
-function alertsForPatient(p) {
-  const badges = [];
-  if (p.outreachType === 'call' && p.outreachLeft > 0) {
-    badges.push({ type: 'missed', icon: 'solar:phone-calling-linear', text: '1 Missed' });
-  }
-  if (p.outreachType === 'sms' || p.outreachType === 'message') {
-    badges.push({ type: 'message', icon: 'solar:chat-round-linear', text: '1 Message' });
-  }
-  if (p.readmission === 'high') {
-    badges.push({ type: 'alert', icon: 'solar:flag-linear', text: '1 Alerts' });
-  }
-  if (p.tasks > 0) {
-    badges.push({ type: 'task', icon: 'solar:checklist-minimalistic-linear', text: `${p.tasks} Tasks` });
-  }
-  return badges.slice(0, 3);
+function normName(name) {
+  return (name || '').trim().toLowerCase();
+}
+
+function matchTaskAssignee(task, meId, meName) {
+  return (!!meId && task.assigned_to_id && String(task.assigned_to_id) === String(meId))
+    || (!!meName && normName(task.assigned_to) === normName(meName));
+}
+
+function collectAssigneeNames(record) {
+  return [record.assignee, record.assigneeName, record.sup, record.cdr, record.r1, record.r2]
+    .filter(Boolean);
+}
+
+function isAssignedToMe(record, meId, meName) {
+  if (meId && record.assigneeId && String(record.assigneeId) === String(meId)) return true;
+  if (meId && record.assignee_id && String(record.assignee_id) === String(meId)) return true;
+  if (!meName) return false;
+  const me = normName(meName);
+  const names = record.assigneeNames?.length ? record.assigneeNames : collectAssigneeNames(record);
+  return names.some(n => normName(n) === me);
+}
+
+function mergeWorklistRows(existing, incoming) {
+  return {
+    ...existing,
+    patientId: existing.patientId || incoming.patientId,
+    memberId: existing.memberId || incoming.memberId,
+    dob: existing.dob || incoming.dob,
+    age: existing.age || incoming.age,
+    initials: existing.initials !== '??' ? existing.initials : incoming.initials,
+    // SNP/HCC assignee updates must survive dedupe — the old merge kept
+    // only demographics, so a TOC row without an assignee clobbered the
+    // SNP row the user just assigned to themselves.
+    assigneeId: existing.assigneeId || incoming.assigneeId,
+    assigneeNames: [...new Set([...(existing.assigneeNames || []), ...(incoming.assigneeNames || [])])],
+  };
 }
 
 function formatPatientMeta(p) {
-  const dob = p.dob || '03/29/1965';
-  const genderLabel = p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : p.gender || 'Male';
-  const age = p.age ? `(${p.age}Y)` : '';
-  return `${genderLabel} • ${dob} ${age}`.trim();
+  const genderLabel = p.gender === 'M' ? 'Male' : p.gender === 'F' ? 'Female' : p.gender || '';
+  const dob = formatDobDisplay(p.dob) || deriveDob(p.age, p.name) || '';
+  const agePart = p.age ? `(${p.age})` : '';
+  const dobAge = [dob, agePart].filter(Boolean).join(' ');
+  return [genderLabel, dobAge].filter(Boolean).join(' • ');
+}
+
+function toWorklistRow(source, kind) {
+  const gender = source.gender || source.g;
+  return {
+    key: `${kind}:${source.memberId || source.id || source.name}`,
+    id: source.id,
+    patientId: source.patientId || (kind === 'patients' ? source.id : null),
+    memberId: source.memberId,
+    name: source.name,
+    initials: source.initials || source.in || '??',
+    gender,
+    age: source.age,
+    dob: source.dob,
+    assigneeId: source.assigneeId || source.assignee_id || null,
+    assigneeNames: collectAssigneeNames(source),
+    kind,
+  };
+}
+
+function resolvePatientId(row, patients, allPatients) {
+  if (row.patientId) return row.patientId;
+  const byName = patients.find(p => normName(p.name) === normName(row.name))
+    || allPatients.find(p => normName(p.name) === normName(row.name));
+  return byName?.id || null;
+}
+
+function countMyTasksForPatient(patientName, tasks, meId, meName) {
+  const target = normName(patientName);
+  if (!target) return 0;
+  return tasks.filter(t =>
+    t.status !== 'completed'
+    && matchTaskAssignee(t, meId, meName)
+    && normName(t.member) === target,
+  ).length;
 }
 
 export function AlertsMonitoringCard({ dragHandleClassName }) {
   const patients = useAppStore(s => s.patients);
-  const loading = useAppStore(s => s.patientsLoading);
-  const error = useAppStore(s => s.patientsError);
+  const patientsLoading = useAppStore(s => s.patientsLoading);
+  const patientsError = useAppStore(s => s.patientsError);
   const fetchPatients = useAppStore(s => s.fetchPatients);
+  const tasks = useAppStore(s => s.tasks);
+  const tasksLoading = useAppStore(s => s.tasksLoading);
+  const fetchTasks = useAppStore(s => s.fetchTasks);
+  const fetchTaskProfiles = useAppStore(s => s.fetchTaskProfiles);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  const hccMembers = useAppStore(s => s.hccMembers);
+  const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers);
+  const hedisMembers = useAppStore(s => s.hedisMembers);
+  const awvMembers = useAppStore(s => s.awvMembers) || [];
+  const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers) || [];
+  const allPatients = useAppStore(s => s.allPatients) || [];
+  const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
+  const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
+  const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
+  const openQuickView = useAppStore(s => s.openQuickView);
+  const [selectedTask, setSelectedTask] = useState(null);
 
-  useEffect(() => { fetchPatients(); }, [fetchPatients]);
+  useEffect(() => {
+    fetchPatients();
+    fetchTasks();
+    fetchTaskProfiles();
+    fetchHccMembers();
+    fetchSnpWorklistMembers();
+    fetchHedisMembers();
+    if (allPatients.length === 0) fetchAllPatients();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const visible = patients.filter(p => p.status !== 'completed').slice(0, 15);
+  const meId = currentUserProfile?.id || null;
+  const meName = currentUserProfile?.name || null;
+
+  const worklistRows = useMemo(() => {
+    const merged = new Map();
+
+    const add = (row) => {
+      if (!row.name) return;
+      const existing = merged.get(normName(row.name));
+      if (!existing) {
+        merged.set(normName(row.name), row);
+        return;
+      }
+      merged.set(normName(row.name), mergeWorklistRows(existing, row));
+    };
+
+    patients.forEach(p => add(toWorklistRow(p, 'patients')));
+    hccMembers.forEach(m => add(toWorklistRow(m, 'hcc')));
+    snpWorklistMembers.forEach(m => add(toWorklistRow(m, 'snp')));
+    hedisMembers.forEach(m => add(toWorklistRow({ ...m, initials: m.in, gender: m.gender }, 'hedis')));
+    awvMembers.forEach(m => add(toWorklistRow({ ...m, initials: m.in, gender: m.g, assignee: m.sup }, 'awv')));
+    ccmWorklistMembers.forEach(m => add(toWorklistRow(m, 'ccm')));
+
+    let rows = [...merged.values()].filter(r => isAssignedToMe(r, meId, meName));
+
+    // If nothing is explicitly assigned, fall back to patients that carry
+    // open tasks for me — still real platform rows, just task-derived.
+    if (rows.length === 0 && meName) {
+      const taskNames = new Set(
+        tasks
+          .filter(t => t.status !== 'completed' && matchTaskAssignee(t, meId, meName) && t.member)
+          .map(t => normName(t.member)),
+      );
+      rows = [...merged.values()].filter(r => taskNames.has(normName(r.name)));
+    }
+
+    return rows
+      .map(row => ({
+        ...row,
+        myTaskCount: countMyTasksForPatient(row.name, tasks, meId, meName),
+      }))
+      .sort((a, b) => {
+        if (b.myTaskCount !== a.myTaskCount) return b.myTaskCount - a.myTaskCount;
+        return a.name.localeCompare(b.name);
+      });
+  }, [patients, hccMembers, snpWorklistMembers, hedisMembers, awvMembers, ccmWorklistMembers, tasks, meId, meName]);
+
+  const loading = patientsLoading || tasksLoading;
+
+  const handleRowClick = (row) => {
+    const patientId = resolvePatientId(row, patients, allPatients);
+    openQuickView({
+      id: patientId || row.id || row.key,
+      name: row.name,
+      initials: row.initials,
+      gender: row.gender,
+      age: row.age,
+      dob: row.dob,
+      memberId: row.memberId,
+    });
+  };
+
+  const handleTaskBadgeClick = (e, row) => {
+    e.stopPropagation();
+    const match = tasks.find(t =>
+      t.status !== 'completed'
+      && matchTaskAssignee(t, meId, meName)
+      && normName(t.member) === normName(row.name),
+    );
+    if (match) setSelectedTask(match);
+  };
 
   return (
-    <div className={styles.card}>
-      <div className={[styles.cardHeader, dragHandleClassName].filter(Boolean).join(' ')}>
-        <div className={styles.cardTitle}>
-          <Icon name="solar:bell-bing-linear" size={14} color="var(--secondary-300)" />
-          Alerts &amp; Monitoring
+    <>
+      <div className={styles.card}>
+        <div className={[styles.cardHeader, dragHandleClassName].filter(Boolean).join(' ')}>
+          <div className={styles.cardTitle}>
+            <Icon name="solar:clipboard-list-linear" size={14} color="var(--primary-300)" />
+            My Worklist
+          </div>
+          <div className={styles.cardActions}>
+            <ActionButton icon="solar:user-linear" size="S" tooltip="Assigned to me" />
+            <ActionButton icon="solar:hamburger-menu-linear" size="S" tooltip="List view" />
+            <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+          </div>
         </div>
-        <div className={styles.cardActions}>
-          <ActionButton icon="solar:user-linear" size="S" tooltip="Assignee view" />
-          <ActionButton icon="solar:hamburger-menu-linear" size="S" tooltip="List view" />
-          <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-        </div>
-      </div>
-      <div className={styles.cardBody}>
-        {loading && <div className={styles.loading}>Loading patients…</div>}
-        {error && <div className={styles.errorState}>Failed to load patients</div>}
-        {!loading && !error && visible.length === 0 && (
-          <div className={styles.emptyBody}>No alerts to monitor</div>
-        )}
-        {!loading && visible.map(p => {
-          const badges = alertsForPatient(p);
-          return (
-            <div key={p.id} className={styles.patientRow}>
-              <div className={styles.checkbox} />
-              <Avatar variant="patient" initials={p.initials} />
+        <div className={styles.cardBody}>
+          {loading && <div className={styles.loading}>Loading worklist…</div>}
+          {patientsError && !loading && <div className={styles.errorState}>Failed to load patients</div>}
+          {!loading && !patientsError && worklistRows.length === 0 && (
+            <HomeWidgetEmpty
+              icon="solar:clipboard-list-linear"
+              title="Your worklist is clear"
+              description="Patients assigned to you from SNP, HCC, and other worklists will appear here."
+            />
+          )}
+          {!loading && worklistRows.map(row => (
+            <div
+              key={row.key}
+              role="button"
+              tabIndex={0}
+              className={styles.patientRowBtn}
+              onClick={() => handleRowClick(row)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleRowClick(row);
+                }
+              }}
+            >
+              <span className={styles.checkbox} aria-hidden="true" />
+              <Avatar variant="patient" initials={row.initials} />
               <div className={styles.patientInfo}>
                 <div className={styles.patientName}>
-                  {p.name} <span className={styles.chevron}>›</span>
+                  {row.name} <span className={styles.chevron}>›</span>
                 </div>
-                <div className={styles.patientMeta}>{formatPatientMeta(p)}</div>
+                <div className={styles.patientMeta}>{formatPatientMeta(row)}</div>
               </div>
-              <div className={styles.actionBadges}>
-                {badges.map((b, i) => (
-                  <span key={i} className={[styles.badge, styles[b.type]].filter(Boolean).join(' ')}>
-                    <Icon name={b.icon} size={10} />
-                    {b.text}
-                  </span>
-                ))}
-              </div>
+              {row.myTaskCount > 0 && (
+                <button
+                  type="button"
+                  className={[styles.badge, styles.task, styles.taskBadgeBtn].filter(Boolean).join(' ')}
+                  onClick={(e) => handleTaskBadgeClick(e, row)}
+                >
+                  <Icon name="solar:checklist-minimalistic-linear" size={10} />
+                  {row.myTaskCount} {row.myTaskCount === 1 ? 'Task' : 'Tasks'}
+                </button>
+              )}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
-    </div>
+
+      {selectedTask && (
+        <TaskDetailDrawer
+          task={tasks.find(t => t.id === selectedTask.id) || selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onSelectTask={setSelectedTask}
+        />
+      )}
+    </>
   );
 }

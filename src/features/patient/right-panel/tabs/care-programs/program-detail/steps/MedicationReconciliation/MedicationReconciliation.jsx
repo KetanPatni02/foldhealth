@@ -162,8 +162,13 @@ async function renderPdfPagesToCanvases(file) {
 // OCRs a scanned PDF page-by-page with Tesseract.js. Slow (real recognition,
 // not a mock) — callers should show progress via `onProgress`.
 async function ocrPdf(file, onProgress) {
-  const { createWorker } = await import('tesseract.js');
-  const canvases = await renderPdfPagesToCanvases(file);
+  // Loading tesseract.js and rasterising the PDF are independent, and both are
+  // slow — the import is a network/parse cost, the rasterisation walks every
+  // page. Run them concurrently; createWorker still has to wait for the import.
+  const [{ createWorker }, canvases] = await Promise.all([
+    import('tesseract.js'),
+    renderPdfPagesToCanvases(file),
+  ]);
   const worker = await createWorker('eng');
   try {
     let text = '';
@@ -656,16 +661,21 @@ export function MedicationReconciliation() {
   const [noteDrafts, setNoteDrafts] = useState({});
 
   const toggleNote = (m) => {
+    // Both updaters are called from the event, not nested. A state updater must
+    // be pure: React can invoke it more than once for a single update (Strict
+    // Mode does this deliberately), which would have run the seeding twice.
+    // Seeding is idempotent either way, but the nesting also meant the draft was
+    // set while React was mid-way through computing another piece of state.
+    const isOpen = openNoteIds.has(m.id);
     setOpenNoteIds(prev => {
       const next = new Set(prev);
-      if (next.has(m.id)) {
-        next.delete(m.id);
-      } else {
-        next.add(m.id);
-        setNoteDrafts(d => (m.id in d ? d : { ...d, [m.id]: m.note || '' }));
-      }
+      if (next.has(m.id)) next.delete(m.id);
+      else next.add(m.id);
       return next;
     });
+    if (!isOpen) {
+      setNoteDrafts(d => (m.id in d ? d : { ...d, [m.id]: m.note || '' }));
+    }
   };
 
   // Autosave: each keystroke restarts a 700ms timer, then writes. The strip
