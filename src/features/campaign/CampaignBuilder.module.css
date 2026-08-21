@@ -102,6 +102,11 @@
   line-height: 1.2;
 }
 
+.aiRow {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .aiBtn {
   display: inline-flex;
   align-items: center;
@@ -115,12 +120,6 @@
   color: var(--primary-300);
 }
 .aiBtn:hover { color: var(--primary-400, #5020A0); }
-
-.charCount {
-  align-self: flex-end;
-  font-size: var(--font-xs);
-  color: var(--neutral-200);
-}
 
 .linkBtn {
   align-self: flex-start;
@@ -144,26 +143,7 @@
   background: var(--neutral-150);
 }
 
-.dateInput {
-  width: 100%;
-  height: 32px;
-  padding: 0 10px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  font-size: var(--font-base);
-  color: var(--neutral-400);
-  outline: none;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
-}
-.dateInput:focus { border-color: var(--primary-300); }
-.dateInput::-webkit-calendar-picker-indicator {
-  filter: invert(50%);
-  cursor: pointer;
-}
-
-/* ── Radio groups ─────────────────────────────────────────────── */
+/* ── Radio groups (RadioButton primitive + layout wrappers) ────── */
 .radioStack {
   display: flex;
   flex-direction: column;
@@ -176,156 +156,15 @@
   flex-wrap: wrap;
 }
 
-.radioOption {
+.radioItem {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
-  background: none;
-  border: 0.5px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: var(--font-md);
-  color: var(--neutral-400);
-  text-align: left;
-  transition: background 0.12s, border-color 0.12s;
-}
-.radioStack .radioOption {
-  border: 0.5px solid var(--neutral-150);
-}
-.radioOption:hover { background: var(--neutral-50); }
-.radioOptionSelected,
-.radioOptionSelected:hover {
-  border-color: var(--primary-300);
-  background: var(--primary-50);
-  color: var(--primary-400, #5020A0);
-}
-.radioLabel { line-height: 1.2; }
-
-.radioDot {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1.5px solid var(--neutral-200);
-  background: var(--neutral-0);
-  flex-shrink: 0;
-  position: relative;
-  box-sizing: border-box;
-}
-.radioDotSelected {
-  border-color: var(--primary-300);
-}
-.radioDotSelected::after {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  border-radius: 50%;
-  background: var(--primary-300);
 }
 
 .startModeRow {
   display: flex;
   gap: 8px;
-}
-
-/* ── Chip multi-select ─────────────────────────────────────────── */
-.chipSelect {
-  position: relative;
-}
-
-.chipSelectControl {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  min-height: 32px;
-  padding: 4px 28px 4px 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  cursor: text;
-  position: relative;
-  transition: border-color 0.15s;
-}
-.chipSelectControl:focus-within {
-  border-color: var(--primary-300);
-}
-
-.chipPlaceholder {
-  font-size: var(--font-base);
-  color: var(--neutral-200);
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px 2px 8px;
-  background: var(--primary-50);
-  border: 0.5px solid var(--primary-200);
-  border-radius: 4px;
-  font-size: var(--font-sm);
-  color: var(--primary-400, #5020A0);
-  line-height: 1.2;
-}
-
-.chipRemove {
-  display: inline-flex;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: var(--primary-300);
-}
-.chipRemove:hover { color: var(--primary-400, #5020A0); }
-
-.chipInput {
-  flex: 1;
-  min-width: 60px;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: var(--font-base);
-  color: var(--neutral-400);
-}
-
-.chipChevron {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none;
-  display: flex;
-}
-
-.chipDropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 20;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-  max-height: 220px;
-  overflow-y: auto;
-}
-
-.chipOption {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 8px 12px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: var(--font-md);
-  color: var(--neutral-400);
-}
-.chipOption:hover {
-  background: var(--primary-50);
-  color: var(--primary-400, #5020A0);
 }
 
 /* ── Right pane: top bar + email config + preview ──────────────── */

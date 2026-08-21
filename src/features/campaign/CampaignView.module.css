@@ -70,11 +70,6 @@
   box-sizing: border-box;
 }
 
-.thCenter {
-  text-align: center;
-  padding: 10px 0;
-}
-
 /* ── Section header ── */
 .sectionCell {
   padding: 8px 12px;
@@ -314,112 +309,10 @@
   margin: 0 2px;
 }
 
-/* ── Empty state ── */
-.emptyState {
-  padding: 48px 24px;
-  text-align: center;
-  vertical-align: middle;
-}
-
-.emptyState p {
-  margin: 10px 0 0;
-  font-size: var(--font-base);
-  color: var(--neutral-200);
-}
-
-/* ── Skeleton loading rows ── */
-.skelBar {
-  display: inline-block;
-  height: 12px;
-  border-radius: 6px;
-  background: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-50) 50%, var(--neutral-100) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease infinite;
-}
-
-.skelCircle {
-  display: block;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  margin: 0 auto;
-  background: linear-gradient(90deg, var(--neutral-100) 25%, var(--neutral-50) 50%, var(--neutral-100) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease infinite;
-}
-
 /* ── Footer / Pagination ── */
 .footer {
   border-top: 0.5px solid var(--neutral-150);
   padding: 16px 20px;
   background: var(--neutral-0);
   flex-shrink: 0;
-}
-
-.paginationRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.pageBtn {
-  min-width: 32px;
-  height: 32px;
-  padding: 0 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  font-size: var(--font-md);
-  font-weight: 400;
-  color: var(--neutral-300);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.12s;
-}
-
-.pageBtn:hover:not(:disabled) { background: var(--neutral-50); }
-
-.pageBtn:disabled { opacity: 0.4; cursor: default; }
-
-.pageBtnActive {
-  background: var(--primary-300);
-  border-color: var(--primary-300);
-  color: var(--neutral-0);
-  font-weight: 500;
-}
-
-.pageBtnActive:hover { background: var(--primary-300) !important; }
-
-.pageDots {
-  font-size: var(--font-md);
-  color: var(--neutral-200);
-  padding: 0 4px;
-}
-
-.perPageWrap {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 32px;
-  padding: 0 10px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  margin-left: 8px;
-  cursor: pointer;
-}
-
-.perPageLabel {
-  font-size: var(--font-md);
-  color: var(--neutral-300);
-}
-
-.goToPage {
-  font-size: var(--font-md);
-  color: var(--neutral-300);
-  margin-left: 8px;
-  cursor: pointer;
-  white-space: nowrap;
 }
