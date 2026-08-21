@@ -60,6 +60,7 @@ export function SortPopover({
         style={{ top: pos.top, left: pos.left, width }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        aria-label="Sort by"
       >
         <div className={styles.heading}>Sort by</div>
         {items.map((item) => {

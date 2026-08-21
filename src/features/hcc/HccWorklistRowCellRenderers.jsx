@@ -23,6 +23,7 @@ function isRoleResolved(s) { return RESOLVED_STATUSES.has(s); }
 export const DOS_INNER = {
   dos: (entry, { openDiagPanel, member, hasDoc, charts }) => {
     const isClaim = dosSourceLetter(entry.date, hasDoc) === 'C';
+    const isManual = member.manuallyAdded || entry.label === 'Manually Added';
     const handleOpen = () => {
       if (isClaim) {
         openDiagPanel(member.id, {
@@ -41,6 +42,7 @@ export const DOS_INNER = {
           <span className={styles.lastVisitDate}>{entry.date}</span>
         </button>
         <DosSourceBadge date={entry.date} hasDoc={hasDoc} />
+        {isManual && <span className={styles.manualChip}>Manually Added</span>}
       </span>
     );
   },
@@ -103,7 +105,7 @@ export const CELL_RENDERERS = {
           name={s?.support?.assignee ? (nameOf(s.support.assignee) || member.sup) : member.sup}
           status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.sup)}
-          role="support" memberId={member.id} dosDate={member.date} />
+          role="support" memberId={member.id} dosDate={member.dos || member.date} />
       </td>
     );
   },
@@ -118,7 +120,7 @@ export const CELL_RENDERERS = {
           status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.cdr)}
           priorResolved={isRoleResolved(supStatus)}
-          role="coder" memberId={member.id} dosDate={member.date} />
+          role="coder" memberId={member.id} dosDate={member.dos || member.date} />
       </td>
     );
   },
@@ -133,7 +135,7 @@ export const CELL_RENDERERS = {
           status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.r1)}
           priorResolved={isRoleResolved(cdrStatus)}
-          role="reviewer" memberId={member.id} dosDate={member.date} />
+          role="reviewer" memberId={member.id} dosDate={member.dos || member.date} />
       </td>
     );
   },
@@ -148,14 +150,14 @@ export const CELL_RENDERERS = {
           status={status}
           date={addDaysToDate(member.date, ROLE_OFFSET.r2)}
           priorResolved={isRoleResolved(r1Status)}
-          role="reviewer2" memberId={member.id} dosDate={member.date} />
+          role="reviewer2" memberId={member.id} dosDate={member.dos || member.date} />
       </td>
     );
   },
   r3: ({ member }) => (
     <td key="r3" data-col="r3" className={styles.colRole}>
       <RoleStatusCell name={member.r3} status={member.r3s} date={addDaysToDate(member.date, ROLE_OFFSET.r3)}
-        role="r3" memberId={member.id} dosDate={member.date} />
+        role="r3" memberId={member.id} dosDate={member.dos || member.date} />
     </td>
   ),
   posDesc: ({ member }) => (

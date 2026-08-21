@@ -7,6 +7,10 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { TopBar } from '../../components/TopBar/TopBar';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { Pagination } from '../../components/Pagination/Pagination';
+import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
+import { EmptyState } from '../../components/EmptyState/EmptyState';
+import { SimpleTableSkeleton } from '../../components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './CampaignView.module.css';
 
@@ -372,6 +376,8 @@ export function CampaignView() {
   const [localData, setLocalData] = useState(CAMPAIGNS);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({});
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
   useEffect(() => { fetchCampaigns?.(); }, [fetchCampaigns]);
 
@@ -399,12 +405,15 @@ export function CampaignView() {
     return () => clearInterval(id);
   }, [usingSupa]);
 
-  const handleFilterChange = (key, val) => setFilters(f => {
-    const next = { ...f };
-    if (val) next[key] = val; else delete next[key];
-    return next;
-  });
-  const handleClearFilters = () => setFilters({});
+  const handleFilterChange = (key, val) => {
+    setPage(1);
+    setFilters(f => {
+      const next = { ...f };
+      if (val) next[key] = val; else delete next[key];
+      return next;
+    });
+  };
+  const handleClearFilters = () => { setPage(1); setFilters({}); };
 
   const baseRows = useMemo(() => {
     if (activeTab === 'drafts') return usingSupa ? campaignData.filter(c => c.section === 'draft') : DRAFTS;
@@ -438,18 +447,23 @@ export function CampaignView() {
     return rows;
   }, [baseRows, filters]);
 
+  const totalRows = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / perPage));
+  const safePage = Math.min(page, totalPages);
+
   const sections = useMemo(() => {
-    if (activeTab === 'drafts') return [{ key: 'draft',   rows: filteredRows }];
-    if (activeTab === 'ended')  return [{ key: 'ended',   rows: filteredRows }];
-    const running   = filteredRows.filter(c => c.section === 'running');
-    const paused    = filteredRows.filter(c => c.section === 'paused');
-    const scheduled = filteredRows.filter(c => c.section === 'scheduled');
+    const paginated = filteredRows.slice((safePage - 1) * perPage, safePage * perPage);
+    if (activeTab === 'drafts') return [{ key: 'draft',   rows: paginated }];
+    if (activeTab === 'ended')  return [{ key: 'ended',   rows: paginated }];
+    const running   = paginated.filter(c => c.section === 'running');
+    const paused    = paginated.filter(c => c.section === 'paused');
+    const scheduled = paginated.filter(c => c.section === 'scheduled');
     return [
       ...(running.length   ? [{ key: 'running',   rows: running }]   : []),
       ...(paused.length    ? [{ key: 'paused',     rows: paused }]    : []),
       ...(scheduled.length ? [{ key: 'scheduled',  rows: scheduled }] : []),
     ];
-  }, [activeTab, filteredRows]);
+  }, [activeTab, filteredRows, safePage, perPage]);
 
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
 
@@ -464,7 +478,7 @@ export function CampaignView() {
           { key: 'ended',  label: 'Ended' },
         ]}
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={(tab) => { setPage(1); setActiveTab(tab); }}
         actions={['filter']}
         filterActive={showFilters}
         filterBadgeCount={activeFilterCount}
@@ -505,39 +519,29 @@ export function CampaignView() {
           </colgroup>
           <thead>
             <tr className={styles.headerRow}>
-              <th className={styles.thCenter}>S</th>
-              <th>Campaign Name</th>
-              <th>Audience</th>
-              <th>Execution Progress</th>
-              <th>Delivered</th>
-              <th>Opened</th>
-              <th>Health</th>
-              <th>Start Date</th>
-              <th>Duration</th>
-              <th>Action</th>
+              <HeaderCell label="S" align="center" />
+              <HeaderCell label="Campaign Name" />
+              <HeaderCell label="Audience" />
+              <HeaderCell label="Execution Progress" />
+              <HeaderCell label="Delivered" />
+              <HeaderCell label="Opened" />
+              <HeaderCell label="Health" />
+              <HeaderCell label="Start Date" />
+              <HeaderCell label="Duration" />
+              <HeaderCell label="Action" />
             </tr>
           </thead>
           <tbody>
             {campaignsLoading && !usingSupa ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <tr key={`skel-${i}`} className={styles.row}>
-                  <td className={styles.tdS}><span className={styles.skelCircle} /></td>
-                  <td className={styles.tdName}><span className={styles.skelBar} style={{ width: `${55 + (i % 3) * 15}%` }} /></td>
-                  <td className={styles.tdAudience}><span className={styles.skelBar} style={{ width: 40 }} /></td>
-                  <td className={styles.tdProgress}><span className={styles.skelBar} style={{ width: '70%' }} /></td>
-                  <td className={styles.tdMetric}><span className={styles.skelBar} style={{ width: 32 }} /></td>
-                  <td className={styles.tdMetric}><span className={styles.skelBar} style={{ width: 32 }} /></td>
-                  <td className={styles.tdHealth}><span className={styles.skelBar} style={{ width: 56 }} /></td>
-                  <td className={styles.tdDate}><span className={styles.skelBar} style={{ width: 72 }} /></td>
-                  <td className={styles.tdDuration}><span className={styles.skelBar} style={{ width: 52 }} /></td>
-                  <td className={styles.tdAction}><span className={styles.skelBar} style={{ width: 80 }} /></td>
-                </tr>
-              ))
+              <tr>
+                <td colSpan={10} style={{ padding: 0 }}>
+                  <SimpleTableSkeleton rows={6} cols={10} />
+                </td>
+              </tr>
             ) : sections.length === 0 ? (
               <tr>
-                <td colSpan={10} className={styles.emptyState}>
-                  <Icon name="solar:filter-linear" size={32} color="var(--neutral-150)" />
-                  <p>No campaigns match your filters</p>
+                <td colSpan={10}>
+                  <EmptyState icon="solar:filter-linear" title="No campaigns match your filters" />
                 </td>
               </tr>
             ) : (
@@ -556,26 +560,13 @@ export function CampaignView() {
 
       {/* Pagination */}
       <div className={styles.footer}>
-        <div className={styles.paginationRow}>
-          <button className={styles.pageBtn} disabled aria-label="Previous page">
-            <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-200)" />
-          </button>
-          {[1, 2].map(n => (
-            <button key={n} className={[styles.pageBtn, n === 1 ? styles.pageBtnActive : ''].join(' ')}>
-              {n}
-            </button>
-          ))}
-          <span className={styles.pageDots}>…</span>
-          <button className={styles.pageBtn}>10</button>
-          <button className={styles.pageBtn} aria-label="Next page">
-            <Icon name="solar:alt-arrow-right-linear" size={16} color="var(--neutral-300)" />
-          </button>
-          <div className={styles.perPageWrap}>
-            <span className={styles.perPageLabel}>10 / Page</span>
-            <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-          </div>
-          <span className={styles.goToPage}>Go to Page</span>
-        </div>
+        <Pagination
+          totalItems={totalRows}
+          currentPage={safePage}
+          perPage={perPage}
+          onPageChange={setPage}
+          onPerPageChange={setPerPage}
+        />
       </div>
     </div>
   );

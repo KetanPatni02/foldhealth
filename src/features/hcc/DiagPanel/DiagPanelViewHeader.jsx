@@ -10,7 +10,7 @@ export function DiagPanelViewHeader(p) {
     member, rafImpact, noop, slaVerdict, pillRef, onPillEnter, onPillLeave, onPillClick,
     pillLabel, reviewProgress, pillRect, reviewStages, cancelClose, requestClose,
     setPillPinned, setPillRect, dosState, currentDos, isDosRejected, actingStatus,
-    handleStatusChange, actingRole, stageLocked,
+    handleStatusChange, actingRole, stageLocked, recordsRequestLockReason,
   } = p;
   return (
     <>
@@ -80,6 +80,7 @@ export function DiagPanelViewHeader(p) {
             disabledReason={(() => {
               const supStatus = dosState?.support?.status || member?.supS;
               if (isDosRejected) return 'Record was Rejected upstream — no downstream action';
+              if (recordsRequestLockReason) return recordsRequestLockReason;
               if (supStatus === 'Insufficient') return 'Support marked the documents Insufficient — nothing to code yet';
               if (supStatus === 'Reject' || supStatus === 'Rejected') return 'Support rejected this DOS — no downstream action';
               return 'Support and Coder must complete their work first';

@@ -55,6 +55,7 @@ export function useDiagPanel() {
   const hccCompleteReviewer = useAppStore(s => s.hccCompleteReviewer);
   const hccCompleteReviewer2 = useAppStore(s => s.hccCompleteReviewer2);
   const hccRequestRecords = useAppStore(s => s.hccRequestRecords);
+  const hccRequestRecordsFrom = useAppStore(s => s.hccRequestRecordsFrom);
   const hccRecordsReceived = useAppStore(s => s.hccRecordsReceived);
   const hccMarkInsufficient = useAppStore(s => s.hccMarkInsufficient);
   const hccRejectDos = useAppStore(s => s.hccRejectDos);
@@ -410,6 +411,11 @@ export function useDiagPanel() {
         });
         siblingCount += 1;
       } else {
+        // When QA or Compliance saves a manual +ICD, snapshot the origin
+        // so the DOS skips Support, routes by Visit Type, and returns to
+        // the reviewer on Coder Completed. Pin the current DOS's Coder
+        // onto the new row for continuity.
+        const isManualOrigin = actingRole === 'reviewer' || actingRole === 'reviewer2';
         const newId = addHccGapNewRow({
           sourceMemberId: member?.id,
           code,
@@ -419,6 +425,9 @@ export function useDiagPanel() {
           provider: c.provider,
           pos: c.pos,
           visitType: c.visitType,
+          originatorRole: isManualOrigin ? actingRole : null,
+          originatorAssignee: isManualOrigin ? (dosState?.[actingRole]?.assignee || null) : null,
+          preferredCoder: isManualOrigin ? (dosState?.coder?.assignee || null) : null,
         });
         if (newId) newRowCount += 1;
       }
@@ -433,7 +442,7 @@ export function useDiagPanel() {
     // the search field reverts to filtering the ICD list. Users who want to
     // add another ICD click + ICD again.
     setAddIcdMode(false);
-  }, [pendingGaps, member?.id, addHccGap, addHccGapNewRow, addHccGapToRow, showToast, removePendingGap]);
+  }, [pendingGaps, member?.id, addHccGap, addHccGapNewRow, addHccGapToRow, showToast, removePendingGap, actingRole, dosState, setAddIcdMode]);
   // Comments count for the toolbar chip — mirrors what the Comments tab
   // renders (Supabase-hydrated rows when present, mock fallback otherwise).
   const dbComments = useAppStore(s => s.hccDiagComments);
@@ -471,13 +480,34 @@ export function useDiagPanel() {
   // (Insufficient / Reject / Rejected) are a subset of "not Completed"
   // and stay locked too.
   //
-  // QA and Compliance are reviewers of the Coder's work — they take ICD
-  // actions independently and are not gated by Support/Coder completion.
+  // QA and Compliance are reviewers of the Coder's work. They act
+  // independently of Support/Coder completion EXCEPT while their own
+  // records-request cycle is open — once they've set their status to
+  // Record Requested, ICD actions and status changes are frozen until
+  // the destination role (Coder or Support) marks the request Completed
+  // and the DOS returns to Record Received.
   const stageLocked = useMemo(() => {
+    if (actingRole === 'reviewer' || actingRole === 'reviewer2') {
+      const roleStatus = dosState?.[actingRole]?.status;
+      return roleStatus === 'Record Requested';
+    }
     if (actingRole !== 'coder') return false;
     const supStatus = dosState?.support?.status || member?.supS;
     return supStatus !== 'Completed';
   }, [actingRole, dosState, member]);
+
+  // Human-readable reason surfaced on the disabled DosStatusMenu tooltip
+  // and on every locked ICD action while QA / Compliance is waiting on a
+  // records request to be filled. Falls back to null so the caller's
+  // existing lockReason (e.g. rejectionLockReason) still wins.
+  const recordsRequestLockReason = useMemo(() => {
+    if (!(actingRole === 'reviewer' || actingRole === 'reviewer2')) return null;
+    const roleStatus = dosState?.[actingRole]?.status;
+    if (roleStatus !== 'Record Requested') return null;
+    const req = dosState?.[actingRole]?.records_request;
+    const dest = req?.destinationRole === 'support' ? 'Support Team' : 'Coder';
+    return `Waiting on ${dest} to return the record — actions unlock when the request is filled.`;
+  }, [actingRole, dosState]);
 
   // ── Review-progress stages + ring (drives the stage pill) ──
   const reviewStages = useMemo(
@@ -583,12 +613,13 @@ export function useDiagPanel() {
     switch (next) {
       case 'Completed':
         if (role === 'support') {
-          // Support completing after a Coder Record Requested — the record is
-          // in the Returned state — routes through recordsReceived so the
-          // Coder auto-flips to Record Received (AC-6 loop).
-          const supStatus = dosState?.support?.status;
-          if (supStatus === 'Returned') hccRecordsReceived(member.id, currentDos);
-          else                          hccCompleteSupport(member.id, currentDos);
+          // Support Completed always routes through the engine's completeSupport
+          // lifecycle. If a records_request from any other role (Coder / QA /
+          // Compliance) is open, completeSupport auto-detects it and routes the
+          // DOS back to the original requester via recordsReceivedFor — no
+          // longer hardcoded to Coder. Same is true for the Coder / Reviewer
+          // branches below.
+          hccCompleteSupport(member.id, currentDos);
         }
         else if (role === 'coder')    hccCompleteCoder(member.id, currentDos);
         else if (role === 'reviewer') hccCompleteReviewer(member.id, currentDos);
@@ -640,6 +671,13 @@ export function useDiagPanel() {
       setRejectPrompt({});
       return;
     }
+    // QA / Compliance → Record Requested opens the role-picker dialog so
+    // the user chooses whether to request records from Coder or Support.
+    // The transition commits only after the dialog resolves.
+    if (next === 'Record Requested' && (actingRole === 'reviewer' || actingRole === 'reviewer2')) {
+      setRecordsRequestPrompt({ requesterRole: actingRole });
+      return;
+    }
     const requiresComment =
       actingRole === 'coder' && next === 'Record Requested';
     if (requiresComment) {
@@ -650,6 +688,43 @@ export function useDiagPanel() {
     applyStatusChange(next);
   };
   const [rejectPrompt, setRejectPrompt] = useState(null);
+  // Prompt shown when QA / Compliance picks Record Requested. Holds
+  // `{ requesterRole }` while the modal is open; null when closed.
+  const [recordsRequestPrompt, setRecordsRequestPrompt] = useState(null);
+  const confirmRecordsRequest = ({ destinationRole, note }) => {
+    setRecordsRequestPrompt(null);
+    if (!member || !currentDos || !destinationRole) return;
+    // Defer to the next microtask so the AlertDialog's focus-trap unmount
+    // finishes before the store cascade re-renders the drawer.
+    setTimeout(() => {
+      hccRequestRecordsFrom?.(member.id, currentDos, actingRole, destinationRole, 'current-user', { note });
+      setDiagDosStatus('Record Requested');
+      // If the user attached a comment, post it into the DOS Comments feed
+      // addressed to the destination role — the destination user sees it
+      // in the Comments tab and the activity log auto-mirrors the entry
+      // (addHccDiagComment fans out to addActivityEntry internally).
+      if (note && addHccDiagComment) {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
+        const hours = now.getHours();
+        const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
+        const destLabel = destinationRole === 'coder' ? 'Coder'
+          : destinationRole === 'support' ? 'Support Team'
+          : destinationRole;
+        const requesterLabel = ROLE_LABEL[actingRole] || (hccUserRole || 'You');
+        addHccDiagComment({
+          id: `c${Date.now()}`,
+          author: 'You',
+          role: requesterLabel,
+          date, time, edited: false,
+          body: `For ${destLabel}: ${note}`,
+          icd: null,
+          dos: currentDos || null,
+        });
+      }
+    }, 0);
+  };
   // Confirming the Reject dialog: apply the status through the engine +
   // stamp the reasons and note onto the activity feed / comment stream so
   // downstream reviewers see exactly why the record was rejected.
@@ -1110,6 +1185,10 @@ export function useDiagPanel() {
     pillRef,
     q,
     rafImpact,
+    recordsRequestPrompt,
+    confirmRecordsRequest,
+    cancelRecordsRequest: () => setRecordsRequestPrompt(null),
+    recordsRequestLockReason,
     rejectInfo,
     rejectPrompt,
     rejectionLockReason,

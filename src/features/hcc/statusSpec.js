@@ -187,10 +187,13 @@ export const statusDisplayLabel = (value) => {
 // the options valid for whichever role currently owns the DOS:
 //   • Support gets Action Needed / Insufficient (not New / Skipped).
 //   • Coder gets Record Received / Record Requested (the retrieval loop).
-//   • QA + Compliance get Returned but NOT the record-request statuses.
+//   • QA + Compliance can also Request Records from either Coder or Support,
+//     so 'Record Requested' surfaces on their menus too. Selecting it opens
+//     a role picker (RecordsRequestDialog) before the transition commits.
 // Cross-role transitions (Coder "Record Requested" → Support "Returned" →
-// Support "Completed" → Coder "Record Received") are driven by the
-// assignment engine (assignment/lifecycle.js), not this list.
+// Support "Completed" → Coder "Record Received", plus the QA/Compliance
+// variant) are driven by the assignment engine (assignment/lifecycle.js),
+// not this list.
 // NOTE: "Skipped" is NOT user-selectable — the assignment engine applies it
 // automatically when a later role completes ahead of an earlier one
 // (autoSkipEarlierRoles in lifecycle.js). It only appears as a rendered status,
@@ -198,8 +201,8 @@ export const statusDisplayLabel = (value) => {
 export const ROLE_STATUS_OPTIONS = {
   support:   ['Awaiting', 'In Progress', 'Insufficient', 'Returned', 'Completed', 'Reject'],
   coder:     ['New', 'In Progress', 'Record Received', 'Record Requested', 'Completed', 'Reject'],
-  reviewer:  ['New', 'In Progress', 'Returned', 'Completed', 'Reject'],
-  reviewer2: ['New', 'In Progress', 'Returned', 'Completed', 'Reject'],
+  reviewer:  ['New', 'In Progress', 'Returned', 'Record Requested', 'Completed', 'Reject'],
+  reviewer2: ['New', 'In Progress', 'Returned', 'Record Requested', 'Completed', 'Reject'],
 };
 
 // Fallback when no active role owns the DOS (e.g. billing / unassigned):

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { WorklistRow, WORKLIST_MIDDLE_COLUMNS } from './WorklistRow';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
@@ -122,6 +122,11 @@ export function WorklistTable() {
   const patientsLoading = useAppStore(s => s.patientsLoading);
   const patientsError = useAppStore(s => s.patientsError);
   const fetchPatients = useAppStore(s => s.fetchPatients);
+  // `fetchPatients` was only wired to the ErrorState retry — the initial load
+  // came from SubNav prefetching `patients` on every Population route. SubNav
+  // fetches counts only now, so this table owns its own data. Store-guarded
+  // single-fire, so the retry path still works and costs nothing extra.
+  useEffect(() => { fetchPatients(); }, [fetchPatients]);
   const selectedIds = useAppStore(s => s.selectedIds);
   const selectPatient = useAppStore(s => s.selectPatient);
   const selectAll = useAppStore(s => s.selectAll);

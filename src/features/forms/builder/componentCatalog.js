@@ -16,6 +16,7 @@
  */
 
 import { validatedPaletteEntries } from './validatedInstruments';
+import { makeMemberConsent } from './memberConsent';
 
 const opt = (value, score) => (score == null ? { value } : { value, score });
 
@@ -59,6 +60,12 @@ export const BASIC = [
 const group = (text, healthKey, items) => ({ type: 'group', text, healthKey, items });
 
 export const HEALTH = [
+  {
+    key: 'member-consent',
+    label: 'Member Consent',
+    icon: 'custom:member-consent',
+    make: makeMemberConsent,
+  },
   { key: 'chief-complaint', label: 'Chief Complaint', icon: 'solar:clipboard-heart-linear',
     make: () => group('Chief Complaint', 'chiefComplaint', [
       { type: 'text', text: 'What brings you in today?', placeholder: 'Describe your main concern', required: true },

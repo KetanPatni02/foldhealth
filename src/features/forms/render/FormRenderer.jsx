@@ -81,11 +81,17 @@ function TypeformChoice({ field, value, onChange }) {
     <div className={styles.tfOptions}>
       {(field.options || []).map((o, i) => {
         const checked = multi ? selectedSet.has(o.value) : value === o.value;
-        const select = () => (multi ? onChange(checked ? arr.filter((v) => v !== o.value) : [...arr, o.value]) : onChange(o.value));
+        const select = () => {
+          if (multi) {
+            onChange(checked ? arr.filter((v) => v !== o.value) : [...arr, o.value]);
+          } else {
+            onChange(field.control === 'consent' && checked ? '' : o.value);
+          }
+        };
         return (
           <button key={i} type="button" className={`${styles.tfOption} ${checked ? styles.tfOptionSel : ''}`} onClick={select}>
             <span className={styles.tfLetter}>{String.fromCharCode(65 + i)}</span>
-            <span className={styles.tfOptText}>{o.value}</span>
+            <span className={styles.tfOptText}>{o.label || o.value}</span>
             {checked ? <Icon name="solar:check-circle-bold" size={18} color="var(--primary-300)" /> : null}
           </button>
         );
@@ -295,7 +301,8 @@ export function FormRenderer({
     onAnswer(linkId, v);
     clearMissing(linkId);
     const f = currentQ?.field;
-    if (f && f.linkId === linkId && f.type === 'choice' && f.control !== 'checkbox' && isAnswered(v)) {
+    if (f && f.linkId === linkId && f.type === 'choice'
+      && f.control !== 'checkbox' && f.control !== 'consent' && isAnswered(v)) {
       clearTimeout(advanceTimer.current);
       advanceTimer.current = setTimeout(() => goNext(), 320);
     }

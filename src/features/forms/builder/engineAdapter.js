@@ -6,7 +6,11 @@
 function toItem(f) {
   const out = { linkId: f.linkId, type: f.type, text: f.text, required: !!f.required };
   if (Array.isArray(f.options)) {
-    out.answerOption = f.options.map((o) => (o.score == null ? { value: o.value } : { value: o.value, score: o.score }));
+    out.answerOption = f.options.map((o) => ({
+      value: o.value,
+      ...(o.label ? { label: o.label } : {}),
+      ...(o.score == null ? {} : { score: o.score }),
+    }));
   }
   if (Array.isArray(f.items)) out.item = f.items.map(toItem);
   if (Array.isArray(f.enableWhen)) out.enableWhen = f.enableWhen;

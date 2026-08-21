@@ -11,6 +11,13 @@ export const STATUS_BADGE = {
   'insufficient': { color: 'var(--status-warning)', bg: 'var(--status-warning-light)', border: 'rgba(240, 160, 0, 0.2)' },
   'completed': { color: 'var(--status-success)', bg: 'var(--status-success-light)', border: 'rgba(0, 155, 83, 0.2)' },
   'rejected': { color: 'var(--status-error)', bg: 'var(--status-error-light)', border: 'rgba(215, 40, 37, 0.2)' },
+  // Rendered when Support is under a records-request cycle (Coder / QA /
+  // Compliance asked for docs and Support's engine status is `Returned`).
+  // Read-only — Support can't manually pick this; it appears only when the
+  // engine flags it, and marking Completed sends the DOS back to the
+  // requester automatically. Labeled "Rebuttal" here to match how DiagPanel
+  // renders the same underlying status (statusSpec.STATUS_DISPLAY.Returned).
+  'returned': { color: 'var(--secondary-300)', bg: 'var(--secondary-100)', border: 'rgba(244, 122, 62, 0.2)' },
 };
 
 export function deriveStatus(docs, actions) {

@@ -14,6 +14,18 @@ import {
   STATUS_BADGE,
 } from './ChartDetailDrawer.utils';
 
+// Canonical engine status (statusSpec.js keys) → drawer UI status key.
+// Used by effectiveStatus so a change on any surface — DiagPanel status
+// menu, engine cascade (Records Requested / Returned), or this drawer's
+// own dropdown — flows into the pill on the next render.
+const ENGINE_TO_UI = {
+  'Completed':    'completed',
+  'Insufficient': 'insufficient',
+  'Reject':       'rejected',
+  'In Progress':  'in-progress',
+  'Returned':     'returned',
+};
+
 export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   const docs = charts || [];
 
@@ -521,18 +533,30 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
     showToast('Record marked Insufficient.');
   };
 
-  // Once Support has handed off (locked), the pill pins to "Completed" — the
-  // handoff outcome — so it doesn't flicker between "In Progress" and
-  // "Completed" if a doc gets undone downstream. Otherwise it tracks the
-  // manual override / derived doc-review status normally.
+  const supportEngineStatus = dosStateForBadge?.support?.status || m?.supS;
+
+  // Bidirectional sync: the engine's `support.status` is the source of truth.
+  // Any state change the ChartDetailDrawer applies flows through
+  // `syncSupportStatus` → engine, and the drawer re-reads engine on next
+  // render — so if the DiagPanel (or any other surface) changes the Support
+  // status, this pill reflects it automatically. Only when the engine has
+  // no definitive state (Awaiting / New / null) do we fall back to the
+  // doc-derived value.
+  const derivedStatus = deriveStatus(docs, docActions);
+  const engineUiStatus = ENGINE_TO_UI[supportEngineStatus] || null;
   const effectiveStatus = supportActionsLocked
     ? 'completed'
-    : (manualStatus || deriveStatus(docs, docActions));
-  // Trigger label lookup: "Action Needed" is a derived-only state so it's not
-  // in the dropdown, but the trigger still renders it when nothing has been
-  // reviewed yet — hence the explicit fallback here.
+    : (engineUiStatus || manualStatus || derivedStatus);
+  // Trigger label lookup: "Action Needed" is a derived-only state so it's
+  // not in the dropdown, but the trigger still renders it when nothing has
+  // been reviewed yet — hence the explicit fallback here. "Rebuttal" is
+  // also read-only — Support can't manually pick it, so we render a label
+  // outside STATUS_OPTIONS. Label matches DiagPanel's statusDisplayLabel
+  // for Returned so the two surfaces read the same.
   const currentStatus = STATUS_OPTIONS.find(s => s.key === effectiveStatus)
-    || { key: 'action-needed', label: 'Action Needed' };
+    || (effectiveStatus === 'returned'
+        ? { key: 'returned', label: 'Rebuttal' }
+        : { key: 'action-needed', label: 'Action Needed' });
   const currentBadge = STATUS_BADGE[effectiveStatus] || STATUS_BADGE['action-needed'];
   const openAction = () => {
     if (actionPos) { setActionPos(null); return; }

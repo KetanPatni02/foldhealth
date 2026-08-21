@@ -2335,7 +2335,7 @@ function PagePreviewModal({ page, maxPage, fileName, onChangePage, onClose }) {
   }, [page, maxPage, onChangePage, onClose]);
 
   return (
-    <div className={styles.previewOverlay} onClick={onClose} role="dialog" aria-modal="true">
+    <div className={styles.previewOverlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Document preview">
       <div className={styles.previewShell} onClick={(e) => e.stopPropagation()}>
         <div className={styles.previewHeader}>
           <div className={styles.previewHeaderTitle}>

@@ -130,9 +130,13 @@ export function HccEvidenceCell({ charts, onClick, onMouseEnter, onMouseLeave, o
       </Button>
     );
   }
-  // Status line (Figma 4680:138476): when every chart shares a status,
-  // show a single dot + "All Passed / Pending / Failed"; when mixed, show
-  // per-status dots with counts (●2 ●1).
+  // Status line reads per-doc statuses — same source as the doc popover and
+  // the Doc Review drawer, so the three surfaces never disagree. Uniform
+  // (all passed / all failed / all pending) → single dot + label; mixed →
+  // per-status dots with counts (●2 ●1). Doc statuses are seeded in
+  // generateDefaultCharts to follow Support's engine status (Completed →
+  // Passed, Reject → Failed, otherwise Pending), so an unreviewed row can
+  // never advertise "All Passed" and a completed row never "All Pending".
   const count = charts.length;
   const list = charts.map(d => (d.status || 'pending').toLowerCase());
   const pass = list.filter(s => s === 'passed').length;
@@ -151,7 +155,7 @@ export function HccEvidenceCell({ charts, onClick, onMouseEnter, onMouseLeave, o
     >
       <Badge
         tone="primary"
-        size="M"
+        size="S"
         icon="solar:document-text-linear"
         label={String(count)}
         chevron
@@ -316,7 +320,15 @@ export function RoleStatusCell({ name, status, date, role, memberId, dosDate, pr
   // Status glyph + expected-completion date live OUTSIDE the AssigneeChange
   // trigger — the pill owns the name only; the status line stacks beneath it
   // so it stays a data affordance, not part of the reassign click target.
-  const statusLine = priorResolved ? (
+  // The `priorResolved` gate suppresses the glyph while an upstream role is
+  // still in flight, EXCEPT when this role is in a records-request cycle
+  // (Record Requested / Record Received / Returned). Those states are
+  // stand-alone signals worth showing — otherwise a QA row waiting on
+  // Coder-Returned reads as a plain "M. Almeda" with no indicator that
+  // records were requested.
+  const RECORDS_LOOP_STATES = new Set(['Record Requested', 'Record Received', 'Returned']);
+  const showStatus = priorResolved || RECORDS_LOOP_STATES.has(effectiveStatus);
+  const statusLine = showStatus ? (
     <span className={styles.roleStatusLine}>
       <StatusIcon status={effectiveStatus} size={12} color={spec.color} />
       {date && <span className={styles.roleDate}>{date}</span>}

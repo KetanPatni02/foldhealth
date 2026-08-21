@@ -77,6 +77,25 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
         : <p className={styles.fiParagraph}>{field.text}</p>;
 
     case 'choice': {
+      if (field.control === 'consent') {
+        return (
+          <div className={styles.fiOptions}>
+            {opts.map((o, i) => {
+              const checked = value === o.value;
+              return (
+                <label key={i} className={styles.fiOptionRow}>
+                  <Checkbox
+                    checked={checked}
+                    disabled={disabled}
+                    onCheckedChange={(nextChecked) => set(nextChecked ? o.value : '')}
+                  />
+                  <span>{o.label || o.value}</span>
+                </label>
+              );
+            })}
+          </div>
+        );
+      }
       if (field.control === 'dropdown') {
         return (
           <Select
@@ -84,7 +103,7 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
             placeholder="Select an option"
             value={value ?? ''}
             disabled={disabled}
-            options={opts.map((o) => ({ value: o.value, label: o.value }))}
+            options={opts.map((o) => ({ value: o.value, label: o.label || o.value }))}
             onChange={set}
           />
         );
@@ -104,7 +123,7 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
                     disabled={disabled}
                     onCheckedChange={() => set(checked ? arr.filter((v) => v !== o.value) : [...arr, o.value])}
                   />
-                  <span>{o.value}</span>
+                  <span>{o.label || o.value}</span>
                 </label>
               );
             }
@@ -113,7 +132,7 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
                 key={i}
                 name={id}
                 value={o.value}
-                label={o.value}
+                label={o.label || o.value}
                 checked={checked}
                 disabled={disabled}
                 onChange={() => set(o.value)}

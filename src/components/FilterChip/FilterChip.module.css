@@ -40,6 +40,11 @@
 }
 .divider { color: var(--primary-300); margin: 0 1px; }
 .clearIcon {
+  appearance: none;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
   display: inline-flex;
   align-items: center;
   justify-content: center;

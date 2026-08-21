@@ -1,0 +1,137 @@
+/* Select New DOS calendar popover — the second view of the DOS Select in
+   the +ICD flow. Anchored below the DOS field, slides in from the right so
+   it visually replaces the Select's list. Back arrow returns to the list.
+   Layout mirrors Figma: back+title header, month nav, day-of-week strip,
+   6×7 day grid. */
+
+/* Soft slide-in from the right — no bounce, gentle decelerating curve so
+   the calendar settles into place instead of snapping. Distance is small
+   (8px) so the eye reads it as the calendar "taking over" the Select's
+   footprint rather than swooshing across the drawer. */
+@keyframes slideIn {
+  from { transform: translateX(8px); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+
+.card {
+  position: fixed;
+  z-index: 2400;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  padding: var(--space-3);
+  box-shadow: var(--shadow-popover);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  animation: slideIn 360ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  transform-origin: top right;
+  will-change: transform, opacity;
+}
+
+/* Header — back arrow + "Select New DOS". Back arrow sits flush left to
+   mirror standard multi-view dialog patterns. */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  color: var(--neutral-400);
+}
+.backBtn:hover { background: var(--neutral-50); }
+.backBtn:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 1px;
+}
+.title {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: var(--leading-tight);
+}
+
+/* Month nav — [<] "January 2026" [>]. Centered label so it reads as a
+   heading rather than a range. */
+.monthNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.monthLabel {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: var(--leading-tight);
+  flex: 1;
+  text-align: center;
+}
+
+/* Day-of-week strip — muted, all-caps not needed at this weight. */
+.dowRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+}
+.dow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+  line-height: var(--leading-tight);
+}
+
+/* Day grid — square-ish cells, hover tint, today highlighted with a purple
+   coin (Figma reference). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+}
+.cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-500);
+  line-height: var(--leading-tight);
+  transition: background 0.12s, color 0.12s;
+}
+.cell:hover:not(:disabled) {
+  background: var(--neutral-50);
+}
+.cell:disabled {
+  color: var(--neutral-150);
+  cursor: not-allowed;
+}
+.cellOutside {
+  color: var(--neutral-200);
+}
+.cellToday {
+  background: var(--primary-300);
+  color: var(--neutral-0);
+}
+.cellToday:hover:not(:disabled) {
+  background: var(--primary-400, var(--primary-300));
+}

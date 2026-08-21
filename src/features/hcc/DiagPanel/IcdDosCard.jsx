@@ -598,7 +598,6 @@ function DismissReasonHoverLink({ reason, note, onClick }) {
       {rect && hasContent && createPortal(
         <div
           role="tooltip"
-          aria-label="Dismiss reason"
           className={styles.reasonTooltip}
           style={style}
         >
