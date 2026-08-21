@@ -55,24 +55,10 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
   const account = useAppStore(s => s.hccUserRole);
   const setAccount = useAppStore(s => s.setHccUserRole);
   const [showRoles, setShowRoles] = useState(false);
-  // Roles this user actually has — fetched from profiles.clinical_roles.
-  // The role switcher only lists HCC roles that overlap this set, so a
-  // user without any HCC role assigned can't accidentally act as one.
-  const [assignedRoles, setAssignedRoles] = useState(null);
-  useEffect(() => {
-    if (!user?.id) { setAssignedRoles([]); return; }
-    let alive = true;
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('clinical_roles')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (alive) setAssignedRoles(data?.clinical_roles || []);
-    })();
-    return () => { alive = false; };
-  }, [user?.id]);
-  const assignedHccRoles = (assignedRoles || []).filter(r => ALL_HCC_ROLES.includes(r));
+  // Same profiles row fetchPlatformUsers already loaded for pickers /
+  // notifications. Used to be a third GET of `clinical_roles` on every page.
+  const assignedRoles = useAppStore(s => s.currentUserClinicalRoles) || [];
+  const assignedHccRoles = assignedRoles.filter(r => ALL_HCC_ROLES.includes(r));
   // In dev we always let the switcher offer every HCC role — it lets us
   // exercise every workflow without touching profiles.clinical_roles in the
   // DB. In prod we keep the gate: users see only the roles they actually
@@ -341,6 +327,7 @@ export function TopBar() {
   const awvMembers = useAppStore(s => s.awvMembers) || [];
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers) || [];
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers) || [];
+  const jsaMembers = useAppStore(s => s.jsaMembers) || [];
   const allPatients = useAppStore(s => s.allPatients) || [];
   const fetchPatients = useAppStore(s => s.fetchPatients);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
@@ -348,6 +335,7 @@ export function TopBar() {
   const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
   const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const fetchJsaMembers = useAppStore(s => s.fetchJsaMembers);
   const openQuickView = useAppStore(s => s.openQuickView);
   const activeSubnavList = useAppStore(s => s.activeSubnavList);
 
@@ -389,8 +377,9 @@ export function TopBar() {
     fetchAwvMembers?.();
     fetchCcmWorklistMembers?.();
     fetchSnpWorklistMembers?.();
+    fetchJsaMembers?.();
   }, [fetchPatients, fetchAllPatients, fetchHccMembers, fetchAwvMembers,
-      fetchCcmWorklistMembers, fetchSnpWorklistMembers]);
+      fetchCcmWorklistMembers, fetchSnpWorklistMembers, fetchJsaMembers]);
 
   // Unified search index. Priority order matters twice over: profile-backed
   // slices come first so their rows win the dedupe (their ids resolve in
@@ -425,9 +414,10 @@ export function TopBar() {
     add(awvMembers, true);
     add(ccmWorklistMembers, true);
     add(snpWorklistMembers, true);
+    add(jsaMembers, true);
     add(allPatients, false);
     return index;
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, allPatients]);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, allPatients]);
 
   const searchResults = searchQuery.trim().length >= 2
     ? searchIndex.filter(p => {

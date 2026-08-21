@@ -109,6 +109,8 @@ export function AlertsMonitoringCard({ dragHandleClassName }) {
   const fetchHccMembers = useAppStore(s => s.fetchHccMembers);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
+  const fetchAwvMembers = useAppStore(s => s.fetchAwvMembers);
+  const fetchCcmWorklistMembers = useAppStore(s => s.fetchCcmWorklistMembers);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const openQuickView = useAppStore(s => s.openQuickView);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -120,7 +122,10 @@ export function AlertsMonitoringCard({ dragHandleClassName }) {
     fetchHccMembers();
     fetchSnpWorklistMembers();
     fetchHedisMembers();
-    if (allPatients.length === 0) fetchAllPatients();
+    fetchAwvMembers?.();
+    fetchCcmWorklistMembers?.();
+    // all_patients is ~100 KB and is only used to resolve a row click
+    // onto a profile id. Load it then, not on every Home visit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -173,8 +178,13 @@ export function AlertsMonitoringCard({ dragHandleClassName }) {
 
   const loading = patientsLoading || tasksLoading;
 
-  const handleRowClick = (row) => {
-    const patientId = resolvePatientId(row, patients, allPatients);
+  const handleRowClick = async (row) => {
+    let patientId = resolvePatientId(row, patients, allPatients);
+    if (!patientId) {
+      await fetchAllPatients?.();
+      const st = useAppStore.getState();
+      patientId = resolvePatientId(row, st.patients, st.allPatients || []);
+    }
     openQuickView({
       id: patientId || row.id || row.key,
       name: row.name,

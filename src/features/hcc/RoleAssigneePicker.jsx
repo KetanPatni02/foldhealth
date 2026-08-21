@@ -55,8 +55,6 @@ export function RoleAssigneePicker({
   // Platform users from profiles — one-shot fetch, guarded in the store.
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
-  useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
-
   const requiredRole = ENGINE_TO_CLINICAL[role];
   // Strict role scoping: only users whose profiles.clinical_roles includes
   // the column's HCC role are eligible. No fallback to the legacy mock —
@@ -81,6 +79,7 @@ export function RoleAssigneePicker({
     : baseUsers;
 
   const open = () => {
+    fetchPlatformUsers();
     const r = btnRef.current?.getBoundingClientRect();
     if (!r) return;
     setQuery('');
