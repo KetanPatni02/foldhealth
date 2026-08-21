@@ -316,7 +316,15 @@ export function RoleStatusCell({ name, status, date, role, memberId, dosDate, pr
   // Status glyph + expected-completion date live OUTSIDE the AssigneeChange
   // trigger — the pill owns the name only; the status line stacks beneath it
   // so it stays a data affordance, not part of the reassign click target.
-  const statusLine = priorResolved ? (
+  // The `priorResolved` gate suppresses the glyph while an upstream role is
+  // still in flight, EXCEPT when this role is in a records-request cycle
+  // (Record Requested / Record Received / Returned). Those states are
+  // stand-alone signals worth showing — otherwise a QA row waiting on
+  // Coder-Returned reads as a plain "M. Almeda" with no indicator that
+  // records were requested.
+  const RECORDS_LOOP_STATES = new Set(['Record Requested', 'Record Received', 'Returned']);
+  const showStatus = priorResolved || RECORDS_LOOP_STATES.has(effectiveStatus);
+  const statusLine = showStatus ? (
     <span className={styles.roleStatusLine}>
       <StatusIcon status={effectiveStatus} size={12} color={spec.color} />
       {date && <span className={styles.roleDate}>{date}</span>}

@@ -5,6 +5,7 @@ import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { LeftWorkspace } from './LeftWorkspace';
 import { RejectRecordDialog } from './DiagPanelRejectDialog';
+import { RecordsRequestDialog } from './RecordsRequestDialog';
 import { DiagPanelViewHeader } from './DiagPanelViewHeader';
 import { DiagPanelViewToolbar } from './DiagPanelViewToolbar';
 import { DiagPanelViewCards } from './DiagPanelViewCards';
@@ -34,6 +35,9 @@ export function DiagPanelView(props) {
     rejectPrompt,
     setRejectPrompt,
     confirmReject,
+    recordsRequestPrompt,
+    confirmRecordsRequest,
+    cancelRecordsRequest,
   } = props;
 
   // Progressive expansion: the drawer opens at right-pane-only width first
@@ -118,6 +122,12 @@ export function DiagPanelView(props) {
         <RejectRecordDialog
           onCancel={() => setRejectPrompt(null)}
           onConfirm={confirmReject}
+        />
+      )}
+      {recordsRequestPrompt && (
+        <RecordsRequestDialog
+          onCancel={cancelRecordsRequest}
+          onConfirm={confirmRecordsRequest}
         />
       )}
     </Drawer>

@@ -202,6 +202,15 @@ export function completeSupport(map, patient, dos, actor) {
     role: 'support', to: STATUS.COMPLETED, by: actor,
   }));
 
+  // If another role (Coder / QA / Compliance) has an open records_request
+  // targeting Support, route the DOS back to that requester with status
+  // Record Received instead of running the normal Support → Coder cascade.
+  const requester = findRequesterFor(state, 'support');
+  if (requester) {
+    const { nextMap } = recordsReceivedFor(putState(map, state), patient, dos, requester, actor);
+    return { nextMap, events: [] };
+  }
+
   // Auto-assign Coder (AC-2)
   const { state: withCoder, picked } = autoAssignRole(
     putState(map, state), state, patient, dos, 'coder', STATUS.NEW,
@@ -264,6 +273,16 @@ export function completeCoder(map, patient, dos, actor) {
     { by: actor, reason: 'coder-complete' },
   );
   state = pushActivity(state, evt(state, 'status', { role: 'coder', to: STATUS.COMPLETED, by: actor }));
+
+  // If QA or Compliance has an open records_request targeting Coder, route
+  // the DOS back to that requester with status Record Received instead of
+  // advancing to the reviewer stage.
+  const requester = findRequesterFor(state, 'coder');
+  if (requester) {
+    const { nextMap } = recordsReceivedFor(putState(map, state), patient, dos, requester, actor);
+    return { nextMap, events: [] };
+  }
+
   // Support never worked it → mark Skipped (linear-workflow honesty).
   state = autoSkipEarlierRoles(state, 'coder', actor);
 
@@ -278,82 +297,184 @@ export function completeCoder(map, patient, dos, actor) {
     : [] };
 }
 
-// ── AC-6: Records Requested loop (Coder ↔ Support) ───────────────────────
+// ── AC-6: Records Requested loop (any requester role ↔ Coder / Support) ─
+//
+// Historically this loop was hardwired Coder → Support → Coder. QA and
+// Compliance now need the same affordance: request records from either
+// Coder or Support Team, have the DOS return to them automatically when
+// the destination role marks the request Completed. The core primitives
+// are role-agnostic:
+//
+//   requestRecordsFrom(requesterRole, destinationRole, ...)
+//     — sets requester.status = Record Requested
+//     — reassigns destinationRole to their last-known assignee (fallback
+//       to the standard engine picker) with status = Returned
+//     — snapshots the request context on requester.records_request so
+//       the destination's completion cascade can find it and route back
+//
+//   recordsReceivedFor(requesterRole, ...)
+//     — clears requester.records_request
+//     — reassigns requester to the original requester (never lost, always
+//       the snapshotted assignee taken at request time)
+//     — sets requester.status = Record Received
+//     — leaves destination role at Completed; completeSupport/completeCoder
+//       call this when they detect a pending request targeting them and
+//       skip the normal auto-advance cascade.
+//
+// The public `requestRecords` / `recordsReceived` names are kept as thin
+// shims routing to (coder, support) so old callers keep working.
+
+// Snapshot of a records request. Lives on the requester's role slot until
+// the destination completes and clears it (or until it's overwritten by a
+// new request from the same requester). Edge case 4: because it's keyed by
+// the requester role, QA and Compliance can each have their own open request
+// concurrently without stomping each other.
+function makeRecordsRequestContext(state, requesterRole, destinationRole, actor) {
+  const rs = state[requesterRole] || {};
+  const ds = state[destinationRole] || {};
+  return {
+    requesterRole,
+    requesterAssignee: rs.assignee || null,  // snapshot — used to route back
+    destinationRole,
+    previousDestAssignee: ds.assignee || null,
+    requestedBy: actor || 'system',
+    requestedAt: new Date().toISOString(),
+    status: 'open',
+  };
+}
+
+// Find the last-known assignee for a role on this DOS. Prefers `originalAssignee`
+// (first person who ever held the role); falls back to scanning the role's
+// history for any past assignee.
+function lastKnownAssignee(state, role) {
+  const rs = state[role];
+  if (!rs) return null;
+  if (rs.originalAssignee) return rs.originalAssignee;
+  const hist = Array.isArray(rs.history) ? rs.history : [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    if (hist[i].assignee) return hist[i].assignee;
+  }
+  return null;
+}
 
 /**
- * Coder needs more docs → returns the DOS to the original Support member
- * (not a fresh auto-assignment). All Coder work is preserved.
+ * Requester (Coder / QA / Compliance) asks the destination role (Coder or
+ * Support Team) for more records. The DOS routes to the destination's
+ * last-known assignee (or a fresh pick if none is on file); the requester's
+ * own state is preserved so they can pick up where they left off once the
+ * request is filled.
  */
-export function requestRecords(map, patient, dos, actor) {
+export function requestRecordsFrom(map, patient, dos, requesterRole, destinationRole, actor, opts = {}) {
+  if (requesterRole === destinationRole) {
+    throw new Error(`requestRecordsFrom: requester and destination cannot both be "${requesterRole}"`);
+  }
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
 
-  // Coder side: status = Record Requested
-  state = setRoleState(state, 'coder',
-    { status: STATUS.RECORD_REQUESTED },
-    { by: actor, reason: 'records-requested' },
+  // Requester side: status = Record Requested + snapshot request context.
+  const ctxSnapshot = makeRecordsRequestContext(state, requesterRole, destinationRole, actor);
+  state = setRoleState(state, requesterRole,
+    { status: STATUS.RECORD_REQUESTED, records_request: ctxSnapshot },
+    { by: actor, reason: `records-requested:from-${destinationRole}` },
   );
 
-  // Support side: re-assign to ORIGINAL Support, status = Returned
-  const originalSup = state.support.originalAssignee;
-  if (originalSup) {
-    state = setRoleState(state, 'support',
-      { assignee: originalSup, status: STATUS.RETURNED },
-      { by: 'system', reason: 'records-requested:return-to-original-support' },
+  // Destination side: route to last-known assignee, else fall back to picker.
+  const prevDest = lastKnownAssignee(state, destinationRole);
+  if (prevDest) {
+    state = setRoleState(state, destinationRole,
+      { assignee: prevDest, status: STATUS.RETURNED },
+      { by: 'system', reason: `records-requested:return-to-original-${destinationRole}` },
     );
   } else {
-    // Fallback: no original Support → run the auto-assignment chain
-    const pick = pickAssignee('support', ctxFor(map, patient, dos));
+    const pick = pickAssignee(destinationRole, ctxFor(map, patient, dos));
     if (pick) {
-      state = setRoleState(state, 'support',
+      state = setRoleState(state, destinationRole,
         { assignee: pick.staff.id, status: STATUS.RETURNED },
-        { by: 'system', reason: `records-requested:no-original;${pick.reason}` },
+        { by: 'system', reason: `records-requested:no-history;${pick.reason}` },
       );
     }
   }
 
   state = pushActivity(state, evt(state, 'records-requested', {
-    role: 'coder', from: STATUS.IN_PROGRESS, to: STATUS.RECORD_REQUESTED, by: actor,
+    role: requesterRole, to: STATUS.RECORD_REQUESTED, by: actor,
+    reason: `from:${destinationRole}${opts.note ? `;note:${opts.note}` : ''}`,
   }));
 
   return { nextMap: putState(map, state), events: [] };
 }
 
 /**
- * Support finishes the retrieval and marks the DOS Completed again → DOS
- * goes back to the ORIGINAL Coder. Coder status becomes Record Received.
- * All prior coding work is preserved (we never touch ICDs in the engine).
+ * Destination role finished the retrieval → DOS returns to the ORIGINAL
+ * requester (snapshotted at request time; never inferred from current
+ * assignees). Requester status becomes Record Received. All prior work
+ * (coding, review, notes, comments, docs) is preserved because we never
+ * touch ICDs, comments, or docs in the engine.
+ *
+ * This is invoked automatically from completeSupport / completeCoder when
+ * they detect a records_request on any other role targeting them.
  */
-export function recordsReceived(map, patient, dos, actor) {
+export function recordsReceivedFor(map, patient, dos, requesterRole, actor) {
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
-
-  state = setRoleState(state, 'support',
-    { status: STATUS.COMPLETED },
-    { by: actor, reason: 'support-recovered-records' },
-  );
-
-  const originalCdr = state.coder.originalAssignee;
-  if (originalCdr) {
-    state = setRoleState(state, 'coder',
-      { assignee: originalCdr, status: STATUS.RECORD_RECEIVED },
-      { by: 'system', reason: 'records-received:return-to-original-coder' },
+  const req = state[requesterRole]?.records_request;
+  if (!req) {
+    // Nothing to do — the requester's context has already been cleared or
+    // never existed. Return the map unchanged so callers can no-op safely.
+    return { nextMap: map, events: [] };
+  }
+  const originalRequester = req.requesterAssignee || lastKnownAssignee(state, requesterRole);
+  if (originalRequester) {
+    state = setRoleState(state, requesterRole,
+      { assignee: originalRequester, status: STATUS.RECORD_RECEIVED, records_request: null },
+      { by: 'system', reason: `records-received:return-to-original-${requesterRole}` },
     );
   } else {
-    // Should never happen in practice (Coder must have existed to request).
-    // Fall through to a fresh assignment to keep the workflow alive.
-    const pick = pickAssignee('coder', ctxFor(map, patient, dos));
+    // Original requester unavailable → existing fallback picker for the
+    // requester role. AC-3 in the spec: use the standard assignment logic.
+    const pick = pickAssignee(requesterRole, ctxFor(map, patient, dos));
     if (pick) {
-      state = setRoleState(state, 'coder',
-        { assignee: pick.staff.id, status: STATUS.RECORD_RECEIVED },
-        { by: 'system', reason: `records-received:${pick.reason}` },
+      state = setRoleState(state, requesterRole,
+        { assignee: pick.staff.id, status: STATUS.RECORD_RECEIVED, records_request: null },
+        { by: 'system', reason: `records-received:no-original;${pick.reason}` },
+      );
+    } else {
+      // No picker match either — still clear the request so the DOS isn't
+      // stuck in an inconsistent state forever.
+      state = setRoleState(state, requesterRole,
+        { status: STATUS.RECORD_RECEIVED, records_request: null },
+        { by: 'system', reason: 'records-received:unassigned' },
       );
     }
   }
-
   state = pushActivity(state, evt(state, 'records-received', {
-    role: 'support', to: STATUS.COMPLETED, by: actor,
+    role: requesterRole, to: STATUS.RECORD_RECEIVED, by: actor,
+    reason: `from:${req.destinationRole}`,
   }));
-
   return { nextMap: putState(map, state), events: [] };
+}
+
+// Legacy wrapper — Coder requesting records from Support. New code should
+// use requestRecordsFrom / recordsReceivedFor directly.
+export function requestRecords(map, patient, dos, actor) {
+  return requestRecordsFrom(map, patient, dos, 'coder', 'support', actor);
+}
+
+// Legacy wrapper — Support completing a Coder-initiated records request.
+// New code should let completeSupport / completeCoder auto-detect and
+// call recordsReceivedFor.
+export function recordsReceived(map, patient, dos, actor) {
+  return recordsReceivedFor(map, patient, dos, 'coder', actor);
+}
+
+// Find the role whose records_request targets `destinationRole`. Returns
+// the requester role key ('coder' | 'reviewer' | 'reviewer2') or null.
+function findRequesterFor(state, destinationRole) {
+  for (const role of ROLES) {
+    if (role === destinationRole) continue;
+    const req = state[role]?.records_request;
+    if (req && req.status === 'open' && req.destinationRole === destinationRole) {
+      return role;
+    }
+  }
+  return null;
 }
 
 // ── AC-3 / AC-4: Reviewer lifecycle ──────────────────────────────────────
