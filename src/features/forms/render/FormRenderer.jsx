@@ -29,8 +29,9 @@ const EMPTY_FIELDS = [];
 function FieldNode({ field, answers, onAnswer, missing, visibility, pipe = (t) => t }) {
   if (!isVisible(field.linkId, visibility)) return null; // branching: hidden field/group
   if (field.type === 'group') {
+    const isMemberConsent = field.healthKey === 'memberConsent';
     return (
-      <div className={styles.section}>
+      <div className={[styles.section, isMemberConsent ? styles.consentSection : ''].filter(Boolean).join(' ')}>
         <div className={styles.sectionTitle}>{pipe(field.text)}</div>
         {(field.items || []).map((sub) => (
           <FieldNode key={sub.linkId} field={sub} answers={answers} onAnswer={onAnswer} missing={missing} visibility={visibility} pipe={pipe} />

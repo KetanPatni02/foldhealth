@@ -5,7 +5,7 @@ const DEFAULT_ITEMS = [
     category: 'program',
     included: true,
     mandatory: true,
-    agreement: 'CHRONIC CARE MANAGEMENT (CCM) is offered to all eligible patients who have been diagnosed with two (2) or more chronic conditions that are expected to last at least twelve (12) months and that place patient at significant risk of further decline.',
+    agreement: 'Chronic Care Mamagement (CCM) is offered to all eligible patients who have been diagnosed with two (2) or more chronic conditions that are expected to last at least twelve (12) months and that place patient at significant risk of further decline.',
   },
   {
     id: 'apcm',
@@ -13,7 +13,7 @@ const DEFAULT_ITEMS = [
     category: 'program',
     included: true,
     mandatory: true,
-    agreement: 'ADVANCED PRIMARY CARE MANAGEMENT (APCM) is offered to all patients. By voluntarily selecting the service you fully understand only one healthcare provider can furnish and be compensated during the calendar month. You also understand cost sharing may apply, and you have the right to stop APCM services at any time.',
+    agreement: 'Advanced Primary Care Management (APCM) is offered to all patients. By voluntarily selecting the service you fully understand only one healthcare provider can furnish and be compensated during the calendar month. You also understand cost sharing may apply, and you have the right to stop APCM services at any time.',
   },
   {
     id: 'bhi',
@@ -21,7 +21,7 @@ const DEFAULT_ITEMS = [
     category: 'program',
     included: true,
     mandatory: false,
-    agreement: 'BEHAVIORAL HEALTH INTEGRATION (BHI) is offered to all eligible patients who have services provided for behavioral health disorders, who are participating in psychiatric collaborative care programs, or are receiving behavioral health integration services.',
+    agreement: 'Behavioral Health Intergration (BHI) is offered to all eligible patients who have services provided for behavioral health disorders, who are participating in psychiatric collaborative care programs, or are receiving behavioral health integration services.',
   },
   {
     id: 'podiatry',
@@ -117,4 +117,38 @@ export function createCustomConsentItem(name, category, id = `custom-${Date.now(
     agreement: `${trimmed} consent authorizes the care team to provide this service. The member may withdraw consent at any time.`,
     custom: true,
   };
+}
+
+/**
+ * Move an item to another item's slot. Returns the list untouched when the two
+ * items sit in different categories, so a care program can never be dragged
+ * into the service lines (and vice versa).
+ */
+export function reorderConsentItems(items, fromId, toId) {
+  const list = items || [];
+  const from = list.findIndex((item) => item.id === fromId);
+  const to = list.findIndex((item) => item.id === toId);
+  if (from === -1 || to === -1 || from === to) return list;
+  if (list[from].category !== list[to].category) return list;
+  const next = [...list];
+  next.splice(to, 0, next.splice(from, 1)[0]);
+  return next;
+}
+
+/**
+ * Place a new item at the end of its own category rather than the end of the
+ * list, so a new care program lands under the other care programs instead of
+ * below the service lines. Question order follows this array, so the form the
+ * member fills matches the grouping the author sees.
+ */
+export function insertConsentItem(items, item) {
+  const list = items || [];
+  let after = -1;
+  list.forEach((existing, index) => {
+    if (existing.category === item.category) after = index;
+  });
+  if (after === -1) return [...list, item];
+  const next = [...list];
+  next.splice(after + 1, 0, item);
+  return next;
 }
