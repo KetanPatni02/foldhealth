@@ -2152,25 +2152,87 @@ export const useAppStore = create((set, get) => ({
 
   // ─── Worklist badge counts (SubNav) ─────────────────────────────────
   // SubNav shows a row count beside every worklist. It used to get those by
-  // fetching every worklist table IN FULL on mount — ~166 KB of rows to
-  // render seven integers, and it happened on every Population route, so
-  // opening the 9-row CCM worklist pulled HCC, AWV, SNP, JSA and patients
-  // too. These queries ask only for the id columns the counts need: 6.7 KB
-  // for identical numbers, measured against the live tables.
+  // fetching every worklist table IN FULL on mount. fetchWorklistCounts
+  // prefers `worklist_badge_counts` (one row, SQL does the DISTINCT / union)
+  // and falls back to six id-only selects if that view is not on the DB yet.
   //
-  // Why not PostgREST's `head: true` + `count: 'exact'`, which would be ~0
-  // bytes: two of these counts aren't row counts. HCC stores one row per
-  // coding record, so its badge is a DISTINCT count over member_id (53 rows
-  // → 51 patients), and the All Patients badge is a union of normalized
-  // member ids across every slice. Neither is expressible as a count header,
-  // so we pull the id column and reduce client-side. The other five badges
-  // could use a head count, but issuing them the same way keeps one code
-  // path instead of two.
+  // Why not PostgREST's `head: true` + `count: 'exact'`: two of these
+  // counts aren't row counts. HCC stores one row per coding record, so its
+  // badge is a DISTINCT count over member_id (53 rows → 51 patients), and
+  // the All Patients badge is a union of normalized member ids across every
+  // slice. Neither is a count header.
   worklistCounts: null,
   worklistCountsDidFetch: false,
   fetchWorklistCounts: async () => {
     if (get().worklistCountsDidFetch) return;
     set({ worklistCountsDidFetch: true });
+
+    const fail = (msg) => {
+      // Release the guard so the next mount retries. Badges fall back to
+      // whatever slices happen to be loaded, which is what they showed before
+      // this fetch existed.
+      console.warn('[store] fetchWorklistCounts failed:', msg);
+      set({ worklistCountsDidFetch: false });
+    };
+
+    // Same normalization SubNav and useHccWorklistTable use for the union key
+    // — # stripped, trimmed, lowercased. member_id is the one identity field
+    // every worklist shares; JS mocks use memberId. Fall back to the row id
+    // so a member without one still counts once.
+    const norm = (v) => String(v ?? '').replace(/^#/, '').trim().toLowerCase();
+    const keysOf = (rows) => {
+      const s = new Set();
+      for (const r of rows || []) {
+        const k = norm(r.member_id || r.memberId || r.id);
+        if (k) s.add(k);
+      }
+      return s;
+    };
+
+    // HEDIS has no count query here on purpose: its badge reads from the
+    // local HEDIS_MEMBERS constant, so the number needs no network at all —
+    // but it does belong in the All Patients union.
+    const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
+    const hedisKeys = keysOf(HEDIS_MEMBERS);
+
+    const apply = (counts, sqlUnionSize) => {
+      set({
+        worklistCounts: {
+          hccUnique: counts.hccUnique,
+          awv: counts.awv,
+          ccm: counts.ccm,
+          snp: counts.snp,
+          jsa: counts.jsa,
+          hedis: HEDIS_MEMBERS.length,
+          tcm: counts.tcm,
+          tocIp: counts.tocIp,
+          // HEDIS lives in a JS constant, not the view. Keys are '#A00000…'
+          // style and do not collide with the worklist id spaces (measured:
+          // 152 SQL union + 15 HEDIS = 167, matching SubNav's original
+          // collect() over HEDIS_MEMBERS).
+          allPatients: (sqlUnionSize || 0) + hedisKeys.size,
+        },
+      });
+    };
+
+    // Preferred path: one round-trip against worklist_badge_counts (the
+    // SQL view does the DISTINCT / union). Falls back to the six id-only
+    // selects if the migration has not been applied yet, so this client
+    // still works against a DB that only has the previous PR.
+    const view = await supabase.from('worklist_badge_counts').select('*').maybeSingle();
+    if (!view.error && view.data) {
+      const row = view.data;
+      apply({
+        hccUnique: Number(row.hcc_unique) || 0,
+        awv: Number(row.awv) || 0,
+        ccm: Number(row.ccm) || 0,
+        snp: Number(row.snp) || 0,
+        jsa: Number(row.jsa) || 0,
+        tcm: Number(row.tcm) || 0,
+        tocIp: Number(row.toc_ip) || 0,
+      }, Number(row.all_patients) || 0);
+      return;
+    }
 
     const [hcc, awv, ccm, snp, jsa, pts] = await Promise.all([
       supabase.from('hcc_members_v2').select('id, member_id'),
@@ -2183,54 +2245,26 @@ export const useAppStore = create((set, get) => ({
 
     const results = [hcc, awv, ccm, snp, jsa, pts];
     if (results.some(r => r.error)) {
-      // Release the guard so the next mount retries. Badges fall back to
-      // whatever slices happen to be loaded, which is what they showed before
-      // this fetch existed.
-      console.warn('[store] fetchWorklistCounts failed:',
-        results.find(r => r.error)?.error?.message);
-      set({ worklistCountsDidFetch: false });
+      fail(results.find(r => r.error)?.error?.message);
       return;
     }
 
-    // Same normalization SubNav and useHccWorklistTable use for the union key
-    // — # stripped, trimmed, lowercased. member_id is the one identity field
-    // every worklist shares; fall back to the row id so a member without one
-    // still counts once.
-    const norm = (v) => String(v ?? '').replace(/^#/, '').trim().toLowerCase();
-    const keys = (rows) => {
-      const s = new Set();
-      for (const r of rows || []) {
-        const k = norm(r.member_id || r.id);
-        if (k) s.add(k);
-      }
-      return s;
-    };
-
-    // HEDIS has no count query here on purpose: its badge reads from the
-    // local HEDIS_MEMBERS constant, so the number needs no network at all —
-    // but it does belong in the All Patients union.
-    const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
-
-    const hccKeys = keys(hcc.data);
+    const hccKeys = keysOf(hcc.data);
     const union = new Set();
-    for (const set_ of [hccKeys, keys(awv.data), keys(ccm.data), keys(snp.data),
-                        keys(jsa.data), keys(pts.data), keys(HEDIS_MEMBERS)]) {
+    for (const set_ of [hccKeys, keysOf(awv.data), keysOf(ccm.data), keysOf(snp.data),
+                        keysOf(jsa.data), keysOf(pts.data)]) {
       for (const k of set_) union.add(k);
     }
 
-    set({
-      worklistCounts: {
-        hccUnique: hccKeys.size,
-        awv: (awv.data || []).length,
-        ccm: (ccm.data || []).length,
-        snp: (snp.data || []).length,
-        jsa: (jsa.data || []).length,
-        hedis: HEDIS_MEMBERS.length,
-        tcm: (pts.data || []).length,
-        tocIp: (pts.data || []).filter(p => p.agent_assigned).length,
-        allPatients: union.size,
-      },
-    });
+    apply({
+      hccUnique: hccKeys.size,
+      awv: (awv.data || []).length,
+      ccm: (ccm.data || []).length,
+      snp: (snp.data || []).length,
+      jsa: (jsa.data || []).length,
+      tcm: (pts.data || []).length,
+      tocIp: (pts.data || []).filter(p => p.agent_assigned).length,
+    }, union.size);
   },
 
   // Boot-safe identity for worklist prefs. auth.getUser() validates against
@@ -5457,11 +5491,45 @@ export const useAppStore = create((set, get) => ({
     if (s0._platformUsersPromise) return s0._platformUsersPromise;
     const promise = (async () => {
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authUser = sessionData?.session?.user;
       const { data, error } = await supabase
         .from('profiles')
         .select('id, full_name, first_name, last_name, email, clinical_roles')
         .order('full_name', { ascending: true });
       if (error) throw error;
+      const raw = data || [];
+
+      // Task assignees keep every row (keyed by id). The people-picker
+      // roster below dedupes by name — two auth accounts can share a
+      // full_name, and pickers key their rows by name.
+      const taskProfiles = raw.map(p => ({
+        id: p.id,
+        name: (p.full_name || p.email?.split('@')[0] || 'Unknown').trim(),
+        email: p.email || '',
+      }));
+      let me = null;
+      let meRoles = [];
+      if (authUser) {
+        const meRow = raw.find(p => p.id === authUser.id)
+          || raw.find(p => p.email && authUser.email
+            && p.email.toLowerCase() === authUser.email.toLowerCase())
+          || null;
+        if (meRow) {
+          me = {
+            id: meRow.id,
+            name: (meRow.full_name || meRow.email?.split('@')[0] || 'Unknown').trim(),
+            email: meRow.email || '',
+          };
+          meRoles = meRow.clinical_roles || [];
+        } else {
+          const meta = authUser.user_metadata || {};
+          const meName = (meta.full_name || meta.first_name
+            || authUser.email?.split('@')[0] || '').trim();
+          if (meName) me = { id: authUser.id, name: meName, email: authUser.email || '' };
+        }
+      }
+
       // Dedupe by name — profiles occasionally carries the same full_name
       // across multiple auth accounts (mail2… vs. .health, etc.), and
       // downstream people-pickers key their rows by name. UNION the
@@ -5470,7 +5538,7 @@ export const useAppStore = create((set, get) => ({
       // wasn't first in the sort, which surfaces as "user missing from
       // the role dropdown" even though admin set the role in Settings.
       const byName = new Map();
-      for (const r of (data || [])) {
+      for (const r of raw) {
         const name = (r.full_name?.trim()
           || [r.first_name, r.last_name].filter(Boolean).join(' ').trim()
           || r.email?.split('@')[0]
@@ -5486,8 +5554,21 @@ export const useAppStore = create((set, get) => ({
         const initials = name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
         byName.set(name, { id: r.id, name, initials, clinicalRoles: roles });
       }
-      const rows = [...byName.values()];
-      set({ platformUsers: rows, platformUsersDidFetch: true });
+      set({
+        platformUsers: [...byName.values()],
+        platformUsersDidFetch: true,
+        taskProfiles,
+        currentUserProfile: me,
+        currentUserClinicalRoles: meRoles,
+      });
+      // If the HCC worklist already applied a role-scoped default filter
+      // using a dev-fallback, backfill it once the real user is known.
+      const cur = get();
+      if (me?.name && cur.activeSubnavList === 'HCC' && cur.hccFilters) {
+        const currentAsgn = cur.hccFilters.asgn;
+        const needsUpdate = !currentAsgn || currentAsgn.length !== 1 || currentAsgn[0] !== me.name;
+        if (needsUpdate) set({ hccFilters: { ...cur.hccFilters, asgn: [me.name] } });
+      }
     } catch (err) {
       console.warn('fetchPlatformUsers error — pickers will fall back to systemUsers mock:', err?.message || err);
       set({ platformUsersDidFetch: true });
@@ -11088,49 +11169,19 @@ export const useAppStore = create((set, get) => ({
   // ── Task Profiles (assignees from Settings → Users / profiles table) ──
   taskProfiles: [],
   currentUserProfile: null,
+  // From the same profiles row as currentUserProfile. TopBar's role
+  // switcher used to issue its own `select clinical_roles` for the signed-in
+  // user; that is a third GET of the same table on every page.
+  currentUserClinicalRoles: [],
   // Display name to stamp on things the signed-in user just did (activity
   // entries, audit lines). `currentUserProfile` only resolves once
   // fetchTaskProfiles has run against a real session, so fall back to the
   // same 'You' label the rest of the store uses in dev-bypass mode.
   currentActorName: () => get().currentUserProfile?.name || 'You',
-  fetchTaskProfiles: async () => {
-    const { data: sessionData } = await supabase.auth.getSession();
-    const authUser = sessionData?.session?.user;
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email, full_name')
-      .order('full_name', { ascending: true });
-    if (error || !data || data.length === 0) {
-      set({ taskProfiles: [] });
-      return;
-    }
-    const profiles = data.map(p => ({
-      id: p.id,
-      name: (p.full_name || p.email?.split('@')[0] || 'Unknown').trim(),
-      email: p.email || '',
-    }));
-    let me = null;
-    if (authUser) {
-      me = profiles.find(p => p.id === authUser.id)
-        || profiles.find(p => p.email && authUser.email && p.email.toLowerCase() === authUser.email.toLowerCase())
-        || null;
-      if (!me) {
-        const meta = authUser.user_metadata || {};
-        const meName = (meta.full_name || meta.first_name || authUser.email?.split('@')[0] || '').trim();
-        if (meName) me = { id: authUser.id, name: meName, email: authUser.email || '' };
-      }
-    }
-    set({ taskProfiles: profiles, currentUserProfile: me });
-    // If the HCC worklist already applied a role-scoped default filter using a
-    // dev-fallback (or nothing at all), backfill it once the real user profile
-    // is known so the "logged-in user's queue" default actually takes effect.
-    const cur = get();
-    if (me?.name && cur.activeSubnavList === 'HCC' && cur.hccFilters) {
-      const currentAsgn = cur.hccFilters.asgn;
-      const needsUpdate = !currentAsgn || currentAsgn.length !== 1 || currentAsgn[0] !== me.name;
-      if (needsUpdate) set({ hccFilters: { ...cur.hccFilters, asgn: [me.name] } });
-    }
-  },
+  // Same roster as fetchPlatformUsers — two names because Tasks, Home, and
+  // the notification feed already call this one, and HCC pickers call the
+  // other. One GET fills both slices.
+  fetchTaskProfiles: async () => get().fetchPlatformUsers(),
 
   // ── Task Labels (custom labels stored in DB) ──
   taskLabels: [],
