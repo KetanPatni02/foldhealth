@@ -167,8 +167,8 @@
   gap: var(--space-2); padding: var(--space-3); border-color: var(--neutral-150);
   background: var(--neutral-0); cursor: pointer;
 }
-.consentCanvasHead {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+.consentCanvasItem + .consentCanvasItem {
+  margin-top: var(--space-2);
 }
 .consentCanvasItem .qDesc { line-height: var(--leading-loose); }
 
@@ -270,9 +270,14 @@
 }
 .consentRow {
   display: flex; align-items: center; gap: var(--space-2); min-width: 0;
-  min-height: 2.125rem; padding: 0 var(--space-2); border-radius: 6px;
+  min-height: 2.125rem; padding: 0 var(--space-2) 0 var(--space-1); border-radius: 6px;
 }
 .consentRow:hover { background: var(--neutral-50); }
+.consentRowDrag {
+  flex-shrink: 0; display: flex; padding: 0; border: none; background: none;
+  cursor: grab; opacity: .5; touch-action: none;
+}
+.consentRowDrag:hover { opacity: 1; }
 .consentRowName {
   flex: 1 1 0; min-width: 0; color: var(--neutral-500); font-size: var(--font-base);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

@@ -41,6 +41,11 @@
 .section { display: flex; flex-direction: column; gap: 16px; padding: 16px; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
 .sectionTitle { font-size: 0.9375rem; font-weight: 600; color: var(--neutral-400); }
 
+.consentSection > .field + .field {
+  padding-top: var(--space-5);
+  border-top: 0.5px solid var(--neutral-150);
+}
+
 .field { display: flex; flex-direction: column; gap: 6px; }
 .label { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
 .req { color: var(--status-error); margin-left: 2px; }

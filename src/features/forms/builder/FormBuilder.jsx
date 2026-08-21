@@ -22,9 +22,9 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Input } from '../../../components/Input/Input';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Switch } from '../../../components/Switch/Switch';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
-import { Badge } from '../../../components/Badge/Badge';
 import { Select } from '../../../components/Select/Select';
 import { useAppStore } from '../../../store/useAppStore';
 import { PALETTE_TABS, paletteFor } from './componentCatalog';
@@ -32,6 +32,8 @@ import { instantiateInstrument } from './validatedInstruments';
 import {
   CONSENT_CATEGORY_OPTIONS,
   createCustomConsentItem,
+  insertConsentItem,
+  reorderConsentItems,
   syncConsentQuestions,
 } from './memberConsent';
 import { formShareLink, copyToClipboard } from '../formLink';
@@ -193,17 +195,8 @@ function QuestionBlock({ field, selectedId, onSelect }) {
               }}
             >
               {sub.type !== 'display' && (
-                <span className={styles.consentCanvasHead}>
-                  <span className={styles.qLabel}>
-                    {sub.text}{sub.required && <span className={styles.req}>*</span>}
-                  </span>
-                  {isMemberConsent && (
-                    <Badge
-                      size="S"
-                      tone={sub.consentCategory === 'program' ? 'info' : 'secondary'}
-                      label={sub.consentCategory === 'program' ? 'Care Program' : 'Service Line'}
-                    />
-                  )}
+                <span className={styles.qLabel}>
+                  {sub.text}{sub.required && <span className={styles.req}>*</span>}
                 </span>
               )}
               {sub.description ? <span className={styles.qDesc}>{sub.description}</span> : null}
@@ -300,6 +293,57 @@ function CheckRow({ label, checked, onChange }) {
   );
 }
 
+function ConsentRow({ item, fieldLinkId, onToggleIncluded, onPatchItem, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: `consent:${item.id}`,
+    data: { consentFieldId: fieldLinkId, category: item.category },
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`${styles.consentRow} ${item.included ? '' : styles.consentRowOff}`}
+    >
+      <button
+        className={styles.consentRowDrag}
+        {...listeners}
+        {...attributes}
+        aria-label={`Reorder ${item.name}`}
+      >
+        <DotsGrid />
+      </button>
+      <Checkbox
+        checked={!!item.included}
+        onCheckedChange={(checked) => onToggleIncluded(item, !!checked)}
+        aria-label={`Show ${item.name} on this form`}
+      />
+      <span className={styles.consentRowName} title={item.name}>{item.name}</span>
+      {item.custom && (
+        <ActionButton
+          icon="solar:trash-bin-trash-linear"
+          size="S"
+          tooltip="Remove"
+          tooltipLeft
+          onClick={() => onRemove(item)}
+        />
+      )}
+      <span className={styles.consentRowReq}>
+        <Switch
+          checked={!!item.mandatory}
+          disabled={!item.included}
+          ariaLabel={`${item.name} response is required`}
+          onChange={(mandatory) => onPatchItem(item.id, { mandatory })}
+        />
+      </span>
+    </div>
+  );
+}
+
 function ConsentProperties({ field, onPatch }) {
   const uid = useId();
   const [adding, setAdding] = useState(false);
@@ -334,7 +378,7 @@ function ConsentProperties({ field, onPatch }) {
       setNameError('Enter a consent type name.');
       return;
     }
-    commitItems([...consentItems, createCustomConsentItem(name, newCategory)]);
+    commitItems(insertConsentItem(consentItems, createCustomConsentItem(name, newCategory)));
     setNewName('');
     setNewCategory('program');
     setNameError('');
@@ -398,36 +442,21 @@ function ConsentProperties({ field, onPatch }) {
                 <span className={styles.consentGroupCount}>{shown}/{rows.length}</span>
                 <span className={styles.consentGroupCol}>Required</span>
               </div>
-              {rows.map((item) => (
-                <div
-                  key={item.id}
-                  className={`${styles.consentRow} ${item.included ? '' : styles.consentRowOff}`}
-                >
-                  <Checkbox
-                    checked={!!item.included}
-                    onCheckedChange={(checked) => toggleIncluded(item, !!checked)}
-                    aria-label={`Show ${item.name} on this form`}
+              <SortableContext
+                items={rows.map((item) => `consent:${item.id}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                {rows.map((item) => (
+                  <ConsentRow
+                    key={item.id}
+                    item={item}
+                    fieldLinkId={field.linkId}
+                    onToggleIncluded={toggleIncluded}
+                    onPatchItem={patchItem}
+                    onRemove={(target) => commitItems(consentItems.filter((i) => i.id !== target.id))}
                   />
-                  <span className={styles.consentRowName} title={item.name}>{item.name}</span>
-                  {item.custom && (
-                    <ActionButton
-                      icon="solar:trash-bin-trash-linear"
-                      size="S"
-                      tooltip="Remove"
-                      tooltipLeft
-                      onClick={() => commitItems(consentItems.filter((i) => i.id !== item.id))}
-                    />
-                  )}
-                  <span className={styles.consentRowReq}>
-                    <Checkbox
-                      checked={!!item.mandatory}
-                      disabled={!item.included}
-                      aria-label={`${item.name} response is required`}
-                      onCheckedChange={(checked) => patchItem(item.id, { mandatory: !!checked })}
-                    />
-                  </span>
-                </div>
-              ))}
+                ))}
+              </SortableContext>
             </div>
           );
         })}
@@ -723,6 +752,31 @@ export function FormBuilder() {
       insertEntry(entry, String(over.id));
       return;
     }
+
+    // Reorder consent items inside a Member Consent component. Rows only move
+    // within their own category so the Care Program / Service Line grouping
+    // holds, and the questions follow the new order.
+    if (activeId.startsWith('consent:')) {
+      const overId = String(over.id);
+      if (!overId.startsWith('consent:') || activeId === overId) return;
+      const consentFieldId = active.data.current?.consentFieldId;
+      if (!consentFieldId) return;
+      const fromKey = activeId.slice('consent:'.length);
+      const toKey = overId.slice('consent:'.length);
+      setFields((prev) => {
+        const target = findField(prev, consentFieldId);
+        if (!target) return prev;
+        const items = target.consentItems || [];
+        const nextItems = reorderConsentItems(items, fromKey, toKey);
+        if (nextItems === items) return prev;
+        return updateField(prev, consentFieldId, {
+          consentItems: nextItems,
+          items: syncConsentQuestions(target.items, nextItems, assignIds),
+        });
+      });
+      return;
+    }
+
     // Reorder existing top-level cards.
     if (active.id !== over.id) {
       setFields((prev) => {

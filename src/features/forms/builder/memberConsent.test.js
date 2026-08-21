@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   createCustomConsentItem,
+  insertConsentItem,
   makeMemberConsent,
+  reorderConsentItems,
   syncConsentQuestions,
 } from './memberConsent';
 
@@ -50,5 +52,47 @@ describe('member consent health component', () => {
         { value: 'declined', label: 'I decline to give my consent for Palliative Care' },
       ],
     });
+  });
+
+  it('adds a custom item at the end of its own category, not the whole list', () => {
+    const field = makeMemberConsent();
+    const item = createCustomConsentItem('Palliative Care', 'program', 'custom-1');
+
+    const items = insertConsentItem(field.consentItems, item);
+    const questions = syncConsentQuestions(field.items.map(assignIds), items, assignIds);
+
+    expect(items.map((i) => i.id)).toEqual([
+      'ccm', 'apcm', 'bhi', 'custom-1', 'podiatry', 'mental-health', 'wound-care',
+    ]);
+    expect(questions.map((q) => q.consentKey)).toEqual([
+      'ccm', 'apcm', 'bhi', 'custom-1', 'podiatry', 'mental-health', 'wound-care',
+    ]);
+  });
+
+  it('reorders items within a category and reorders the questions with them', () => {
+    const field = makeMemberConsent();
+    const items = reorderConsentItems(field.consentItems, 'ccm', 'bhi');
+    const questions = syncConsentQuestions(field.items.map(assignIds), items, assignIds);
+
+    expect(items.map((i) => i.id)).toEqual([
+      'apcm', 'bhi', 'ccm', 'podiatry', 'mental-health', 'wound-care',
+    ]);
+    expect(questions.map((q) => q.consentKey)).toEqual([
+      'apcm', 'bhi', 'ccm', 'podiatry', 'mental-health', 'wound-care',
+    ]);
+    expect(questions.find((q) => q.consentKey === 'ccm').linkId).toBe('id-ccm');
+  });
+
+  it('refuses to move an item across categories', () => {
+    const field = makeMemberConsent();
+
+    expect(reorderConsentItems(field.consentItems, 'podiatry', 'ccm')).toBe(field.consentItems);
+  });
+
+  it('keeps insertion order when the category has no items yet', () => {
+    const item = createCustomConsentItem('Transportation', 'service', 'custom-2');
+    const items = insertConsentItem([{ id: 'ccm', category: 'program' }], item);
+
+    expect(items.map((i) => i.id)).toEqual(['ccm', 'custom-2']);
   });
 });
