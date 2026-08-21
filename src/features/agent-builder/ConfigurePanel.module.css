@@ -880,3 +880,9 @@
   font-size: var(--font-md);
   color: var(--neutral-200);
 }
+
+.saveBar {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-4) var(--space-1) var(--space-2);
+}
