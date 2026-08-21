@@ -5786,10 +5786,15 @@ export const useAppStore = create((set, get) => ({
   // its own workflow state (all roles → Assign). Client-side only for this
   // iteration; the hcc_members insert is left as a TODO (see notes at
   // handleSave in NewDiagGapPanel).
-  addHccGapNewRow: ({ sourceMemberId, code, desc, hcc, dos, provider, pos, visitType }) => {
+  addHccGapNewRow: ({ sourceMemberId, code, desc, hcc, dos, provider, pos, visitType, originatorRole, originatorAssignee, preferredCoder }) => {
     const s0 = get();
     const source = s0.hccMembers.find(m => m.id === sourceMemberId);
     if (!source) return null;
+    // QA / Compliance +ICD spawn: skip Support (documents already retrieved
+    // for the current review), snapshot the originator, and route straight
+    // to the Visit-Type queue. Coder gets pinned to the source DOS's Coder
+    // when possible so the code stays with the same person.
+    const isManualOrigin = originatorRole === 'reviewer' || originatorRole === 'reviewer2';
     // Duplicate the row with a fresh id + fresh workflow state. Keep the
     // patient-identity fields (name/initials/etc.) so shared ICD mock data
     // + team routing keep working. id/memberId are now the same Fold-ID
@@ -5828,9 +5833,18 @@ export const useAppStore = create((set, get) => ({
       rp: provider || source.rp,
       pos: pos || source.pos,
       posDesc,
-      // Reset workflow — a brand-new encounter always starts fresh.
-      supS: 'Assign', cdrS: 'Assign', r1s: 'Assign', r2s: 'Assign',
+      // Reset workflow — a brand-new encounter always starts fresh. When a
+      // QA / Compliance user spawned the DOS, Support is pre-marked Skipped
+      // so the worklist row shows the correct provenance immediately (the
+      // engine will mirror this after hccInitializeManualDos runs, but we
+      // want the initial render to match too).
+      supS: isManualOrigin ? 'Skipped' : 'Assign',
+      cdrS: 'Assign', r1s: 'Assign', r2s: 'Assign',
       open: 1,
+      // Provenance markers — hydrateFromMember reads these on reload.
+      manuallyAdded: !!isManualOrigin,
+      originatorRole: originatorRole || null,
+      originatorAssignee: originatorAssignee || null,
       // Marker so the DiagPanel doesn't fall back to the name-keyed mock
       // ICD list (which would leak the source row's ICDs). Spawned rows
       // read from hccSpawnedGaps[id] exclusively.
@@ -5856,6 +5870,20 @@ export const useAppStore = create((set, get) => ({
         [sourceMemberId]: { newMemberId: newId, dos, code, kind: 'new-row' },
       },
     }));
+    // Kick off the DOS-state initialisation. For QA / Compliance-originated
+    // rows this snapshots the originator, skips Support, and pins the source
+    // Coder onto the new DOS. Runs synchronously so subsequent renders see
+    // the engine-decided assignees straight away.
+    if (isManualOrigin) {
+      useAppStore.getState().hccInitializeManualDos(newId, dos, {
+        originatorRole,
+        originatorAssignee: originatorAssignee || null,
+        preferredAssignees: preferredCoder ? { coder: preferredCoder } : {},
+        visitType: visitType || source.vt,
+      });
+    } else {
+      useAppStore.getState().initializeHccPatient(newId);
+    }
     // Persist both the new row and its ICD so the whole thing survives a
     // reload. Fire-and-forget — in-memory state is authoritative for the
     // current session; the DB catches up asynchronously.
@@ -6451,6 +6479,59 @@ export const useAppStore = create((set, get) => ({
       slaCloseDays: s.hccConfig.slaCloseDays,
     });
     return { hccDosAssignments: nextMap };
+  }),
+
+  // Initialize a single manually-created DOS with originator + visit-type
+  // routing (QA / Compliance +ICD flow). Different from initializeHccPatient
+  // because it targets one DOS and forwards `originatorRole` +
+  // `preferredAssignees` so the DOS skips Support and pins the current
+  // reviewer's Coder onto the new row for continuity.
+  //
+  // Also mirrors the engine's role status/assignee decisions back into the
+  // legacy member fields (supS/cdrS/r1s/r2s and sup/cdr/r1/r2) so the
+  // worklist row renders correctly without waiting on a reload.
+  hccInitializeManualDos: (patientId, dosDate, opts = {}) => set(s => {
+    const patient = s.hccMembers.find(m => m.id === patientId);
+    if (!patient) return {};
+    const dos = (patient.dos_list || []).find(d => d.date === dosDate)
+      || { date: dosDate, provider: patient.rp, pos: patient.pos, vt: patient.vt };
+    const prevMap = s.hccDosAssignments;
+    const { nextMap } = hccLifecycle.initializeDos(prevMap, patient, dos, {
+      astrana: s.hccConfig.astrana,
+      slaCloseDays: s.hccConfig.slaCloseDays,
+      originatorRole: opts.originatorRole,
+      originatorAssignee: opts.originatorAssignee || null,
+      preferredAssignees: opts.preferredAssignees || {},
+      visitType: opts.visitType || dos.vt || null,
+      actor: opts.actor || 'current-user',
+    });
+    // Mirror engine → legacy member fields (worklist reads these).
+    const compositeKey = hccDosKey(patientId, dosDate, dos.provider, dos.pos);
+    const next = nextMap?.[compositeKey] || {};
+    const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+    const nameFieldByRole   = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
+    const nextMembers = s.hccMembers.map(m => {
+      if (m.id !== patientId) return m;
+      const patched = { ...m };
+      ['support', 'coder', 'reviewer', 'reviewer2'].forEach(role => {
+        const ns = next[role]?.status;
+        if (ns) patched[statusFieldByRole[role]] = ns;
+        const na = next[role]?.assignee;
+        if (na) {
+          const platformName = (s.platformUsers || []).find(u => u.id === na)?.name;
+          patched[nameFieldByRole[role]] = hccStaffById(na)?.name || platformName || na;
+        }
+      });
+      // Persist the manual/origin markers on the member so a reload
+      // rehydrates correctly (see hydrateFromMember).
+      if (opts.originatorRole) {
+        patched.originatorRole = opts.originatorRole;
+        patched.originatorAssignee = opts.originatorAssignee || null;
+        patched.manuallyAdded = true;
+      }
+      return patched;
+    });
+    return { hccDosAssignments: nextMap, hccMembers: nextMembers };
   }),
 
   // Generic dispatcher — `kind` corresponds to a lifecycle.js export. Each

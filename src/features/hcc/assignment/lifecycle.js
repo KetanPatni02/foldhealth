@@ -32,6 +32,7 @@
 import { pickAssignee } from './engine';
 import { ROLES, ROLE_LABEL } from './astranaStaff';
 import { validateAsmReadinessConfig } from './sampling';
+import { routeRoleForVisitType } from '../reference/assignmentRouting';
 import {
   STATUS,
   blankDosState,
@@ -66,6 +67,9 @@ function ctxFor(map, patient, dos, opts = {}) {
     patientHistory: computePatientHistory(map),
     slaCloseDays: opts.slaCloseDays || 7,
     priorRoleMapping: opts.priorRoleMapping || {},
+    // Continuity — caller can pass { coder: <staffId>, reviewer: <staffId>, … }
+    // to force the engine to prefer that person if they still fit the role.
+    preferredAssignees: opts.preferredAssignees || {},
     opts: { astrana: opts.astrana !== false },
   };
 }
@@ -88,8 +92,9 @@ function evt(state, kind, payload) {
 
 // Auto-pick + assign a role's assignee, returning the updated state.
 // `transitionReason` describes why this happened in the activity log.
-function autoAssignRole(map, state, patient, dos, role, initialStatus, transitionReason) {
-  const pick = pickAssignee(role, ctxFor(map, patient, dos));
+// `ctxOpts` forwards continuity / preferred-assignee hints to the engine.
+function autoAssignRole(map, state, patient, dos, role, initialStatus, transitionReason, ctxOpts = {}) {
+  const pick = pickAssignee(role, ctxFor(map, patient, dos, ctxOpts));
   if (!pick) return { state, picked: null };
 
   // AC-9: if the role already had someone, that prior assignment becomes
@@ -137,23 +142,79 @@ function autoSkipEarlierRoles(state, uptoRole, actor) {
 // ── AC-1: Initialize a DOS for Support ───────────────────────────────────
 
 /**
- * Called when a DOS is first added to a patient record. Routes it to
- * Support with status `Awaiting` (a.k.a. "Action Needed" in the story).
+ * Called when a DOS is first added to a patient record. Two paths:
+ *
+ *  1. Pipeline / normal path — routes to Support with status Awaiting
+ *     (a.k.a. "Action Needed"). Support later completes and the cascade
+ *     hands off to Coder → QA → Compliance.
+ *
+ *  2. Manual / QA+Compliance +ICD path — when `opts.originatorRole` is
+ *     'reviewer' or 'reviewer2', the DOS SKIPS Support entirely (documents
+ *     already exist in the QA workflow the code was added from) and lands
+ *     directly on the Visit-Type-appropriate downstream queue. The originator
+ *     is snapshotted onto the DOS so completeCoder can bounce it straight
+ *     back to that user without going through 10%/5% sampling.
  *
  * If the legacy member already has data for this DOS (member.sup/cdr/...),
  * we seed from that first (`hydrateFromMember`). That keeps existing
  * assignees visible in the Assignee column without re-picking. The engine
- * only runs `autoAssignRole` when there's genuinely nobody on Support yet.
+ * only runs `autoAssignRole` when there's genuinely nobody assigned yet.
  */
 export function initializeDos(map, patient, dos, opts = {}) {
   const k = dosKey(patient.id, dos.date, dos.provider, dos.pos);
   let state = map[k];
   if (!state) {
-    // First touch — hydrate from any legacy member fields so existing data
-    // isn't overwritten by a fresh engine pick.
     const idx = (patient.dos_list || []).findIndex(d => d.date === dos.date);
     state = hydrateFromMember(patient, dos.date, idx < 0 ? 0 : idx, dos.provider, dos.pos);
   }
+
+  // Manual path — QA or Compliance added an ICD via +ICD. Snapshot the
+  // originator, skip Support, and route to the Visit-Type queue.
+  const isManualOrigin = opts.originatorRole === 'reviewer' || opts.originatorRole === 'reviewer2';
+  if (isManualOrigin) {
+    // Idempotent: if we've already initialised this DOS with an originator,
+    // don't re-run the picker (would double-assign on repeat +ICD saves).
+    if (state.originatorRole) {
+      return { nextMap: putState(map, state), events: [] };
+    }
+    // Provenance snapshot on the DOS-state record.
+    state = {
+      ...state,
+      originatorRole: opts.originatorRole,
+      originatorAssignee: opts.originatorAssignee || null,
+      manuallyAdded: true,
+      visitType: opts.visitType || dos.vt || state.visitType || null,
+    };
+    // Skip Support — status stays Skipped rather than Assign so the worklist
+    // row shows the neutral "skipped" glyph instead of pretending it's waiting.
+    state = setRoleState(state, 'support',
+      { status: STATUS.SKIPPED },
+      { by: 'system', reason: `manual-origin:${opts.originatorRole}` },
+    );
+    state = pushActivity(state, evt(state, 'status', {
+      role: 'support', to: STATUS.SKIPPED, by: opts.actor || 'system',
+      reason: `manual-origin:${opts.originatorRole}`,
+    }));
+
+    // Visit-Type routing: Coder for most types, QA or Compliance for the
+    // high-oversight ones (see reference/assignmentRouting.js).
+    const routedRole = routeRoleForVisitType(opts.visitType || dos.vt);
+    const initialStatus = routedRole === 'coder' ? STATUS.NEW : STATUS.NEW;
+    const { state: withRouted, picked } = autoAssignRole(
+      putState(map, state), state, patient, dos, routedRole, initialStatus,
+      `manual-${opts.originatorRole}→${routedRole}`,
+      { preferredAssignees: opts.preferredAssignees },
+    );
+    state = withRouted;
+    return {
+      nextMap: putState(map, state),
+      events: picked
+        ? [evt(state, 'init', { role: routedRole, to: picked.staff.id, reason: `manual:${picked.reason}` })]
+        : [],
+    };
+  }
+
+  // Normal path.
   if (state.support.assignee) {
     // Already initialized (either by engine or by hydrate) — idempotent.
     return { nextMap: putState(map, state), events: [] };
@@ -265,6 +326,14 @@ export function markCoderInProgress(map, patient, dos, actor) {
 
 /**
  * AC-3 — Coder marks DOS Completed → assign Reviewer (100% sample, no skip).
+ *
+ * Two branch-outs before the normal cascade:
+ *  1. Records-request loop: if a downstream role has an open records_request
+ *     targeting Coder, bounce the DOS back to that requester with status
+ *     Record Received instead of advancing to Reviewer.
+ *  2. Manual-origin loop: if this DOS was spawned via +ICD from QA/Compliance,
+ *     route it straight back to the originator role — bypassing QA sampling
+ *     (the originator's role IS the review step for a code they added).
  */
 export function completeCoder(map, patient, dos, actor) {
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
@@ -274,18 +343,47 @@ export function completeCoder(map, patient, dos, actor) {
   );
   state = pushActivity(state, evt(state, 'status', { role: 'coder', to: STATUS.COMPLETED, by: actor }));
 
-  // If QA or Compliance has an open records_request targeting Coder, route
-  // the DOS back to that requester with status Record Received instead of
-  // advancing to the reviewer stage.
+  // 1. Records-request short-circuit.
   const requester = findRequesterFor(state, 'coder');
   if (requester) {
     const { nextMap } = recordsReceivedFor(putState(map, state), patient, dos, requester, actor);
     return { nextMap, events: [] };
   }
 
-  // Support never worked it → mark Skipped (linear-workflow honesty).
-  state = autoSkipEarlierRoles(state, 'coder', actor);
+  // 2. Manual-origin short-circuit — QA/Compliance +ICD DOS bounces back to
+  //    the originator role (10%/5% sampling bypassed). The DOS started on the
+  //    Coder queue via routeRoleForVisitType; now the Coder is done, so hand
+  //    off to whoever raised the code so they can finalise their own review.
+  if (state.originatorRole === 'reviewer' || state.originatorRole === 'reviewer2') {
+    state = autoSkipEarlierRoles(state, 'coder', actor);
+    // Prefer the snapshotted originator user if we have one; otherwise let
+    // the engine pick from that role's pool.
+    const targetRole = state.originatorRole;
+    let picked = null;
+    if (state.originatorAssignee) {
+      state = setRoleState(state, targetRole,
+        { assignee: state.originatorAssignee, status: STATUS.NEW },
+        { by: 'system', reason: `manual-return:${targetRole}` },
+      );
+    } else {
+      const res = autoAssignRole(
+        putState(map, state), state, patient, dos, targetRole, STATUS.NEW,
+        `coder-completed→manual-return:${targetRole}`,
+      );
+      state = res.state;
+      picked = res.picked;
+    }
+    state = pushActivity(state, evt(state, 'manual-return', {
+      role: targetRole,
+      to: state.originatorAssignee || picked?.staff?.id || null,
+      by: actor,
+      reason: `originator-return:${state.originatorRole}`,
+    }));
+    return { nextMap: putState(map, state), events: [] };
+  }
 
+  // Normal cascade — Support never worked it → mark Skipped, then assign QA.
+  state = autoSkipEarlierRoles(state, 'coder', actor);
   const { state: withReviewer, picked } = autoAssignRole(
     putState(map, state), state, patient, dos, 'reviewer', STATUS.NEW,
     'coder-completed→reviewer',

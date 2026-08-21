@@ -23,6 +23,7 @@ function isRoleResolved(s) { return RESOLVED_STATUSES.has(s); }
 export const DOS_INNER = {
   dos: (entry, { openDiagPanel, member, hasDoc, charts }) => {
     const isClaim = dosSourceLetter(entry.date, hasDoc) === 'C';
+    const isManual = member.manuallyAdded || entry.label === 'Manually Added';
     const handleOpen = () => {
       if (isClaim) {
         openDiagPanel(member.id, {
@@ -41,6 +42,7 @@ export const DOS_INNER = {
           <span className={styles.lastVisitDate}>{entry.date}</span>
         </button>
         <DosSourceBadge date={entry.date} hasDoc={hasDoc} />
+        {isManual && <span className={styles.manualChip}>Manually Added</span>}
       </span>
     );
   },

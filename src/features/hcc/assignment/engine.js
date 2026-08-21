@@ -198,6 +198,19 @@ export function pickAssignee(role, ctx) {
   }
   const astrana = ctx?.opts?.astrana !== false; // default ON
 
+  // Continuity pin — caller-supplied preferred assignee wins over everything
+  // else when valid. Used by the QA/Compliance +ICD flow to keep the same
+  // Coder on the newly-spawned DOS as on the DOS the user was reviewing.
+  const preferredId = ctx?.preferredAssignees?.[role] || ctx?.preferredAssignee;
+  if (preferredId) {
+    const pref = staffById(preferredId);
+    if (pref && pref.role === role && pref.active) {
+      return { staff: pref, reason: 'continuity' };
+    }
+    // Preferred id doesn't resolve to an active staff member → fall through
+    // and let the standard priority chain pick someone else.
+  }
+
   // Global Assignment Rule (Astrana) — pin to whoever is already on this
   // patient at this role. Skipped for non-Astrana clients.
   if (astrana) {

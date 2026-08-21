@@ -411,6 +411,11 @@ export function useDiagPanel() {
         });
         siblingCount += 1;
       } else {
+        // When QA or Compliance saves a manual +ICD, snapshot the origin
+        // so the DOS skips Support, routes by Visit Type, and returns to
+        // the reviewer on Coder Completed. Pin the current DOS's Coder
+        // onto the new row for continuity.
+        const isManualOrigin = actingRole === 'reviewer' || actingRole === 'reviewer2';
         const newId = addHccGapNewRow({
           sourceMemberId: member?.id,
           code,
@@ -420,6 +425,9 @@ export function useDiagPanel() {
           provider: c.provider,
           pos: c.pos,
           visitType: c.visitType,
+          originatorRole: isManualOrigin ? actingRole : null,
+          originatorAssignee: isManualOrigin ? (dosState?.[actingRole]?.assignee || null) : null,
+          preferredCoder: isManualOrigin ? (dosState?.coder?.assignee || null) : null,
         });
         if (newId) newRowCount += 1;
       }
@@ -434,7 +442,7 @@ export function useDiagPanel() {
     // the search field reverts to filtering the ICD list. Users who want to
     // add another ICD click + ICD again.
     setAddIcdMode(false);
-  }, [pendingGaps, member?.id, addHccGap, addHccGapNewRow, addHccGapToRow, showToast, removePendingGap]);
+  }, [pendingGaps, member?.id, addHccGap, addHccGapNewRow, addHccGapToRow, showToast, removePendingGap, actingRole, dosState, setAddIcdMode]);
   // Comments count for the toolbar chip — mirrors what the Comments tab
   // renders (Supabase-hydrated rows when present, mock fallback otherwise).
   const dbComments = useAppStore(s => s.hccDiagComments);

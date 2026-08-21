@@ -174,7 +174,24 @@
 .dosItem {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-1);
+}
+/* "Manually Added" chip — rendered on rows a QA / Compliance user created
+   via +ICD. Neutral tone, no border, tiny — sits inline next to the DOS
+   date so the row-owner sees the provenance at a glance. */
+.manualChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-1);
+  height: 18px;
+  border-radius: 3px;
+  background: var(--neutral-50);
+  color: var(--neutral-300);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 /* DOS source badge — subtle colour-coded circle (Paper 21UX): the letter
    colours by source (M=manual/orange, C=Cozeva/purple, D=document/grey). */
@@ -405,6 +422,13 @@
   align-items: flex-start;
   border-radius: 4px;
   transition: background 0.12s;
+}
+/* Cancel the S-badge's internal 4px padding-left so its icon lines up with
+   the dot in the "All Passed" status row below. Without this the badge
+   sits 4px to the right of the status text — visually mis-aligned even
+   though both are technically flex-start. */
+.evidenceTrigger > :first-child {
+  margin-left: calc(var(--space-1) * -1);
 }
 .evidenceTrigger:hover {
   background: var(--neutral-50);
