@@ -39,9 +39,24 @@ export function generateDefaultCharts(member) {
   const count = 1 + (seed(memberKey(member)) % 2); // 1 or 2 → under 3
   const dos = docDate(member);
   const addedBy = `${member?.sup || 'Benjamin Cummings'} (Support Team)`;
+  // Default doc status follows Support's actual state so the worklist +
+  // DiagPanel + Doc Review drawer never disagree:
+  //   Support has an assignee AND supS === Completed → docs default Passed
+  //   Support has an assignee AND supS === Reject    → docs default Failed
+  //   anything else — including Support unassigned   → Pending
+  // Requiring an assignee is intentional: docs can't be "passed" by nobody,
+  // so a row with Support = "Assign" always shows All Pending, no matter
+  // what stale legacy `supS` field the seed carries. A per-doc override
+  // (member.docStatus[i]) still wins when provided.
+  const supS = member?.supS;
+  const hasSupportAssignee = !!(member?.sup && member.sup.trim());
+  const supportDefault = (hasSupportAssignee && supS === 'Completed')
+    ? 'Passed'
+    : (hasSupportAssignee && supS === 'Reject') ? 'Failed'
+    : 'Pending';
   return KNOWN_DOCS.slice(0, count).map((d, i) => {
     const st = member?.docStatus?.[i];
-    const status = st ? st.charAt(0).toUpperCase() + st.slice(1) : 'Passed';
+    const status = st ? st.charAt(0).toUpperCase() + st.slice(1) : supportDefault;
     return {
       id: `${memberKey(member)}::sys${i}`,
       n: d.n,

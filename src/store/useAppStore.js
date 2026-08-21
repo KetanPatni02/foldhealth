@@ -6555,7 +6555,16 @@ export const useAppStore = create((set, get) => ({
       }
       const patient = s.hccMembers.find(m => m.id === patientId);
       if (!patient) return {};
-      const dos = (patient.dos_list || []).find(d => d.date === dosDate) || { date: dosDate };
+      // Normalize the DOS record so its provider/POS match what the row-level
+      // renderer (`dosKey(m.id, m.dos, m.rp, m.pos)`) reads. Prefer the member
+      // fields (that's what the row reads) and fall back to the dos_list entry
+      // when the member-level values are missing.
+      const dosEntry = (patient.dos_list || []).find(d => d.date === dosDate);
+      const dos = {
+        ...(dosEntry || { date: dosDate }),
+        provider: patient?.rp ?? dosEntry?.provider ?? null,
+        pos:      patient?.pos ?? dosEntry?.pos      ?? null,
+      };
       const actor = payload.actor || 'current-user';
       let result;
       switch (kind) {
@@ -6818,8 +6827,15 @@ export const useAppStore = create((set, get) => ({
     const prevName = preMember[f] ?? null;
     const prevStatus = preMember[sf] ?? null;
     const patientName = preMember.name;
+    // Composite-key alignment: the worklist row reads the engine bucket via
+    // `dosKey(m.id, m.dos, m.rp, m.pos)` (member-level provider/POS), so the
+    // picker's write must land in that same bucket. Prefer member-level when
+    // present; fall back to the matching `dos_list` entry, then to nulls, so
+    // legacy data with either shape still resolves consistently.
     const dosEntry = (preMember.dos_list || []).find(d => d.date === dos);
-    const compositeKey = hccDosKey(pid, dos, dosEntry?.provider, dosEntry?.pos);
+    const provider = preMember.rp || dosEntry?.provider || null;
+    const pos      = preMember.pos || dosEntry?.pos || null;
+    const compositeKey = hccDosKey(pid, dos, provider, pos);
     const prevBucket = useAppStore.getState().hccDosAssignments?.[compositeKey];
     useAppStore.getState().transitionHccDos(pid, dos, 'reassignRole', { role, staffId, actor, reason });
     // Optimistic UI — ALL of it happens before the network write so every

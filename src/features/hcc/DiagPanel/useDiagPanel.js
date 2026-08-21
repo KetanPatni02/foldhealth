@@ -480,13 +480,34 @@ export function useDiagPanel() {
   // (Insufficient / Reject / Rejected) are a subset of "not Completed"
   // and stay locked too.
   //
-  // QA and Compliance are reviewers of the Coder's work — they take ICD
-  // actions independently and are not gated by Support/Coder completion.
+  // QA and Compliance are reviewers of the Coder's work. They act
+  // independently of Support/Coder completion EXCEPT while their own
+  // records-request cycle is open — once they've set their status to
+  // Record Requested, ICD actions and status changes are frozen until
+  // the destination role (Coder or Support) marks the request Completed
+  // and the DOS returns to Record Received.
   const stageLocked = useMemo(() => {
+    if (actingRole === 'reviewer' || actingRole === 'reviewer2') {
+      const roleStatus = dosState?.[actingRole]?.status;
+      return roleStatus === 'Record Requested';
+    }
     if (actingRole !== 'coder') return false;
     const supStatus = dosState?.support?.status || member?.supS;
     return supStatus !== 'Completed';
   }, [actingRole, dosState, member]);
+
+  // Human-readable reason surfaced on the disabled DosStatusMenu tooltip
+  // and on every locked ICD action while QA / Compliance is waiting on a
+  // records request to be filled. Falls back to null so the caller's
+  // existing lockReason (e.g. rejectionLockReason) still wins.
+  const recordsRequestLockReason = useMemo(() => {
+    if (!(actingRole === 'reviewer' || actingRole === 'reviewer2')) return null;
+    const roleStatus = dosState?.[actingRole]?.status;
+    if (roleStatus !== 'Record Requested') return null;
+    const req = dosState?.[actingRole]?.records_request;
+    const dest = req?.destinationRole === 'support' ? 'Support Team' : 'Coder';
+    return `Waiting on ${dest} to return the record — actions unlock when the request is filled.`;
+  }, [actingRole, dosState]);
 
   // ── Review-progress stages + ring (drives the stage pill) ──
   const reviewStages = useMemo(
@@ -1167,6 +1188,7 @@ export function useDiagPanel() {
     recordsRequestPrompt,
     confirmRecordsRequest,
     cancelRecordsRequest: () => setRecordsRequestPrompt(null),
+    recordsRequestLockReason,
     rejectInfo,
     rejectPrompt,
     rejectionLockReason,
