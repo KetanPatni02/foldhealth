@@ -1,5 +1,60 @@
 /* ── Header nav (prev/next + divider in Drawer headerRight) ── */
 .headerNav { display: flex; align-items: center; gap: 4px; }
+
+/* Split body — the drawer widens (see `width` prop) and swaps to a
+   row layout when a left workspace is active (Add Task today; the
+   pattern mirrors HCC's Document Review LeftPane + RightPane split so
+   both surfaces feel like one entity, not two stacked drawers).
+
+   The right pane is pinned at its natural 700px width so the Care Gap
+   content stays fixed in place; the left workspace pane fills the
+   remaining space that opens up as the drawer's width transitions from
+   700→1260. Combined with Drawer's own `width` transition, this reads
+   as the Add Task pane sliding out from behind the right pane — the
+   right side never moves. */
+.drawerBodySplit { flex-direction: row !important; }
+.drawerBodySplit .contentBody {
+  flex: 0 0 630px;
+  min-width: 0;
+}
+
+/* Left workspace pane — hosts Add Task's form. Its own inner header
+   provides the pane's title + primary CTA + close button so users can
+   dismiss just the workspace without collapsing the parent drawer. */
+.leftPane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 0.5px solid var(--neutral-150);
+}
+.paneHeader {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+  gap: var(--space-2);
+}
+.paneTitle {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.paneHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.leftPaneBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-4);
+}
 .headerDivider {
   width: 1px; height: 16px; background: var(--neutral-150);
   margin: 0 4px; flex-shrink: 0;
@@ -204,6 +259,25 @@
   white-space: nowrap;
 }
 .statusBtn:disabled { cursor: not-allowed; opacity: 0.7; }
+
+/* Reset wrapper around the shared Badge — the Badge itself owns the
+   colour / border / padding via its tone; this button just needs to
+   be clickable and pass focus. Kept a discrete class instead of
+   inline styles so the disabled/hover states can be tuned in CSS. */
+.statusBtnReset {
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.statusBtnReset:disabled { cursor: not-allowed; }
+.statusBtnReset:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+}
 /* Status change menu — mirrors the HCC DiagPanel `DosStatusMenu` so the two
    drawers use one popover language. Header + item list with a check icon on
    the currently-selected status; danger variant reserved for terminal

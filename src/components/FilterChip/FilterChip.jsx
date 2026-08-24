@@ -52,6 +52,12 @@ export function FilterChip({
   // ranges (X–Y) without re-implementing the whole chip.
   activeSummary,
   onClear,
+  // Opt-out of the clear affordance when the field must always carry a
+  // value — e.g. Measurement Year in the HEDIS gap drawer, where clearing
+  // "2026" doesn't make sense. In that mode the active pill renders the
+  // grey down-chevron (same glyph the idle state uses) instead of the
+  // primary "✕", and clicks fall through to toggling the popover.
+  noClear = false,
 }) {
   const [rect, setRect] = useState(null);
   const custom = typeof renderPopover === 'function';
@@ -72,7 +78,15 @@ export function FilterChip({
     <>
       <button
         type="button"
-        className={[styles.chip, active ? styles.chipActive : '', size === 'S' ? styles.sizeS : ''].filter(Boolean).join(' ')}
+        className={[
+          styles.chip,
+          active ? styles.chipActive : '',
+          // Never-empty pickers (`noClear`) get the neutral grey palette
+          // even when a value is selected — matches the intent that the
+          // pill is an information display, not a clearable filter.
+          active && noClear ? styles.chipNeutral : '',
+          size === 'S' ? styles.sizeS : '',
+        ].filter(Boolean).join(' ')}
         onClick={(e) => setRect(rect ? null : e.currentTarget.getBoundingClientRect())}
       >
         <span className={styles.chipLabel}>{label}</span>
@@ -83,20 +97,28 @@ export function FilterChip({
             {summary.extra != null && (
               <span className={styles.chipExtra}>+{summary.extra}</span>
             )}
-            {/* span, not <button>: the chip trigger is already a <button> and
-                nested interactive elements are invalid HTML. */}
-            <span
-              className={styles.clearIcon}
-              role="button"
-              tabIndex={0}
-              aria-label={`Clear ${label} filter`}
-              onClick={handleClear}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClear(e); } }}
-            >
-              <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <path d="M12.495 4.5C12.77 4.22 12.77 3.78 12.495 3.51C12.22 3.23 11.78 3.23 11.505 3.51L12 4L12.495 4.5ZM3.51 11.505C3.23 11.78 3.23 12.22 3.51 12.495C3.78 12.77 4.22 12.77 4.5 12.495L4 12L3.51 11.505ZM4.49 3.51C4.22 3.23 3.78 3.23 3.51 3.51C3.23 3.78 3.23 4.22 3.51 4.49L4 4L4.49 3.51ZM11.505 12.49C11.78 12.77 12.22 12.77 12.49 12.49C12.77 12.22 12.77 11.78 12.49 11.505L12 12L11.505 12.49ZM12 4L11.505 3.51L7.51 7.51L8 8L8.49 8.49L12.495 4.5L12 4ZM8 8L7.51 7.51L3.51 11.505L4 12L4.5 12.495L8.49 8.49L8 8ZM4 4L3.51 4.49L7.51 8.49L8 8L8.49 7.51L4.49 3.51L4 4ZM8 8L7.51 8.49L11.505 12.49L12 12L12.49 11.505L8.49 7.51L8 8Z" fill="var(--primary-300)" />
-              </svg>
-            </span>
+            {noClear ? (
+              // Never-empty filters (e.g. Measurement Year) skip the clear
+              // ✕ and reuse the idle chevron so users know clicking the
+              // chip re-opens the picker — nothing to clear. Grey tone
+              // matches the idle "Label ⌄" affordance.
+              <DownChevronIcon size={iconSize} color="var(--neutral-300)" />
+            ) : (
+              /* span, not <button>: the chip trigger is already a <button> and
+                 nested interactive elements are invalid HTML. */
+              <span
+                className={styles.clearIcon}
+                role="button"
+                tabIndex={0}
+                aria-label={`Clear ${label} filter`}
+                onClick={handleClear}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClear(e); } }}
+              >
+                <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M12.495 4.5C12.77 4.22 12.77 3.78 12.495 3.51C12.22 3.23 11.78 3.23 11.505 3.51L12 4L12.495 4.5ZM3.51 11.505C3.23 11.78 3.23 12.22 3.51 12.495C3.78 12.77 4.22 12.77 4.5 12.495L4 12L3.51 11.505ZM4.49 3.51C4.22 3.23 3.78 3.23 3.51 3.51C3.23 3.78 3.23 4.22 3.51 4.49L4 4L4.49 3.51ZM11.505 12.49C11.78 12.77 12.22 12.77 12.49 12.49C12.77 12.22 12.77 11.78 12.49 11.505L12 12L11.505 12.49ZM12 4L11.505 3.51L7.51 7.51L8 8L8.49 8.49L12.495 4.5L12 4ZM8 8L7.51 7.51L3.51 11.505L4 12L4.5 12.495L8.49 8.49L8 8ZM4 4L3.51 4.49L7.51 8.49L8 8L8.49 7.51L4.49 3.51L4 4ZM8 8L7.51 8.49L11.505 12.49L12 12L12.49 11.505L8.49 7.51L8 8Z" fill="var(--primary-300)" />
+                </svg>
+              </span>
+            )}
           </>
         ) : (
           <DownChevronIcon size={iconSize} />
@@ -112,6 +134,7 @@ export function FilterChip({
             selected={selected}
             onChange={(next) => { onChange(next); setRect(null); }}
             onClose={() => setRect(null)}
+            showClear={!noClear}
           />
         ) : (
           <CheckboxListPopover

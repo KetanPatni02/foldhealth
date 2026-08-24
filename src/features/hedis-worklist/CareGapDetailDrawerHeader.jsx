@@ -1,9 +1,25 @@
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
+import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
-import { MEASURE_NAMES, STATUS_STYLE, STATUSES, daysAgo, initialsOf } from './CareGapDetailDrawer.utils';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { MEASURE_NAMES, STATUSES, daysAgo, initialsOf } from './CareGapDetailDrawer.utils';
 import styles from './CareGapDetailDrawer.module.css';
+
+// Status → shared Badge tone. Aligns with STATUS_STYLE's colour intent
+// but routes through the design-system palette so the trigger reads
+// identically to every other status pill in the app.
+const STATUS_TONE = {
+  'Open':                        'primary',
+  'Engaged':                     'warning',
+  'Engaged Requires Follow-Up':  'warning',
+  'Submitted':                   'warning',
+  'Completed':                   'success',
+  'Closed - Do not call':        'grey',
+  'Closed - UTR':                'grey',
+  'Closed - Other':              'grey',
+};
 
 export function CareGapDetailDrawerHeader({
   gap,
@@ -42,29 +58,83 @@ export function CareGapDetailDrawerHeader({
       <div className={styles.gapHeader}>
         <div className={styles.gapToolbar}>
           <div className={styles.yearWrap}>
-            <button type="button" className={styles.yearChip} onClick={() => setYearOpen(v => !v)} aria-haspopup="listbox" aria-expanded={yearOpen}>
-              <span className={styles.yearChipLabel}>Measurement Year</span>
-              <span className={styles.yearChipSep}>:</span>
-              <span className={styles.yearChipValue}>{selectedYear}</span>
-              <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
-            </button>
-            {yearOpen && (
-              <>
-                <div className={styles.yearMenuOverlay} onClick={() => setYearOpen(false)} />
-                <div className={styles.yearMenu} role="listbox">
-                  {yearOptions.map(y => (
-                    <button key={y} type="button" role="option" aria-selected={y === selectedYear}
-                      className={`${styles.yearMenuItem} ${y === selectedYear ? styles.yearMenuItemActive : ''}`}
-                      onClick={() => { setSelectedYear(y); setYearOpen(false); }}>{y}</button>
-                  ))}
-                </div>
-              </>
-            )}
+            {/* Shared FilterChip in single-select mode — same "Label ⌄" idle
+                → "Label : value ✕" active behaviour every other filter chip
+                in the app uses. Emits a 1-element array so the local state
+                stays a plain number. */}
+            <FilterChip
+              label="Measurement Year"
+              size="S"
+              options={yearOptions.map(String)}
+              selected={selectedYear ? [String(selectedYear)] : []}
+              onChange={(vals) => {
+                const next = vals?.[0];
+                if (next) setSelectedYear(Number(next));
+                setYearOpen(false);
+              }}
+              singleSelect
+              noClear
+            />
           </div>
           <div className={styles.gapToolbarRight}>
-            <ActionButton icon="solar:clipboard-add-linear" size="L" tooltip="Add Task" tooltipBelow onClick={() => showToast('Add Task — coming soon')} />
-            <span className={styles.headerDivider} />
-            <ActionButton icon="solar:notes-linear" size="L" tooltip="Add Clinical Note" tooltipBelow onClick={() => setShowClinicalNote(true)} />
+            {/* Assignee + Status promoted from the title row into the toolbar —
+                primary actions live in Suggested Actions below, so the toolbar
+                is reserved for the gap's identity chips (who owns it, what
+                state it's in) plus the More menu that catches everything else
+                (Add Task, Add Clinical Note, orders, referrals, …). */}
+            {(() => {
+              const effectiveAssignee = gap.assignee ?? member?.assignee ?? null;
+              return (
+                <AssigneeChange
+                  ref={assigneeBtnRef}
+                  avatarOnly
+                  unassigned={!effectiveAssignee}
+                  name={effectiveAssignee || undefined}
+                  initials={effectiveAssignee ? initialsOf(effectiveAssignee) : undefined}
+                  ariaLabel={effectiveAssignee || 'Assign'}
+                  onClick={() => (assigneePos ? closeAssignee() : openAssignee())}
+                />
+              );
+            })()}
+
+            <div className={styles.statusWrap}>
+              <button
+                type="button"
+                className={styles.statusBtnReset}
+                onClick={() => { if (!statusLocked) setStatusOpen(v => !v); }}
+                disabled={statusLocked}
+                title={statusLocked ? 'Completed gaps are locked' : ''}
+                aria-haspopup="menu"
+                aria-expanded={statusOpen}
+              >
+                <Badge
+                  size="M"
+                  tone={statusLocked ? 'disabled' : (STATUS_TONE[status] || 'grey')}
+                  label={status}
+                  chevron={!statusLocked}
+                  style={{ height: 28 }}
+                />
+              </button>
+              {statusOpen && !statusLocked && (
+                <>
+                  <div className={styles.statusMenuOverlay} onClick={() => setStatusOpen(false)} />
+                  <div className={styles.statusMenu} role="menu">
+                    <div className={styles.statusMenuHeader}>Change Status</div>
+                    <div className={styles.statusMenuItems}>
+                      {STATUSES.map(s => (
+                        <button key={s} type="button" role="menuitemradio" aria-checked={s === status}
+                          className={`${styles.statusMenuItem} ${s === status ? styles.statusMenuItemActive : ''}`}
+                          onClick={() => { updateGapStatus(member.id, gap.code, s); setStatusOpen(false); }}>
+                          <span className={styles.statusMenuItemLabel}>{s}</span>
+                          {s === status && <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
             <span className={styles.headerDivider} />
             <ActionButton ref={moreBtnRef} icon="solar:menu-dots-linear" size="L" tooltip="More" tooltipBelow tooltipLeft
               onClick={moreMenuRect ? closeMoreMenu : openMoreMenu} />
@@ -87,51 +157,6 @@ export function CareGapDetailDrawerHeader({
                   <Icon name="solar:alt-arrow-down-linear" size={13} color="currentColor"
                     className={`${styles.moreChevron} ${moreOpen ? styles.moreChevronOpen : ''}`} />
                 </button>
-              </div>
-            </div>
-            <div className={styles.gapTitleActions}>
-              {/* Gap-level override takes precedence; otherwise fall back to
-                  the member's default assignee (same rule the table row uses). */}
-              {(() => {
-                const effectiveAssignee = gap.assignee ?? member?.assignee ?? null;
-                return (
-                  <AssigneeChange
-                    ref={assigneeBtnRef}
-                    avatarOnly
-                    unassigned={!effectiveAssignee}
-                    name={effectiveAssignee || undefined}
-                    initials={effectiveAssignee ? initialsOf(effectiveAssignee) : undefined}
-                    ariaLabel={effectiveAssignee || 'Assign'}
-                    onClick={() => (assigneePos ? closeAssignee() : openAssignee())}
-                  />
-                );
-              })()}
-
-              <div className={styles.statusWrap}>
-                <button className={styles.statusBtn} onClick={() => { if (!statusLocked) setStatusOpen(v => !v); }}
-                  disabled={statusLocked} title={statusLocked ? 'Completed gaps are locked' : ''}
-                  style={{ color: STATUS_STYLE[status]?.color, background: STATUS_STYLE[status]?.bg, borderColor: STATUS_STYLE[status]?.border }}>
-                  {status}
-                  {!statusLocked && <Icon name="solar:alt-arrow-down-linear" size={12} color="currentColor" />}
-                </button>
-                {statusOpen && !statusLocked && (
-                  <>
-                    <div className={styles.statusMenuOverlay} onClick={() => setStatusOpen(false)} />
-                    <div className={styles.statusMenu} role="menu">
-                      <div className={styles.statusMenuHeader}>Change Status</div>
-                      <div className={styles.statusMenuItems}>
-                        {STATUSES.map(s => (
-                          <button key={s} type="button" role="menuitemradio" aria-checked={s === status}
-                            className={`${styles.statusMenuItem} ${s === status ? styles.statusMenuItemActive : ''}`}
-                            onClick={() => { updateGapStatus(member.id, gap.code, s); setStatusOpen(false); }}>
-                            <span className={styles.statusMenuItemLabel}>{s}</span>
-                            {s === status && <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
               </div>
             </div>
           </div>
@@ -167,9 +192,9 @@ export function CareGapDetailDrawerHeader({
         </div>
         <div className={styles.suggestActions}>
           <Button variant="primary" size="L" onClick={() => showToast('Schedule with Specialist — coming soon')}>Schedule with Specialist</Button>
+          <Button variant="tertiary" size="L" onClick={() => setShowClinicalNote(true)}>Add Note</Button>
           <Button variant="tertiary" size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
           <Button variant="secondary" size="L" onClick={() => showToast('Add Outreach — coming soon')}>Add Outreach</Button>
-          <Button variant="secondary" size="L" onClick={() => showToast('Set Reminder — coming soon')}>Set Reminder</Button>
         </div>
       </div>
     </>

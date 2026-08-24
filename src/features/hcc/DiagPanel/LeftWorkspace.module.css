@@ -1254,11 +1254,21 @@
 }
 
 /* ── Inline claim detail (Figma 10891:325889) ─────────────────────────── */
+/* Header treated as its own entity above the Claim Details sections: hugs
+   the scroll container's edges (negative side margins break out of the
+   12px padding on `.scroll`), no side/top padding of its own, and a
+   0.5px neutral-150 hairline separates it from the sections that follow.
+   Vertical breathing room lives in the bottom margin — not padding —
+   so the border sits flush against the header row itself. */
 .claimDetailHead {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 4px 0 14px;
+  gap: var(--space-2);
+  height: 40px;
+  padding: var(--space-2) var(--space-3);
+  margin: calc(-1 * var(--space-3)) calc(-1 * var(--space-3)) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  box-sizing: border-box;
 }
 .claimBackBtn {
   display: inline-flex;
