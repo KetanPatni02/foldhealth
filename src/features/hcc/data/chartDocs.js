@@ -89,6 +89,15 @@ export function getChartDocs(member, added = [], statusOverrides = {}, removedId
     const removed = new Set(removedIds);
     all = all.filter(d => !removed.has(d.id));
   }
+  // Per-doc overrides only apply when Support has an assignee — nobody can
+  // have "passed" the record if no one has been assigned to review it. This
+  // hides stale Passed/Failed marks left over from a prior session and keeps
+  // the worklist Evidence cell, the Chart Review drawer, and the DiagPanel
+  // Support pill in sync: all three read Pending when Support is unassigned.
+  const hasSupportAssignee = !!(member?.sup && String(member.sup).trim());
+  if (!hasSupportAssignee) {
+    return all.map(d => ({ ...d, status: 'Pending' }));
+  }
   if (statusOverrides && Object.keys(statusOverrides).length) {
     return all.map(d => (statusOverrides[d.id] ? { ...d, status: statusOverrides[d.id] } : d));
   }

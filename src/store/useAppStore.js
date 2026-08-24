@@ -6066,6 +6066,10 @@ export const useAppStore = create((set, get) => ({
         pos: pos || source.pos,
         posDesc,
         open: 1,
+        // Persisted provenance so the row's DOS-source badge reads M
+        // regardless of any later document/claim on the same date. The
+        // renderer looks at this before falling back to the hash.
+        source: 'manual',
       }],
       vt: visitType || source.vt,
       visitType: visitType || source.visitType,
