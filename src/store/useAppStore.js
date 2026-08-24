@@ -6089,12 +6089,15 @@ export const useAppStore = create((set, get) => ({
       pos: pos || source.pos,
       posDesc,
       // Reset workflow — a brand-new encounter always starts fresh. When a
-      // QA / Compliance user spawned the DOS, Support is pre-marked Skipped
-      // so the worklist row shows the correct provenance immediately (the
-      // engine will mirror this after hccInitializeManualDos runs, but we
-      // want the initial render to match too).
+      // QA / Compliance user spawned the DOS, Support AND Coder are
+      // pre-marked Skipped so the worklist row shows the correct provenance
+      // immediately (the engine will mirror this after hccInitializeManualDos
+      // runs, but we want the initial render to match too). The DOS lands
+      // directly on the originator's role — QA (r1s) or Compliance (r2s).
       supS: isManualOrigin ? 'Skipped' : 'Assign',
-      cdrS: 'Assign', r1s: 'Assign', r2s: 'Assign',
+      cdrS: isManualOrigin ? 'Skipped' : 'Assign',
+      r1s: isManualOrigin && originatorRole === 'reviewer'  ? 'New' : 'Assign',
+      r2s: isManualOrigin && originatorRole === 'reviewer2' ? 'New' : 'Assign',
       open: 1,
       // Provenance markers — hydrateFromMember reads these on reload.
       manuallyAdded: !!isManualOrigin,
@@ -6150,6 +6153,25 @@ export const useAppStore = create((set, get) => ({
       docs_count: 0, comments_count: 0, notes_count: 0, raf_weight: 0,
       is_linked: true, dos,
     });
+    // Audit the +ICD action so the History drawer shows who added what,
+    // when, and against which DOS — the manual-init role diffs below only
+    // cover the workflow transitions; this row captures the intent.
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'icd.created_manual',
+      scope:     { patientId: newId, dos, icd: code, source: 'manual' },
+      payload:   {
+        actor: 'You',
+        icd: code,
+        roleLabel: originatorRole === 'reviewer'  ? 'QA'
+                 : originatorRole === 'reviewer2' ? 'Compliance'
+                 : 'Coder',
+        code, description: desc, hcc: hcc || '',
+        visitType: visitType || source.vt || null,
+        patientName: newRow.name,
+        dos, provider: newRow.rp, pos: newRow.pos,
+        kind: 'new-row',
+      },
+    });
     return newId;
   },
 
@@ -6187,6 +6209,21 @@ export const useAppStore = create((set, get) => ({
       status: 'New', type: 'Manual', kind: 'Manual',
       docs_count: 0, comments_count: 0, notes_count: 0, raf_weight: 0,
       is_linked: true, dos,
+    });
+    // Audit the +ICD add so the History drawer records who linked which
+    // code to which existing row.
+    useAppStore.getState().logHccActivity?.({
+      eventName: 'icd.created_manual',
+      scope:     { patientId: targetMemberId, dos, icd: code, source: 'manual' },
+      payload:   {
+        actor: 'You',
+        icd: code,
+        code, description: desc, hcc: hcc || '',
+        visitType: visitType || null,
+        patientName: target.name,
+        dos, provider: provider || target.rp, pos: pos || target.pos,
+        kind: 'existing-row',
+      },
     });
     return targetMemberId;
   },
@@ -6759,49 +6796,98 @@ export const useAppStore = create((set, get) => ({
   // Also mirrors the engine's role status/assignee decisions back into the
   // legacy member fields (supS/cdrS/r1s/r2s and sup/cdr/r1/r2) so the
   // worklist row renders correctly without waiting on a reload.
-  hccInitializeManualDos: (patientId, dosDate, opts = {}) => set(s => {
-    const patient = s.hccMembers.find(m => m.id === patientId);
-    if (!patient) return {};
-    const dos = (patient.dos_list || []).find(d => d.date === dosDate)
-      || { date: dosDate, provider: patient.rp, pos: patient.pos, vt: patient.vt };
-    const prevMap = s.hccDosAssignments;
-    const { nextMap } = hccLifecycle.initializeDos(prevMap, patient, dos, {
-      astrana: s.hccConfig.astrana,
-      slaCloseDays: s.hccConfig.slaCloseDays,
-      originatorRole: opts.originatorRole,
-      originatorAssignee: opts.originatorAssignee || null,
-      preferredAssignees: opts.preferredAssignees || {},
-      visitType: opts.visitType || dos.vt || null,
-      actor: opts.actor || 'current-user',
-    });
-    // Mirror engine → legacy member fields (worklist reads these).
-    const compositeKey = hccDosKey(patientId, dosDate, dos.provider, dos.pos);
-    const next = nextMap?.[compositeKey] || {};
-    const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
-    const nameFieldByRole   = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
-    const nextMembers = s.hccMembers.map(m => {
-      if (m.id !== patientId) return m;
-      const patched = { ...m };
-      ['support', 'coder', 'reviewer', 'reviewer2'].forEach(role => {
-        const ns = next[role]?.status;
-        if (ns) patched[statusFieldByRole[role]] = ns;
-        const na = next[role]?.assignee;
-        if (na) {
-          const platformName = (s.platformUsers || []).find(u => u.id === na)?.name;
-          patched[nameFieldByRole[role]] = hccStaffById(na)?.name || platformName || na;
-        }
+  hccInitializeManualDos: (patientId, dosDate, opts = {}) => {
+    // Diff the engine's before/after per role so each Skipped / New / assign
+    // transition lands in hcc_activity_log — otherwise the manual +ICD flow
+    // would flip four roles silently and the History drawer would show
+    // nothing beyond the gap.icd_added envelope.
+    const roleDiffs = [];
+    set(s => {
+      const patient = s.hccMembers.find(m => m.id === patientId);
+      if (!patient) return {};
+      const dos = (patient.dos_list || []).find(d => d.date === dosDate)
+        || { date: dosDate, provider: patient.rp, pos: patient.pos, vt: patient.vt };
+      const prevMap = s.hccDosAssignments;
+      const compositeKey = hccDosKey(patientId, dosDate, dos.provider, dos.pos);
+      const prevState = prevMap?.[compositeKey] || {};
+      const { nextMap } = hccLifecycle.initializeDos(prevMap, patient, dos, {
+        astrana: s.hccConfig.astrana,
+        slaCloseDays: s.hccConfig.slaCloseDays,
+        originatorRole: opts.originatorRole,
+        originatorAssignee: opts.originatorAssignee || null,
+        preferredAssignees: opts.preferredAssignees || {},
+        visitType: opts.visitType || dos.vt || null,
+        actor: opts.actor || 'current-user',
       });
-      // Persist the manual/origin markers on the member so a reload
-      // rehydrates correctly (see hydrateFromMember).
-      if (opts.originatorRole) {
-        patched.originatorRole = opts.originatorRole;
-        patched.originatorAssignee = opts.originatorAssignee || null;
-        patched.manuallyAdded = true;
-      }
-      return patched;
+      const next = nextMap?.[compositeKey] || {};
+      const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+      const nameFieldByRole   = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
+      // 'Assign' is the null-equivalent (unassigned) status — never worth an
+      // activity row. Only real transitions (Skipped / New / In Progress …)
+      // are surfaced in the History drawer.
+      ['support', 'coder', 'reviewer', 'reviewer2'].forEach(role => {
+        const ps = prevState?.[role]?.status || null;
+        const ns = next?.[role]?.status || null;
+        const pa = prevState?.[role]?.assignee || null;
+        const na = next?.[role]?.assignee || null;
+        if (ns && ns !== 'Assign' && ns !== ps) roleDiffs.push({ role, kind: 'status', from: ps, to: ns });
+        if (na && na !== pa) roleDiffs.push({ role, kind: 'assignee', from: pa, to: na });
+      });
+      const nextMembers = s.hccMembers.map(m => {
+        if (m.id !== patientId) return m;
+        const patched = { ...m };
+        ['support', 'coder', 'reviewer', 'reviewer2'].forEach(role => {
+          const ns = next[role]?.status;
+          if (ns) patched[statusFieldByRole[role]] = ns;
+          const na = next[role]?.assignee;
+          if (na) {
+            const platformName = (s.platformUsers || []).find(u => u.id === na)?.name;
+            patched[nameFieldByRole[role]] = hccStaffById(na)?.name || platformName || na;
+          }
+        });
+        if (opts.originatorRole) {
+          patched.originatorRole = opts.originatorRole;
+          patched.originatorAssignee = opts.originatorAssignee || null;
+          patched.manuallyAdded = true;
+        }
+        return patched;
+      });
+      return { hccDosAssignments: nextMap, hccMembers: nextMembers };
     });
-    return { hccDosAssignments: nextMap, hccMembers: nextMembers };
-  }),
+    // Emit one activity row per real transition (fire-and-forget → DB).
+    const ROLE_LABEL_MI = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'Compliance' };
+    const patientAfter = useAppStore.getState().hccMembers.find(m => m.id === patientId);
+    const actorName = opts.actor === 'current-user' ? 'You' : (opts.actor || 'You');
+    roleDiffs.forEach(({ role, kind, from, to }) => {
+      if (kind === 'status') {
+        useAppStore.getState().logHccActivity?.({
+          eventName: 'role.status_changed',
+          scope:     { patientId, dos: dosDate, source: 'manual' },
+          payload:   {
+            actor: actorName,
+            roleLabel: ROLE_LABEL_MI[role] || role,
+            status: to,
+            patientName: patientAfter?.name,
+            transitionKind: 'initializeManualDos',
+          },
+        });
+      } else {
+        const staffName = hccStaffById(to)?.name || to;
+        useAppStore.getState().logHccActivity?.({
+          eventName: 'assignee.changed',
+          scope:     { patientId, dos: dosDate, source: 'manual' },
+          payload:   {
+            actor: actorName,
+            roleLabel: ROLE_LABEL_MI[role] || role,
+            fromName: from ? (hccStaffById(from)?.name || from) : null,
+            toName: staffName,
+            patientName: patientAfter?.name,
+            transitionKind: 'initializeManualDos',
+          },
+        });
+      }
+    });
+  },
 
   // Generic dispatcher — `kind` corresponds to a lifecycle.js export. Each
   // call rebuilds `hccDosAssignments` immutably. UI components use the named

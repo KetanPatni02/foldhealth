@@ -85,6 +85,7 @@ export const EVENTS = {
   'worklist.row_merged':               E('worklist', 'info',    p => tpl('Approved encounter folded into existing DOS {dos} for {patientName}.', p)),
   'assignee.changed':                  E('worklist', 'info',    p => tpl('{roleLabel} reassigned from {fromName} to {toName} for {patientName}.', p)),
   'role.status_changed':               E('worklist', 'info',    p => tpl('{roleLabel} status for {patientName} changed to {status}.', p)),
+  'dos.deleted':                       E('worklist', 'warning', p => tpl('{actor} deleted DOS {dos} for {patientName}.', p)),
 
   // ICD operations (mirrors existing DiagPanel ActivityTab events)
   'icd.accepted':                      E('icd',      'success', p => tpl('{actor} accepted ICD {icd} for {patientName}.', p)),

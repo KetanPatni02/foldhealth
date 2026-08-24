@@ -155,10 +155,15 @@ export function FilterChipBar({
     return keys;
   }, [filters, moreFilterItems]);
 
-  // Toggle a chip's visibility from the More Filters popover. Base = the
-  // caller-persisted set if present; otherwise primary set (auto-fit's seed).
-  const toggleVisible = (k) => {
-    const next = new Set(storedVisible ?? primaryFilterKeys);
+  // Toggle a chip's visibility from the More Filters popover. Base priority:
+  //   1. The user's persisted custom set (they've customized before).
+  //   2. Whatever FilterBar is *currently* showing after auto-fit narrowed
+  //      the row (passed in as `currentVisible`) — so toggling one chip on
+  //      only reveals that chip, not every hidden primary at once.
+  //   3. Primary set (very first open, before auto-fit measured anything).
+  const toggleVisible = (k, currentVisible) => {
+    const base = storedVisible ?? currentVisible ?? primaryFilterKeys;
+    const next = new Set(base);
     if (next.has(k)) next.delete(k); else next.add(k);
     setVisibleFilterKeys([...next]);
   };
