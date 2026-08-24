@@ -224,6 +224,13 @@ function persistHccGapDelete(code, memberName) {
 // carry its own workflow state, and this makes the row survive reload.
 // Fire-and-forget; failures log a warning without rolling back the state
 // change (the row still shows in-session).
+//
+// The app reads hcc_members plus its normalized child tables
+// (hcc_member_visits / hcc_member_documents) and rebuilds the legacy
+// fat-row shape in fetchHccMembers. The base table has no age,
+// dos_list, or doc_status columns — writing those here failed outright
+// (PGRST204), so spawned rows never persisted. Scalar fields go to
+// hcc_members; DOS entries are seeded into hcc_member_visits.
 function persistHccMemberInsert(m) {
   if (!m?.id) return;
   const dbRow = {
@@ -235,14 +242,11 @@ function persistHccMemberInsert(m) {
     name: m.name,
     initials: m.in,
     gender: m.g,
-    age: m.age,
     current_visit: m.cv,
     total_visits: m.tv,
-    dos_list: m.dos_list || [],
     visit_type: m.visitType || m.vt,
     rendering_provider: m.rp,
     open_icds: m.open,
-    doc_status: m.docStatus || [],
     chart_count: m.ch,
     create_date: m.date,
     due_label: m.due,
@@ -266,32 +270,94 @@ function persistHccMemberInsert(m) {
     is_spawned: true,
   };
   supabase.from('hcc_members').insert(dbRow).then(({ error }) => {
-    if (error) reportPersistFailure(`persistHccMemberInsert(${m.id})`, error);
+    if (error) return reportPersistFailure(`persistHccMemberInsert(${m.id})`, error);
+    // Seed the normalized DOS rows so fetchHccMembers rebuilds dos_list
+    // after a reload.
+    const visits = (m.dos_list || []).map((d, i) => ({
+      member_id: m.id,
+      dos_date: toPgDate(d.date),
+      status_label: d.label ?? null,
+      status_color: d.labelColor ?? null,
+      visit_index: i,
+    }));
+    if (!visits.length) return;
+    supabase.from('hcc_member_visits').insert(visits).then(({ error: vErr }) => {
+      if (vErr) reportPersistFailure(`persistHccMemberInsert.visits(${m.id})`, vErr);
+    });
   });
 }
 
-// Persist a member's dos_list / docStatus / chart_count / other non-role
-// mutations to Supabase. hccCreateOrMergeFromEncounter appends new DOS
-// rows and stamps other member-level metadata; without this write those
-// mutations reverted on reload. Fire-and-forget.
+// Accepts 'YYYY-MM-DD' (what SelectNewDosPopover emits) or 'MM/DD/YYYY'
+// (legacy in-memory dos entries) and returns a Postgres date literal.
+function toPgDate(d) {
+  const s = String(d || '');
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (!m) return null;
+  const [, mm, dd, yyyy] = m;
+  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+}
+
+// Persist a member's dos_list / docStatus / chart_count mutations to
+// Supabase. hccCreateOrMergeFromEncounter appends new DOS rows and stamps
+// other member-level metadata; without this write those mutations reverted
+// on reload. Fire-and-forget.
+//
+// Reads assemble dos_list from hcc_member_visits and doc_status from
+// hcc_member_documents (see fetchHccMembers) — the base table has no such
+// columns, so each shape is synced into its child table
+// (replace-all per member; entries carry no identity beyond position).
 function persistHccMemberDetails(memberId) {
   if (!memberId) return;
   const m = useAppStore.getState().hccMembers.find(x => x.id === memberId);
   if (!m) return;
-  const patch = {
-    dos_list:    m.dos_list || [],
-    doc_status:  m.docStatus || [],
-    chart_count: m.ch ?? null,
-    open_icds:   m.open ?? null,
-  };
   supabase
     .from('hcc_members')
-    .update(patch)
+    .update({ chart_count: m.ch ?? null, open_icds: m.open ?? null })
     .eq('id', memberId)
     .select('id')
     .then(({ data, error }) => {
       if (error) return reportPersistFailure(`persistHccMemberDetails(${memberId})`, error);
       if (!data || data.length === 0) reportPersistFailure(`persistHccMemberDetails(${memberId})`, { message: 'affected 0 rows (spawned row never persisted?)' });
+    });
+
+  // DOS list → hcc_member_visits (replace-all).
+  supabase
+    .from('hcc_member_visits')
+    .delete()
+    .eq('member_id', memberId)
+    .then(({ error }) => {
+      if (error) return reportPersistFailure(`persistHccMemberDetails.visits.delete(${memberId})`, error);
+      const visits = (m.dos_list || []).map((d, i) => ({
+        member_id: memberId,
+        dos_date: toPgDate(d.date),
+        status_label: d.label ?? null,
+        status_color: d.labelColor ?? null,
+        visit_index: i,
+      }));
+      if (!visits.length) return;
+      supabase.from('hcc_member_visits').insert(visits).then(({ error: insErr }) => {
+        if (insErr) reportPersistFailure(`persistHccMemberDetails.visits.insert(${memberId})`, insErr);
+      });
+    });
+
+  // Doc status → hcc_member_documents (replace-all; entry = status string
+  // indexed by document position).
+  supabase
+    .from('hcc_member_documents')
+    .delete()
+    .eq('member_id', memberId)
+    .then(({ error }) => {
+      if (error) return reportPersistFailure(`persistHccMemberDetails.docs.delete(${memberId})`, error);
+      const docs = (m.docStatus || []).map((status, i) => ({
+        member_id: memberId,
+        doc_index: i,
+        status,
+      }));
+      if (!docs.length) return;
+      supabase.from('hcc_member_documents').insert(docs).then(({ error: insErr }) => {
+        if (insErr) reportPersistFailure(`persistHccMemberDetails.docs.insert(${memberId})`, insErr);
+      });
     });
 }
 
@@ -2263,7 +2329,7 @@ export const useAppStore = create((set, get) => ({
     }
 
     const [hcc, awv, ccm, snp, jsa, pts] = await Promise.all([
-      supabase.from('hcc_members_v2').select('id, member_id'),
+      supabase.from('hcc_members').select('id, member_id'),
       supabase.from('awv_members').select('id, member_id'),
       supabase.from('ccm_worklist_members').select('id, member_id'),
       supabase.from('snp_worklist_members').select('id, member_id'),
@@ -5119,15 +5185,20 @@ export const useAppStore = create((set, get) => ({
     };
 
     set({ hccMembersLoading: true });
-    // Reads the compatibility view that rebuilds the pre-normalization JSON
-    // shape (dos_list / doc_status) on top of the new normalized child tables
-    // (hcc_member_visits / hcc_member_documents). See
-    // supabase/hcc_schema_v2_types_and_normalization.sql.
-    const { data, error } = await supabase
-      .from('hcc_members_v2')
-      .select('*')
+    // Reads the base table plus the normalized child tables and rebuilds the
+    // legacy fat-row shape (dos_list / doc_status / gap counters) in JS —
+    // byte-for-byte what the retired hcc_members_v2 compatibility view used
+    // to return. The view was dropped so no writer can ever mistake it for a
+    // writable table again (it rejected writes to its derived columns).
+    const [membersRes, visitsRes, docsRes, gapsRes] = await Promise.all([
       // SLA default: oldest Created Date first (closest to breaching the window).
-      .order('create_date', { ascending: true });
+      supabase.from('hcc_members').select('*').order('create_date', { ascending: true }),
+      supabase.from('hcc_member_visits').select('member_id, dos_date, status_label, status_color, visit_index').order('visit_index'),
+      supabase.from('hcc_member_documents').select('member_id, doc_index, status').order('doc_index'),
+      supabase.from('hcc_diagnosis_gaps').select('member_name, last_activity'),
+    ]);
+    const data = membersRes.data;
+    const error = membersRes.error || visitsRes.error || docsRes.error || gapsRes.error;
     // fetchHccMembers is called unguarded from several surfaces (worklist,
     // TopBar, home card, patient detail). If a LATER call transiently errors
     // or returns empty, we must NOT overwrite already-loaded real rows with
@@ -5179,9 +5250,47 @@ export const useAppStore = create((set, get) => ({
       return `${years}y ${months}m`;
     };
     const _num = (v) => (v == null || v === '' ? null : Number(v));
+
+    // Rebuild the per-member shapes the view used to expose:
+    //   dos_list    ← hcc_member_visits (visit_index order, date as MM/DD/YYYY)
+    //   doc_status  ← hcc_member_documents (doc_index order, status strings)
+    //   gap counters← hcc_diagnosis_gaps grouped by member_name (the gaps
+    //                 table predates member_id; seeded rows carry only name).
+    const dosByMember = new Map();
+    for (const v of visitsRes.data || []) {
+      if (!v?.member_id) continue;
+      const list = dosByMember.get(v.member_id) || [];
+      list.push({
+        date: _isoToMdy(v.dos_date),
+        label: v.status_label ?? null,
+        labelColor: v.status_color ?? null,
+      });
+      dosByMember.set(v.member_id, list);
+    }
+    const docsByMember = new Map();
+    for (const d of docsRes.data || []) {
+      if (!d?.member_id || d.status == null) continue;
+      const list = docsByMember.get(d.member_id) || [];
+      list.push(d.status);
+      docsByMember.set(d.member_id, list);
+    }
+    const gapAggByMemberName = new Map();
+    for (const g of gapsRes.data || []) {
+      if (!g?.member_name) continue;
+      const cur = gapAggByMemberName.get(g.member_name) || { count: 0, last: null };
+      cur.count += 1;
+      // Guard the null seed explicitly: '2025-…' > 'null' is false ('2' < 'n'),
+      // so a bare string compare would never set the first value.
+      if (g.last_activity && (!cur.last || String(g.last_activity) > String(cur.last))) {
+        cur.last = g.last_activity;
+      }
+      gapAggByMemberName.set(g.member_name, cur);
+    }
+
     const members = (data || []).map(row => {
       const mock = HCC_MEMBER_BY_NAME[row.name] || {};
-      const dosList = (row.dos_list && row.dos_list.length) ? row.dos_list : (mock.dos_list || []);
+      const stitchedDos = dosByMember.get(row.id) || [];
+      const dosList = stitchedDos.length ? stitchedDos : (mock.dos_list || []);
       // Provider, Visit Type / POS and the Open-ICD count are mandatory at
       // record creation, so a worklist row must never render them empty. Fall
       // back to the local mock (by name), then to a sensible default.
@@ -5208,7 +5317,7 @@ export const useAppStore = create((set, get) => ({
           ? `${row.current_visit ?? mock.cv} of ${row.total_visits ?? mock.tv} Visits`
           : null,
         ch: row.chart_count ?? mock.ch ?? null,
-        docStatus: (row.doc_status && row.doc_status.length) ? row.doc_status : (mock.docStatus || []),
+        docStatus: (docsByMember.get(row.id)?.length) ? docsByMember.get(row.id) : (mock.docStatus || []),
         open: openIcds,
         // create_date arrives as ISO 'YYYY-MM-DD'; downstream normalizeWorklistRow
         // and the hccDosAssignments map both key off MM/DD/YYYY, so convert once
@@ -5242,15 +5351,15 @@ export const useAppStore = create((set, get) => ({
         // The DiagPanel uses it to skip the name-keyed mock ICD fallback
         // (which would leak the source patient's ICDs into the new row).
         isSpawned: row.is_spawned === true,
-        // v3 filter-backing fields — contact, gap-count/last-activity, and
-        // per-role Assigned/Completion timestamps. All arrive via the
-        // hcc_members_v2 view; timestamps come back as ISO strings.
+        // v3 filter-backing fields — contact, gap-count/last-activity (from
+        // the hcc_diagnosis_gaps aggregation above), and per-role
+        // Assigned/Completion timestamps. Timestamps come back as ISO strings.
         city:  row.city,
         state: row.state,
         tin:   row.tin,
-        hccG:  row.hcc_gap_count ?? null,
-        gaps:  row.hcc_gap_count ?? null,          // "No. Of Gaps" mirrors the count
-        lgaD:  row.last_gap_activity || null,       // "MM/DD/YYYY" ISO date
+        hccG:  gapAggByMemberName.get(row.name)?.count ?? null,
+        gaps:  gapAggByMemberName.get(row.name)?.count ?? null,  // "No. Of Gaps" mirrors the count
+        lgaD:  gapAggByMemberName.get(row.name)?.last || null,   // "YYYY-MM-DD" ISO date
         supAD: row.support_assigned_at    || null,
         supCD: row.support_completed_at   || null,
         cdrAD: row.coder_assigned_at      || null,
