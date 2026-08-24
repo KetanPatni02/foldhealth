@@ -1,17 +1,21 @@
 /* Fold Health Textarea — multi-line input that matches <Input>'s design
-   tokens (border, radius, font, focus ring) so they can sit side by side. */
+   tokens (border, radius, font, focus ring) so they can sit side by side.
+   Also carries the enhanced "labeled card" layout from Figma
+   Fold-Pixel 5786:1273 — label row, richText toolbar, counter, and
+   supporting-text helper. */
 
+/* ── Plain textarea (legacy shape) ──────────────────────────────────── */
 .textarea {
   width: 100%;
   min-height: 72px;
-  padding: 8px;
+  padding: var(--space-2);
   border: 0.5px solid var(--neutral-150);
   border-radius: 6px;
   background: var(--neutral-0);
   font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   outline: none;
   resize: vertical;
   transition: border-color .15s, box-shadow .15s;
@@ -24,7 +28,7 @@
 
 .textarea:focus {
   border-color: var(--primary-300);
-  box-shadow: 0 0 0 2px rgba(140, 90, 226, 0.12);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-300) 12%, transparent);
 }
 
 .textarea::placeholder {
@@ -46,5 +50,263 @@
 
 .textareaError:focus {
   border-color: var(--status-error);
-  box-shadow: 0 0 0 2px rgba(215, 40, 37, 0.12);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-error) 12%, transparent);
+}
+
+/* ── Enhanced labeled card layout (Figma 5786:1273) ─────────────────── */
+
+.enhRoot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+/* Label row — Title + optional info icon + optional red asterisk. */
+.enhLabelRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.enhLabel {
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: var(--leading-tight);
+}
+.enhInfo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+}
+/* Mandatory indicator — Figma uses a 4×4 red dot next to the label, same
+   as <Input>'s `required` treatment (Input.module.css `.required`). */
+.enhRequired {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+
+/* Card that wraps the editor body + optional footer toolbar. Flex column
+   so the body fills the drag-resized height and the footer stays fixed
+   at its intrinsic height. Vertical resize on the wrap gives the native
+   drag handle in the bottom-right corner and grows the body region only
+   — mirrors the "drag handle" affordance in Figma 5786:1273. */
+.enhWrap {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-0);
+  transition: border-color .15s, box-shadow .15s, background-color .15s;
+  overflow: hidden;
+  resize: vertical;
+  min-height: 96px;
+}
+.enhWrap:hover {
+  border-color: var(--neutral-200);
+}
+.enhFocused {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-300) 12%, transparent);
+}
+.enhError {
+  border-color: var(--status-error);
+  background: var(--status-error-light);
+}
+.enhError.enhFocused {
+  border-color: var(--status-error);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--status-error) 12%, transparent);
+}
+.enhDisabled {
+  background: var(--neutral-50);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Body — plain <textarea> in default mode, contentEditable in richText.
+   Fills the resizable card so growing the wrap grows the writable area.
+   The character counter is anchored to the body's bottom-right, so with
+   `flex: 1` it always sits flush against the footer (or the wrap's own
+   bottom edge when the footer isn't rendered). */
+.enhBody {
+  position: relative;
+  padding: var(--space-2);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.enhTextarea {
+  width: 100%;
+  height: 100%;
+  min-height: 60px;
+  border: none;
+  outline: none;
+  padding: 0;
+  background: transparent;
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: var(--leading-normal);
+  /* Card owns the drag handle now; the native textarea one would sit
+     inside the card and duplicate the affordance. */
+  resize: none;
+  box-sizing: border-box;
+}
+.enhTextarea::placeholder {
+  color: var(--neutral-200);
+}
+.enhTextarea:disabled {
+  cursor: not-allowed;
+  color: var(--neutral-300);
+}
+.enhEditor {
+  min-height: 60px;
+  height: 100%;
+  padding: 0;
+  outline: none;
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: var(--leading-normal);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.enhEditor[data-empty='true']::before {
+  content: attr(data-placeholder);
+  color: var(--neutral-200);
+  pointer-events: none;
+}
+
+/* Character counter — bottom-right of the body, above the footer divider. */
+.enhCounter {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  pointer-events: none;
+}
+
+/* Footer — thin top-divider, formatting buttons flow left, primary CTA
+   and speech-to-text pin to the right. */
+.enhFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  flex-shrink: 0;
+}
+.enhToolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.enhToolbarDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-1);
+}
+.enhFooterEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Icon-only toolbar button — neutral idle, primary-tinted hover, primary
+   filled state via `data-tone='primary'` (used by Speech-to-Text). */
+.enhToolbarBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neutral-300);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color .12s, color .12s;
+}
+.enhToolbarBtn:hover:not(:disabled) {
+  background: var(--neutral-50);
+  color: var(--neutral-400);
+}
+.enhToolbarBtn:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 1px;
+}
+.enhToolbarBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.enhToolbarBtn[data-tone='primary'] {
+  color: var(--primary-300);
+}
+.enhToolbarBtn[data-tone='primary']:hover:not(:disabled) {
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+
+/* Inline mention chip — contenteditable="false" atom the browser jumps
+   over with arrow keys and deletes as a unit. */
+.mentionChip {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: baseline;
+  user-select: all;
+}
+
+/* Portaled @mention picker — anchored under (or above) the editor. */
+.mentionMenu {
+  position: fixed;
+  z-index: 9800;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+  padding: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.mentionItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  background: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+}
+.mentionItem:hover,
+.mentionItemActive { background: var(--neutral-50); }
+.mentionName { flex: 1; }
+.mentionRole { font-size: var(--font-sm); color: var(--neutral-300); }
+
+/* Supporting text — helper below the card. Error state re-tints it red. */
+.enhSupporting {
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: var(--leading-tight);
+}
+.enhSupportingError {
+  color: var(--status-error);
 }

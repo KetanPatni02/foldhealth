@@ -1,7 +1,7 @@
 import { AssigneeChange } from './AssigneeChange';
 
 export default {
-  title: 'Data/AssigneeChange',
+  title: 'Core/Assignee',
   component: AssigneeChange,
   tags: ['autodocs'],
   parameters: {

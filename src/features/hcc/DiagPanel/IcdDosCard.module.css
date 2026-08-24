@@ -168,6 +168,17 @@
   flex-shrink: 0;
   min-width: 78px;
 }
+/* Wraps the DOS date + D/C/M source badge so the gap between them is
+   fixed at 6px, independent of the row's 8px flex gap between this group
+   and the neighbouring Claim link / row-actions cluster. */
+.dosDateGroup {
+  display: inline-flex;
+  align-items: center;
+  /* 6px — no --space token lands there; a 1.5× multiple of --space-1
+     (4px) keeps the value inside the token system without a raw px. */
+  gap: calc(var(--space-1) * 1.5);
+  flex-shrink: 0;
+}
 .hccChip {
   display: inline-flex;
   align-items: center;

@@ -215,6 +215,8 @@
 .srcClaims { border-color: var(--primary-200);   background: var(--primary-50);   color: var(--primary-300); }
 .srcManual { border-color: var(--secondary-200); background: var(--secondary-50); color: var(--secondary-300); }
 .dosSrcBadge:focus-visible { box-shadow: 0 0 0 2px var(--primary-100); }
+.dosSrcBadgeClickable { cursor: pointer; }
+.dosSrcBadgeClickable:hover { filter: brightness(0.97); }
 
 /* Hover tooltip — source of the encounter + its date. */
 .dosSrcTip {
@@ -227,10 +229,25 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   box-shadow: var(--shadow-popover);
-  pointer-events: none;
+  /* Interactive: the tooltip carries a clickable claim-number link, so it
+     must accept the pointer. Previously locked to `none` when the tooltip
+     was purely informational — the hover-persist logic relies on this
+     picking up mouseenter to cancel the close timer. */
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+/* Invisible hover-bridge across the 6px gap between the badge and the
+   tooltip — without it, moving the pointer straight down out of the
+   badge briefly hits the empty gap and closes the popover. */
+.dosSrcTip::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 8px;
 }
 .dosSrcTipHead {
   display: inline-flex;
@@ -241,6 +258,24 @@
 }
 .dosSrcTipMeta { font: 400 11px/1.3 'Inter', sans-serif; color: var(--neutral-300); }
 .dosSrcTipDate { font: 500 11px/1.3 'Inter', sans-serif; color: var(--neutral-400); margin-top: 2px; }
+
+/* Claim-number link inside the C-badge tooltip. Reads as a link (primary
+   colour + underline on hover) with a trailing chevron so users know the
+   number itself opens the Claim Preview drawer. */
+.dosSrcTipClaimLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  font: 600 12px/1.2 'Inter', sans-serif;
+  color: var(--primary-300);
+  cursor: pointer;
+  align-self: flex-start;
+}
+.dosSrcTipClaimLink:hover { text-decoration: underline; }
+.dosSrcTipClaimLink:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; border-radius: 4px; }
 .posText {
   font: 400 14px/1.3 'Inter', sans-serif;
   color: var(--neutral-300);

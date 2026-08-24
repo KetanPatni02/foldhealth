@@ -1,110 +1,153 @@
 import { useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Drawer } from '../../components/Drawer/Drawer';
-import { Avatar } from '../../components/Avatar/Avatar';
-import { Icon } from '../../components/Icon/Icon';
 import { Badge } from '../../components/Badge/Badge';
+import { Button } from '../../components/Button/Button';
+import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
+import { deriveClaimId } from './claimId';
 import { getIcdsForMember } from './data/icds';
 import styles from './ClaimPreviewDrawer.module.css';
 
+// Mirror the Claim Details layout that lives inline inside the DiagPanel
+// Claims tab (Figma 10891:325889) so hopping between the two surfaces
+// reads the same. Sections:
+//   Claim Information (Claims Number / Submission Date / Date of Service
+//     + status badge)
+//   Rendering Provider (Name / NPI / Speciality)
+//   CPT Procedure Codes (2-col table)
+//   ICD Codes on Claim (2-col table)
+//
+// Status → badge variant. Keep in sync with the DiagPanel version so a
+// "Paid" claim reads the same in the tab and in this drawer.
+const CLAIM_STATUS_BADGE = {
+  Paid:     'status-completed',
+  Pending:  'status-queued',
+  Billed:   'status-scheduled',
+  Denied:   'status-failed',
+  Rejected: 'status-failed',
+};
+
 /**
  * Read-only preview of the claim that generated a DOS record on the HCC
- * worklist. Opens when the user clicks a claim-sourced DOS date in the
- * DOS column.
+ * worklist. Opens when the user clicks a claim-sourced (C) DOS badge in
+ * the DOS column or the claim-number link inside the badge tooltip.
  *
  * Reads `hccClaimPreview = { open, member, dosDate }` from the store.
- * Composed from the existing Drawer primitive so width / inset / header
+ * Composed from the shared Drawer primitive so width / inset / header
  * spacing stays consistent with the other right-side drawers.
  */
 export function ClaimPreviewDrawer() {
   const { open, member, dosDate } = useAppStore(s => s.hccClaimPreview);
   const close = useAppStore(s => s.closeHccClaimPreview);
+  const openDiagPanel = useAppStore(s => s.openDiagPanel);
 
-  // Build a representative claim object from the member/DOS so the drawer
-  // has something to render. In production this would come from the claims
-  // service.
-  const claim = useMemo(() => buildMockClaim(member, dosDate), [member, dosDate]);
+  const claim = useMemo(() => buildClaim(member, dosDate), [member, dosDate]);
 
   if (!open || !member) return null;
+
+  // "View Gaps" hand-off — closes this drawer and opens the DiagPanel for
+  // the member, pinned to this DOS. Gap context lives in the DiagPanel;
+  // the button below is the explicit entry point from this claim view.
+  const viewGaps = () => {
+    close();
+    openDiagPanel(member.id, { initialDos: dosDate, leftPanel: 'documents' });
+  };
 
   return (
     <Drawer
       title="Claim Preview"
       onClose={close}
+      noCloseDivider
       headerRight={(
-        <span className={styles.claimIdChip} title="Claim ID">
-          <Icon name="solar:hashtag-linear" size={12} color="var(--neutral-300)" />
-          {claim.claimId}
-        </span>
+        <>
+          <Button
+            variant="tertiary"
+            size="S"
+            leadingIcon="solar:document-medicine-linear"
+            onClick={viewGaps}
+          >
+            View Gaps
+          </Button>
+          <span className={styles.headerDivider} aria-hidden="true" />
+        </>
+      )}
+      banner={(
+        // Full-bleed banner slot — hugs the drawer edges (no side padding),
+        // treated as its own entity above the padded Claim Details body.
+        <PatientBanner
+          initials={member.in}
+          name={member.name}
+          gender={member.g === 'M' ? 'Male' : member.g === 'F' ? 'Female' : member.g}
+          age={member.age || ''}
+          dob={member.dob}
+          memberId={member.memberId || `#${member.id}`}
+          raf={member.raf}
+          rafChange={member.ri}
+          rafUp={member.ru !== false}
+        />
       )}
     >
       <div className={styles.body}>
-        <SectionPatientHeader member={member} />
+        <section className={styles.claimSection}>
+          <div className={styles.claimSectionHead}>
+            <span className={styles.claimSectionTitle}>Claim Information</span>
+            <Badge size="M" variant={CLAIM_STATUS_BADGE[claim.status] || 'status-scheduled'} label={claim.status} />
+          </div>
+          <div className={styles.claimInfoGrid}>
+            <ClaimField label="Claims Number" value={claim.number} />
+            <ClaimField label="Submission Date" value={claim.submissionDate} />
+            <ClaimField label="Date of Service" value={claim.dos} />
+          </div>
+        </section>
 
-        <Section title="Service">
-          <Field label="Date of Service" value={claim.dos} mono />
-          <Field label="Place of Service" value={`${claim.posCode} · ${claim.posDesc}`} />
-          <Field label="Visit Type" value={claim.visitType} />
-          <Field label="Rendering Provider" value={claim.renderingProvider} />
-          <Field label="Billing Provider TIN" value={claim.tin} mono />
-        </Section>
+        <section className={styles.claimSection}>
+          <div className={styles.claimSectionHead}>
+            <span className={styles.claimSectionTitle}>Rendering Provider</span>
+          </div>
+          <div className={styles.claimInfoGrid}>
+            <ClaimField label="Name" value={claim.provider.name} />
+            <ClaimField label="NPI" value={claim.provider.npi} />
+            <ClaimField label="Speciality" value={claim.provider.speciality} />
+          </div>
+        </section>
 
-        <Section title="Diagnoses">
-          {claim.diagnoses.length === 0 && <p className={styles.empty}>No diagnoses on this claim.</p>}
-          {claim.diagnoses.map((d, idx) => (
-            <div key={d.code} className={styles.diagRow}>
-              <span className={styles.diagIndex}>{String.fromCharCode(65 + idx)}</span>
-              <span className={styles.diagCode}>{d.code}</span>
-              <span className={styles.diagDesc}>{d.description}</span>
-              {d.hcc && <span className={styles.hccChip}>{d.hcc}</span>}
-            </div>
-          ))}
-        </Section>
-
-        <Section title="Procedures">
-          <table className={styles.proceduresTable}>
+        <section className={styles.claimSection}>
+          <div className={styles.claimSectionHead}>
+            <span className={styles.claimSectionTitle}>CPT Procedure Codes</span>
+          </div>
+          <table className={styles.claimCodeTable}>
             <thead>
-              <tr>
-                <th>CPT</th>
-                <th>Description</th>
-                <th>Mod</th>
-                <th className={styles.alignRight}>Units</th>
-                <th className={styles.alignRight}>Billed</th>
-                <th className={styles.alignRight}>Allowed</th>
-              </tr>
+              <tr><th>CPT Codes</th><th>Description</th></tr>
             </thead>
             <tbody>
-              {claim.procedures.map((p, i) => (
-                <tr key={i}>
-                  <td className={styles.mono}>{p.cpt}</td>
-                  <td>{p.description}</td>
-                  <td className={styles.mono}>{p.modifier || '—'}</td>
-                  <td className={`${styles.mono} ${styles.alignRight}`}>{p.units}</td>
-                  <td className={`${styles.mono} ${styles.alignRight}`}>${p.billed.toFixed(2)}</td>
-                  <td className={`${styles.mono} ${styles.alignRight}`}>${p.allowed.toFixed(2)}</td>
+              {claim.cpts.map((p) => (
+                <tr key={p.cpt}>
+                  <td className={styles.claimCode}>{p.cpt}</td>
+                  <td className={styles.claimCodeDesc}>{p.description}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </Section>
+        </section>
 
-        <Section title="Financials">
-          <div className={styles.financialsGrid}>
-            <Field label="Total Billed" value={`$${claim.totals.billed.toFixed(2)}`} mono />
-            <Field label="Total Allowed" value={`$${claim.totals.allowed.toFixed(2)}`} mono />
-            <Field label="Paid" value={`$${claim.totals.paid.toFixed(2)}`} mono />
-            <Field label="Patient Resp." value={`$${claim.totals.patientResp.toFixed(2)}`} mono />
+        <section className={styles.claimSection}>
+          <div className={styles.claimSectionHead}>
+            <span className={styles.claimSectionTitle}>ICD Codes on Claim</span>
           </div>
-        </Section>
-
-        <Section title="Status">
-          <div className={styles.statusRow}>
-            <Badge size="M" variant={claim.statusVariant} label={claim.status} />
-            <span className={styles.statusMeta}>
-              {claim.statusMeta}
-            </span>
-          </div>
-        </Section>
+          <table className={styles.claimCodeTable}>
+            <thead>
+              <tr><th>ICD Codes</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              {claim.icds.map((d) => (
+                <tr key={d.code}>
+                  <td className={styles.claimCode}>{d.code}</td>
+                  <td className={styles.claimCodeDesc}>{d.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
       </div>
     </Drawer>
   );
@@ -112,84 +155,38 @@ export function ClaimPreviewDrawer() {
 
 // ── Small composition helpers (kept local — single-use UI) ─────────────
 
-function SectionPatientHeader({ member }) {
+function ClaimField({ label, value }) {
   return (
-    <div className={styles.patientHeader}>
-      <Avatar variant="patient" initials={member.in} size={36} />
-      <div>
-        <div className={styles.patientName}>
-          {member.name}{' '}
-          <span className={styles.patientDemo}>({member.g} · {member.age})</span>
-        </div>
-        <div className={styles.patientMeta}>
-          {member.memberId || member.id} · {(member.language || 'EN').toUpperCase()}
-        </div>
-      </div>
+    <div className={styles.claimField}>
+      <span className={styles.claimFieldLabel}>{label}</span>
+      <span className={styles.claimFieldValue}>{value || '—'}</span>
     </div>
   );
 }
 
-function Section({ title, children }) {
-  return (
-    <section className={styles.section}>
-      <h3 className={styles.sectionTitle}>{title}</h3>
-      <div className={styles.sectionBody}>{children}</div>
-    </section>
-  );
-}
-
-function Field({ label, value, mono = false }) {
-  return (
-    <div className={styles.field}>
-      <span className={styles.fieldLabel}>{label}</span>
-      <span className={`${styles.fieldValue}${mono ? ` ${styles.mono}` : ''}`}>{value || '—'}</span>
-    </div>
-  );
-}
-
-// ── Mock claim shape — replace with a real fetch when claims service lands.
-function buildMockClaim(member, dosDate) {
-  if (!member) return { diagnoses: [], procedures: [], totals: {} };
-
-  // Diagnoses — reuse the ICD fixture so codes look real for this patient.
-  // (The fixture uses `desc` not `description` and `hcc` already includes
-  //  the "HCC " prefix, so we forward both verbatim.)
+// ── Mock claim shape — replace with a real fetch when the claims service
+// lands. Uses the shared `deriveClaimId` so the number rendered here
+// matches the one shown in the DOS-source badge tooltip.
+function buildClaim(member, dosDate) {
+  if (!member) return { cpts: [], icds: [], provider: {} };
   const allIcds = getIcdsForMember(member.name) || [];
-  const diagnoses = allIcds.slice(0, 4).map(i => ({
-    code: i.code,
-    description: i.desc,
-    hcc: i.hcc,
-  }));
-
-  // Procedures — fixed mock that covers a typical office encounter.
-  const procedures = [
-    { cpt: '99214', description: 'Office/outpatient visit, established patient', modifier: '25', units: 1, billed: 175.0, allowed: 109.0 },
-    { cpt: '93000', description: 'Electrocardiogram, complete', modifier: '',   units: 1, billed: 65.0,  allowed: 22.5  },
-    { cpt: 'G0438', description: 'Annual wellness visit',                       modifier: '',   units: 1, billed: 250.0, allowed: 173.0 },
+  const icds = allIcds.slice(0, 5).map(i => ({ code: i.code, description: i.desc }));
+  const cpts = [
+    { cpt: '99285', description: 'Emergency department visit, high severity' },
+    { cpt: '93005', description: 'Electrocardiogram, tracing only' },
+    { cpt: '80048', description: 'Basic metabolic panel' },
   ];
-
-  const billed  = procedures.reduce((s, p) => s + p.billed, 0);
-  const allowed = procedures.reduce((s, p) => s + p.allowed, 0);
-  const paid    = allowed * 0.8;
-  const patientResp = allowed - paid;
-
-  // Deterministic claim id — same DOS always shows the same number so the
-  // chip doesn't churn between opens.
-  const claimId = `CLM-${(member.id || 'X').slice(-4).toUpperCase()}-${(dosDate || '').replace(/\D/g, '').slice(0, 6) || '000000'}`;
-
   return {
-    claimId,
+    number: deriveClaimId(member.id, dosDate),
     dos: dosDate || member.dos,
-    posCode: member.pos || '11',
-    posDesc: member.posDesc || 'Office',
-    visitType: member.vt || 'Walk-in',
-    renderingProvider: member.rp || '—',
-    tin: member.tin || 'TIN-1003',
-    diagnoses,
-    procedures,
-    totals: { billed, allowed, paid, patientResp },
-    status: 'Paid',
-    statusVariant: 'status-completed',
-    statusMeta: 'Adjudicated by payer · Posted to ledger',
+    submissionDate: dosDate || member.dos,
+    provider: {
+      name: member.rp || 'Dr. Katherine Moss',
+      npi: '555555555',
+      speciality: 'Emergency Medicine',
+    },
+    cpts,
+    icds,
+    status: 'Billed',
   };
 }
