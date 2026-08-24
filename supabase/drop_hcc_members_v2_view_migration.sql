@@ -1,0 +1,16 @@
+-- Drop the hcc_members_v2 compatibility view.
+--
+-- History: when hcc_members was normalized (DOS list → hcc_member_visits,
+-- doc status → hcc_member_documents), this view was added so the app could
+-- keep reading the old fat-row shape. Because it looked like a table, write
+-- paths started targeting it and failed on its derived columns
+-- ("cannot insert into column dos_list of view"), which is how spawned
+-- worklist rows silently vanished on reload.
+--
+-- The app no longer reads it: fetchHccMembers now reads hcc_members plus
+-- the child tables directly and rebuilds the row shape in JS, and all
+-- writes target base/child tables.
+--
+-- Safe to run any time after the store change ships. If any consumer were
+-- missed, this fails loudly rather than leaving a second source of truth.
+DROP VIEW IF EXISTS public.hcc_members_v2;
