@@ -39,6 +39,9 @@ export function useDiagPanel() {
   const spawnedGaps = useAppStore(s => s.hccSpawnedGaps?.[memberId]);
   const showToast = useAppStore(s => s.showToast);
   const hccMembers = useAppStore(s => s.hccMembers);
+  // Logged-in user — snapshotted as the originator on manual +ICD saves so
+  // the new row's reviewer role is pinned to whoever raised the code.
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const addHccGap = useAppStore(s => s.addHccGap);
   const addHccGapNewRow = useAppStore(s => s.addHccGapNewRow);
   const addHccGapToRow = useAppStore(s => s.addHccGapToRow);
@@ -411,11 +414,16 @@ export function useDiagPanel() {
         });
         siblingCount += 1;
       } else {
-        // When QA or Compliance saves a manual +ICD, snapshot the origin
-        // so the DOS skips Support, routes by Visit Type, and returns to
-        // the reviewer on Coder Completed. Pin the current DOS's Coder
-        // onto the new row for continuity.
+        // When QA or Compliance saves a manual +ICD, snapshot the CURRENT
+        // logged-in user as the originator — they raised the code AND own
+        // the initial review, so the new DOS should be pinned to them (not
+        // whoever happened to be on the source DOS's reviewer slot). Falls
+        // back to the source DOS's assignee only when we have no logged-in
+        // profile (dev / anonymous runs).
         const isManualOrigin = actingRole === 'reviewer' || actingRole === 'reviewer2';
+        const originatorId = isManualOrigin
+          ? (currentUserProfile?.id || dosState?.[actingRole]?.assignee || null)
+          : null;
         const newId = addHccGapNewRow({
           sourceMemberId: member?.id,
           code,
@@ -426,7 +434,7 @@ export function useDiagPanel() {
           pos: c.pos,
           visitType: c.visitType,
           originatorRole: isManualOrigin ? actingRole : null,
-          originatorAssignee: isManualOrigin ? (dosState?.[actingRole]?.assignee || null) : null,
+          originatorAssignee: originatorId,
           preferredCoder: isManualOrigin ? (dosState?.coder?.assignee || null) : null,
         });
         if (newId) newRowCount += 1;

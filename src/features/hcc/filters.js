@@ -122,7 +122,7 @@ export const FILTER_DEFS = [
   // (aligned with ROLE_STATUS_OPTIONS in statusSpec.js). Support has no "New"
   // (work arrives already actionable); Coder has record-request states; QA
   // and Compliance share the reviewer flow.
-  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Rebuttal', 'Completed', 'Rejected'] },
+  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Rebuttal', 'Completed', 'Rejected', 'Skipped'] },
   { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['New', 'In Progress', 'Record Received', 'Record Requested', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
   { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
@@ -264,6 +264,7 @@ const SUPPORT_STATUS_MATCH = {
   'Rebuttal':      ['Rebuttal', 'Returned'],
   'Completed':     ['Completed', 'Record Received', 'Records Received'],
   'Rejected':      ['Rejected', 'Reject'],
+  'Skipped':       ['Skipped'],
 };
 
 // All DOS dates a member's row actually renders (one per dos_list entry), so
