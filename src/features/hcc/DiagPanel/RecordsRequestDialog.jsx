@@ -1,19 +1,18 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../../components/ConfirmDialog/AlertDialogPrimitives';
 import { Button } from '../../../components/Button/Button';
 import { Textarea } from '../../../components/Textarea/Textarea';
+import { useAppStore } from '../../../store/useAppStore';
 import styles from './RecordsRequestDialog.module.css';
 
 // Roles a QA / Compliance user can request records FROM. The value is the
 // engine role key that setRoleState / lifecycle.js speak; the label is what
-// the coder sees. Keep the order Coder-first — retrieval requests skew
-// heavily toward coding clarifications.
+// the coder sees. Support Team is listed first so retrieval requests
+// (missing / illegible documents) are the primary path.
 const ROLE_OPTIONS = [
-  { value: 'coder',   label: 'Coder',        description: 'Ask the coder to revisit their ICD/HCC decisions.' },
   { value: 'support', label: 'Support Team', description: 'Ask Support to retrieve or re-upload documentation.' },
+  { value: 'coder',   label: 'Coder',        description: 'Ask the coder to revisit their ICD/HCC decisions.' },
 ];
-
-const COMMENT_MAX = 150;
 
 /**
  * Modal shown when QA / Compliance picks `Record Requested` in the
@@ -25,8 +24,34 @@ const COMMENT_MAX = 150;
 export function RecordsRequestDialog({ onCancel, onConfirm }) {
   const [role, setRole] = useState(null);
   const [comment, setComment] = useState('');
-  const canSubmit = role != null;
-  const clamp = (v) => v.slice(0, COMMENT_MAX);
+  const [mentions, setMentions] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  // Roster for @-mention autocomplete inside the Textarea's richText
+  // editor. Same source as CommentComposer — profiles rows + a fallback
+  // fixture — so mentioning the same colleague in this dialog resolves
+  // to the same profile id downstream.
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
+  const mentionUsers = useMemo(() => {
+    const base = (platformUsers || []).map(u => ({
+      ...u,
+      realProfile: true,
+      initials: u.initials || (u.name || '').split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase(),
+    }));
+    if (!currentUserProfile?.name) return base;
+    if (base.some(u => u.id === currentUserProfile.id || u.name === currentUserProfile.name)) return base;
+    const initials = currentUserProfile.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return [{ id: currentUserProfile.id, name: currentUserProfile.name, initials, realProfile: true }, ...base];
+  }, [platformUsers, currentUserProfile]);
+
+  // Comment is REQUIRED — the destination role needs context on what to
+  // retrieve / revisit, so an empty note used to leave them guessing. The
+  // shared Textarea's richText mode owns the label + mandatory dot +
+  // formatting toolbar + attachment + mention picker; we just read plain
+  // text via onChange's second arg to gate the CTA.
+  const canSubmit = role != null && comment.trim().length > 0;
   return (
     <AlertDialog open onOpenChange={(open) => { if (!open) onCancel?.(); }}>
       <AlertDialogContent className={styles.dialog}>
@@ -64,24 +89,18 @@ export function RecordsRequestDialog({ onCancel, onConfirm }) {
           })}
         </div>
 
-        <div className={styles.commentField}>
-          <label className={styles.commentLabel} htmlFor="records-request-comment">
-            Comment (Optional)
-          </label>
-          <div className={styles.commentBox}>
-            <Textarea
-              id="records-request-comment"
-              rows={3}
-              placeholder="Add a Comment"
-              value={comment}
-              onChange={(e) => setComment(clamp(e.target.value))}
-              maxLength={COMMENT_MAX}
-            />
-            <span className={styles.commentCounter} aria-live="polite">
-              {comment.length}/{COMMENT_MAX}
-            </span>
-          </div>
-        </div>
+        <Textarea
+          title="Comment"
+          mandatory
+          richText
+          attachment
+          mentions
+          mentionUsers={mentionUsers}
+          placeholder="Add a comment, use @ to mention someone"
+          onChange={(_html, plain) => setComment(plain ?? '')}
+          onMentionsChange={setMentions}
+          onAttachmentFiles={(files) => setAttachments(prev => [...prev, ...Array.from(files)])}
+        />
 
         <div className={styles.actions}>
           <Button variant="secondary" size="L" fullWidth onClick={onCancel}>Cancel</Button>
@@ -90,7 +109,12 @@ export function RecordsRequestDialog({ onCancel, onConfirm }) {
             size="L"
             fullWidth
             disabled={!canSubmit}
-            onClick={() => onConfirm({ destinationRole: role, note: comment.trim() })}
+            onClick={() => onConfirm({
+              destinationRole: role,
+              note: comment.trim(),
+              mentions,
+              attachments,
+            })}
           >
             Request Record
           </Button>

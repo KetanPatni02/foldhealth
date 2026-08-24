@@ -11,6 +11,8 @@ import { Button } from '../../../components/Button/Button';
 import { DismissReasonForm } from './DismissReasonForm';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { reviewedByLabel } from '../reviewedBy';
+import { DosSourceBadge } from '../HccWorklistRowParts';
+import { deriveClaimId } from '../claimId';
 import styles from './IcdDosCard.module.css';
 
 /**
@@ -323,7 +325,12 @@ function DosActionRow({
     || (rowRole === 'Support'
       ? 'Support role cannot code ICDs'
       : (reviewLocked ? "Support team hasn't reviewed the documents yet" : null));
+  // Claim-sourced DOS rows open the DiagPanel's built-in Claims tab (left
+  // pane) — mirrors the behaviour of the old inline "Claim" link so the
+  // detail lands in the panel the user is already looking at, not a
+  // separate right-side drawer.
   const openHccClaimForDos = useAppStore(s => s.openHccClaimForDos);
+  const diagMemberId = useAppStore(s => s.diagPanelMemberId);
   const isManual = entry.manual || icd.type === 'Manual';
   const isAccepted = action === 'accepted';
   const isRejected = action === 'rejected';
@@ -384,18 +391,28 @@ function DosActionRow({
             aria-label={`Select ${icd.code} on ${entry.dos}`}
           />
         )}
-        <span className={styles.dosDate}>{entry.dos}</span>
-        {entry.claimed && (
-          <button
-            type="button"
-            className={styles.claimLink}
-            onClick={(e) => { e.stopPropagation(); openHccClaimForDos(entry.dos); }}
-            title={`Open claim for DOS ${entry.dos}`}
-          >
-            Claim
-          </button>
-        )}
-        {isManual && <span className={styles.manualChip}>Manually Added</span>}
+        {/* DOS date + D/C/M badge — grouped in one inline-flex span so the
+            gap between them (6px) stays independent of the row's 8px flex
+            gap between the group and the neighbouring row-actions cluster.
+            Claim-sourced rows: hover the C badge to see the claim number
+            as a clickable link (same tooltip the worklist uses); click
+            either the badge or the number to open the Claims tab inside
+            this DiagPanel — matches the old inline "Claim" link but
+            through the shared source-badge affordance. */}
+        <span className={styles.dosDateGroup}>
+          <span className={styles.dosDate}>{entry.dos}</span>
+          <DosSourceBadge
+            entry={{
+              date: entry.dos,
+              source: isManual ? 'manual' : (entry.claimed ? 'claim' : 'document'),
+            }}
+            hasDoc
+            claimNumber={entry.claimed ? deriveClaimId(diagMemberId, entry.dos) : null}
+            onClick={entry.claimed
+              ? (e) => { e.stopPropagation(); openHccClaimForDos(entry.dos); }
+              : undefined}
+          />
+        </span>
         {isRejected && (
           <DismissReasonHoverLink
             reason={meta?.reason || ''}

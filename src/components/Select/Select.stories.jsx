@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Select } from './Select';
 
 export default {
-  title: 'Forms/Select',
+  title: 'Core/Select',
   component: Select,
   tags: ['autodocs'],
   parameters: {

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { DatePicker } from './DatePicker';
 
 export default {
-  title: 'Forms/DatePicker',
+  title: 'Core/DatePicker',
   component: DatePicker,
   tags: ['autodocs'],
   parameters: {

@@ -111,10 +111,13 @@ export function ChartDetailDrawerViewRightPane(p) {
                     )}
                   </RoleTooltip>
                 ) : (
-                  <button type="button" ref={dmRef} className={styles.dmUnassigned} onClick={openAssign} title="Assign Support Team" aria-label="Assign Support Team">
-                    <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
-                    <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--neutral-300)" />
-                  </button>
+                  <AssigneeChange
+                    ref={dmRef}
+                    unassigned
+                    avatarOnly
+                    onClick={openAssign}
+                    ariaLabel="Assign Support Team"
+                  />
                 )}
                 <span className={styles.vDivider} />
                 <button

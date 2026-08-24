@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Input } from './Input';
 
 export default {
-  title: 'Forms/Input',
+  title: 'Core/Input',
   component: Input,
   tags: ['autodocs'],
   parameters: {

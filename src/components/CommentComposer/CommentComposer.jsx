@@ -150,9 +150,22 @@ function caretAfter(node) {
 
 export function CommentComposer({
   onSubmit,
+  // Fires on every keystroke with the current serialized text + mention list.
+  // Use this when the composer is embedded in a dialog that owns its own
+  // Submit / Cancel buttons and needs live access to the value (e.g. to
+  // enable a required-field CTA or render a character counter).
+  onChange,
   placeholder = 'Add a comment, use @ to mention someone',
   autoFocus = false,
   statusChange = null,
+  // Embedded mode: hide the built-in Comment / Cancel actions so the
+  // wrapping dialog can drive submission from its own footer buttons. The
+  // composer still handles @mentions, keyboard picker, and serialization.
+  hideActions = false,
+  // Soft character cap. When set, further input past the cap is blocked
+  // (via `beforeinput`) and the parent can render a counter using
+  // onChange's text length.
+  maxLength,
 }) {
   const inStatusMode = !!statusChange;
   const editorRef = useRef(null);
@@ -207,11 +220,28 @@ export function CommentComposer({
   const refresh = useCallback(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    setText(serialize(editor));
+    const next = serialize(editor);
+    setText(next);
     setMention(detectMention(editor));
-  }, []);
+    // Notify the parent (embedded mode). Fire outside of setState so the
+    // parent gets the just-computed value rather than the stale one.
+    onChange?.(next, collectMentions(editor));
+  }, [onChange]);
 
   const handleInput = () => refresh();
+  // Block input that would push the serialized body past `maxLength`.
+  // `beforeinput` fires with the pending data so we can veto without a
+  // reset-and-restore of the caret position.
+  const handleBeforeInput = (e) => {
+    if (!maxLength) return;
+    const editor = editorRef.current;
+    if (!editor) return;
+    const inserting = typeof e.data === 'string' ? e.data.length : 0;
+    if (!inserting) return;
+    const remaining = maxLength - serialize(editor).length;
+    if (remaining <= 0) { e.preventDefault(); return; }
+    if (inserting > remaining) e.preventDefault();
+  };
   const handleSelect = () => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -312,6 +342,7 @@ export function CommentComposer({
         data-empty={text.length === 0 ? 'true' : 'false'}
         data-placeholder={effectivePlaceholder}
         onInput={handleInput}
+        onBeforeInput={handleBeforeInput}
         onKeyDown={handleKeyDown}
         onKeyUp={handleSelect}
         onClick={handleSelect}
@@ -333,7 +364,7 @@ export function CommentComposer({
           onPick={insertMention}
         />
       )}
-      {expanded && (
+      {expanded && !hideActions && (
         <div className={styles.actions}>
           <Button variant="primary" size="S" disabled={!text.trim()} onClick={submit}>
             Comment

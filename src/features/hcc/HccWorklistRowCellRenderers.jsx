@@ -1,4 +1,5 @@
 import { dosSourceLetter } from './dosSource';
+import { deriveClaimId } from './claimId';
 import { RafTooltip } from './RowPopovers';
 import { isRejectedStatus } from './HccWorklistRow.utils';
 import { ROLE_OFFSET } from './HccWorklistRowParts.constants';
@@ -21,31 +22,41 @@ function isRoleResolved(s) { return RESOLVED_STATUSES.has(s); }
 // Inner content (NOT the <td>) for each DOS-level column, given one
 // dos_list entry. The main row wraps these in a stacked `<td>`.
 export const DOS_INNER = {
-  dos: (entry, { openDiagPanel, member, hasDoc, charts }) => {
-    // Source letter comes from the entry itself when available (Manual entries
-    // must carry `source: 'manual'`) — never from a hash-only guess. The
-    // badge alone conveys the origin; a separate "Manually Added" chip
-    // would double up on the same information.
+  dos: (entry, { openDiagPanel, openClaimPreview, member, hasDoc, charts }) => {
+    // Source letter comes from the entry itself when available (Manual
+    // entries must carry `source: 'manual'`) — never from a hash-only guess.
+    // Click affordances split by target:
+    //   • DATE click        → always opens the Documents tab (the doc
+    //                         extracted / mapped to this DOS, or the first
+    //                         chart on file as a fallback).
+    //   • BADGE (C)         → opens the standalone Claim Preview drawer
+    //                         pinned to this DOS. Same drawer also opens
+    //                         via the claim-number link inside the badge
+    //                         hover tooltip.
+    //   • BADGE hover       → tooltip shows the claim number as a
+    //                         clickable link with a chevron so the number
+    //                         itself feels like the affordance.
     const letter = dosSourceLetter(entry, hasDoc);
     const isClaim = letter === 'C';
-    const handleOpen = () => {
-      if (isClaim) {
-        openDiagPanel(member.id, {
-          leftPanel: 'claims', initialDos: entry.date, claimDos: entry.date,
-        });
-      } else {
-        const doc = (charts || []).find(c => c.date === entry.date) || (charts || [])[0];
-        openDiagPanel(member.id, {
-          leftPanel: 'documents', initialDos: entry.date, openDocId: doc?.id ?? null,
-        });
-      }
+    const openDocuments = () => {
+      const doc = (charts || []).find(c => c.date === entry.date) || (charts || [])[0];
+      openDiagPanel(member.id, {
+        leftPanel: 'documents', initialDos: entry.date, openDocId: doc?.id ?? null,
+      });
     };
+    const openClaim = () => openClaimPreview(member, entry.date);
+    const claimNumber = isClaim ? deriveClaimId(member.id, entry.date) : null;
     return (
       <span className={styles.dosItem}>
-        <button type="button" className={styles.lastVisitDateBtn} onClick={handleOpen}>
+        <button type="button" className={styles.lastVisitDateBtn} onClick={openDocuments}>
           <span className={styles.lastVisitDate}>{entry.date}</span>
         </button>
-        <DosSourceBadge entry={entry} hasDoc={hasDoc} />
+        <DosSourceBadge
+          entry={entry}
+          hasDoc={hasDoc}
+          onClick={isClaim ? openClaim : undefined}
+          claimNumber={claimNumber}
+        />
       </span>
     );
   },

@@ -992,6 +992,11 @@
   font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-400);
+  /* Match the S badge's compact vertical rhythm so the date text and the
+     "Claims/Documents/Manual" pill share the same optical center — align-
+     items: center on the row does the layout math, this keeps the type
+     from adding stray ascender/descender space on top of that. */
+  line-height: var(--leading-tight);
 }
 .dosPanelMeta {
   font-size: var(--font-sm);

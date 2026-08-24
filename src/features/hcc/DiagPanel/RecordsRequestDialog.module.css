@@ -114,6 +114,10 @@
   color: var(--neutral-500);
   line-height: var(--leading-tight);
 }
+.commentRequired {
+  color: var(--status-error);
+  margin-left: calc(var(--space-1) / 2);
+}
 .commentBox {
   position: relative;
 }

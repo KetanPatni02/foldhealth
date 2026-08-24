@@ -532,39 +532,83 @@ export function AssigneeCell({ member, dosState }) {
 // badge and the "DOS Source" filter agree on the source per date. Callers
 // should pass the full `entry` (its persisted `source` picks the letter);
 // the legacy `date`-only signature still works and falls back to the hash.
-export function DosSourceBadge({ entry, date, hasDoc = true }) {
+export function DosSourceBadge({ entry, date, hasDoc = true, onClick, claimNumber }) {
   const input = entry || date;
   const letter = dosSourceLetter(input, hasDoc);
   const meta = DOS_SOURCE_META[letter] || DOS_SOURCE_META.D;
   const displayDate = entry?.date || date;
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
+  // Hover-persist bookkeeping: closing on mouseleave-badge would cancel the
+  // user's move onto the tooltip, blocking the claim-number link. Close is
+  // deferred and cancelled when the tooltip picks up the pointer.
+  const closeTimer = useRef(null);
+  const cancelClose = () => { if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null; } };
 
   const show = () => {
+    cancelClose();
     const r = ref.current?.getBoundingClientRect();
     if (r) setPos({ top: r.bottom + 6, left: r.left + r.width / 2 });
   };
-  const hide = () => setPos(null);
+  const hide = () => {
+    cancelClose();
+    // 200ms buffer lets the pointer cross the 6px gap between the badge
+    // and the tooltip (and back onto the claim-number link inside it)
+    // without the popover snapping shut mid-transit.
+    closeTimer.current = setTimeout(() => setPos(null), 200);
+  };
+
+  // Click affordance — when the caller wires a handler (e.g. the worklist
+  // opens the Claims tab for a C badge), swallow bubble/default so the
+  // surrounding <td>'s row-open handler doesn't fire.
+  const handleClick = onClick ? (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onClick(e);
+  } : undefined;
 
   return (
     <span
       ref={ref}
-      className={[styles.dosSrcBadge, styles[meta.cls]].join(' ')}
-      aria-label={`${meta.label} · ${displayDate}`}
+      className={[styles.dosSrcBadge, styles[meta.cls], onClick ? styles.dosSrcBadgeClickable : ''].filter(Boolean).join(' ')}
+      aria-label={onClick ? `Open ${meta.label} · ${displayDate}` : `${meta.label} · ${displayDate}`}
       onMouseEnter={show}
       onFocus={show}
       onMouseLeave={hide}
       onBlur={hide}
+      onClick={handleClick}
+      onKeyDown={onClick ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e); }
+      } : undefined}
+      role={onClick ? 'button' : undefined}
       tabIndex={0}
     >
       {letter}
       {pos && createPortal(
-        <div className={styles.dosSrcTip} style={{ top: pos.top, left: pos.left }} role="tooltip">
+        <div
+          className={styles.dosSrcTip}
+          style={{ top: pos.top, left: pos.left }}
+          role="tooltip"
+          onMouseEnter={cancelClose}
+          onMouseLeave={hide}
+        >
           <div className={styles.dosSrcTipHead}>
             <Icon name="solar:document-text-linear" size={12} />
             {meta.label}
           </div>
-          <div className={styles.dosSrcTipMeta}>{meta.hint}</div>
+          {claimNumber ? (
+            <button
+              type="button"
+              className={styles.dosSrcTipClaimLink}
+              onClick={(e) => { e.stopPropagation(); onClick?.(e); }}
+              title={`Open claim ${claimNumber}`}
+            >
+              <span>{claimNumber}</span>
+              <Icon name="solar:alt-arrow-right-linear" size={10} color="currentColor" />
+            </button>
+          ) : (
+            <div className={styles.dosSrcTipMeta}>{meta.hint}</div>
+          )}
           <div className={styles.dosSrcTipDate}>DOS: {displayDate}</div>
         </div>,
         document.body,
