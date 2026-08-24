@@ -100,7 +100,7 @@ export function LeftWorkspace({
       const hasDoc = member?.ch != null;
       const claims = [];
       for (const d of member?.dos_list || []) {
-        if (dosSourceLetter(d.date, hasDoc) === 'C') claims.push(claimForDos(d.date));
+        if (dosSourceLetter(d, hasDoc) === 'C') claims.push(claimForDos(d.date));
       }
       return claims;
     },

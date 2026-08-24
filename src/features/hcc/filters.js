@@ -274,6 +274,14 @@ function memberDosDates(m) {
   return m.dos ? [m.dos] : [];
 }
 
+// Same as memberDosDates but returns the entry objects — used by the DOS
+// Source filter so it honors each entry's persisted `source` field (Manual
+// entries must be classified from the tag, not a hash of the date).
+function memberDosEntries(m) {
+  if (Array.isArray(m.dos_list) && m.dos_list.length) return m.dos_list.filter(e => e && e.date);
+  return m.dos ? [{ date: m.dos }] : [];
+}
+
 // ── Predicate helpers — given a member and the active filter state, decide
 // whether the member passes. Used by the worklist `filtered` memo.
 
@@ -385,14 +393,14 @@ function matchOne(m, k, vals) {
       // row's "Upload" state (m.ch is null when no document is on file) so
       // rows with no document can never bucket into "Document".
       const hasDoc = m?.ch != null;
-      const letters = new Set(memberDosDates(m).map(d => dosSourceLetter(d, hasDoc)));
+      const letters = new Set(memberDosEntries(m).map(e => dosSourceLetter(e, hasDoc)));
       return vals.some(v => letters.has(DOS_SOURCE_LABEL_TO_LETTER[v]));
     }
     case 'claims': {
       // Available = at least one DOS classified as source "C" (Claims), same
       // classifier the DOS-source badge uses.
       const hasDoc = m?.ch != null;
-      const hasClaims = memberDosDates(m).some(d => dosSourceLetter(d, hasDoc) === 'C');
+      const hasClaims = memberDosEntries(m).some(e => dosSourceLetter(e, hasDoc) === 'C');
       return vals.includes(hasClaims ? 'Available' : 'Not Available');
     }
     case 'my': {

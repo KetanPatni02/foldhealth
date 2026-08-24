@@ -22,8 +22,12 @@ function isRoleResolved(s) { return RESOLVED_STATUSES.has(s); }
 // dos_list entry. The main row wraps these in a stacked `<td>`.
 export const DOS_INNER = {
   dos: (entry, { openDiagPanel, member, hasDoc, charts }) => {
-    const isClaim = dosSourceLetter(entry.date, hasDoc) === 'C';
-    const isManual = member.manuallyAdded || entry.label === 'Manually Added';
+    // Source letter comes from the entry itself when available (Manual entries
+    // must carry `source: 'manual'`) — never from a hash-only guess. The
+    // badge alone conveys the origin; a separate "Manually Added" chip
+    // would double up on the same information.
+    const letter = dosSourceLetter(entry, hasDoc);
+    const isClaim = letter === 'C';
     const handleOpen = () => {
       if (isClaim) {
         openDiagPanel(member.id, {
@@ -41,8 +45,7 @@ export const DOS_INNER = {
         <button type="button" className={styles.lastVisitDateBtn} onClick={handleOpen}>
           <span className={styles.lastVisitDate}>{entry.date}</span>
         </button>
-        <DosSourceBadge date={entry.date} hasDoc={hasDoc} />
-        {isManual && <span className={styles.manualChip}>Manually Added</span>}
+        <DosSourceBadge entry={entry} hasDoc={hasDoc} />
       </span>
     );
   },

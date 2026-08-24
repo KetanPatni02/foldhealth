@@ -36,7 +36,10 @@ export function icdMatchesFilters(icd, filters, memberOrCreatedDate) {
 
   if (filters.claims?.length) {
     const hasDoc = member?.ch != null;
-    const source = icd.dos ? dosSourceLetter(icd.dos, hasDoc) : null;
+    const dosEntry = icd.dos && Array.isArray(member?.dos_list)
+      ? member.dos_list.find(d => d?.date === icd.dos)
+      : null;
+    const source = icd.dos ? dosSourceLetter(dosEntry || icd.dos, hasDoc) : null;
     const bucket = source === 'C' ? 'Available' : 'Not Available';
     if (!filters.claims.includes(bucket)) return false;
   }

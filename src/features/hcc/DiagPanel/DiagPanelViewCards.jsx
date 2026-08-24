@@ -106,7 +106,7 @@ export function DiagPanelViewCards(p) {
               // Same D/C/M classifier the worklist letter badge uses, so this
               // panel and the worklist agree on where each DOS came from.
               // No document on file → 'D' is impossible.
-              const srcLetter = dosSourceLetter(d.date, chartsList.length > 0);
+              const srcLetter = dosSourceLetter(d, chartsList.length > 0);
               const srcMeta = srcLetter === 'D' ? { label: 'Documents', variant: 'dos-source-documents' }
                 : srcLetter === 'C' ? { label: 'Claims',   variant: 'dos-source-claims'    }
                 :                     { label: 'Manual',   variant: 'dos-source-manual'    };

@@ -529,10 +529,14 @@ export function AssigneeCell({ member, dosState }) {
 
 // Small circular source badge next to the DOS date (D=Document, C=Claim,
 // M=Manual). Classifier + meta come from the shared `dosSource` module so the
-// badge and the "DOS Source" filter agree on the source per date.
-export function DosSourceBadge({ date, hasDoc = true }) {
-  const letter = dosSourceLetter(date, hasDoc);
+// badge and the "DOS Source" filter agree on the source per date. Callers
+// should pass the full `entry` (its persisted `source` picks the letter);
+// the legacy `date`-only signature still works and falls back to the hash.
+export function DosSourceBadge({ entry, date, hasDoc = true }) {
+  const input = entry || date;
+  const letter = dosSourceLetter(input, hasDoc);
   const meta = DOS_SOURCE_META[letter] || DOS_SOURCE_META.D;
+  const displayDate = entry?.date || date;
   const [pos, setPos] = useState(null);
   const ref = useRef(null);
 
@@ -546,7 +550,7 @@ export function DosSourceBadge({ date, hasDoc = true }) {
     <span
       ref={ref}
       className={[styles.dosSrcBadge, styles[meta.cls]].join(' ')}
-      aria-label={`${meta.label} · ${date}`}
+      aria-label={`${meta.label} · ${displayDate}`}
       onMouseEnter={show}
       onFocus={show}
       onMouseLeave={hide}
@@ -561,7 +565,7 @@ export function DosSourceBadge({ date, hasDoc = true }) {
             {meta.label}
           </div>
           <div className={styles.dosSrcTipMeta}>{meta.hint}</div>
-          <div className={styles.dosSrcTipDate}>DOS: {date}</div>
+          <div className={styles.dosSrcTipDate}>DOS: {displayDate}</div>
         </div>,
         document.body,
       )}
