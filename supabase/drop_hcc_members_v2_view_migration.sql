@@ -1,3 +1,5 @@
+BEGIN;
+
 -- Drop the hcc_members_v2 compatibility view.
 --
 -- History: when hcc_members was normalized (DOS list → hcc_member_visits,
@@ -13,15 +15,23 @@
 --
 -- Safe to run any time after the store change ships. If any consumer were
 -- missed, this fails loudly rather than leaving a second source of truth.
-DROP VIEW IF EXISTS public.hcc_members_v2;
+--
+-- ORDER MATTERS: worklist_badge_counts depends on hcc_members_v2, so the
+-- dependent badge view is dropped FIRST — dropping hcc_members_v2 first
+-- fails with 2BP01 (dependent objects).
 
--- ── Dependent object repair ────────────────────────────────────────────────
+-- ── 1) Drop the dependent badge view ───────────────────────────────────────
 -- worklist_badge_counts (SubNav badge integers) selected from
 -- hcc_members_v2. Its only use of the view was `id, member_id` for key
 -- normalization — both exist on the base table — so repoint it there and
--- recreate. Same definition otherwise (security_invoker preserved so RLS
--- on underlying tables still applies).
+-- recreate below. Same definition otherwise (security_invoker preserved so
+-- RLS on underlying tables still applies).
 DROP VIEW IF EXISTS public.worklist_badge_counts;
+
+-- ── 2) Now the compatibility view itself ───────────────────────────────────
+DROP VIEW IF EXISTS public.hcc_members_v2;
+
+-- ── 3) Recreate worklist_badge_counts against the base table ──────────────
 
 CREATE VIEW public.worklist_badge_counts
 WITH (security_invoker = true) AS
@@ -63,3 +73,4 @@ SELECT
 
 GRANT SELECT ON public.worklist_badge_counts TO authenticated;
 GRANT SELECT ON public.worklist_badge_counts TO service_role;
+COMMIT;
