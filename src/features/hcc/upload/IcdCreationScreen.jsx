@@ -144,8 +144,9 @@ export function IcdCreationScreen() {
     setQueue(prev => prev.map(q => ({ ...q, status: 'extracting' })));
     // Run extraction on each queued file in parallel via the existing
     // pipeline. queueOcr returns the created batch id, so tracking is
-    // race-free even though the calls resolve concurrently.
-    await Promise.all(queue.map(async (q) => {
+    // race-free even though the calls resolve concurrently. Use
+    // allSettled so one bad file doesn't abort the rest of the batch.
+    await Promise.allSettled(queue.map(async (q) => {
       const id = await queueOcr?.(q.file, { autoApply: false });
       if (id) trackBatch?.(id);
     }));
