@@ -37,6 +37,15 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Forms RLS lockdown + bootstrap migrations for all 77 out-of-band tables** —
+  anon-key probes proved `forms`/`form_responses` were fully readable AND
+  writable by the public internet (patient answers downloadable, submissions
+  tamperable, any form deletable). New migration rebuilds scoped policies:
+  anon reads active forms only, inserts responses, updates in-progress rows;
+  everything else authenticated-only. Applied to prod and re-probe verified.
+  Also: `aaa_bootstrap_missing_tables_migration.sql` creates every table that
+  predated the repo (generated from live schema, idempotent) so fresh envs and
+  the Supabase Preview check can finally replay the SQL directory cleanly.
 - **Settings → Users load: 14 API calls down to 5** — the page felt slow, but
   its own query was never the problem. A cold load fired 14 logical Supabase
   calls in one burst at ~870 ms, only two of which the table needs, and
