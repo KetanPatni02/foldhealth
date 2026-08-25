@@ -191,6 +191,7 @@ export function TodayCalendarCard({ dragHandleClassName }) {
           onClose={handleDrawerClose}
           onSave={handleSave}
           timezoneLabel="GMT"
+          source="home"
         />
       )}
     </div>
