@@ -135,19 +135,20 @@ function persistHccGapDosActionDeleteAll(memberName, code) {
     });
 }
 
-// Persist an ICD-level state change to hcc_diagnosis_gaps by code. The
-// store mutates optimistically; this fire-and-forget round-trip keeps the
-// DB in sync so the change survives reload. Scoping by (code) alone is
-// safe because the store's hccDiagnosisGaps slice is already filtered to
-// the currently-open member.
+// Persist an ICD-level state change to hcc_diagnosis_gaps by code + member.
+// The store mutates optimistically; this fire-and-forget round-trip keeps
+// the DB in sync so the change survives reload. Scoped by (code, member_name)
+// to prevent cross-tenant mutation when two tenants share an ICD code.
 function persistHccGapUpdate(code, memberName, patch) {
-  if (!code) return;
-  let q = supabase.from('hcc_diagnosis_gaps').update(patch).eq('code', code);
-  if (memberName) q = q.eq('member_name', memberName);
-  q.select('code').then(({ data, error }) => {
-    if (error) return reportPersistFailure(`persistHccGapUpdate(${code})`, error);
-    if (!data || data.length === 0) reportPersistFailure(`persistHccGapUpdate(${code})`, { message: 'affected 0 rows' });
-  });
+  if (!code || !memberName) return;
+  supabase.from('hcc_diagnosis_gaps').update(patch)
+    .eq('code', code)
+    .eq('member_name', memberName)
+    .select('code')
+    .then(({ data, error }) => {
+      if (error) return reportPersistFailure(`persistHccGapUpdate(${code})`, error);
+      if (!data || data.length === 0) reportPersistFailure(`persistHccGapUpdate(${code})`, { message: 'affected 0 rows' });
+    });
 }
 function persistHccGapInsert(row) {
   if (!row?.code) return;
@@ -307,10 +308,16 @@ function toPgDate(d) {
 // hcc_member_documents (see fetchHccMembers) — the base table has no such
 // columns, so each shape is synced into its child table
 // (replace-all per member; entries carry no identity beyond position).
+//
+// Operations are chained sequentially so a failure in one phase (e.g.
+// insert after delete committed) is detected and surfaced via
+// reportPersistFailure instead of silently orphaning the row.
 function persistHccMemberDetails(memberId) {
   if (!memberId) return;
   const m = useAppStore.getState().hccMembers.find(x => x.id === memberId);
   if (!m) return;
+
+  // 1) Base row counters
   supabase
     .from('hcc_members')
     .update({ chart_count: m.ch ?? null, open_icds: m.open ?? null })
@@ -318,47 +325,53 @@ function persistHccMemberDetails(memberId) {
     .select('id')
     .then(({ data, error }) => {
       if (error) return reportPersistFailure(`persistHccMemberDetails(${memberId})`, error);
-      if (!data || data.length === 0) reportPersistFailure(`persistHccMemberDetails(${memberId})`, { message: 'affected 0 rows (spawned row never persisted?)' });
+      if (!data || data.length === 0) {
+        reportPersistFailure(`persistHccMemberDetails(${memberId})`, { message: 'affected 0 rows (spawned row never persisted?)' });
+        return;
+      }
+
+      // 2) DOS list → hcc_member_visits (replace-all, sequential after base succeeds)
+      supabase
+        .from('hcc_member_visits')
+        .delete()
+        .eq('member_id', memberId)
+        .then(({ error: delErr }) => {
+          if (delErr) return reportPersistFailure(`persistHccMemberDetails.visits.delete(${memberId})`, delErr);
+          const visits = (m.dos_list || []).map((d, i) => ({
+            member_id: memberId,
+            dos_date: toPgDate(d.date),
+            status_label: d.label ?? null,
+            status_color: d.labelColor ?? null,
+            visit_index: i,
+          }));
+          if (!visits.length) return syncDocs();
+          supabase.from('hcc_member_visits').insert(visits).then(({ error: insErr }) => {
+            if (insErr) reportPersistFailure(`persistHccMemberDetails.visits.insert(${memberId})`, insErr);
+            syncDocs();
+          });
+        });
     });
 
-  // DOS list → hcc_member_visits (replace-all).
-  supabase
-    .from('hcc_member_visits')
-    .delete()
-    .eq('member_id', memberId)
-    .then(({ error }) => {
-      if (error) return reportPersistFailure(`persistHccMemberDetails.visits.delete(${memberId})`, error);
-      const visits = (m.dos_list || []).map((d, i) => ({
-        member_id: memberId,
-        dos_date: toPgDate(d.date),
-        status_label: d.label ?? null,
-        status_color: d.labelColor ?? null,
-        visit_index: i,
-      }));
-      if (!visits.length) return;
-      supabase.from('hcc_member_visits').insert(visits).then(({ error: insErr }) => {
-        if (insErr) reportPersistFailure(`persistHccMemberDetails.visits.insert(${memberId})`, insErr);
+  // 3) Doc status → hcc_member_documents (replace-all).
+  // Called after visits settle so any earlier failure is already surfaced.
+  function syncDocs() {
+    supabase
+      .from('hcc_member_documents')
+      .delete()
+      .eq('member_id', memberId)
+      .then(({ error }) => {
+        if (error) return reportPersistFailure(`persistHccMemberDetails.docs.delete(${memberId})`, error);
+        const docs = (m.docStatus || []).map((status, i) => ({
+          member_id: memberId,
+          doc_index: i,
+          status,
+        }));
+        if (!docs.length) return;
+        supabase.from('hcc_member_documents').insert(docs).then(({ error: insErr }) => {
+          if (insErr) reportPersistFailure(`persistHccMemberDetails.docs.insert(${memberId})`, insErr);
+        });
       });
-    });
-
-  // Doc status → hcc_member_documents (replace-all; entry = status string
-  // indexed by document position).
-  supabase
-    .from('hcc_member_documents')
-    .delete()
-    .eq('member_id', memberId)
-    .then(({ error }) => {
-      if (error) return reportPersistFailure(`persistHccMemberDetails.docs.delete(${memberId})`, error);
-      const docs = (m.docStatus || []).map((status, i) => ({
-        member_id: memberId,
-        doc_index: i,
-        status,
-      }));
-      if (!docs.length) return;
-      supabase.from('hcc_member_documents').insert(docs).then(({ error: insErr }) => {
-        if (insErr) reportPersistFailure(`persistHccMemberDetails.docs.insert(${memberId})`, insErr);
-      });
-    });
+  }
 }
 
 // Persist a single HCC role's status (and optionally name) to Supabase.
@@ -4855,8 +4868,10 @@ export const useAppStore = create((set, get) => ({
     // on mount, and re-mounts across page navigation would otherwise re-run
     // the whole hcc_members select every route change. The store already
     // holds the result; no need to re-fetch.
-    if (useAppStore.getState().hccMembersDidFetch) return;
-    set({ hccMembersDidFetch: true });
+    // Guard on loading (prevents concurrent fetches) rather than didFetch
+    // (which must be set AFTER data arrives so a mid-fetch caller doesn't
+    // see an empty array and think the fetch completed).
+    if (useAppStore.getState().hccMembersLoading) return;
     // Local helpers scoped to this action — stamp the WS1/WS8 grouping
     // fields onto each worklist row deterministically so the demo is
     // stable across reloads. Real backends would materialize these at
@@ -5208,16 +5223,16 @@ export const useAppStore = create((set, get) => ({
     const haveRealRows = (get().hccMembers || []).length > 0;
     if (error) {
       console.warn('fetchHccMembers error:', error.message);
-      if (haveRealRows) { set({ hccMembersLoading: false }); return; }
+      if (haveRealRows) { set({ hccMembersLoading: false, hccMembersDidFetch: true }); return; }
       const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
-      set({ hccMembers: await finalize(HCC_MEMBERS), hccMembersLoading: false });
+      set({ hccMembers: await finalize(HCC_MEMBERS), hccMembersLoading: false, hccMembersDidFetch: true });
       return;
     }
     // Empty result set: same guard — keep loaded rows, else seed from mock.
     if (!data || data.length === 0) {
-      if (haveRealRows) { set({ hccMembersLoading: false }); return; }
+      if (haveRealRows) { set({ hccMembersLoading: false, hccMembersDidFetch: true }); return; }
       const { HCC_MEMBERS } = await import('../features/hcc/data/mock');
-      set({ hccMembers: await finalize(HCC_MEMBERS), hccMembersLoading: false });
+      set({ hccMembers: await finalize(HCC_MEMBERS), hccMembersLoading: false, hccMembersDidFetch: true });
       return;
     }
     const POS_MAP = { 'Walk-in': { code: '11', desc: 'Office' }, Telehealth: { code: '02', desc: 'Telehealth' } };
@@ -5370,17 +5385,21 @@ export const useAppStore = create((set, get) => ({
         r2CD:  row.reviewer2_completed_at || null,
       };
     });
-    set({ hccMembers: await finalize(members), hccMembersLoading: false });
+    set({ hccMembers: await finalize(members), hccMembersLoading: false, hccMembersDidFetch: true });
   },
 
   // HCC Diagnosis Gaps (fetched per member from Supabase)
   hccDiagnosisGaps: [],
   hccDiagnosisGapsLoading: false,
+  _hccGapFetchId: 0,
   fetchHccDiagnosisGaps: async (memberId, memberName) => {
     // Clear the previous member's rows immediately — otherwise the panel
     // flashes (and can act on) stale cross-member data while the new
     // member's fetch is in flight.
     set({ hccDiagnosisGaps: [], hccDiagnosisGapsLoading: true });
+    // Bump a fetch counter so an older in-flight request discards its
+    // result when it resolves after a newer one started.
+    const fetchId = ++get()._hccGapFetchId;
     // Scope by member_id (per-row identity) so sibling rows of the same
     // patient don't share gaps. Migration backfilled member_id for every
     // pre-existing gap, so the id filter is authoritative; the name path
@@ -5395,6 +5414,8 @@ export const useAppStore = create((set, get) => ({
       q = q.eq('member_name', memberName);
     }
     const { data, error } = await q;
+    // Stale: a newer fetch started while this one was in flight — discard.
+    if (fetchId !== get()._hccGapFetchId) return;
     if (error) {
       console.error('fetchHccDiagnosisGaps error:', error.message);
       set({ hccDiagnosisGaps: [], hccDiagnosisGapsLoading: false });
@@ -7377,7 +7398,7 @@ export const useAppStore = create((set, get) => ({
   // starts implicitly on assignment). Patches BOTH the engine's dosState
   // bucket and the legacy member.{role}S field so worklist + DiagPanel
   // agree on the new status.
-  hccSetRoleStatus: (pid, dos, role, status) => {
+  hccSetRoleStatus: async (pid, dos, role, status) => {
     const fieldByRole       = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
     const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
     const f  = fieldByRole[role];
@@ -7400,7 +7421,15 @@ export const useAppStore = create((set, get) => ({
       }
       return next;
     });
-    persistHccMemberRoleStatus(pid, role, status);
+    const persist = await persistHccMemberRoleStatus(pid, role, status);
+    if (persist?.error) {
+      set(s => ({
+        hccMembers: s.hccMembers.map(m =>
+          m.id === pid ? { ...m, [sf]: prevStatus } : m,
+        ),
+      }));
+      return;
+    }
     const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
     const roleLabel = ROLE_LABEL_S[role] || role;
