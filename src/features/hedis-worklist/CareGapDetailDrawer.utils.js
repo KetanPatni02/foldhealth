@@ -37,19 +37,19 @@ export const STATUS_STYLE = {
 };
 
 export const MORE_ACTIONS = [
-  { key: 'outreach',    label: 'Add Outreach',       icon: 'solar:phone-calling-linear' },
-  { key: 'lab',         label: 'Add Lab Order',      icon: 'solar:test-tube-linear' },
-  { key: 'imaging',     label: 'Add Imaging Order',  icon: 'solar:medical-kit-linear' },
-  { key: 'referral',    label: 'Send Referral',      icon: 'solar:arrow-right-up-linear' },
-  { key: 'appointment', label: 'Schedule Appointment', icon: 'solar:calendar-linear' },
-  { key: 'document',    label: 'Add Document',       icon: 'solar:upload-minimalistic-linear' },
-  { key: 'reminder',    label: 'Set Reminder',       icon: 'solar:bell-linear' },
-  { key: 'task',        label: 'Add Task',           icon: 'solar:clipboard-check-linear' },
-  { key: 'clinical-note', label: 'Add Clinical Note', icon: 'solar:notes-linear', openClinicalNote: true },
+  { key: 'task',          label: 'Add Task',            icon: 'solar:clipboard-check-linear' },
+  { key: 'clinical-note', label: 'Add Clinical Note',   icon: 'solar:notes-linear', openClinicalNote: true },
+  { key: 'appointment',   label: 'Schedule Appointment', icon: 'solar:calendar-linear' },
+  { key: 'outreach',      label: 'Add Outreach',        icon: 'solar:phone-calling-linear' },
+  { key: 'document',      label: 'Add Document',        icon: 'solar:upload-minimalistic-linear' },
+  { key: 'reminder',      label: 'Set Reminder',        icon: 'solar:bell-linear' },
+  { key: 'referral',      label: 'Send Referral',       icon: 'solar:arrow-right-up-linear' },
+  { key: 'lab',           label: 'Add Lab Order',       icon: 'solar:test-tube-linear' },
+  { key: 'imaging',       label: 'Add Imaging Order',   icon: 'solar:medical-kit-linear' },
 ];
 
 export const TABS = [
-  { key: 'Activity Log', label: 'Activity Log' },
+  { key: 'Activity Log', label: 'Activity' },
   { key: 'Outreaches', label: 'Outreaches' },
   { key: 'Referrals', label: 'Referrals' },
   { key: 'Tasks', label: 'Tasks' },

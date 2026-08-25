@@ -26,7 +26,7 @@ import styles from './TabStrip.module.css';
  *                                          Sits on the same row as the tabs
  *                                          past a flex spacer.
  */
-export function TabStrip({ items, activeKey, onChange, fullWidth = true, embedded = false, trailing }) {
+export function TabStrip({ items, activeKey, onChange, fullWidth = true, embedded = false, trailing, size = 'M' }) {
   const rowRef = useRef(null);
   const tabRefs = useRef(new Map());
   const [indicator, setIndicator] = useState({ x: 0, w: 0, ready: false });
@@ -44,6 +44,7 @@ export function TabStrip({ items, activeKey, onChange, fullWidth = true, embedde
     styles.tabBar,
     embedded ? styles.embedded : '',
     !embedded && fullWidth ? styles.fullWidth : '',
+    size === 'S' ? styles.sizeS : '',
   ].filter(Boolean).join(' ');
 
   return (

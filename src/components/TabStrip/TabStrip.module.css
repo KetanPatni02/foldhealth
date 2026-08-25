@@ -13,7 +13,14 @@
   gap: 12px;
   flex-shrink: 0;
   position: relative;
+  /* When the tab list is wider than its container (Care Gap drawer with
+     seven tabs at 630px, etc.), the row scrolls horizontally instead of
+     wrapping — same affordance the embedded variant already has. Scrollbar
+     is hidden for a clean look; users still drag/scroll horizontally. */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.tabBar::-webkit-scrollbar { display: none; }
 
 /* Bleed to the container's edges when the parent (e.g. Drawer body) applies
    horizontal padding of its own. Consumers pass fullWidth to enable. */
@@ -21,6 +28,10 @@
   margin-left: calc(-1 * var(--drawer-body-padding-x, 24px));
   margin-right: calc(-1 * var(--drawer-body-padding-x, 24px));
 }
+
+/* Compact 6px gap variant — used inside content drawers where the default
+   12px between tabs reads too airy. Applies to non-embedded rows too. */
+.sizeS { gap: calc(var(--space-1) + calc(var(--space-1) / 2)); }
 
 .tabItem {
   display: inline-flex;
@@ -35,6 +46,7 @@
   color: var(--neutral-300);
   cursor: pointer;
   transition: color 0.15s;
+  flex-shrink: 0;
 }
 
 .tabItem:hover { color: var(--neutral-400); }

@@ -4,10 +4,15 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
 import { ClinicalNotePanel } from './ClinicalNotePanel';
+import { useAddTaskDrawer } from '../tasks/useAddTaskDrawer';
+import { AddTaskDrawerBody } from '../tasks/AddTaskDrawerBody';
+import { CloseButton } from '../../components/CloseButton/CloseButton';
+import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Icon } from '../../components/Icon/Icon';
+import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
 import { CardSkeleton } from '../../components/CardSkeleton/CardSkeleton';
 import { OutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
@@ -60,12 +65,49 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const [moreMenuRect, setMoreMenuRect] = useState(null);
   const openMoreMenu = () => { const r = moreBtnRef.current?.getBoundingClientRect(); if (r) setMoreMenuRect(r); };
   const closeMoreMenu = () => setMoreMenuRect(null);
-  const runMoreAction = (a) => { closeMoreMenu(); if (a.openClinicalNote) setShowClinicalNote(true); else showToast(`${a.label} — coming soon`); };
+  const runMoreAction = (a) => {
+    closeMoreMenu();
+    if (a.openClinicalNote) setShowClinicalNote(true);
+    else if (a.key === 'task') setShowAddTask(true);
+    else showToast(`${a.label} — coming soon`);
+  };
 
   const [activeTab, setActiveTab] = useState('Activity Log');
   const [showClinicalNote, setShowClinicalNote] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
+
+  // Add Task lives inline inside this drawer as a left workspace — same
+  // shape the HCC ChartDetailDrawer uses (Document Review PDF sits in a
+  // .leftPane alongside the drawer's right content). The hook is always
+  // called (React rules), but its outputs are only wired to UI when
+  // `showAddTask` is true.
+  const addTask = useAddTaskDrawer({
+    defaultStatus: undefined,
+    initialMember: member?.name || '',
+    onTaskCreated: () => showToast('Task created'),
+    extraFields: { careGap: currentCode, measurementYear: selectedYear },
+  });
+  // Two-phase close so the drawer collapses with the same easing it opens
+  // with. Phase 1 (250ms) — drawer.width transitions 1260 → 630 while the
+  // left pane is still mounted; its flex space shrinks in lock-step so it
+  // reads as sliding back into the right pane. Phase 2 — actually unmount.
+  const [addTaskClosing, setAddTaskClosing] = useState(false);
+  // Runs the collapse animation regardless of whether we're closing via the
+  // pane's X button (goes through guardClose) or via the Discard confirm
+  // (guardClose already ran and returned false). Both paths need the same
+  // two-phase unmount so the drawer doesn't snap shut.
+  const runAddTaskClose = () => {
+    setAddTaskClosing(true);
+    setTimeout(() => { setShowAddTask(false); setAddTaskClosing(false); }, 250);
+  };
+  const closeAddTask = () => {
+    if (addTask.guardClose() === false) return;
+    runAddTaskClose();
+  };
+  const inSplit = showAddTask || addTaskClosing;
+  const isExpanded = showAddTask && !addTaskClosing;
 
   if (!member || gaps.length === 0) return null;
 
@@ -94,11 +136,33 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       {showClinicalNote && (
         <ClinicalNotePanel member={member} gapCode={gap.code} year={selectedYear} onClose={() => setShowClinicalNote(false)} />
       )}
+      {addTask.showCloseConfirm && (
+        <ConfirmDialog
+          icon="solar:danger-triangle-linear"
+          iconColor="var(--status-warning)"
+          title="Discard unsaved task?"
+          description="You have unsaved changes. Closing now will discard them."
+          confirmLabel="Discard"
+          cancelLabel="Keep editing"
+          variant="error"
+          onConfirm={() => { addTask.setShowCloseConfirm(false); runAddTaskClose(); }}
+          onCancel={() => addTask.setShowCloseConfirm(false)}
+        />
+      )}
       <Drawer
         title="Care Gap Details"
         onClose={onClose}
         noCloseDivider
-        bodyClassName={styles.drawerBody}
+        // When the Add Task workspace is open we double the drawer width so
+        // the left pane can host the full task form without cramping the
+        // right pane's tabs. Reverts to the standard 700 when Add Task
+        // closes — the transition reads as an expand/collapse.
+        // 630px = right-pane fixed width. Match the closed-state drawer to
+        // it too so opening/closing Add Task never causes the right pane
+        // to jump — the drawer width simply expands leftward (1260) and
+        // collapses back (630) with the same easing.
+        width={isExpanded ? 1260 : 630}
+        bodyClassName={inSplit ? `${styles.drawerBody} ${styles.drawerBodySplit}` : styles.drawerBody}
         headerRight={
           <div className={styles.headerNav}>
             <ActionButton icon="solar:alt-arrow-left-linear" size="L" tooltip="Previous gap" state={canPrev ? 'active' : 'disabled'} onClick={goPrev} />
@@ -106,14 +170,37 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             <span className={styles.headerDivider} />
           </div>
         }
-        banner={
+        banner={inSplit ? undefined : (
           <div className={styles.patientBannerWrap}>
             <PatientBanner initials={member.in} name={member.name} gender={member.gender} age={member.age} dob={member.dob}
               memberId={member.memberId} hidePatientLabel onCall={() => showToast('Call — coming soon')} />
           </div>
-        }
+        )}
       >
+        {inSplit && (
+          <div className={styles.leftPane}>
+            <div className={styles.paneHeader}>
+              <span className={styles.paneTitle}>Add Task</span>
+              <div className={styles.paneHeaderRight}>
+                <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
+                  Save Task
+                </Button>
+                <span className={styles.headerDivider} />
+                <CloseButton size={18} onClick={closeAddTask} label="Close Add Task" />
+              </div>
+            </div>
+            <div className={styles.leftPaneBody}>
+              <AddTaskDrawerBody {...addTask} />
+            </div>
+          </div>
+        )}
         <div className={styles.contentBody}>
+          {inSplit && (
+            <div className={styles.patientBannerWrap}>
+              <PatientBanner initials={member.in} name={member.name} gender={member.gender} age={member.age} dob={member.dob}
+                memberId={member.memberId} hidePatientLabel onCall={() => showToast('Call — coming soon')} />
+            </div>
+          )}
           <CareGapDetailDrawerHeader
             gap={gap} member={member} selectedYear={selectedYear} setSelectedYear={setSelectedYear}
             yearOpen={yearOpen} setYearOpen={setYearOpen} yearOptions={yearOptions}
@@ -125,16 +212,24 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             goPrev={goPrev} goNext={goNext} canPrev={canPrev} canNext={canNext}
           />
 
-          <div className={styles.tabBar}>
-            <div className={styles.tabsScroll}>
-              {TABS.map(tab => (
-                <button key={tab.key} className={`${styles.tab} ${activeTab === tab.key ? styles.tabActive : ''}`} onClick={() => setActiveTab(tab.key)}>
-                  {tab.label}
-                  {tabCounts[tab.key] != null && <span className={styles.tabCount}>({tabCounts[tab.key]})</span>}
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Shared TabStrip — same underline motion the HCC drawer uses.
+              Counts are baked into `label` as "(N)" so we skip the Badge
+              default that `count` renders. `fullWidth={false}` because
+              this drawer's `.drawerBody` already has `padding: 0` — the
+              default bleed would apply a -24px margin and push the row
+              past the drawer's own edges. */}
+          <TabStrip
+            items={TABS.map((tab) => ({
+              key: tab.key,
+              label: tabCounts[tab.key] != null
+                ? `${tab.label} (${tabCounts[tab.key]})`
+                : tab.label,
+            }))}
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            fullWidth={false}
+            size="S"
+          />
 
           <div className={styles.tabContentWrap}>
             {activeTab === 'Activity Log' ? (

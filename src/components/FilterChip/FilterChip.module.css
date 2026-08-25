@@ -26,6 +26,20 @@
   color: var(--primary-300);
 }
 .chipActive:hover { background: var(--primary-100); border-color: var(--primary-400); }
+
+/* Neutral active — paired with `noClear` for never-empty pickers
+   (e.g. Measurement Year). Overrides the active primary tint so the
+   pill reads as an information display, not a filter to clear. Value
+   text drops a shade darker than the label to preserve hierarchy. */
+.chipNeutral {
+  background: var(--neutral-0);
+  border-color: var(--neutral-150);
+  color: var(--neutral-300);
+}
+.chipNeutral:hover { background: var(--neutral-50); border-color: var(--neutral-200); }
+.chipNeutral .chipValue { color: var(--neutral-500); }
+.chipNeutral .divider { color: var(--neutral-300); }
+
 .chipValue { font-weight: 500; }
 .chipExtra {
   display: inline-flex;
