@@ -10087,7 +10087,10 @@ export const useAppStore = create((set, get) => ({
         .order('id', { ascending: false });
       if (status && status !== 'all') q = q.eq('status', status);
       if (search?.trim()) {
-        const term = search.trim().replace(/[%_]/g, '');
+        // Strip LIKE wildcards AND PostgREST or-syntax characters (comma
+        // separates conditions inside or=(...), so a comma in the term would
+        // split it into bogus filters like name.ilike.%a).
+        const term = search.trim().replace(/[%_,()]/g, '');
         q = q.or(`name.ilike.%${term}%,description.ilike.%${term}%`);
       }
       return q.range(from, to);
@@ -10141,10 +10144,13 @@ export const useAppStore = create((set, get) => ({
   // named form (e.g. "HRA Assessment form") inside the program workflow.
   fetchFormByName: async (name) => {
     if (!name) return null;
+    // Escape LIKE wildcards so a configured name like "DM_Assessment" can't
+    // silently match unintended forms ("DMXAssessment" etc).
+    const pattern = String(name).replace(/[%_\\]/g, '\\$&');
     const { data, error } = await supabase
       .from('forms')
       .select('*')
-      .ilike('name', name)
+      .ilike('name', pattern)
       .order('updated_at', { ascending: false, nullsFirst: false })
       .limit(1);
     if (error || !data || !data.length) return null;
@@ -10261,16 +10267,21 @@ export const useAppStore = create((set, get) => ({
       ...(answeredCount != null ? { answered_count: answeredCount } : {}),
       ...(createdBy ? { created_by: createdBy } : {}),
     };
+    // Retry with a reduced payload ONLY when the failure proves the columns /
+    // unique index don't exist yet (pre-migration DB). Retrying on any error
+    // masks the real cause (RLS, network) — and if the first attempt actually
+    // committed but the response was lost, the retry inserts a DUPLICATE
+    // completed response.
+    const SCHEMA_ERRS = new Set(['PGRST204', '42703', '42P10']);
     let error;
     if (sessionId) {
       ({ error } = await supabase
         .from('form_responses')
         .upsert({ ...base, session_id: sessionId }, { onConflict: 'form_id,session_id' }));
-      // Fall back to a plain insert if the unique index/columns don't exist yet.
-      if (error) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
+      if (error && SCHEMA_ERRS.has(error.code)) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
     } else {
       ({ error } = await supabase.from('form_responses').insert(base));
-      if (error) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
+      if (error && SCHEMA_ERRS.has(error.code)) ({ error } = await supabase.from('form_responses').insert({ form_id: formId, answers, scores, ...(createdBy ? { created_by: createdBy } : {}) }));
     }
     if (error) {
       console.error('submitFormResponse error:', error);
@@ -10317,6 +10328,7 @@ export const useAppStore = create((set, get) => ({
   saveForm: async (patch = {}, opts = {}) => {
     const current = get().formBuilderForm;
     if (!current) return false;
+    const prevForm = current; // snapshot for rollback when the DB rejects the save
     const merged = { ...current, ...patch };
     set({ formBuilderForm: merged, formBuilderSaving: true });
 
@@ -10347,6 +10359,10 @@ export const useAppStore = create((set, get) => ({
       .single();
     set({ formBuilderSaving: false });
     if (error) {
+      // Roll the builder back to the last saved state — otherwise the UI
+      // keeps showing unsaved edits as if they landed, and a refresh loses
+      // them silently.
+      set({ formBuilderForm: prevForm });
       console.error('saveForm error:', error);
       get().showToast?.('Could not save form');
       return false;
@@ -10407,10 +10423,16 @@ export const useAppStore = create((set, get) => ({
       return false;
     }
     const idSet = new Set(ids);
-    set(s => ({
-      contentForms: s.contentForms.filter(f => !idSet.has(f.id)),
-      contentFormsTotal: Math.max(0, s.contentFormsTotal - ids.length),
-    }));
+    set(s => {
+      // Count what was actually on this page — some deleted ids may not be
+      // in the current list, and decrementing by ids.length would drift the
+      // server-side pagination total.
+      const removed = s.contentForms.filter(f => idSet.has(f.id)).length;
+      return {
+        contentForms: s.contentForms.filter(f => !idSet.has(f.id)),
+        contentFormsTotal: Math.max(0, s.contentFormsTotal - removed),
+      };
+    });
     _invalidateContentFormsCache();
     get().showToast?.(`${ids.length} form${ids.length === 1 ? '' : 's'} deleted`);
     return true;

@@ -12,6 +12,7 @@ import styles from './FormPicker.module.css';
 export function FormPicker({ onSelect, onClose }) {
   const [forms, setForms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const titleId = useId();
 
@@ -35,7 +36,14 @@ export function FormPicker({ onSelect, onClose }) {
       .select('id, name, category, response_count, status')
       .order('updated_at', { ascending: false, nullsFirst: false })
       .limit(50)
-      .then(({ data }) => { if (active) { setForms(data || []); setLoading(false); } });
+      .then(({ data, error: err }) => {
+        if (!active) return;
+        // Distinguish "no forms" from "couldn't load" — an empty list and a
+        // failed query rendered identically before.
+        setError(err ? 'Could not load forms' : null);
+        setForms(data || []);
+        setLoading(false);
+      });
     return () => { active = false; };
   }, []);
 
@@ -56,6 +64,8 @@ export function FormPicker({ onSelect, onClose }) {
         <div className={styles.list}>
           {loading ? (
             <div className={styles.state}>Loading…</div>
+          ) : error ? (
+            <div className={styles.state} role="alert">{error}</div>
           ) : filtered.length === 0 ? (
             <div className={styles.state}>No forms found.</div>
           ) : (
