@@ -36,9 +36,11 @@ this directory:
   trigger + a SECURITY DEFINER RPC, so the "wide" UPDATE policy on
   `profiles` cannot be used to self-promote to admin.
 
-The specific tables that are still legitimately open to `anon` — `forms` and
-`form_responses` — are called out at the top of `narrow_public_policies_to_authenticated.sql`.
-That is patient-facing form-filling; keep them that way.
+`forms` and `form_responses` keep narrow anon policies for patient-facing
+form-filling (`forms_rls_lockdown_migration.sql`) — anon can read ACTIVE
+forms only, insert responses, and update rows while still `in_progress`.
+Everything else on those tables (reading responses, editing drafts, any
+delete) is authenticated-only. Live-probe verified; don't widen them back.
 
 ## What the linter still flags, and what to do
 
