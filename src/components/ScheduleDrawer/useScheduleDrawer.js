@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
+import { trackFunnel } from '../../lib/tracking';
 import { FALLBACK_APPOINTMENT_TYPES, LOCATION_OPTIONS } from './scheduleDrawerConstants';
 
-export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, initialSelectedPatient }) {
+export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, initialSelectedPatient, source }) {
   const isViewMode = !!existingAppointment;
   const patients = useAppStore(s => s.patients);
   const fetchPatients = useAppStore(s => s.fetchPatients);
@@ -42,7 +43,7 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
   // context is already known (e.g. HEDIS Care Gap drawer — the drawer is
   // already scoped to one member so re-searching them is friction). Falls
   // back to `initialPatientId`'s patients.find lookup below.
-  const [selectedPatient, setSelectedPatient] = useState(initialSelectedPatient || null);
+  const [selectedPatient, setSelectedPatientState] = useState(initialSelectedPatient || null);
   const [reasonForVisit, setReasonForVisit] = useState('');
   const [appointmentType, setAppointmentTypeState] = useState(null);
   const [mode, setMode] = useState('');
@@ -80,10 +81,56 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
   const [editingStaffInstruction, setEditingStaffInstruction] = useState(false);
   const [staffInstructionDraft, setStaffInstructionDraft] = useState(existingAppointment?.staff_instruction || '');
 
+  // ── Booking funnel tracking ──
+  // StrictMode (dev-only) mounts→unmounts→remounts every effect once; the
+  // pending-abandonment timer lets the second setup cancel the first
+  // cleanup's write while still firing on a real close.
+  // maxStep mirrors the furthest funnel step reached (1 open, 2 patient,
+  // 3 type, 4 submitted) so abandonment knows where the user stopped.
+  const openedAtRef = useRef(0);
+  const outcomeRef = useRef(null);
+  const maxStepRef = useRef(0);
+  const openedLoggedRef = useRef(false);
+  const abandonTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (isViewMode) return undefined;
+    clearTimeout(abandonTimerRef.current);
+    if (!openedAtRef.current) openedAtRef.current = Date.now();
+    if (!openedLoggedRef.current) {
+      openedLoggedRef.current = true;
+      maxStepRef.current = 1;
+      trackFunnel('schedule.drawer_opened', {
+        source: source || null,
+        hadPatientPreset: !!initialPatientId,
+      });
+    }
+    return () => {
+      abandonTimerRef.current = setTimeout(() => {
+        if (outcomeRef.current) return;
+        trackFunnel('schedule.drawer_abandoned', {
+          lastStep: maxStepRef.current,
+          durationMs: Date.now() - openedAtRef.current,
+        });
+      }, 0);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const setSelectedPatient = (next) => {
+    setSelectedPatientState(next);
+    if (next && !isViewMode) {
+      maxStepRef.current = Math.max(maxStepRef.current, 2);
+      trackFunnel('schedule.patient_selected', { patientId: next.id ?? null });
+    }
+  };
+
   useEffect(() => {
     if (!initialPatientId || !patients.length) return;
     const match = patients.find(p => p.id === initialPatientId);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors the user having picked the preset patient
     if (match) setSelectedPatient(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialPatientId, patients]);
 
   useEffect(() => {
@@ -109,6 +156,10 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
     if (next) {
       setMode(next.mode === 'Virtual' ? 'Virtual' : 'At Clinic');
       setLocation(LOCATION_OPTIONS[0]);
+      if (!isViewMode) {
+        maxStepRef.current = Math.max(maxStepRef.current, 3);
+        trackFunnel('schedule.type_selected', { typeId: next.id ?? null, typeName: next.name || null });
+      }
     }
   };
 
@@ -150,12 +201,22 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
       calendar_id: calId,
     };
 
+    maxStepRef.current = Math.max(maxStepRef.current, 4);
+    trackFunnel('schedule.submitted', { recurring, hasProvider: !!provider });
+
     const result = await createAppointment(row);
     if (result) {
+      outcomeRef.current = 'completed';
+      trackFunnel('schedule.booking_completed', {
+        appointmentId: result.id ?? null,
+        durationMs: Date.now() - openedAtRef.current,
+      });
       if (onSave) onSave(row);
       setBookingSuccess(true);
       setTimeout(() => onClose(), 2000);
     } else {
+      outcomeRef.current = 'failed';
+      trackFunnel('schedule.booking_failed', { durationMs: Date.now() - openedAtRef.current });
       showToast('Failed to save appointment');
     }
   };

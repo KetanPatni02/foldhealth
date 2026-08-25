@@ -10013,11 +10013,17 @@ export const useAppStore = create((set, get) => ({
       return false;
     }
     const idSet = new Set(ids);
-    set(s => ({
-      campaigns: s.campaigns.filter(c => !idSet.has(c.id)),
-      contentEmails: s.contentEmails.filter(c => !idSet.has(c.id)),
-      contentEmailsTotal: Math.max(0, s.contentEmailsTotal - ids.length),
-    }));
+    set(s => {
+      // Count what was actually on this page — some deleted ids may not be
+      // in the current list, and decrementing by ids.length would drift the
+      // server-side pagination total.
+      const removed = s.contentEmails.filter(c => idSet.has(c.id)).length;
+      return {
+        campaigns: s.campaigns.filter(c => !idSet.has(c.id)),
+        contentEmails: s.contentEmails.filter(c => !idSet.has(c.id)),
+        contentEmailsTotal: Math.max(0, s.contentEmailsTotal - removed),
+      };
+    });
     _invalidateContentEmailsCache();
     get().showToast?.(`${ids.length} email${ids.length === 1 ? '' : 's'} deleted`);
     return true;
@@ -10030,11 +10036,15 @@ export const useAppStore = create((set, get) => ({
       get().showToast?.('Could not delete email');
       return false;
     }
-    set(s => ({
-      campaigns: s.campaigns.filter(c => c.id !== id),
-      contentEmails: s.contentEmails.filter(c => c.id !== id),
-      contentEmailsTotal: Math.max(0, s.contentEmailsTotal - 1),
-    }));
+    set(s => {
+      // Only decrement when the row was actually in this page's list.
+      const wasListed = s.contentEmails.some(c => c.id === id);
+      return {
+        campaigns: s.campaigns.filter(c => c.id !== id),
+        contentEmails: s.contentEmails.filter(c => c.id !== id),
+        contentEmailsTotal: Math.max(0, s.contentEmailsTotal - (wasListed ? 1 : 0)),
+      };
+    });
     _invalidateContentEmailsCache();
     get().showToast?.('Email deleted');
     return true;
@@ -10405,10 +10415,14 @@ export const useAppStore = create((set, get) => ({
       get().showToast?.('Could not delete form');
       return false;
     }
-    set(s => ({
-      contentForms: s.contentForms.filter(f => f.id !== id),
-      contentFormsTotal: Math.max(0, s.contentFormsTotal - 1),
-    }));
+    set(s => {
+      // Only decrement when the row was actually in this page's list.
+      const wasListed = s.contentForms.some(f => f.id === id);
+      return {
+        contentForms: s.contentForms.filter(f => f.id !== id),
+        contentFormsTotal: Math.max(0, s.contentFormsTotal - (wasListed ? 1 : 0)),
+      };
+    });
     _invalidateContentFormsCache();
     get().showToast?.('Form deleted');
     return true;

@@ -48,6 +48,7 @@ export function CalendarView() {
           onClose={calendar.handleCloseDrawer}
           onSave={calendar.fetchAppointments}
           timezoneLabel={calendar.timezoneLabel}
+          source="calendar"
         />
       )}
     </div>
