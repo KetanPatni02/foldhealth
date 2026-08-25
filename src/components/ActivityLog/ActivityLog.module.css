@@ -1,27 +1,18 @@
-/* Shared activity-log timeline. Per-type body variants render inside a
-   common frame (24px rail with a line through a neutral icon square, then
-   a card body). Outreach mirrors OutreachTab.LogEntry (call details +
-   transcript + action buttons); status changes render as transition pills;
-   clinical notes / tasks render a nested "View Details" card; assignee
-   changes render a from → to avatar transition; comments render as an
-   inline paragraph (HCC .tlCommentBody); uploads render an attachment card
-   (HCC .tlAttachment).
-
-   Status pills, outreach badges, and detail-card chips are all rendered
-   via <Badge> from ../Badge/Badge — this module owns only layout chrome
-   (timeline rail, card frame, inset cards) and slot-specific styling. */
-
-.timeline {
-  display: flex;
-  flex-direction: column;
-}
+/* Per-record activity feed. The rail (colored icon square + connector
+   lines), row, body, meta, headline, transition pills, attachment card
+   and avatar-transition chips come from HistoryTimeline.module.css so
+   every timeline surface (HCC, HEDIS, Tasks) matches the DiagPanel look.
+   This module carries only the ActivityLog-specific chrome: the month
+   group header, the outreach expanded card + transcript inset, the
+   nested "View Details" card used by task/note/appointment, and the
+   comment body paragraph. */
 
 /* ── Month group header ─────────────────────────────────────────────── */
 .group {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 12px 0 4px;
+  padding: var(--space-3) 0 var(--space-1);
   font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-400);
@@ -39,119 +30,12 @@
 }
 .groupCollapsed .groupChevron { transform: rotate(-90deg); }
 
-/* ── Entry row: rail + card ─────────────────────────────────────────── */
-.row {
-  display: flex;
-  gap: var(--space-2);
-  align-items: stretch;
-  width: 100%;
-}
-/* padding-bottom (not margin) so the row's flex-stretch carries the rail
-   line down through the between-row space instead of leaving a gap. */
-.cardWrap {
-  flex: 1;
-  min-width: 0;
-  padding-bottom: var(--space-3);
-}
-.row:last-child .cardWrap { padding-bottom: 0; }
-
-/* Timeline column — vertical line runs through the icon square */
-.rail {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex-shrink: 0;
-  width: 24px;
-}
-.railTop {
-  display: flex;
-  height: var(--space-6);
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-}
-.railBottom {
-  display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 8px;
-}
-.railLine {
-  width: 0.5px;
-  height: 100%;
-  background: var(--neutral-150);
-}
-.icon {
-  width: 24px;
-  height: 24px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: var(--neutral-0);
-}
-
-/* ── Card body (shared) ─────────────────────────────────────────────── */
-/* Padding lives on .body — .card is padding-less so the hover / focus
-   background covers the full card without a nested inset. */
-.card {
-  background: var(--neutral-0);
-  border: none;
-  border-radius: 8px;
-  align-self: flex-start;
-  transition: background 0.15s;
-  text-align: left;
-  width: 100%;
-  box-sizing: border-box;
-  outline: none;
-}
-.card[role="button"] { cursor: pointer; }
-.card[role="button"]:hover { background: var(--primary-25); }
-.card:focus-visible { box-shadow: 0 0 0 2px var(--primary-200); }
-.cardExpanded { background: var(--primary-25); }
-.cardStatic { cursor: default; }
-
-.body {
-  display: flex;
-  flex-direction: column;
-  /* 4px between lines INSIDE a single activity (meta, title,
-     transition/avatar/detail/comment/attachment/expanded). The larger
-     12px between separate activities lives on .cardWrap's
-     padding-bottom, so the rail line runs through it. */
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-}
-
-.meta {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-300);
-  flex-wrap: wrap;
-}
-.metaDot { color: var(--neutral-300); }
-
-.titleRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.title {
-  font-size: var(--font-base);
-  font-weight: 400;
-  color: var(--neutral-500);
-  line-height: 1.2;
-}
-
 /* ── Outreach outcome row ───────────────────────────────────────────── */
-.outcomeRow { display: flex; align-items: center; }
+.outcomeRow {
+  display: flex;
+  align-items: center;
+  margin-top: var(--space-1);
+}
 .outcome {
   font-size: var(--font-base);
   font-weight: 400;
@@ -162,8 +46,8 @@
 .viewDetailsBtn {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  margin-left: 6px;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
   padding: 0;
   border: none;
   background: transparent;
@@ -175,16 +59,16 @@
 }
 .viewNoteBtn { color: var(--neutral-400); font-weight: 400; }
 .viewNoteBtn:hover { color: var(--primary-300); }
-.viewNoteDot { color: var(--neutral-200); margin-right: 2px; }
-
-/* ── Status transition row ──────────────────────────────────────────── */
-/* Pills come from <Badge tone={statusTone(label)} size="S" />; the
-   tone→color mapping lives in ActivityLog.jsx (STATUS_TONE). */
-.transition {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+/* Separator dot between the headline and the "View Details" affordance —
+   uses • (bullet) for a fuller shape than the default interpunct and
+   bumps to font-lg so it reads as a proper separator rather than a
+   trailing period. Neutral-300 sits between the headline text and the
+   button color so the eye lands on the label, not the glyph. */
+.viewNoteDot {
+  color: var(--neutral-300);
+  font-size: var(--font-lg);
+  line-height: 1;
+  margin-right: calc(var(--space-1) / 2);
 }
 
 /* ── Expanded (outreach) card ───────────────────────────────────────── */
@@ -192,6 +76,7 @@
    the same 12/16 padding so nested content reads with one consistent
    inset regardless of variant. */
 .expandedCard {
+  margin-top: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
@@ -223,7 +108,7 @@
   color: var(--neutral-500);
 }
 .expandedNote {
-  margin: 12px 0 0;
+  margin: var(--space-3) 0 0;
   font-size: var(--font-md);
   font-weight: 400;
   line-height: 1.5;
@@ -244,10 +129,10 @@
   font-style: italic;
   line-height: 1.2;
   color: var(--neutral-300);
-  margin-bottom: 8px;
+  margin-bottom: var(--space-2);
 }
 .transcriptLine {
-  margin: 0 0 8px;
+  margin: 0 0 var(--space-2);
   font-size: var(--font-md);
   font-weight: 400;
   line-height: 1.45;
@@ -265,12 +150,12 @@
 .transcriptMore {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   font-size: var(--font-md);
   font-weight: 500;
   line-height: 1.2;
   color: var(--primary-300);
-  margin-top: 8px;
+  margin-top: var(--space-2);
 }
 
 /* ── Expanded action pills (Call Recording / Transcript) ────────────── */
@@ -282,8 +167,8 @@
 .expandedAction {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
   border: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   border-radius: 6px;
@@ -295,8 +180,9 @@
 }
 .expandedAction:hover { border-color: var(--primary-300); color: var(--primary-300); }
 
-/* ── Nested "View Details" card (clinical note / task) ──────────────── */
+/* ── Nested "View Details" card (clinical note / task / appointment) ── */
 .detailCard {
+  margin-top: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
@@ -313,7 +199,7 @@
 .detailCardRow {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: var(--space-2);
 }
 .detailCardHandle {
   display: inline-flex;
@@ -338,7 +224,7 @@
 .detailCardLock {
   display: inline-flex;
   align-items: center;
-  padding: 1px 4px;
+  padding: 0 var(--space-1);
   border-radius: 4px;
   background: var(--neutral-50);
   border: 0.5px solid var(--neutral-150);
@@ -370,7 +256,7 @@
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-1);
   padding: 0;
   border: none;
   background: transparent;
@@ -381,99 +267,18 @@
   cursor: pointer;
 }
 
-/* ── Avatar transition (assignee change / coder change) ─────────────── */
-.avatarTransition {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-/* The avatar itself comes from <Avatar variant="assignee" size="XS" /> so
-   every assignee tile across the app renders identically. This wrapper
-   just carries the outlined pill chrome + name label. */
-.assigneeChip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-1);
-  border-radius: 18px;
-  background: var(--neutral-50);
-  border: 0.5px solid var(--neutral-150);
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-500);
-}
-
-/* ── Comment (HCC .tlCommentBody inline paragraph) ──────────────────── */
+/* ── Comment paragraph ──────────────────────────────────────────────── */
 /* Comment body reads as the primary content of the entry (esp. in the
    Comments tab where the "…added a Comment" title is hidden), so it
-   mirrors .title's font-base + neutral-500 rather than the muted
+   mirrors .headline's font-base + neutral-500 rather than the muted
    secondary treatment used for supporting outreach notes. */
 .commentBody {
   font-size: var(--font-base);
   font-weight: 400;
   color: var(--neutral-500);
   line-height: 1.5;
+  margin-top: var(--space-1);
 }
-
-/* Two-line comment layout (meta + body, no title). With no title line,
-   the rail icon has nothing to align with mid-card — drop the railTop
-   offset so it sits at the top of the card, next to the meta line. */
-.rowNoTitle .railTop { height: 0; }
-
-/* Signed-in user's @-mention inside a comment body — highlighted so a
-   reader can spot at a glance that they were tagged. Other users'
-   mentions stay in the body color so this row doesn't shout for their
-   attention instead. */
-.commentMention {
-  font-weight: 500;
-  color: var(--secondary-300);
-}
-
-/* ── Attachment (HCC .tlAttachment) ─────────────────────────────────── */
-.attachment {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: 6px;
-  border: 0.5px solid var(--neutral-150);
-  background: var(--neutral-50);
-  max-width: 100%;
-}
-.fileBubble {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.fileText { flex: 1; min-width: 0; }
-.fileName {
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-400);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.fileType { font-size: var(--font-xs); color: var(--neutral-300); }
-.filePreview {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-}
-.filePreview:hover { background: var(--neutral-100); }
 
 /* ── Empty state ────────────────────────────────────────────────────── */
 .empty {
@@ -481,8 +286,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px 24px;
-  gap: 10px;
+  padding: var(--space-12) var(--space-6);
+  gap: var(--space-2);
   color: var(--neutral-300);
   font-size: var(--font-md);
 }

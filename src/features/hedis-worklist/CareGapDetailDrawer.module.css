@@ -53,7 +53,6 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--space-4);
 }
 .headerDivider {
   width: 1px; height: 16px; background: var(--neutral-150);
@@ -513,3 +512,27 @@
   justify-content: center; padding: 48px 24px; gap: 8px;
 }
 .emptyTabTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-300); margin: 0; }
+
+/* Appt/Reminders tab — one card per appointment scoped to this member.
+   Intentionally light: icon, title/meta, status pill. Real detail lives
+   in the scheduler view when we later wire "View Details". */
+.apptList { display: flex; flex-direction: column; gap: var(--space-2); }
+.apptCard {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+}
+.apptCardBody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.apptCardTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.apptCardMeta { font-size: var(--font-sm); color: var(--neutral-300); }
+.apptCardStatus {
+  font-size: var(--font-sm);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--space-1);
+  background: var(--primary-50);
+  color: var(--primary-300);
+  text-transform: capitalize;
+  flex-shrink: 0;
+}

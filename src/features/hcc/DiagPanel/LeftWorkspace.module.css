@@ -511,10 +511,6 @@
   justify-content: center;
   flex-shrink: 0;
 }
-.tlIconDashed {
-  border-style: dashed;
-}
-
 /* Body — meta + headline + supporting blocks */
 .tlBody {
   flex: 1;
@@ -537,63 +533,7 @@
   margin-bottom: 3px;
 }
 
-.tlHeadlineRow {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-
-.tlHeadline {
-  font-size: var(--font-base);
-  font-weight: 400;
-  color: var(--neutral-400);
-  line-height: 1.4;
-}
-
-.tlDetailsToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  font-size: var(--font-md);
-  color: var(--neutral-300);
-}
-
-.tlDot {
-  color: var(--neutral-200);
-}
-
-/* "Undo All" link on accept entries — primary-300, sits just under the
-   headline (Figma 278:169610). */
-.tlUndoAll {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-  padding: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: var(--font-md);
-  font-weight: 400;
-  color: var(--primary-300);
-  width: fit-content;
-}
-.tlUndoAll:hover { text-decoration: underline; }
-
 /* Status transition pills */
-.tlTransition {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 6px;
-  flex-wrap: wrap;
-}
-
 .tlPill {
   padding: 2px 6px;
   height: 20px;
@@ -633,170 +573,6 @@
   color: var(--neutral-300);
   background: var(--neutral-50);
   border-color: var(--neutral-150);
-}
-
-/* Outreach tag link */
-.tlTag {
-  margin-top: 4px;
-  font-size: var(--font-base);
-  color: var(--status-info);
-  cursor: pointer;
-}
-
-/* File attachment card */
-.tlAttachment {
-  margin-top: 7px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-radius: 6px;
-  border: 0.5px solid var(--neutral-150);
-  background: var(--neutral-50);
-  max-width: 100%;
-}
-
-.tlFileBubble {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.tlFileText {
-  flex: 1;
-  min-width: 0;
-}
-
-.tlFileName {
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-400);
-}
-
-.tlFileType {
-  font-size: var(--font-xs);
-  color: var(--neutral-300);
-}
-
-.tlFilePreview {
-  width: 24px;
-  height: 24px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  background: transparent;
-  border-radius: 4px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.tlFilePreview:hover {
-  background: var(--neutral-100);
-}
-
-/* Coder/assignee avatar transition */
-.tlAvatarTransition {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 7px;
-  flex-wrap: wrap;
-}
-
-.avatarPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px 3px 4px;
-  border-radius: 18px;
-  background: var(--neutral-50);
-  border: 0.5px solid var(--neutral-150);
-}
-
-.avatarBubble {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--primary-100);
-  color: var(--primary-300);
-  border: 0.5px solid var(--primary-200);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-2xs);
-  font-weight: 600;
-}
-
-.avatarName {
-  font-size: var(--font-md);
-  color: var(--neutral-400);
-}
-
-/* Expanded details card */
-.tlDetailsCard {
-  margin-top: 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.tlDetailRow {
-  padding: 8px 12px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-.tlDetailRow:last-child {
-  border-bottom: none;
-}
-
-.tlDetailText {
-  flex: 1;
-  min-width: 0;
-}
-
-.tlDetailHcc {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  line-height: 1.4;
-}
-
-.tlDetailIcd {
-  font-size: var(--font-md);
-  font-weight: 500;
-  color: var(--neutral-400);
-  line-height: 1.4;
-  margin-top: 2px;
-}
-
-.tlDetailReason {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  margin-top: 2px;
-}
-
-.tlDetailNote {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  margin-top: 2px;
-  padding: 3px 6px;
-  background: var(--neutral-50);
-  border-radius: 4px;
-  display: inline-block;
-}
-
-.tlDetailBadges {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
 }
 
 /* ── Composer (shared by Comments + Notes) ───────────────────────────── */
@@ -982,16 +758,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-/* Inline comment body inside the Activity Log timeline — used when an
-   entry is t:'comment'. Plain neutral-300 paragraph under the headline. */
-.tlCommentBody {
-  font-size: var(--font-md);
-  font-weight: 400;
-  color: var(--neutral-300);
-  line-height: 1.5;
-  margin-top: 2px;
 }
 
 /* Clickable timeline row (Claims uses it) — strip button defaults so the

@@ -42,6 +42,7 @@ export function CareGapDetailDrawerHeader({
   closeAssignee,
   showToast,
   setShowClinicalNote,
+  onScheduleAppointment,
   moreBtnRef,
   moreMenuRect,
   openMoreMenu,
@@ -191,7 +192,7 @@ export function CareGapDetailDrawerHeader({
           <Icon name="solar:magic-stick-3-bold" size={14} color="var(--primary-300)" /> Suggested Actions
         </div>
         <div className={styles.suggestActions}>
-          <Button variant="primary" size="L" onClick={() => showToast('Schedule with Specialist — coming soon')}>Schedule with Specialist</Button>
+          <Button variant="primary" size="L" onClick={() => onScheduleAppointment?.()}>Schedule with Specialist</Button>
           <Button variant="tertiary" size="L" onClick={() => setShowClinicalNote(true)}>Add Note</Button>
           <Button variant="tertiary" size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
           <Button variant="secondary" size="L" onClick={() => showToast('Add Outreach — coming soon')}>Add Outreach</Button>

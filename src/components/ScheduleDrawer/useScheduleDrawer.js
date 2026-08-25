@@ -3,7 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import { FALLBACK_APPOINTMENT_TYPES, LOCATION_OPTIONS } from './scheduleDrawerConstants';
 
-export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId }) {
+export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, initialSelectedPatient }) {
   const isViewMode = !!existingAppointment;
   const patients = useAppStore(s => s.patients);
   const fetchPatients = useAppStore(s => s.fetchPatients);
@@ -38,7 +38,11 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
     return `${h12}:${min} ${ampm}`;
   })();
 
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  // `initialSelectedPatient` lets callers pre-populate the patient when
+  // context is already known (e.g. HEDIS Care Gap drawer — the drawer is
+  // already scoped to one member so re-searching them is friction). Falls
+  // back to `initialPatientId`'s patients.find lookup below.
+  const [selectedPatient, setSelectedPatient] = useState(initialSelectedPatient || null);
   const [reasonForVisit, setReasonForVisit] = useState('');
   const [appointmentType, setAppointmentTypeState] = useState(null);
   const [mode, setMode] = useState('');

@@ -3,21 +3,23 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
 import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
-import { Avatar } from '../../components/Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';
 import { EVENTS } from './activityLog';
-// Reuse the rich timeline primitives from DiagPanel's ActivityTab. Importing
-// the same CSS module ensures every visual (rail / icon bubble / transition
-// pills / file card / avatar swap) renders identically to the per-encounter
-// timeline shown in the DiagPanel — per spec §2 we want one timeline
-// component, four views.
+// Reuse the shared HistoryTimeline primitive so every visual (rail /
+// icon bubble / transition pills / file card / avatar swap) renders
+// identically to the per-encounter timeline shown in the DiagPanel —
+// per spec §2 we want one timeline component, four views.
+import {
+  HistoryTimelineEntry,
+  historyTimelineStyles as htStyles,
+} from '../../components/HistoryTimeline/HistoryTimeline';
 import styles from './DiagPanel/LeftWorkspace.module.css';
 import hccStyles from './HccHistoryDrawer.module.css';
 
 // ── Per-event icon + tone treatment ──────────────────────────────────
-// Maps an event_name to the visual params used by .tlIcon (background +
-// border + icon color). Falls back to severity-driven tones when an
-// event isn't listed.
+// Maps an event_name to the visual params used by HistoryTimelineEntry's
+// icon bubble (background + border + icon color). Falls back to
+// severity-driven tones when an event isn't listed.
 const EVENT_ICON = {
   // Intake
   'file.uploaded':                  { icon: 'solar:upload-minimalistic-linear', tone: 'neutral' },
@@ -76,31 +78,14 @@ const EVENT_ICON = {
   'patient.field_edited':           { icon: 'solar:settings-linear',            tone: 'warning' },
 };
 
-// Visual params for tlIcon — mirrors the ACT_ICON table inside
-// LeftWorkspace.jsx so the bubble looks identical across views.
+// Visual params for the icon bubble — mirrors the shared ACT_ICON table
+// so the bubble looks identical across every timeline view.
 const TONE = {
   success: { bg: 'var(--status-success-light)', color: 'var(--status-success)', border: 'rgba(0,155,83,0.2)' },
   error:   { bg: 'var(--status-error-light)',   color: 'var(--status-error)',   border: 'rgba(215,40,37,0.2)' },
   warning: { bg: 'var(--status-warning-light)', color: 'var(--status-warning)', border: 'rgba(217,165,11,0.2)' },
   info:    { bg: 'var(--status-info-light)',    color: 'var(--status-info)',    border: 'rgba(20,94,204,0.2)' },
   neutral: { bg: 'var(--neutral-0)',            color: 'var(--neutral-300)',    border: 'var(--neutral-150)' },
-};
-
-// Status-string → CSS pill class. Matches TRANS_BADGE inside
-// LeftWorkspace.jsx so a "Completed" pill looks the same in both views.
-const TRANS_BADGE = {
-  Accepted:      'pillAccepted',
-  Dismissed:     'pillDismissed',
-  Deleted:       'pillDeleted',
-  None:          'pillNone',
-  Open:          'pillOpen',
-  Returned:      'pillReturned',
-  New:           'pillNew',
-  Completed:     'pillCompleted',
-  Audited:       'pillAudited',
-  'In Progress': 'pillInProgress',
-  Insufficient:  'pillDismissed',
-  Reject:        'pillDeleted',
 };
 
 // Two-letter initials from "First Last" / "F. Last".
@@ -179,42 +164,21 @@ function rowMatchesFilters(row, filters) {
   return true;
 }
 
-// ── Avatar pill (matches LeftWorkspace `.avatarPill`) ──────────────────
-function AvatarPill({ initials, name }) {
-  return (
-    <span className={styles.avatarPill}>
-      <Avatar variant="staff" initials={initials} />
-      <span className={styles.avatarName}>{name}</span>
-    </span>
-  );
-}
-
 // ── Entry renderer ──────────────────────────────────────────────────
 // Mirrors LeftWorkspace.ActivityEntry but reads from the row schema in
 // activityLog.js (event_name + payload) rather than the legacy `t`-based
-// entry shape used by DiagPanel.
+// entry shape used by DiagPanel. Delegates the visual scaffolding to the
+// shared HistoryTimelineEntry primitive.
 function HistoryEntry({ row, isFirst, isLast }) {
-  const [expanded, setExpanded] = useState(false);
   const def = EVENTS[row.event_name];
   const fallbackTone = { info: 'info', success: 'success', warning: 'warning', error: 'error' }[row.severity || def?.severity] || 'neutral';
   const iconCfg = EVENT_ICON[row.event_name] || { icon: 'solar:history-linear', tone: fallbackTone };
   const tone = TONE[iconCfg.tone] || TONE.neutral;
   const { date, time } = formatTs(row.ts);
 
-  // Meta — `MM/DD/YYYY • H:MM AM/PM • Actor (Role) • DOS (date) • Patient`.
-  const metaParts = [
-    date,
-    time,
-    row.actor_name ? `${row.actor_name}${row.actor_role ? ` (${row.actor_role})` : ''}` : null,
-    row.dos ? `DOS (${row.dos})` : null,
-    row.payload?.patientName,
-  ].filter(Boolean);
-
-  // ── Per-event extras: pills / avatars / file card / inline body ──
   const fromStatus = row.payload?.fromStatus;
   const toStatus   = row.payload?.toStatus || row.payload?.status;
-  const hasStatusTransition = fromStatus && toStatus;
-  const singleStatus = !fromStatus && toStatus;
+  const singleStatusVal = !fromStatus && toStatus ? toStatus : null;
 
   const fromName = row.payload?.fromName;
   const toName   = row.payload?.toName;
@@ -226,127 +190,67 @@ function HistoryEntry({ row, isFirst, isLast }) {
 
   const commentBody = row.event_name === 'icd.comment_added' ? row.payload?.body : null;
 
-  // Details rows — generic key/value list for payload entries we haven't
-  // pulled into the primary visuals. Used for events with rich metadata
-  // the headline doesn't capture.
+  // Generic key/value dump for payload entries the headline doesn't
+  // already surface. Renders inside the shared details card via the
+  // detailsContent slot when the drawer needs its own layout.
   const hiddenKeys = new Set(['actor', 'actorId', 'actorRole', 'patientName', 'fromName', 'toName', 'fromStatus', 'toStatus', 'status', 'fileName', 'file', 'body', 'roleLabel', 'dos']);
   const detailRows = Object.entries(row.payload || {}).filter(([k, v]) => !hiddenKeys.has(k) && v != null && v !== '');
   const hasDetails = detailRows.length > 0;
 
-  return (
-    <div className={styles.tlRow}>
-      <div className={styles.tlRail}>
-        {!isFirst && <span className={styles.tlConnectorTop} />}
-        <span
-          className={styles.tlIcon}
-          style={{ background: tone.bg, borderColor: tone.border }}
-        >
-          <Icon name={iconCfg.icon} size={14} color={tone.color} />
-        </span>
-        {!isLast && <span className={styles.tlConnectorBottom} />}
-      </div>
+  const item = {
+    date,
+    time,
+    by: row.actor_name || undefined,
+    role: row.actor_role || undefined,
+    dos: row.dos || undefined,
+    patient: row.payload?.patientName || undefined,
+    headline: row.headline,
+    from: fromStatus || undefined,
+    to: fromStatus ? toStatus : undefined,
+    file: hasFileCard ? fileName : undefined,
+    fileType: hasFileCard ? row.payload?.fileType : undefined,
+    fromAvatar: hasAvatarTransition ? { initials: initialsOf(fromName), name: fromName } : undefined,
+    toAvatar:   hasAvatarTransition ? { initials: initialsOf(toName),   name: toName   } : undefined,
+    commentBody: commentBody || undefined,
+  };
 
-      <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
-        <div className={styles.tlMeta}>{metaParts.join(' • ')}</div>
-
-        <div className={styles.tlHeadlineRow}>
-          <span className={styles.tlHeadline}>{row.headline}</span>
-          {hasDetails && (
-            <button
-              type="button"
-              className={styles.tlDetailsToggle}
-              onClick={() => setExpanded(v => !v)}
-            >
-              <span className={styles.tlDot}>•</span>
-              <span>Details</span>
-              <Icon
-                name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-                size={10}
-                color="var(--neutral-300)"
-              />
-            </button>
+  const detailsContent = hasDetails ? detailRows.map(([k, v], i) => {
+    const isPatientList = Array.isArray(v) && v.length > 0
+      && typeof v[0] === 'object' && ('patientName' in v[0] || 'dos' in v[0]);
+    return (
+      <div key={i} className={htStyles.detailRow}>
+        <div className={htStyles.detailText}>
+          <div className={htStyles.detailHcc}>{k}{Array.isArray(v) ? ` (${v.length})` : ''}</div>
+          {isPatientList ? (
+            <div className={htStyles.detailIcd}>
+              {v.map((val, j) => (
+                <div key={j}>
+                  {val.patientName || '(unmatched)'}
+                  {val.dos ? ` · DOS ${val.dos}` : ''}
+                  {val.kind ? ` · ${val.kind}` : ''}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={htStyles.detailIcd}>
+              {typeof v === 'object' ? JSON.stringify(v) : String(v)}
+            </div>
           )}
         </div>
-
-        {/* Comment body — paragraph under the headline. */}
-        {commentBody && <div className={styles.tlCommentBody}>{commentBody}</div>}
-
-        {/* Status transition — from → to pills. */}
-        {hasStatusTransition && (
-          <div className={styles.tlTransition}>
-            <span className={[styles.tlPill, styles[TRANS_BADGE[fromStatus] || 'pillOpen']].join(' ')}>{fromStatus}</span>
-            <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <span className={[styles.tlPill, styles[TRANS_BADGE[toStatus] || 'pillNew']].join(' ')}>{toStatus}</span>
-          </div>
-        )}
-        {/* Single-status events (role.status_changed) — one pill, no arrow. */}
-        {!hasStatusTransition && singleStatus && (
-          <div className={styles.tlTransition}>
-            <span className={[styles.tlPill, styles[TRANS_BADGE[toStatus] || 'pillNew']].join(' ')}>{toStatus}</span>
-          </div>
-        )}
-
-        {/* File attachment card */}
-        {hasFileCard && (
-          <div className={styles.tlAttachment}>
-            <span className={styles.tlFileBubble}>
-              <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
-            </span>
-            <div className={styles.tlFileText}>
-              <div className={styles.tlFileName}>{fileName}</div>
-              {row.payload?.fileType && <div className={styles.tlFileType}>{row.payload.fileType}</div>}
-            </div>
-            <button type="button" className={styles.tlFilePreview} aria-label="Preview">
-              <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
-            </button>
-          </div>
-        )}
-
-        {/* Avatar transition — assignee changed (DH → NR). */}
-        {hasAvatarTransition && (
-          <div className={styles.tlAvatarTransition}>
-            <AvatarPill initials={initialsOf(fromName)} name={fromName} />
-            <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <AvatarPill initials={initialsOf(toName)} name={toName} />
-          </div>
-        )}
-
-        {/* Expanded details — generic key/value dump for payload fields.
-            Arrays of {patientName, dos} (e.g. acceptedList / rejectedList
-            on batch.processing_completed) render as a per-row list so the
-            "accepted vs rejected" summary is scannable instead of JSON. */}
-        {expanded && hasDetails && (
-          <div className={styles.tlDetailsCard}>
-            {detailRows.map(([k, v], i) => {
-              const isPatientList = Array.isArray(v) && v.length > 0
-                && typeof v[0] === 'object' && ('patientName' in v[0] || 'dos' in v[0]);
-              return (
-                <div key={i} className={styles.tlDetailRow}>
-                  <div className={styles.tlDetailText}>
-                    <div className={styles.tlDetailHcc}>{k}{Array.isArray(v) ? ` (${v.length})` : ''}</div>
-                    {isPatientList ? (
-                      <div className={styles.tlDetailIcd}>
-                        {v.map((item, j) => (
-                          <div key={j}>
-                            {item.patientName || '(unmatched)'}
-                            {item.dos ? ` · DOS ${item.dos}` : ''}
-                            {item.kind ? ` · ${item.kind}` : ''}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className={styles.tlDetailIcd}>
-                        {typeof v === 'object' ? JSON.stringify(v) : String(v)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
-    </div>
+    );
+  }) : null;
+
+  return (
+    <HistoryTimelineEntry
+      item={item}
+      isFirst={isFirst}
+      isLast={isLast}
+      iconConfig={{ icon: iconCfg.icon, color: tone.color, bg: tone.bg, border: tone.border }}
+      singleStatus={singleStatusVal}
+      detailsContent={detailsContent}
+      showDetailsToggle={hasDetails}
+    />
   );
 }
 

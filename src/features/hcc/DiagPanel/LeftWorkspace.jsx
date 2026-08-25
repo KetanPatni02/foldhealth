@@ -27,8 +27,11 @@ import { OutreachTab as PatientOutreachTab } from '../../patient/left-panel/tabs
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
-import { Avatar } from '../../../components/Avatar/Avatar';
 import { FailReasonInline, EditDocInline } from '../ChartDetailDrawerParts';
+import {
+  HistoryTimelineEntry,
+  TRANS_BADGE,
+} from '../../../components/HistoryTimeline/HistoryTimeline';
 import styles from './LeftWorkspace.module.css';
 
 // Two tab sets depending on scope. Counts flow in per-render since
@@ -552,38 +555,11 @@ function FilterRow({ filters, options, onChange, onClearAll, trailing }) {
 
 // ── Activity Log tab — timeline view with connected vertical line ───────
 //
-// Matches the prototype's TLItem (lines 887–1019). Each non-group entry has
-// a left rail with [top connector] + [icon bubble] + [bottom connector],
-// keeping the whole timeline visually linked. Group rows ("JAN 2026") break
-// the rail and render as a section header.
-
-const ACT_ICON = {
-  outreach:    { icon: 'solar:phone-linear',                 color: 'var(--secondary-300)',     bg: 'var(--secondary-100)',      border: 'rgba(244,122,62,0.2)',    dashed: false },
-  status_dos:  { icon: 'solar:eye-scan-linear',              color: 'var(--status-warning)',     bg: 'var(--status-warning-light)', border: 'rgba(217,165,11,0.2)',    dashed: false },
-  status_hcc:  { icon: 'solar:eye-scan-linear',              color: 'var(--status-warning)',     bg: 'var(--status-warning-light)', border: 'rgba(217,165,11,0.2)',    dashed: false },
-  status_role: { icon: 'solar:refresh-circle-linear',        color: 'var(--primary-300)',        bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)',    dashed: false },
-  accept:      { icon: 'solar:check-read-linear',            color: 'var(--status-success)',     bg: 'var(--status-success-light)', border: 'rgba(0,155,83,0.2)',      dashed: false },
-  dismiss:     { icon: 'solar:close-circle-linear',          color: 'var(--status-error)',       bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',     dashed: false },
-  delete:      { icon: 'solar:trash-bin-trash-linear',       color: 'var(--status-error)',       bg: 'var(--status-error-light)',   border: 'rgba(215,40,37,0.2)',     dashed: false },
-  upload:      { icon: 'solar:upload-minimalistic-linear',   color: 'var(--neutral-300)',        bg: 'var(--neutral-0)',            border: 'var(--neutral-150)',      dashed: false },
-  create:      { icon: 'solar:add-circle-linear',            color: 'var(--secondary-300)',      bg: 'var(--secondary-100)',        border: 'rgba(244,122,62,0.2)',    dashed: false },
-  override:    { icon: 'solar:refresh-square-linear',        color: 'var(--secondary-300)',      bg: 'var(--secondary-100)',        border: 'rgba(244,122,62,0.2)',    dashed: false },
-  comment:     { icon: 'solar:chat-round-linear',            color: 'var(--neutral-300)',        bg: 'var(--neutral-0)',            border: 'var(--neutral-150)',      dashed: false },
-  assign_coder:{ icon: 'solar:user-plus-rounded-linear',     color: 'var(--neutral-300)',        bg: 'var(--neutral-0)',            border: 'var(--neutral-150)',      dashed: false },
-};
-
-const TRANS_BADGE = {
-  Accepted:  'pillAccepted',
-  Dismissed: 'pillDismissed',
-  Deleted:   'pillDeleted',
-  None:      'pillNone',
-  Open:      'pillOpen',
-  Returned:  'pillReturned',
-  New:       'pillNew',
-  Completed: 'pillCompleted',
-  Audited:   'pillAudited',
-  'In Progress': 'pillInProgress',
-};
+// Matches the prototype's TLItem. Each non-group entry has a left rail
+// (top connector + icon bubble + bottom connector) so the whole timeline
+// reads visually linked. Group rows ("JAN 2026") break the rail and render
+// as a section header. The row itself is rendered by the shared
+// HistoryTimelineEntry primitive.
 
 function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
   const rawEntries = rawEntriesProp || ACTIVITY[member?.name] || ACTIVITY._default || [];
@@ -671,8 +647,6 @@ function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
 }
 
 function ActivityEntry({ item, isFirst, isLast, member }) {
-  const [expanded, setExpanded] = useState(false);
-  const cfg = ACT_ICON[item.t] || ACT_ICON.accept;
   const setDiagLeftPanel = useAppStore(s => s.setDiagLeftPanel);
   const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const addedCharts = useAppStore(s => s.hccAddedCharts[member?.id]);
@@ -690,152 +664,20 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
     setDiagLeftPanel('documents');
     setDiagOpenDocId(match.id);
   };
-  const meta = [
-    item.date,
-    item.time,
-    item.by + (item.role ? ` (${item.role})` : ''),
-    item.dos ? `DOS (${item.dos})` : null,
-  ].filter(Boolean).join(' • ');
-
+  // status_dos / status_hcc / status_role are the only entry types that use
+  // the from/to transition slot — the shared entry component reads any
+  // truthy pair, so gate the props here to preserve the legacy behavior.
+  const isStatusTransition = item.t === 'status_dos' || item.t === 'status_hcc' || item.t === 'status_role';
+  const entryItem = isStatusTransition
+    ? item
+    : { ...item, from: undefined, to: undefined };
   return (
-    <div className={styles.tlRow}>
-      <div className={styles.tlRail}>
-        {!isFirst && <span className={styles.tlConnectorTop} />}
-        <span
-          className={[styles.tlIcon, cfg.dashed ? styles.tlIconDashed : ''].join(' ')}
-          style={{ background: cfg.bg, borderColor: cfg.border }}
-        >
-          <Icon name={cfg.icon} size={14} color={cfg.color} />
-        </span>
-        {!isLast && <span className={styles.tlConnectorBottom} />}
-      </div>
-
-      <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
-        <div className={styles.tlMeta}>{meta}</div>
-        <div className={styles.tlHeadlineRow}>
-          <span className={styles.tlHeadline}>{item.headline}</span>
-          {/* Details toggle — skipped for accept (uses Undo All) and comment
-              (the comment body renders inline directly below the headline). */}
-          {item.details && item.t !== 'accept' && item.t !== 'comment' && (
-            <button
-              type="button"
-              className={styles.tlDetailsToggle}
-              onClick={() => setExpanded(v => !v)}
-            >
-              <span className={styles.tlDot}>•</span>
-              <span>Details</span>
-              <Icon
-                name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-                size={10}
-                color="var(--neutral-300)"
-              />
-            </button>
-          )}
-        </div>
-
-        {/* Inline comment body — replaces the Details/expand-card path for
-            comment entries. Plain neutral-300 paragraph under the headline. */}
-        {item.t === 'comment' && item.details?.[0]?.note && (
-          <div className={styles.tlCommentBody}>{item.details[0].note}</div>
-        )}
-
-        {/* Status transition (from → to) pills */}
-        {(item.t === 'status_dos' || item.t === 'status_hcc' || item.t === 'status_role') && item.from && item.to && (
-          <div className={styles.tlTransition}>
-            <span className={[styles.tlPill, styles[TRANS_BADGE[item.from] || 'pillOpen']].join(' ')}>
-              {item.from}
-            </span>
-            <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <span className={[styles.tlPill, styles[TRANS_BADGE[item.to] || 'pillNew']].join(' ')}>
-              {item.to}
-            </span>
-          </div>
-        )}
-
-        {/* Outreach tag */}
-        {item.tag && (
-          <div className={styles.tlTag}>{item.tag}</div>
-        )}
-
-        {/* Document attachment card — click anywhere to open the file in
-            the Documents preview pane. Users can flip back to Timeline via
-            the tab bar at the top of the workspace. */}
-        {item.file && (
-          <div
-            className={styles.tlAttachment}
-            role="button"
-            tabIndex={0}
-            onClick={previewDoc}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); previewDoc(); } }}
-            title={`Preview ${item.file}`}
-          >
-            <span className={styles.tlFileBubble}>
-              <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
-            </span>
-            <div className={styles.tlFileText}>
-              <div className={styles.tlFileName}>{item.file}</div>
-              {item.fileType && <div className={styles.tlFileType}>{item.fileType}</div>}
-            </div>
-            <button
-              type="button"
-              className={styles.tlFilePreview}
-              aria-label="Preview"
-              onClick={(e) => { e.stopPropagation(); previewDoc(); }}
-            >
-              <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
-            </button>
-          </div>
-        )}
-
-        {/* Coder/assignee avatar transition */}
-        {item.fromAvatar && item.toAvatar && (
-          <div className={styles.tlAvatarTransition}>
-            <AvatarPill {...item.fromAvatar} />
-            <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <AvatarPill {...item.toAvatar} />
-          </div>
-        )}
-
-        {/* Expanded details — per-ICD card */}
-        {expanded && item.details && (
-          <div className={styles.tlDetailsCard}>
-            {item.details.map((d, i) => (
-              <div key={i} className={styles.tlDetailRow}>
-                <div className={styles.tlDetailText}>
-                  <div className={styles.tlDetailHcc}>{d.hcc}</div>
-                  <div className={styles.tlDetailIcd}>{d.icd}</div>
-                  {d.reason && <div className={styles.tlDetailReason}>Reason: {d.reason}</div>}
-                  {d.note && <div className={styles.tlDetailNote}>Note: {d.note}</div>}
-                </div>
-                {d.from && d.to && (
-                  <div className={styles.tlDetailBadges}>
-                    <span className={[styles.tlPill, styles[TRANS_BADGE[d.from] || 'pillNone']].join(' ')}>
-                      {d.from}
-                    </span>
-                    <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-                    <span className={[styles.tlPill, styles[TRANS_BADGE[d.to] || 'pillAccepted']].join(' ')}>
-                      {d.to}
-                    </span>
-                  </div>
-                )}
-                {!d.from && !d.to && (
-                  <span className={[styles.tlPill, styles.pillDeleted].join(' ')}>Deleted</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function AvatarPill({ initials, name }) {
-  return (
-    <span className={styles.avatarPill}>
-      <Avatar variant="staff" initials={initials} />
-      <span className={styles.avatarName}>{name}</span>
-    </span>
+    <HistoryTimelineEntry
+      item={entryItem}
+      isFirst={isFirst}
+      isLast={isLast}
+      onPreviewFile={item.file ? previewDoc : undefined}
+    />
   );
 }
 
