@@ -10,7 +10,7 @@ const DEFAULT_ITEMS = [
     category: 'program',
     included: true,
     mandatory: false,
-    agreement: 'Chronic Care Mamagement (CCM) is offered to all eligible patients who have been diagnosed with two (2) or more chronic conditions that are expected to last at least twelve (12) months and that place patient at significant risk of further decline.',
+    agreement: 'Chronic Care Management (CCM) is offered to all eligible patients who have been diagnosed with two (2) or more chronic conditions that are expected to last at least twelve (12) months and that place patient at significant risk of further decline.',
   },
   {
     id: 'apcm',
@@ -26,7 +26,7 @@ const DEFAULT_ITEMS = [
     category: 'program',
     included: true,
     mandatory: false,
-    agreement: 'Behavioral Health Intergration (BHI) is offered to all eligible patients who have services provided for behavioral health disorders, who are participating in psychiatric collaborative care programs, or are receiving behavioral health integration services.',
+    agreement: 'Behavioral Health Integration (BHI) is offered to all eligible patients who have services provided for behavioral health disorders, who are participating in psychiatric collaborative care programs, or are receiving behavioral health integration services.',
   },
   {
     id: 'primary-care',
