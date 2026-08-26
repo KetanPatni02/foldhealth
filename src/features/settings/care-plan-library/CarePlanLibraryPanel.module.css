@@ -5,10 +5,14 @@
   flex-direction: column;
   min-height: 0;
 }
+/* Flex column so WorklistShell's `flex: 1` actually stretches — otherwise the
+   shell shrinks to its content and the white table background stops short of
+   the viewport. The shell owns the scrolling, so no overflow here. */
 .content {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .row {
@@ -24,13 +28,16 @@
 .tdLinked,
 .tdMuted,
 .tdActions {
-  padding: var(--space-3) var(--space-4);
+  /* Horizontal padding matches WorklistShell's <th> (--space-3, and
+     --space-2 on the checkbox) so headers sit above their content. */
+  padding: var(--space-3);
   font-size: var(--font-base);
   color: var(--neutral-300);
   vertical-align: middle;
 }
 .tdCheck {
-  padding-right: 0;
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
 }
 
 /* Pin the identity + actions columns so only the middle of the table scrolls
@@ -65,13 +72,6 @@
 .chipRow {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1);
-}
-/* Linked Items — three count chips split by hairline dividers
-   (Figma 14181:316573). */
-.linkedCell {
-  display: flex;
-  align-items: center;
   gap: var(--space-1);
 }
 .tdMuted {
@@ -196,4 +196,23 @@
   font-size: var(--font-md);
   color: var(--neutral-300);
   padding: var(--space-2) 0;
+}
+
+/* Empty library — the ring state stands alone (no table chrome), centred in
+   the pane with the tab's primary action beneath it. */
+.emptyPane {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  background: var(--neutral-0);
+}
+/* RingEmptyState's own wrapper is `flex: 1` — inside this column that made it
+   soak up the height and shove the button to the bottom. Pin it to its content
+   so the ring, label and action stay together as one centred group. */
+.emptyPane > :first-child {
+  flex: 0 0 auto;
 }

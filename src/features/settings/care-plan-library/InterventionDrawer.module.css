@@ -1,0 +1,95 @@
+/* Between Save and the drawer's close control — the drawer gets
+   `noCloseDivider` so this is the only rule line. */
+.headerDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-1);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  position: relative;
+}
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+}
+.mandatoryStar {
+  color: var(--status-error);
+  flex-shrink: 0;
+}
+.sectionTitle {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+/* The three date rows read as one setting, so they sit in their own outlined
+   group rather than floating alongside the plain fields above. */
+.dateSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.dateGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+
+.inlineRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.inlineText {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.timingSelect {
+  width: 160px;
+}
+.triggerSelect {
+  width: 220px;
+}
+.offsetInput {
+  width: 160px;
+}
+
+/* The unit sits inside the field as a picker, matching Create New Goals. */
+.unitTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+
+.radioRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}

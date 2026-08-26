@@ -1,0 +1,203 @@
+/* The card is inset 8px from the viewport and sits flush beside the app rail
+   (Figma node 14108:294861 carries p-8 + the dropdown shadow). */
+.view {
+  flex: 1;
+  min-height: 0;
+  margin: var(--space-2);
+  display: flex;
+  align-items: stretch;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-3);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+}
+
+/* ── Left: plan identity ── */
+.formPane {
+  width: 500px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.formHeader {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.formTitle {
+  font-size: var(--font-2xl);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.formBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.fieldLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.fieldLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.mandatoryDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+
+/* Gradient "Write with AI" affordance — text is painted by the gradient, so
+   the color is deliberately transparent. */
+.aiLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.aiLinkText {
+  font-size: var(--font-base);
+  background: linear-gradient(198deg, var(--ai-gradient-from) 0%, var(--ai-gradient-to) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.sectionTitle {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.radioGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Right: goals ── */
+.goalsPane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--neutral-50);
+  border-left: 0.5px solid var(--neutral-150);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.toolbarDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+.goalsBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-6);
+  /* The card hugs its content at the top of the pane rather than stretching —
+     goals will stack below it as they're added. */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.goalsEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px dashed var(--neutral-200);
+  border-radius: var(--space-3);
+}
+/* RingEmptyState's wrapper is `flex: 1`; pin it so the buttons sit directly
+   under the label rather than being pushed to the card's bottom edge. */
+.goalsEmpty > :first-child {
+  flex: 0 0 auto;
+}
+.goalsEmptyActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+/* Picked goals — one card per goal, stacked above the Add New action. */
+.goalList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.goalCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.goalText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.goalTitle {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.goalDetail {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.goalMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  width: 90px;
+  flex-shrink: 0;
+}
+.goalListActions {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-2);
+}

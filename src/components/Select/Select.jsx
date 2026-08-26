@@ -1,6 +1,9 @@
-import { useEffect, useId, useRef, useState, useMemo } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
+import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
+import { Badge } from '../Badge/Badge';
+import { Tooltip } from '../Tooltip/Tooltip';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import styles from './Select.module.css';
 
@@ -70,6 +73,12 @@ export function Select({
   // onChange with its own value and closes the menu (used to break out
   // of multi-select into a one-off action).
   multiple = false,
+  // Render a Checkbox in each row instead of the trailing check mark. Opt-in
+  // so existing multi-selects keep their current look.
+  checkboxes = false,
+  // Show each multi-select pick as a grey Badge in the trigger instead of the
+  // "first + N" text summary. Opt-in for the same reason.
+  badges = false,
   portal = false,
 }) {
   // Ensure a stable label↔trigger association even when `id` isn't set.
@@ -141,8 +150,13 @@ export function Select({
   const renderMenu = (node) => (portal ? createPortal(node, document.body) : node);
 
   const selected = multiple ? null : options.find(o => o.value === value);
+  // Map picks back to their options for the trigger. With remote search the
+  // option list is replaced on every query, so a pick whose option is no
+  // longer present falls back to its own value — otherwise the trigger would
+  // blank out and read as "nothing selected".
   const selectedMulti = multiple
-    ? options.filter(o => o.type !== 'header' && valueSet.has(o.value))
+    ? valueArray.map(v =>
+      options.find(o => o.type !== 'header' && o.value === v) || { value: v, label: v })
     : [];
   // Trigger label for multi mode — first pick's label + "+N" summary.
   const multiSummary = () => {
@@ -164,6 +178,49 @@ export function Select({
 
   const needsField = Boolean(label || helperText || errorText);
 
+  // Badge trigger keeps every pick on one line: measure the full set in a
+  // hidden row, then show as many as fit and collapse the rest into a "+N"
+  // badge whose tooltip lists them.
+  const selectedKey = selectedMulti.map(o => o.value).join('|');
+  const badgeRowRef = useRef(null);
+  const badgeMeasureRef = useRef(null);
+  const [visibleBadgeCount, setVisibleBadgeCount] = useState(selectedMulti.length);
+
+  useLayoutEffect(() => {
+    if (!(multiple && badges)) return undefined;
+    const row = badgeRowRef.current;
+    const measure = badgeMeasureRef.current;
+    if (!row || !measure) return undefined;
+
+    const recompute = () => {
+      const available = row.clientWidth;
+      const widths = [...measure.children].map(c => c.offsetWidth);
+      if (widths.length === 0) { setVisibleBadgeCount(0); return; }
+      const GAP = 4;
+      // Reserve room for the "+N" badge; it's the last measured child.
+      const overflowWidth = widths[widths.length - 1] + GAP;
+      let used = 0;
+      let fit = 0;
+      for (let i = 0; i < widths.length - 1; i += 1) {
+        const next = used + widths[i] + (i > 0 ? GAP : 0);
+        const needsOverflow = i < widths.length - 2;
+        if (next + (needsOverflow ? overflowWidth : 0) > available) break;
+        used = next;
+        fit += 1;
+      }
+      setVisibleBadgeCount(fit);
+    };
+
+    const ro = new ResizeObserver(recompute);
+    ro.observe(row);
+    // rAF rather than a synchronous call — setting state in an effect body
+    // cascades renders.
+    const raf = requestAnimationFrame(recompute);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+  }, [multiple, badges, selectedKey]);
+
+  const hiddenBadges = selectedMulti.slice(visibleBadgeCount);
+
   const trigger = (
     <div ref={wrapRef} className={[styles.wrap, needsField ? '' : (className || '')].filter(Boolean).join(' ')} style={style}>
       <button
@@ -183,11 +240,35 @@ export function Select({
         {leadingIcon && (
           <Icon name={leadingIcon} size={16} color="currentColor" />
         )}
-        <span className={styles.triggerLabel} style={selected?.style}>
-          {multiple
-            ? (selectedMulti.length > 0 ? multiSummary() : placeholder)
-            : (selected ? (selected.triggerLabel ?? selected.label) : placeholder)}
-        </span>
+        {multiple && badges && selectedMulti.length > 0 ? (
+          <span ref={badgeRowRef} className={styles.triggerBadges}>
+            {selectedMulti.slice(0, visibleBadgeCount).map(o => (
+              <Badge key={o.value} tone="grey" size="S" label={o.triggerLabel ?? o.label} />
+            ))}
+            {hiddenBadges.length > 0 && (
+              <Tooltip
+                label={hiddenBadges.map(o => o.triggerLabel ?? o.label).join(', ')}
+                maxWidth={280}
+              >
+                <Badge tone="grey" size="S" label={`+${hiddenBadges.length}`} />
+              </Tooltip>
+            )}
+            {/* Hidden mirror of the full set (plus a worst-case "+N") used
+                only for width measurement. */}
+            <span ref={badgeMeasureRef} className={styles.triggerBadgesMeasure} aria-hidden="true">
+              {selectedMulti.map(o => (
+                <Badge key={o.value} tone="grey" size="S" label={o.triggerLabel ?? o.label} />
+              ))}
+              <Badge tone="grey" size="S" label={`+${selectedMulti.length}`} />
+            </span>
+          </span>
+        ) : (
+          <span className={styles.triggerLabel} style={selected?.style}>
+            {multiple
+              ? (selectedMulti.length > 0 ? multiSummary() : placeholder)
+              : (selected ? (selected.triggerLabel ?? selected.label) : placeholder)}
+          </span>
+        )}
         <DownChevronIcon
           size={14}
           color={disabled ? 'var(--neutral-150)' : 'var(--neutral-300)'}
@@ -259,6 +340,7 @@ export function Select({
                 tabIndex={opt.disabled ? -1 : 0}
                 className={[
                   styles.item,
+                  multiple && checkboxes ? styles.itemWithCheckbox : '',
                   isActive ? styles.itemActive : '',
                   opt.disabled ? styles.itemDisabled : '',
                 ].filter(Boolean).join(' ')}
@@ -277,8 +359,18 @@ export function Select({
                   setOpen(false);
                 }}
               >
+                {multiple && checkboxes && (
+                  // Presentational — the row's own onClick owns the toggle, so
+                  // the checkbox must not also handle the click.
+                  <Checkbox
+                    checked={isActive}
+                    className={styles.itemCheckbox}
+                    tabIndex={-1}
+                    aria-hidden="true"
+                  />
+                )}
                 {opt.label}
-                {isActive && (
+                {isActive && !(multiple && checkboxes) && (
                   <Icon name="solar:check-read-linear" size={14} color="var(--primary-300)" />
                 )}
               </li>

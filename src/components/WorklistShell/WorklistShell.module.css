@@ -89,6 +89,18 @@
   background: var(--neutral-0);
 }
 
+/* With no rows the table stretches to the scroller so the single empty cell
+   fills the remaining height and its content centres, instead of the empty
+   state hugging the header with dead space below. */
+.tableEmpty {
+  height: 100%;
+}
+.emptyCell {
+  height: 100%;
+  vertical-align: middle;
+  text-align: center;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

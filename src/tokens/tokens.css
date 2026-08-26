@@ -119,6 +119,9 @@
   --accent-amber:        #EEB200;
   --accent-light-green:  #8BC34A;
   --accent-teal:         #009688;
+  /* AI gradient — the teal→violet ramp used by AIIcon and "Write with AI". */
+  --ai-gradient-from:    #1E9DAE;
+  --ai-gradient-to:      #D478FF;
   --accent-cyan:         #109CAE;
   --accent-blue:         #2196F3;
   --accent-persian-blue: #5800FF;

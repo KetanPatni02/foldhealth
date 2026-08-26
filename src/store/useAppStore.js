@@ -2075,6 +2075,11 @@ export const useAppStore = create((set, get) => ({
     return { viewedNewMedIds: { ...s.viewedNewMedIds, [patientId]: merged } };
   }),
 
+  // New Care Plan takes over the entire Settings area (the sub-nav is hidden,
+  // only the app rail remains) — so the flag lives above CarePlanLibraryPanel.
+  carePlanCreateOpen: false,
+  setCarePlanCreateOpen: (v) => set({ carePlanCreateOpen: v }),
+
   // Med Recon checklist ticks, keyed by patient. Lives in the store rather
   // than the step component because the Sign control (in the program header)
   // gates on every box being ticked. Session-only — not persisted yet.

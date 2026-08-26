@@ -1259,19 +1259,23 @@ export function MedicationReconciliation() {
                 </div>
                 <div className={styles.medCardMeta}>
                   {m.status || 'Active'} <span className={styles.extractedDot}>•</span> {m.start} - {m.stop || '—'} <span className={styles.extractedDot}>•</span> {m.sig || '—'}
-                  {' '}<span className={styles.extractedDot}>•</span>{' '}
-                  <Link
-                    variant="secondary"
-                    className={styles.noteLink}
-                    onClick={e => { e.stopPropagation(); toggleNote(m); }}
-                  >
-                    {m.note?.trim() ? 'View Note' : 'Add Note'}
-                    <DownChevronIcon
-                      size={14}
-                      color="currentColor"
-                      className={openNoteIds.has(m.id) ? styles.noteLinkChevronOpen : undefined}
-                    />
-                  </Link>
+                  {!m.note?.trim() && (
+                    <>
+                      {' '}<span className={styles.extractedDot}>•</span>{' '}
+                      <Link
+                        variant="secondary"
+                        className={styles.noteLink}
+                        onClick={e => { e.stopPropagation(); toggleNote(m); }}
+                      >
+                        Add Note
+                        <DownChevronIcon
+                          size={14}
+                          color="currentColor"
+                          className={openNoteIds.has(m.id) ? styles.noteLinkChevronOpen : undefined}
+                        />
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
               <div className={styles.medCardActions}>

@@ -322,7 +322,10 @@ export function WorklistShell({
         {loading ? (
           <TableSkeleton rows={perPage || 10} columns={columns.length || 8} />
         ) : (
-          <table className={styles.table} style={{ minWidth: minTableWidth }}>
+          <table
+            className={rows.length === 0 && emptyState ? `${styles.table} ${styles.tableEmpty}` : styles.table}
+            style={{ minWidth: minTableWidth }}
+          >
             <thead>
               <tr className={styles.headRow}>
                 {columnsToRender.map((col, idx) => {
@@ -407,7 +410,7 @@ export function WorklistShell({
             </thead>
             <tbody>
               {rows.length === 0 && emptyState
-                ? (<tr><td colSpan={columnsToRender.length}>{emptyState}</td></tr>)
+                ? (<tr><td colSpan={columnsToRender.length} className={styles.emptyCell}>{emptyState}</td></tr>)
                 : rows.map((row, i) => renderRow(row, i, rowCtx))}
             </tbody>
           </table>

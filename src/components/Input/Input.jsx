@@ -104,6 +104,9 @@ export const Input = forwardRef(function Input(
     leadingIcon,
     showPriority = false,
     trailingText,
+    // Render `trailingText` as a filled segment flush to the field's right
+    // edge (divider + grey fill) instead of inline text — e.g. a unit suffix.
+    trailingTextSegment = false,
     chevron = false,
     trailingAction = false,
     trailingActionLabel = 'Voice input',
@@ -414,7 +417,14 @@ export const Input = forwardRef(function Input(
           />
         </button>
       )}
-      {trailingText && <span className={styles.trailingText}>{trailingText}</span>}
+      {trailingText && (
+        <span className={trailingTextSegment
+          ? `${styles.trailingText} ${styles.trailingTextSegment}`
+          : styles.trailingText}
+        >
+          {trailingText}
+        </span>
+      )}
       {chevronDir && (
         <DownChevronIcon
           size={14}
