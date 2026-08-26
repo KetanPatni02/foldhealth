@@ -18,6 +18,7 @@ import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
 import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { PriorityIcon } from '../../../components/PriorityIcon/PriorityIcon';
 import { VITAL_OPTIONS } from './vitalOptions';
+import { MEASURE_CONFIG } from './goalFormat';
 import styles from './CreateGoalDrawer.module.css';
 
 // Categories per the goal-creation screens.
@@ -29,32 +30,6 @@ const GOAL_CATEGORIES = ['Vital', 'Activity', 'Lab result', 'Assessment', 'Other
 //   kind:select the value is chosen from a list rather than typed
 //   stepper     numeric spinner (Body Temperature)
 // A measure with none of these is a plain number with no unit.
-const MEASURE_CONFIG = {
-  'Blood Pressure': { dual: true, units: ['mmHg', 'mmHg'], placeholders: ['Systolic BP', 'Diastolic BP'], separator: '/' },
-  Height: { dual: true, units: ['Ft', 'in'], placeholders: ['Enter Value', 'Enter Value'], separator: '/' },
-  Weight: { unit: 'lbs' },
-  BMI: {},
-  'Blood Glucose': {},
-  'Pain Scale': { kind: 'select', options: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'] },
-  'Waist Circumference': { unit: 'cm' },
-  'Head Circumference': { unit: 'cm' },
-  'Respiration Rate': { unit: 'bpm' },
-  'Body Temperature': { unit: 'fahrenheit', stepper: true },
-  'Pulse Rate': { unit: 'bpm' },
-  'Oxygen Saturation': { unit: '%' },
-
-  // Activity
-  Steps: { unit: 'steps' },
-  Calories: { unit: 'kcal', stepper: true },
-  Duration: { unit: 'minutes' },
-  Aerobics: { unit: 'minutes' },
-  Archery: { unit: 'minutes' },
-  Badminton: { unit: 'minutes' },
-  Baseball: { unit: 'minutes' },
-  Basketball: { unit: 'minutes' },
-  Biking: { unit: 'minutes' },
-  Spinning: { unit: 'minutes' },
-};
 
 // The measure picker's label and options follow the chosen category.
 const MEASURES = {
@@ -134,27 +109,30 @@ const PRIORITIES = [
  * Category → measure → chronic condition → title, with the goal's priority
  * picked from a segment inside the title field.
  */
-export function CreateGoalDrawer({ onClose, onSave }) {
-  const [category, setCategory] = useState(GOAL_CATEGORIES[0]);
-  const [measure, setMeasure] = useState('');
-  const [conditions, setConditions] = useState([]);
-  const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState('medium');
-  const [comparator, setComparator] = useState('=');
-  const [targetValue, setTargetValue] = useState('');
-  const [targetValue2, setTargetValue2] = useState('');
-  const [duration, setDuration] = useState('');
-  const [durationUnit, setDurationUnit] = useState('Month');
-  const [frequency, setFrequency] = useState('Daily');
-  const [targetDate, setTargetDate] = useState('');
+export function CreateGoalDrawer({ onClose, onSave, goal }) {
+  const [category, setCategory] = useState(goal?.category || GOAL_CATEGORIES[0]);
+  const [measure, setMeasure] = useState(goal?.measure || '');
+  const [conditions, setConditions] = useState(goal?.conditions || []);
+  const [title, setTitle] = useState(goal?.title || '');
+  const [priority, setPriority] = useState(goal?.priority || 'medium');
+  const [comparator, setComparator] = useState(goal?.comparator || '=');
+  const [targetValue, setTargetValue] = useState(goal?.targetValue || '');
+  const [targetValue2, setTargetValue2] = useState(goal?.targetValue2 || '');
+  const [duration, setDuration] = useState(goal?.duration || '');
+  const [durationUnit, setDurationUnit] = useState(goal?.durationUnit || 'Month');
+  const [frequency, setFrequency] = useState(goal?.frequency || 'Daily');
+  const [targetDate, setTargetDate] = useState(goal?.targetDate || '');
   // "Other" has no predefined measure: the unit is typed and the whole target
   // block is behind a Set Target switch (Figma 14510:196321).
-  const [customUnit, setCustomUnit] = useState('');
-  const [setTarget, setSetTarget] = useState(true);
+  const [customUnit, setCustomUnit] = useState(goal?.customUnit || '');
+  const [setTarget, setSetTarget] = useState(goal ? goal.setTarget !== false : true);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [durationUnitOpen, setDurationUnitOpen] = useState(false);
+  // Interventions are staged here and written with the goal, because a new
+  // goal has no id to hang them off until it is saved.
+  const [interventions, setInterventions] = useState(goal?.interventions || []);
   const [interventionMenuOpen, setInterventionMenuOpen] = useState(false);
-  const [taskDrawerOpen, setTaskDrawerOpen] = useState(false);
+  const [taskDrawerOpen, setTaskDrawerOpen] = useState(null);
   const [sendFormOpen, setSendFormOpen] = useState(false);
   const [sendContentOpen, setSendContentOpen] = useState(false);
   const [measureVitalOpen, setMeasureVitalOpen] = useState(false);
@@ -206,13 +184,17 @@ export function CreateGoalDrawer({ onClose, onSave }) {
   const separator = cfg.dual ? (cfg.separator || '/') : 'and';
   const canSave = title.trim().length > 0;
 
+  const addIntervention = (kind, itemTitle, config) => {
+    setInterventions(prev => [...prev, { kind, title: itemTitle || '', config: config || {} }]);
+  };
+
   const headerRight = (
     <>
       <Button
         variant="primary"
         size="L"
         disabled={!canSave}
-        onClick={() => onSave?.({ category, measure, conditions, title: title.trim(), priority, comparator, targetValue, targetValue2, customUnit, setTarget, duration, durationUnit, frequency, targetDate })}
+        onClick={() => onSave?.({ category, measure, conditions, title: title.trim(), priority, comparator, targetValue, targetValue2, customUnit, setTarget, duration, durationUnit, frequency, targetDate, interventions })}
       >
         Save
       </Button>
@@ -221,7 +203,7 @@ export function CreateGoalDrawer({ onClose, onSave }) {
   );
 
   return (
-    <Drawer title="Create New Goals" onClose={onClose} headerRight={headerRight} noCloseDivider>
+    <Drawer title={goal ? 'Edit Goal' : 'Create New Goals'} onClose={onClose} headerRight={headerRight} noCloseDivider>
       <div className={styles.body}>
         <Toggle
           size="S"
@@ -447,7 +429,11 @@ export function CreateGoalDrawer({ onClose, onSave }) {
             {LINKED_SECTIONS.map(sec => (
               <div key={sec.key} className={styles.linkedSection}>
                 <div className={styles.linkedHead}>
-                  <span className={styles.linkedLabel}>{sec.label}</span>
+                  <span className={styles.linkedLabel}>
+                    {sec.label}
+                    {sec.key === 'interventions' && interventions.length > 0
+                      && <Badge tone="grey" size="S" label={String(interventions.length)} />}
+                  </span>
                   <ActionButton
                     ref={sec.key === 'interventions' ? interventionAddRef : undefined}
                     size="S"
@@ -469,7 +455,7 @@ export function CreateGoalDrawer({ onClose, onSave }) {
                       items={INTERVENTION_ITEMS}
                       onSelect={(key) => {
                         setInterventionMenuOpen(false);
-                        if (key === 'patient-task' || key === 'internal-task') setTaskDrawerOpen(true);
+                        if (key === 'patient-task' || key === 'internal-task') setTaskDrawerOpen(key);
                         if (key === 'send-form') setSendFormOpen(true);
                         if (key === 'patient-education') setSendContentOpen(true);
                         if (key === 'measure-vital') setMeasureVitalOpen(true);
@@ -484,16 +470,28 @@ export function CreateGoalDrawer({ onClose, onSave }) {
         </div>
       </div>
       {sendFormOpen && (
-        <SendFormDrawer onClose={() => setSendFormOpen(false)} onSave={() => setSendFormOpen(false)} />
+        <SendFormDrawer
+          onClose={() => setSendFormOpen(false)}
+          onSave={(config) => { addIntervention('send-form', config.title, config); setSendFormOpen(false); }}
+        />
       )}
       {sendContentOpen && (
-        <SendContentDrawer onClose={() => setSendContentOpen(false)} onSave={() => setSendContentOpen(false)} />
+        <SendContentDrawer
+          onClose={() => setSendContentOpen(false)}
+          onSave={(config) => { addIntervention('patient-education', config.title, config); setSendContentOpen(false); }}
+        />
       )}
       {measureVitalOpen && (
-        <MeasureVitalDrawer onClose={() => setMeasureVitalOpen(false)} onSave={() => setMeasureVitalOpen(false)} />
+        <MeasureVitalDrawer
+          onClose={() => setMeasureVitalOpen(false)}
+          onSave={(config) => { addIntervention('measure-vital', config.title, config); setMeasureVitalOpen(false); }}
+        />
       )}
       {taskDrawerOpen && (
-        <AddTaskDrawer onClose={() => setTaskDrawerOpen(false)} onTaskCreated={() => setTaskDrawerOpen(false)} />
+        <AddTaskDrawer
+          onClose={() => setTaskDrawerOpen(false)}
+          onTaskCreated={(t) => { addIntervention(taskDrawerOpen, t?.name || '', { taskId: t?.id }); setTaskDrawerOpen(false); }}
+        />
       )}
     </Drawer>
   );

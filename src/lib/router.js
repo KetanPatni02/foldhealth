@@ -160,6 +160,10 @@ export function stateToHash(state) {
     if (settingsNavItem === 'billing') {
       return buildHash('settings', 'billing');
     }
+    if (settingsNavItem === 'care-plan-library') {
+      const cplTab = state.carePlanLibraryTab || 'template';
+      return buildHash('settings', 'care-plan-library', cplTab);
+    }
     if (settingsNavItem === 'member/leads') {
       const mlTab = state.memberLeadsTab || 'care-team';
       return buildHash('settings', 'member-leads', mlTab);
@@ -368,6 +372,12 @@ export function hashToState(route, state = null) {
     // APCM Billing section
     if (route.section === 'billing') {
       updates.settingsNavItem = 'billing';
+      return updates;
+    }
+    // Care Plan Library section
+    if (route.section === 'care-plan-library') {
+      updates.settingsNavItem = 'care-plan-library';
+      updates.carePlanLibraryTab = route.tab || 'template';
       return updates;
     }
     // Member/Leads section (settings → automation → member/leads)
