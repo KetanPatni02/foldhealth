@@ -57,6 +57,88 @@ function reportPersistFailure(op, error) {
 // public.notifications row → the shape the bell popover already renders.
 // `persisted: true` is what separates a DB-backed notification from a local
 // ephemeral one, which decides whether read/dismiss also writes to Supabase.
+/* ── Care Plan Library row ⇄ object mapping ──
+   The drawer edits camelCase fields; the table is snake_case. Kept beside
+   each other so a column rename can't drift from its reader. */
+function mapCarePlanGoalRow(row, interventions = []) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description || '',
+    category: row.category || '',
+    // The Type column predates `category`; both name the same thing.
+    type: row.category || '',
+    measure: row.measure || '',
+    conditions: row.conditions || [],
+    comparator: row.comparator || '=',
+    targetValue: row.target_value || '',
+    targetValue2: row.target_value_2 || '',
+    customUnit: row.custom_unit || '',
+    setTarget: row.set_target !== false,
+    duration: row.duration || '',
+    durationUnit: row.duration_unit || '',
+    frequency: row.frequency || '',
+    targetDate: row.target_date || '',
+    priority: row.priority || 'medium',
+    interventions,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function carePlanGoalToRow(g) {
+  return {
+    title: (g.title || '').trim(),
+    description: g.description || '',
+    category: g.category || '',
+    measure: g.measure || '',
+    conditions: g.conditions || [],
+    comparator: g.comparator || '=',
+    target_value: g.targetValue || '',
+    target_value_2: g.targetValue2 || '',
+    custom_unit: g.customUnit || '',
+    set_target: g.setTarget !== false,
+    duration: g.duration || '',
+    duration_unit: g.durationUnit || '',
+    frequency: g.frequency || '',
+    target_date: g.targetDate || '',
+    priority: g.priority || 'medium',
+  };
+}
+
+function mapCarePlanBarrierRow(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description || '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapCarePlanTemplateRow(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    conditions: row.conditions || [],
+    goals: row.goals || [],
+    interventions: row.interventions || [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapInterventionRow(row) {
+  return {
+    id: row.id,
+    goalId: row.goal_id,
+    kind: row.kind,
+    title: row.title || '',
+    config: row.config || {},
+    createdAt: row.created_at,
+  };
+}
+
 function mapNotificationRow(row) {
   return {
     id: row.id,
@@ -2078,6 +2160,163 @@ export const useAppStore = create((set, get) => ({
   // New Care Plan takes over the entire Settings area (the sub-nav is hidden,
   // only the app rail remains) — so the flag lives above CarePlanLibraryPanel.
   carePlanCreateOpen: false,
+
+  // ── Care Plan Library (Settings → Care Plan Library) ──
+  // Three sibling lists plus each goal's interventions, all persisted in
+  // `care_plan_*` (supabase/care_plan_library_migration.sql). Unlike the
+  // worklists there is no local mock to fall back on: the library starts
+  // empty by design, so a failed fetch leaves the tabs empty and warns.
+  carePlanTemplates: [],
+  carePlanGoals: [],
+  carePlanBarriers: [],
+  carePlanLibraryLoading: false,
+  carePlanLibraryDidFetch: false,
+
+  fetchCarePlanLibrary: async () => {
+    set({ carePlanLibraryLoading: true });
+    const [templates, goals, barriers, interventions] = await Promise.all([
+      supabase.from('care_plan_templates').select('*').order('created_at', { ascending: true }),
+      supabase.from('care_plan_goals').select('*').order('created_at', { ascending: true }),
+      supabase.from('care_plan_barriers').select('*').order('created_at', { ascending: true }),
+      supabase.from('care_plan_interventions').select('*').order('created_at', { ascending: true }),
+    ]);
+    const firstError = templates.error || goals.error || barriers.error || interventions.error;
+    if (firstError) {
+      // Table missing (migration not run yet) or blocked — keep the tabs as
+      // they are rather than blanking work in progress.
+      console.warn('care plan library fetch failed (run migration?):', firstError.message);
+      set({ carePlanLibraryLoading: false, carePlanLibraryDidFetch: true });
+      return;
+    }
+    const byGoal = new Map();
+    (interventions.data || []).forEach((row) => {
+      const list = byGoal.get(row.goal_id) || [];
+      list.push(mapInterventionRow(row));
+      byGoal.set(row.goal_id, list);
+    });
+    set({
+      carePlanTemplates: (templates.data || []).map(mapCarePlanTemplateRow),
+      carePlanGoals: (goals.data || []).map(row => mapCarePlanGoalRow(row, byGoal.get(row.id) || [])),
+      carePlanBarriers: (barriers.data || []).map(mapCarePlanBarrierRow),
+      carePlanLibraryLoading: false,
+      carePlanLibraryDidFetch: true,
+    });
+  },
+
+  /**
+   * Insert or update one goal and replace its intervention rows. Interventions
+   * are deleted-then-inserted rather than diffed: the drawer hands back the
+   * whole list, and a goal carries a handful of them at most.
+   */
+  saveCarePlanGoal: async (values, id = null) => {
+    const row = carePlanGoalToRow(values);
+    const q = id
+      ? supabase.from('care_plan_goals').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_goals').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) {
+      console.warn('save care plan goal failed:', error.message);
+      get().showToast('Could not save goal');
+      return null;
+    }
+    const goalId = data.id;
+    const list = values.interventions || [];
+    if (id) await supabase.from('care_plan_interventions').delete().eq('goal_id', goalId);
+    let saved = [];
+    if (list.length) {
+      const { data: rows, error: iErr } = await supabase
+        .from('care_plan_interventions')
+        .insert(list.map(i => ({ goal_id: goalId, kind: i.kind, title: i.title || '', config: i.config || {} })))
+        .select();
+      if (iErr) console.warn('save interventions failed:', iErr.message);
+      else saved = (rows || []).map(mapInterventionRow);
+    }
+    const goal = mapCarePlanGoalRow(data, saved);
+    set(s => ({
+      carePlanGoals: id
+        ? s.carePlanGoals.map(g => (g.id === goalId ? goal : g))
+        : [...s.carePlanGoals, goal],
+    }));
+    return goal;
+  },
+
+  deleteCarePlanGoal: async (id) => {
+    const prev = get().carePlanGoals;
+    set({ carePlanGoals: prev.filter(g => g.id !== id) });
+    const { error } = await supabase.from('care_plan_goals').delete().eq('id', id);
+    if (error) {
+      console.warn('delete care plan goal failed:', error.message);
+      set({ carePlanGoals: prev });
+      get().showToast('Could not delete goal');
+    }
+  },
+
+  saveCarePlanBarrier: async (values, id = null) => {
+    const row = { title: values.title, description: values.description || '' };
+    const q = id
+      ? supabase.from('care_plan_barriers').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_barriers').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) {
+      console.warn('save care plan barrier failed:', error.message);
+      get().showToast('Could not save barrier');
+      return null;
+    }
+    const barrier = mapCarePlanBarrierRow(data);
+    set(s => ({
+      carePlanBarriers: id
+        ? s.carePlanBarriers.map(b => (b.id === barrier.id ? barrier : b))
+        : [...s.carePlanBarriers, barrier],
+    }));
+    return barrier;
+  },
+
+  deleteCarePlanBarrier: async (id) => {
+    const prev = get().carePlanBarriers;
+    set({ carePlanBarriers: prev.filter(b => b.id !== id) });
+    const { error } = await supabase.from('care_plan_barriers').delete().eq('id', id);
+    if (error) {
+      console.warn('delete care plan barrier failed:', error.message);
+      set({ carePlanBarriers: prev });
+      get().showToast('Could not delete barrier');
+    }
+  },
+
+  saveCarePlanTemplate: async (values, id = null) => {
+    const row = {
+      name: values.name,
+      conditions: values.conditions || [],
+      goals: values.goals || [],
+      interventions: values.interventions || [],
+    };
+    const q = id
+      ? supabase.from('care_plan_templates').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_templates').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) {
+      console.warn('save care plan template failed:', error.message);
+      get().showToast('Could not save template');
+      return null;
+    }
+    const template = mapCarePlanTemplateRow(data);
+    set(s => ({
+      carePlanTemplates: id
+        ? s.carePlanTemplates.map(t => (t.id === template.id ? template : t))
+        : [...s.carePlanTemplates, template],
+    }));
+    return template;
+  },
+
+  deleteCarePlanTemplate: async (id) => {
+    const prev = get().carePlanTemplates;
+    set({ carePlanTemplates: prev.filter(t => t.id !== id) });
+    const { error } = await supabase.from('care_plan_templates').delete().eq('id', id);
+    if (error) {
+      console.warn('delete care plan template failed:', error.message);
+      set({ carePlanTemplates: prev });
+      get().showToast('Could not delete template');
+    }
+  },
   setCarePlanCreateOpen: (v) => set({ carePlanCreateOpen: v }),
 
   // Med Recon checklist ticks, keyed by patient. Lives in the store rather

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
@@ -12,13 +12,13 @@ import { WorklistShell } from '../../../components/WorklistShell/WorklistShell';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
+import { TableSkeleton } from '../../../components/TableSkeleton/TableSkeleton';
 import { useAppStore } from '../../../store/useAppStore';
 import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
 import { CreateGoalDrawer } from './CreateGoalDrawer';
+import { formatGoalTarget, formatGoalDuration } from './goalFormat';
 import styles from './CarePlanLibraryPanel.module.css';
 
-// Local-only seed data — see the panel's note to the user about persistence.
-let nextId = 100;
 const CARE_PLAN_TABS = [
   { key: 'template', label: 'Plan Template' },
   { key: 'goals', label: 'Goals Library' },
@@ -84,7 +84,8 @@ const GOAL_COLUMNS = [
 ];
 
 // Linked Items is a single total — the per-kind breakdown isn't surfaced here.
-const linkedCount = (item) => Object.values(item.linked || {}).reduce((n, v) => n + (v || 0), 0);
+const linkedCount = (item) => (item.interventions || []).length
+  + Object.values(item.linked || {}).reduce((n, v) => n + (v || 0), 0);
 
 const SIMPLE_COLUMNS = [
   { key: 'title', label: 'Title', sticky: 'left', left: 0, width: 260 },
@@ -109,6 +110,7 @@ function blankSimpleDraft(kind) {
   return { kind, id: null, title: '', description: '' };
 }
 function simpleDraftFrom(kind, item) {
+  if (kind === 'goal') return { kind, id: item.id, goal: item };
   return { kind, id: item.id, title: item.title, description: item.description };
 }
 
@@ -163,10 +165,23 @@ export function CarePlanLibraryPanel() {
   // itself rather than via an effect.
   const handleTabChange = (key) => { setActiveTab(key); setSearchValue(''); };
 
-  // Every tab starts empty — entries are created through the panel itself.
-  const [templates, setTemplates] = useState([]);
-  const [goals, setGoals] = useState([]);
-  const [barriers, setBarriers] = useState([]);
+  // All three tabs are served from Supabase (care_plan_* tables).
+  const templates = useAppStore(s => s.carePlanTemplates);
+  const goals = useAppStore(s => s.carePlanGoals);
+  const barriers = useAppStore(s => s.carePlanBarriers);
+  const libraryLoading = useAppStore(s => s.carePlanLibraryLoading);
+  const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
+  const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
+  const saveCarePlanGoal = useAppStore(s => s.saveCarePlanGoal);
+  const deleteCarePlanGoal = useAppStore(s => s.deleteCarePlanGoal);
+  const saveCarePlanBarrier = useAppStore(s => s.saveCarePlanBarrier);
+  const deleteCarePlanBarrier = useAppStore(s => s.deleteCarePlanBarrier);
+  const saveCarePlanTemplate = useAppStore(s => s.saveCarePlanTemplate);
+  const deleteCarePlanTemplate = useAppStore(s => s.deleteCarePlanTemplate);
+
+  useEffect(() => {
+    if (!libraryDidFetch) fetchCarePlanLibrary();
+  }, [libraryDidFetch, fetchCarePlanLibrary]);
 
   // A single draft/delete-target slot, discriminated by `kind` — only one
   // drawer or confirm dialog is ever open at a time regardless of tab.
@@ -238,82 +253,53 @@ export function CarePlanLibraryPanel() {
   const openEditTemplate = (t) => setDraft(templateDraftFrom(t));
   const openEditSimple = (kind, item) => setDraft(simpleDraftFrom(kind, item));
 
-  const canSave = draft && (draft.kind === 'template' ? draft.name.trim().length > 0 : draft.title.trim().length > 0);
+  const canSave = draft && (draft.kind === 'template'
+    ? draft.name.trim().length > 0
+    : (draft.title || '').trim().length > 0);
 
-  const saveDraft = () => {
+  const saveDraft = async () => {
     if (!canSave) return;
     if (draft.kind === 'template') {
       const conditions = draft.conditionsText.split(',').map(c => c.trim()).filter(Boolean);
-      if (draft.id) {
-        setTemplates(prev => prev.map(t => (t.id === draft.id
-          ? { ...t, name: draft.name.trim(), conditions, goals: draft.goals, interventions: draft.interventions, updatedAt: new Date().toISOString() }
-          : t)));
-        showToast(`"${draft.name.trim()}" updated`);
-      } else {
-        const id = String(nextId++);
-        const now = new Date().toISOString();
-        setTemplates(prev => [...prev, {
-          id, name: draft.name.trim(), conditions, goals: draft.goals, interventions: draft.interventions,
-          createdAt: now, updatedAt: now,
-        }]);
-        showToast(`"${draft.name.trim()}" created`);
-      }
+      const saved = await saveCarePlanTemplate(
+        { name: draft.name.trim(), conditions, goals: draft.goals, interventions: draft.interventions },
+        draft.id,
+      );
+      if (!saved) return;
+      showToast(`"${draft.name.trim()}" ${draft.id ? 'updated' : 'created'}`);
     } else {
-      const setList = draft.kind === 'goal' ? setGoals : setBarriers;
-      if (draft.id) {
-        setList(prev => prev.map(x => (x.id === draft.id
-          ? { ...x, title: draft.title.trim(), description: draft.description.trim(), updatedAt: new Date().toISOString() }
-          : x)));
-        showToast(`"${draft.title.trim()}" updated`);
-      } else {
-        const id = `${draft.kind}-${nextId++}`;
-        const stamp = new Date().toISOString();
-        setList(prev => [...prev, {
-          id, title: draft.title.trim(), description: draft.description.trim(),
-          // Goals carry the extra table columns; the drawer only edits
-          // title/description today, so the rest start empty rather than
-          // undefined (which would render as blank instead of "—"/0).
-          ...(draft.kind === 'goal'
-            ? { type: '', targetValue: '', duration: '', conditions: [], linked: { interventions: 0, barriers: 0, tasks: 0 }, createdAt: stamp }
-            : { linked: { interventions: 0, barriers: 0, tasks: 0 }, createdAt: stamp }),
-          updatedAt: stamp,
-        }]);
-        showToast(`"${draft.title.trim()}" created`);
-      }
+      const saved = await saveCarePlanBarrier(
+        { title: draft.title.trim(), description: draft.description.trim() },
+        draft.id,
+      );
+      if (!saved) return;
+      showToast(`"${draft.title.trim()}" ${draft.id ? 'updated' : 'created'}`);
     }
     closeDrawer();
   };
 
   const confirmDelete = () => {
     const { kind, id, name } = deleteTarget;
-    if (kind === 'template') setTemplates(prev => prev.filter(t => t.id !== id));
-    else if (kind === 'goal') setGoals(prev => prev.filter(x => x.id !== id));
-    else setBarriers(prev => prev.filter(x => x.id !== id));
+    if (kind === 'template') deleteCarePlanTemplate(id);
+    else if (kind === 'goal') deleteCarePlanGoal(id);
+    else deleteCarePlanBarrier(id);
     showToast(`"${name}" deleted`);
     setDeleteTarget(null);
   };
 
-  const duplicateTemplate = (t) => {
-    const now = new Date().toISOString();
-    const id = String(nextId++);
-    setTemplates(prev => [...prev, {
-      ...t,
-      id,
+  const duplicateTemplate = async (t) => {
+    const saved = await saveCarePlanTemplate({
       name: `${t.name} (Copy)`,
+      conditions: t.conditions,
       goals: t.goals.map(g => ({ ...g })),
       interventions: t.interventions.map(i => ({ ...i })),
-      createdAt: now,
-      updatedAt: now,
-    }]);
-    showToast(`"${t.name}" duplicated`);
+    });
+    if (saved) showToast(`"${t.name}" duplicated`);
   };
 
-  const duplicateGoal = (g) => {
-    const id = `goal-${Date.now()}`;
-    setGoals(prev => [
-      { ...g, id, title: `${g.title} (Copy)`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      ...prev,
-    ]);
+  const duplicateGoal = async (g) => {
+    const saved = await saveCarePlanGoal({ ...g, title: `${g.title} (Copy)` });
+    if (saved) showToast(`"${g.title}" duplicated`);
   };
 
   const addGoalRow = () => setDraft(d => ({ ...d, goals: [...d.goals, { id: `g-${Date.now()}`, title: '', subtitle: '' }] }));
@@ -369,8 +355,8 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdLinked}>
         <Badge tone="grey" size="S" label={String(linkedCount(g))} />
       </td>
-      <td className={styles.tdMuted}>{g.targetValue || '—'}</td>
-      <td className={styles.tdMuted}>{g.duration || '—'}</td>
+      <td className={styles.tdMuted}>{formatGoalTarget(g) || '—'}</td>
+      <td className={styles.tdMuted}>{formatGoalDuration(g) || '—'}</td>
       <td className={styles.tdConditions}>
         <div className={styles.chipRow}>
           {(g.conditions || []).length
@@ -442,7 +428,9 @@ export function CarePlanLibraryPanel() {
       />
 
       <div className={styles.content}>
-        {activeTab === 'template' && (
+        {libraryLoading && !libraryDidFetch && <TableSkeleton rows={6} />}
+
+        {!(libraryLoading && !libraryDidFetch) && activeTab === 'template' && (
           templates.length === 0 ? emptyPane('No Care Plan Templates Added') : (
           <WorklistShell
             header={null}
@@ -462,7 +450,7 @@ export function CarePlanLibraryPanel() {
           />
           )
         )}
-        {activeTab === 'goals' && (
+        {!(libraryLoading && !libraryDidFetch) && activeTab === 'goals' && (
           goals.length === 0 ? emptyPane('No Goals Added') : (
           <WorklistShell
             header={null}
@@ -492,7 +480,7 @@ export function CarePlanLibraryPanel() {
           />
           )
         )}
-        {activeTab === 'barriers' && (
+        {!(libraryLoading && !libraryDidFetch) && activeTab === 'barriers' && (
           barriers.length === 0 ? emptyPane('No Barriers Added') : (
           <WorklistShell
             header={null}
@@ -596,23 +584,12 @@ export function CarePlanLibraryPanel() {
 
       {draft && draft.kind === 'goal' && (
         <CreateGoalDrawer
+          goal={draft.goal}
           onClose={closeDrawer}
-          onSave={({ category, measure, conditions, title, priority }) => {
-            const stamp = new Date().toISOString();
-            setGoals(prev => [...prev, {
-              id: `goal-${nextId++}`,
-              title,
-              description: '',
-              type: category,
-              targetValue: measure || '',
-              duration: '',
-              priority,
-              conditions,
-              linked: { interventions: 0, barriers: 0, tasks: 0 },
-              createdAt: stamp,
-              updatedAt: stamp,
-            }]);
-            showToast(`"${title}" created`);
+          onSave={async (values) => {
+            const saved = await saveCarePlanGoal(values, draft.id);
+            if (!saved) return;
+            showToast(`"${values.title}" ${draft.id ? 'updated' : 'created'}`);
             closeDrawer();
           }}
         />
