@@ -25,8 +25,11 @@
 -- SAFETY
 --   • Column is added with DEFAULT 'Other' so existing rows backfill in the
 --     same statement.
---   • Seed uses ON CONFLICT (id) DO NOTHING so re-running the migration is
---     safe and won't overwrite hand-edits to the template.
+--   • Seed is guarded by WHERE NOT EXISTS on `name` so re-running the
+--     migration is safe and won't overwrite hand-edits to the template. The
+--     `id` is left to the bigint sequence — no code references a hardcoded
+--     forms.id, only clinical_notes.form_type = 'cbp_visit_note' (a string
+--     enum), so a stable id is not required.
 
 ALTER TABLE public.forms
   ADD COLUMN IF NOT EXISTS form_type text NOT NULL DEFAULT 'Other';
@@ -45,12 +48,12 @@ BEGIN
   END IF;
 END $$;
 
--- Seed the CBP Visit Note template. UUID is stable so downstream references
--- (feature code that opens this specific template) can rely on the id.
+-- Seed the CBP Visit Note template row so it shows up in Settings → Content →
+-- Forms. Guarded by name so re-running is safe.
 INSERT INTO public.forms (
-  id, name, description, category, form_type, status, response_count, updated_at
-) VALUES (
-  '9c1b7f60-cbc0-4ecb-8a76-cb00cbcbcb00',
+  name, description, category, form_type, status, response_count, updated_at
+)
+SELECT
   'CBP Visit Note',
   'Controlling Blood Pressure — visit note capturing BP reading, method, and follow-up plan.',
   'Care Gap',
@@ -58,4 +61,6 @@ INSERT INTO public.forms (
   'active',
   0,
   now()
-) ON CONFLICT (id) DO NOTHING;
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.forms WHERE name = 'CBP Visit Note'
+);
