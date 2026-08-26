@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
-import { CustomSelect } from './CustomSelect';
+import { Select } from '../../components/Select/Select';
+import { Toggle } from '../../components/Toggle/Toggle';
 import styles from './NodeSettings.module.css';
 
 export function NodeSettingsTransitions({
@@ -128,14 +129,12 @@ export function NodeSettingsTransitions({
                 <div className={styles.equationBox}>
                   <div className={styles.equationHeader}>
                     <div className={styles.toggleWrap}>
-                      <button
-                        className={`${styles.toggleBtn} ${(t.matchMode || 'all') === 'all' ? styles.toggleBtnActive : ''}`}
-                        onClick={() => onUpdateTransition(i, 'matchMode', 'all')}
-                      >All</button>
-                      <button
-                        className={`${styles.toggleBtn} ${(t.matchMode || 'all') === 'any' ? styles.toggleBtnActive : ''}`}
-                        onClick={() => onUpdateTransition(i, 'matchMode', 'any')}
-                      >Any</button>
+                      <Toggle
+                        size="S"
+                        items={[{ key: 'all', label: 'All' }, { key: 'any', label: 'Any' }]}
+                        active={t.matchMode || 'all'}
+                        onChange={(key) => onUpdateTransition(i, 'matchMode', key)}
+                      />
                     </div>
                     <button className={styles.addRuleBtn} onClick={() => onAddRule(i)}>Add Rule</button>
                   </div>
@@ -187,7 +186,7 @@ export function NodeSettingsTransitions({
               {/* Jump to Node */}
               <div className={styles.transitionField}>
                 <label className={styles.fieldLabel} htmlFor={`${uid}-transition-${i}-target`}>Jump to Node</label>
-                <CustomSelect
+                <Select
                   id={`${uid}-transition-${i}-target`}
                   value={t.target || ''}
                   options={nodeOptions}
