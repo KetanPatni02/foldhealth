@@ -272,6 +272,24 @@ function persistCaregapActivityInsert(memberId, entry) {
     if (error) reportPersistFailure(`persistCaregapActivityInsert(${entry.id})`, error);
   });
 }
+// Write the member's whole gaps array back to hedis_members.gaps after a
+// local gap mutation (status / assignee). Replace-whole mirrors the local
+// shape — gap objects carry {code,status,assignee,…}. Fire-and-forget; the
+// affected-rows check catches mock-fallback members that were never in the DB.
+function persistHedisGaps(memberId) {
+  if (!memberId) return;
+  const m = useAppStore.getState().hedisMembers.find(x => x.id === memberId);
+  if (!m) return;
+  supabase
+    .from('hedis_members')
+    .update({ gaps: m.gaps || [] })
+    .eq('id', memberId)
+    .select('id')
+    .then(({ data, error }) => {
+      if (error) return reportPersistFailure(`persistHedisGaps(${memberId})`, error);
+      if (!data || data.length === 0) reportPersistFailure(`persistHedisGaps(${memberId})`, { message: 'affected 0 rows (member not in Supabase — mock fallback?)' });
+    });
+}
 // SNP worklist row updates — one helper for both mutation paths (status +
 // assignee). Fire-and-forget; the local state is updated optimistically
 // before we call this, and a failed write reports through the shared toast.
@@ -3269,6 +3287,15 @@ export const useAppStore = create((set, get) => ({
     updateHash(get);
   },
 
+  // Open a task's detail drawer from a non-Tasks surface (e.g. the HEDIS
+  // care-gap activity feed). Reuses the same pendingOpenTaskId signal the
+  // notifications bell already drives — TasksView consumes it on mount.
+  openTaskFromActivity: (taskId) => {
+    if (!taskId) return;
+    set({ pendingOpenTaskId: taskId });
+    get().setActivePage('tasks');
+  },
+
   // ── Population Groups: persistent create-group CSV processing session ──
   startPgSession: (sess) => set({ pgSession: { ...sess }, pgMinimized: true }),
   updatePgSession: (patch) => set(s => ({ pgSession: s.pgSession ? { ...s.pgSession, ...patch } : null })),
@@ -5002,6 +5029,7 @@ export const useAppStore = create((set, get) => ({
         }
       ),
     }));
+    persistHedisGaps(memberId);
   },
   updateGapAssignee: (memberId, gapCode, nextAssignee) => {
     track('hedis.gap_assignee_updated', { memberId, gapCode, assignee: nextAssignee });
@@ -5033,6 +5061,7 @@ export const useAppStore = create((set, get) => ({
         [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
       },
     }));
+    persistHedisGaps(memberId);
     persistCaregapActivityInsert(memberId, entry);
   },
   bulkUpdateGapStatuses: (memberId, updates) => {
@@ -5046,6 +5075,7 @@ export const useAppStore = create((set, get) => ({
         }
       ),
     }));
+    persistHedisGaps(memberId);
   },
   logCareGapActivity: (memberId, entry) => {
     const full = { id: Date.now(), at: new Date().toISOString(), ...entry };
@@ -5096,6 +5126,9 @@ export const useAppStore = create((set, get) => ({
     return get().createTask(payload, {
       auditUserName: me?.name || 'HEDIS Automation',
       auditUserId: me?.id || null,
+      // Client-only fields — the tasks table has no columns for these; they
+      // ride the in-memory task + the returned object for the UI.
+      dbOmit: ['hedisMemberId', 'hedisGapCodes', 'consolidatedPdf', 'state'],
     });
   },
 
@@ -11682,10 +11715,20 @@ export const useAppStore = create((set, get) => ({
     const optimistic = { ...normalized, id: tempId };
     set(s => ({ tasks: [...s.tasks, optimistic] }));
 
+    // dbOmit: client-only fields the tasks table has no columns for (e.g.
+    // HEDIS sign-off's hedisMemberId/hedisGapCodes/consolidatedPdf/state).
+    // They stay on the in-memory task (and in the returned object) but are
+    // stripped from the INSERT — without this the insert fails, the legacy
+    // retry keeps failing on the same unknown columns, and the task silently
+    // vanishes while the caller's success toast still fires.
+    const dbPayload = opts.dbOmit?.length
+      ? Object.fromEntries(Object.entries(normalized).filter(([k]) => !opts.dbOmit.includes(k)))
+      : normalized;
+
     // Try insert with full schema; if fails due to missing column, retry with reduced payload
-    let { data, error } = await supabase.from('tasks').insert(normalized).select().single();
+    let { data, error } = await supabase.from('tasks').insert(dbPayload).select().single();
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = normalized;
+      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = dbPayload;
       ({ data, error } = await supabase.from('tasks').insert(legacy).select().single());
     }
     if (error) {

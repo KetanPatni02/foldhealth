@@ -40,6 +40,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const caregapActivityLoaded = useAppStore(s => s.caregapActivityLoaded);
   const fetchCaregapActivity = useAppStore(s => s.fetchCaregapActivity);
   useEffect(() => { fetchCaregapActivity(); }, [fetchCaregapActivity]);
+  const openTaskFromActivity = useAppStore(s => s.openTaskFromActivity);
   const appointments = useAppStore(s => s.appointments);
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
   useEffect(() => { fetchAppointments?.(); }, [fetchAppointments]);
@@ -373,7 +374,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   )}
                 </div>
                 {caregapActivityLoaded
-                  ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." />
+                  ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." onOpenTask={openTaskFromActivity} />
                   : <CardSkeleton />}
               </div>
             ) : activeTab === 'Outreaches' ? (

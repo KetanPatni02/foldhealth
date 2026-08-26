@@ -117,7 +117,7 @@ const statusTone = (label) => STATUS_TONE[label] || 'grey';
  * uploads render the HCC attachment file card; assignee changes render a
  * from → to avatar transition.
  */
-export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false }) {
+export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggleGroup = (label) => setCollapsed(prev => {
     const next = new Set(prev);
@@ -180,6 +180,7 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
           isFirst={it.isFirst}
           isLast={it.isLast}
           hideCommentTitle={hideCommentTitle}
+          onOpenTask={onOpenTask}
         />
       ))}
     </div>
@@ -215,7 +216,7 @@ function MetaLine({ entry }) {
 }
 
 /* ── Type-branched entry ─────────────────────────────────────────────── */
-function ActivityLogEntry({ entry, isFirst, isLast, hideCommentTitle = false }) {
+function ActivityLogEntry({ entry, isFirst, isLast, hideCommentTitle = false, onOpenTask }) {
   return (
     <div className={htStyles.row}>
       <Rail entry={entry} isFirst={isFirst} isLast={isLast} />
@@ -231,9 +232,9 @@ function ActivityLogEntry({ entry, isFirst, isLast, hideCommentTitle = false }) 
               return <StatusChangeEntryBody entry={entry} />;
             case 'clinical_note':
             case 'note':
-              return <DetailCardEntryBody entry={entry} variant="note" />;
+              return <DetailCardEntryBody entry={entry} variant="note" onOpenTask={onOpenTask} />;
             case 'task':
-              return <DetailCardEntryBody entry={entry} variant="task" />;
+              return <DetailCardEntryBody entry={entry} variant="task" onOpenTask={onOpenTask} />;
             case 'appointment':
               return <DetailCardEntryBody entry={entry} variant="appointment" />;
             case 'assign_coder':
@@ -367,7 +368,7 @@ function StatusChangeEntryBody({ entry }) {
 }
 
 /* ── Variant: Clinical note / Task / Appointment (nested detail card) ─ */
-function DetailCardEntryBody({ entry, variant }) {
+function DetailCardEntryBody({ entry, variant, onOpenTask }) {
   const [expanded, setExpanded] = useState(true);
   const dc = entry.detailCard;
   const expandable = !!dc;
@@ -413,7 +414,13 @@ function DetailCardEntryBody({ entry, variant }) {
               </div>
               <div className={styles.detailCardTrailing}>
                 {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
-                <button type="button" className={styles.detailCardIconBtn} aria-label="Open">
+                <button
+                  type="button"
+                  className={styles.detailCardIconBtn}
+                  aria-label="Open"
+                  onClick={dc.taskId && onOpenTask ? () => onOpenTask(dc.taskId) : undefined}
+                  style={dc.taskId && onOpenTask ? undefined : { cursor: 'default' }}
+                >
                   <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
                 </button>
               </div>
@@ -502,7 +509,13 @@ function DetailCardEntryBody({ entry, variant }) {
                   </div>
                   <div className={styles.detailCardTrailing}>
                     {dc.reviewTask.status && <Badge tone={statusTone(dc.reviewTask.status)} size="M" label={dc.reviewTask.status} />}
-                    <button type="button" className={styles.detailCardIconBtn} aria-label="Open task">
+                    <button
+                      type="button"
+                      className={styles.detailCardIconBtn}
+                      aria-label="Open task"
+                      onClick={dc.reviewTask.taskId && onOpenTask ? () => onOpenTask(dc.reviewTask.taskId) : undefined}
+                      style={dc.reviewTask.taskId && onOpenTask ? undefined : { cursor: 'default' }}
+                    >
                       <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
                     </button>
                   </div>
