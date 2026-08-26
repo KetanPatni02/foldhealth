@@ -1,0 +1,139 @@
+{
+  "primary": {
+    "500": { "$value": "#1A0647", "$type": "color" },
+    "400": { "$value": "#5020A0", "$type": "color" },
+    "300": { "$value": "#7E4CD9", "$type": "color", "$description": "Main brand purple. WCAG AA enforced on white." },
+    "200": { "$value": "#D7C0FF", "$type": "color" },
+    "100": { "$value": "#F5F0FF", "$type": "color" },
+    "50": { "$value": "#FCFAFF", "$type": "color" },
+    "25": { "$value": "#FDFDFF", "$type": "color" }
+  },
+  "secondary": {
+    "300": { "$value": "#F47A3E", "$type": "color", "$description": "Do NOT pair with white text — use neutral-500 text." },
+    "300-fg": { "$value": "#A94B1B", "$type": "color", "$description": "Orange for text on light surfaces — passes AA." },
+    "200": { "$value": "#FBCEB7", "$type": "color" },
+    "100": { "$value": "#FEEEE7", "$type": "color" },
+    "50": { "$value": "#FFF8F5", "$type": "color" }
+  },
+  "neutral": {
+    "500": { "$value": "#16181D", "$type": "color" },
+    "400": { "$value": "#3A485F", "$type": "color", "$description": "Primary body text." },
+    "300": { "$value": "#4F5A70", "$type": "color", "$description": "Muted body text — passes AA on white and neutral-50." },
+    "200": { "$value": "#5F6A7E", "$type": "color", "$description": "Hint/disabled text — passes AA." },
+    "placeholder-text": { "$value": "#8A94A8", "$type": "color", "$description": "Input placeholders — lighter grey, exempt from AA body-text ratio." },
+    "150": { "$value": "#D0D6E1", "$type": "color", "$description": "Hairline dividers (drawer header divider)." },
+    "100": { "$value": "#E9ECF1", "$type": "color" },
+    "75": { "$value": "#F3F4F7", "$type": "color" },
+    "50": { "$value": "#F6F7F8", "$type": "color", "$description": "Default app surface." },
+    "25": { "$value": "#FAFAFA", "$type": "color" },
+    "0": { "$value": "#FFFFFF", "$type": "color" }
+  },
+  "status": {
+    "error": { "$value": "#D72825", "$type": "color" },
+    "error-light": { "$value": "#FFF5F5", "$type": "color" },
+    "warning": { "$value": "#D9A50B", "$type": "color", "$description": "Pair with dark text (neutral-500), not white." },
+    "warning-light": { "$value": "#FFFCF5", "$type": "color" },
+    "success": { "$value": "#007A42", "$type": "color" },
+    "success-light": { "$value": "#F5FFFA", "$type": "color" },
+    "info": { "$value": "#145ECC", "$type": "color" },
+    "info-light": { "$value": "#F4F8FE", "$type": "color" },
+    "success-bright": { "$value": "#087040", "$type": "color", "$description": "Presence indicators, badges over neutral surfaces." }
+  },
+  "agent-col": {
+    "bg": { "$value": "#F8F5FF", "$type": "color" }
+  },
+  "shadow": {
+    "popover": { "$value": { "x": "0px", "y": "12px", "blur": "60px", "spread": "0px", "color": "rgba(0, 0, 0, 0.06)" }, "$type": "boxShadow" },
+    "drawer": { "$value": { "x": "-2px", "y": "0px", "blur": "24px", "spread": "0px", "color": "rgba(0, 0, 0, 0.04)" }, "$type": "boxShadow" },
+    "card": { "$value": { "x": "0px", "y": "1px", "blur": "3px", "spread": "0px", "color": "rgba(0, 0, 0, 0.04)" }, "$type": "boxShadow" },
+    "bulk-bar": { "$value": { "x": "4px", "y": "15px", "blur": "60px", "spread": "24px", "color": "rgba(0, 0, 0, 0.15)" }, "$type": "boxShadow" }
+  },
+  "surface": {
+    "overlay": { "$value": "rgba(0, 0, 0, 0.4)", "$type": "color", "$description": "Modal/dialog backdrop tint." },
+    "overlay-heavy": { "$value": "rgba(0, 0, 0, 0.8)", "$type": "color", "$description": "Full-bleed media viewer scrim." }
+  },
+  "media-viewer": {
+    "chrome": { "$value": "#1B1B1D", "$type": "color", "$description": "Theme-independent — stays dark in all themes." },
+    "chrome-hover": { "$value": "#2A2A2D", "$type": "color" },
+    "chrome-fg": { "$value": "#FFFFFF", "$type": "color" }
+  },
+  "sidebar": {
+    "fg": { "$value": "rgba(255, 255, 255, 0.85)", "$type": "color" },
+    "fg-muted": { "$value": "rgba(255, 255, 255, 0.6)", "$type": "color" },
+    "hover-bg": { "$value": "rgba(80, 32, 160, 0.35)", "$type": "color" },
+    "active-bg": { "$value": "{primary.400}", "$type": "color" },
+    "active-border": { "$value": "{primary.400}", "$type": "color" },
+    "active-overlay": { "$value": "{primary.300}", "$type": "color" },
+    "active-overlay-border": { "$value": "{primary.300}", "$type": "color" },
+    "active-fg": { "$value": "rgba(255, 255, 255, 0.95)", "$type": "color" },
+    "logo": { "$value": "#FFFFFF", "$type": "color" },
+    "border": { "$value": "rgba(0, 0, 0, 0)", "$type": "color", "$description": "Transparent by default." }
+  },
+  "chart": {
+    "1": { "$value": "#80A4D5", "$type": "color" },
+    "2": { "$value": "#BFD7F6", "$type": "color" },
+    "3": { "$value": "#8DE3D4", "$type": "color" },
+    "4": { "$value": "#BD9ECF", "$type": "color" },
+    "5": { "$value": "#BBC892", "$type": "color" },
+    "6": { "$value": "#EEA47B", "$type": "color" },
+    "7": { "$value": "#F4B6C2", "$type": "color" },
+    "8": { "$value": "#FAD6BF", "$type": "color" },
+    "9": { "$value": "#C5C6E0", "$type": "color" },
+    "10": { "$value": "#D3A5BD", "$type": "color" },
+    "11": { "$value": "#DCE3BF", "$type": "color" },
+    "12": { "$value": "#F7EBAC", "$type": "color" }
+  },
+  "accent": {
+    "blue-grey": { "$value": "#607D8B", "$type": "color" },
+    "brown": { "$value": "#795548", "$type": "color" },
+    "amber": { "$value": "#EEB200", "$type": "color" },
+    "light-green": { "$value": "#8BC34A", "$type": "color" },
+    "teal": { "$value": "#009688", "$type": "color" },
+    "cyan": { "$value": "#109CAE", "$type": "color" },
+    "blue": { "$value": "#2196F3", "$type": "color" },
+    "persian-blue": { "$value": "#5800FF", "$type": "color" },
+    "purple": { "$value": "#9C27B0", "$type": "color" },
+    "pink": { "$value": "#E81E63", "$type": "color" }
+  },
+  "accent-light": {
+    "blue-grey": { "$value": "#EFF2F3", "$type": "color" },
+    "brown": { "$value": "#F2EEED", "$type": "color" },
+    "amber": { "$value": "#FDF7E5", "$type": "color" },
+    "light-green": { "$value": "#F3F9ED", "$type": "color" },
+    "teal": { "$value": "#E5F4F3", "$type": "color" },
+    "cyan": { "$value": "#E5F8FB", "$type": "color" },
+    "blue": { "$value": "#E9F4FE", "$type": "color" },
+    "persian-blue": { "$value": "#EEE5FF", "$type": "color" },
+    "purple": { "$value": "#F5E9F7", "$type": "color" },
+    "pink": { "$value": "#FDE8EF", "$type": "color" }
+  },
+  "font": {
+    "2xs": { "$value": 10, "$type": "number", "$description": "Micro labels — sparingly." },
+    "xs": { "$value": 11, "$type": "number", "$description": "Captions, timestamps." },
+    "sm": { "$value": 12, "$type": "number", "$description": "Secondary text, table metadata." },
+    "md": { "$value": 13, "$type": "number", "$description": "Compact body (table cells)." },
+    "base": { "$value": 14, "$type": "number", "$description": "Default body for dense UI. Inter." },
+    "lg": { "$value": 16, "$type": "number", "$description": "Prominent body, form labels." },
+    "xl": { "$value": 18, "$type": "number", "$description": "Section subheadings." },
+    "2xl": { "$value": 20, "$type": "number", "$description": "Page subheadings." },
+    "3xl": { "$value": 24, "$type": "number", "$description": "Page headings." },
+    "4xl": { "$value": 32, "$type": "number", "$description": "Display / hero text." }
+  },
+  "leading": {
+    "tight": { "$value": 1.2, "$type": "number", "$description": "Headings, display text." },
+    "normal": { "$value": 1.4, "$type": "number", "$description": "Body text, table cells." },
+    "loose": { "$value": 1.6, "$type": "number", "$description": "Long-form reading." }
+  },
+  "space": {
+    "1": { "$value": "4px", "$type": "spacing" },
+    "2": { "$value": "8px", "$type": "spacing" },
+    "3": { "$value": "12px", "$type": "spacing" },
+    "4": { "$value": "16px", "$type": "spacing" },
+    "5": { "$value": "20px", "$type": "spacing" },
+    "6": { "$value": "24px", "$type": "spacing" },
+    "8": { "$value": "32px", "$type": "spacing" },
+    "10": { "$value": "40px", "$type": "spacing" },
+    "12": { "$value": "48px", "$type": "spacing" },
+    "16": { "$value": "64px", "$type": "spacing" }
+  }
+}

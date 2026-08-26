@@ -46,12 +46,10 @@
 
   /* Status — success darkened so it passes AA on the `-light` surface.
      `--status-warning` stays brand-accurate; pair it with dark text
-     (e.g. `--neutral-500`), not white. For amber text on the `-light`
-     surface, use `--status-warning-fg`. */
+     (e.g. `--neutral-500`), not white. */
   --status-error:         #D72825;
   --status-error-light:   #FFF5F5;
   --status-warning:       #D9A50B;
-  --status-warning-fg:    #8B6600;  /* darker amber — text-on-light-surface, passes AA */
   --status-warning-light: #FFFCF5;
   --status-success:       #007A42;
   --status-success-light: #F5FFFA;
@@ -63,10 +61,6 @@
 
   /* Agent column */
   --agent-col-bg: #F8F5FF;
-
-  /* Button-specific accent backgrounds (off the standard palette) */
-  --button-danger-bg: #B91C1C;
-  --button-info-bg:   #0E4BAA;
 
   /* Elevation shadows (theme-aware so they stay readable on dark surfaces) */
   --shadow-popover: 0 12px 60px rgba(0, 0, 0, 0.06);
@@ -94,7 +88,6 @@
      active hover (primary-400). The hover state deepens the pill one
      step darker rather than blending a translucent overlay, so the
      hover response reads as a distinct tone instead of a shadow. */
-  --sidebar-bg:                    var(--primary-500);
   --sidebar-fg:                    rgba(255, 255, 255, 0.85);
   --sidebar-fg-muted:              rgba(255, 255, 255, 0.60);
   --sidebar-hover-bg:              rgba(80, 32, 160, 0.35);
@@ -348,10 +341,6 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
   /* Agent column */
   --agent-col-bg: #1F1830;
 
-  /* Button accent backgrounds */
-  --button-danger-bg: #E03B3B;
-  --button-info-bg:   #5B8DEF;
-
   /* Chart Colors — brighter/saturated variants for dark backgrounds */
   --chart-1:  #5495EE;
   --chart-2:  #4870EA;
@@ -427,7 +416,6 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
   --primary-25:  #FAFCFF;   /* almost white, subtle hover tint */
 
   /* Sidebar chrome — same 3-tone scale as :root, on the blue palette. */
-  --sidebar-bg:                    var(--primary-500);
   --sidebar-fg:                    rgba(255, 255, 255, 0.85);
   --sidebar-fg-muted:              rgba(255, 255, 255, 0.60);
   --sidebar-active-fg:             rgba(255, 255, 255, 0.95);
@@ -465,7 +453,6 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
   --primary-25:  #FDFAFB;   /* almost white, subtle hover tint */
 
   /* Sidebar chrome — same 3-tone scale as :root, on the plum palette. */
-  --sidebar-bg:                    var(--primary-500);
   --sidebar-fg:                    rgba(255, 255, 255, 0.85);
   --sidebar-fg-muted:              rgba(255, 255, 255, 0.60);
   --sidebar-active-fg:             rgba(255, 255, 255, 0.95);
@@ -555,7 +542,6 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
 }
 
 [data-nav-style="light"] {
-  --sidebar-bg:                    var(--neutral-0);
   --sidebar-fg:                    var(--neutral-400);
   --sidebar-fg-muted:              var(--neutral-300);
   /* Two hover treatments on the light chrome:
