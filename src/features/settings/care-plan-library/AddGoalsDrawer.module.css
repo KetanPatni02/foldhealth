@@ -1,0 +1,91 @@
+/* Sits between the Add button and the drawer's close control — the drawer is
+   passed `noCloseDivider` so this is the only rule line. */
+.headerDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-1);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.createLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.groupLabel {
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+}
+
+.rowWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border-radius: var(--space-1);
+  cursor: pointer;
+}
+.row:hover { background: var(--neutral-50); }
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.rowTitle {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.rowDetail {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+/* Fixed width so the badge + priority column lines up down the list. */
+.rowMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.groupDivider {
+  height: 0.5px;
+  background: var(--neutral-150);
+}
+
+.empty {
+  padding: var(--space-4) 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  text-align: center;
+}

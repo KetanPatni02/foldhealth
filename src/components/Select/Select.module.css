@@ -241,3 +241,45 @@
   cursor: not-allowed;
 }
 .itemDisabled:hover { background: transparent; }
+
+/* Checkbox rows lead with the control, so the label must sit next to it —
+   `.item`'s default `space-between` (built for label → trailing check) would
+   push every label to the right edge. */
+/* Badge summary in the trigger — one line only; anything past the edge is
+   collapsed into a "+N" badge by the measuring effect. */
+.triggerBadges {
+  position: relative;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-align: left;
+}
+.triggerBadges > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+/* Off-screen mirror of the full badge set — measured for widths, never seen. */
+.triggerBadgesMeasure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: var(--space-1);
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.itemWithCheckbox {
+  justify-content: flex-start;
+}
+/* Row checkbox for `multiple` + `checkboxes` — purely a state indicator; the
+   row handles the click, so it must not swallow pointer events. */
+.itemCheckbox {
+  pointer-events: none;
+  flex-shrink: 0;
+}

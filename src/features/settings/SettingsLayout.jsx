@@ -7,6 +7,7 @@ import { AccountPanel } from './account/AccountPanel';
 import { BillingPanel } from './billing/BillingPanel';
 import { MemberLeadsPanel } from './member-leads/MemberLeadsPanel';
 import { CarePlanLibraryPanel } from './care-plan-library/CarePlanLibraryPanel';
+import { CarePlanCreateView } from './care-plan-library/CarePlanCreateView';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import styles from './SettingsLayout.module.css';
@@ -34,6 +35,17 @@ function ComingSoonPanel({ label }) {
 export function SettingsLayout() {
   const settingsNavItem = useAppStore(s => s.settingsNavItem);
   const setSettingsNavItem = useAppStore(s => s.setSettingsNavItem);
+  const carePlanCreateOpen = useAppStore(s => s.carePlanCreateOpen);
+  const setCarePlanCreateOpen = useAppStore(s => s.setCarePlanCreateOpen);
+
+  // The New Care Plan screen owns the whole Settings area — no sub-nav.
+  if (carePlanCreateOpen) {
+    return (
+      <div className={styles.layout}>
+        <CarePlanCreateView onClose={() => setCarePlanCreateOpen(false)} />
+      </div>
+    );
+  }
 
   if (!IMPLEMENTED.has(settingsNavItem)) {
     const label = settingsNavItem.charAt(0).toUpperCase() + settingsNavItem.slice(1);

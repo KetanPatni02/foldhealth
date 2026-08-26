@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
@@ -13,78 +13,12 @@ import { Drawer } from '../../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../../store/useAppStore';
+import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
+import { CreateGoalDrawer } from './CreateGoalDrawer';
 import styles from './CarePlanLibraryPanel.module.css';
 
 // Local-only seed data — see the panel's note to the user about persistence.
 let nextId = 100;
-const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString();
-
-const INITIAL_TEMPLATES = [
-  {
-    id: '1',
-    name: 'Type 2 Diabetes — Standard',
-    conditions: ['Type 2 Diabetes', 'Hypertension'],
-    goals: [
-      { id: 'g1', title: 'A1C below 7%', subtitle: 'Reassess quarterly via lab draw' },
-      { id: 'g2', title: 'Weight loss of 5%', subtitle: 'Track via monthly weigh-in' },
-    ],
-    interventions: [
-      { id: 'i1', title: 'Nutrition counseling', duration: '30 min' },
-      { id: 'i2', title: 'Medication adherence check-in', duration: '15 min' },
-    ],
-    createdAt: daysAgo(120),
-    updatedAt: daysAgo(2),
-  },
-  {
-    id: '2',
-    name: 'CHF Post-Discharge',
-    conditions: ['Congestive Heart Failure'],
-    goals: [
-      { id: 'g3', title: 'No readmission within 30 days', subtitle: 'Weekly weight + symptom check' },
-    ],
-    interventions: [
-      { id: 'i3', title: 'Home health nursing visit', duration: '45 min' },
-      { id: 'i4', title: 'Medication reconciliation', duration: '20 min' },
-    ],
-    createdAt: daysAgo(200),
-    updatedAt: daysAgo(9),
-  },
-];
-
-const INITIAL_GOALS = [
-  {
-    id: 'goal-1', title: 'A1C below 7%', description: 'Reassess quarterly via lab draw.',
-    type: 'Clinical', targetValue: '< 7.0 %', duration: '3 Months',
-    conditions: ['Diabetes'], linked: { interventions: 3, barriers: 1, tasks: 2 },
-    createdAt: daysAgo(120), updatedAt: daysAgo(3),
-  },
-  {
-    id: 'goal-2', title: 'Blood pressure under 130/80', description: 'Home BP log reviewed weekly.',
-    type: 'Clinical', targetValue: '< 130/80 mmHg', duration: '1 Month',
-    conditions: ['Hypertension'], linked: { interventions: 2, barriers: 2, tasks: 1 },
-    createdAt: daysAgo(96), updatedAt: daysAgo(5),
-  },
-  {
-    id: 'goal-3', title: 'No readmission within 30 days', description: 'Weekly weight + symptom check-in.',
-    type: 'Outcome', targetValue: '0 readmissions', duration: '1 Month',
-    conditions: ['CHF', 'COPD'], linked: { interventions: 4, barriers: 1, tasks: 3 },
-    createdAt: daysAgo(61), updatedAt: daysAgo(9),
-  },
-  {
-    id: 'goal-4', title: 'Improve medication adherence', description: 'Target 90%+ per pharmacy refill data.',
-    type: 'Behavioral', targetValue: '≥ 90 % PDC', duration: '6 Months',
-    conditions: ['General'], linked: { interventions: 2, barriers: 3, tasks: 2 },
-    createdAt: daysAgo(45), updatedAt: daysAgo(14),
-  },
-];
-
-const INITIAL_BARRIERS = [
-  { id: 'barrier-1', title: 'Transportation', description: 'No reliable way to get to appointments.', updatedAt: daysAgo(4) },
-  { id: 'barrier-2', title: 'Health Literacy', description: 'Difficulty understanding care instructions.', updatedAt: daysAgo(6) },
-  { id: 'barrier-3', title: 'Financial Constraints', description: 'Cost of medications or copays.', updatedAt: daysAgo(11) },
-  { id: 'barrier-4', title: 'Language Barrier', description: 'Needs interpreter for care communication.', updatedAt: daysAgo(20) },
-];
-
 const CARE_PLAN_TABS = [
   { key: 'template', label: 'Plan Template' },
   { key: 'goals', label: 'Goals Library' },
@@ -126,8 +60,8 @@ function formatDateTime(iso) {
 // Created On, Last Update, Actions. Sortable columns get a `sortKey`/
 // `sortType` so WorklistShell's HeaderCell renders the sort arrows.
 const TEMPLATE_COLUMNS = [
-  { key: 'select', label: '', showCheckbox: true, width: 44 },
-  { key: 'name', label: 'Template Name', sortKey: 'name', sortType: 'alpha', sticky: 'left', left: 0, width: 280 },
+  { key: 'select', label: '', showCheckbox: true, width: 44, sticky: 'left', left: 0 },
+  { key: 'name', label: 'Template Name', sortKey: 'name', sortType: 'alpha', sticky: 'left', left: 44, width: 280 },
   { key: 'conditions', label: 'Chronic Conditions', sortKey: 'conditions', sortType: 'alpha', width: 280 },
   { key: 'createdOn', label: 'Created On', sortKey: 'createdAt', sortType: 'date', width: 200 },
   { key: 'updated', label: 'Last Update', sortKey: 'updatedAt', sortType: 'date', width: 200 },
@@ -138,8 +72,8 @@ const TEMPLATE_COLUMNS = [
 // Value, Duration, Chronic Conditions, Created On, Actions. Widths are the
 // design's min/max column bounds.
 const GOAL_COLUMNS = [
-  { key: 'select', label: '', showCheckbox: true, width: 44 },
-  { key: 'title', label: 'Goals Title', sortKey: 'title', sortType: 'alpha', sticky: 'left', left: 0, width: 280 },
+  { key: 'select', label: '', showCheckbox: true, width: 44, sticky: 'left', left: 0 },
+  { key: 'title', label: 'Goals Title', sortKey: 'title', sortType: 'alpha', sticky: 'left', left: 44, width: 280 },
   { key: 'type', label: 'Type', sortKey: 'type', sortType: 'alpha', width: 120 },
   { key: 'linked', label: 'Linked Items', width: 140 },
   { key: 'target', label: 'Target Value', width: 200 },
@@ -149,23 +83,18 @@ const GOAL_COLUMNS = [
   { key: 'actions', label: 'Actions', sticky: 'right', width: 156 },
 ];
 
-// The three count chips in the Linked Items cell, in the design's order.
-const LINKED_KINDS = [
-  { key: 'interventions', icon: 'solar:clipboard-list-linear', label: 'Interventions' },
-  { key: 'barriers', icon: 'solar:shield-warning-linear', label: 'Barriers' },
-  { key: 'tasks', icon: 'solar:checklist-minimalistic-linear', label: 'Tasks' },
-];
+// Linked Items is a single total — the per-kind breakdown isn't surfaced here.
+const linkedCount = (item) => Object.values(item.linked || {}).reduce((n, v) => n + (v || 0), 0);
 
 const SIMPLE_COLUMNS = [
   { key: 'title', label: 'Title', sticky: 'left', left: 0, width: 260 },
   { key: 'description', label: 'Description', width: 360 },
+  { key: 'linked', label: 'Linked Items', width: 140 },
+  { key: 'createdOn', label: 'Created On', width: 220 },
   { key: 'updated', label: 'Last Updated', width: 130 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 100 },
 ];
 
-function blankTemplateDraft() {
-  return { kind: 'template', id: null, name: '', conditionsText: '', goals: [], interventions: [] };
-}
 function templateDraftFrom(t) {
   return {
     kind: 'template',
@@ -222,6 +151,7 @@ function TemplateRowMenu({ onDelete }) {
 
 export function CarePlanLibraryPanel() {
   const showToast = useAppStore(s => s.showToast);
+  const setCarePlanCreateOpen = useAppStore(s => s.setCarePlanCreateOpen);
 
   const [activeTab, setActiveTab] = useState('template');
   const [searchValue, setSearchValue] = useState('');
@@ -230,9 +160,10 @@ export function CarePlanLibraryPanel() {
   // itself rather than via an effect.
   const handleTabChange = (key) => { setActiveTab(key); setSearchValue(''); };
 
-  const [templates, setTemplates] = useState(INITIAL_TEMPLATES);
-  const [goals, setGoals] = useState(INITIAL_GOALS);
-  const [barriers, setBarriers] = useState(INITIAL_BARRIERS);
+  // Every tab starts empty — entries are created through the panel itself.
+  const [templates, setTemplates] = useState([]);
+  const [goals, setGoals] = useState([]);
+  const [barriers, setBarriers] = useState([]);
 
   // A single draft/delete-target slot, discriminated by `kind` — only one
   // drawer or confirm dialog is ever open at a time regardless of tab.
@@ -295,8 +226,10 @@ export function CarePlanLibraryPanel() {
   const closeDrawer = () => setDraft(null);
 
   const openCreate = () => {
-    if (activeTab === 'template') setDraft(blankTemplateDraft());
-    else setDraft(blankSimpleDraft(activeTab === 'goals' ? 'goal' : 'barrier'));
+    // Templates get the full-pane New Care Plan view; goals/barriers keep the
+    // lightweight drawer.
+    if (activeTab === 'template') { setCarePlanCreateOpen(true); return; }
+    setDraft(blankSimpleDraft(activeTab === 'goals' ? 'goal' : 'barrier'));
   };
 
   const openEditTemplate = (t) => setDraft(templateDraftFrom(t));
@@ -339,7 +272,7 @@ export function CarePlanLibraryPanel() {
           // undefined (which would render as blank instead of "—"/0).
           ...(draft.kind === 'goal'
             ? { type: '', targetValue: '', duration: '', conditions: [], linked: { interventions: 0, barriers: 0, tasks: 0 }, createdAt: stamp }
-            : {}),
+            : { linked: { interventions: 0, barriers: 0, tasks: 0 }, createdAt: stamp }),
           updatedAt: stamp,
         }]);
         showToast(`"${draft.title.trim()}" created`);
@@ -430,20 +363,8 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdType}>
         {g.type ? <Badge tone="grey" size="S" label={g.type} /> : '—'}
       </td>
-      <td className={styles.tdLinked} onClick={e => e.stopPropagation()}>
-        <div className={styles.linkedCell}>
-          {LINKED_KINDS.map((k, i) => (
-            <Fragment key={k.key}>
-              {i > 0 && <div className={styles.vDivider} />}
-              <ActionButton
-                icon={k.icon}
-                size="S"
-                count={String(g.linked?.[k.key] ?? 0)}
-                tooltip={`${g.linked?.[k.key] ?? 0} ${k.label}`}
-              />
-            </Fragment>
-          ))}
-        </div>
+      <td className={styles.tdLinked}>
+        <Badge tone="grey" size="S" label={String(linkedCount(g))} />
       </td>
       <td className={styles.tdMuted}>{g.targetValue || '—'}</td>
       <td className={styles.tdMuted}>{g.duration || '—'}</td>
@@ -473,6 +394,10 @@ export function CarePlanLibraryPanel() {
         <button type="button" className={styles.nameLink} onClick={() => openEditSimple(kind, item)}>{item.title}</button>
       </td>
       <td className={styles.tdDescription}>{item.description || '—'}</td>
+      <td className={styles.tdLinked}>
+        <Badge tone="grey" size="S" label={String(linkedCount(item))} />
+      </td>
+      <td className={styles.tdMuted}>{formatDateTime(item.createdAt)}</td>
       <td className={styles.tdUpdated}>{formatRelative(item.updatedAt)}</td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
@@ -482,6 +407,18 @@ export function CarePlanLibraryPanel() {
         </div>
       </td>
     </tr>
+  );
+
+  // An empty library renders the ring state alone — no header row, no table —
+  // mirroring the Insurance Plans tab. A search that matches nothing keeps the
+  // table, since the columns are still meaningful there.
+  const emptyPane = (label) => (
+    <div className={styles.emptyPane}>
+      <RingEmptyState icon={meta.emptyIcon} label={label} />
+      <Button variant="primary" size="L" leadingIconElement={<AddIconMinimalist size={16} />} onClick={openCreate}>
+        {`New ${meta.entityLabel}`}
+      </Button>
+    </div>
   );
 
   const meta = TAB_META[activeTab];
@@ -503,6 +440,7 @@ export function CarePlanLibraryPanel() {
 
       <div className={styles.content}>
         {activeTab === 'template' && (
+          templates.length === 0 ? emptyPane('No Care Plan Templates Added') : (
           <WorklistShell
             header={null}
             columns={TEMPLATE_COLUMNS}
@@ -512,19 +450,17 @@ export function CarePlanLibraryPanel() {
             sortDir={templateSort.dir}
             onSort={handleTemplateSort}
             emptyState={
-              templates.length === 0 ? (
-                <RingEmptyState icon="solar:clipboard-add-linear" label="No Care Plan Templates Added" />
-              ) : (
-                <div className={styles.emptyState}>
-                  <Icon name={meta.emptyIcon} size={32} color="var(--neutral-150)" />
-                  <p>No templates match "<strong>{searchValue.trim()}</strong>".</p>
-                </div>
-              )
+              <div className={styles.emptyState}>
+                <Icon name={meta.emptyIcon} size={32} color="var(--neutral-150)" />
+                <p>No templates match "<strong>{searchValue.trim()}</strong>".</p>
+              </div>
             }
             minTableWidth={1100}
           />
+          )
         )}
         {activeTab === 'goals' && (
+          goals.length === 0 ? emptyPane('No Goals Added') : (
           <WorklistShell
             header={null}
             columns={GOAL_COLUMNS}
@@ -546,17 +482,15 @@ export function CarePlanLibraryPanel() {
             emptyState={
               <div className={styles.emptyState}>
                 <Icon name={meta.emptyIcon} size={32} color="var(--neutral-150)" />
-                <p>
-                  {searchValue.trim()
-                    ? <>No goals match "<strong>{searchValue.trim()}</strong>".</>
-                    : 'No goals yet. Click "New Goal" to add one.'}
-                </p>
+                <p>No goals match "<strong>{searchValue.trim()}</strong>".</p>
               </div>
             }
             minTableWidth={1530}
           />
+          )
         )}
         {activeTab === 'barriers' && (
+          barriers.length === 0 ? emptyPane('No Barriers Added') : (
           <WorklistShell
             header={null}
             columns={SIMPLE_COLUMNS}
@@ -565,15 +499,12 @@ export function CarePlanLibraryPanel() {
             emptyState={
               <div className={styles.emptyState}>
                 <Icon name={meta.emptyIcon} size={32} color="var(--neutral-150)" />
-                <p>
-                  {searchValue.trim()
-                    ? <>No barriers match "<strong>{searchValue.trim()}</strong>".</>
-                    : 'No barriers yet. Click "New Barrier" to add one.'}
-                </p>
+                <p>No barriers match "<strong>{searchValue.trim()}</strong>".</p>
               </div>
             }
-            minTableWidth={900}
+            minTableWidth={1210}
           />
+          )
         )}
       </div>
 
@@ -660,7 +591,31 @@ export function CarePlanLibraryPanel() {
         </Drawer>
       )}
 
-      {draft && draft.kind !== 'template' && (
+      {draft && draft.kind === 'goal' && (
+        <CreateGoalDrawer
+          onClose={closeDrawer}
+          onSave={({ category, measure, conditions, title, priority }) => {
+            const stamp = new Date().toISOString();
+            setGoals(prev => [...prev, {
+              id: `goal-${nextId++}`,
+              title,
+              description: '',
+              type: category,
+              targetValue: measure || '',
+              duration: '',
+              priority,
+              conditions,
+              linked: { interventions: 0, barriers: 0, tasks: 0 },
+              createdAt: stamp,
+              updatedAt: stamp,
+            }]);
+            showToast(`"${title}" created`);
+            closeDrawer();
+          }}
+        />
+      )}
+
+      {draft && draft.kind === 'barrier' && (
         <Drawer
           title={draft.id ? `Edit ${draft.kind === 'goal' ? 'Goal' : 'Barrier'}` : `New ${draft.kind === 'goal' ? 'Goal' : 'Barrier'}`}
           onClose={closeDrawer}

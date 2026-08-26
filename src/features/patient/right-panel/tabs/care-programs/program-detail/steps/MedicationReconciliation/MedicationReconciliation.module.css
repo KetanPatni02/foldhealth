@@ -498,18 +498,19 @@
   outline: 1px solid var(--primary-300);
   outline-offset: 0;
 }
-/* Fixed widths for the editable controls. The date/status columns are sized
-   to these plus the cell's 8px side padding, so swapping a cell into edit
-   mode doesn't reflow the row. */
+/* Fixed widths for the editable controls, sized to the column track minus the
+   cell's side padding (12px each side) so swapping a cell into edit mode can't
+   widen the column and shift the headers:
+     date   139 - 24 = 115    status  110 - 24 = 86 */
 .cellEditDate,
 .cellEditStatus {
   display: block;
 }
 .cellEditDate {
-  width: 123px;
+  width: 115px;
 }
 .cellEditStatus {
-  width: 94px;
+  width: 86px;
 }
 /* `min-width: 0` matters — DatePicker's own `.input` carries a 140px
    min-width that would otherwise beat `width: 100%` and spill the control

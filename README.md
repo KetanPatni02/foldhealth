@@ -37,6 +37,20 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care Plan Library: goal creation and its interventions** — the New Template
+  flow now opens a full-screen New Care Plan view, and Add New opens Create New
+  Goals (category → measure → chronic condition → target, with a Set Target
+  switch in every tab). The Linked Items card's Interventions "+" opens a menu
+  whose options each open a drawer: Send Form, Send Patient Education, Measure
+  Vital, and the shared Add Task drawer for Patient/Internal Task. Chronic
+  conditions come from the NLM clinical-tables API; vitals are shared with the
+  goal measure picker via `vitalOptions.js`. Library data is still local state.
+- **Med Recon on the shared table** — every tabular program step (plus Program
+  Related Tasks and the Care Programs tab) now renders through
+  `components/WorklistShell` instead of one-off tables, and Med Recon gained
+  inline date/status editing, note autosave, the signed header state and the
+  sign-off assignee modal.
+
 - **Forms RLS lockdown + bootstrap migrations for all 77 out-of-band tables** —
   anon-key probes proved `forms`/`form_responses` were fully readable AND
   writable by the public internet (patient answers downloadable, submissions

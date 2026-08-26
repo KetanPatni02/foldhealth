@@ -168,6 +168,20 @@
   flex-shrink: 0;
 }
 
+/* Unit segment — breaks out of `.shell`'s 8px padding and gap so it sits
+   flush against the right edge, with its own divider and fill. */
+.trailingTextSegment {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  margin-right: calc(var(--space-2) * -1);
+  padding: 0 var(--space-3);
+  background: var(--neutral-50);
+  border-left: 0.5px solid var(--neutral-150);
+  border-radius: 0 4px 4px 0;
+  color: var(--neutral-400);
+}
+
 .chevronDown,
 .chevronUp {
   flex-shrink: 0;
