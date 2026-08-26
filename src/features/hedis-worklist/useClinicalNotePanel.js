@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { generateClinicalNotePdf } from './lib/generateClinicalNotePdf';
 import {
@@ -81,6 +81,12 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
   // task so the reviewer's Save-as-Draft edits the existing row instead of
   // creating a parallel draft.
   const notesForMember = useAppStore(s => s.clinicalNotesByMember?.[member.id]) || [];
+  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+
+  // Restore persisted state on open: seed note-row ids for every saved note
+  // (so re-saves upsert instead of spawning duplicates) and rehydrate the
+  // form from the newest DRAFT note — without this, drafts "didn't persist":
+  // they saved fine but the panel reset to blanks on reopen.
   const [noteIdByCode, setNoteIdByCode] = useState(() => {
     if (!editingTaskId) return {};
     const linked = notesForMember.find(n => n.reviewTaskId === editingTaskId);
@@ -89,6 +95,35 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     (linked.gapCodes || []).forEach(c => { seed[c] = linked.id; });
     return seed;
   });
+  const [_restored, setRestored] = useState(false);
+  void _restored;
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const notes = await fetchClinicalNotesForMember(member.id);
+      if (cancelled || !notes?.length) { setRestored(true); return; }
+      const idSeed = {};
+      notes.forEach(n => (n.gapCodes || []).forEach(c => { idSeed[c] = n.id; }));
+      setNoteIdByCode(prev => ({ ...idSeed, ...prev }));
+      const draft = notes.find(n => n.status === 'draft');
+      if (draft?.payload) {
+        if (draft.payload.dateOfService) setDateOfService(draft.payload.dateOfService);
+        if (draft.payload.gaps) {
+          setGapState(prev => {
+            const next = { ...prev };
+            for (const [code, data] of Object.entries(draft.payload.gaps)) {
+              if (next[code]) next[code] = { ...next[code], ...data };
+            }
+            return next;
+          });
+        }
+      }
+      setRestored(true);
+    })();
+    return () => { cancelled = true; };
+    // Run once per member open — the panel remounts per member.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member.id]);
   // Submit-for-Review is a two-step flow: open the reviewer picker, then
   // finalize on selection. The picker UI itself lives with the Clinical
   // Note workspace (see plan §6, pending Figma).
@@ -218,6 +253,17 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     });
     if (note?.id) rememberNoteId(primary, note.id);
     bulkUpdateGapStatuses(member.id, Object.fromEntries(codes.map(c => [c, 'Submitted'])));
+    // Create the sign-off task BEFORE logging activity so the entry can carry
+    // the real taskId — the activity feed's task card opens the TaskDetail
+    // drawer through it.
+    const task = await createCareGapSignOffTask({
+      hedisMemberId: member.id,
+      gapCodes: codes,
+      state: member.state,
+      pdf,
+      reviewerId: reviewer.id,
+      reviewerName: reviewer.name,
+    });
     logCareGapActivity(member.id, {
       title: 'Clinical Note Added',
       detail: `Ready gaps: ${codes.join(', ')}`,
@@ -235,17 +281,11 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
           assignee: reviewer.name,
           status: 'Pending',
           locked: false,
+          ...(task?.id ? { taskId: task.id } : {}),
         },
       }),
     });
-    const task = await createCareGapSignOffTask({
-      hedisMemberId: member.id,
-      gapCodes: codes,
-      state: member.state,
-      pdf,
-      reviewerId: reviewer.id,
-      reviewerName: reviewer.name,
-    });
+    if (!task) showToast('Note submitted, but the sign-off task could not be created');
     if (note?.id && task?.id) await linkClinicalNoteToReviewTask(note.id, task.id);
     setReviewerPickerOpen(false);
     showToast(`Submitted for review — ${codes.length} gap${codes.length === 1 ? '' : 's'} → ${reviewer.name}`);
@@ -326,7 +366,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     });
     if (pdf?.dataUrl) {
       const w = window.open(pdf.dataUrl, '_blank');
-      try { w?.focus(); } catch (_) { /* popup blocker */ }
+      try { w?.focus(); } catch { /* popup blocker */ }
     }
     showToast('Signed and printing…');
     onClose();
