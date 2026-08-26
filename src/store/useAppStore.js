@@ -2608,6 +2608,10 @@ export const useAppStore = create((set, get) => ({
   embeddedComponentsTab: 'domain-registry',
   accountTab: 'users',
   contentTab: 'emails',
+  // Settings → Care Plan Library tab ('template' | 'goals' | 'barriers') —
+  // mirrored into the URL (#/settings/care-plan-library/<tab>) so a refresh
+  // restores the exact library.
+  carePlanTab: 'template',
   componentWizardOpen: false,
   componentWizardEditId: null,
   componentPreviewId: null,
@@ -3160,6 +3164,12 @@ export const useAppStore = create((set, get) => ({
   setEmbeddedComponentsTab: (tab) => { set({ embeddedComponentsTab: tab }); updateHash(get); },
   setAccountTab: (tab) => { set({ accountTab: tab }); updateHash(get); },
   setContentTab: (tab) => { set({ contentTab: tab }); updateHash(get); },
+  setCarePlanTab: (tab) => {
+    const from = get().carePlanTab;
+    if (from !== tab) track('nav.tab_changed', { scope: 'settings', from, to: tab });
+    set({ carePlanTab: tab });
+    updateHash(get);
+  },
   setComponentWizard: (open, editId = null) => { set({ componentWizardOpen: open, componentWizardEditId: editId }); },
   setComponentPreviewId: (id) => { set({ componentPreviewId: id }); },
 
