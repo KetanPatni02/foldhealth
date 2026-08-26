@@ -113,6 +113,7 @@ export function OutreachTab(props) {
       {tab.scheduleOpen && (
         <ScheduleDrawer
           initialPatientId={tab.patientId}
+          source="outreach"
           onClose={() => tab.setScheduleOpen(false)}
           onSave={row => {
             if (!tab.scopedProgram || !row) return;

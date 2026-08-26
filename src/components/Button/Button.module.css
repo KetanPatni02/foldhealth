@@ -162,7 +162,7 @@
   color: var(--neutral-0);
 }
 .dangerFilled:hover:not(:disabled) {
-  background: var(--button-danger-bg);
+  background: var(--status-error);
 }
 
 /* ── Type: Info ── */
@@ -171,7 +171,7 @@
   color: var(--neutral-0);
 }
 .info:hover:not(:disabled) {
-  background: var(--button-info-bg);
+  background: var(--status-info);
 }
 
 /* ── Disabled (all types) ── */

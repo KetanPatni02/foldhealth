@@ -67,7 +67,7 @@ function StoryFrame({ theme, navStyle }) {
     <div
       // Scoped so the token overrides in tokens.css apply only inside this
       // story's subtree, not the Storybook chrome around it. `plum` here
-      // matches `[data-theme="plum"]` and swaps `--sidebar-bg` etc. to the
+      // matches `[data-theme="plum"]` and swaps the sidebar tokens to the
       // Astrana plum palette; `--sidebar-logo` still resolves via
       // `theme === 'plum'` in the Sidebar body (which draws the wordmark).
       data-theme={theme === 'light' ? undefined : theme}

@@ -2,7 +2,7 @@
   width: 72px;
   flex-shrink: 0;
   box-sizing: border-box;
-  background: var(--sidebar-bg);
+  background: var(--primary-500);
   border-right: 0.5px solid var(--sidebar-border, transparent);
   display: flex;
   flex-direction: column;

@@ -138,7 +138,7 @@ export function AppointmentStep({ patientId, programCode }) {
       </div>
 
       {scheduleOpen && (
-        <ScheduleDrawer initialPatientId={patientId} onClose={() => setScheduleOpen(false)} onSave={handleScheduled} />
+        <ScheduleDrawer initialPatientId={patientId} source="care_program" onClose={() => setScheduleOpen(false)} onSave={handleScheduled} />
       )}
     </div>
   );

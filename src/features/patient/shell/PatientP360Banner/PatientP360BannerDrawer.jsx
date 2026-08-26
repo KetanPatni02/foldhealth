@@ -192,7 +192,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
         />
       )}
 
-      {showScheduleDrawer && <ScheduleDrawer initialPatientId={patient.id} onClose={() => setShowScheduleDrawer(false)} />}
+      {showScheduleDrawer && <ScheduleDrawer initialPatientId={patient.id} source="patient_banner" onClose={() => setShowScheduleDrawer(false)} />}
       {consentPos && <ConsentPopover pos={consentPos} onClose={() => setConsentPos(null)} />}
       {showProfileDropdown && drawerDropdownStyle && (
         <>

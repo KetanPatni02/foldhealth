@@ -625,7 +625,7 @@ export function TopBar() {
     </header>
 
     {showPreferences && <PreferencesDrawer onClose={() => setShowPreferences(false)} />}
-    {showSchedule && <ScheduleDrawer onClose={() => setShowSchedule(false)} />}
+    {showSchedule && <ScheduleDrawer source="topbar" onClose={() => setShowSchedule(false)} />}
   </>
   );
 }

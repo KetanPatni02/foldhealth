@@ -1,0 +1,23 @@
+{
+  "primary": {
+    "500": { "$value": "#002D6F", "$type": "color", "$description": "Deep navy — sidebar chrome." },
+    "400": { "$value": "#0057B3", "$type": "color" },
+    "300": { "$value": "#007BFF", "$type": "color", "$description": "Main brand blue." },
+    "200": { "$value": "#99CAFF", "$type": "color" },
+    "100": { "$value": "#E6F2FF", "$type": "color" },
+    "50": { "$value": "#F5FAFF", "$type": "color" },
+    "25": { "$value": "#FAFCFF", "$type": "color" }
+  },
+  "sidebar": {
+    "fg": { "$value": "rgba(255, 255, 255, 0.85)", "$type": "color" },
+    "fg-muted": { "$value": "rgba(255, 255, 255, 0.6)", "$type": "color" },
+    "hover-bg": { "$value": "rgba(0, 87, 179, 0.35)", "$type": "color" },
+    "active-bg": { "$value": "{primary.300}", "$type": "color" },
+    "active-border": { "$value": "{primary.300}", "$type": "color" },
+    "active-overlay": { "$value": "{primary.400}", "$type": "color" },
+    "active-overlay-border": { "$value": "{primary.400}", "$type": "color" },
+    "active-fg": { "$value": "rgba(255, 255, 255, 0.95)", "$type": "color" },
+    "logo": { "$value": "#FFFFFF", "$type": "color" },
+    "border": { "$value": "rgba(0, 0, 0, 0)", "$type": "color" }
+  }
+}
