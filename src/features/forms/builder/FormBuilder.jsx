@@ -139,9 +139,11 @@ function Palette({ tab, setTab, search, setSearch, custom, onInsert }) {
         ))}
       </div>
       <div className={styles.palSearch}>
-        <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-        <input aria-label="Search fields"
+        <Input
+          type="search"
+          aria-label="Search fields"
           placeholder="Search"
+          leadingIcon="solar:magnifer-linear"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
