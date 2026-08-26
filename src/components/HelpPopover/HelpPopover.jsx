@@ -3,6 +3,12 @@ import { Icon } from '../Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './HelpPopover.module.css';
 
+const DOCS_URL = 'https://docs.foldhealth.com/';
+
+function openDocs() {
+  window.open(DOCS_URL, '_blank', 'noopener');
+}
+
 const FEATURES = [
   {
     group: 'Home',
@@ -309,9 +315,21 @@ export function HelpPopover({ onClose, onOpenFeedback, onOpenChangelog, changelo
         </button>
       </div>
       <div className={styles.body}>
-        {/* Pinned Featurebase actions — feedback board + changelog. */}
+        {/* Pinned Featurebase actions — docs, feedback board + changelog. */}
         <div className={styles.group}>
           <div className={styles.groupLabel}>Feedback &amp; Updates</div>
+          <button
+            className={styles.item}
+            onClick={() => { openDocs(); onClose(); }}
+          >
+            <div className={styles.itemIcon}>
+              <Icon name="solar:book-2-linear" size={16} />
+            </div>
+            <div className={styles.itemContent}>
+              <div className={styles.breadcrumb}><span>Documentation</span></div>
+              <div className={styles.description}>Guides and how-tos for every part of the platform — opens in a new tab.</div>
+            </div>
+          </button>
           <button
             className={styles.item}
             onClick={() => { onOpenFeedback?.(); onClose(); }}
