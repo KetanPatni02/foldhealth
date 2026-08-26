@@ -63,7 +63,7 @@
 }
 .statePillOpen {
   background: var(--status-warning-light);
-  color: var(--status-warning-fg);
+  color: var(--status-warning);
   border-color: rgba(217, 165, 11, 0.2);
 }
 .statePillClosed {

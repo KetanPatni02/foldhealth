@@ -1,0 +1,23 @@
+{
+  "primary": {
+    "500": { "$value": "#2A0519", "$type": "color", "$description": "Deepest plum — sidebar chrome." },
+    "400": { "$value": "#4A0A30", "$type": "color" },
+    "300": { "$value": "#6C0C46", "$type": "color", "$description": "Main Astrana plum." },
+    "200": { "$value": "#C48FA9", "$type": "color" },
+    "100": { "$value": "#F5E8EF", "$type": "color" },
+    "50": { "$value": "#FBF5F8", "$type": "color" },
+    "25": { "$value": "#FDFAFB", "$type": "color" }
+  },
+  "sidebar": {
+    "fg": { "$value": "rgba(255, 255, 255, 0.85)", "$type": "color" },
+    "fg-muted": { "$value": "rgba(255, 255, 255, 0.6)", "$type": "color" },
+    "hover-bg": { "$value": "rgba(74, 10, 48, 0.35)", "$type": "color" },
+    "active-bg": { "$value": "{primary.300}", "$type": "color" },
+    "active-border": { "$value": "{primary.300}", "$type": "color" },
+    "active-overlay": { "$value": "{primary.400}", "$type": "color" },
+    "active-overlay-border": { "$value": "{primary.400}", "$type": "color" },
+    "active-fg": { "$value": "rgba(255, 255, 255, 0.95)", "$type": "color" },
+    "logo": { "$value": "#FFFFFF", "$type": "color" },
+    "border": { "$value": "rgba(0, 0, 0, 0)", "$type": "color" }
+  }
+}
