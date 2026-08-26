@@ -1,4 +1,5 @@
 import { SettingsSubNav } from './SettingsSubNav';
+import { SECTION_LABELS } from './settingsNavItems';
 import { AgentsTable } from './agents/AgentsTable';
 import { MessagesSettings } from './messages/MessagesSettings';
 import { EmbeddedComponentsSettings } from './embedded-components/EmbeddedComponentsSettings';
@@ -36,11 +37,10 @@ export function SettingsLayout() {
   const setSettingsNavItem = useAppStore(s => s.setSettingsNavItem);
 
   if (!IMPLEMENTED.has(settingsNavItem)) {
-    const label = settingsNavItem.charAt(0).toUpperCase() + settingsNavItem.slice(1);
     return (
       <div className={styles.layout}>
         <SettingsSubNav activeItem={settingsNavItem} onItemClick={setSettingsNavItem} />
-        <ComingSoonPanel label={label} />
+        <ComingSoonPanel label={SECTION_LABELS[settingsNavItem] || settingsNavItem} />
       </div>
     );
   }

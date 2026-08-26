@@ -223,7 +223,10 @@ function TemplateRowMenu({ onDelete }) {
 export function CarePlanLibraryPanel() {
   const showToast = useAppStore(s => s.showToast);
 
-  const [activeTab, setActiveTab] = useState('template');
+  // Tab lives in the store (mirrored to #/settings/care-plan-library/<tab>)
+  // so a refresh or shared link restores the exact library.
+  const activeTab = useAppStore(s => s.carePlanTab || 'template');
+  const setActiveTab = useAppStore(s => s.setCarePlanTab);
   const [searchValue, setSearchValue] = useState('');
   // Search is per-tab in intent (searching goals shouldn't leave stale text
   // filtering templates when you switch back) — clear it on tab switch
