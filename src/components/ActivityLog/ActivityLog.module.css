@@ -42,23 +42,34 @@
   line-height: 1.2;
   white-space: nowrap;
 }
-.viewNoteBtn,
-.viewDetailsBtn {
+/* Shared "View more" affordance — used by every expandable variant
+   (outreach note, task/note/appointment detail card, comment expander).
+   Hidden by default, revealed when the row is hovered/focused, and
+   pinned visible once the user has expanded the entry so the collapse
+   toggle stays reachable. Uses neutral-400 text + a chevron that
+   rotates 180° when the row is expanded — DownChevronIcon lives in
+   src/components/Icon so every trigger paints the same glyph. */
+.viewMoreBtn {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  margin-left: var(--space-2);
+  margin-left: var(--space-1);
   padding: 0;
   border: none;
   background: transparent;
   font-size: var(--font-base);
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.2;
-  color: var(--primary-300);
+  color: var(--neutral-200);
   cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
 }
-.viewNoteBtn { color: var(--neutral-400); font-weight: 400; }
-.viewNoteBtn:hover { color: var(--primary-300); }
+.viewMoreBtn:hover { color: var(--primary-300); }
+:global([class*="_row_"]):hover .viewMoreBtn,
+.viewMoreBtn:focus-visible,
+.viewMoreBtnOpen { opacity: 1; }
+.viewMoreChevronOpen { transform: rotate(180deg); transition: transform 0.15s; }
 /* Separator dot between the headline and the "View Details" affordance —
    uses • (bullet) for a fuller shape than the default interpunct and
    bumps to font-lg so it reads as a proper separator rather than a
@@ -265,6 +276,17 @@
   line-height: 1.2;
   color: var(--primary-300);
   cursor: pointer;
+}
+/* Nested Request-for-Sign-off task card that sits inside a Pending Review
+   note card — same layout as the main row (handle + text + trailing) but
+   with a subtle top divider so the two rows read as parent/child. */
+.detailCardNested {
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 0.5px solid var(--neutral-150);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
 }
 
 /* ── Comment paragraph ──────────────────────────────────────────────── */

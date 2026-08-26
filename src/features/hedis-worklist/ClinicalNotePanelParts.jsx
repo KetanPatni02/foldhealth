@@ -1,187 +1,693 @@
-import { useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
+import { Badge } from '../../components/Badge/Badge';
 import { Switch } from '../../components/Switch/Switch';
+import { Input } from '../../components/Input/Input';
+import { Select } from '../../components/Select/Select';
 import { DatePicker } from '../../components/DatePicker/DatePicker';
-import { MEASURE_NAMES, COL_METHODS } from './ClinicalNotePanel.utils';
+import { RadioButton } from '../../components/RadioButton/RadioButton';
+import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
+import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
+import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
+import {
+  GENDER_LABEL,
+  MEASURE_NAMES,
+  EED_EXAM_TYPES,
+  EED_EVIDENCE_TYPES,
+  EED_EXAM_RESULTS,
+  EED_FOLLOW_UP_OPTIONS,
+  CBP_LOCATIONS,
+  CBP_YES_NO,
+  CBP_SYMPTOM_OPTIONS,
+  isMandatoryComplete,
+} from './ClinicalNotePanel.utils';
 import styles from './ClinicalNotePanel.module.css';
 
-export function HeaderActions({ onSubmitForReview, onSaveDraft, onSaveAndSign, onSignAndPrint, primaryLabel = 'Submit for Review' }) {
-  const [open, setOpen] = useState(false);
-  const btnRef = useRef(null);
-  const [pos, setPos] = useState({ top: 0, left: 0 });
-  const openMenu = () => {
-    const rect = btnRef.current?.getBoundingClientRect();
-    if (rect) setPos({ top: rect.bottom + 4, left: rect.right - 200 });
-    setOpen(v => !v);
+export function HeaderActions({ onSaveDraft, onSaveAndSign, onSubmitForReview, onSignAndPrint, primaryLabel = 'Sign & Save' }) {
+  const menuItems = [
+    { key: 'submit',  label: 'Submit for Review', icon: 'solar:upload-square-linear' },
+    { key: 'print',   label: 'Sign and Print',    icon: 'solar:printer-linear' },
+  ];
+  const runMenu = (key) => {
+    if (key === 'submit') onSubmitForReview();
+    else if (key === 'print') onSignAndPrint();
   };
-  const wrap = (fn) => () => { setOpen(false); fn(); };
   return (
     <>
-      <Button size="S" variant="primary" onClick={onSubmitForReview}>{primaryLabel}</Button>
-      <div ref={btnRef} style={{ display: 'inline-flex' }}>
-        <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More actions" onClick={openMenu} />
+      <Button
+        variant="secondary"
+        size="L"
+        leadingIcon="solar:file-linear"
+        onClick={onSaveDraft}
+      >
+        Save as Draft
+      </Button>
+      <span className={styles.headerDivider} aria-hidden />
+      <Button
+        variant="primary"
+        size="L"
+        menuItems={menuItems}
+        onMenuSelect={runMenu}
+        onClick={onSaveAndSign}
+      >
+        {primaryLabel}
+      </Button>
+    </>
+  );
+}
+
+export function TitleBlock({ title, statusLabel = 'In Progress' }) {
+  return (
+    <span className={styles.titleBlock}>
+      <span className={styles.titleText}>{title}</span>
+      <Badge tone="warning" size="S" dot label={statusLabel} />
+    </span>
+  );
+}
+
+function CheckboxRow({ checked, onChange, label, description }) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      className={styles.checkRow}
+      onClick={() => onChange(!checked)}
+    >
+      <CheckboxTick checked={checked} size={16} />
+      <span className={styles.checkLabel}>
+        {label && <strong className={styles.checkLabelStrong}>{label}</strong>}
+        {label && description ? ' – ' : null}
+        {description}
+      </span>
+    </button>
+  );
+}
+
+export function NoteContextPane({ v, member, year }) {
+  return (
+    <div className={styles.leftPane}>
+      <div className={styles.patientBannerSlot}>
+        <PatientBanner
+          initials={member.in}
+          name={member.name}
+          gender={GENDER_LABEL[member.gender] ?? member.gender}
+          age={member.age}
+          dob={member.dob}
+          memberId={member.memberId}
+          hidePatientLabel
+          onCall={() => v.showToast('Call — coming soon')}
+        />
       </div>
-      <span className={styles.headerDivider} />
-      {open && createPortal(
-        <div className={styles.overflowScrim} onClick={() => setOpen(false)}>
-          <div className={styles.overflowMenu} style={{ top: pos.top, left: pos.left }} onClick={e => e.stopPropagation()}>
-            <button className={styles.overflowItem} onClick={wrap(onSaveDraft)}>
-              <Icon name="solar:diskette-linear" size={15} color="var(--neutral-300)" /> Save as Draft
-            </button>
-            <button className={styles.overflowItem} onClick={wrap(onSaveAndSign)}>
-              <Icon name="solar:pen-new-square-linear" size={15} color="var(--neutral-300)" /> Save and Sign
-            </button>
-            <button className={styles.overflowItem} onClick={wrap(onSignAndPrint)}>
-              <Icon name="solar:printer-linear" size={15} color="var(--neutral-300)" /> Sign and Print
-            </button>
+
+      <div className={styles.infoBanner}>
+        <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
+        <span>All signed notes sync to the patient's EHR.</span>
+      </div>
+
+      <div className={styles.leftPaneScroll}>
+        <div className={styles.dosCard}>
+          <div className={styles.dosHeader}>
+            <span className={styles.dosTitle}>
+              Date of Service &amp; Telehealth Statement <span className={styles.required}>•</span>
+            </span>
+            <Badge tone="info" size="S" label="Common for all gaps" />
           </div>
-        </div>, document.body,
-      )}
-    </>
-  );
-}
-
-function CbpFields({ data, submitted, year, onUpdate }) {
-  return (
-    <>
-      <div className={styles.bpInlineDate}>Reading recorded · <span>05-22-{year}</span>
-        <Icon name="solar:calendar-linear" size={13} color="var(--neutral-300)" /></div>
-      <label className={styles.checkRow}><input type="checkbox" checked={data.selfReported} onChange={e => onUpdate({ selfReported: e.target.checked })} />
-        <span className={styles.checkLabel}>Self-reported vitals due to telehealth encounter</span></label>
-      <label className={styles.checkRow}><input type="checkbox" checked={data.digitalBaseline} onChange={e => onUpdate({ digitalBaseline: e.target.checked })} />
-        <span className={styles.checkLabel}>BP reading obtained from a digital blood pressure baseline</span></label>
-      <div style={{ marginTop: 8 }}>
-        <div className={styles.radioGroupLabel}>Location <span className={styles.required}>•</span></div>
-        {['Outpatient visit', 'Telehealth visit', 'Clinic', 'Home'].map(opt => (
-          <label key={opt} className={styles.radioRow}>
-            <input type="radio" name={`cbp-location-${year}`} value={opt} checked={data.location === opt} onChange={() => onUpdate({ location: opt })} />
-            <span className={styles.radioLabel}>{opt}</span>
-          </label>
-        ))}
-        {submitted && !data.location && <div className={styles.fieldError}>Location is required</div>}
-      </div>
-      <div className={styles.sectionDivider} />
-      <div>
-        <div className={styles.radioGroupLabel}>Is the patient currently taking high blood pressure medication? <span className={styles.required}>•</span></div>
-        {['Yes', 'No'].map(opt => (
-          <label key={opt} className={styles.radioRow}>
-            <input type="radio" name={`cbp-med-${year}`} value={opt} checked={data.bpMedication === opt} onChange={() => onUpdate({ bpMedication: opt })} />
-            <span className={styles.radioLabel}>{opt}</span>
-          </label>
-        ))}
-        {submitted && !data.bpMedication && <div className={styles.fieldError}>BP medication response is required</div>}
-      </div>
-      <div className={styles.sectionDivider} />
-      <label className={styles.checkRow}><input type="checkbox" checked={data.bpManagement} onChange={e => onUpdate({ bpManagement: e.target.checked })} />
-        <span className={styles.checkLabel}>Blood Pressure Management</span></label>
-      {data.bpManagement && (<><p className={styles.checkIndented}>Reinforced low NA diet</p>
-        <p className={styles.checkIndented}>Reinforced to record BP daily, notify PCP if SBP&gt;140 or DBP&gt;90</p></>)}
-      <label className={styles.checkRow}><input type="checkbox" checked={data.medEducation} onChange={e => onUpdate({ medEducation: e.target.checked })} />
-        <span className={styles.checkLabel}>Medication management education</span></label>
-      {data.medEducation && <p className={styles.checkIndented}>Reinforced to take medications as prescribed by physician</p>}
-      <label className={styles.checkRow}><input type="checkbox" checked={data.referredPcp} onChange={e => onUpdate({ referredPcp: e.target.checked })} />
-        <span className={styles.checkLabel}>Referred to PCP for f/u within 14 days if needed</span></label>
-      <label className={styles.checkRow} style={{ marginBottom: 0 }}><input type="checkbox" checked={data.noFurtherQuestions} onChange={e => onUpdate({ noFurtherQuestions: e.target.checked })} />
-        <span className={styles.checkLabel}>Patient does not have any further questions. Patient understands to follow up with PCP as needed</span></label>
-    </>
-  );
-}
-
-function ColFields({ data, submitted, onUpdate }) {
-  return (
-    <>
-      <div className={styles.fieldGroup}>
-        <div className={styles.fieldLabel}>Choose a Colorectal Screening Method <span className={styles.required}>•</span></div>
-        {COL_METHODS.map(opt => (
-          <label key={opt} className={styles.radioRow}>
-            <input type="radio" name="screeningMethod" value={opt} checked={data.screeningMethod === opt} onChange={() => onUpdate({ screeningMethod: opt })} />
-            <span className={styles.radioLabel}>{opt}</span>
-          </label>
-        ))}
-        {submitted && !data.screeningMethod && <div className={styles.fieldError}>Screening method is required</div>}
-      </div>
-      <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
-        <div className={styles.fieldLabel}>Result Date <span className={styles.required}>•</span></div>
-        <DatePicker value={data.colResultDate} onSelect={(v) => onUpdate({ colResultDate: v })} hasError={submitted && !data.colResultDate} />
-        {submitted && !data.colResultDate && <div className={styles.fieldError}>Result Date is required</div>}
-      </div>
-    </>
-  );
-}
-
-function KedFields({ data, submitted, onUpdate }) {
-  return (
-    <div className={styles.kedGrid}>
-      {[
-        ['egfr', 'Estimated Glomerular Filtration Rate (eGFR)', 'mL/min/1.73 m2', 'egfrResultDate'],
-        ['uacr', 'Urine Albumin-Creatinine Ratio (uACR)', 'mg/g', 'uacrResultDate'],
-      ].map(([field, label, suffix, dateField]) => (
-        <div key={field}>
-          <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
-            <div className={styles.fieldLabel}>{label} <span className={styles.required}>•</span></div>
-            <div className={`${styles.inputWithSuffix} ${submitted && !data[field] ? styles.inputWithSuffixError : ''}`}>
-              <input aria-label={label} type="number" value={data[field]} onChange={e => onUpdate({ [field]: e.target.value })} />
-              <span className={styles.inputSuffix}>{suffix}</span>
+          <div className={styles.dosBody}>
+            <div className={styles.fieldStack}>
+              <div className={styles.fieldLabel}>Date of Service <span className={styles.required}>•</span></div>
+              <DatePicker value={v.dateOfService} onSelect={v.setDateOfService} hasError={v.submitted && !v.dateOfService} placeholder="Select Date" />
+              {v.submitted && !v.dateOfService && <div className={styles.fieldError}>Date of Service is required</div>}
             </div>
-            {submitted && !data[field] && <div className={styles.fieldError}>{field === 'egfr' ? 'eGFR' : 'uACR'} is required</div>}
-          </div>
-          <div className={styles.fieldGroup} style={{ marginBottom: 0 }}>
-            <div className={styles.fieldLabel}>Result Date <span className={styles.required}>•</span></div>
-            <DatePicker value={data[dateField]} onSelect={(v) => onUpdate({ [dateField]: v })} hasError={submitted && !data[dateField]} />
-            {submitted && !data[dateField] && <div className={styles.fieldError}>Result Date is required</div>}
+            <div className={styles.fieldStack}>
+              <div className={styles.fieldLabel}>Telehealth Statement</div>
+              <div className={styles.checkStack}>
+                <CheckboxRow
+                  checked={v.audioOnly}
+                  onChange={v.setAudioOnly}
+                  label="Audio-only visit"
+                  description="Verbal consent was obtained from the patient to conduct the visit via audio-only. The patient was informed of the nature of the visit, the limitations of audio-only communication, and agreed to proceed."
+                />
+                <CheckboxRow
+                  checked={v.audioVideo}
+                  onChange={v.setAudioVideo}
+                  label="Audio-video visit"
+                  description="Verbal consent was obtained from the patient to conduct the visit via audio and video. The patient was informed of the nature of the visit, the limitations of audio-video communication, and agreed to proceed."
+                />
+              </div>
+            </div>
           </div>
         </div>
-      ))}
+
+        <div className={styles.visitNotesHeader}>
+          <span className={styles.visitNotesTitle}>Visit Notes <span className={styles.visitNotesHelper}>(Included in Consolidated Note):</span></span>
+          <span className={styles.visitNotesYear}>Measurement Year: {year}</span>
+        </div>
+
+        <div className={styles.gapTable}>
+          <div className={styles.gapTableHeader}>
+            <span>Open Care Gaps</span>
+            <span>Assignee</span>
+            <span className={styles.gapTableReadyHead}>Ready</span>
+          </div>
+          {v.activeGaps.map(g => (
+            <GapRow
+              key={g.code}
+              gap={g}
+              data={v.gapState[g.code]}
+              ready={v.isReadyForReview(g.code)}
+              mandatoryComplete={isMandatoryComplete(g.code, v.gapState[g.code])}
+              assignee={v.assigneeFor(g)}
+              isActive={v.activeGapCode === g.code}
+              onSelect={() => v.setActiveGapCode(g.code)}
+              onToggleReady={(next) => {
+                if (next && !isMandatoryComplete(g.code, v.gapState[g.code])) return;
+                v.updateGap(g.code, { manuallyOff: !next });
+              }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-export function GapAccordion({ gap, data, ready, mandatoryComplete, submitted, year, assignee, isOwnedByOther, onUpdate, onAddDocument }) {
+function GapRow({ gap, data, ready, mandatoryComplete, assignee, isActive, onSelect, onToggleReady }) {
   const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
-  const toggleExpanded = () => onUpdate({ expanded: !data.expanded });
-  const handleReadyChange = (next) => { if (next && !mandatoryComplete) return; onUpdate({ manuallyOff: !next }); };
+  const rowCls = [styles.gapRow, isActive ? styles.gapRowActive : ''].filter(Boolean).join(' ');
   return (
-    <div className={`${styles.gapAccordion} ${isOwnedByOther ? styles.gapAccordionOther : ''}`}>
-      <div role="button" tabIndex={0} className={styles.gapAccordionHeader} onClick={toggleExpanded}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(); } }}>
-        <Icon name={data.expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={14} color="var(--neutral-300)" />
-        <span className={styles.gapAccordionCode}>{gap.code}</span>
-        <span className={styles.gapAccordionName}>{measureName}</span>
-        <span className={`${styles.gapStatusPill} ${styles[`gapStatus_${gap.status.replace('-', '_')}`] ?? ''}`}>{gap.status}</span>
-        <div className={styles.gapAccordionSpacer} />
-        {assignee && (
-          <span className={styles.gapAccordionAssignee}>
-            <Icon name="solar:user-circle-linear" size={13} color="var(--primary-300)" />{assignee}
-            {gap.lastEditedBy && <span className={styles.gapAccordionEdited}> · edited {gap.lastEditedAt}</span>}
-          </span>
-        )}
-        <span className={styles.readyToggle} onClick={(e) => e.stopPropagation()}>
-          <Switch checked={ready} disabled={!mandatoryComplete} onChange={handleReadyChange} ariaLabel={`Ready for review — ${gap.code}`} />
-          <span className={ready ? styles.readyToggleLabelOn : styles.readyToggleLabel}>Ready for Review</span>
-        </span>
+    <div
+      role="button"
+      tabIndex={0}
+      className={rowCls}
+      onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(); } }}
+    >
+      <div className={styles.gapRowMain}>
+        <div className={styles.gapRowTitle}>
+          <span className={styles.gapCode}>{gap.code}</span>
+          <span className={styles.gapName}>{measureName}</span>
+        </div>
+        <div className={styles.gapRowMeta}>
+          <Badge tone="warning" size="S" dot label={gap.status} />
+          {data && !!Object.keys(data).some(k => k !== 'manuallyOff' && data[k]) && (
+            <span className={styles.gapRowUpdate}>
+              <span className={styles.dot}>·</span> Last Updated Today, 09:15 AM <span className={styles.dot}>·</span> You
+            </span>
+          )}
+        </div>
       </div>
-      {data.expanded && (
-        <div className={styles.gapAccordionBody}>
-          {isOwnedByOther && gap.lastEditedBy && (
-            <div className={styles.priorDraftBanner}>
-              <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
-              <span>Draft started by <strong>{gap.lastEditedBy}</strong> · {gap.lastEditedAt}. Your edits will save separately and merge into the consolidated note.</span>
+      <div className={styles.gapRowAssignee} onClick={(e) => e.stopPropagation()}>
+        <AssigneeChange
+          size="S"
+          name={assignee}
+          initials={(assignee || '').split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('')}
+          showRole={false}
+          unassigned={!assignee}
+          unassignedLabel="Unassigned"
+        />
+      </div>
+      <div className={styles.gapRowReady} onClick={(e) => e.stopPropagation()}>
+        <Switch
+          checked={ready}
+          disabled={!mandatoryComplete}
+          onChange={onToggleReady}
+          ariaLabel={`Ready for review — ${gap.code}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function GapEvidencePane({ v }) {
+  const gap = v.activeGap;
+  if (!gap) {
+    return (
+      <div className={styles.rightPane}>
+        <div className={styles.rightEmpty}>
+          <Icon name="solar:file-text-linear" size={40} color="var(--neutral-150)" />
+          <p className={styles.rightEmptyTitle}>Select a care gap to enter evidence.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const data = v.gapState[gap.code] ?? {};
+  const ready = v.isReadyForReview(gap.code);
+  const mandatoryComplete = isMandatoryComplete(gap.code, data);
+  const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
+  const assignee = v.assigneeFor(gap);
+
+  return (
+    <div className={styles.rightPane}>
+      <div className={styles.rightPaneScroll}>
+        <div className={styles.gapEvidenceTopRow}>
+          <div className={styles.gapEvidenceHeadLeft}>
+            <span className={styles.gapEvidenceTitle}>
+              {gap.code} - {measureName}
+            </span>
+            <div className={styles.gapEvidenceStatusRow}>
+              <Badge tone="warning" size="S" dot label={gap.status} />
+              <span className={styles.headerDivider} aria-hidden="true" />
+              <AssigneeChange
+                size="S"
+                name={assignee}
+                initials={(assignee || '').split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('')}
+                showRole={false}
+                unassigned={!assignee}
+                unassignedLabel="Unassigned"
+                onClick={() => v.showToast('Assignee change — coming soon')}
+              />
+            </div>
+          </div>
+          <div className={styles.gapEvidenceReadyRow}>
+            <Switch
+              checked={ready}
+              disabled={!mandatoryComplete}
+              onChange={(next) => {
+                if (next && !mandatoryComplete) return;
+                v.updateGap(gap.code, { manuallyOff: !next });
+              }}
+              ariaLabel={`Ready for review — ${gap.code}`}
+            />
+            <span className={styles.gapEvidenceReadyLabel}>
+              Ready for Review
+              <Icon name="solar:info-circle-linear" size={13} color="var(--neutral-300)" />
+            </span>
+          </div>
+        </div>
+
+        <div className={`${styles.evidenceTypeRow} ${styles.evidenceTypeRowPinned}`}>
+          <Select
+            disabled
+            options={[{ value: gap.code, label: `${gap.code} Evidence` }]}
+            value={gap.code}
+            onChange={() => {}}
+            ariaLabel={`${gap.code} evidence type`}
+          />
+          <Input
+            aria-label="Evidence label"
+            value={data.evidenceLabel ?? `${gap.code} Evidence`}
+            onChange={(e) => v.updateGap(gap.code, { evidenceLabel: e.target.value })}
+          />
+        </div>
+
+        <div className={styles.evidenceBody}>
+          {gap.code === 'EED' ? (
+            <EedEvidenceForm v={v} data={data} submitted={v.submitted} />
+          ) : gap.code === 'CBP' ? (
+            <CbpEvidenceForm v={v} data={data} submitted={v.submitted} />
+          ) : (
+            <div className={styles.evidenceComingSoon}>
+              <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-150)" />
+              <p className={styles.evidenceComingSoonTitle}>Coming soon</p>
+              <p className={styles.evidenceComingSoonBody}>Evidence form pending design for {gap.code}.</p>
             </div>
           )}
-          {gap.code === 'CBP' && <CbpFields data={data} submitted={submitted} year={year} onUpdate={onUpdate} />}
-          {gap.code === 'COL' && <ColFields data={data} submitted={submitted} onUpdate={onUpdate} />}
-          {gap.code === 'KED' && <KedFields data={data} submitted={submitted} onUpdate={onUpdate} />}
-          {!['CBP', 'COL', 'KED'].includes(gap.code) && (
-            <div className={styles.gapPlaceholder}>Evidence form for {gap.code} — template not yet configured.</div>
-          )}
-          <button className={styles.gapDocBtn} onClick={onAddDocument} type="button">
-            <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" /> Add document for {gap.code}
-          </button>
         </div>
-      )}
+      </div>
+    </div>
+  );
+}
+
+function EedEvidenceForm({ v, data, submitted }) {
+  const onUpdate = (patch) => v.updateGap('EED', patch);
+  const err = (field) => submitted && !data[field];
+  return (
+    <div className={styles.evidenceForm}>
+      <FieldStack>
+        <FieldLabel required>Evidence Type</FieldLabel>
+        <div className={styles.radioGroupStack}>
+          {EED_EVIDENCE_TYPES.map(opt => (
+            <RadioButton
+              key={opt}
+              checked={data.evidenceType === opt}
+              onChange={() => onUpdate({ evidenceType: opt })}
+              label={opt}
+            />
+          ))}
+        </div>
+        {err('evidenceType') && <FieldError>Evidence type is required</FieldError>}
+      </FieldStack>
+
+      <div className={styles.formGrid2}>
+        <FieldStack>
+          <FieldLabel required>Exam Type</FieldLabel>
+          <Select
+            options={EED_EXAM_TYPES}
+            value={data.examType}
+            onChange={(v2) => onUpdate({ examType: v2 })}
+            placeholder="Select Exam Type"
+            variant={err('examType') ? 'error' : 'default'}
+          />
+          {err('examType') && <FieldError>Exam type is required</FieldError>}
+        </FieldStack>
+        <FieldStack>
+          <FieldLabel required>Exam Date</FieldLabel>
+          <DatePicker
+            value={data.examDate}
+            onSelect={(v2) => onUpdate({ examDate: v2 })}
+            hasError={err('examDate')}
+          />
+          {err('examDate') && <FieldError>Exam date is required</FieldError>}
+        </FieldStack>
+      </div>
+
+      <div className={styles.formGrid2}>
+        <FieldStack>
+          <FieldLabel required>Examining Provider</FieldLabel>
+          <Input
+            value={data.examiningProvider}
+            onChange={(e) => onUpdate({ examiningProvider: e.target.value })}
+            placeholder="Enter Provider Name"
+            variant={err('examiningProvider') ? 'error' : undefined}
+          />
+          {err('examiningProvider') && <FieldError>Provider is required</FieldError>}
+        </FieldStack>
+        <FieldStack>
+          <FieldLabel>NPI</FieldLabel>
+          <Input
+            value={data.npi}
+            onChange={(e) => onUpdate({ npi: e.target.value })}
+            placeholder="10 digit NPI"
+            inputMode="numeric"
+          />
+        </FieldStack>
+      </div>
+
+      <FieldStack>
+        <FieldLabel required>Exam Result</FieldLabel>
+        <div className={styles.radioGroupStack}>
+          {EED_EXAM_RESULTS.map(opt => (
+            <RadioButton
+              key={opt}
+              checked={data.examResult === opt}
+              onChange={() => onUpdate({ examResult: opt })}
+              label={opt}
+            />
+          ))}
+        </div>
+        {err('examResult') && <FieldError>Exam result is required</FieldError>}
+      </FieldStack>
+
+      <div className={styles.formGrid2}>
+        <FieldStack>
+          <FieldLabel>Laterality</FieldLabel>
+          <Input
+            value={data.laterality}
+            onChange={(e) => onUpdate({ laterality: e.target.value })}
+            placeholder="Enter Provider Name"
+          />
+        </FieldStack>
+        <FieldStack>
+          <FieldLabel required>ICD-10 Diagnosis Code</FieldLabel>
+          <Select
+            options={[
+              { value: 'E11.311', label: 'E11.311' },
+              { value: 'E11.319', label: 'E11.319' },
+              { value: 'E11.321', label: 'E11.321' },
+              { value: 'E11.9',   label: 'E11.9' },
+            ]}
+            value={data.icd10}
+            onChange={(v2) => onUpdate({ icd10: v2 })}
+            placeholder="Select ICD"
+            variant={err('icd10') ? 'error' : 'default'}
+          />
+          {err('icd10') && <FieldError>ICD-10 is required</FieldError>}
+        </FieldStack>
+      </div>
+
+      <FieldStack>
+        <FieldLabel required>Follow-up Recommended</FieldLabel>
+        <div className={styles.checkStack}>
+          {EED_FOLLOW_UP_OPTIONS.map(opt => (
+            <CheckboxRow
+              key={opt.key}
+              checked={!!(data.followUp && data.followUp[opt.key])}
+              onChange={(next) => onUpdate({ followUp: { ...(data.followUp || {}), [opt.key]: next } })}
+              label={opt.label}
+            />
+          ))}
+        </div>
+      </FieldStack>
+
+      <div className={styles.formGrid2}>
+        <FieldStack>
+          <FieldLabel>Next Exam Due</FieldLabel>
+          <DatePicker value={data.nextExamDue} onSelect={(v2) => onUpdate({ nextExamDue: v2 })} />
+        </FieldStack>
+        <FieldStack>
+          <FieldLabel required>Patient Counseled On</FieldLabel>
+          <Select
+            options={[
+              { value: 'retinopathy',       label: 'Diabetic retinopathy risk' },
+              { value: 'follow-up',         label: 'Follow-up schedule' },
+              { value: 'lifestyle',         label: 'Lifestyle & glycemic control' },
+            ]}
+            value={data.patientCounseledOn}
+            onChange={(v2) => onUpdate({ patientCounseledOn: v2 })}
+            placeholder="Select"
+            variant={err('patientCounseledOn') ? 'error' : 'default'}
+          />
+          {err('patientCounseledOn') && <FieldError>This field is required</FieldError>}
+        </FieldStack>
+      </div>
+
+      <FieldStack>
+        <FieldLabel>Upload Evidence (if available):</FieldLabel>
+        <UploadDropField onChange={() => v.showToast('Attach evidence — coming soon')} />
+      </FieldStack>
+    </div>
+  );
+}
+
+/* CBP Visit Note — Controlling Blood Pressure evidence form.
+   Backed by the "CBP Visit Note" template row (form_type='Note') seeded in
+   supabase/forms_type_column_and_cbp_visit_note_migration.sql. */
+function CbpEvidenceForm({ v, data, submitted }) {
+  const onUpdate = (patch) => v.updateGap('CBP', patch);
+  const err = (field) => submitted && !data[field];
+  const priorReading = '156/78 mmHg on 06/04/2026';
+  return (
+    <div className={styles.evidenceForm}>
+      {/* Initial Blood Pressure card — date + BP reading + location. */}
+      <div className={styles.cbpCard}>
+        <div className={styles.cbpCardTitle}>Initial Blood Pressure</div>
+        <div className={styles.cbpBpBlock}>
+          <div className={styles.cbpBpDateRow}>
+            <span className={styles.cbpBpDateLabel}>Blood Pressure</span>
+            <div className={styles.cbpBpDatePicker}>
+              <DatePicker
+                value={data.bpDate}
+                onSelect={(v2) => onUpdate({ bpDate: v2 })}
+                placeholder="Select Date"
+                hasError={err('bpDate')}
+              />
+            </div>
+          </div>
+          <div className={styles.cbpBpValueRow}>
+            <div className={styles.cbpBpValueLeft}>
+              <span className={styles.cbpBpValueLabel}>Blood Pressure</span>
+              <span className={styles.cbpBpValueHelper}>Recorded {priorReading}</span>
+            </div>
+            <div className={styles.cbpBpValueInputs}>
+              <Input
+                type="number"
+                inputMode="numeric"
+                aria-label="Systolic BP"
+                value={data.systolic}
+                onChange={(e) => onUpdate({ systolic: e.target.value })}
+                placeholder="121"
+                hasError={err('systolic')}
+              />
+              <span className={styles.cbpBpSlash} aria-hidden="true">/</span>
+              <Input
+                type="number"
+                inputMode="numeric"
+                aria-label="Diastolic BP"
+                value={data.diastolic}
+                onChange={(e) => onUpdate({ diastolic: e.target.value })}
+                placeholder="76"
+                hasError={err('diastolic')}
+              />
+              <span className={styles.cbpBpUnit}>mmHg</span>
+            </div>
+          </div>
+        </div>
+
+        <CbpRadioGroup
+          label="Location"
+          value={data.location}
+          options={CBP_LOCATIONS}
+          onChange={(v2) => onUpdate({ location: v2 })}
+          error={err('location') ? 'Location is required' : null}
+        />
+      </div>
+
+      <CbpRadioGroup
+        label="Does the patient check their blood pressure regularly and log the results?"
+        value={data.selfMonitors}
+        options={CBP_YES_NO}
+        onChange={(v2) => onUpdate({ selfMonitors: v2 })}
+      />
+      <CbpRadioGroup
+        label="Is the patient taking their high blood pressure medications as prescribed?"
+        value={data.takingMeds}
+        options={[
+          ...CBP_YES_NO,
+          { value: 'med-list', label: 'Name of BP Medication / Dosage / Last dose table?' },
+        ]}
+        onChange={(v2) => onUpdate({ takingMeds: v2 })}
+      />
+      <CbpRadioGroup
+        label="Do you have any symptoms? (BP<100/60)"
+        value={data.symptomsLow}
+        options={CBP_SYMPTOM_OPTIONS}
+        onChange={(v2) => onUpdate({ symptomsLow: v2 })}
+      />
+      <CbpRadioGroup
+        label="Do you have any symptoms? (BP >140/90 and <160/100)"
+        value={data.symptomsMid}
+        options={CBP_SYMPTOM_OPTIONS}
+        onChange={(v2) => onUpdate({ symptomsMid: v2 })}
+      />
+      <CbpRadioGroup
+        label="Do you have any symptoms? (BP >160/100)"
+        value={data.symptomsHigh}
+        options={CBP_SYMPTOM_OPTIONS}
+        onChange={(v2) => onUpdate({ symptomsHigh: v2 })}
+      />
+
+      <FieldStack>
+        <FieldLabel>Upload Evidence (if available):</FieldLabel>
+        <UploadDropField onChange={() => v.showToast('Attach evidence — coming soon')} />
+      </FieldStack>
+    </div>
+  );
+}
+
+function CbpRadioGroup({ label, value, options, onChange, error }) {
+  return (
+    <FieldStack>
+      <span className={styles.cbpQuestionLabel}>{label}</span>
+      <div className={styles.radioGroupStack}>
+        {options.map(opt => (
+          <RadioButton
+            key={opt.value}
+            checked={value === opt.value}
+            onChange={() => onChange(opt.value)}
+            label={opt.label}
+          />
+        ))}
+      </div>
+      {error && <FieldError>{error}</FieldError>}
+    </FieldStack>
+  );
+}
+
+function FieldStack({ children }) {
+  return <div className={styles.fieldStack}>{children}</div>;
+}
+
+function FieldLabel({ children, required }) {
+  return (
+    <div className={styles.fieldLabel}>
+      {children}
+      {required && <span className={styles.required}>•</span>}
+    </div>
+  );
+}
+
+function FieldError({ children }) {
+  return <div className={styles.fieldError}>{children}</div>;
+}
+
+/* Single-gap inline body — rendered inside CareGapDetailDrawer's left
+   workspace when the member has only one open gap. Reuses the DOS card and
+   evidence form from the consolidated drawer; drops the visit-notes table
+   and the "Common for all gaps" pill (both meaningless with one gap). */
+export function ClinicalNoteWorkspaceBody({ v }) {
+  const gap = v.activeGap;
+  if (!gap) return null;
+  const data = v.gapState[gap.code] ?? {};
+  return (
+    <div className={styles.inlineWorkspaceBody}>
+      <div className={styles.infoBanner}>
+        <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
+        <span>All signed notes sync to the patient's EHR.</span>
+      </div>
+
+      <div className={styles.evidenceTypeRow}>
+        <Select
+          disabled
+          options={[{ value: gap.code, label: `${gap.code} Evidence` }]}
+          value={gap.code}
+          onChange={() => {}}
+          ariaLabel={`${gap.code} evidence type`}
+        />
+        <Input
+          aria-label="Evidence label"
+          value={data.evidenceLabel ?? `${gap.code} Evidence`}
+          onChange={(e) => v.updateGap(gap.code, { evidenceLabel: e.target.value })}
+        />
+      </div>
+
+      <div className={styles.inlineWorkspaceScroll}>
+        <div className={styles.dosCard}>
+          <div className={styles.dosHeader}>
+            <span className={styles.dosTitle}>
+              Date of Service &amp; Telehealth Statement <span className={styles.required}>•</span>
+            </span>
+          </div>
+          <div className={styles.dosBody}>
+            <div className={styles.fieldStack}>
+              <DatePicker
+                label="Date of Service"
+                required
+                value={v.dateOfService}
+                onSelect={v.setDateOfService}
+                hasError={v.submitted && !v.dateOfService}
+                placeholder="Select Date"
+              />
+              {v.submitted && !v.dateOfService && (
+                <div className={styles.fieldError}>Date of Service is required</div>
+              )}
+            </div>
+            <div className={styles.fieldStack}>
+              <div className={styles.fieldLabel}>Telehealth Statement</div>
+              <div className={styles.checkStack}>
+                <CheckboxRow
+                  checked={v.audioOnly}
+                  onChange={v.setAudioOnly}
+                  label="Audio-only visit"
+                  description="Verbal consent was obtained from the patient to conduct the visit via audio-only. The patient was informed of the nature of the visit, the limitations of audio-only communication, and agreed to proceed."
+                />
+                <CheckboxRow
+                  checked={v.audioVideo}
+                  onChange={v.setAudioVideo}
+                  label="Audio-video visit"
+                  description="Verbal consent was obtained from the patient to conduct the visit via audio and video. The patient was informed of the nature of the visit, the limitations of audio-video communication, and agreed to proceed."
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {gap.code === 'EED' ? (
+          <EedEvidenceForm v={v} data={data} submitted={v.submitted} />
+        ) : gap.code === 'CBP' ? (
+          <CbpEvidenceForm v={v} data={data} submitted={v.submitted} />
+        ) : (
+          <div className={styles.evidenceComingSoon}>
+            <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-150)" />
+            <p className={styles.evidenceComingSoonTitle}>Coming soon</p>
+            <p className={styles.evidenceComingSoonBody}>
+              Evidence form pending design for {gap.code}.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

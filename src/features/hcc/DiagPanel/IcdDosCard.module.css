@@ -277,7 +277,8 @@
 /* Resolved-state pills (Figma ICD-Import: Accepted / Dismissed / Missed / Deferred) */
 .acceptedPill,
 .dismissedPill,
-.warnPill {
+.warnPill,
+.deferredPill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -286,8 +287,11 @@
 }
 .acceptedPill { color: var(--status-success-bright); }
 .dismissedPill { color: var(--status-error); }
-/* Missed opportunity / Deferred — warning color, icon + text + undo. */
+/* Missed opportunity — warning tone (still a signal the reviewer skipped). */
 .warnPill { color: var(--status-warning); }
+/* Deferred — neutral-300 per Figma; the row will be revisited later so the
+   pill should read as "parked", not "warning". */
+.deferredPill { color: var(--neutral-300); }
 
 .undoBtn {
   display: inline-flex;

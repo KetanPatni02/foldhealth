@@ -363,12 +363,23 @@ function EmailsTab({
 // ────────────────────────────────────────────────────────────────────────────
 const FORM_COLUMNS = [
   { key: 'name',      label: 'Name',            sticky: 'left', left: 0, width: 320 },
+  { key: 'formType',  label: 'Type',            width: 120 },
   { key: 'category',  label: 'Category',        width: 160 },
   { key: 'responses', label: 'Responses',       width: 140 },
   { key: 'updated',   label: 'Last Updated',    width: 140 },
   { key: 'updatedBy', label: 'Last Updated By', width: 180 },
   { key: 'action',    label: 'Action',          sticky: 'right', width: 100 },
 ];
+
+// Tone map for the Type badge so each form_type reads as a distinct chip.
+// Mirrors the enum in supabase/forms_type_column_and_cbp_visit_note_migration.sql.
+const FORM_TYPE_TONE = {
+  Note: 'primary',
+  Assessment: 'info',
+  Intake: 'success',
+  Consent: 'warning',
+  Other: 'grey',
+};
 
 function FormRowMenu({ onCopyLink, onDuplicate, onDelete }) {
   const [open, setOpen] = useState(false);
@@ -424,6 +435,7 @@ function FormRowSkeleton() {
           </div>
         </div>
       </td>
+      <td className={styles.tdCategory}><span className={`${styles.skelBone} ${styles.skelChip}`} /></td>
       <td className={styles.tdCategory}><span className={`${styles.skelBone} ${styles.skelChip}`} /></td>
       <td className={styles.tdSubject}><span className={`${styles.skelBone} ${styles.skelTextSm}`} /></td>
       <td className={styles.tdDate}><span className={`${styles.skelBone} ${styles.skelTextSm}`} /></td>
@@ -492,6 +504,9 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
               {form.description ? <span className={styles.nameDesc}>{form.description}</span> : null}
             </div>
           </div>
+        </td>
+        <td className={styles.tdCategory}>
+          <Badge tone={FORM_TYPE_TONE[form.formType] || 'grey'} size="S" label={form.formType || 'Other'} />
         </td>
         <td className={styles.tdCategory}>
           {form.category ? <Badge variant="ai-neutral" label={form.category} /> : <span className={styles.cellMuted}>—</span>}

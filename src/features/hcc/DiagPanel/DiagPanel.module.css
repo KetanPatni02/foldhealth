@@ -393,7 +393,7 @@
   padding: 6px 12px;
   min-height: 40px;
   background: var(--neutral-0);
-  border-bottom: 0.5px solid var(--neutral-100);
+  border-bottom: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
   /* Wrap when the RHS is too narrow to hold Created / Coder pill / CK
      avatar / status pill on one line — the right cluster drops to a new
@@ -561,6 +561,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* `.bulkBarInDrawer` is `position: absolute`; anchoring against the pane
+     (not the transformed drawer panel) centers the bar under the diagnosis
+     rows the selection actually lives on. */
+  position: relative;
 }
 
 /* When the workspace is open, the left (LeftWorkspace) and right (Diagnosis
@@ -578,6 +582,7 @@
   background: var(--neutral-0);
   container-type: inline-size;
   container-name: rhsPane;
+  position: relative;
 }
 
 /* Draggable divider between LeftWorkspace and the RHS. The visible line

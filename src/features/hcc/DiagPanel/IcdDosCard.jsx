@@ -472,7 +472,7 @@ function DosActionRow({
             </>
           ) : isDeferred ? (
             <>
-              <span className={styles.warnPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>
+              <span className={styles.deferredPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>
               <Tooltip label={canReview ? 'Undo' : (disabledReason || 'Undo')}>
                 <button
                   type="button"

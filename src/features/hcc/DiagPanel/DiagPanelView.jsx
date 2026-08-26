@@ -32,6 +32,7 @@ export function DiagPanelView(props) {
     setSelectedKeys,
     bulkApply,
     bulkUndo,
+    openDocsFromToolbar,
     rejectPrompt,
     setRejectPrompt,
     confirmReject,
@@ -99,25 +100,30 @@ export function DiagPanelView(props) {
           <DiagPanelViewHeader {...props} />
           <DiagPanelViewToolbar {...props} />
           <DiagPanelViewCards {...props} />
+
+          {bulkMode && (
+            <BulkBar
+              className={styles.bulkBarInDrawer}
+              selectedIds={[...selectedKeys]}
+              onClear={() => setSelectedKeys(new Set())}
+              iconActions={[
+                { label: 'Upload document', icon: 'solar:upload-minimalistic-linear', onClick: openDocsFromToolbar },
+                { label: 'Add comment', icon: 'solar:chat-round-line-linear', onClick: () => setDiagLeftPanel('comments') },
+              ]}
+              actions={[
+                { label: 'Accept', icon: 'solar:check-read-linear', variant: 'primary', onClick: () => bulkApply('accepted') },
+                { label: 'Dismiss', icon: 'solar:close-circle-linear', variant: 'secondary', onClick: () => bulkApply('rejected') },
+              ]}
+              moreActions={[
+                { label: 'Missed Opportunity', icon: 'solar:flag-linear', onClick: () => bulkApply('missed') },
+                { label: 'Defer', icon: 'solar:alarm-linear', onClick: () => bulkApply('deferred') },
+                { label: 'Undo', icon: 'solar:undo-left-round-linear', onClick: bulkUndo },
+              ]}
+            />
+          )}
         </div>
       </div>
 
-      {bulkMode && (
-        <BulkBar
-          className={styles.bulkBarInDrawer}
-          selectedIds={[...selectedKeys]}
-          onClear={() => setSelectedKeys(new Set())}
-          actions={[
-            { label: 'Accept', icon: 'solar:check-read-linear', variant: 'primary', onClick: () => bulkApply('accepted') },
-            { label: 'Dismiss', icon: 'solar:close-circle-linear', variant: 'secondary', onClick: () => bulkApply('rejected') },
-          ]}
-          moreActions={[
-            { label: 'Missed Opportunity', icon: 'solar:flag-linear', onClick: () => bulkApply('missed') },
-            { label: 'Defer', icon: 'solar:alarm-linear', onClick: () => bulkApply('deferred') },
-            { label: 'Undo', icon: 'solar:undo-left-round-linear', onClick: bulkUndo },
-          ]}
-        />
-      )}
       {rejectPrompt && (
         <RejectRecordDialog
           onCancel={() => setRejectPrompt(null)}

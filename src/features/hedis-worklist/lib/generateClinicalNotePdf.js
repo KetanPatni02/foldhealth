@@ -141,14 +141,25 @@ export function generateClinicalNotePdf({
     heading(`${code} — ${MEASURE_NAMES[code] ?? code}`, 13);
 
     if (code === 'CBP') {
-      kv('Location', data.location);
-      kv('On BP medication', data.bpMedication);
-      kv('Self-reported vitals', data.selfReported ? 'Yes' : 'No');
-      kv('Digital BP baseline', data.digitalBaseline ? 'Yes' : 'No');
-      if (data.bpManagement) body('• Blood Pressure Management: reinforced low NA diet; recorded BP daily; notify PCP if SBP>140 or DBP>90.', { indent: 8 });
-      if (data.medEducation) body('• Medication management education: reinforced to take medications as prescribed.', { indent: 8 });
-      if (data.referredPcp) body('• Referred to PCP for f/u within 14 days if needed.', { indent: 8 });
-      if (data.noFurtherQuestions) body('• Patient confirmed no further questions; understands PCP follow-up plan.', { indent: 8 });
+      // Aligned with the CBP Visit Note form fields in ClinicalNotePanel.utils.js
+      // (defaultGapData) — Initial Blood Pressure card + Location + the five
+      // patient-question radios.
+      const LOCATION_LABEL = {
+        outpatient: 'Outpatient visit',
+        telehealth: 'Telehealth visit',
+        clinic: 'Clinic',
+        home: 'Home',
+      };
+      const bp = (data.systolic && data.diastolic) ? `${data.systolic} / ${data.diastolic} mmHg` : null;
+      kv('Date of BP reading', data.bpDate);
+      kv('Blood Pressure', bp);
+      kv('Location', LOCATION_LABEL[data.location] || data.location);
+      const yn = (v) => (v === 'yes' ? 'Yes' : v === 'no' ? 'No' : v === 'denies' ? 'Patient denies any symptoms at this time' : v === 'med-list' ? 'Medication list captured' : null);
+      kv('Checks BP regularly and logs results?', yn(data.selfMonitors));
+      kv('Taking BP medications as prescribed?', yn(data.takingMeds));
+      kv('Symptoms (BP < 100/60)', yn(data.symptomsLow));
+      kv('Symptoms (BP > 140/90 and < 160/100)', yn(data.symptomsMid));
+      kv('Symptoms (BP > 160/100)', yn(data.symptomsHigh));
     } else if (code === 'COL') {
       kv('Screening method', data.screeningMethod);
       kv('Result date', data.colResultDate);
@@ -178,10 +189,17 @@ export function generateClinicalNotePdf({
   // a `data:application/pdf;filename=…;base64,…` URL (which some browsers
   // refuse to render inline because of the non-standard `filename=` segment).
   const blob = doc.output('blob');
+  // dataUrl serves two callers: (a) handleSignAndPrint's window.open(...)
+  // path (which won't accept a Blob URL that revokes on unload), and (b)
+  // the clinical_notes.pdf_data_url column so a later reader can render
+  // the PDF straight from the row without re-generating it. Base64 keeps
+  // the string safely storable in Supabase JSONB / text columns.
+  const dataUrl = doc.output('datauristring');
   const safeName = member.name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
   const datePart = new Date().toISOString().slice(0, 10);
   return {
     blob,
+    dataUrl,
     filename: `consolidated-clinical-note__${safeName}__${datePart}.pdf`,
   };
 }

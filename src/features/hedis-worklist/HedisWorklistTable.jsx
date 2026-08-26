@@ -41,6 +41,11 @@ export function HedisWorklistTable() {
   const hedisFilters = useAppStore(s => s.hedisFilters);
   const saveHedisFilter = useAppStore(s => s.saveHedisFilter);
 
+  // Ensure the platformUsers slice is populated so the inline assignee picker
+  // in HedisWorklistRow renders a real user list on first mount.
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
+
   const [year, setYear] = useState(2026);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);

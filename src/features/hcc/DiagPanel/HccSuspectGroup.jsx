@@ -335,7 +335,7 @@ function ResolvedPill({ action }) {
   if (action === 'missed') {
     return <span className={styles.warnPill}><CheckIcon size={13} color="currentColor" /> Missed Opportunity</span>;
   }
-  return <span className={styles.warnPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>;
+  return <span className={styles.deferredPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>;
 }
 
 // ── ICD combobox — shared Select in searchable mode, backed by the live

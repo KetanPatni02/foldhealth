@@ -32,10 +32,15 @@ export const DatePicker = forwardRef(function DatePicker({
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledBy,
   label,
+  required = false,
+  helperText,
 }, ref) {
   const isRange = mode === 'range';
   const autoId = useId();
   const fieldId = id || autoId;
+  // In single mode `label` renders a visible field label (via Input's own
+  // label slot); the accessible name still falls back to it when nothing
+  // else is supplied. Range mode continues to treat `label` as aria-only.
   const accessibleName = ariaLabel || label || (ariaLabelledBy ? undefined : (isRange ? 'Date range' : 'Date'));
   const inputRef = useRef(null);
 
@@ -55,7 +60,10 @@ export const DatePicker = forwardRef(function DatePicker({
         variant={hasError ? 'error' : undefined}
         min={min}
         max={max}
-        aria-label={accessibleName}
+        label={label}
+        required={required}
+        helperText={helperText}
+        aria-label={label ? undefined : accessibleName}
         aria-labelledby={ariaLabelledBy}
       />
     );

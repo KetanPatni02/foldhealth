@@ -22,7 +22,7 @@ import styles from './BulkBar.module.css';
  * omitted, BulkBar renders the default worklist actions, preserving
  * backward compatibility for every existing caller.
  */
-export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssignee, actions, moreActions, className } = {}) {
+export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssignee, actions, iconActions, moreActions, className } = {}) {
   const storeSelectedIds = useAppStore(s => s.selectedIds);
   const storeClearSelected = useAppStore(s => s.clearSelected);
   const setShowInvokeModal = useAppStore(s => s.setShowInvokeModal);
@@ -68,6 +68,26 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
         <span className={styles.countText}>{selectedIds.length} Selected</span>
       </div>
       <div className={styles.divider} />
+      {/* Icon-only affordances between the count and the labeled actions —
+          used when the surface has a couple of contextual quick actions
+          (e.g. DiagPanel bulk bar has Upload / Comment before Accept /
+          Dismiss). Rendered with ActionButton so tooltips + sizing stay
+          consistent with the rest of the bar. */}
+      {iconActions && iconActions.length > 0 && (
+        <>
+          {iconActions.map((a, i) => (
+            <ActionButton
+              key={a.label || i}
+              icon={a.icon}
+              size="L"
+              tooltip={a.label}
+              onClick={() => a.onClick?.(selectedIds)}
+              disabled={a.disabled}
+            />
+          ))}
+          <div className={styles.divider} />
+        </>
+      )}
       {actions && actions.length > 0 ? (
         <>
           {actions.map((a, i) => (
