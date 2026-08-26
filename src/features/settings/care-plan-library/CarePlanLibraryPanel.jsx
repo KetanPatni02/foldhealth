@@ -155,8 +155,10 @@ export function CarePlanLibraryPanel() {
   const showToast = useAppStore(s => s.showToast);
   const setCarePlanCreateOpen = useAppStore(s => s.setCarePlanCreateOpen);
 
-  const activeTab = useAppStore(s => s.carePlanLibraryTab);
-  const setActiveTab = useAppStore(s => s.setCarePlanLibraryTab);
+  // Tab lives in the store (mirrored to #/settings/care-plan-library/<tab>)
+  // so a refresh or shared link restores the exact library.
+  const activeTab = useAppStore(s => s.carePlanTab || 'template');
+  const setActiveTab = useAppStore(s => s.setCarePlanTab);
   const [searchValue, setSearchValue] = useState('');
   // Search is per-tab in intent (searching goals shouldn't leave stale text
   // filtering templates when you switch back) — clear it on tab switch

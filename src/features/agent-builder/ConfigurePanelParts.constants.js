@@ -16,17 +16,17 @@ export const TONE_OPTIONS = [
 ];
 
 export const VOICE_OPTIONS = [
-  { id: 'erica', label: 'Erica - US Female - Empathetic & Calm' },
-  { id: 'james', label: 'James - US Male - Professional & Warm' },
-  { id: 'sophia', label: 'Sophia - US Female - Friendly & Upbeat' },
-  { id: 'david', label: 'David - UK Male - Calm & Reassuring' },
+  { value: 'erica', label: 'Erica - US Female - Empathetic & Calm' },
+  { value: 'james', label: 'James - US Male - Professional & Warm' },
+  { value: 'sophia', label: 'Sophia - US Female - Friendly & Upbeat' },
+  { value: 'david', label: 'David - UK Male - Calm & Reassuring' },
 ];
 
 export const ROLE_OPTIONS = [
-  { id: 'coordinator', label: 'Care Coordinator' },
-  { id: 'navigator', label: 'Care Navigator' },
-  { id: 'outreach', label: 'Outreach Specialist' },
-  { id: 'scheduler', label: 'Scheduling Assistant' },
+  { value: 'coordinator', label: 'Care Coordinator' },
+  { value: 'navigator', label: 'Care Navigator' },
+  { value: 'outreach', label: 'Outreach Specialist' },
+  { value: 'scheduler', label: 'Scheduling Assistant' },
 ];
 
 export const LANGUAGE_OPTIONS = [

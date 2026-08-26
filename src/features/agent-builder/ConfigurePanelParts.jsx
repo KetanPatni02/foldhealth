@@ -33,44 +33,6 @@ export function SectionCard({ id, icon, title, isComplete, expanded, onToggle, c
   );
 }
 
-/* ─────────────── CustomSelect ─────────────── */
-export function CustomSelect({ id, value, options, onChange, placeholder }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const selected = options.find(o => o.id === value);
-
-  return (
-    <div className={styles.selectWrap} ref={ref}>
-      <button id={id} className={styles.selectBtn} onClick={() => setOpen(!open)} type="button">
-        <span className={`${styles.selectBtnText} ${!selected ? styles.selectBtnPlaceholder : ''}`}>
-          {selected ? selected.label : placeholder}
-        </span>
-        <Icon name="solar:alt-arrow-down-linear" size={12} color="#8A94A8" />
-      </button>
-      {open && (
-        <div className={styles.selectDropdown}>
-          {options.map(o => (
-            <div
-              key={o.id}
-              className={`${styles.selectOption} ${value === o.id ? styles.selectOptionActive : ''}`}
-              onClick={() => { onChange(o.id); setOpen(false); }}
-            >
-              {o.label}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ─────────────── Slider ─────────────── */
 function getSliderColor(value) {
   if (value >= 80) return { bg: 'var(--status-success)', border: '#34d399', light: 'var(--status-success-light)' };

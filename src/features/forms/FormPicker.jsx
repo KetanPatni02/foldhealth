@@ -6,6 +6,7 @@ import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../lib/supabase';
 import { Icon } from '../../components/Icon/Icon';
+import { Input } from '../../components/Input/Input';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import styles from './FormPicker.module.css';
 
@@ -58,8 +59,15 @@ export function FormPicker({ onSelect, onClose }) {
           <CloseButton onClick={onClose} />
         </div>
         <div className={styles.search}>
-          <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
-          <input aria-label="Search forms" autoFocus placeholder="Search forms…" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input
+            type="search"
+            aria-label="Search forms"
+            autoFocus
+            placeholder="Search forms…"
+            leadingIcon="solar:magnifer-linear"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         <div className={styles.list}>
           {loading ? (

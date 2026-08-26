@@ -160,14 +160,20 @@ export function stateToHash(state) {
     if (settingsNavItem === 'billing') {
       return buildHash('settings', 'billing');
     }
-    if (settingsNavItem === 'care-plan-library') {
-      const cplTab = state.carePlanLibraryTab || 'template';
-      return buildHash('settings', 'care-plan-library', cplTab);
-    }
     if (settingsNavItem === 'member/leads') {
       const mlTab = state.memberLeadsTab || 'care-team';
       return buildHash('settings', 'member-leads', mlTab);
     }
+    if (settingsNavItem === 'care-plan-library') {
+      const cplTab = state.carePlanTab || 'template';
+      return buildHash('settings', 'care-plan-library', CARE_PLAN_TABS.includes(cplTab) ? cplTab : 'template');
+    }
+    // Sections without a panel yet still get a real path — clicking them
+    // used to fall through to the agents branch, which yanked the user to
+    // whatever agents tab was last active. ('agents' itself is excluded —
+    // its own branch below carries the internal tab in the URL.)
+    const section = SETTINGS_NAV_TO_SECTION[settingsNavItem];
+    if (section && section !== 'agents') return buildHash('settings', section);
     // Agents section
     if (goalWizardOpen) return buildHash('settings', 'agents', 'goals', goalWizardEditId ? String(goalWizardEditId) : 'new');
     if (goalDetailId) return buildHash('settings', 'agents', 'goals', String(goalDetailId));
@@ -245,6 +251,36 @@ export function stateToHash(state) {
 
   return buildHash('population', activeTab || 'toc-worklist');
 }
+
+// ── Settings section slugs ⇄ store nav keys ──
+// Single source so stateToHash / hashToState / the sub-nav can't drift.
+// Keys missing here (e.g. legacy raw-label keys) fall through to the
+// agents branch — same as before routing existed for them.
+const SETTINGS_SECTION_TO_NAV = {
+  'member-leads': 'member/leads',
+  'calendar': 'calendar',
+  'tasks': 'tasks',
+  'messages': 'messages',
+  'calls': 'calls',
+  'care-plan-library': 'care-plan-library',
+  'crm-widgets': 'crm-widgets',
+  'embedded-components': 'embedded-components',
+  'content': 'content',
+  'wearables': 'wearables',
+  'journeys': 'journeys',
+  'agents': 'agents',
+  'automations': 'automations',
+  'cost-template': 'cost-template',
+  'memberships': 'memberships',
+  'billing': 'billing',
+  'account': 'account',
+};
+const SETTINGS_NAV_TO_SECTION = Object.fromEntries(
+  Object.entries(SETTINGS_SECTION_TO_NAV).map(([slug, nav]) => [nav, slug]),
+);
+
+// Sections whose single tab strip lives in the store and rides the URL.
+const CARE_PLAN_TABS = ['template', 'goals', 'barriers'];
 
 function tabForListSlug(section, list) {
   if (list === 'TOC IP' || section === 'tcm-queue' || section === 'toc-queue') return 'toc-queue';
@@ -374,16 +410,22 @@ export function hashToState(route, state = null) {
       updates.settingsNavItem = 'billing';
       return updates;
     }
-    // Care Plan Library section
-    if (route.section === 'care-plan-library') {
-      updates.settingsNavItem = 'care-plan-library';
-      updates.carePlanLibraryTab = route.tab || 'template';
-      return updates;
-    }
     // Member/Leads section (settings → automation → member/leads)
     if (route.section === 'member-leads') {
       updates.settingsNavItem = 'member/leads';
       updates.memberLeadsTab = route.tab || 'care-team';
+      return updates;
+    }
+    // Care Plan Library — tab rides the URL so refresh restores it.
+    if (route.section === 'care-plan-library') {
+      updates.settingsNavItem = 'care-plan-library';
+      updates.carePlanTab = CARE_PLAN_TABS.includes(route.tab) ? route.tab : 'template';
+      return updates;
+    }
+    // Every other known section slug (incl. not-yet-built panels) restores
+    // its section on refresh instead of bouncing to the last agents tab.
+    if (SETTINGS_SECTION_TO_NAV[route.section]) {
+      updates.settingsNavItem = SETTINGS_SECTION_TO_NAV[route.section];
       return updates;
     }
     // Agent edit (builder) route: #/settings/agents/edit/{id}

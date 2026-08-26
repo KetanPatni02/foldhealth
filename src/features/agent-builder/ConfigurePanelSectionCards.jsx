@@ -1,8 +1,8 @@
 import { useId } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { Select } from '../../components/Select/Select';
 import {
   SectionCard,
-  CustomSelect,
   ConfigureSlider,
   ConfigureCheckbox,
   RadioCard,
@@ -48,7 +48,7 @@ export function ConfigureAgentUseCaseSection({ form, expanded, toggleExpanded, u
           </div>
           <div className={styles.field}>
             <label className={styles.fieldLabel} htmlFor={`${uid}-agent-role`}>Agent Role <span className={styles.fieldRequired} /></label>
-            <CustomSelect
+            <Select
               id={`${uid}-agent-role`}
               value={form.agentRole}
               options={ROLE_OPTIONS}
@@ -143,7 +143,7 @@ export function ConfigurePersonalizationSection({ form, expanded, toggleExpanded
 
       <div className={styles.field}>
         <label className={styles.subsectionTitle} htmlFor={`${uid}-voice`}>Voice</label>
-        <CustomSelect
+        <Select
           id={`${uid}-voice`}
           value={form.voice}
           options={VOICE_OPTIONS}
@@ -282,12 +282,12 @@ export function ConfigureTargetPopulationSection({ form, expanded, toggleExpande
       </div>
 
       {form.populationType === 'worklist' && (
-        <CustomSelect
+        <Select
           value={form.selectedWorklist}
           options={[
-            { id: 'toc', label: 'TOC Post-Discharge' },
-            { id: 'awv', label: 'Annual Wellness Visit' },
-            { id: 'chronic', label: 'Chronic Care Management' },
+            { value: 'toc', label: 'TOC Post-Discharge' },
+            { value: 'awv', label: 'Annual Wellness Visit' },
+            { value: 'chronic', label: 'Chronic Care Management' },
           ]}
           onChange={v => updateField('selectedWorklist', v)}
           placeholder="Select Worklist"
