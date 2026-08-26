@@ -1,5 +1,12 @@
 {
   "framework": "vite",
+  "redirects": [
+    {
+      "source": "/docs/",
+      "destination": "/docs/introduction",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/s/:section",

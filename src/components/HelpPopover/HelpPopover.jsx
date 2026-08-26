@@ -3,7 +3,7 @@ import { Icon } from '../Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './HelpPopover.module.css';
 
-const DOCS_URL = 'https://foldhealth.org/docs/';
+const DOCS_URL = 'https://foldhealth.org/docs';
 
 function openDocs() {
   window.open(DOCS_URL, '_blank', 'noopener');
