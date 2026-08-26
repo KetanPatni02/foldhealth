@@ -175,6 +175,10 @@ export const HEDIS_MIDDLE_COLUMNS = [
             ? assignee.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('')
             : (member.assigneeInitials
                 || assignee?.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(''));
+          const handlePick = (u) => {
+            if (!ctx.updateGapAssignee || !ctx.memberId) return;
+            ctx.updateGapAssignee(ctx.memberId, g.code, u?.name || null);
+          };
           return (
             <div key={g.code} className={styles.gapItem}>
               {assignee ? (
@@ -182,13 +186,17 @@ export const HEDIS_MIDDLE_COLUMNS = [
                   name={assignee}
                   initials={initials}
                   showRole={false}
-                  onClick={() => ctx.showToast(`Change assignee for ${assignee} — coming soon`)}
+                  users={ctx.platformUsers}
+                  pickerTitle="Change assignee"
+                  onSelect={handlePick}
                 />
               ) : (
                 <AssigneeChange
                   unassigned
                   unassignedLabel="Assign"
-                  onClick={() => ctx.showToast('Assign care manager — coming soon')}
+                  users={ctx.platformUsers}
+                  pickerTitle="Assign to"
+                  onSelect={handlePick}
                 />
               )}
             </div>
@@ -260,6 +268,8 @@ export const HEDIS_MIDDLE_COLUMNS = [
 export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSelect, onOpenGap }) {
   const showToast = useAppStore(s => s.showToast);
   const openQuickView = useAppStore(s => s.openQuickView);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const updateGapAssignee = useAppStore(s => s.updateGapAssignee);
   // useState must sit above the early return: a row whose member loses its last
   // gap would otherwise render two hooks where it previously rendered three, and
   // React throws "rendered fewer hooks than expected".
@@ -285,6 +295,9 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
     extraCount,
     expanded,
     toggleExpanded: () => setExpanded(v => !v),
+    platformUsers,
+    updateGapAssignee,
+    memberId: member.id,
   };
 
   const langShort = (member.language || 'en').toUpperCase();

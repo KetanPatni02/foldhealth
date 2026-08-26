@@ -18,7 +18,8 @@ export default {
       control: { type: 'select' },
       options: [
         'all-variants', 'outreach', 'status-change', 'assignee-change',
-        'detail-cards', 'comment', 'upload', 'grouped-months', 'empty',
+        'detail-cards', 'accept', 'dismiss', 'delete',
+        'comment', 'upload', 'grouped-months', 'empty',
       ],
       description: 'Preset entry sets showcasing each entry variant. Overrides `entries` unless you edit `entries` directly.',
     },
@@ -118,6 +119,28 @@ const UPLOAD = {
   fileType: 'Visit Note',
 };
 
+// HCC audit variants — accept (double-check icon, success tint), dismiss
+// (circle-X, error tint), delete (trash, error tint). Rail icon comes from
+// ACT_ICON per `t`; body renders through GenericEntryBody so the headline
+// carries the full "X Status Changed to Accept" copy the DiagPanel shows.
+const ACCEPT = {
+  t: 'accept',
+  date: '01/24/2026', time: '12:30 PM', by: 'N. Richards', role: 'QA', dos: '07/04/2024',
+  title: '2 ICD: E11.21, I48.91 Status Changed to Accept',
+};
+
+const DISMISS = {
+  t: 'dismiss',
+  date: '01/21/2026', time: '12:30 PM', by: 'Lucy Moen', role: 'Compliance', dos: '07/04/2024',
+  title: 'ICD: I50.9 Status Changed to Dismiss',
+};
+
+const DELETE = {
+  t: 'delete',
+  date: '01/15/2026', time: '12:30 PM', by: 'D. Hintz', role: 'Coder', dos: '07/04/2024',
+  title: 'ICD: F32.1(Manual) is Deleted',
+};
+
 // Preset entry sets — one per former variant story. The `example` control
 // picks one; the `entries` object control still lets you hand-edit a feed.
 const EXAMPLES = {
@@ -134,6 +157,10 @@ const EXAMPLES = {
       { t: 'group', label: 'March 2026' },
       { t: 'outreach', date: '03/22/2026', time: '4:00 PM', by: 'Delores Conn', role: 'Co-Ordinator', title: '1st Outreach — Patient Chat', outcome: 'Scheduled with PCP' },
       UPLOAD,
+      { t: 'group', label: 'January 2026' },
+      ACCEPT,
+      DISMISS,
+      DELETE,
     ],
   },
   'outreach': { entries: [OUTREACH] },
@@ -142,6 +169,9 @@ const EXAMPLES = {
     entries: [ASSIGNEE_CHANGE, { ...ASSIGNEE_CHANGE, title: 'Assignee Changed (from unassigned)', fromAssignee: null }],
   },
   'detail-cards': { entries: [TASK, CLINICAL_NOTE] },
+  'accept': { entries: [ACCEPT] },
+  'dismiss': { entries: [DISMISS] },
+  'delete': { entries: [DELETE] },
   'comment': { entries: [COMMENT] },
   'upload': { entries: [UPLOAD] },
   'grouped-months': {

@@ -119,7 +119,8 @@
 /* Resolved-state pills + undo + reason link */
 .acceptedPill,
 .dismissedPill,
-.warnPill {
+.warnPill,
+.deferredPill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -129,6 +130,7 @@
 .acceptedPill { color: var(--status-success); }
 .dismissedPill { color: var(--status-error); }
 .warnPill { color: var(--status-warning); }
+.deferredPill { color: var(--neutral-300); }
 .undoBtn {
   display: inline-flex;
   align-items: center;

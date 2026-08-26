@@ -92,7 +92,9 @@ const STATUS_TONE = {
   Pending:                       'warning',
   'Pending Review':              'warning',
   Completed:                     'success',
+  Signed:                        'success',
   Accepted:                      'success',
+  Draft:                         'grey',
   Dismissed:                     'error',
   Returned:                      'error',
   Rejected:                      'error',
@@ -274,16 +276,12 @@ function OutreachEntryBody({ entry }) {
         {expandable && (
           <button
             type="button"
-            className={styles.viewNoteBtn}
+            className={`${styles.viewMoreBtn} ${expanded ? styles.viewMoreBtnOpen : ''}`}
             onClick={() => setExpanded(v => !v)}
           >
             {entry.outcome && <span className={styles.viewNoteDot} aria-hidden="true">•</span>}
-            View Note
-            <Icon
-              name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-              size={11}
-              color="var(--neutral-400)"
-            />
+            View more
+            <DownChevronIcon size={11} color="currentColor" className={expanded ? styles.viewMoreChevronOpen : undefined} />
           </button>
         )}
       </div>
@@ -382,16 +380,12 @@ function DetailCardEntryBody({ entry, variant }) {
         {expandable && (
           <button
             type="button"
-            className={styles.viewDetailsBtn}
+            className={`${styles.viewMoreBtn} ${expanded ? styles.viewMoreBtnOpen : ''}`}
             onClick={() => setExpanded(v => !v)}
           >
             <span className={styles.viewNoteDot} aria-hidden="true">•</span>
-            View Details
-            <Icon
-              name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-              size={11}
-              color="var(--primary-300)"
-            />
+            View more
+            <DownChevronIcon size={11} color="currentColor" className={expanded ? styles.viewMoreChevronOpen : undefined} />
           </button>
         )}
       </div>
@@ -460,8 +454,19 @@ function DetailCardEntryBody({ entry, variant }) {
                 </div>
                 <div className={styles.detailCardTrailing}>
                   {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
-                  <button type="button" className={styles.detailCardIconBtn} aria-label="Preview">
-                    <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
+                  {/* Draft rows use a pencil (edit) affordance; every other
+                      state uses the read-only eye (preview) icon per the
+                      Figma Clinical Notes list spec. */}
+                  <button
+                    type="button"
+                    className={styles.detailCardIconBtn}
+                    aria-label={dc.status === 'Draft' ? 'Edit' : 'Preview'}
+                  >
+                    <Icon
+                      name={dc.status === 'Draft' ? 'solar:pen-linear' : 'solar:eye-linear'}
+                      size={14}
+                      color="var(--neutral-300)"
+                    />
                   </button>
                   <button type="button" className={styles.detailCardIconBtn} aria-label="More">
                     <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
@@ -473,6 +478,35 @@ function DetailCardEntryBody({ entry, variant }) {
                   Linked Score Groups
                   <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--primary-300)" />
                 </button>
+              )}
+              {/* Nested Request-for-Sign-off task card — appears on Pending
+                  Review entries so the reviewer / assignee is visible right
+                  underneath the note without opening the task drawer. */}
+              {dc.reviewTask && (
+                <div className={styles.detailCardNested}>
+                  <span className={styles.detailCardHandle}>
+                    <Icon name="solar:hamburger-menu-linear" size={16} color="var(--secondary-300)" />
+                  </span>
+                  <div className={styles.detailCardText}>
+                    <div className={styles.detailCardTitleRow}>
+                      <span className={styles.detailCardTitle}>{dc.reviewTask.title || 'Request for Sign-off - Clinical Note'}</span>
+                      {dc.reviewTask.locked && (
+                        <span className={styles.detailCardLock}>
+                          <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="var(--neutral-300)" />
+                        </span>
+                      )}
+                    </div>
+                    {dc.reviewTask.assignee && (
+                      <div className={styles.detailCardSubtitle}>Assignee: {dc.reviewTask.assignee}</div>
+                    )}
+                  </div>
+                  <div className={styles.detailCardTrailing}>
+                    {dc.reviewTask.status && <Badge tone={statusTone(dc.reviewTask.status)} size="M" label={dc.reviewTask.status} />}
+                    <button type="button" className={styles.detailCardIconBtn} aria-label="Open task">
+                      <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
+                    </button>
+                  </div>
+                </div>
               )}
             </>
           )}

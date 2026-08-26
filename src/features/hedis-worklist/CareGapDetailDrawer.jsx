@@ -4,6 +4,9 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
 import { ClinicalNotePanel } from './ClinicalNotePanel';
+import { useClinicalNotePanel } from './useClinicalNotePanel';
+import { ClinicalNoteWorkspaceBody, HeaderActions as ClinicalNoteHeaderActions } from './ClinicalNotePanelParts';
+import { ReviewerPickerPopover } from './ReviewerPickerPopover';
 import { useAddTaskDrawer } from '../tasks/useAddTaskDrawer';
 import { AddTaskDrawerBody } from '../tasks/AddTaskDrawerBody';
 import { useScheduleDrawer } from '../../components/ScheduleDrawer/useScheduleDrawer';
@@ -74,9 +77,17 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const [moreMenuRect, setMoreMenuRect] = useState(null);
   const openMoreMenu = () => { const r = moreBtnRef.current?.getBoundingClientRect(); if (r) setMoreMenuRect(r); };
   const closeMoreMenu = () => setMoreMenuRect(null);
+  // Route "Add Clinical Note" based on how many gaps are open for this member.
+  // >1 → consolidated ClinicalNotePanel (dedicated drawer with a gap table).
+  //  1 → inline left workspace on this drawer (like Add Task / Schedule).
+  // Matches Figma 872:76360.
+  const openClinicalNoteFlow = () => {
+    if (openGapCount > 1) setShowClinicalNote(true);
+    else setLeftWorkspace('clinical-note');
+  };
   const runMoreAction = (a) => {
     closeMoreMenu();
-    if (a.openClinicalNote) setShowClinicalNote(true);
+    if (a.openClinicalNote) openClinicalNoteFlow();
     else if (a.key === 'task') setLeftWorkspace('task');
     else if (a.key === 'appointment') setLeftWorkspace('schedule');
     else showToast(`${a.label} — coming soon`);
@@ -91,6 +102,12 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const [leftWorkspace, setLeftWorkspace] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
+
+  // Open-gap count drives the "Add Note" routing rule (see openClinicalNoteFlow).
+  // Mirrors the hook's own filter so both counts agree.
+  const openGapCount = (member?.gaps ?? [])
+    .filter(g => g.status !== 'Completed' && !String(g.status).startsWith('Closed'))
+    .length;
 
   // Both workspace hooks are called unconditionally (React rules) and
   // their outputs only wire into the UI when their key is active.
@@ -142,6 +159,13 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       facility: member.facility,
       laceScore: member.laceScore,
     },
+  });
+  // Inline single-gap Clinical Note hook — always mounted (React rules) but
+  // only wired into the UI when leftWorkspace === 'clinical-note'.
+  const clinicalNote = useClinicalNotePanel({
+    member,
+    gapCode: currentCode,
+    onClose: () => runLeftClose(),
   });
 
   // Two-phase close so the drawer collapses with the same easing it opens
@@ -206,6 +230,11 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           onCancel={() => addTask.setShowCloseConfirm(false)}
         />
       )}
+      <ReviewerPickerPopover
+        open={clinicalNote.reviewerPickerOpen}
+        onClose={() => clinicalNote.setReviewerPickerOpen(false)}
+        onConfirm={(reviewer) => clinicalNote.handleConfirmSubmitForReview(reviewer)}
+      />
       <Drawer
         title="Care Gap Details"
         onClose={onClose}
@@ -238,13 +267,24 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           <div className={styles.leftPane}>
             <div className={styles.paneHeader}>
               <span className={styles.paneTitle}>
-                {leftWorkspace === 'schedule' ? 'Schedule Appointment' : 'Add Task'}
+                {leftWorkspace === 'schedule'
+                  ? 'Schedule Appointment'
+                  : leftWorkspace === 'clinical-note'
+                    ? 'Clinical Note'
+                    : 'Add Task'}
               </span>
               <div className={styles.paneHeaderRight}>
                 {leftWorkspace === 'schedule' ? (
                   <Button variant="primary" size="M" disabled={!scheduleDrawer.canSchedule} onClick={scheduleDrawer.handleSchedule}>
                     Schedule
                   </Button>
+                ) : leftWorkspace === 'clinical-note' ? (
+                  <ClinicalNoteHeaderActions
+                    onSaveDraft={clinicalNote.handleSaveDraft}
+                    onSubmitForReview={clinicalNote.handleSubmitForReview}
+                    onSaveAndSign={clinicalNote.handleSaveAndSign}
+                    onSignAndPrint={clinicalNote.handleSignAndPrint}
+                  />
                 ) : (
                   <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
                     Save Task
@@ -254,13 +294,21 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 <CloseButton
                   size={18}
                   onClick={closeLeftWorkspace}
-                  label={leftWorkspace === 'schedule' ? 'Close Schedule Appointment' : 'Close Add Task'}
+                  label={
+                    leftWorkspace === 'schedule'
+                      ? 'Close Schedule Appointment'
+                      : leftWorkspace === 'clinical-note'
+                        ? 'Close Clinical Note'
+                        : 'Close Add Task'
+                  }
                 />
               </div>
             </div>
-            <div className={styles.leftPaneBody}>
+            <div className={`${styles.leftPaneBody} ${leftWorkspace === 'clinical-note' ? styles.leftPaneBodyClinicalNote : ''}`}>
               {leftWorkspace === 'schedule' ? (
                 <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
+              ) : leftWorkspace === 'clinical-note' ? (
+                <ClinicalNoteWorkspaceBody v={clinicalNote} />
               ) : (
                 <AddTaskDrawerBody {...addTask} />
               )}
@@ -281,6 +329,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             statusOpen={statusOpen} setStatusOpen={setStatusOpen} updateGapStatus={updateGapStatus}
             assigneeBtnRef={assigneeBtnRef} assigneePos={assigneePos} openAssignee={openAssignee} closeAssignee={closeAssignee}
             showToast={showToast} setShowClinicalNote={setShowClinicalNote}
+            onOpenClinicalNote={openClinicalNoteFlow}
             onScheduleAppointment={() => setLeftWorkspace('schedule')} moreBtnRef={moreBtnRef}
             moreMenuRect={moreMenuRect} openMoreMenu={openMoreMenu} closeMoreMenu={closeMoreMenu}
             goPrev={goPrev} goNext={goNext} canPrev={canPrev} canNext={canNext}

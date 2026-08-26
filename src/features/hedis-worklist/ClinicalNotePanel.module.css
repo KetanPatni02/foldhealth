@@ -1,291 +1,561 @@
-/* ─────────── Drawer body override (no top padding so anchor bar sits flush) ─────────── */
+/* ─────────── Drawer body override — full-bleed two-pane layout ─────────── */
 .body {
   padding: 0 !important;
   display: flex;
   flex-direction: column;
-}
-
-/* ─────────── Drawer title (two-line stack inside the title slot) ─────────── */
-.titleStack {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  line-height: 1.2;
-}
-.titleMain { font-size: 0.9375rem; font-weight: 600; color: var(--neutral-400); }
-.titleSub  { font-size: var(--font-sm); font-weight: 400; color: var(--neutral-300); }
-
-/* ─────────── Overflow popover (kebab → 3 actions) ─────────── */
-.overflowScrim { position: fixed; inset: 0; z-index: 9998; }
-.overflowMenu {
-  position: fixed;
-  z-index: 9999;
-  min-width: 200px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 8px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  padding: 4px;
-}
-.overflowItem {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 8px 10px; border-radius: 6px;
-  background: none; border: none; cursor: pointer;
-  font-size: var(--font-md); color: var(--neutral-400);
-  text-align: left;
-}
-.overflowItem:hover { background: var(--neutral-50); }
-
-/* ─────────── Scrollable inner content ─────────── */
-.bodyInner {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px 24px 24px;
-}
-
-/* ─────────── COMMON section (AC-2) ─────────── */
-.commonCard {
-  border: 0.5px solid var(--status-info, #1D4ED8);
-  background: var(--status-info-light, #EFF6FF);
-  border-radius: 10px;
-  margin-top: 16px;
-  margin-bottom: 20px;
   overflow: hidden;
 }
-.commonHeader {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; padding: 12px 16px;
+
+.twoPane {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* ─────────── Title (back arrow + name + status chip) ─────────── */
+.titleBlock {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.titleText {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--neutral-400);
+}
+.backBtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
-  border: none; cursor: pointer;
-  text-align: left;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  cursor: pointer;
 }
-.commonBadge {
-  font-size: var(--font-2xs); font-weight: 600; letter-spacing: .04em;
-  color: var(--status-info, #1D4ED8);
-  background: rgba(29, 78, 216, 0.12);
-  padding: 3px 7px; border-radius: 4px;
+.backBtn:hover { background: var(--neutral-50); }
+
+/* ─────────── Panes ─────────── */
+.leftPane,
+.rightPane {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
-.commonHeaderText {
-  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
-}
-.commonHelper {
-  margin-left: auto;
-  font-size: var(--font-sm); color: var(--neutral-300);
-}
-.commonBody {
-  padding: 4px 16px 16px;
+.leftPane {
+  border-right: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
-  border-top: 0.5px solid var(--status-info-light, #DBEAFE);
+}
+.rightPane {
+  background: var(--neutral-0);
+}
+.leftPaneScroll,
+.rightPaneScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+/* Pinned above the scroll region — runs edge-to-edge because .leftPane has
+   no padding of its own. */
+.patientBannerSlot { flex-shrink: 0; }
+
+/* ─────────── Inline single-gap workspace (rendered inside
+   CareGapDetailDrawer.leftPane when the member has one open gap) ─────────── */
+.inlineWorkspaceBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.inlineWorkspaceScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-3) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.inlineWorkspaceBody .dosCard { margin-bottom: 0; }
+/* Type row is pinned above the scroll (sibling of the info banner). Its
+   own left/right margins are cleared so it spans the pane end-to-end; the
+   0.5px hairline below reads as the section separator. */
+.inlineWorkspaceBody .evidenceTypeRow {
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+}
+/* Match horizontal inset on the pinned info banner so both bands share the
+   same 12px left/right rhythm. */
+.inlineWorkspaceBody .infoBanner {
+  padding-left: var(--space-3);
+  padding-right: var(--space-3);
+}
+
+/* ─────────── Info banner ─────────── */
+/* Pinned above the scroll region; horizontal padding matches the scroll
+   inset so the icon+text align with the DOS card below. */
+.infoBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  background: var(--status-info-light);
+  color: var(--neutral-400);
+  font-size: var(--font-sm);
+  flex-shrink: 0;
+}
+
+/* ─────────── DOS + Telehealth card ─────────── */
+.dosCard {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-3);
+  background: var(--neutral-0);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+}
+.dosHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.dosTitle {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-400);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.dosBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.dosPill {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--space-2);
+  background: var(--neutral-75);
+  color: var(--primary-400);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 /* ─────────── Form primitives ─────────── */
-.fieldGroup { margin-bottom: 16px; }
+.fieldGroup { margin-bottom: var(--space-4); }
+.fieldStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
 .fieldLabel {
-  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
-  margin: 12px 0 8px; display: flex; align-items: center; gap: 4px;
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 .required { color: var(--status-error); }
-.fieldError { font-size: var(--font-sm); color: var(--status-error); margin-top: 5px; }
-
+.fieldError {
+  font-size: var(--font-sm);
+  color: var(--status-error);
+  margin-top: var(--space-1);
+}
 .subSectionLabel {
-  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
-  margin: 8px 0;
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-400);
+  margin: var(--space-3) 0 var(--space-2);
 }
-.sectionDivider { height: 0.5px; background: var(--neutral-150); margin: 16px 0; }
 
+/* ─────────── Checkbox rows ─────────── */
+.checkStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
 .checkRow {
-  display: flex; align-items: flex-start; gap: 10px;
-  margin-bottom: 12px; cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
 }
-.checkRow input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; cursor: pointer; accent-color: var(--primary-300); }
-.checkLabel { font-size: var(--font-md); color: var(--neutral-400); line-height: 1.5; }
-.checkIndented { padding-left: 22px; font-size: var(--font-sm); color: var(--neutral-300); margin: 2px 0 8px; line-height: 1.5; }
-
-.radioGroupLabel {
-  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
-  margin-bottom: 8px; display: flex; align-items: center; gap: 4px;
+.checkLabel {
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  line-height: var(--leading-normal);
 }
-.radioRow { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
-.radioRow input[type="radio"] { cursor: pointer; accent-color: var(--primary-300); }
-.radioLabel { font-size: var(--font-md); color: var(--neutral-400); }
-
-/* ─────────── Gap groups + accordion (AC-3, AC-5) ─────────── */
-.gapGroup { margin-bottom: 20px; }
-.gapGroupHeader {
-  display: flex; align-items: center; gap: 6px;
-  font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300);
-  padding: 0 4px 8px;
-  letter-spacing: .02em;
+.checkLabelStrong {
+  font-weight: 600;
+  color: var(--neutral-400);
 }
-.gapGroupHelper { color: var(--neutral-200); font-weight: 400; }
 
-.gapAccordion {
+/* ─────────── Radio groups ─────────── */
+.radioGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.radioGroupStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* ─────────── Visit Notes header ─────────── */
+.visitNotesHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-1);
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-3);
+}
+.visitNotesTitle {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.visitNotesHelper {
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.visitNotesYear {
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+/* ─────────── LHS gap-row table ─────────── */
+.gapTable {
   border: 0.5px solid var(--neutral-150);
   border-radius: 10px;
-  margin-bottom: 10px;
   overflow: hidden;
   background: var(--neutral-0);
 }
-.gapAccordionOther {
-  border-color: var(--neutral-100);
-  background: var(--neutral-25, #FAFAFA);
+.gapTableHeader,
+.gapRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px 64px;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  align-items: center;
 }
-.gapAccordionHeader {
-  display: flex; align-items: center; gap: 10px;
-  width: 100%; padding: 12px 16px;
-  background: transparent; border: none; cursor: pointer;
-  text-align: left;
-}
-.gapAccordionHeader:hover { background: var(--neutral-25, #FAFAFA); }
-.gapAccordionCode {
-  font-size: var(--font-xs); font-weight: 600; letter-spacing: .04em;
+.gapTableHeader {
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-sm);
+  font-weight: 500;
   color: var(--neutral-400);
-  background: var(--neutral-50); padding: 3px 7px; border-radius: 4px;
 }
-.gapAccordionName {
-  font-size: var(--font-base); font-weight: 500; color: var(--neutral-400);
+.gapTableReadyHead { text-align: right; }
+
+.gapRow {
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  /* stylelint-disable-next-line declaration-property-unit-disallowed-list -- padding compensates for 3px active-state border-left so content stays aligned */
+  padding-left: calc(var(--space-4) - 3px);
+  border-bottom: 0.5px solid var(--neutral-100);
+  transition: background 120ms ease, border-color 120ms ease;
 }
-.gapAccordionSpacer { flex: 1; }
-.gapAccordionAssignee {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: var(--font-sm); color: var(--primary-300); font-weight: 500;
+.gapRow:last-child { border-bottom: none; }
+.gapRow:hover { background: var(--neutral-25); }
+.gapRow:focus-visible {
+  outline: none;
+  background: var(--neutral-25);
+}
+.gapRowActive {
+  background: var(--primary-50);
+  border-left-color: var(--primary-300);
+}
+.gapRowActive:hover { background: var(--primary-50); }
+
+.gapRowMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.gapRowTitle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.gapCode {
+  font-size: var(--font-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--neutral-400);
+  background: var(--neutral-75);
+  padding: calc(var(--space-1) / 2) calc(var(--space-1) + calc(var(--space-1) / 2));
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.gapName {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.gapAccordionEdited {
+.gapRowMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-xs);
   color: var(--neutral-300);
-  font-weight: 400;
+}
+.gapRowUpdate { white-space: nowrap; }
+
+.gapRowAssignee { display: flex; justify-content: flex-start; }
+.gapRowReady { display: flex; justify-content: flex-end; }
+
+.dot { color: var(--neutral-200); }
+
+/* ─────────── RHS Active gap evidence ─────────── */
+.rightPaneScroll { padding: 0; }
+.gapEvidenceTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: calc(var(--space-1) + calc(var(--space-1) / 2)) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.gapEvidenceHeadLeft {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.gapEvidenceStatusRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.gapEvidenceTitle {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.gapEvidenceAssigneeLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--status-success);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  padding: 0;
+}
+.gapEvidenceAssigneeLink:hover { text-decoration: underline; }
+
+.gapEvidenceReadyRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.gapEvidenceReadyLabel {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
 }
 
-/* Gap status chip */
-.gapStatusPill {
-  font-size: var(--font-xs); font-weight: 500;
-  padding: 3px 8px; border-radius: 50px;
+.evidenceBody {
+  padding: var(--space-4) var(--space-5) var(--space-6);
+}
+
+.evidenceTypeRow {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  margin-bottom: var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+/* Pinned variant used by the consolidated GapEvidencePane header: sits as a
+   sibling of gapEvidenceTopRow (outside .evidenceBody's inset) so it spans
+   the pane end-to-end with the same 12px inset and 4px vertical rhythm we
+   already use for the single-gap inline workspace. */
+.evidenceTypeRowPinned {
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+}
+.evidenceTypeChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--space-2);
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-300);
+  cursor: not-allowed;
   white-space: nowrap;
 }
-.gapStatus_Open      { background: var(--status-warning-light); color: var(--status-warning); }
-.gapStatus_Submitted { background: var(--status-info-light);    color: var(--status-info); }
-.gapStatus_Completed { background: var(--status-success-light); color: var(--status-success); }
-.gapStatus_Excluded,
-.gapStatus_Closed,
-.gapStatus_Closed_Data { background: var(--neutral-50); color: var(--neutral-300); }
 
-/* Ready-for-Review toggle (no border, just Switch + label) */
-.readyToggle {
-  display: inline-flex; align-items: center; gap: 8px;
-  font-size: var(--font-sm); font-weight: 500;
-  white-space: nowrap;
+.evidenceForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
 }
-.readyToggleLabel    { color: var(--neutral-300); }
-.readyToggleLabelOn  { color: var(--status-success); }
-
-.gapAccordionBody {
-  padding: 14px 16px 16px;
-  border-top: 0.5px solid var(--neutral-150);
-}
-
-.gapPlaceholder {
-  padding: 24px 12px;
-  color: var(--neutral-300); font-size: var(--font-md); text-align: center;
-}
-
-.bpInlineDate {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: var(--font-sm); color: var(--neutral-300);
-  margin-bottom: 14px;
-}
-.bpInlineDate span { color: var(--neutral-400); font-weight: 500; }
-
-/* ─────────── KED two-column grid ─────────── */
-.kedGrid {
+.formGrid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  gap: var(--space-3);
 }
-.inputWithSuffix {
-  display: flex; align-items: stretch;
+
+/* ─────────── CBP Visit Note form ─────────── */
+/* Card container that groups the BP reading + Location — mirrors the
+   bordered "Initial Blood Pressure" block in the Figma spec (node 1247:110720). */
+.cbpCard {
   border: 0.5px solid var(--neutral-150);
-  border-radius: 7px;
+  border-radius: var(--space-3);
   background: var(--neutral-0);
-  overflow: hidden;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
-.inputWithSuffix:focus-within { border-color: var(--primary-300); }
-.inputWithSuffixError { border-color: var(--status-error) !important; }
-.inputWithSuffix input {
-  flex: 1; min-width: 0; border: none;
-  padding: 8px 12px; background: transparent;
-  font-size: var(--font-md); color: var(--neutral-400);
+.cbpCardTitle {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-500);
 }
-.inputSuffix {
-  display: flex; align-items: center; padding: 0 10px;
-  background: var(--neutral-25, #FAFAFA);
-  border-left: 0.5px solid var(--neutral-150);
-  font-size: var(--font-sm); color: var(--neutral-300); white-space: nowrap;
+.cbpBpBlock {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  display: flex;
+  flex-direction: column;
+}
+.cbpBpDateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.cbpBpDateLabel {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.cbpBpDatePicker { width: 180px; }
+.cbpBpValueRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.cbpBpValueLeft {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.cbpBpValueLabel {
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+}
+.cbpBpValueHelper {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.cbpBpValueInputs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.cbpBpValueInputs > div,
+.cbpBpValueInputs > input { width: 100px; flex: 0 0 100px; }
+.cbpBpSlash {
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+}
+.cbpBpUnit {
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  margin-left: var(--space-1);
+}
+.cbpQuestionLabel {
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  line-height: var(--leading-normal);
 }
 
-/* ─────────── Shared attachments (AC-10) ─────────── */
-.uploadSection { margin: 8px 0 20px; }
-.uploadLabel { font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); margin-bottom: 10px; line-height: 1.5; }
-.uploadLabelHelper { font-weight: 400; color: var(--neutral-300); }
-.uploadZone {
-  border: 1.5px dashed var(--neutral-150);
-  border-radius: 8px; padding: 24px;
-  text-align: center; cursor: pointer;
-  background: var(--neutral-25, #FAFAFA);
-}
-.uploadZone:hover { border-color: var(--primary-300); background: var(--primary-25); }
-.uploadZoneTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); margin-bottom: 4px; }
-.uploadZoneMeta  { font-size: var(--font-sm); color: var(--neutral-300); }
-
-/* ─────────── Medications (AC-10) ─────────── */
-.medsSection { margin-bottom: 20px; }
-.medsSectionHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.medsSectionTitle { font-size: 0.9375rem; font-weight: 600; color: var(--neutral-400); }
-.importBtn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 7px 14px; border-radius: 50px;
-  border: 0.5px solid var(--neutral-150); background: var(--neutral-0);
-  font-size: var(--font-md); font-weight: 500; color: var(--neutral-400);
-  cursor: pointer;
-}
-.importBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
-.medsEmpty {
-  border: 0.5px solid var(--neutral-150); border-radius: 8px;
-  padding: 28px 16px; text-align: center; margin-bottom: 10px;
-}
-.medsEmptyTitle { font-size: var(--font-md); color: var(--neutral-300); margin: 8px 0 0; }
-.medSearchInput {
-  width: 100%; padding: 9px 12px;
-  border: 0.5px solid var(--neutral-150); border-radius: 7px;
-  font-size: var(--font-md); color: var(--neutral-400);
-  box-sizing: border-box; background: var(--neutral-0);
-}
-.medSearchInput:focus { border-color: var(--primary-300); }
-.medSearchWrap { position: relative; }
-.medSearchIcon {
-  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  pointer-events: none;
-}
-
-/* ─────────── Prior-draft banner (AC-6 cross-assignee visibility) ─────────── */
-.priorDraftBanner {
-  display: flex; align-items: flex-start; gap: 8px;
-  padding: 10px 12px; border-radius: 8px;
-  background: var(--status-info-light);
-  border: 0.5px solid rgba(20, 94, 204, 0.2);
-  font-size: var(--font-sm); line-height: 1.5; color: var(--neutral-400);
-  margin-bottom: 14px;
-}
-.priorDraftBanner strong { color: var(--neutral-400); font-weight: 600; }
-
-/* ─────────── Per-gap document button (AC-10 config-based attachments) ─────────── */
-.gapDocBtn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 7px;
+.evidenceComingSoon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
   border: 0.5px dashed var(--neutral-150);
-  background: var(--neutral-0);
-  font-size: var(--font-sm); font-weight: 500; color: var(--neutral-400);
-  margin-top: 14px;
+  border-radius: 10px;
+  background: var(--neutral-25);
 }
-.gapDocBtn:hover { border-color: var(--primary-300); color: var(--primary-300); }
+.evidenceComingSoonTitle {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--neutral-400);
+  margin: 0;
+}
+.evidenceComingSoonBody {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  margin: 0;
+}
 
-.headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+.rightEmpty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--neutral-300);
+}
+.rightEmptyTitle {
+  font-size: var(--font-md);
+  margin: 0;
+}

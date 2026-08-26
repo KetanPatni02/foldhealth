@@ -709,6 +709,7 @@ function formRowToJs(row) {
     name: row.name,
     description: row.description || null,
     category: row.category || null,
+    formType: row.form_type || 'Other',
     status: row.status || 'draft',
     // Present only on the full-row fetch; undefined on slim list rows so the
     // builder knows it still needs to hydrate.
@@ -719,6 +720,35 @@ function formRowToJs(row) {
     updatedAt: row.updated_at || null,
     updatedBy: row.updated_by || null,
     updatedByName: row.updated_by_profile?.full_name || null,
+  };
+}
+
+// ── Clinical Note row mapper ──
+// public.clinical_notes → the JS shape the Care Gap Drawer + P360 Notes tab
+// consume. Kept next to formRowToJs so the two note-adjacent mappers live
+// together. `payload` is the note's form-state snapshot as authored — the
+// caller (useClinicalNotePanel) is responsible for its shape.
+function clinicalNoteRowToJs(row) {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    hedisMemberId: row.hedis_member_id,
+    gapCodes: row.gap_codes || [],
+    formType: row.form_type || 'cbp_visit_note',
+    status: row.status,
+    payload: row.payload || {},
+    pdfFilename: row.pdf_filename || null,
+    pdfDataUrl: row.pdf_data_url || null,
+    reviewTaskId: row.review_task_id || null,
+    authorId: row.author_id || null,
+    authorName: row.author_name || null,
+    reviewerId: row.reviewer_id || null,
+    reviewerName: row.reviewer_name || null,
+    signedById: row.signed_by_id || null,
+    signedByName: row.signed_by_name || null,
+    signedAt: row.signed_at || null,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
   };
 }
 
@@ -4776,24 +4806,27 @@ export const useAppStore = create((set, get) => ({
   // Push a real consolidated sign-off task into the existing `tasks` slice so
   // TasksView surfaces it (one task per patient per Submit-for-Review batch).
   // Gap codes ride in `task.labels` to satisfy the Gaps-column filter (AC-8).
-  createCareGapSignOffTask: async ({ hedisMemberId, gapCodes, state, pdf } = {}) => {
-    track('hedis.signoff_task_created', { memberId: hedisMemberId });
+  createCareGapSignOffTask: async ({ hedisMemberId, gapCodes, state, pdf, reviewerId, reviewerName } = {}) => {
+    track('hedis.signoff_task_created', { memberId: hedisMemberId, hasReviewer: !!reviewerId });
     const member = get().hedisMembers.find(m => m.id === hedisMemberId);
     if (!member || !gapCodes || gapCodes.length === 0) return null;
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 1);
     const me = get().currentUserProfile;
     // Route through createTask so this hits Supabase + task_audit_log like
-    // every other task. Actor is the signed-in reviewer if we have one,
-    // otherwise the automation label used by the HEDIS submit path.
+    // every other task. Assign to the reviewer picked in the Submit-for-
+    // Review popup — that write is what fires tasks_emit_notifications on
+    // the notifications table (recipient_id = assigned_to_id). Without a
+    // reviewer, the task lands in the HEDIS Sign-Off pool for anyone to
+    // claim, matching the pre-review-picker behavior.
     const payload = {
       name: 'Care Gap Review: Clinical Note',
       description: `Sign off on consolidated note for ${member.name} covering ${gapCodes.length} care gap${gapCodes.length === 1 ? '' : 's'}.`,
       status: 'pending',
       priority: 'medium',
       member: member.name,
-      assigned_to: null,
-      assigned_to_id: null,
+      assigned_to: reviewerName || null,
+      assigned_to_id: reviewerId || null,
       pool: 'HEDIS Sign-Off',
       labels: [...gapCodes],
       due_date: dueDate.toISOString().slice(0, 10),
@@ -4839,6 +4872,183 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // ── Clinical Notes (public.clinical_notes) ──
+  // One row per authored HEDIS Clinical Note (draft, submitted, or signed).
+  // Keyed slices so the Care Gap Drawer's Clinical Notes tab and the P360
+  // Notes tab can each read a filtered list without re-fetching.
+  clinicalNotesByMember: {},
+  clinicalNotesByPatient: {},
+
+  fetchClinicalNotesForMember: async (hedisMemberId) => {
+    if (!hedisMemberId) return [];
+    const { data, error } = await supabase
+      .from('clinical_notes')
+      .select('*')
+      .eq('hedis_member_id', hedisMemberId)
+      .order('updated_at', { ascending: false });
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[fetchClinicalNotesForMember] clinical_notes table missing — run supabase/clinical_notes_migration.sql');
+        set(s => ({ clinicalNotesByMember: { ...s.clinicalNotesByMember, [hedisMemberId]: [] } }));
+        return [];
+      }
+      console.error('fetchClinicalNotesForMember error:', error);
+      return [];
+    }
+    const rows = (data || []).map(clinicalNoteRowToJs);
+    set(s => ({ clinicalNotesByMember: { ...s.clinicalNotesByMember, [hedisMemberId]: rows } }));
+    return rows;
+  },
+
+  fetchClinicalNotesForPatient: async (patientId) => {
+    if (!patientId) return [];
+    const { data, error } = await supabase
+      .from('clinical_notes')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('updated_at', { ascending: false });
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[fetchClinicalNotesForPatient] clinical_notes table missing — run supabase/clinical_notes_migration.sql');
+        set(s => ({ clinicalNotesByPatient: { ...s.clinicalNotesByPatient, [patientId]: [] } }));
+        return [];
+      }
+      console.error('fetchClinicalNotesForPatient error:', error);
+      return [];
+    }
+    const rows = (data || []).map(clinicalNoteRowToJs);
+    set(s => ({ clinicalNotesByPatient: { ...s.clinicalNotesByPatient, [patientId]: rows } }));
+    return rows;
+  },
+
+  // Insert on first save, update on every subsequent save keyed by client-
+  // generated id. Returns the persisted row (or null on failure) so callers
+  // can chain: upsertClinicalNote → createCareGapSignOffTask →
+  // linkClinicalNoteToReviewTask. Falls back to a local optimistic row if
+  // the table is missing so the UI still updates in dev before the
+  // migration has run.
+  upsertClinicalNote: async ({
+    id,
+    hedisMemberId,
+    patientId,
+    gapCodes,
+    formType = 'cbp_visit_note',
+    status,
+    payload,
+    pdf,
+    reviewerId,
+    reviewerName,
+    signedByName,
+  } = {}) => {
+    if (!hedisMemberId || !patientId || !status) return null;
+    const me = get().currentUserProfile;
+    const row = {
+      id: id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `local-${Date.now()}`),
+      patient_id: patientId,
+      hedis_member_id: hedisMemberId,
+      gap_codes: gapCodes || [],
+      form_type: formType,
+      status,
+      payload: payload || {},
+      pdf_filename: pdf?.filename || null,
+      pdf_data_url: pdf?.dataUrl || null,
+      author_id: me?.id || null,
+      author_name: me?.name || null,
+      reviewer_id: reviewerId || null,
+      reviewer_name: reviewerName || null,
+      // Sign paths stamp who signed; draft/submitted paths leave these null.
+      signed_by_id: status === 'signed' ? (me?.id || null) : null,
+      signed_by_name: status === 'signed' ? (signedByName || me?.name || null) : null,
+      signed_at: status === 'signed' ? new Date().toISOString() : null,
+    };
+    const { data, error } = await supabase
+      .from('clinical_notes')
+      .upsert(row, { onConflict: 'id' })
+      .select('*')
+      .single();
+    let saved;
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[upsertClinicalNote] clinical_notes table missing — run supabase/clinical_notes_migration.sql; using local-only row.');
+      } else {
+        console.error('upsertClinicalNote error:', error);
+      }
+      // Fall back to the row we built so the UI still reflects the save.
+      saved = clinicalNoteRowToJs({ ...row, created_at: new Date().toISOString(), updated_at: new Date().toISOString() });
+    } else {
+      saved = clinicalNoteRowToJs(data);
+    }
+    // Merge into both keyed slices so both the Care Gap Drawer Clinical
+    // Notes tab and the P360 Notes tab see the write immediately.
+    set(s => {
+      const mList = (s.clinicalNotesByMember[hedisMemberId] || []).filter(n => n.id !== saved.id);
+      const pList = (s.clinicalNotesByPatient[patientId] || []).filter(n => n.id !== saved.id);
+      return {
+        clinicalNotesByMember: { ...s.clinicalNotesByMember, [hedisMemberId]: [saved, ...mList] },
+        clinicalNotesByPatient: { ...s.clinicalNotesByPatient, [patientId]: [saved, ...pList] },
+      };
+    });
+    return saved;
+  },
+
+  signClinicalNote: async (noteId, signer) => {
+    if (!noteId) return false;
+    const me = get().currentUserProfile;
+    const patch = {
+      status: 'signed',
+      signed_by_id: signer?.id || me?.id || null,
+      signed_by_name: signer?.name || me?.name || 'Provider',
+      signed_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from('clinical_notes')
+      .update(patch)
+      .eq('id', noteId)
+      .select('*')
+      .single();
+    if (error && !(error.code === '42P01' || error.code === 'PGRST205')) {
+      console.error('signClinicalNote error:', error);
+      return false;
+    }
+    const saved = data ? clinicalNoteRowToJs(data) : null;
+    // Reflect the status flip in both slices even when the table is missing.
+    set(s => {
+      const merge = (list) => (list || []).map(n => n.id === noteId
+        ? (saved || { ...n, ...{ status: 'signed', signedByName: patch.signed_by_name, signedAt: patch.signed_at } })
+        : n);
+      return {
+        clinicalNotesByMember: Object.fromEntries(Object.entries(s.clinicalNotesByMember).map(([k, v]) => [k, merge(v)])),
+        clinicalNotesByPatient: Object.fromEntries(Object.entries(s.clinicalNotesByPatient).map(([k, v]) => [k, merge(v)])),
+      };
+    });
+    return true;
+  },
+
+  linkClinicalNoteToReviewTask: async (noteId, taskId) => {
+    if (!noteId || !taskId) return false;
+    const { data, error } = await supabase
+      .from('clinical_notes')
+      .update({ review_task_id: taskId })
+      .eq('id', noteId)
+      .select('*')
+      .single();
+    if (error && !(error.code === '42P01' || error.code === 'PGRST205')) {
+      console.error('linkClinicalNoteToReviewTask error:', error);
+      return false;
+    }
+    const saved = data ? clinicalNoteRowToJs(data) : null;
+    set(s => {
+      const merge = (list) => (list || []).map(n => n.id === noteId
+        ? (saved || { ...n, reviewTaskId: taskId })
+        : n);
+      return {
+        clinicalNotesByMember: Object.fromEntries(Object.entries(s.clinicalNotesByMember).map(([k, v]) => [k, merge(v)])),
+        clinicalNotesByPatient: Object.fromEntries(Object.entries(s.clinicalNotesByPatient).map(([k, v]) => [k, merge(v)])),
+      };
+    });
+    return true;
+  },
+
   // NP marks the sign-off task complete → every gap in the task transitions to
   // Completed atomically (AC-13), the task moves to status=completed, and an
   // activity entry is appended for the patient's history.
@@ -4850,6 +5060,14 @@ export const useAppStore = create((set, get) => ({
     }));
     const updates = Object.fromEntries((task.hedisGapCodes || []).map(c => [c, 'Completed']));
     get().bulkUpdateGapStatuses(task.hedisMemberId, updates);
+    // Flip any linked clinical_note row from submitted → signed so the
+    // Clinical Notes tab, P360 Notes tab, and the reviewer's note history
+    // all agree the review is done.
+    const memberNotes = get().clinicalNotesByMember?.[task.hedisMemberId] || [];
+    const linkedNote = memberNotes.find(n => n.reviewTaskId === taskId);
+    if (linkedNote && linkedNote.status !== 'signed') {
+      get().signClinicalNote(linkedNote.id, { name: actor });
+    }
     get().logCareGapActivity(task.hedisMemberId, {
       title: 'Task completed by NP',
       detail: `Gaps closed: ${(task.hedisGapCodes || []).join(', ')}`,
@@ -10086,7 +10304,7 @@ export const useAppStore = create((set, get) => ({
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
     const LIST_COLUMNS = [
-      'id', 'name', 'description', 'category', 'status', 'response_count',
+      'id', 'name', 'description', 'category', 'form_type', 'status', 'response_count',
       'updated_at', 'updated_by',
     ].join(', ');
     const buildQuery = (select) => {
