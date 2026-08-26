@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useId } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { Textarea } from '../../components/Textarea/Textarea';
 import { useAppStore } from '../../store/useAppStore';
 import { getNodeConfig } from './nodes/nodeConfig';
 import { NodeSettingsHeader } from './NodeSettingsHeader';
@@ -129,7 +130,7 @@ export function NodeSettings({ node, allNodes, onSave, onClose, onDelete }) {
         <>
           <div className={styles.section}>
             <label className={styles.sectionLabel} htmlFor={`${uid}-conversation`}>Conversation</label>
-            <textarea
+            <Textarea
               id={`${uid}-conversation`}
               className={styles.textarea}
               value={prompt}
@@ -169,7 +170,7 @@ export function NodeSettings({ node, allNodes, onSave, onClose, onDelete }) {
 
           <div className={styles.section}>
             <label className={styles.sectionLabel} htmlFor={`${uid}-guardrails`}>Guardrails</label>
-            <textarea id={`${uid}-guardrails`} className={styles.textarea} value={guardrails} onChange={e => setGuardrails(e.target.value)} placeholder="Add guardrails for this node..." rows={3} />
+            <Textarea id={`${uid}-guardrails`} className={styles.textarea} value={guardrails} onChange={e => setGuardrails(e.target.value)} placeholder="Add guardrails for this node..." rows={3} />
           </div>
         </>
       )}

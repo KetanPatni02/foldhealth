@@ -3,6 +3,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { Select } from '../../components/Select/Select';
 import { Toggle } from '../../components/Toggle/Toggle';
+import { Input } from '../../components/Input/Input';
 import styles from './NodeSettings.module.css';
 
 export function NodeSettingsTransitions({
@@ -175,7 +176,7 @@ export function NodeSettingsTransitions({
                 </div>
               ) : (
                 /* ── Prompt condition input ── */
-                <input aria-label="Transition condition"
+                <Input aria-label="Transition condition"
                   className={styles.fieldInput}
                   value={t.condition || ''}
                   onChange={e => onUpdateTransition(i, 'condition', e.target.value)}

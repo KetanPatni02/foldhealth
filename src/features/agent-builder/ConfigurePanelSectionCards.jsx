@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Select } from '../../components/Select/Select';
+import { Textarea } from '../../components/Textarea/Textarea';
 import {
   SectionCard,
   ConfigureSlider,
@@ -76,7 +77,7 @@ export function ConfigureAgentUseCaseSection({ form, expanded, toggleExpanded, u
 
         <div className={styles.field}>
           <label className={styles.fieldLabel} htmlFor={`${uid}-description`}>Description</label>
-          <textarea
+          <Textarea
             id={`${uid}-description`}
             className={styles.textarea}
             value={form.description}
@@ -104,7 +105,7 @@ export function ConfigureAgentUseCaseSection({ form, expanded, toggleExpanded, u
             <Icon name="solar:maximize-linear" size={16} color="#6F7A90" />
           </button>
         </div>
-        <textarea aria-label="System prompt"
+        <Textarea aria-label="System prompt"
           className={`${styles.textarea} ${styles.textareaLarge}`}
           value={form.systemPrompt}
           onChange={e => updateField('systemPrompt', e.target.value)}
