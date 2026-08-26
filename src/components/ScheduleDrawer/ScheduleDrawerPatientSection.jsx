@@ -11,8 +11,13 @@ export function ScheduleDrawerPatientSection({
   patients,
   reasonForVisit,
   setReasonForVisit,
+  // Callers that already own the patient context (e.g. the HEDIS Care Gap
+  // drawer opens for one specific member) pass `locked` so the search
+  // fallback + Remove button are suppressed — users can't accidentally
+  // swap the patient the appointment is being scheduled for.
+  locked = false,
 }) {
-  if (!selectedPatient) {
+  if (!selectedPatient && !locked) {
     return (
       <div className={styles.section}>
         <label className={styles.sectionLabel} htmlFor="schedule-patient-search">Patient/Prospect <span className={styles.required}>*</span></label>
@@ -20,6 +25,8 @@ export function ScheduleDrawerPatientSection({
       </div>
     );
   }
+
+  if (!selectedPatient) return null;
 
   return (
     <div className={styles.section}>
@@ -35,7 +42,9 @@ export function ScheduleDrawerPatientSection({
               <span className={styles.rafDelta}>+0.5 <Icon name="solar:arrow-up-linear" size={10} color="var(--status-success-bright)" /></span>
             </div>
           </div>
-          <ActionButton icon="solar:close-linear" size="S" tooltip="Remove" onClick={() => setSelectedPatient(null)} />
+          {!locked && (
+            <ActionButton icon="solar:close-linear" size="S" tooltip="Remove" onClick={() => setSelectedPatient(null)} />
+          )}
         </div>
 
         <div className={styles.reasonField}>

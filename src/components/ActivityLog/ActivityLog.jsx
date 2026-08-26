@@ -4,6 +4,12 @@ import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { Badge } from '../Badge/Badge';
 import { Avatar } from '../Avatar/Avatar';
 import { useAppStore } from '../../store/useAppStore';
+import {
+  AvatarPill,
+  ACT_ICON,
+  TRANS_BADGE,
+  historyTimelineStyles as htStyles,
+} from '../HistoryTimeline/HistoryTimeline';
 import styles from './ActivityLog.module.css';
 
 // Render a comment body with the signed-in user's @-mentions painted in the
@@ -26,9 +32,6 @@ function renderCommentBodyWithMentions(text, meName) {
     if (match.index > last) parts.push(text.slice(last, match.index));
     const label = match[1];
     if (label.toLowerCase() === meLower) {
-      // Inline style rather than a CSS module class so this file doesn't
-      // drag in the shared stylesheet's pre-existing raw-px violations
-      // (DS guardrail runs on the whole file). Tokens keep it design-safe.
       parts.push(
         <span key={`m-${idx++}`} style={{ fontWeight: 500, color: 'var(--secondary-300)' }}>@{label}</span>,
       );
@@ -41,33 +44,36 @@ function renderCommentBodyWithMentions(text, meName) {
   return parts;
 }
 
-// Icon per entry type. The bordered neutral square chrome stays constant
-// across types — matches OutreachTab.LogEntry and HCC's ActivityTab, where
-// the icon glyph carries the type identity, not the tint.
+// Icon config per entry type — reuses HCC's ACT_ICON (colored rail bubble)
+// so ActivityLog matches the DiagPanel timeline visually. Types unique to
+// this surface (call/sms, note/clinical_note, task, appointment, …) get
+// their own routing here.
 const TYPE_ICON = {
-  outreach:        'solar:phone-linear',
-  call:            'solar:phone-linear',
-  sms:             'solar:chat-round-line-linear',
-  status_dos:      'solar:eye-scan-linear',
-  status_change:   'solar:eye-scan-linear',
-  status_hcc:      'solar:eye-scan-linear',
-  status_role:     'solar:refresh-circle-linear',
-  accept:          'solar:check-read-linear',
-  dismiss:         'solar:close-circle-linear',
-  delete:          'solar:trash-bin-trash-linear',
-  upload:          'solar:document-add-linear',
-  create:          'solar:add-circle-linear',
-  override:        'solar:refresh-square-linear',
-  comment:         'solar:chat-round-linear',
-  assign_coder:    'solar:user-plus-rounded-linear',
-  assignee_change: 'solar:user-plus-rounded-linear',
-  note:            'solar:notes-linear',
-  clinical_note:   'solar:notes-linear',
-  task:            'solar:clipboard-check-linear',
-  reminder:        'solar:bell-linear',
-  appointment:     'solar:calendar-linear',
-  referral:        'solar:arrow-right-up-linear',
+  outreach:        { icon: 'solar:phone-linear',            color: 'var(--secondary-300)', bg: 'var(--secondary-100)',        border: 'rgba(244,122,62,0.2)' },
+  call:            { icon: 'solar:phone-linear',            color: 'var(--secondary-300)', bg: 'var(--secondary-100)',        border: 'rgba(244,122,62,0.2)' },
+  sms:             { icon: 'solar:chat-round-line-linear',  color: 'var(--secondary-300)', bg: 'var(--secondary-100)',        border: 'rgba(244,122,62,0.2)' },
+  status_dos:      ACT_ICON.status_dos,
+  status_change:   ACT_ICON.status_dos,
+  status_hcc:      ACT_ICON.status_hcc,
+  status_role:     ACT_ICON.status_role,
+  accept:          ACT_ICON.accept,
+  dismiss:         ACT_ICON.dismiss,
+  delete:          ACT_ICON.delete,
+  upload:          ACT_ICON.upload,
+  document:        ACT_ICON.upload,
+  create:          ACT_ICON.create,
+  override:        ACT_ICON.override,
+  comment:         ACT_ICON.comment,
+  assign_coder:    ACT_ICON.assign_coder,
+  assignee_change: ACT_ICON.assign_coder,
+  note:            { icon: 'solar:notes-linear',            color: 'var(--primary-300)',    bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)' },
+  clinical_note:   { icon: 'solar:notes-linear',            color: 'var(--primary-300)',    bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)' },
+  task:            { icon: 'solar:clipboard-check-linear',  color: 'var(--primary-300)',    bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)' },
+  reminder:        { icon: 'solar:bell-linear',             color: 'var(--status-warning)', bg: 'var(--status-warning-light)', border: 'rgba(217,165,11,0.2)' },
+  appointment:     { icon: 'solar:calendar-linear',         color: 'var(--primary-300)',    bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)' },
+  referral:        { icon: 'solar:arrow-right-up-linear',   color: 'var(--primary-300)',    bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)' },
 };
+const DEFAULT_ICON = { icon: 'solar:document-text-linear', color: 'var(--neutral-300)', bg: 'var(--neutral-0)', border: 'var(--neutral-150)' };
 
 // Status label → Badge tone. HEDIS canonical status grouping drives the
 // color band: Open → primary (Not Started); Engaged / Submitted → warning
@@ -76,10 +82,8 @@ const TYPE_ICON = {
 // map so both worklists render identical status pills. Unknown falls to
 // 'grey'.
 const STATUS_TONE = {
-  // Not Started
   Open:                          'primary',
   Audited:                       'primary',
-  // In Progress
   Engaged:                       'warning',
   'Engaged Requires Follow-Up':  'warning',
   Submitted:                     'warning',
@@ -87,14 +91,11 @@ const STATUS_TONE = {
   New:                           'warning',
   Pending:                       'warning',
   'Pending Review':              'warning',
-  // Done
   Completed:                     'success',
   Accepted:                      'success',
-  // Negative
   Dismissed:                     'error',
   Returned:                      'error',
   Rejected:                      'error',
-  // Closed / muted
   'Closed - Do not call':        'grey',
   'Closed - UTR':                'grey',
   'Closed - Other':              'grey',
@@ -133,6 +134,9 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
     );
   }
 
+  // Flatten to render list — mark the first/last item in each visible
+  // group so the icon rail can drop its top/bottom connectors, matching
+  // the HCC timeline's continuous-line look.
   const items = (() => {
     let activeGroup = null;
     const out = [];
@@ -143,15 +147,17 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
         return;
       }
       if (activeGroup && collapsed.has(activeGroup)) return;
+      const prev = list[i - 1];
       const next = list[i + 1];
+      const isFirst = !prev || prev.t === 'group';
       const isLast = !next || next.t === 'group';
-      out.push({ kind: 'item', entry, key: `i${i}`, isLast });
+      out.push({ kind: 'item', entry, key: `i${i}`, isFirst, isLast });
     });
     return out;
   })();
 
   return (
-    <div className={styles.timeline}>
+    <div className={htStyles.wrap}>
       {items.map(it => it.kind === 'group' ? (
         <button
           key={it.key}
@@ -166,63 +172,52 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
           </span>
         </button>
       ) : (
-        <ActivityLogEntry key={it.key} entry={it.entry} isLast={it.isLast} hideCommentTitle={hideCommentTitle} />
+        <ActivityLogEntry
+          key={it.key}
+          entry={it.entry}
+          isFirst={it.isFirst}
+          isLast={it.isLast}
+          hideCommentTitle={hideCommentTitle}
+        />
       ))}
+    </div>
+  );
+}
+
+/* ── Rail (shared) ───────────────────────────────────────────────────── */
+function Rail({ entry, isFirst, isLast }) {
+  const cfg = TYPE_ICON[entry.t] || DEFAULT_ICON;
+  return (
+    <div className={htStyles.rail}>
+      <span className={[htStyles.connectorTop, isFirst ? htStyles.connectorTopFirst : ''].filter(Boolean).join(' ')} />
+      <span
+        className={htStyles.icon}
+        style={{ background: cfg.bg, borderColor: cfg.border }}
+      >
+        <Icon name={cfg.icon} size={14} color={cfg.color} />
+      </span>
+      <span className={[htStyles.connectorBottom, isLast ? htStyles.connectorBottomLast : ''].filter(Boolean).join(' ')} />
     </div>
   );
 }
 
 /* ── Meta line (shared across variants) ──────────────────────────────── */
 function MetaLine({ entry }) {
-  return (
-    <div className={styles.meta}>
-      {entry.date && <span>{entry.date}</span>}
-      {entry.date && entry.time && <span className={styles.metaDot}>•</span>}
-      {entry.time && <span>{entry.time}</span>}
-      {(entry.by || entry.role) && <span className={styles.metaDot}>•</span>}
-      {entry.by && <span>{entry.by}{entry.role ? ` (${entry.role})` : ''}</span>}
-      {entry.dos && (
-        <>
-          <span className={styles.metaDot}>•</span>
-          <span>DOS ({entry.dos})</span>
-        </>
-      )}
-    </div>
-  );
-}
-
-/* ── Rail (shared) ───────────────────────────────────────────────────── */
-function Rail({ iconName, isLast }) {
-  return (
-    <div className={styles.rail}>
-      <div className={styles.railTop}>
-        <div className={styles.railLine} />
-      </div>
-      <div className={styles.icon}>
-        <Icon name={iconName} size={14} color="var(--neutral-300)" />
-      </div>
-      {!isLast && (
-        <div className={styles.railBottom}>
-          <div className={styles.railLine} />
-        </div>
-      )}
-    </div>
-  );
+  const parts = [
+    entry.date,
+    entry.time,
+    entry.by ? `${entry.by}${entry.role ? ` (${entry.role})` : ''}` : null,
+    entry.dos ? `DOS (${entry.dos})` : null,
+  ].filter(Boolean);
+  return <div className={htStyles.meta}>{parts.join(' • ')}</div>;
 }
 
 /* ── Type-branched entry ─────────────────────────────────────────────── */
-function ActivityLogEntry({ entry, isLast, hideCommentTitle = false }) {
-  const iconName = TYPE_ICON[entry.t] || 'solar:document-text-linear';
-  // Comment-only tab hides the "…added a Comment" title, collapsing the
-  // card to two lines (meta + body). Without the title, the rail icon
-  // no longer has a title line to align with — .rowNoTitle drops the
-  // railTop offset so the icon sits next to the meta line instead.
-  const noTitle = entry.t === 'comment' && hideCommentTitle;
-
+function ActivityLogEntry({ entry, isFirst, isLast, hideCommentTitle = false }) {
   return (
-    <div className={`${styles.row} ${noTitle ? styles.rowNoTitle : ''}`}>
-      <Rail iconName={iconName} isLast={isLast} />
-      <div className={styles.cardWrap}>
+    <div className={htStyles.row}>
+      <Rail entry={entry} isFirst={isFirst} isLast={isLast} />
+      <div className={[htStyles.body, isFirst ? htStyles.bodyFirst : '', isLast ? htStyles.bodyLast : ''].join(' ')}>
         {(() => {
           switch (entry.t) {
             case 'outreach':
@@ -237,6 +232,8 @@ function ActivityLogEntry({ entry, isLast, hideCommentTitle = false }) {
               return <DetailCardEntryBody entry={entry} variant="note" />;
             case 'task':
               return <DetailCardEntryBody entry={entry} variant="task" />;
+            case 'appointment':
+              return <DetailCardEntryBody entry={entry} variant="appointment" />;
             case 'assign_coder':
             case 'assignee_change':
               return <AssigneeChangeEntryBody entry={entry} />;
@@ -260,335 +257,337 @@ function OutreachEntryBody({ entry }) {
   const hasNote = Boolean(entry.note && entry.note.trim());
   const hasCall = !!entry.callDetails;
   const expandable = hasNote || hasCall;
-  const toggle = () => { if (expandable) setExpanded(v => !v); };
 
   return (
-    // The nested "View Note" button owns the accessible expander — role="button" here would nest interactives (axe: nested-interactive).
-    <div
-      className={`${styles.card} ${expanded ? styles.cardExpanded : ''} ${expandable ? '' : styles.cardStatic}`}
-      onClick={toggle}
-    >
-      <div className={styles.body}>
-        <MetaLine entry={entry} />
-        <div className={styles.titleRow}>
-          <span className={styles.title}>{entry.title}</span>
-          {(entry.badges || []).map(b => <Badge key={b} tone="primary" size="M" label={b} />)}
-        </div>
-        <div className={styles.outcomeRow}>
-          {entry.outcome && (
-            <span className={styles.outcome} style={entry.outcomeColor ? { color: entry.outcomeColor } : undefined}>
-              {entry.outcome}
-            </span>
-          )}
-          {expandable && (
-            <button
-              type="button"
-              className={styles.viewNoteBtn}
-              onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
-            >
-              {entry.outcome && <span className={styles.viewNoteDot}>·</span>}
-              View Note
-              <Icon
-                name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-                size={11}
-                color="var(--neutral-400)"
-              />
-            </button>
-          )}
-        </div>
-
-        {expanded && (hasCall || hasNote) && (
-          <div className={styles.expandedCard}>
-            {hasCall && (
-              <>
-                <div className={styles.expandedLabel}>Call Details:</div>
-                <div className={styles.expandedMeta}>
-                  via: <strong>{entry.callDetails.via}</strong>
-                  <span className={styles.expandedMetaDot}>·</span>
-                  To: <strong>{entry.callDetails.to}</strong>
-                  <span className={styles.expandedMetaDot}>·</span>
-                  Duration: <strong>{entry.callDetails.durationMin}mins</strong>
-                </div>
-                {(hasNote || (Array.isArray(entry.callDetails.transcript) && entry.callDetails.transcript.length > 0)) && (
-                  <div className={styles.expandedNoteLabel}>Note :</div>
-                )}
-                {Array.isArray(entry.callDetails.transcript) && entry.callDetails.transcript.length > 0 && (
-                  <div className={styles.transcriptCard}>
-                    <div className={styles.transcriptCaption}>Call Transcript</div>
-                    {entry.callDetails.transcript.slice(0, 2).map((t, i) => (
-                      <div key={i} className={styles.transcriptLine}>
-                        <div>{t.speaker} - {t.t}</div>
-                        <div>{t.text}</div>
-                      </div>
-                    ))}
-                    {entry.callDetails.transcript.length > 2 && (
-                      <div className={styles.transcriptMore}>
-                        Show More
-                        <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--primary-300)" />
-                      </div>
-                    )}
-                  </div>
-                )}
-                {hasNote && <p className={styles.expandedNote}>{entry.note}</p>}
-                <div className={styles.expandedActions}>
-                  {entry.callDetails.recordingUrl && (
-                    <button type="button" className={styles.expandedAction} onClick={(e) => e.stopPropagation()}>
-                      <Icon name="solar:play-circle-linear" size={13} color="var(--neutral-400)" />
-                      Call Recording
-                    </button>
-                  )}
-                  {entry.callDetails.transcriptUrl && (
-                    <button type="button" className={styles.expandedAction} onClick={(e) => e.stopPropagation()}>
-                      <Icon name="solar:document-text-linear" size={13} color="var(--neutral-400)" />
-                      Transcript
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
-            {!hasCall && hasNote && (
-              <>
-                <div className={styles.expandedNoteLabel}>Note :</div>
-                <p className={styles.expandedNote}>{entry.note}</p>
-              </>
-            )}
-          </div>
+    <>
+      <MetaLine entry={entry} />
+      <div className={htStyles.headlineRow}>
+        <span className={htStyles.headline}>{entry.title}</span>
+        {(entry.badges || []).map(b => <Badge key={b} tone="primary" size="M" label={b} />)}
+      </div>
+      <div className={styles.outcomeRow}>
+        {entry.outcome && (
+          <span className={styles.outcome} style={entry.outcomeColor ? { color: entry.outcomeColor } : undefined}>
+            {entry.outcome}
+          </span>
+        )}
+        {expandable && (
+          <button
+            type="button"
+            className={styles.viewNoteBtn}
+            onClick={() => setExpanded(v => !v)}
+          >
+            {entry.outcome && <span className={styles.viewNoteDot} aria-hidden="true">•</span>}
+            View Note
+            <Icon
+              name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+              size={11}
+              color="var(--neutral-400)"
+            />
+          </button>
         )}
       </div>
-    </div>
+
+      {expanded && (hasCall || hasNote) && (
+        <div className={styles.expandedCard}>
+          {hasCall && (
+            <>
+              <div className={styles.expandedLabel}>Call Details:</div>
+              <div className={styles.expandedMeta}>
+                via: <strong>{entry.callDetails.via}</strong>
+                <span className={styles.expandedMetaDot}>·</span>
+                To: <strong>{entry.callDetails.to}</strong>
+                <span className={styles.expandedMetaDot}>·</span>
+                Duration: <strong>{entry.callDetails.durationMin}mins</strong>
+              </div>
+              {(hasNote || (Array.isArray(entry.callDetails.transcript) && entry.callDetails.transcript.length > 0)) && (
+                <div className={styles.expandedNoteLabel}>Note :</div>
+              )}
+              {Array.isArray(entry.callDetails.transcript) && entry.callDetails.transcript.length > 0 && (
+                <div className={styles.transcriptCard}>
+                  <div className={styles.transcriptCaption}>Call Transcript</div>
+                  {entry.callDetails.transcript.slice(0, 2).map((t, i) => (
+                    <div key={i} className={styles.transcriptLine}>
+                      <div>{t.speaker} - {t.t}</div>
+                      <div>{t.text}</div>
+                    </div>
+                  ))}
+                  {entry.callDetails.transcript.length > 2 && (
+                    <div className={styles.transcriptMore}>
+                      Show More
+                      <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--primary-300)" />
+                    </div>
+                  )}
+                </div>
+              )}
+              {hasNote && <p className={styles.expandedNote}>{entry.note}</p>}
+              <div className={styles.expandedActions}>
+                {entry.callDetails.recordingUrl && (
+                  <button type="button" className={styles.expandedAction}>
+                    <Icon name="solar:play-circle-linear" size={13} color="var(--neutral-400)" />
+                    Call Recording
+                  </button>
+                )}
+                {entry.callDetails.transcriptUrl && (
+                  <button type="button" className={styles.expandedAction}>
+                    <Icon name="solar:document-text-linear" size={13} color="var(--neutral-400)" />
+                    Transcript
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+          {!hasCall && hasNote && (
+            <>
+              <div className={styles.expandedNoteLabel}>Note :</div>
+              <p className={styles.expandedNote}>{entry.note}</p>
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
-/* ── Variant: Status Change (transition pills only) ──────────────────── */
+/* ── Variant: Status Change (transition pills) ──────────────────────── */
 function StatusChangeEntryBody({ entry }) {
   return (
-    <div className={`${styles.card} ${styles.cardStatic}`}>
-      <div className={styles.body}>
-        <MetaLine entry={entry} />
-        <div className={styles.titleRow}>
-          <span className={styles.title}>{entry.title || 'Status Changed'}</span>
-        </div>
-        {entry.from && entry.to && (
-          <div className={styles.transition}>
-            <Badge tone={statusTone(entry.from)} size="M" label={entry.from} />
-            <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <Badge tone={statusTone(entry.to)} size="M" label={entry.to} />
-          </div>
-        )}
+    <>
+      <MetaLine entry={entry} />
+      <div className={htStyles.headlineRow}>
+        <span className={htStyles.headline}>{entry.title || 'Status Changed'}</span>
       </div>
-    </div>
+      {entry.from && entry.to && (
+        <div className={htStyles.transition}>
+          <Badge size="S" tone={statusTone(entry.from)} label={entry.from} />
+          <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
+          <Badge size="S" tone={statusTone(entry.to)} label={entry.to} />
+        </div>
+      )}
+    </>
   );
 }
 
-/* ── Variant: Clinical note / Task (nested "View Details" card) ──────── */
+/* ── Variant: Clinical note / Task / Appointment (nested detail card) ─ */
 function DetailCardEntryBody({ entry, variant }) {
   const [expanded, setExpanded] = useState(true);
   const dc = entry.detailCard;
   const expandable = !!dc;
-  const toggle = () => { if (expandable) setExpanded(v => !v); };
 
   return (
-    // See OutreachEntryBody — nested "View Details" button owns the accessible expander (axe: nested-interactive).
-    <div
-      className={`${styles.card} ${styles.cardStatic}`}
-      onClick={toggle}
-    >
-      <div className={styles.body}>
-        <MetaLine entry={entry} />
-        <div className={styles.titleRow}>
-          <span className={styles.title}>{entry.title}</span>
-          {expandable && (
-            <button
-              type="button"
-              className={styles.viewDetailsBtn}
-              onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
-            >
-              <span className={styles.viewNoteDot}>·</span>
-              View Details
-              <Icon
-                name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
-                size={11}
-                color="var(--primary-300)"
-              />
-            </button>
-          )}
-        </div>
-        {expanded && dc && (
-          <div className={styles.detailCard}>
-            {variant === 'task' ? (
-              <div className={styles.detailCardRow}>
-                {dc.handle && (
-                  <span className={styles.detailCardHandle}>
-                    <Icon name="solar:hamburger-menu-linear" size={16} color="var(--secondary-300)" />
-                  </span>
+    <>
+      <MetaLine entry={entry} />
+      <div className={htStyles.headlineRow}>
+        <span className={htStyles.headline}>{entry.title}</span>
+        {expandable && (
+          <button
+            type="button"
+            className={styles.viewDetailsBtn}
+            onClick={() => setExpanded(v => !v)}
+          >
+            <span className={styles.viewNoteDot} aria-hidden="true">•</span>
+            View Details
+            <Icon
+              name={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+              size={11}
+              color="var(--primary-300)"
+            />
+          </button>
+        )}
+      </div>
+      {expanded && dc && (
+        <div className={styles.detailCard}>
+          {variant === 'task' ? (
+            <div className={styles.detailCardRow}>
+              {dc.handle && (
+                <span className={styles.detailCardHandle}>
+                  <Icon name="solar:hamburger-menu-linear" size={16} color="var(--secondary-300)" />
+                </span>
+              )}
+              <div className={styles.detailCardText}>
+                <div className={styles.detailCardTitleRow}>
+                  <span className={styles.detailCardTitle}>{dc.title}</span>
+                  {dc.locked && (
+                    <span className={styles.detailCardLock}>
+                      <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="var(--neutral-300)" />
+                    </span>
+                  )}
+                </div>
+                {dc.assignee && (
+                  <div className={styles.detailCardSubtitle}>Assignee: {dc.assignee}</div>
                 )}
+              </div>
+              <div className={styles.detailCardTrailing}>
+                {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
+                <button type="button" className={styles.detailCardIconBtn} aria-label="Open">
+                  <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
+                </button>
+              </div>
+            </div>
+          ) : variant === 'appointment' ? (
+            // Figma 1230:74055 — leading calendar icon + title over a
+            // "date, time · provider" subtitle, trailing status badge and
+            // an arrow-out icon that later opens the appointment drawer.
+            <div className={styles.detailCardRow}>
+              <span className={styles.detailCardHandle}>
+                <Icon name="solar:calendar-linear" size={16} color="var(--neutral-300)" />
+              </span>
+              <div className={styles.detailCardText}>
+                <div className={styles.detailCardTitleRow}>
+                  <span className={styles.detailCardTitle}>{dc.title}</span>
+                </div>
+                {dc.subtitle && (
+                  <div className={styles.detailCardSubtitle}>{dc.subtitle}</div>
+                )}
+              </div>
+              <div className={styles.detailCardTrailing}>
+                {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
+                <button type="button" className={styles.detailCardIconBtn} aria-label="Open">
+                  <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {dc.subMeta && <div className={styles.detailCardSubMeta}>{dc.subMeta}</div>}
+              <div className={styles.detailCardRow}>
                 <div className={styles.detailCardText}>
                   <div className={styles.detailCardTitleRow}>
                     <span className={styles.detailCardTitle}>{dc.title}</span>
-                    {dc.locked && (
-                      <span className={styles.detailCardLock}>
-                        <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="var(--neutral-300)" />
-                      </span>
-                    )}
+                    {dc.chip && <Badge tone="grey" size="M" label={dc.chip} />}
                   </div>
-                  {dc.assignee && (
-                    <div className={styles.detailCardSubtitle}>Assignee: {dc.assignee}</div>
-                  )}
+                  {dc.subtitle && <div className={styles.detailCardSubtitle}>{dc.subtitle}</div>}
                 </div>
                 <div className={styles.detailCardTrailing}>
                   {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
-                  <button type="button" className={styles.detailCardIconBtn} onClick={(e) => e.stopPropagation()} aria-label="Open">
-                    <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
+                  <button type="button" className={styles.detailCardIconBtn} aria-label="Preview">
+                    <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
+                  </button>
+                  <button type="button" className={styles.detailCardIconBtn} aria-label="More">
+                    <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
                   </button>
                 </div>
               </div>
-            ) : (
-              <>
-                {dc.subMeta && <div className={styles.detailCardSubMeta}>{dc.subMeta}</div>}
-                <div className={styles.detailCardRow}>
-                  <div className={styles.detailCardText}>
-                    <div className={styles.detailCardTitleRow}>
-                      <span className={styles.detailCardTitle}>{dc.title}</span>
-                      {dc.chip && <Badge tone="grey" size="M" label={dc.chip} />}
-                    </div>
-                    {dc.subtitle && <div className={styles.detailCardSubtitle}>{dc.subtitle}</div>}
-                  </div>
-                  <div className={styles.detailCardTrailing}>
-                    {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
-                    <button type="button" className={styles.detailCardIconBtn} onClick={(e) => e.stopPropagation()} aria-label="Preview">
-                      <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
-                    </button>
-                    <button type="button" className={styles.detailCardIconBtn} onClick={(e) => e.stopPropagation()} aria-label="More">
-                      <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
-                    </button>
-                  </div>
-                </div>
-                {dc.linkedGroups && (
-                  <button type="button" className={styles.detailCardLink} onClick={(e) => e.stopPropagation()}>
-                    Linked Score Groups
-                    <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--primary-300)" />
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+              {dc.linkedGroups && (
+                <button type="button" className={styles.detailCardLink}>
+                  Linked Score Groups
+                  <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--primary-300)" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
-/* ── Variant: Assignee change (from → to avatar transition) ──────────── */
-function AssigneeChip({ assignee }) {
-  return (
-    <span className={styles.assigneeChip}>
-      {assignee ? (
-        <>
-          <Avatar variant="assignee" size="XS" initials={assignee.initials} />
-          {assignee.name}
-        </>
-      ) : (
-        <>
-          <Avatar variant="others" size="XS" iconName="solar:user-linear" type="icon" />
-          Unassigned
-        </>
-      )}
-    </span>
-  );
+/* ── Variant: Assignee change (avatar-transition pills) ──────────────── */
+function assigneeInitials(a) {
+  if (!a) return '';
+  return a.initials || '';
 }
 
 function AssigneeChangeEntryBody({ entry }) {
   const fromA = entry.fromAssignee;
   const toA   = entry.toAssignee;
   return (
-    <div className={`${styles.card} ${styles.cardStatic}`}>
-      <div className={styles.body}>
-        <MetaLine entry={entry} />
-        <div className={styles.titleRow}>
-          <span className={styles.title}>{entry.title || 'Assignee Changed'}</span>
-        </div>
-        {(fromA || toA) && (
-          <div className={styles.avatarTransition}>
-            <AssigneeChip assignee={fromA} />
-            <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <AssigneeChip assignee={toA} />
-          </div>
-        )}
+    <>
+      <MetaLine entry={entry} />
+      <div className={htStyles.headlineRow}>
+        <span className={htStyles.headline}>{entry.title || 'Assignee Changed'}</span>
       </div>
-    </div>
+      {(fromA || toA) && (
+        <div className={htStyles.avatarTransition}>
+          {fromA
+            ? <AvatarPill initials={assigneeInitials(fromA)} name={fromA.name} />
+            : <UnassignedPill />}
+          <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
+          {toA
+            ? <AvatarPill initials={assigneeInitials(toA)} name={toA.name} />
+            : <UnassignedPill />}
+        </div>
+      )}
+    </>
   );
 }
 
-/* ── Variant: Upload / Document evidence (HCC .tlAttachment) ─────────── */
+// Mirrors AvatarPill's chrome but seats an "Unassigned" glyph in the
+// avatar slot so a "Unassigned → Alok" transition still reads as a chip
+// pair rather than a bare arrow.
+function UnassignedPill() {
+  return (
+    <span className={htStyles.avatarPill}>
+      <Avatar variant="others" size="XS" iconName="solar:user-linear" type="icon" />
+      <span className={htStyles.avatarName}>Unassigned</span>
+    </span>
+  );
+}
+
+/* ── Variant: Upload / Document (HCC attachment card) ────────────────── */
 function UploadEntryBody({ entry }) {
   return (
-    <div className={`${styles.card} ${styles.cardStatic}`}>
-      <div className={styles.body}>
-        <MetaLine entry={entry} />
-        <div className={styles.titleRow}>
-          <span className={styles.title}>{entry.title}</span>
-        </div>
-        {entry.file && (
-          <div className={styles.attachment}>
-            <span className={styles.fileBubble}>
-              <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
-            </span>
-            <div className={styles.fileText}>
-              <div className={styles.fileName}>{entry.file}</div>
-              {entry.fileType && <div className={styles.fileType}>{entry.fileType}</div>}
-            </div>
-            <button type="button" className={styles.filePreview} aria-label="Preview" onClick={(e) => e.stopPropagation()}>
-              <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
-            </button>
-          </div>
-        )}
+    <>
+      <MetaLine entry={entry} />
+      <div className={htStyles.headlineRow}>
+        <span className={htStyles.headline}>{entry.title}</span>
       </div>
-    </div>
+      {entry.file && (
+        <div className={htStyles.attachment}>
+          <span className={htStyles.fileBubble}>
+            <Icon name="solar:file-text-linear" size={14} color="var(--neutral-300)" />
+          </span>
+          <div className={htStyles.fileText}>
+            <div className={htStyles.fileName}>{entry.file}</div>
+            {entry.fileType && <div className={htStyles.fileType}>{entry.fileType}</div>}
+          </div>
+          <button type="button" className={htStyles.filePreview} aria-label="Preview">
+            <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
-/* ── Variant: Comment (HCC .tlCommentBody inline paragraph) ──────────── */
+/* ── Variant: Comment (inline paragraph) ─────────────────────────────── */
 /* `hideTitle` drops the "…added a Comment" line when the caller already
    scopes the log to comments only (e.g. the Comments tab), since the
    title just restates what the surface already implies. */
 function CommentEntryBody({ entry, hideTitle = false }) {
   const meName = useAppStore(s => s.currentUserProfile?.name);
   return (
-    <div className={`${styles.card} ${styles.cardStatic}`}>
-      <div className={styles.body}>
-        <MetaLine entry={entry} />
-        {!hideTitle && (
-          <div className={styles.titleRow}>
-            <span className={styles.title}>{entry.title || 'Added a Comment'}</span>
-          </div>
-        )}
-        {entry.commentBody && (
-          <div className={styles.commentBody}>
-            {renderCommentBodyWithMentions(entry.commentBody, meName)}
-          </div>
-        )}
-      </div>
-    </div>
+    <>
+      <MetaLine entry={entry} />
+      {!hideTitle && (
+        <div className={htStyles.headlineRow}>
+          <span className={htStyles.headline}>{entry.title || 'Added a Comment'}</span>
+        </div>
+      )}
+      {entry.commentBody && (
+        <div className={styles.commentBody}>
+          {renderCommentBodyWithMentions(entry.commentBody, meName)}
+        </div>
+      )}
+    </>
   );
 }
 
 /* ── Fallback ────────────────────────────────────────────────────────── */
 function GenericEntryBody({ entry }) {
   return (
-    <div className={`${styles.card} ${styles.cardStatic}`}>
-      <div className={styles.body}>
-        <MetaLine entry={entry} />
-        <div className={styles.titleRow}>
-          <span className={styles.title}>{entry.title || entry.headline}</span>
-        </div>
-        {entry.outcome && (
-          <div className={styles.outcomeRow}>
-            <span className={styles.outcome} style={entry.outcomeColor ? { color: entry.outcomeColor } : undefined}>
-              {entry.outcome}
-            </span>
-          </div>
-        )}
+    <>
+      <MetaLine entry={entry} />
+      <div className={htStyles.headlineRow}>
+        <span className={htStyles.headline}>{entry.title || entry.headline}</span>
       </div>
-    </div>
+      {entry.outcome && (
+        <div className={styles.outcomeRow}>
+          <span className={styles.outcome} style={entry.outcomeColor ? { color: entry.outcomeColor } : undefined}>
+            {entry.outcome}
+          </span>
+        </div>
+      )}
+    </>
   );
 }

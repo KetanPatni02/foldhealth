@@ -1,0 +1,341 @@
+/* Shared history timeline. Rail (colored icon square + connector lines)
+   on the left, body on the right. Body carries a meta line, a headline,
+   and optional per-entry extras: transition pills, outreach tag, file
+   attachment card, avatar-transition pills, and an expandable details
+   card. Ported from HCC DiagPanel's LeftWorkspace so every timeline
+   surface across the app renders identically. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Row: left rail + body */
+.row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Left rail — top connector + icon + bottom connector */
+.rail {
+  width: 24px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Height matches `.body { padding-top }` so the icon's top edge aligns
+   with the meta text's top edge — icon + meta read as one baseline. */
+.connectorTop {
+  width: 0.5px;
+  height: var(--space-4);
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+/* First-row stub — a small hairline above the very first icon so the
+   timeline reads as a bounded strand starting from the top rather than
+   the icon floating. Matches `.bodyFirst { padding-top }` for the same
+   top-align rule. */
+.connectorTopFirst {
+  height: calc(var(--space-1) + calc(var(--space-1) / 2));
+}
+
+/* Bottom connector flows from the icon directly into the next row — no
+   top margin so the line reads continuous between entries. */
+.connectorBottom {
+  width: 0.5px;
+  flex: 1;
+  background: var(--neutral-150);
+}
+/* Last-row stub — mirrors .connectorTopFirst so the trail line has a
+   clear terminating tick below the final icon (matches Figma). */
+.connectorBottomLast {
+  flex: 0 0 auto;
+  height: 6px;
+}
+
+.icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 0.5px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.iconDashed {
+  border-style: dashed;
+}
+
+/* Body — meta + headline + supporting blocks. Slight top pad aligns the
+   meta baseline with the icon's centerline, matching the HCC source.
+   No padding-bottom — row-to-row rhythm comes from the next row's
+   padding-top, and the last row hugs the container's own edge. */
+.body {
+  flex: 1;
+  min-width: 0;
+  padding-top: var(--space-4);
+}
+/* Matches `.connectorTopFirst` so the meta text's top edge lines up
+   with the first icon's top edge. */
+.bodyFirst {
+  padding-top: calc(var(--space-1) + calc(var(--space-1) / 2));
+}
+.bodyLast {}
+
+.meta {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-200);
+  line-height: 1.4;
+  margin-bottom: calc(var(--space-1) / 2);
+}
+
+.headlineRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.headline {
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-400);
+  line-height: 1.4;
+}
+
+.detailsToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+}
+
+.dot {
+  color: var(--neutral-200);
+}
+
+/* Status transition pills */
+.transition {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.pill {
+  padding: var(--space-1) var(--space-2);
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  border: 0.5px solid;
+  font-size: var(--font-sm);
+}
+
+/* Pill border tints are 20%-opacity color-matches of each status hue —
+   the visual language HCC's Figma spec uses. No opaque token equivalent
+   in tokens.css, so the rgba values stay in place. */
+.pillOpen,
+.pillNew {
+  color: var(--status-warning);
+  background: var(--status-warning-light);
+  /* stylelint-disable-next-line function-disallowed-list -- 20%-tint of amber, matches Figma spec */
+  border-color: rgba(217, 165, 11, 0.2);
+}
+.pillInProgress,
+.pillAudited {
+  color: var(--primary-300);
+  background: var(--primary-50);
+  /* stylelint-disable-next-line function-disallowed-list -- 20%-tint of primary, matches Figma spec */
+  border-color: rgba(140, 90, 226, 0.2);
+}
+.pillAccepted,
+.pillCompleted {
+  color: var(--status-success);
+  background: var(--status-success-light);
+  /* stylelint-disable-next-line function-disallowed-list -- 20%-tint of green, matches Figma spec */
+  border-color: rgba(0, 155, 83, 0.2);
+}
+.pillDismissed,
+.pillReturned {
+  color: var(--status-error);
+  background: var(--status-error-light);
+  /* stylelint-disable-next-line function-disallowed-list -- 20%-tint of red, matches Figma spec */
+  border-color: rgba(215, 40, 37, 0.2);
+}
+.pillDeleted,
+.pillNone {
+  color: var(--neutral-300);
+  background: var(--neutral-50);
+  border-color: var(--neutral-150);
+}
+
+/* Outreach tag link */
+.tag {
+  margin-top: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--status-info);
+  cursor: pointer;
+}
+
+/* File attachment card */
+.attachment {
+  margin-top: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 6px;
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+  max-width: 100%;
+}
+
+.fileBubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fileText {
+  flex: 1;
+  min-width: 0;
+}
+
+.fileName {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.fileType {
+  font-size: var(--font-xs);
+  color: var(--neutral-300);
+}
+
+.filePreview {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.filePreview:hover {
+  background: var(--neutral-100);
+}
+
+/* Coder / assignee avatar transition */
+.avatarTransition {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+  flex-wrap: wrap;
+}
+
+/* Figma ICD-Import 4724:144684 — avatar + name sit inline, no grey pill
+   background. The avatar itself carries the tinted swatch; wrapping it
+   in another chip made the transition read heavier than the surrounding
+   meta text. */
+.avatarPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.avatarName {
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+}
+
+/* Expanded details card */
+.detailsCard {
+  margin-top: var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.detailRow {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.detailRow:last-child {
+  border-bottom: none;
+}
+
+.detailText {
+  flex: 1;
+  min-width: 0;
+}
+
+.detailHcc {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  line-height: 1.4;
+}
+
+.detailIcd {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1.4;
+  margin-top: var(--space-1);
+}
+
+.detailReason {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  margin-top: var(--space-1);
+}
+
+.detailNote {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  margin-top: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  background: var(--neutral-50);
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.detailBadges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+/* Inline comment body — used when an entry is a comment. Plain neutral-300
+   paragraph under the headline. */
+.commentBody {
+  font-size: var(--font-md);
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: 1.5;
+  margin-top: var(--space-1);
+}

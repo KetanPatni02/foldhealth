@@ -6,6 +6,8 @@ import { Input } from '../../components/Input/Input';
 import { ClinicalNotePanel } from './ClinicalNotePanel';
 import { useAddTaskDrawer } from '../tasks/useAddTaskDrawer';
 import { AddTaskDrawerBody } from '../tasks/AddTaskDrawerBody';
+import { useScheduleDrawer } from '../../components/ScheduleDrawer/useScheduleDrawer';
+import { ScheduleDrawerBookingBody } from '../../components/ScheduleDrawer/ScheduleDrawerBookingForm';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
@@ -35,6 +37,13 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const caregapActivityLoaded = useAppStore(s => s.caregapActivityLoaded);
   const fetchCaregapActivity = useAppStore(s => s.fetchCaregapActivity);
   useEffect(() => { fetchCaregapActivity(); }, [fetchCaregapActivity]);
+  const appointments = useAppStore(s => s.appointments);
+  const fetchAppointments = useAppStore(s => s.fetchAppointments);
+  useEffect(() => { fetchAppointments?.(); }, [fetchAppointments]);
+  // Slice appointments to just this member. Supabase persists patient_id,
+  // so a save from the inline Schedule pane immediately shows up here
+  // after fetchAppointments refreshes.
+  const memberAppointments = (appointments || []).filter(a => a.patient_id === member?.id);
 
   const gaps = member?.gaps ?? [];
   const [currentCode, setCurrentCode] = useState(gapCode);
@@ -68,46 +77,90 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const runMoreAction = (a) => {
     closeMoreMenu();
     if (a.openClinicalNote) setShowClinicalNote(true);
-    else if (a.key === 'task') setShowAddTask(true);
+    else if (a.key === 'task') setLeftWorkspace('task');
+    else if (a.key === 'appointment') setLeftWorkspace('schedule');
     else showToast(`${a.label} — coming soon`);
   };
 
   const [activeTab, setActiveTab] = useState('Activity Log');
   const [showClinicalNote, setShowClinicalNote] = useState(false);
-  const [showAddTask, setShowAddTask] = useState(false);
+  // Single-slot left workspace — only one workspace mounts at a time
+  // ('task' | 'schedule' | null). Sharing the slot means widening the
+  // drawer, mounting the banner inline, and running the collapse
+  // animation all key off the same state instead of two parallel flags.
+  const [leftWorkspace, setLeftWorkspace] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
 
-  // Add Task lives inline inside this drawer as a left workspace — same
-  // shape the HCC ChartDetailDrawer uses (Document Review PDF sits in a
-  // .leftPane alongside the drawer's right content). The hook is always
-  // called (React rules), but its outputs are only wired to UI when
-  // `showAddTask` is true.
+  // Both workspace hooks are called unconditionally (React rules) and
+  // their outputs only wire into the UI when their key is active.
   const addTask = useAddTaskDrawer({
     defaultStatus: undefined,
     initialMember: member?.name || '',
     onTaskCreated: () => showToast('Task created'),
     extraFields: { careGap: currentCode, measurementYear: selectedYear },
   });
+  const scheduleDrawer = useScheduleDrawer({
+    onClose: () => closeLeftWorkspace(),
+    // On successful create, surface a toast, log an activity entry so the
+    // Activity feed reflects the schedule action, and refresh the list
+    // (the hook already calls createAppointment + fetchAppointments, but
+    // this guarantees the local `memberAppointments` slice is up to date
+    // before the pane collapses).
+    onSave: (row) => {
+      showToast('Appointment scheduled');
+      // Match Figma 1230:74055 — Activity entry is a detail card with the
+      // appointment type as title, a "date, time · provider" subtitle, and
+      // the appointment's own status pill (default Scheduled).
+      const subtitleBits = [];
+      if (row?.date) subtitleBits.push(row.date);
+      if (row?.time_start) subtitleBits.push(row.time_end ? `${row.time_start} – ${row.time_end}` : row.time_start);
+      const subtitleLeft = subtitleBits.join(', ');
+      const provider = row?.primary_user || '';
+      logCareGapActivity(member.id, {
+        when: new Date().toISOString(),
+        actor: currentActorName(),
+        t: 'appointment',
+        title: 'Appointment Scheduled',
+        detailCard: {
+          title: row?.appointment_type_name || 'Appointment',
+          subtitle: [subtitleLeft, provider].filter(Boolean).join(' • '),
+          status: row?.status || 'Scheduled',
+        },
+      });
+      fetchAppointments?.();
+    },
+    // Pre-populate the patient using the current gap's member. Passing the
+    // synthesized object (not just an id) skips the patients.find lookup —
+    // HEDIS members don't share ids with the appointments' patients table.
+    initialSelectedPatient: member && {
+      id: member.id,
+      name: member.name,
+      gender: member.gender,
+      age: member.age,
+      dob: member.dob,
+      facility: member.facility,
+      laceScore: member.laceScore,
+    },
+  });
+
   // Two-phase close so the drawer collapses with the same easing it opens
   // with. Phase 1 (250ms) — drawer.width transitions 1260 → 630 while the
   // left pane is still mounted; its flex space shrinks in lock-step so it
   // reads as sliding back into the right pane. Phase 2 — actually unmount.
-  const [addTaskClosing, setAddTaskClosing] = useState(false);
-  // Runs the collapse animation regardless of whether we're closing via the
-  // pane's X button (goes through guardClose) or via the Discard confirm
-  // (guardClose already ran and returned false). Both paths need the same
-  // two-phase unmount so the drawer doesn't snap shut.
-  const runAddTaskClose = () => {
-    setAddTaskClosing(true);
-    setTimeout(() => { setShowAddTask(false); setAddTaskClosing(false); }, 250);
+  const [leftClosing, setLeftClosing] = useState(false);
+  const runLeftClose = () => {
+    setLeftClosing(true);
+    setTimeout(() => { setLeftWorkspace(null); setLeftClosing(false); }, 250);
   };
-  const closeAddTask = () => {
-    if (addTask.guardClose() === false) return;
-    runAddTaskClose();
+  const closeLeftWorkspace = () => {
+    // Task workspace has a "discard unsaved changes?" guard; the scheduler
+    // discards silently for parity with its standalone usage.
+    if (leftWorkspace === 'task' && addTask.guardClose() === false) return;
+    runLeftClose();
   };
-  const inSplit = showAddTask || addTaskClosing;
-  const isExpanded = showAddTask && !addTaskClosing;
+  const inSplit = !!leftWorkspace || leftClosing;
+  const isExpanded = !!leftWorkspace && !leftClosing;
 
   if (!member || gaps.length === 0) return null;
 
@@ -118,7 +171,11 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const status = gap?.status ?? 'Open';
   const statusLocked = status === 'Completed';
   const activityLogEntries = toActivityLogEntries(activityEntries);
-  const tabCounts = { 'Activity Log': activityEntries?.length ?? 0, Outreaches: OUTREACH_LOG_COUNT };
+  const tabCounts = {
+    'Activity Log': activityEntries?.length ?? 0,
+    Outreaches: OUTREACH_LOG_COUNT,
+    'Appt/Reminders': memberAppointments.length,
+  };
 
   const goPrev = () => { if (canPrev) { setCurrentCode(gaps[idx - 1].code); setStatusOpen(false); } };
   const goNext = () => { if (canNext) { setCurrentCode(gaps[idx + 1].code); setStatusOpen(false); } };
@@ -145,7 +202,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           confirmLabel="Discard"
           cancelLabel="Keep editing"
           variant="error"
-          onConfirm={() => { addTask.setShowCloseConfirm(false); runAddTaskClose(); }}
+          onConfirm={() => { addTask.setShowCloseConfirm(false); runLeftClose(); }}
           onCancel={() => addTask.setShowCloseConfirm(false)}
         />
       )}
@@ -180,17 +237,33 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         {inSplit && (
           <div className={styles.leftPane}>
             <div className={styles.paneHeader}>
-              <span className={styles.paneTitle}>Add Task</span>
+              <span className={styles.paneTitle}>
+                {leftWorkspace === 'schedule' ? 'Schedule Appointment' : 'Add Task'}
+              </span>
               <div className={styles.paneHeaderRight}>
-                <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
-                  Save Task
-                </Button>
+                {leftWorkspace === 'schedule' ? (
+                  <Button variant="primary" size="M" disabled={!scheduleDrawer.canSchedule} onClick={scheduleDrawer.handleSchedule}>
+                    Schedule
+                  </Button>
+                ) : (
+                  <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
+                    Save Task
+                  </Button>
+                )}
                 <span className={styles.headerDivider} />
-                <CloseButton size={18} onClick={closeAddTask} label="Close Add Task" />
+                <CloseButton
+                  size={18}
+                  onClick={closeLeftWorkspace}
+                  label={leftWorkspace === 'schedule' ? 'Close Schedule Appointment' : 'Close Add Task'}
+                />
               </div>
             </div>
             <div className={styles.leftPaneBody}>
-              <AddTaskDrawerBody {...addTask} />
+              {leftWorkspace === 'schedule' ? (
+                <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
+              ) : (
+                <AddTaskDrawerBody {...addTask} />
+              )}
             </div>
           </div>
         )}
@@ -207,7 +280,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             moreOpen={moreOpen} setMoreOpen={setMoreOpen} status={status} statusLocked={statusLocked}
             statusOpen={statusOpen} setStatusOpen={setStatusOpen} updateGapStatus={updateGapStatus}
             assigneeBtnRef={assigneeBtnRef} assigneePos={assigneePos} openAssignee={openAssignee} closeAssignee={closeAssignee}
-            showToast={showToast} setShowClinicalNote={setShowClinicalNote} moreBtnRef={moreBtnRef}
+            showToast={showToast} setShowClinicalNote={setShowClinicalNote}
+            onScheduleAppointment={() => setLeftWorkspace('schedule')} moreBtnRef={moreBtnRef}
             moreMenuRect={moreMenuRect} openMoreMenu={openMoreMenu} closeMoreMenu={closeMoreMenu}
             goPrev={goPrev} goNext={goNext} canPrev={canPrev} canNext={canNext}
           />
@@ -255,6 +329,37 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               </div>
             ) : activeTab === 'Outreaches' ? (
               <OutreachTab defaultPrograms={[gap.code]} defaultLogFor="care-program" hideLogForRow />
+            ) : activeTab === 'Appt/Reminders' ? (
+              memberAppointments.length === 0 ? (
+                <div className={styles.emptyTab}>
+                  <Icon name="solar:calendar-linear" size={36} color="var(--neutral-200)" />
+                  <p className={styles.emptyTabTitle}>No appointments scheduled yet.</p>
+                </div>
+              ) : (
+                <div className={styles.apptList}>
+                  {memberAppointments.map(a => {
+                    const meta = [
+                      a.date,
+                      a.time_start && (a.time_end ? `${a.time_start} – ${a.time_end}` : a.time_start),
+                      a.primary_user,
+                    ].filter(Boolean).join(' · ');
+                    return (
+                      <div key={a.id} className={styles.apptCard}>
+                        <Icon name="solar:calendar-linear" size={18} color="var(--primary-300)" />
+                        <div className={styles.apptCardBody}>
+                          <div className={styles.apptCardTitle}>
+                            {a.appointment_type_name || 'Appointment'}
+                          </div>
+                          {meta && <div className={styles.apptCardMeta}>{meta}</div>}
+                        </div>
+                        {a.status && (
+                          <span className={styles.apptCardStatus}>{a.status}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             ) : (
               <div className={styles.emptyTab}>
                 <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-200)" />

@@ -45,6 +45,18 @@ export const CAREGAP_ACTIVITY_MOCK = {
         status: 'Pending',
       },
     },
+    // Appointment — Figma 1230:74055. Leading calendar icon + title over
+    // a "date, time · provider" subtitle, trailing status pill and an
+    // arrow-out button that later opens the appointment drawer.
+    {
+      id: 'a1-4a', when: '2026-04-12T14:45:00', actor: 'Donny Darko', t: 'appointment',
+      title: 'Appointment Scheduled',
+      detailCard: {
+        title: 'EED Follow up Checks',
+        subtitle: '05/03/2026, 9:00 am – 9:30 am • Donny Darko',
+        status: 'Pending',
+      },
+    },
     // Clinical Note — nested detail card (sub-meta, bold title + Gaps
     // chip, submitted-to subtitle, status pill, eye + kebab icons, linked
     // score groups link).
