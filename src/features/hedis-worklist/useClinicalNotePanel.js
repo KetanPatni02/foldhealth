@@ -91,13 +91,17 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
 
   // Keep the RHS pane in sync when the drawer switches gaps (prev/next) or
   // when Amend seeds a Completed gap that was filtered out of activeGaps.
+  // activeGapCode is intentionally excluded — including it creates a
+  // feedback loop that resets the user's selection back to gapCode on
+  // every click.
   useEffect(() => {
     if (amendNote?.gapCodes?.[0] && activeGaps.some(g => g.code === amendNote.gapCodes[0])) {
       setActiveGapCode(amendNote.gapCodes[0]);
-    } else if (gapCode && activeGaps.some(g => g.code === gapCode) && gapCode !== activeGapCode) {
+    } else if (gapCode && activeGaps.some(g => g.code === gapCode)) {
       setActiveGapCode(gapCode);
     }
-  }, [amendNote, gapCode, activeGaps, activeGapCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amendNote, gapCode, activeGaps]);
 
   const updateGap = useCallback((code, patch) => {
     setGapState(prev => ({ ...prev, [code]: { ...prev[code], ...patch } }));
