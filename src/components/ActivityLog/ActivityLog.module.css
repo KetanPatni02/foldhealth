@@ -194,7 +194,7 @@
 /* ── Nested "View Details" card (clinical note / task / appointment) ── */
 .detailCard {
   margin-top: var(--space-2);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   background: var(--neutral-0);
@@ -251,6 +251,33 @@
   gap: 6px;
   flex-shrink: 0;
 }
+/* Fixed-width status + actions slots so the badges and the icon buttons
+   sit under the "Status" and "Actions" column headers in the Clinical
+   Notes tab (Figma 1030:78586). Same slots also keep parent and nested
+   trailing rows column-aligned within a single note card. */
+.detailCardStatusSlot {
+  width: 130px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex-shrink: 0;
+}
+.detailCardActionsSlot {
+  width: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  flex-shrink: 0;
+}
+/* Vertical hairline between the preview/edit action and the more menu,
+   per Figma 1030:78586's Clinical Notes list. */
+.detailCardActionsDivider {
+  width: 1px;
+  height: 14px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
 .detailCardIconBtn {
   width: 24px;
   height: 24px;
@@ -278,12 +305,15 @@
   cursor: pointer;
 }
 /* Nested Request-for-Sign-off task card that sits inside a Pending Review
-   note card — same layout as the main row (handle + text + trailing) but
-   with a subtle top divider so the two rows read as parent/child. */
+   note card. Per Figma 1030:78586 the nested block is its own distinct
+   card — light grey fill, border, rounded corners — sitting inside the
+   parent card so the reviewer / assignee is visible right there. */
 .detailCardNested {
-  margin-top: var(--space-2);
-  padding-top: var(--space-3);
-  border-top: 0.5px solid var(--neutral-150);
+  margin-top: var(--space-3);
+  padding: var(--space-2);
+  background: var(--neutral-25);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);

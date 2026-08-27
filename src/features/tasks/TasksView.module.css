@@ -189,6 +189,24 @@
 .taskRowMissed {
   box-shadow: inset 3px 0 0 0 var(--status-error);
 }
+/* 3-second flash after a click-through from the activity feed lands the
+   user on the tasks page. Uses inset box-shadow for the border so the row
+   layout doesn't shift. */
+.taskRowFlash {
+  background: var(--primary-50);
+  box-shadow: inset 0 0 0 1px var(--primary-300);
+  animation: taskRowFade 3s ease-out;
+}
+.taskTrFlash > td {
+  background: var(--primary-50);
+  box-shadow: inset 0 0 0 1px var(--primary-300);
+  animation: taskRowFade 3s ease-out;
+}
+@keyframes taskRowFade {
+  0%   { background-color: var(--primary-50); }
+  90%  { background-color: var(--primary-50); }
+  100% { background-color: transparent; }
+}
 
 /* Checkbox column */
 .cellCheck {
@@ -1117,6 +1135,65 @@
   font-size: var(--font-base);
   color: var(--neutral-200);
 }
+
+/* "Linked Note" card rendered under the Description in TaskDetailDrawer.
+   Mirrors the Clinical Notes tab card so the reviewer sees the same
+   meta / title / status layout they clicked from. */
+.linkedNoteCard {
+  padding: var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.linkedNoteMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.linkedNoteRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.linkedNoteText { flex: 1; min-width: 0; }
+.linkedNoteTitleRow {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  flex-wrap: wrap;
+}
+.linkedNoteTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: 1.3;
+}
+.linkedNoteSubtitle {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  margin-top: calc(var(--space-1) / 2);
+}
+.linkedNoteTrailing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.linkedNoteView {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--primary-300);
+  cursor: pointer;
+}
+.linkedNoteView:hover { text-decoration: underline; }
 
 .drawerSectionTitle {
   font-size: var(--font-lg);

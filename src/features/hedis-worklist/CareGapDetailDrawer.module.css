@@ -29,7 +29,7 @@
   border-right: 0.5px solid var(--neutral-150);
 }
 .paneHeader {
-  height: 40px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -43,24 +43,59 @@
   font-weight: 500;
   color: var(--neutral-500);
 }
+/* Preview mode — title collapses to 14px medium and a 12px subtitle
+   sits below it so the reader knows who signed and when at a glance. */
+.paneTitleStack {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.paneTitleSm {
+  font-size: var(--font-md);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-500);
+}
+.paneSubtitleSm {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
 .paneHeaderRight {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+}
+/* Read-only preview header affordances (Displayed to Member, print, Amend)
+   — Figma 511:105429. Reused by the clinical-note-preview leftWorkspace. */
+.previewDisplayed {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--status-success);
+  white-space: nowrap;
 }
 .leftPaneBody {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  padding: var(--space-3) var(--space-4);
 }
 /* Clinical-note workspace pins its own info banner + evidence type row
    above an inner scroll region — the outer body must not scroll or those
-   two strips scroll with the form. */
+   two strips scroll with the form. Padding stays at 0 so the pinned
+   strips can bleed edge-to-edge. */
 .leftPaneBodyClinicalNote {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: 0;
 }
 .headerDivider {
   width: 1px; height: 16px; background: var(--neutral-150);
@@ -150,6 +185,12 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+}
+/* Flush variant — the Tasks tab renders the shared TasksTab component,
+   which brings its own section spacing. Dropping the wrapper padding
+   avoids double-inset. */
+.tabContentWrapFlush {
+  padding: 0;
 }
 
 /* Measurement Year scope chip — compact 24px pill with the value inline

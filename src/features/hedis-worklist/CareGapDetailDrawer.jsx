@@ -7,6 +7,9 @@ import { ClinicalNotePanel } from './ClinicalNotePanel';
 import { useClinicalNotePanel } from './useClinicalNotePanel';
 import { ClinicalNoteWorkspaceBody, HeaderActions as ClinicalNoteHeaderActions } from './ClinicalNotePanelParts';
 import { ReviewerPickerPopover } from './ReviewerPickerPopover';
+import { ClinicalNotesTab } from './ClinicalNotesTab';
+import { ClinicalNotePreviewBody } from './ClinicalNotePreviewBody';
+import { TasksTab } from '../patient/left-panel/tabs/tasks/TasksTab/TasksTab';
 import { useAddTaskDrawer } from '../tasks/useAddTaskDrawer';
 import { AddTaskDrawerBody } from '../tasks/AddTaskDrawerBody';
 import { useScheduleDrawer } from '../../components/ScheduleDrawer/useScheduleDrawer';
@@ -27,6 +30,52 @@ import { TABS, MORE_ACTIONS, toActivityLogEntries } from './CareGapDetailDrawer.
 import { CareGapDetailDrawerHeader } from './CareGapDetailDrawerHeader';
 import styles from './CareGapDetailDrawer.module.css';
 
+// Adapt store `tasks` rows to the { pending, overdue, completed } shape
+// TasksTab consumes. Task titles come from `name`, due from due_date,
+// priority passes through, and overdue is a simple date comparison —
+// mirrors the classification used on the P360 tasks tab so the two
+// surfaces stay in sync visually.
+function groupTasksForTab(tasks) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const pending = [];
+  const overdue = [];
+  const completed = [];
+  (tasks || []).forEach((t) => {
+    const shared = {
+      id: t.id,
+      title: t.name || 'Task',
+      priority: t.priority || 'medium',
+      due: t.due_date || '',
+      subtasks: t.subtasks || 0,
+      attachments: t.attachments || 0,
+      comments: t.comments || 0,
+    };
+    if (t.status === 'completed') {
+      completed.push({ ...shared, completedOn: t.completed_at || t.updated_at || '' });
+      return;
+    }
+    const dueDate = t.due_date ? new Date(t.due_date) : null;
+    if (dueDate && !Number.isNaN(dueDate.getTime()) && dueDate < today) {
+      overdue.push(shared);
+    } else {
+      pending.push(shared);
+    }
+  });
+  return { pending, overdue, completed };
+}
+
+// Compact MM/DD/YYYY formatter used by the preview subtitle. Kept local
+// so the drawer file doesn't reach into date-utils modules for a one-off.
+function formatPreviewDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
 export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const showToast = useAppStore(s => s.showToast);
   const updateGapStatus = useAppStore(s => s.updateGapStatus);
@@ -44,6 +93,18 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const appointments = useAppStore(s => s.appointments);
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
   useEffect(() => { fetchAppointments?.(); }, [fetchAppointments]);
+  // Clinical notes + tasks slices used by the Clinical Notes and Tasks tabs.
+  const memberNotes = useAppStore(s => (member?.id ? s.clinicalNotesByMember?.[member.id] : null)) || [];
+  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+  useEffect(() => { if (member?.id) fetchClinicalNotesForMember?.(member.id); }, [member?.id, fetchClinicalNotesForMember]);
+  const allTasks = useAppStore(s => s.tasks);
+  const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
+  // The eye affordance inside the Clinical Notes tab (and Activity Log) can
+  // navigate to the Tasks page for a linked sign-off task. When that
+  // navigation fires (activePage flips to 'tasks'), close this drawer so
+  // the reviewer isn't looking at the Tasks page through our overlay.
+  const activePage = useAppStore(s => s.activePage);
+  useEffect(() => { if (activePage === 'tasks') onClose?.(); }, [activePage, onClose]);
   // Slice appointments to just this member. Supabase persists patient_id,
   // so a save from the inline Schedule pane immediately shows up here
   // after fetchAppointments refreshes.
@@ -101,6 +162,19 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   // drawer, mounting the banner inline, and running the collapse
   // animation all key off the same state instead of two parallel flags.
   const [leftWorkspace, setLeftWorkspace] = useState(null);
+  // Called from the note-card eye affordance. Signed notes open a read-
+  // only summary view (ClinicalNotePreviewBody) matching Figma 511:105429.
+  // Draft / Pending Review notes open the editable workspace so the
+  // author can amend before the reviewer signs. useClinicalNotePanel's
+  // draft-restore effect (upstream 3e0aa74) hydrates the form fields from
+  // the newest saved note for that gap so nothing extra is needed on the
+  // editable path.
+  const openNoteInWorkspace = (dc) => {
+    if (!dc?.gapCode) return;
+    const found = gaps.find(g => g.code === dc.gapCode);
+    if (found) setCurrentCode(found.code);
+    setLeftWorkspace(dc.status === 'Signed' ? 'clinical-note-preview' : 'clinical-note');
+  };
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
 
@@ -115,8 +189,35 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const addTask = useAddTaskDrawer({
     defaultStatus: undefined,
     initialMember: member?.name || '',
-    onTaskCreated: () => showToast('Task created'),
-    extraFields: { careGap: currentCode, measurementYear: selectedYear },
+    onTaskCreated: (task) => {
+      showToast('Task created');
+      // Log an activity entry so the Care Gap Drawer's Activity Log
+      // shows the create action, and close the left workspace so the
+      // Tasks tab (which reads from the store) is immediately visible.
+      logCareGapActivity(member?.id, {
+        title: 'Task Added',
+        detail: task?.name || 'Task',
+        actor: currentActorName(),
+        icon: 'solar:clipboard-list-linear',
+        t: 'task',
+        gapCodes: [currentCode],
+        detailCard: {
+          taskId: task?.id,
+          title: task?.name || 'Task',
+          assignee: task?.assigned_to || null,
+          status: task?.status === 'completed' ? 'Completed' : 'Pending',
+        },
+      });
+      runLeftClose();
+    },
+    // hedisMemberId lets the Tasks tab filter reliably (member.name is
+    // fragile — two members can share a display name). extraFields is
+    // spread into the task payload by useAddTaskDrawer.
+    extraFields: { hedisMemberId: member?.id, careGap: currentCode, measurementYear: selectedYear },
+    // These three fields have no columns in public.tasks — strip them
+    // before the Supabase INSERT so the row is actually persisted (they
+    // stay on the in-memory task object for the drawer's own use).
+    dbOmit: ['hedisMemberId', 'careGap', 'measurementYear'],
   });
   const scheduleDrawer = useScheduleDrawer({
     onClose: () => closeLeftWorkspace(),
@@ -196,10 +297,34 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const status = gap?.status ?? 'Open';
   const statusLocked = status === 'Completed';
   const activityLogEntries = toActivityLogEntries(activityEntries);
+  // Clinical Notes tab reuses the ActivityLog note-variant card by
+  // filtering activity entries to just t:'clinical_note'. That guarantees
+  // the tab and the log render the exact same Draft / Pending Review /
+  // Signed card format.
+  const clinicalNoteEntries = activityLogEntries.filter(e => e.t === 'clinical_note' || e.t === 'group');
+  // Count of actual note entries (excludes month-group headers) — used for
+  // the tab label and empty-state gating.
+  const clinicalNoteCount = clinicalNoteEntries.filter(e => e.t === 'clinical_note').length;
+  // Tasks tab lists every task tied to this HEDIS member — sign-off tasks
+  // (created by createCareGapSignOffTask) always have hedisMemberId set;
+  // manually created tasks land here via the `member` denormalized field.
+  const memberTasks = (allTasks || []).filter(
+    t => (t.hedisMemberId && t.hedisMemberId === member?.id)
+      || (member?.name && t.member === member.name),
+  );
+  const openTaskDetail = (task) => {
+    // Reuses the same task-drawer opener the notifications trigger uses:
+    // sets the Tasks page as active and stamps pendingOpenTaskId so
+    // TasksView mounts the TaskDetailDrawer for that task on next paint.
+    openTaskFromNotification?.(task.id);
+    onClose?.();
+  };
   const tabCounts = {
     'Activity Log': activityEntries?.length ?? 0,
     Outreaches: OUTREACH_LOG_COUNT,
     'Appt/Reminders': memberAppointments.length,
+    'Clinical Notes': clinicalNoteCount,
+    Tasks: memberTasks.length,
   };
 
   const goPrev = () => { if (canPrev) { setCurrentCode(gaps[idx - 1].code); setStatusOpen(false); } };
@@ -267,13 +392,47 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         {inSplit && (
           <div className={styles.leftPane}>
             <div className={styles.paneHeader}>
-              <span className={styles.paneTitle}>
-                {leftWorkspace === 'schedule'
-                  ? 'Schedule Appointment'
-                  : leftWorkspace === 'clinical-note'
-                    ? 'Clinical Note'
-                    : 'Add Task'}
-              </span>
+              {(() => {
+                if (leftWorkspace === 'schedule') {
+                  return <span className={styles.paneTitle}>Schedule Appointment</span>;
+                }
+                if (leftWorkspace === 'task') {
+                  return <span className={styles.paneTitle}>Add Task</span>;
+                }
+                const isPreview = leftWorkspace === 'clinical-note-preview';
+                const previewNote = isPreview
+                  ? memberNotes.find(n => (n.gapCodes || []).includes(currentCode))
+                  : null;
+                const codes = previewNote?.gapCodes?.length
+                  ? previewNote.gapCodes
+                  : [currentCode];
+                const noteTitle = codes.length > 1
+                  ? 'Consolidated Clinical Note'
+                  : `${codes[0]} Visit Note`;
+                // Preview mode shows title + "Signed by / Submitted for
+                // Review to" subtitle stacked. Editable mode keeps a
+                // single-line title.
+                if (!isPreview) return <span className={styles.paneTitle}>{noteTitle}</span>;
+                let subtitle = null;
+                if (previewNote?.status === 'signed') {
+                  const signer = previewNote.signedByName || previewNote.reviewerName || previewNote.authorName || 'Provider';
+                  const when = previewNote.signedAt ? ` · ${formatPreviewDate(previewNote.signedAt)}` : '';
+                  subtitle = `Signed by ${signer}${when}`;
+                } else if (previewNote?.status === 'submitted') {
+                  subtitle = `Submitted for Review to ${previewNote.reviewerName || '—'}`;
+                }
+                return (
+                  <div className={styles.paneTitleStack}>
+                    <span className={styles.paneTitleSm}>{noteTitle}</span>
+                    {subtitle && (
+                      <span className={styles.paneSubtitleSm}>
+                        <Icon name="solar:pen-new-square-linear" size={11} color="var(--primary-300)" />
+                        {subtitle}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
               <div className={styles.paneHeaderRight}>
                 {leftWorkspace === 'schedule' ? (
                   <Button variant="primary" size="M" disabled={!scheduleDrawer.canSchedule} onClick={scheduleDrawer.handleSchedule}>
@@ -286,6 +445,31 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                     onSaveAndSign={clinicalNote.handleSaveAndSign}
                     onSignAndPrint={clinicalNote.handleSignAndPrint}
                   />
+                ) : leftWorkspace === 'clinical-note-preview' ? (
+                  // Signed-preview affordances: Displayed-to-Member note,
+                  // print + Amend. Amend flips the workspace to editable
+                  // so the author can revise a signed note (audit path).
+                  <>
+                    <span className={styles.previewDisplayed}>
+                      <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
+                      Displayed to Member
+                    </span>
+                    <span className={styles.headerDivider} />
+                    <ActionButton
+                      icon="solar:printer-linear"
+                      size="L"
+                      tooltip="Print"
+                      onClick={() => showToast('Print — coming soon')}
+                    />
+                    <Button
+                      variant="tertiary"
+                      size="M"
+                      leadingIcon="solar:lock-keyhole-minimalistic-linear"
+                      onClick={() => setLeftWorkspace('clinical-note')}
+                    >
+                      Amend
+                    </Button>
+                  </>
                 ) : (
                   <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
                     Save Task
@@ -298,7 +482,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   label={
                     leftWorkspace === 'schedule'
                       ? 'Close Schedule Appointment'
-                      : leftWorkspace === 'clinical-note'
+                      : leftWorkspace === 'clinical-note' || leftWorkspace === 'clinical-note-preview'
                         ? 'Close Clinical Note'
                         : 'Close Add Task'
                   }
@@ -310,6 +494,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
               ) : leftWorkspace === 'clinical-note' ? (
                 <ClinicalNoteWorkspaceBody v={clinicalNote} />
+              ) : leftWorkspace === 'clinical-note-preview' ? (
+                <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} />
               ) : (
                 <AddTaskDrawerBody {...addTask} />
               )}
@@ -355,7 +541,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             size="S"
           />
 
-          <div className={styles.tabContentWrap}>
+          <div className={`${styles.tabContentWrap} ${activeTab === 'Tasks' ? styles.tabContentWrapFlush : ''}`}>
             {activeTab === 'Activity Log' ? (
               <div className={styles.activityLog}>
                 <div className={styles.commentInput}>
@@ -374,11 +560,26 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   )}
                 </div>
                 {caregapActivityLoaded
-                  ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." onOpenTask={openTaskFromActivity} />
+                  ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." onOpenTask={openTaskFromActivity} onOpenNote={openNoteInWorkspace} />
                   : <CardSkeleton />}
               </div>
             ) : activeTab === 'Outreaches' ? (
               <OutreachTab defaultPrograms={[gap.code]} defaultLogFor="care-program" hideLogForRow />
+            ) : activeTab === 'Clinical Notes' ? (
+              // Flat column-headed list per Figma 1030:78586 — no timeline
+              // rail, no month grouping. Card affordances are shared with
+              // the Activity Log via ClinicalNoteCardActions.
+              <ClinicalNotesTab entries={clinicalNoteEntries} onOpenNote={openNoteInWorkspace} onOpenTask={openTaskFromActivity} />
+            ) : activeTab === 'Tasks' ? (
+              // Same layout as the P360 patient profile's Tasks tab —
+              // Pending / Overdue / Completed sections, checkbox rows,
+              // priority + due columns, so a task looks identical in
+              // both the drawer here and the P360 view.
+              <TasksTab
+                hideToolbar
+                data={groupTasksForTab(memberTasks)}
+                onTaskClick={openTaskDetail}
+              />
             ) : activeTab === 'Appt/Reminders' ? (
               memberAppointments.length === 0 ? (
                 <div className={styles.emptyTab}>

@@ -85,36 +85,38 @@ export function AddTaskDrawerBody({
             </span>
           </DetailDropdown>
         </div>
-        {!pool && (
-          <div className={styles.detailRow}>
-            <span className={styles.detailLabel}>Assigned To</span>
-            <DetailDropdown
-              value={assignedTo}
-              options={assigneeOptions}
-              onSelect={setAssignedTo}
-              renderOption={opt => {
-                const label = typeof opt === 'string' ? opt : opt.label;
-                const val = typeof opt === 'string' ? opt : opt.value;
-                const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-                return (
-                  <>
-                    <Avatar variant="assignee" initials={initials} size="S" />
-                    <span>{label}</span>
-                  </>
-                );
-              }}
-            >
-              {assignedTo ? (
+        {/* Assigned To — kept visible whether a pool is picked or not.
+            When a pool is chosen, useAddTaskDrawer.handleSave nulls the
+            direct-assignee at save time; showing the field lets the user
+            see (and change) their intent explicitly. */}
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>Assigned To</span>
+          <DetailDropdown
+            value={assignedTo}
+            options={assigneeOptions}
+            onSelect={setAssignedTo}
+            renderOption={opt => {
+              const label = typeof opt === 'string' ? opt : opt.label;
+              const val = typeof opt === 'string' ? opt : opt.value;
+              const initials = (val || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              return (
                 <>
-                  <Avatar variant="assignee" initials={(assignedTo || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} size="S" />
-                  <span>{currentUserProfile?.name === assignedTo ? `${assignedTo} (You)` : assignedTo}</span>
+                  <Avatar variant="assignee" initials={initials} size="S" />
+                  <span>{label}</span>
                 </>
-              ) : (
-                <span style={{ color: 'var(--neutral-200)' }}>Select assignee</span>
-              )}
-            </DetailDropdown>
-          </div>
-        )}
+              );
+            }}
+          >
+            {assignedTo ? (
+              <>
+                <Avatar variant="assignee" initials={(assignedTo || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()} size="S" />
+                <span>{currentUserProfile?.name === assignedTo ? `${assignedTo} (You)` : assignedTo}</span>
+              </>
+            ) : (
+              <span style={{ color: 'var(--neutral-200)' }}>Select assignee</span>
+            )}
+          </DetailDropdown>
+        </div>
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>Due Date</span>
           <TaskDatePicker value={dueDate} onSelect={setDueDate} />

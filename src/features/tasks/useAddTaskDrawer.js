@@ -4,7 +4,7 @@ import {
   STATUS_ORDER, STATUS_LABELS, PRIORITY_OPTIONS, ASSIGNEE_OPTIONS, MEMBER_OPTIONS, TITLE_MAX, todayMMDDYYYY,
 } from './TasksView.utils';
 
-export function useAddTaskDrawer({ defaultStatus, initialMember, onTaskCreated, extraFields }) {
+export function useAddTaskDrawer({ defaultStatus, initialMember, onTaskCreated, extraFields, dbOmit }) {
   const initialStatus = defaultStatus || 'pending';
   const [name, setName] = useState('');
   const [priority, setPriority] = useState('medium');
@@ -111,7 +111,7 @@ export function useAddTaskDrawer({ defaultStatus, initialMember, onTaskCreated, 
       created_by_id: meId,
       ...extraFields,
     };
-    const result = await createTask(task);
+    const result = await createTask(task, dbOmit?.length ? { dbOmit } : {});
     if (result) {
       await Promise.all(stagedSubtasks.map(subName => createTask({
         name: subName.slice(0, TITLE_MAX),
@@ -134,7 +134,7 @@ export function useAddTaskDrawer({ defaultStatus, initialMember, onTaskCreated, 
         created_by: me,
         created_by_id: meId,
         ...extraFields,
-      })));
+      }, dbOmit?.length ? { dbOmit } : {})));
       showToast('Task created');
       onTaskCreated?.(result);
     }

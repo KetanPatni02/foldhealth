@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { sanitizeRichText } from '../../lib/sanitizeHtml';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
@@ -6,6 +7,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { Toggle } from '../../components/Toggle/Toggle';
+import { useAppStore } from '../../store/useAppStore';
 import { Select } from '../../components/Select/Select';
 import { LABEL_OPTIONS, TITLE_MAX, getInitials, isOverdue, STATUS_LABELS, STATUS_BADGE_VARIANTS, PRIORITY_OPTIONS } from './TasksView.utils';
 import { PriorityIcon } from './TasksViewIcons';
@@ -17,6 +19,28 @@ export function TaskDetailDrawerDetails({
   taskPools, memberOptionsForDrawer, memberInitials, setPdfPreview, hedisMember,
   setEditingNote, completeCareGapSignOffTask, onClose, editingDesc, setEditingDesc, descDraft, setDescDraft,
 }) {
+  // The sign-off task is linked to a clinical_notes row via review_task_id.
+  // Surface it right below the description so the reviewer can jump into
+  // the note preview without needing to navigate back to the care gap.
+  // Ensure the slice is populated for this member on drawer open — the
+  // tasks page path never touched CareGapDetailDrawer, so the slice
+  // starts empty here even when the note exists on the server.
+  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+  useEffect(() => {
+    if (task?.hedisMemberId) fetchClinicalNotesForMember?.(task.hedisMemberId);
+  }, [task?.hedisMemberId, fetchClinicalNotesForMember]);
+  const linkedNote = useAppStore(s => {
+    if (!task?.hedisMemberId) return null;
+    const list = s.clinicalNotesByMember?.[task.hedisMemberId] || [];
+    // Prefer the exact review_task_id link; fall back to the freshest note
+    // that covers any of the task's HEDIS gaps so older notes (submitted
+    // before the linkClinicalNoteToReviewTask fix) still surface here.
+    const byLink = list.find(n => String(n.reviewTaskId) === String(task.id));
+    if (byLink) return byLink;
+    const gaps = task.hedisGapCodes || [];
+    if (!gaps.length) return null;
+    return list.find(n => (n.gapCodes || []).some(c => gaps.includes(c))) || null;
+  });
   return (
     <>
         {/* Detail rows */}
@@ -221,6 +245,78 @@ export function TaskDetailDrawerDetails({
             />
           )}
         </div>
+
+        {linkedNote && (
+          <div className={styles.drawerSection}>
+            <span className={styles.drawerSectionLabel}>Linked Note</span>
+            <LinkedNoteCard
+              note={linkedNote}
+              task={task}
+              setEditingNote={setEditingNote}
+            />
+          </div>
+        )}
     </>
   );
+}
+
+/* Card rendered under the "Linked Note" section — mirrors the Clinical
+   Notes tab card so the reviewer sees the same meta / title / status
+   layout they clicked from. The "View ↗" affordance opens the same
+   ClinicalNotePanel edit path the "Edit clinical note" CTA uses so the
+   reviewer can amend before signing. */
+function LinkedNoteCard({ note, task, setEditingNote }) {
+  const codes = note.gapCodes?.length ? note.gapCodes : (task.hedisGapCodes || []);
+  const title = codes.length > 1 ? 'Consolidated Clinical Note' : `${codes[0] || task.hedisGapCodes?.[0] || 'Clinical'} Visit Note`;
+  const status = note.status === 'signed' ? 'Signed'
+    : note.status === 'submitted' ? 'Pending Review'
+    : 'Draft';
+  const statusTone = status === 'Signed' ? 'success' : status === 'Draft' ? 'grey' : 'warning';
+  const authorLine = note.status === 'signed'
+    ? `Signed by ${note.signedByName || note.reviewerName || 'Provider'}${note.signedAt ? ` · ${fmtDate(note.signedAt)}` : ''}`
+    : note.status === 'submitted'
+      ? `Submitted for Review to ${note.reviewerName || '—'}`
+      : `Save as Draft by ${note.authorName || 'You'}`;
+  const metaWhen = note.updatedAt || note.createdAt;
+  return (
+    <div className={styles.linkedNoteCard}>
+      <div className={styles.linkedNoteMeta}>
+        {metaWhen ? `${fmtDate(metaWhen)}, ${fmtTime(metaWhen)}` : ''}
+        {note.authorName ? ` • ${note.authorName}` : ''}
+      </div>
+      <div className={styles.linkedNoteRow}>
+        <div className={styles.linkedNoteText}>
+          <div className={styles.linkedNoteTitleRow}>
+            <span className={styles.linkedNoteTitle}>{title}</span>
+            {codes.length > 1 && <Badge tone="grey" size="S" label={`${codes.length} Gaps`} />}
+          </div>
+          <div className={styles.linkedNoteSubtitle}>{authorLine}</div>
+        </div>
+        <div className={styles.linkedNoteTrailing}>
+          <Badge tone={statusTone} size="M" label={status} />
+          <button
+            type="button"
+            className={styles.linkedNoteView}
+            onClick={() => setEditingNote?.(true)}
+          >
+            View
+            <Icon name="solar:arrow-right-up-linear" size={12} color="var(--primary-300)" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+}
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
