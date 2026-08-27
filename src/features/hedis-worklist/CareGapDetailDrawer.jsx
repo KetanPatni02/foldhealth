@@ -160,11 +160,26 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   // draft-restore effect (upstream 3e0aa74) hydrates the form fields from
   // the newest saved note for that gap so nothing extra is needed on the
   // editable path.
+  const [previewNoteId, setPreviewNoteId] = useState(null);
+  const [amendNoteId, setAmendNoteId] = useState(null);
   const openNoteInWorkspace = (dc) => {
-    if (!dc?.gapCode) return;
-    const found = gaps.find(g => g.code === dc.gapCode);
-    if (found) setCurrentCode(found.code);
-    setLeftWorkspace(dc.status === 'Signed' ? 'clinical-note-preview' : 'clinical-note');
+    if (!dc?.gapCode && !dc?.noteId) return;
+    if (dc.gapCode) {
+      const found = gaps.find(g => g.code === dc.gapCode);
+      if (found) setCurrentCode(found.code);
+    }
+    if (dc.noteId) setPreviewNoteId(dc.noteId);
+    else setPreviewNoteId(null);
+    // Draft → direct edit; Pending Review / Signed → read-only preview
+    // (Amend inside preview re-opens the editable workspace with that note's
+    // payload, and the version trigger preserves the prior state in DB).
+    if (dc.status === 'Draft') {
+      setAmendNoteId(dc.noteId || null);
+      setLeftWorkspace('clinical-note');
+    } else {
+      setAmendNoteId(null);
+      setLeftWorkspace('clinical-note-preview');
+    }
   };
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
@@ -255,10 +270,13 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   });
   // Inline single-gap Clinical Note hook — always mounted (React rules) but
   // only wired into the UI when leftWorkspace === 'clinical-note'.
+  // When Amend is clicked from a preview, amendNoteId seeds the form from
+  // that note's persisted payload (not just the latest draft).
   const clinicalNote = useClinicalNotePanel({
     member,
     gapCode: currentCode,
-    onClose: () => runLeftClose(),
+    onClose: () => { setAmendNoteId(null); runLeftClose(); },
+    amendNoteId,
   });
 
   // Two-phase close so the drawer collapses with the same easing it opens
@@ -268,12 +286,13 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const [leftClosing, setLeftClosing] = useState(false);
   const runLeftClose = () => {
     setLeftClosing(true);
-    setTimeout(() => { setLeftWorkspace(null); setLeftClosing(false); }, 250);
+    setTimeout(() => { setLeftWorkspace(null); setLeftClosing(false); setPreviewNoteId(null); setAmendNoteId(null); }, 250);
   };
   const closeLeftWorkspace = () => {
     // Task workspace has a "discard unsaved changes?" guard; the scheduler
     // discards silently for parity with its standalone usage.
     if (leftWorkspace === 'task' && addTask.guardClose() === false) return;
+    if (leftWorkspace === 'clinical-note' && amendNoteId) setAmendNoteId(null);
     runLeftClose();
   };
   const inSplit = !!leftWorkspace || leftClosing;
@@ -392,7 +411,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 }
                 const isPreview = leftWorkspace === 'clinical-note-preview';
                 const previewNote = isPreview
-                  ? memberNotes.find(n => (n.gapCodes || []).includes(currentCode))
+                  ? (previewNoteId ? memberNotes.find(n => n.id === previewNoteId) : null)
+                    || memberNotes.find(n => (n.gapCodes || []).includes(currentCode))
                   : null;
                 const codes = previewNote?.gapCodes?.length
                   ? previewNote.gapCodes
@@ -401,7 +421,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   ? 'Consolidated Clinical Note'
                   : `${codes[0]} Visit Note`;
                 // Preview mode shows title + "Signed by / Submitted for
-                // Review to" subtitle stacked. Editable mode keeps a
+                // Review to / Draft" subtitle stacked. Editable mode keeps a
                 // single-line title.
                 if (!isPreview) return <span className={styles.paneTitle}>{noteTitle}</span>;
                 let subtitle = null;
@@ -411,6 +431,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   subtitle = `Signed by ${signer}${when}`;
                 } else if (previewNote?.status === 'submitted') {
                   subtitle = `Submitted for Review to ${previewNote.reviewerName || '—'}`;
+                } else if (previewNote?.status === 'draft') {
+                  subtitle = `Draft · ${previewNote.authorName || 'You'} · ${formatPreviewDate(previewNote.updatedAt || previewNote.createdAt)}`;
                 }
                 return (
                   <div className={styles.paneTitleStack}>
@@ -437,9 +459,11 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                     onSignAndPrint={clinicalNote.handleSignAndPrint}
                   />
                 ) : leftWorkspace === 'clinical-note-preview' ? (
-                  // Signed-preview affordances: Displayed-to-Member note,
-                  // print + Amend. Amend flips the workspace to editable
-                  // so the author can revise a signed note (audit path).
+                  // Preview for Draft / Pending Review / Signed: shows
+                  // Displayed-to-Member, print, PDF, and Amend. Amend seeds
+                  // the editable workspace from this note's persisted payload
+                  // so the next save creates a versioned audit entry via the
+                  // DB trigger (no local-only history).
                   <>
                     <span className={styles.previewDisplayed}>
                       <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
@@ -450,14 +474,23 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                       icon="solar:printer-linear"
                       size="L"
                       tooltip="Print"
-                      onClick={() => showToast('Print — coming soon')}
+                      onClick={() => {
+                        const url = memberNotes.find(n => n.id === previewNoteId)?.pdfDataUrl || memberNotes.find(n => (n.gapCodes || []).includes(currentCode))?.pdfDataUrl;
+                        if (url) { const w = window.open(url, '_blank'); try { w?.focus(); } catch {} }
+                        else showToast('No PDF for this version');
+                      }}
                     />
                     <Button
                       variant="tertiary"
                       size="M"
                       leadingIcon="solar:lock-keyhole-minimalistic-linear"
-                      onClick={() => setLeftWorkspace('clinical-note')}
+                      onClick={() => {
+                        const note = previewNoteId ? memberNotes.find(n => n.id === previewNoteId) : memberNotes.find(n => (n.gapCodes || []).includes(currentCode));
+                        if (note?.id) setAmendNoteId(note.id);
+                        setLeftWorkspace('clinical-note');
+                      }}
                     >
+
                       Amend
                     </Button>
                   </>
@@ -485,8 +518,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
               ) : leftWorkspace === 'clinical-note' ? (
                 <ClinicalNoteWorkspaceBody v={clinicalNote} />
-              ) : leftWorkspace === 'clinical-note-preview' ? (
-                <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} />
+              )               : leftWorkspace === 'clinical-note-preview' ? (
+                <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} noteId={previewNoteId} />
               ) : (
                 <AddTaskDrawerBody {...addTask} />
               )}

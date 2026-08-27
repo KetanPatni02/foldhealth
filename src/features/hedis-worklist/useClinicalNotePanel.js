@@ -12,7 +12,7 @@ const FORM_TYPE_LABEL = {
   cbp_visit_note: 'CBP Visit Note',
 };
 
-export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId = null }) {
+export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId = null, amendNoteId = null }) {
   const showToast = useAppStore(s => s.showToast);
   const bulkUpdateGapStatuses = useAppStore(s => s.bulkUpdateGapStatuses);
   const logCareGapActivity = useAppStore(s => s.logCareGapActivity);
@@ -79,7 +79,10 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
   // of spawning a fresh draft every click. For the reviewer path
   // (editingTaskId set) we seed this from the note already linked to the
   // task so the reviewer's Save-as-Draft edits the existing row instead of
-  // creating a parallel draft.
+  // creating a parallel draft. amendNoteId covers the Amend-from-preview
+  // path — same row is edited, and the DB trigger snapshots the prior
+  // version into clinical_note_versions so history never lives only in local
+  // state.
   const notesForMember = useAppStore(s => s.clinicalNotesByMember?.[member.id]) || [];
   const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
 
@@ -88,6 +91,14 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
   // form from the newest DRAFT note — without this, drafts "didn't persist":
   // they saved fine but the panel reset to blanks on reopen.
   const [noteIdByCode, setNoteIdByCode] = useState(() => {
+    if (amendNoteId) {
+      const amended = notesForMember.find(n => n.id === amendNoteId);
+      if (amended) {
+        const seed = {};
+        (amended.gapCodes || []).forEach(c => { seed[c] = amended.id; });
+        return seed;
+      }
+    }
     if (!editingTaskId) return {};
     const linked = notesForMember.find(n => n.reviewTaskId === editingTaskId);
     if (!linked) return {};
@@ -105,6 +116,29 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       const idSeed = {};
       notes.forEach(n => (n.gapCodes || []).forEach(c => { idSeed[c] = n.id; }));
       setNoteIdByCode(prev => ({ ...idSeed, ...prev }));
+      // Amend path takes precedence — hydrate from the note being amended
+      // so the form shows the prior signed/submitted state, not just the
+      // latest draft. The DB trigger will snapshot the old row on next save.
+      if (amendNoteId) {
+        const amended = notes.find(n => n.id === amendNoteId);
+        if (amended?.payload) {
+          if (amended.payload.dateOfService) setDateOfService(amended.payload.dateOfService);
+          if (amended.payload.gaps) {
+            setGapState(prev => {
+              const next = { ...prev };
+              for (const [code, data] of Object.entries(amended.payload.gaps)) {
+                if (next[code] !== undefined) next[code] = { ...next[code], ...data };
+                else next[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+              }
+              return next;
+            });
+          }
+          if (amended.payload.audioOnly !== undefined) setAudioOnly(!!amended.payload.audioOnly);
+          if (amended.payload.audioVideo !== undefined) setAudioVideo(!!amended.payload.audioVideo);
+          setRestored(true);
+          return;
+        }
+      }
       const draft = notes.find(n => n.status === 'draft');
       if (draft?.payload) {
         if (draft.payload.dateOfService) setDateOfService(draft.payload.dateOfService);
@@ -123,7 +157,33 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     return () => { cancelled = true; };
     // Run once per member open — the panel remounts per member.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member.id]);
+  }, [member.id, amendNoteId]);
+
+  // When Amend is clicked after the initial fetch, notes are already cached
+  // but gapState was initialized from the draft. Rehydrate from the amended
+  // note's payload so the form immediately reflects the Signed/Pending state
+  // being amended (DB trigger preserves the prior version on save).
+  useEffect(() => {
+    if (!amendNoteId) return;
+    const note = notesForMember.find(n => n.id === amendNoteId) || null;
+    if (!note?.payload) return;
+    if (note.payload.dateOfService) setDateOfService(note.payload.dateOfService);
+    if (note.payload.gaps) {
+      setGapState(prev => {
+        const next = { ...prev };
+        for (const [code, data] of Object.entries(note.payload.gaps)) {
+          if (next[code] !== undefined) next[code] = { ...next[code], ...data };
+          else next[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+        }
+        return next;
+      });
+    }
+    if (note.payload.audioOnly !== undefined) setAudioOnly(!!note.payload.audioOnly);
+    if (note.payload.audioVideo !== undefined) setAudioVideo(!!note.payload.audioVideo);
+    const seed = {};
+    (note.gapCodes || []).forEach(c => { seed[c] = note.id; });
+    setNoteIdByCode(prev => ({ ...prev, ...seed }));
+  }, [amendNoteId, notesForMember]);
   // Submit-for-Review is a two-step flow: open the reviewer picker, then
   // finalize on selection. The picker UI itself lives with the Clinical
   // Note workspace (see plan §6, pending Figma).
