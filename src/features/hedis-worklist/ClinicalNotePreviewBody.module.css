@@ -1,0 +1,86 @@
+/* Read-only signed-note preview — matches Figma 511:105429's section
+   summary layout with a signer/subtitle header pinned above scrollable
+   key/value rows. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+  gap: var(--space-4);
+}
+
+.headerSubtitleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.headerSubtitle {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sectionTitle {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+  margin: 0;
+  padding-bottom: var(--space-1);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.sectionBody {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-1) var(--space-3);
+}
+
+.row {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+}
+.rowWide {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  grid-column: 1 / -1;
+}
+.rowLabel {
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.rowSep {
+  color: var(--neutral-300);
+}
+.rowValue {
+  color: var(--neutral-500);
+  min-width: 0;
+  word-break: break-word;
+}
+
+.emptyBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--neutral-300);
+}
+.emptyTitle {
+  margin: 0;
+  font-size: var(--font-base);
+}

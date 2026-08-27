@@ -1,0 +1,66 @@
+/* Flat Clinical Notes list — mirrors Figma 1030:78586. Column-header row
+   on top, cards below. No timeline rail (that lives on the Activity Log). */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Header row mirrors the card body's trailing column widths so the
+   labels sit directly above the status pill and action icons. Left
+   padding matches the card's own inner padding (6px) so "Note Title"
+   also aligns with the meta / title text below. */
+.header {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  padding: 0 calc(var(--space-1) + calc(var(--space-1) / 2));
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.headerNote { flex: 1; }
+.headerStatus {
+  width: 130px;
+  flex-shrink: 0;
+}
+.headerActions {
+  width: 60px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Meta line sits INSIDE the card (top row) per Figma 1030:78586. Inherits
+   the card's horizontal padding via the ActivityLog module. */
+.meta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  margin-bottom: calc(var(--space-1) / 2);
+}
+
+/* Reset the ActivityLog's detailCard margin-top since we control spacing
+   here via .list gap. Padding is inherited from .detailCard now — the
+   shared 8px on all sides per Figma 1030:78586 applies to both surfaces. */
+.cardHost {
+  margin-top: 0;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4);
+  color: var(--neutral-300);
+}
+.emptyTitle {
+  font-size: var(--font-base);
+  margin: 0;
+}

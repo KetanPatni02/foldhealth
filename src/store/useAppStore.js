@@ -43,6 +43,10 @@ import { CAREGAP_ACTIVITY_MOCK } from '../features/hedis-worklist/data/caregapAc
 //   3. a single user-visible toast surfaces (debounced 3s so a burst of
 //      failures doesn't stack toasts).
 let _lastPersistToastAt = 0;
+// Timer handle for the 3-second row-flash on the tasks page. Module-level
+// so a second flashTaskRow call clears the previous timer before starting
+// a new one.
+let _flashTaskTimer = null;
 function reportPersistFailure(op, error) {
   const msg = (error && error.message) || 'unknown error';
   console.warn(`${op} failed:`, msg);
@@ -1324,6 +1328,20 @@ export const useAppStore = create((set, get) => ({
     } catch { /* */ }
   },
   clearPendingOpenTaskId: () => set({ pendingOpenTaskId: null }),
+
+  // "Reopen this clinical note for editing" signal — set from the
+  // ActivityLog note-variant card's pencil affordance. The HEDIS worklist
+  // consumes it to open CareGapDetailDrawer at the requested gap and
+  // route the note back through the ClinicalNotePanel edit path.
+  pendingOpenClinicalNote: null,
+  openClinicalNoteDrawer: ({ memberId, gapCode } = {}) => {
+    if (!memberId || !gapCode) return;
+    set({ activePage: 'population', pendingOpenClinicalNote: { memberId, gapCode } });
+    try {
+      if (typeof window !== 'undefined') window.location.hash = `#/hedis?member=${encodeURIComponent(memberId)}&gap=${encodeURIComponent(gapCode)}`;
+    } catch { /* */ }
+  },
+  clearPendingOpenClinicalNote: () => set({ pendingOpenClinicalNote: null }),
 
   // One-shot signal for "open Preferences on the profile fields". The
   // `profile.name_incomplete` notification needs to land the user on the form
@@ -3294,6 +3312,19 @@ export const useAppStore = create((set, get) => ({
     if (!taskId) return;
     set({ pendingOpenTaskId: taskId });
     get().setActivePage('tasks');
+    // Also flash the task row on the list for 3s so the user sees where
+    // the drawer came from (primary-50 background + primary-300 border).
+    get().flashTaskRow?.(taskId);
+  },
+  // Row-highlight signal used by TaskRow / TaskTableRow — set for 3s
+  // after a click-through from the activity feed lands the user on the
+  // tasks page. Cleared via a timer so no external cleanup is needed.
+  flashTaskId: null,
+  flashTaskRow: (taskId) => {
+    if (!taskId) return;
+    if (_flashTaskTimer) { clearTimeout(_flashTaskTimer); _flashTaskTimer = null; }
+    set({ flashTaskId: taskId });
+    _flashTaskTimer = setTimeout(() => { _flashTaskTimer = null; set({ flashTaskId: null }); }, 3000);
   },
 
   // ── Population Groups: persistent create-group CSV processing session ──
@@ -5090,7 +5121,7 @@ export const useAppStore = create((set, get) => ({
   // Push a real consolidated sign-off task into the existing `tasks` slice so
   // TasksView surfaces it (one task per patient per Submit-for-Review batch).
   // Gap codes ride in `task.labels` to satisfy the Gaps-column filter (AC-8).
-  createCareGapSignOffTask: async ({ hedisMemberId, gapCodes, state, pdf, reviewerId, reviewerName } = {}) => {
+  createCareGapSignOffTask: async ({ hedisMemberId, gapCodes, state, pdf, reviewerId, reviewerName, taskName } = {}) => {
     track('hedis.signoff_task_created', { memberId: hedisMemberId, hasReviewer: !!reviewerId });
     const member = get().hedisMembers.find(m => m.id === hedisMemberId);
     if (!member || !gapCodes || gapCodes.length === 0) return null;
@@ -5103,9 +5134,18 @@ export const useAppStore = create((set, get) => ({
     // the notifications table (recipient_id = assigned_to_id). Without a
     // reviewer, the task lands in the HEDIS Sign-Off pool for anyone to
     // claim, matching the pre-review-picker behavior.
+    //
+    // `taskName` is supplied by useClinicalNotePanel so the Tasks table
+    // row and the nested review-task card on the activity feed both read
+    // "Request for Sign-off - <formLabel>" (single-gap notes drop the
+    // "Consolidated" prefix). Falls back to the historical string when
+    // the caller hasn't computed one.
+    const description = gapCodes.length > 1
+      ? `Sign off on consolidated note for ${member.name} covering ${gapCodes.length} care gaps.`
+      : `Sign off on ${gapCodes[0]} note for ${member.name}.`;
     const payload = {
-      name: 'Care Gap Review: Clinical Note',
-      description: `Sign off on consolidated note for ${member.name} covering ${gapCodes.length} care gap${gapCodes.length === 1 ? '' : 's'}.`,
+      name: taskName || 'Request for Sign-off - Clinical Note',
+      description,
       status: 'pending',
       priority: 'medium',
       member: member.name,

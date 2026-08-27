@@ -160,7 +160,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
   //     shown on submitted / signed notes only.
   //   • reviewTask nests a Request-for-Sign-off task card inside a
   //     Pending Review card so the reviewer is visible right there.
-  const buildDetailCard = ({ codes, status, reviewer, signedDate, reviewTask } = {}) => {
+  const buildDetailCard = ({ codes, status, reviewer, signedDate, reviewTask, noteId, pdfDataUrl } = {}) => {
     const gapList = codes || [];
     const multi = gapList.length > 1;
     const singleCode = gapList[0];
@@ -179,12 +179,17 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
         : `Signed by ${reviewer || 'Provider'}`;
     }
     return {
+      noteId,
+      pdfDataUrl,
+      memberId: member?.id,
+      gapCode: singleCode,
       title,
       chip,
       status,
-      subMeta: `${FORM_TYPE_LABEL.cbp_visit_note}${multi ? '' : ''}`,
+      // subMeta ("CBP Visit Note" pre-title) and linkedGroups ("Linked
+      // Score Groups >") were removed from the note-card design — the
+      // note title alone carries the form-type identity now.
       subtitle,
-      linkedGroups: status !== 'Draft',
       reviewTask,
     };
   };
@@ -210,7 +215,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       icon: 'solar:notes-linear',
       gapCodes: codes,
       t: 'clinical_note',
-      detailCard: buildDetailCard({ codes, status: 'Draft' }),
+      detailCard: buildDetailCard({ codes, status: 'Draft', noteId: note?.id }),
     });
     showToast('Draft saved');
   };
@@ -253,6 +258,14 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     });
     if (note?.id) rememberNoteId(primary, note.id);
     bulkUpdateGapStatuses(member.id, Object.fromEntries(codes.map(c => [c, 'Submitted'])));
+    // Sign-off task + activity card share one derived name so the Tasks
+    // table and the nested review-task card read identically. Single-gap
+    // notes drop the "Consolidated" prefix — they're one gap's note, not a
+    // consolidated pack.
+    const formLabel = codes.length > 1
+      ? 'Consolidated Clinical Note'
+      : `${codes[0]} Visit Note`;
+    const signOffTaskName = `Request for Sign-off - ${formLabel}`;
     // Create the sign-off task BEFORE logging activity so the entry can carry
     // the real taskId — the activity feed's task card opens the TaskDetail
     // drawer through it.
@@ -263,6 +276,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       pdf,
       reviewerId: reviewer.id,
       reviewerName: reviewer.name,
+      taskName: signOffTaskName,
     });
     logCareGapActivity(member.id, {
       title: 'Clinical Note Added',
@@ -276,12 +290,14 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
         codes,
         status: 'Pending Review',
         reviewer: reviewer.name,
+        noteId: note?.id,
+        pdfDataUrl: pdf?.dataUrl,
         reviewTask: {
-          title: 'Request for Sign-off - Consolidated Clinical Note',
+          taskId: task?.id,
+          title: signOffTaskName,
           assignee: reviewer.name,
           status: 'Pending',
           locked: false,
-          ...(task?.id ? { taskId: task.id } : {}),
         },
       }),
     });
@@ -324,6 +340,8 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
         status: 'Signed',
         reviewer: 'Provider',
         signedDate: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        noteId: note?.id,
+        pdfDataUrl: pdf?.dataUrl,
       }),
     });
     showToast('Saved and signed — provider sign path');
@@ -362,6 +380,8 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
         status: 'Signed',
         reviewer: 'Provider',
         signedDate: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        noteId: note?.id,
+        pdfDataUrl: pdf?.dataUrl,
       }),
     });
     if (pdf?.dataUrl) {

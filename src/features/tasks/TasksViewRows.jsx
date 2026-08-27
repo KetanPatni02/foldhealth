@@ -217,11 +217,16 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
   const labels = Array.isArray(task.labels) ? task.labels : [];
   const updateTask = useAppStore(s => s.updateTask);
   const showToast = useAppStore(s => s.showToast);
+  // Row-flash signal from the activity feed clickthrough — highlights the
+  // matching task for 3s in primary-50 / primary-300 so the user sees where
+  // the drawer landed. Cleared automatically by the store's timer.
+  const flashTaskId = useAppStore(s => s.flashTaskId);
+  const flashing = flashTaskId != null && String(flashTaskId) === String(task.id);
 
   const overdue = isOverdue(task);
 
   return (
-    <div className={`${styles.taskRow} ${overdue ? styles.taskRowMissed : ''}`} onClick={() => onTaskClick?.(task)}>
+    <div className={`${styles.taskRow} ${overdue ? styles.taskRowMissed : ''} ${flashing ? styles.taskRowFlash : ''}`} onClick={() => onTaskClick?.(task)}>
       <div className={`${styles.cellCheck} ${pinnedEnds ? styles.pinLeft0 : ''}`}>
         <button
           type="button"
@@ -324,9 +329,11 @@ export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo, hide
   const updateTask = useAppStore(s => s.updateTask);
   const showToast = useAppStore(s => s.showToast);
   const overdue = isOverdue(task);
+  const flashTaskId = useAppStore(s => s.flashTaskId);
+  const flashing = flashTaskId != null && String(flashTaskId) === String(task.id);
 
   return (
-    <tr className={styles.taskTr} onClick={() => onTaskClick?.(task)}>
+    <tr className={`${styles.taskTr} ${flashing ? styles.taskTrFlash : ''}`} onClick={() => onTaskClick?.(task)}>
       <td className={styles.tdCheck}>
         <button
           type="button"
