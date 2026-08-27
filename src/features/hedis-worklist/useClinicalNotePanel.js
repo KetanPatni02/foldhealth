@@ -370,7 +370,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       reviewerName: reviewer.name,
     });
     if (note?.id) rememberNoteId(primary, note.id);
-    bulkUpdateGapStatuses(member.id, Object.fromEntries(codes.map(c => [c, 'Submitted'])));
+    bulkUpdateGapStatuses(member.id, Object.fromEntries(codes.map(c => [c, 'Submitted'])), { assignee: reviewer.name });
     // Sign-off task + activity card share one derived name so the Tasks
     // table and the nested review-task card read identically. Single-gap
     // notes drop the "Consolidated" prefix — they're one gap's note, not a

@@ -5140,14 +5140,16 @@ export const useAppStore = create((set, get) => ({
     persistHedisGaps(memberId);
     persistCaregapActivityInsert(memberId, entry);
   },
-  bulkUpdateGapStatuses: (memberId, updates) => {
-    // updates: { [gapCode]: nextStatus }
+  bulkUpdateGapStatuses: (memberId, updates, { assignee } = {}) => {
+    // updates: { [gapCode]: nextStatus }, assignee: optional name to set on all affected gaps
     track('hedis.gap_status_bulk_updated', { memberId, count: Object.keys(updates || {}).length });
     set(s => ({
       hedisMembers: (s.hedisMembers || []).map(m =>
         m.id !== memberId ? m : {
           ...m,
-          gaps: (m.gaps || []).map(g => updates[g.code] ? { ...g, status: updates[g.code] } : g),
+          gaps: (m.gaps || []).map(g => updates[g.code]
+            ? { ...g, status: updates[g.code], ...(assignee !== undefined ? { assignee } : {}) }
+            : g),
         }
       ),
     }));
