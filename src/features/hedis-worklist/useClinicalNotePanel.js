@@ -20,11 +20,24 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
   const updateSignOffTaskPdf = useAppStore(s => s.updateSignOffTaskPdf);
   const upsertClinicalNote = useAppStore(s => s.upsertClinicalNote);
   const linkClinicalNoteToReviewTask = useAppStore(s => s.linkClinicalNoteToReviewTask);
+  const notesForMember = useAppStore(s => s.clinicalNotesByMember?.[member.id]) || [];
+  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
 
-  const activeGaps = useMemo(
-    () => member.gaps.filter(g => g.status !== 'Completed' && !String(g.status).startsWith('Closed')),
-    [member.gaps],
+  const amendNote = useMemo(
+    () => (amendNoteId ? (notesForMember.find(n => n.id === amendNoteId) || null) : null),
+    [amendNoteId, notesForMember],
   );
+
+  const activeGaps = useMemo(() => {
+    const base = member.gaps.filter(g => g.status !== 'Completed' && !String(g.status).startsWith('Closed'));
+    if (!amendNote?.gapCodes?.length) return base;
+    const baseCodes = new Set(base.map(g => g.code));
+    const missing = (amendNote.gapCodes || [])
+      .map(code => member.gaps.find(g => g.code === code))
+      .filter(Boolean)
+      .filter(g => !baseCodes.has(g.code));
+    return missing.length ? [...base, ...missing] : base;
+  }, [member.gaps, amendNote]);
 
   const assigneeFor = useCallback(
     (g) => g.assignee ?? member.assignee ?? CURRENT_USER,
@@ -54,6 +67,16 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     [activeGaps, activeGapCode],
   );
 
+  // Keep the RHS pane in sync when the drawer switches gaps (prev/next) or
+  // when Amend seeds a Completed gap that was filtered out of activeGaps.
+  useEffect(() => {
+    if (amendNote?.gapCodes?.[0] && activeGaps.some(g => g.code === amendNote.gapCodes[0])) {
+      setActiveGapCode(amendNote.gapCodes[0]);
+    } else if (gapCode && activeGaps.some(g => g.code === gapCode) && gapCode !== activeGapCode) {
+      setActiveGapCode(gapCode);
+    }
+  }, [amendNote, gapCode, activeGaps, activeGapCode]);
+
   const updateGap = useCallback((code, patch) => {
     setGapState(prev => ({ ...prev, [code]: { ...prev[code], ...patch } }));
   }, []);
@@ -76,20 +99,9 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
   });
 
   // Persistent note-row ids per gap so re-saves upsert the same row instead
-  // of spawning a fresh draft every click. For the reviewer path
-  // (editingTaskId set) we seed this from the note already linked to the
-  // task so the reviewer's Save-as-Draft edits the existing row instead of
-  // creating a parallel draft. amendNoteId covers the Amend-from-preview
-  // path — same row is edited, and the DB trigger snapshots the prior
-  // version into clinical_note_versions so history never lives only in local
-  // state.
-  const notesForMember = useAppStore(s => s.clinicalNotesByMember?.[member.id]) || [];
-  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
-
-  // Restore persisted state on open: seed note-row ids for every saved note
-  // (so re-saves upsert instead of spawning duplicates) and rehydrate the
-  // form from the newest DRAFT note — without this, drafts "didn't persist":
-  // they saved fine but the panel reset to blanks on reopen.
+  // of spawning a fresh draft every click. amendNoteId covers the Amend-
+  // from-preview path — same row is edited, DB trigger snapshots prior
+  // version. Also restores persisted draft state on open.
   const [noteIdByCode, setNoteIdByCode] = useState(() => {
     if (amendNoteId) {
       const amended = notesForMember.find(n => n.id === amendNoteId);
