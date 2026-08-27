@@ -5052,6 +5052,21 @@ export const useAppStore = create((set, get) => ({
 
   updateGapStatus: (memberId, gapCode, nextStatus) => {
     track('hedis.gap_status_updated', { memberId, gapCode, status: nextStatus });
+    const s0 = get();
+    const prevMember = (s0.hedisMembers || []).find(m => m.id === memberId);
+    const prevGap = prevMember?.gaps?.find(g => g.code === gapCode);
+    const prevStatus = prevGap?.status ?? null;
+    if (prevStatus === nextStatus) return;
+    const entry = {
+      id: `status-${Date.now()}-${memberId}-${gapCode}`,
+      at: new Date().toISOString(),
+      actor: get().currentActorName(),
+      t: 'status_change',
+      title: 'Status Changed',
+      from: prevStatus,
+      to: nextStatus,
+      gapCode,
+    };
     set(s => ({
       hedisMembers: (s.hedisMembers || []).map(m =>
         m.id !== memberId ? m : {
@@ -5059,8 +5074,13 @@ export const useAppStore = create((set, get) => ({
           gaps: (m.gaps || []).map(g => g.code === gapCode ? { ...g, status: nextStatus } : g),
         }
       ),
+      caregapActivity: {
+        ...s.caregapActivity,
+        [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
+      },
     }));
     persistHedisGaps(memberId);
+    persistCaregapActivityInsert(memberId, entry);
   },
   updateGapAssignee: (memberId, gapCode, nextAssignee) => {
     track('hedis.gap_assignee_updated', { memberId, gapCode, assignee: nextAssignee });
@@ -5175,15 +5195,27 @@ export const useAppStore = create((set, get) => ({
   // Replace the consolidated PDF on an existing sign-off task (reviewer edited
   // the note). Atomically logs a "Clinical note updated" activity entry so the
   // history is visible from the patient drawer.
-  updateSignOffTaskPdf: (taskId, pdf, actor = 'NP') => {
+  updateSignOffTaskPdf: async (taskId, pdf, actor = 'NP') => {
     track('hedis.signoff_task_pdf_attached', { taskId });
     const task = get().tasks.find(t => t.id === taskId);
     if (!task || !pdf) return false;
+    // Keep consolidatedPdf in-memory (no DB column — stripped on retry so the
+    // attachments count still persists) and ensure the task row's attachments
+    // / updated_at survive reload via updateTask's Supabase write.
     set(s => ({
       tasks: s.tasks.map(t => (
         t.id === taskId
           ? { ...t, consolidatedPdf: pdf, attachments: 1, updated_at: new Date().toISOString() }
           : t
+      )),
+    }));
+    try { await get().updateTask(taskId, { attachments: 1 }); } catch { /* optimistic local kept */ }
+    // updateTask's set() re-applies {...t, ...final} which preserves the
+    // in-memory consolidatedPdf we just wrote (final only carries attachments).
+    // Re-assert it in case the retry path dropped it.
+    set(s => ({
+      tasks: s.tasks.map(t => (
+        t.id === taskId ? { ...t, consolidatedPdf: pdf } : t
       )),
     }));
     if (task.hedisMemberId) {
@@ -5379,12 +5411,12 @@ export const useAppStore = create((set, get) => ({
   // NP marks the sign-off task complete → every gap in the task transitions to
   // Completed atomically (AC-13), the task moves to status=completed, and an
   // activity entry is appended for the patient's history.
-  completeCareGapSignOffTask: (taskId, actor = 'NP') => {
+  completeCareGapSignOffTask: async (taskId, actor = 'NP') => {
     const task = get().tasks.find(t => t.id === taskId);
     if (!task || !task.hedisMemberId) return false;
-    set(s => ({
-      tasks: s.tasks.map(t => (t.id === taskId ? { ...t, status: 'completed' } : t)),
-    }));
+    // Persist status via updateTask so the completed state survives reload;
+    // the local optimistic update is handled inside updateTask.
+    try { await get().updateTask(taskId, { status: 'completed' }); } catch { /* optimistic kept */ }
     const updates = Object.fromEntries((task.hedisGapCodes || []).map(c => [c, 'Completed']));
     get().bulkUpdateGapStatuses(task.hedisMemberId, updates);
     // Flip any linked clinical_note row from submitted → signed so the

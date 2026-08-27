@@ -231,7 +231,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     if (codes.length === 0) { showToast('No gaps marked Ready for Review'); return; }
     if (editingTaskId) {
       const pdf = buildPdf(codes, CURRENT_USER);
-      updateSignOffTaskPdf(editingTaskId, pdf, CURRENT_USER);
+      await updateSignOffTaskPdf(editingTaskId, pdf, CURRENT_USER);
       showToast('Sign-off note updated');
       onClose();
       return;

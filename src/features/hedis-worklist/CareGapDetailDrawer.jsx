@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
+import { Textarea } from '../../components/Textarea/Textarea';
 import { ClinicalNotePanel } from './ClinicalNotePanel';
 import { useClinicalNotePanel } from './useClinicalNotePanel';
 import { ClinicalNoteWorkspaceBody, HeaderActions as ClinicalNoteHeaderActions } from './ClinicalNotePanelParts';
@@ -18,9 +18,9 @@ import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Avatar } from '../../components/Avatar/Avatar';
 import { Icon } from '../../components/Icon/Icon';
 import { TabStrip } from '../../components/TabStrip/TabStrip';
+import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
 import { CardSkeleton } from '../../components/CardSkeleton/CardSkeleton';
 import { OutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
@@ -117,17 +117,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   if (prevGapKey !== gapKey) { setPrevGapKey(gapKey); setCurrentCode(gapCode); }
 
   const [statusOpen, setStatusOpen] = useState(false);
+  const [statusAnchorRect, setStatusAnchorRect] = useState(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const assigneeBtnRef = useRef(null);
-  const [assigneePos, setAssigneePos] = useState(null);
-  const [assigneeQuery, setAssigneeQuery] = useState('');
-  const openAssignee = () => {
-    const r = assigneeBtnRef.current?.getBoundingClientRect();
-    if (!r) return;
-    setAssigneeQuery('');
-    setAssigneePos({ top: r.bottom + 4, right: window.innerWidth - r.right });
-  };
-  const closeAssignee = () => setAssigneePos(null);
 
   const [selectedYear, setSelectedYear] = useState(year);
   const [prevYear, setPrevYear] = useState(year);
@@ -513,8 +504,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             gap={gap} member={member} selectedYear={selectedYear} setSelectedYear={setSelectedYear}
             yearOpen={yearOpen} setYearOpen={setYearOpen} yearOptions={yearOptions}
             moreOpen={moreOpen} setMoreOpen={setMoreOpen} status={status} statusLocked={statusLocked}
-            statusOpen={statusOpen} setStatusOpen={setStatusOpen} updateGapStatus={updateGapStatus}
-            assigneeBtnRef={assigneeBtnRef} assigneePos={assigneePos} openAssignee={openAssignee} closeAssignee={closeAssignee}
+            statusOpen={statusOpen} setStatusOpen={setStatusOpen} statusAnchorRect={statusAnchorRect} setStatusAnchorRect={setStatusAnchorRect} updateGapStatus={updateGapStatus}
+            platformUsers={platformUsers} updateGapAssignee={updateGapAssignee}
             showToast={showToast} setShowClinicalNote={setShowClinicalNote}
             onOpenClinicalNote={openClinicalNoteFlow}
             onScheduleAppointment={() => setLeftWorkspace('schedule')} moreBtnRef={moreBtnRef}
@@ -546,7 +537,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               <div className={styles.activityLog}>
                 <div className={styles.commentInput}>
                   {commentExpanded ? (
-                    <textarea aria-label="Add a comment" autoFocus className={styles.commentTextarea} placeholder="Add a comment, use @ to mention someone" rows={3}
+                    <Textarea autoFocus placeholder="Add a comment, use @ to mention someone" rows={3}
                       value={commentText} onChange={e => setCommentText(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Escape') { setCommentExpanded(false); setCommentText(''); } }} />
                   ) : (
@@ -621,58 +612,18 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         </div>
       </Drawer>
 
-      {assigneePos && createPortal(
-        (() => {
-          // Effective assignee = gap-level override, else the member-level
-          // default (same fallback the table row and the header chip use).
-          const effectiveAssignee = gap.assignee ?? member?.assignee ?? null;
-          return (
-            <>
-              <div aria-hidden="true" className={styles.assigneeMenuOverlay} onClick={closeAssignee} />
-              <div className={styles.assigneeMenu} style={{ top: assigneePos.top, right: assigneePos.right }} role="menu">
-                <div className={styles.assigneeMenuHeader}>{effectiveAssignee ? 'Change Assignee' : 'Assign to'}</div>
-                <div className={styles.assigneeMenuSearch}>
-                  <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-300)" />
-                  <input aria-label="Search users" autoFocus type="text" className={styles.assigneeMenuInput} placeholder="Search users…"
-                    value={assigneeQuery} onChange={(e) => setAssigneeQuery(e.target.value)} />
-                </div>
-                <div className={styles.assigneeMenuList}>
-                  {(() => {
-                    const q = assigneeQuery.trim().toLowerCase();
-                    const list = q ? platformUsers.filter(u => u.name.toLowerCase().includes(q)) : platformUsers;
-                    if (list.length === 0) return <div className={styles.assigneeMenuEmpty}>{q ? 'No users match your search.' : 'No users found.'}</div>;
-                    return list.map(u => (
-                      <button key={u.id} type="button" className={`${styles.assigneeMenuItem} ${effectiveAssignee === u.name ? styles.assigneeMenuItemActive : ''}`}
-                        onClick={() => { updateGapAssignee(member.id, gap.code, u.name); closeAssignee(); }}>
-                        <Avatar variant="assignee" initials={u.initials} />
-                        <span className={styles.assigneeMenuName}>{u.name}</span>
-                        {effectiveAssignee === u.name && <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />}
-                      </button>
-                    ));
-                  })()}
-                </div>
-                {effectiveAssignee && (
-                  <button type="button" className={styles.assigneeMenuClear} onClick={() => { updateGapAssignee(member.id, gap.code, null); closeAssignee(); }}>
-                    <Icon name="solar:user-cross-linear" size={14} color="var(--status-error)" /> Unassign
-                  </button>
-                )}
-              </div>
-            </>
-          );
-        })(), document.body,
-      )}
-
-      {moreMenuRect && createPortal(
-        <>
-          <div aria-hidden="true" className={styles.moreMenuOverlay} onClick={closeMoreMenu} />
-          <div className={styles.moreMenu} style={{ top: moreMenuRect.bottom + 6, left: Math.min(moreMenuRect.right - 220, window.innerWidth - 220 - 8) }}>
-            {MORE_ACTIONS.map(a => (
-              <button key={a.key} type="button" className={styles.moreMenuItem} onClick={() => runMoreAction(a)}>
-                <Icon name={a.icon} size={16} color="var(--neutral-300)" /> {a.label}
-              </button>
-            ))}
-          </div>
-        </>, document.body,
+      {moreMenuRect && (
+        <MenuPopover
+          anchorRect={moreMenuRect}
+          items={MORE_ACTIONS.map(a => ({ key: a.key, label: a.label, icon: a.icon }))}
+          onSelect={(key) => {
+            const action = MORE_ACTIONS.find(x => x.key === key);
+            if (action) runMoreAction(action);
+          }}
+          onClose={closeMoreMenu}
+          ariaLabel="More actions"
+          width={220}
+        />
       )}
     </>
   );

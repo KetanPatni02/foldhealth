@@ -1,9 +1,11 @@
+import { useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Button } from '../../components/Button/Button';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { MEASURE_NAMES, STATUSES, daysAgo, initialsOf } from './CareGapDetailDrawer.utils';
 import styles from './CareGapDetailDrawer.module.css';
 
@@ -35,11 +37,11 @@ export function CareGapDetailDrawerHeader({
   statusLocked,
   statusOpen,
   setStatusOpen,
+  statusAnchorRect,
+  setStatusAnchorRect,
   updateGapStatus,
-  assigneeBtnRef,
-  assigneePos,
-  openAssignee,
-  closeAssignee,
+  platformUsers,
+  updateGapAssignee,
   showToast,
   setShowClinicalNote,
   onOpenClinicalNote,
@@ -53,6 +55,7 @@ export function CareGapDetailDrawerHeader({
   canPrev,
   canNext,
 }) {
+  const statusBtnRef = useRef(null);
   const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
 
   return (
@@ -86,24 +89,36 @@ export function CareGapDetailDrawerHeader({
                 (Add Task, Add Clinical Note, orders, referrals, …). */}
             {(() => {
               const effectiveAssignee = gap.assignee ?? member?.assignee ?? null;
+              const pickerUsers = effectiveAssignee
+                ? [...(platformUsers || []), { id: '__unassign', name: 'Unassign', initials: '—' }]
+                : (platformUsers || []);
               return (
                 <AssigneeChange
-                  ref={assigneeBtnRef}
                   avatarOnly
                   unassigned={!effectiveAssignee}
                   name={effectiveAssignee || undefined}
                   initials={effectiveAssignee ? initialsOf(effectiveAssignee) : undefined}
                   ariaLabel={effectiveAssignee || 'Assign'}
-                  onClick={() => (assigneePos ? closeAssignee() : openAssignee())}
+                  users={pickerUsers}
+                  pickerTitle={effectiveAssignee ? 'Change assignee' : 'Assign to'}
+                  onSelect={(u) => {
+                    if (u?.id === '__unassign') updateGapAssignee(member.id, gap.code, null);
+                    else updateGapAssignee(member.id, gap.code, u?.name || null);
+                  }}
                 />
               );
             })()}
 
             <div className={styles.statusWrap}>
               <button
+                ref={statusBtnRef}
                 type="button"
                 className={styles.statusBtnReset}
-                onClick={() => { if (!statusLocked) setStatusOpen(v => !v); }}
+                onClick={() => {
+                  if (statusLocked) return;
+                  if (statusOpen) { setStatusOpen(false); setStatusAnchorRect(null); }
+                  else { const r = statusBtnRef.current?.getBoundingClientRect(); if (r) setStatusAnchorRect(r); setStatusOpen(true); }
+                }}
                 disabled={statusLocked}
                 title={statusLocked ? 'Completed gaps are locked' : ''}
                 aria-haspopup="menu"
@@ -117,23 +132,19 @@ export function CareGapDetailDrawerHeader({
                   style={{ height: 28 }}
                 />
               </button>
-              {statusOpen && !statusLocked && (
-                <>
-                  <div className={styles.statusMenuOverlay} onClick={() => setStatusOpen(false)} />
-                  <div className={styles.statusMenu} role="menu">
-                    <div className={styles.statusMenuHeader}>Change Status</div>
-                    <div className={styles.statusMenuItems}>
-                      {STATUSES.map(s => (
-                        <button key={s} type="button" role="menuitemradio" aria-checked={s === status}
-                          className={`${styles.statusMenuItem} ${s === status ? styles.statusMenuItemActive : ''}`}
-                          onClick={() => { updateGapStatus(member.id, gap.code, s); setStatusOpen(false); }}>
-                          <span className={styles.statusMenuItemLabel}>{s}</span>
-                          {s === status && <Icon name="solar:check-read-linear" size={12} color="var(--primary-300)" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
+              {statusOpen && !statusLocked && statusAnchorRect && (
+                <MenuPopover
+                  anchorRect={statusAnchorRect}
+                  items={STATUSES.map(s => ({
+                    key: s,
+                    label: s,
+                    icon: s === status ? 'solar:check-read-linear' : undefined,
+                  }))}
+                  onSelect={(key) => { updateGapStatus(member.id, gap.code, key); setStatusOpen(false); setStatusAnchorRect(null); }}
+                  onClose={() => { setStatusOpen(false); setStatusAnchorRect(null); }}
+                  ariaLabel="Change Status"
+                  width={220}
+                />
               )}
             </div>
 
