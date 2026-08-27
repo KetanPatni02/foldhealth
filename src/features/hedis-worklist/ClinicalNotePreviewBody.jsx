@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
+import { Badge } from '../../components/Badge/Badge';
+import { Button } from '../../components/Button/Button';
 import {
   MEASURE_NAMES,
   CBP_LOCATIONS,
@@ -13,27 +15,34 @@ import {
 import styles from './ClinicalNotePreviewBody.module.css';
 
 /**
- * ClinicalNotePreviewBody — read-only signed-note summary.
- *
- * Rendered inside the CareGapDetailDrawer's left workspace slot when the
- * user clicks the eye affordance on a Signed note. Mirrors Figma
- * 511:105429 — sectioned key/value rows plus an Amend affordance that
- * routes back to the editable workspace.
+ * ClinicalNotePreviewBody — read-only note summary for Draft / Pending
+ * Review / Signed notes. Rendered inside the CareGapDetailDrawer's left
+ * workspace slot when the user clicks the eye affordance on any note card.
+ * Mirrors Figma 511:105429 — sectioned key/value rows, optional PDF, plus
+ * a DB-backed version audit (clinical_note_versions) so Amend history never
+ * relies on local state.
  *
  * The payload it renders is whatever `upsertClinicalNote` persisted for
  * this member/gap — currently `{ dateOfService, audioOnly, audioVideo,
  * gaps: { <code>: <gapState> } }`. Unknown fields are skipped so future
  * form additions surface without touching this component.
  */
-export function ClinicalNotePreviewBody({ memberId, gapCode }) {
+export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
   const notes = useAppStore(s => (memberId ? s.clinicalNotesByMember?.[memberId] : null)) || [];
-  const note = useMemo(() => (
+  const note = useMemo(() => {
+    if (noteId) {
+      const byId = notes.find(n => n.id === noteId);
+      if (byId) return byId;
+    }
     // Prefer the freshest note that covers this gap; fall back to the
     // freshest note tied to this member so a viewer never sees "empty".
-    notes.find(n => (n.gapCodes || []).includes(gapCode))
+    return notes.find(n => (n.gapCodes || []).includes(gapCode))
       || notes[0]
-      || null
-  ), [notes, gapCode]);
+      || null;
+  }, [notes, gapCode, noteId]);
+  const versions = useAppStore(s => (note?.id ? s.clinicalNoteVersionsById?.[note.id] : null)) || [];
+  const fetchClinicalNoteVersions = useAppStore(s => s.fetchClinicalNoteVersions);
+  useEffect(() => { if (note?.id) fetchClinicalNoteVersions(note.id); }, [note?.id, fetchClinicalNoteVersions]);
 
   if (!note) {
     return (
@@ -55,7 +64,6 @@ export function ClinicalNotePreviewBody({ memberId, gapCode }) {
     <div className={styles.wrap}>
       {/* Title + signer/reviewer subtitle are rendered by the pane header
           in CareGapDetailDrawer — the body focuses on section content only. */}
-
       <Section title="Date of Service & Telehealth Statement">
         <KV label="DOS" value={payload.dateOfService} />
         <KV label="Telehealth Statement" value={telehealth} wide />
@@ -70,6 +78,59 @@ export function ClinicalNotePreviewBody({ memberId, gapCode }) {
           )}
         </Section>
       ))}
+
+      {note?.pdfDataUrl && (
+        <Section title="Document">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Badge tone={note.status === 'signed' ? 'success' : note.status === 'submitted' ? 'warning' : 'grey'} size="S" label={note.status} />
+            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-400)' }}>{note.pdfFilename || 'Clinical Note PDF'}</span>
+            <Button variant="secondary" size="S" leadingIcon="solar:eye-linear" onClick={() => { const w = window.open(note.pdfDataUrl, '_blank'); try { w?.focus(); } catch {} }}>
+              View PDF
+            </Button>
+            <Button variant="secondary" size="S" leadingIcon="solar:document-text-linear" onClick={() => {
+              const a = document.createElement('a'); a.href = note.pdfDataUrl; a.download = note.pdfFilename || 'clinical-note.pdf'; a.click();
+            }}>
+              Download
+            </Button>
+          </div>
+          <div style={{ marginTop: 12, border: '1px solid var(--neutral-150)', borderRadius: 8, overflow: 'hidden', height: 420 }}>
+            <iframe title="Clinical Note PDF" src={note.pdfDataUrl} style={{ width: '100%', height: '100%', border: 0 }} />
+          </div>
+        </Section>
+      )}
+
+      <Section title={`Audit Log — ${versions.length ? `${versions.length} prior version${versions.length === 1 ? '' : 's'}` : 'No amendments yet'}`}>
+        {versions.length === 0 ? (
+          <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-400)' }}>
+            Current version is <Badge tone={note.status === 'signed' ? 'success' : note.status === 'submitted' ? 'warning' : 'grey'} size="S" label={note.status} /> saved {note.updatedAt ? new Date(note.updatedAt).toLocaleString() : ''} by {note.authorName || note.signedByName || '—'}. Every Amend is snapshotted to <code>clinical_note_versions</code> via DB trigger, so history persists after reload.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Current */}
+            <div style={{ padding: '10px 12px', border: '1px solid var(--primary-150)', background: 'var(--primary-25)', borderRadius: 8 }}>
+              <div style={{ fontWeight: 600, fontSize: 'var(--font-sm)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                Current <Badge tone={note.status === 'signed' ? 'success' : note.status === 'submitted' ? 'warning' : 'grey'} size="S" label={note.status} />
+                <span style={{ color: 'var(--neutral-400)', fontWeight: 400 }}>{note.updatedAt ? new Date(note.updatedAt).toLocaleString() : ''} · {note.authorName || note.signedByName || '—'}</span>
+              </div>
+              <div style={{ marginTop: 6, fontSize: 'var(--font-sm)', color: 'var(--neutral-500)' }}>
+                DOS: {payload.dateOfService || '—'} · Gaps: {(note.gapCodes || []).join(', ') || '—'}
+              </div>
+            </div>
+            {versions.map(v => (
+              <div key={v.id} style={{ padding: '10px 12px', border: '1px solid var(--neutral-150)', borderRadius: 8, background: 'var(--neutral-0)' }}>
+                <div style={{ fontWeight: 600, fontSize: 'var(--font-sm)', display: 'flex', gap: 8, alignItems: 'center' }}>
+                  v{v.version} <Badge tone={v.status === 'signed' ? 'success' : v.status === 'submitted' ? 'warning' : 'grey'} size="S" label={v.status} />
+                  <span style={{ color: 'var(--neutral-400)', fontWeight: 400 }}>{v.createdAt ? new Date(v.createdAt).toLocaleString() : ''} · {v.authorName || v.signedByName || '—'}</span>
+                </div>
+                <div style={{ marginTop: 6, fontSize: 'var(--font-sm)', color: 'var(--neutral-500)' }}>
+                  DOS: {v.payload?.dateOfService || '—'} · Gaps: {(v.payload?.gaps ? Object.keys(v.payload.gaps).join(', ') : (v.payload?.gapCodes?.join(', ') || '—'))}
+                </div>
+                {v.pdfFilename && <div style={{ marginTop: 4, fontSize: 'var(--font-xs)', color: 'var(--neutral-300)' }}>PDF: {v.pdfFilename}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
     </div>
   );
 }

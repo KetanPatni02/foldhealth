@@ -856,6 +856,26 @@ function clinicalNoteRowToJs(row) {
   };
 }
 
+function clinicalNoteVersionRowToJs(row) {
+  return {
+    id: row.id,
+    noteId: row.note_id,
+    version: row.version,
+    status: row.status,
+    payload: row.payload || {},
+    pdfFilename: row.pdf_filename || null,
+    pdfDataUrl: row.pdf_data_url || null,
+    authorId: row.author_id || null,
+    authorName: row.author_name || null,
+    reviewerId: row.reviewer_id || null,
+    reviewerName: row.reviewer_name || null,
+    signedById: row.signed_by_id || null,
+    signedByName: row.signed_by_name || null,
+    signedAt: row.signed_at || null,
+    createdAt: row.created_at || null,
+  };
+}
+
 // ── Campaign row mapper ──
 // Single source of truth for translating Supabase campaigns rows into the JS
 // shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
@@ -5242,6 +5262,7 @@ export const useAppStore = create((set, get) => ({
   // Notes tab can each read a filtered list without re-fetching.
   clinicalNotesByMember: {},
   clinicalNotesByPatient: {},
+  clinicalNoteVersionsById: {},
 
   fetchClinicalNotesForMember: async (hedisMemberId) => {
     if (!hedisMemberId) return [];
@@ -5282,6 +5303,26 @@ export const useAppStore = create((set, get) => ({
     }
     const rows = (data || []).map(clinicalNoteRowToJs);
     set(s => ({ clinicalNotesByPatient: { ...s.clinicalNotesByPatient, [patientId]: rows } }));
+    return rows;
+  },
+
+  fetchClinicalNoteVersions: async (noteId) => {
+    if (!noteId) return [];
+    const { data, error } = await supabase
+      .from('clinical_note_versions')
+      .select('*')
+      .eq('note_id', noteId)
+      .order('version', { ascending: false });
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[fetchClinicalNoteVersions] clinical_note_versions missing — run supabase/clinical_note_versions_migration.sql');
+        return [];
+      }
+      console.error('fetchClinicalNoteVersions error:', error);
+      return [];
+    }
+    const rows = (data || []).map(clinicalNoteVersionRowToJs);
+    set(s => ({ clinicalNoteVersionsById: { ...s.clinicalNoteVersionsById, [noteId]: rows } }));
     return rows;
   },
 

@@ -16,6 +16,7 @@ import { ProgramRelatedTasks } from '../related/ProgramRelatedTasks/ProgramRelat
 import { AddTaskDrawer } from '../../../../../../tasks/TasksView';
 import { ProgramRelatedFiles } from '../related/ProgramRelatedFiles/ProgramRelatedFiles.jsx';
 import { ReferralReview } from '../steps/ReferralReview/ReferralReview.jsx';
+import { DiagnosisGapsTable } from '../../../../../left-panel/tabs/gaps/DiagnosisGapsTable/DiagnosisGapsTable.jsx';
 import { AddLetterDrawer } from '../letters/AddLetterDrawer/AddLetterDrawer.jsx';
 import { LetterHistoryDrawer } from '../letters/LetterHistoryDrawer/LetterHistoryDrawer.jsx';
 import { LetterPreviewDrawer } from '../letters/LetterPreviewDrawer/LetterPreviewDrawer.jsx';
@@ -116,6 +117,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
         />
       );
     }
+    if (stepFlags.isDiagnosisGapsStep) return <DiagnosisGapsTable memberName={v.currentPatient?.name} />;
     return <StepPlaceholder name={v.stepName} />;
   };
 
