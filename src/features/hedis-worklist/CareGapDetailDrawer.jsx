@@ -5,7 +5,7 @@ import { Input } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { ClinicalNotePanel } from './ClinicalNotePanel';
 import { useClinicalNotePanel } from './useClinicalNotePanel';
-import { ClinicalNoteWorkspaceBody, HeaderActions as ClinicalNoteHeaderActions } from './ClinicalNotePanelParts';
+import { ClinicalNoteWorkspaceBody, ConsolidatedNoteBody, HeaderActions as ClinicalNoteHeaderActions } from './ClinicalNotePanelParts';
 import { ReviewerPickerPopover } from './ReviewerPickerPopover';
 import { ClinicalNotesTab } from './ClinicalNotesTab';
 import { ClinicalNotePreviewBody } from './ClinicalNotePreviewBody';
@@ -130,9 +130,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const [moreMenuRect, setMoreMenuRect] = useState(null);
   const openMoreMenu = () => { const r = moreBtnRef.current?.getBoundingClientRect(); if (r) setMoreMenuRect(r); };
   const closeMoreMenu = () => setMoreMenuRect(null);
-  // Route "Add Clinical Note" based on how many gaps are open for this member.
-  // >1 → consolidated ClinicalNotePanel (dedicated drawer with a gap table).
-  //  1 → inline left workspace on this drawer (like Add Task / Schedule).
+  // Route Add Note based on how many gaps are open for this member.
+  //   >1 → consolidated ClinicalNotePanel drawer (stacked-sections layout).
+  //    1 → inline single-gap workspace on this drawer's left pane.
   // Matches Figma 872:76360.
   const openClinicalNoteFlow = () => {
     if (openGapCount > 1) setShowClinicalNote(true);
@@ -164,7 +164,17 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     if (!dc?.gapCode) return;
     const found = gaps.find(g => g.code === dc.gapCode);
     if (found) setCurrentCode(found.code);
-    setLeftWorkspace(dc.status === 'Signed' ? 'clinical-note-preview' : 'clinical-note');
+    // Signed AND Pending Review both open the read-only summary
+    // (ClinicalNotePreviewBody). The Signed preview surfaces an "Amend"
+    // affordance that flips to the inline single-gap editor; the Pending
+    // Review preview surfaces an "Edit" affordance that flips to the
+    // stacked consolidated editor (leftWorkspace 'clinical-note-
+    // consolidated'). Draft notes still edit inline immediately.
+    if (dc.status === 'Signed' || dc.status === 'Pending Review') {
+      setLeftWorkspace('clinical-note-preview');
+    } else {
+      setLeftWorkspace('clinical-note');
+    }
   };
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
@@ -380,7 +390,15 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           </div>
         )}
       >
-        {inSplit && (
+        {inSplit && (() => {
+          // Look up the note we're previewing / editing once so both the
+          // pane header title and its right-side actions can branch on the
+          // note's status (Signed vs. Submitted / Pending Review).
+          const previewNoteHoisted = (leftWorkspace === 'clinical-note-preview' || leftWorkspace === 'clinical-note-consolidated')
+            ? memberNotes.find(n => (n.gapCodes || []).includes(currentCode))
+            : null;
+          const previewStatus = previewNoteHoisted?.status;
+          return (
           <div className={styles.leftPane}>
             <div className={styles.paneHeader}>
               {(() => {
@@ -390,10 +408,11 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 if (leftWorkspace === 'task') {
                   return <span className={styles.paneTitle}>Add Task</span>;
                 }
+                if (leftWorkspace === 'clinical-note-consolidated') {
+                  return <span className={styles.paneTitle}>Consolidated Clinical Note</span>;
+                }
                 const isPreview = leftWorkspace === 'clinical-note-preview';
-                const previewNote = isPreview
-                  ? memberNotes.find(n => (n.gapCodes || []).includes(currentCode))
-                  : null;
+                const previewNote = previewNoteHoisted;
                 const codes = previewNote?.gapCodes?.length
                   ? previewNote.gapCodes
                   : [currentCode];
@@ -435,32 +454,66 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                     onSubmitForReview={clinicalNote.handleSubmitForReview}
                     onSaveAndSign={clinicalNote.handleSaveAndSign}
                     onSignAndPrint={clinicalNote.handleSignAndPrint}
+                    canSaveDraft={clinicalNote.hasChanges}
+                    canSign={clinicalNote.activeMandatoryComplete}
                   />
                 ) : leftWorkspace === 'clinical-note-preview' ? (
-                  // Signed-preview affordances: Displayed-to-Member note,
-                  // print + Amend. Amend flips the workspace to editable
-                  // so the author can revise a signed note (audit path).
-                  <>
-                    <span className={styles.previewDisplayed}>
-                      <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
-                      Displayed to Member
-                    </span>
-                    <span className={styles.headerDivider} />
-                    <ActionButton
-                      icon="solar:printer-linear"
-                      size="L"
-                      tooltip="Print"
-                      onClick={() => showToast('Print — coming soon')}
-                    />
-                    <Button
-                      variant="tertiary"
-                      size="M"
-                      leadingIcon="solar:lock-keyhole-minimalistic-linear"
-                      onClick={() => setLeftWorkspace('clinical-note')}
-                    >
-                      Amend
-                    </Button>
-                  </>
+                  // Preview affordances branch on the note's DB status:
+                  //   • signed    → Displayed-to-Member + Print + Amend
+                  //     (Amend flips to the inline single-gap editor,
+                  //      the existing audit path).
+                  //   • submitted → Pending Review status pill + Edit
+                  //     (Edit flips to the stacked consolidated editor
+                  //      so the author can revise a note that is out for
+                  //      review before it comes back).
+                  previewStatus === 'submitted' ? (
+                    <>
+                      <span className={styles.previewPendingReview}>
+                        <Icon name="solar:clock-circle-linear" size={16} color="var(--status-warning)" />
+                        Pending Review
+                      </span>
+                      <span className={styles.headerDivider} />
+                      <Button
+                        variant="tertiary"
+                        size="M"
+                        leadingIcon="solar:pen-new-square-linear"
+                        onClick={() => setLeftWorkspace('clinical-note-consolidated')}
+                      >
+                        Edit
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className={styles.previewDisplayed}>
+                        <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
+                        Displayed to Member
+                      </span>
+                      <span className={styles.headerDivider} />
+                      <ActionButton
+                        icon="solar:printer-linear"
+                        size="L"
+                        tooltip="Print"
+                        onClick={() => showToast('Print — coming soon')}
+                      />
+                      <Button
+                        variant="tertiary"
+                        size="M"
+                        leadingIcon="solar:lock-keyhole-minimalistic-linear"
+                        onClick={() => setLeftWorkspace('clinical-note')}
+                      >
+                        Amend
+                      </Button>
+                    </>
+                  )
+                ) : leftWorkspace === 'clinical-note-consolidated' ? (
+                  <ClinicalNoteHeaderActions
+                    onSaveDraft={clinicalNote.handleSaveDraft}
+                    onSubmitForReview={clinicalNote.handleSubmitForReview}
+                    onSaveAndSign={clinicalNote.handleSaveAndSign}
+                    onSignAndPrint={clinicalNote.handleSignAndPrint}
+                    canSaveDraft={clinicalNote.hasChanges}
+                    canSign={clinicalNote.anyReadyForReview}
+                  />
                 ) : (
                   <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
                     Save Task
@@ -473,7 +526,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   label={
                     leftWorkspace === 'schedule'
                       ? 'Close Schedule Appointment'
-                      : leftWorkspace === 'clinical-note' || leftWorkspace === 'clinical-note-preview'
+                      : leftWorkspace === 'clinical-note'
+                        || leftWorkspace === 'clinical-note-preview'
+                        || leftWorkspace === 'clinical-note-consolidated'
                         ? 'Close Clinical Note'
                         : 'Close Add Task'
                   }
@@ -487,12 +542,15 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 <ClinicalNoteWorkspaceBody v={clinicalNote} />
               ) : leftWorkspace === 'clinical-note-preview' ? (
                 <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} />
+              ) : leftWorkspace === 'clinical-note-consolidated' ? (
+                <ConsolidatedNoteBody v={clinicalNote} />
               ) : (
                 <AddTaskDrawerBody {...addTask} />
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
         <div className={styles.contentBody}>
           {inSplit && (
             <div className={styles.patientBannerWrap}>

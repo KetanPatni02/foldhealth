@@ -4515,36 +4515,41 @@ export const useAppStore = create((set, get) => ({
       });
       return;
     }
-    set({
-      hedisMembers: data.map(r => ({
-        id:              r.id,
-        in:              r.initials,
-        name:            r.name,
-        gender:          r.gender,
-        age:             r.age,
-        memberId:        r.member_id,
-        language:        r.language || 'en',
-        gaps:            typeof r.gaps === 'string' ? JSON.parse(r.gaps) : (r.gaps || []),
-        assignee:        r.assignee,
-        assigneeInitials: r.assignee_initials,
-        startDate:       r.start_date,
-        advIllness:      r.adv_illness ?? 0,
-        frailty:         r.frailty ?? 0,
-        riskLevel:       r.risk_level,
-        tasks:           r.tasks,
-        outreachDots:    typeof r.outreach_dots === 'string' ? JSON.parse(r.outreach_dots) : (r.outreach_dots || ['pending', 'pending', 'pending']),
-        outreachDate:    r.outreach_date,
-        memberStatus:    r.member_status || 'Active',
-        phone:           r.phone,
-        dob:             r.dob,
-        ipa:             r.ipa,
-        hpCode:          r.hp_code,
-        zip:             r.zip,
-        city:            r.city,
-        state:           r.state,
-      })),
-      hedisLoading: false,
-    });
+    const fromDb = data.map(r => ({
+      id:              r.id,
+      in:              r.initials,
+      name:            r.name,
+      gender:          r.gender,
+      age:             r.age,
+      memberId:        r.member_id,
+      language:        r.language || 'en',
+      gaps:            typeof r.gaps === 'string' ? JSON.parse(r.gaps) : (r.gaps || []),
+      assignee:        r.assignee,
+      assigneeInitials: r.assignee_initials,
+      startDate:       r.start_date,
+      advIllness:      r.adv_illness ?? 0,
+      frailty:         r.frailty ?? 0,
+      riskLevel:       r.risk_level,
+      tasks:           r.tasks,
+      outreachDots:    typeof r.outreach_dots === 'string' ? JSON.parse(r.outreach_dots) : (r.outreach_dots || ['pending', 'pending', 'pending']),
+      outreachDate:    r.outreach_date,
+      memberStatus:    r.member_status || 'Active',
+      phone:           r.phone,
+      dob:             r.dob,
+      ipa:             r.ipa,
+      hpCode:          r.hp_code,
+      zip:             r.zip,
+      city:            r.city,
+      state:           r.state,
+    }));
+    // Union the local mock with the DB rows so new mock members surface
+    // BEFORE the parallel Supabase seed runs. DB rows win on conflict; any
+    // mock member whose id is already in the DB is dropped so the DB row
+    // stays authoritative.
+    const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
+    const dbIds = new Set(fromDb.map(m => m.id));
+    const mockOnly = HEDIS_MEMBERS.filter(m => !dbIds.has(m.id));
+    set({ hedisMembers: [...fromDb, ...mockOnly], hedisLoading: false });
   },
 
   // ─── Practice Locations (Settings → Account → Locations) ──────────────

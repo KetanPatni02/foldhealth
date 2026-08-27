@@ -54,9 +54,35 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     [activeGaps, activeGapCode],
   );
 
+  // Codes with unsaved edits since the last successful save. Save-as-Draft
+  // stays disabled until the user actually changes something, and after a
+  // successful save the affected codes drop back out of the set so the
+  // button re-disables on its own.
+  const [dirtyCodes, setDirtyCodes] = useState(() => new Set());
+  const markDirty = useCallback((code) => {
+    setDirtyCodes(prev => {
+      if (prev.has(code)) return prev;
+      const next = new Set(prev);
+      next.add(code);
+      return next;
+    });
+  }, []);
+  const clearDirty = useCallback((codes) => {
+    setDirtyCodes(prev => {
+      if (!prev.size) return prev;
+      const next = new Set(prev);
+      (codes || []).forEach(c => next.delete(c));
+      return next.size === prev.size ? prev : next;
+    });
+  }, []);
+
   const updateGap = useCallback((code, patch) => {
     setGapState(prev => ({ ...prev, [code]: { ...prev[code], ...patch } }));
-  }, []);
+    // `manuallyOff` is a UI-only ready-toggle flag, not a form edit —
+    // toggling it should not enable Save-as-Draft on its own.
+    const editKeys = Object.keys(patch).filter(k => k !== 'manuallyOff');
+    if (editKeys.length) markDirty(code);
+  }, [markDirty]);
 
   const isReadyForReview = (code) => {
     const data = gapState[code] ?? {};
@@ -105,7 +131,12 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       const idSeed = {};
       notes.forEach(n => (n.gapCodes || []).forEach(c => { idSeed[c] = n.id; }));
       setNoteIdByCode(prev => ({ ...idSeed, ...prev }));
-      const draft = notes.find(n => n.status === 'draft');
+      // Prefer the freshest DRAFT — it holds the author's in-progress
+      // edits. Fall back to the freshest SUBMITTED (pending review) note
+      // so the Edit-from-preview flow lands with the last-sent-for-
+      // review values pre-populated instead of a blank form.
+      const draft = notes.find(n => n.status === 'draft')
+                 || notes.find(n => n.status === 'submitted');
       if (draft?.payload) {
         if (draft.payload.dateOfService) setDateOfService(draft.payload.dateOfService);
         if (draft.payload.gaps) {
@@ -196,7 +227,12 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
 
   const handleSaveDraft = async () => {
     setSubmitted(true);
-    const { codes, primary } = noteScope();
+    // Draft saves only the gaps that changed since the last save. Falls
+    // back to the active gap when nothing is dirty (button should already
+    // be disabled in that case; the guard here is belt + braces).
+    const dirty = [...dirtyCodes];
+    const codes = dirty.length ? dirty : (activeGapCode ? [activeGapCode] : []);
+    const primary = codes[0];
     if (!primary) { showToast('Nothing to save'); return; }
     const note = await upsertClinicalNote({
       id: noteIdByCode[primary],
@@ -207,7 +243,8 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       status: 'draft',
       payload: buildNotePayload(codes),
     });
-    if (note?.id) rememberNoteId(primary, note.id);
+    if (note?.id) codes.forEach(c => rememberNoteId(c, note.id));
+    clearDirty(codes);
     logCareGapActivity(member.id, {
       title: 'Clinical Note Added',
       detail: codes.join(', '),
@@ -395,6 +432,14 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
   const drawerTitle = editingTaskId ? 'Edit Clinical Note' : 'Clinical Note';
   const ageShort = member.age ? member.age.split('y')[0] + 'Y' : '';
 
+  const activeMandatoryComplete = activeGap
+    ? isMandatoryComplete(activeGap.code, gapState[activeGap.code] ?? {})
+    : false;
+  const anyReadyForReview = activeGaps.some(g =>
+    isMandatoryComplete(g.code, gapState[g.code] ?? {})
+  );
+  const hasChanges = dirtyCodes.size > 0;
+
   return {
     showToast, activeGaps, assigneeFor,
     activeGapCode, setActiveGapCode, activeGap,
@@ -403,5 +448,6 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     handleSaveDraft, handleSubmitForReview, handleConfirmSubmitForReview, handleSaveAndSign, handleSignAndPrint,
     reviewerPickerOpen, setReviewerPickerOpen,
     drawerTitle, ageShort,
+    hasChanges, activeMandatoryComplete, anyReadyForReview,
   };
 }
