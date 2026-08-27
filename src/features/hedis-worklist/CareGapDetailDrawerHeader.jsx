@@ -69,7 +69,6 @@ export function CareGapDetailDrawerHeader({
                 stays a plain number. */}
             <FilterChip
               label="Measurement Year"
-              size="S"
               options={yearOptions.map(String)}
               selected={selectedYear ? [String(selectedYear)] : []}
               onChange={(vals) => {

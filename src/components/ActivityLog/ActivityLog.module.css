@@ -209,13 +209,12 @@
 }
 .detailCardRow {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2);
 }
 .detailCardHandle {
   display: inline-flex;
   align-items: center;
-  padding-top: 2px;
   flex-shrink: 0;
   color: var(--secondary-300);
 }
@@ -315,7 +314,7 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2);
 }
 

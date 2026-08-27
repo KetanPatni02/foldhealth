@@ -3,6 +3,7 @@ import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { Badge } from '../Badge/Badge';
 import { Avatar } from '../Avatar/Avatar';
+import { PriorityIcon } from '../PriorityIcon/PriorityIcon';
 import { useAppStore } from '../../store/useAppStore';
 import {
   AvatarPill,
@@ -149,12 +150,13 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
         return;
       }
       if (activeGroup && collapsed.has(activeGroup)) return;
-      const prev = list[i - 1];
-      const next = list[i + 1];
-      const isFirst = !prev || prev.t === 'group';
-      const isLast = !next || next.t === 'group';
-      out.push({ kind: 'item', entry, key: `i${i}`, isFirst, isLast });
+      out.push({ kind: 'item', entry, key: `i${i}`, isFirst: false, isLast: false });
     });
+    const allItems = out.filter(it => it.kind === 'item');
+    if (allItems.length) {
+      allItems[0].isFirst = true;
+      allItems[allItems.length - 1].isLast = true;
+    }
     return out;
   })();
 
@@ -395,34 +397,24 @@ function DetailCardEntryBody({ entry, variant, onOpenTask, onOpenNote }) {
         <div className={styles.detailCard}>
           {variant === 'task' ? (
             <div className={styles.detailCardRow}>
-              {dc.handle && (
-                <span className={styles.detailCardHandle}>
-                  <Icon name="solar:hamburger-menu-linear" size={16} color="var(--secondary-300)" />
-                </span>
-              )}
+              <PriorityIcon priority={dc.priority || 'none'} size={16} />
               <div className={styles.detailCardText}>
-                <div className={styles.detailCardTitleRow}>
-                  <span className={styles.detailCardTitle}>{dc.title}</span>
-                  {dc.locked && (
-                    <span className={styles.detailCardLock}>
-                      <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="var(--neutral-300)" />
-                    </span>
-                  )}
-                </div>
+                <span className={styles.detailCardTitle}>{dc.title}</span>
                 {dc.assignee && (
                   <div className={styles.detailCardSubtitle}>Assignee: {dc.assignee}</div>
                 )}
               </div>
               <div className={styles.detailCardTrailing}>
                 {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
+                <span className={styles.detailCardActionsDivider} aria-hidden="true" />
                 <button
                   type="button"
                   className={styles.detailCardIconBtn}
-                  aria-label="Open"
+                  aria-label="Preview task"
                   onClick={dc.taskId && onOpenTask ? () => onOpenTask(dc.taskId) : undefined}
                   style={dc.taskId && onOpenTask ? undefined : { cursor: 'default' }}
                 >
-                  <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
+                  <Icon name="solar:eye-linear" size={14} color="var(--neutral-400)" />
                 </button>
               </div>
             </div>
@@ -557,31 +549,19 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
       </div>
       {dc.reviewTask && (
         <div className={styles.detailCardNested}>
-          <span className={styles.detailCardHandle}>
-            <Icon name="solar:hamburger-menu-linear" size={16} color="var(--secondary-300)" />
-          </span>
+          <PriorityIcon priority={dc.reviewTask.priority || 'none'} size={16} />
           <div className={styles.detailCardText}>
-            <div className={styles.detailCardTitleRow}>
-              <span className={styles.detailCardTitle}>{deriveReviewTaskTitle(dc)}</span>
-              {dc.reviewTask.locked && (
-                <span className={styles.detailCardLock}>
-                  <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="var(--neutral-300)" />
-                </span>
-              )}
-            </div>
+            <span className={styles.detailCardTitle}>{deriveReviewTaskTitle(dc)}</span>
             {dc.reviewTask.assignee && (
               <div className={styles.detailCardSubtitle}>Assignee: {dc.reviewTask.assignee}</div>
             )}
           </div>
           <div className={styles.detailCardTrailing}>
-            <span className={styles.detailCardStatusSlot}>
-              {dc.reviewTask.status && <Badge tone={statusTone(dc.reviewTask.status)} size="M" label={dc.reviewTask.status} />}
-            </span>
-            <span className={styles.detailCardActionsSlot}>
-              <button type="button" className={styles.detailCardIconBtn} aria-label="Open task" onClick={handleOpenTask}>
-                <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
-              </button>
-            </span>
+            {dc.reviewTask.status && <Badge tone={statusTone(dc.reviewTask.status)} size="M" label={dc.reviewTask.status} />}
+            <span className={styles.detailCardActionsDivider} aria-hidden="true" />
+            <button type="button" className={styles.detailCardIconBtn} aria-label="Preview task" onClick={handleOpenTask}>
+              <Icon name="solar:eye-linear" size={14} color="var(--neutral-400)" />
+            </button>
           </div>
         </div>
       )}

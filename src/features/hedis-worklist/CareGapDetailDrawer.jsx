@@ -10,6 +10,7 @@ import { ReviewerPickerPopover } from './ReviewerPickerPopover';
 import { ClinicalNotesTab } from './ClinicalNotesTab';
 import { ClinicalNotePreviewBody } from './ClinicalNotePreviewBody';
 import { TasksTab } from '../patient/left-panel/tabs/tasks/TasksTab/TasksTab';
+import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer';
 import { useAddTaskDrawer } from '../tasks/useAddTaskDrawer';
 import { AddTaskDrawerBody } from '../tasks/AddTaskDrawerBody';
 import { useScheduleDrawer } from '../../components/ScheduleDrawer/useScheduleDrawer';
@@ -50,6 +51,8 @@ function groupTasksForTab(tasks) {
       subtasks: t.subtasks || 0,
       attachments: t.attachments || 0,
       comments: t.comments || 0,
+      assignee: t.assigned_to || '',
+      assigneeInitials: t.assigned_to ? t.assigned_to.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '',
     };
     if (t.status === 'completed') {
       completed.push({ ...shared, completedOn: t.completed_at || t.updated_at || '' });
@@ -89,7 +92,6 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const caregapActivityLoaded = useAppStore(s => s.caregapActivityLoaded);
   const fetchCaregapActivity = useAppStore(s => s.fetchCaregapActivity);
   useEffect(() => { fetchCaregapActivity(); }, [fetchCaregapActivity]);
-  const openTaskFromActivity = useAppStore(s => s.openTaskFromActivity);
   const appointments = useAppStore(s => s.appointments);
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
   useEffect(() => { fetchAppointments?.(); }, [fetchAppointments]);
@@ -98,7 +100,6 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
   useEffect(() => { if (member?.id) fetchClinicalNotesForMember?.(member.id); }, [member?.id, fetchClinicalNotesForMember]);
   const allTasks = useAppStore(s => s.tasks);
-  const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
   // The eye affordance inside the Clinical Notes tab (and Activity Log) can
   // navigate to the Tasks page for a linked sign-off task. When that
   // navigation fires (activePage flips to 'tasks'), close this drawer so
@@ -186,6 +187,17 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   };
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
+  const [inPlaceTaskId, setInPlaceTaskId] = useState(null);
+  const inPlaceTaskRaw = inPlaceTaskId ? (allTasks || []).find(t => t.id === inPlaceTaskId) : null;
+  const inPlaceTask = inPlaceTaskRaw ? {
+    ...inPlaceTaskRaw,
+    hedisMemberId: inPlaceTaskRaw.hedisMemberId || member?.id,
+    hedisGapCodes: inPlaceTaskRaw.hedisGapCodes || (currentCode ? [currentCode] : []),
+  } : null;
+  const handleOpenTaskInPlace = (taskIdOrObj) => {
+    const id = typeof taskIdOrObj === 'object' ? taskIdOrObj?.id : taskIdOrObj;
+    if (id) setInPlaceTaskId(id);
+  };
 
   // Open-gap count drives the "Add Note" routing rule (see openClinicalNoteFlow).
   // Mirrors the hook's own filter so both counts agree.
@@ -214,6 +226,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           taskId: task?.id,
           title: task?.name || 'Task',
           assignee: task?.assigned_to || null,
+          priority: task?.priority || 'none',
           status: task?.status === 'completed' ? 'Completed' : 'Pending',
         },
       });
@@ -325,13 +338,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     t => (t.hedisMemberId && t.hedisMemberId === member?.id)
       || (member?.name && t.member === member.name),
   );
-  const openTaskDetail = (task) => {
-    // Reuses the same task-drawer opener the notifications trigger uses:
-    // sets the Tasks page as active and stamps pendingOpenTaskId so
-    // TasksView mounts the TaskDetailDrawer for that task on next paint.
-    openTaskFromNotification?.(task.id);
-    onClose?.();
-  };
+  const openTaskDetail = (task) => handleOpenTaskInPlace(task);
   const tabCounts = {
     'Activity Log': activityEntries?.length ?? 0,
     Outreaches: OUTREACH_LOG_COUNT,
@@ -355,6 +362,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     <>
       {showClinicalNote && (
         <ClinicalNotePanel member={member} gapCode={gap.code} year={selectedYear} onClose={() => setShowClinicalNote(false)} />
+      )}
+      {inPlaceTask && (
+        <TaskDetailDrawer task={inPlaceTask} onClose={() => setInPlaceTaskId(null)} />
       )}
       {addTask.showCloseConfirm && (
         <ConfirmDialog
@@ -380,13 +390,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         noCloseDivider
         // When the Add Task workspace is open we double the drawer width so
         // the left pane can host the full task form without cramping the
-        // right pane's tabs. Reverts to the standard 700 when Add Task
+        // right pane's tabs. Reverts to the default 700 when Add Task
         // closes — the transition reads as an expand/collapse.
-        // 630px = right-pane fixed width. Match the closed-state drawer to
-        // it too so opening/closing Add Task never causes the right pane
-        // to jump — the drawer width simply expands leftward (1260) and
-        // collapses back (630) with the same easing.
-        width={isExpanded ? 1260 : 630}
+        width={isExpanded ? 1400 : undefined}
         bodyClassName={inSplit ? `${styles.drawerBody} ${styles.drawerBodySplit}` : styles.drawerBody}
         headerRight={
           <div className={styles.headerNav}>
@@ -637,7 +643,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   )}
                 </div>
                 {caregapActivityLoaded
-                  ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." onOpenTask={openTaskFromActivity} onOpenNote={openNoteInWorkspace} />
+                  ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." onOpenTask={handleOpenTaskInPlace} onOpenNote={openNoteInWorkspace} />
                   : <CardSkeleton />}
               </div>
             ) : activeTab === 'Outreaches' ? (
@@ -646,7 +652,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               // Flat column-headed list per Figma 1030:78586 — no timeline
               // rail, no month grouping. Card affordances are shared with
               // the Activity Log via ClinicalNoteCardActions.
-              <ClinicalNotesTab entries={clinicalNoteEntries} onOpenNote={openNoteInWorkspace} onOpenTask={openTaskFromActivity} />
+              <ClinicalNotesTab entries={clinicalNoteEntries} onOpenNote={openNoteInWorkspace} onOpenTask={handleOpenTaskInPlace} />
             ) : activeTab === 'Tasks' ? (
               // Same layout as the P360 patient profile's Tasks tab —
               // Pending / Overdue / Completed sections, checkbox rows,
