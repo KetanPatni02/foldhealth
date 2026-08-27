@@ -171,7 +171,9 @@ export const WORKLIST_MIDDLE_COLUMNS = [
     key: 'lace',
     label: 'LACE Acuity',
     renderCell: (p) => (
-      <Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} />
+      p.lace
+        ? <Badge size="M" variant={`lace-${p.lace.toLowerCase()}`} label={p.lace} />
+        : <span>—</span>
     ),
   },
   {

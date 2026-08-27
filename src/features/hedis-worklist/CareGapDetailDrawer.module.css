@@ -80,6 +80,17 @@
   color: var(--status-success);
   white-space: nowrap;
 }
+/* Pending-Review preview affordance — same shape as .previewDisplayed but
+   warning-toned (matches the Pending Review activity-log status). */
+.previewPendingReview {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--status-warning);
+  white-space: nowrap;
+}
 .leftPaneBody {
   flex: 1;
   min-height: 0;

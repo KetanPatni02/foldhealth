@@ -26,6 +26,8 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
             onSaveAndSign={v.handleSaveAndSign}
             onSignAndPrint={v.handleSignAndPrint}
             primaryLabel={editingTaskId ? 'Update Note' : 'Sign & Save'}
+            canSaveDraft={v.hasChanges}
+            canSign={v.activeMandatoryComplete}
           />
         }
       >

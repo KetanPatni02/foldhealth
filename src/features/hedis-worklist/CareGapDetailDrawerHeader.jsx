@@ -205,7 +205,13 @@ export function CareGapDetailDrawerHeader({
         </div>
         <div className={styles.suggestActions}>
           <Button variant="primary" size="L" onClick={() => onScheduleAppointment?.()}>Schedule with Specialist</Button>
-          <Button variant="tertiary" size="L" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
+          {/* Hide Add Note once the note has moved past the "start" state:
+              Submitted (pending review), Completed (signed), or any Closed
+              status. The Add Note suggested action is for kicking off the
+              flow; after review it would just create a duplicate. */}
+          {!(status === 'Submitted' || status === 'Completed' || (status || '').startsWith('Closed')) && (
+            <Button variant="tertiary" size="L" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
+          )}
           <Button variant="tertiary" size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
           <Button variant="secondary" size="L" onClick={() => showToast('Add Outreach — coming soon')}>Add Outreach</Button>
         </div>

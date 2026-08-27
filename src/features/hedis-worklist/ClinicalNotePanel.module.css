@@ -119,6 +119,61 @@
   flex-shrink: 0;
 }
 
+/* ─────────── Consolidated body (stacked, editable) ─────────── */
+/* Single-column stacked authoring layout used by the leftPane workspace
+   mode 'clinical-note-consolidated' — reached by clicking Edit on a
+   Pending Review note's preview. One shared DOS card at the top, then
+   one collapsible section per gap that the submitted note bundled. Info
+   banner pins above the scroll. */
+.consolidatedBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.consolidatedScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.gapSection {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-3);
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+.gapSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+.gapSectionHeader:hover { background: var(--neutral-25); }
+.gapSectionChevron {
+  transition: transform 0.15s;
+  display: inline-flex;
+  color: var(--neutral-400);
+}
+.gapSectionChevronCollapsed { transform: rotate(-90deg); }
+.gapSectionTitle {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+  flex: 1;
+}
+.gapSectionBody {
+  padding: 0 var(--space-4) var(--space-4);
+}
+
 /* ─────────── DOS + Telehealth card ─────────── */
 .dosCard {
   border: 0.5px solid var(--neutral-150);
@@ -330,6 +385,15 @@
   gap: var(--space-2);
   font-size: var(--font-xs);
   color: var(--neutral-300);
+}
+/* Shrink the shared Badge (size="S") from its default 20px height down to
+   18px for the gap-row's Open pill only. Scoped to `.gapRowMeta` so the
+   rest of the app's size-S badges (worklist rows, activity log, drawers)
+   keep their 20px height. Attribute selector matches Badge's CSS-Module
+   class prefix (`_badge_…`). */
+.gapRowMeta > span[class*="badge"] {
+  height: 18px;
+  min-height: 18px;
 }
 .gapRowUpdate { white-space: nowrap; }
 

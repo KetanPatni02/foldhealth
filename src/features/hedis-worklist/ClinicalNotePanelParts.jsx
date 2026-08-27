@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
@@ -20,11 +21,20 @@ import {
   CBP_LOCATIONS,
   CBP_YES_NO,
   CBP_SYMPTOM_OPTIONS,
+  GAP_TEMPLATES,
   isMandatoryComplete,
 } from './ClinicalNotePanel.utils';
 import styles from './ClinicalNotePanel.module.css';
 
-export function HeaderActions({ onSaveDraft, onSaveAndSign, onSubmitForReview, onSignAndPrint, primaryLabel = 'Sign & Save' }) {
+export function HeaderActions({
+  onSaveDraft,
+  onSaveAndSign,
+  onSubmitForReview,
+  onSignAndPrint,
+  primaryLabel = 'Sign & Save',
+  canSaveDraft = true,
+  canSign = true,
+}) {
   const menuItems = [
     { key: 'submit',  label: 'Submit for Review', icon: 'solar:upload-square-linear' },
     { key: 'print',   label: 'Sign and Print',    icon: 'solar:printer-linear' },
@@ -40,6 +50,7 @@ export function HeaderActions({ onSaveDraft, onSaveAndSign, onSubmitForReview, o
         size="L"
         leadingIcon="solar:file-linear"
         onClick={onSaveDraft}
+        disabled={!canSaveDraft}
       >
         Save as Draft
       </Button>
@@ -50,6 +61,7 @@ export function HeaderActions({ onSaveDraft, onSaveAndSign, onSubmitForReview, o
         menuItems={menuItems}
         onMenuSelect={runMenu}
         onClick={onSaveAndSign}
+        disabled={!canSign}
       >
         {primaryLabel}
       </Button>
@@ -186,14 +198,13 @@ function GapRow({ gap, data, ready, mandatoryComplete, assignee, isActive, onSel
     >
       <div className={styles.gapRowMain}>
         <div className={styles.gapRowTitle}>
-          <span className={styles.gapCode}>{gap.code}</span>
-          <span className={styles.gapName}>{measureName}</span>
+          <span className={styles.gapName}>{gap.code} - {measureName}</span>
         </div>
         <div className={styles.gapRowMeta}>
-          <Badge tone="warning" size="S" dot label={gap.status} />
+          <Badge size="S" variant="ai-care" label={gap.status} />
           {data && !!Object.keys(data).some(k => k !== 'manuallyOff' && data[k]) && (
             <span className={styles.gapRowUpdate}>
-              <span className={styles.dot}>·</span> Last Updated Today, 09:15 AM <span className={styles.dot}>·</span> You
+              <span className={styles.dot}>•</span> Last Updated Today, 09:15 AM <span className={styles.dot}>•</span> You
             </span>
           )}
         </div>
@@ -241,63 +252,68 @@ export function GapEvidencePane({ v }) {
 
   return (
     <div className={styles.rightPane}>
-      <div className={styles.rightPaneScroll}>
-        <div className={styles.gapEvidenceTopRow}>
-          <div className={styles.gapEvidenceHeadLeft}>
-            <span className={styles.gapEvidenceTitle}>
-              {gap.code} - {measureName}
-            </span>
-            <div className={styles.gapEvidenceStatusRow}>
-              <Badge tone="warning" size="S" dot label={gap.status} />
-              <span className={styles.headerDivider} aria-hidden="true" />
-              <AssigneeChange
-                size="S"
-                name={assignee}
-                initials={(assignee || '').split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('')}
-                showRole={false}
-                unassigned={!assignee}
-                unassignedLabel="Unassigned"
-                onClick={() => v.showToast('Assignee change — coming soon')}
-              />
-            </div>
-          </div>
-          <div className={styles.gapEvidenceReadyRow}>
-            <Switch
-              checked={ready}
-              disabled={!mandatoryComplete}
-              onChange={(next) => {
-                if (next && !mandatoryComplete) return;
-                v.updateGap(gap.code, { manuallyOff: !next });
-              }}
-              ariaLabel={`Ready for review — ${gap.code}`}
+      {/* Pinned header rows: title + status + Ready-for-Review, and the
+          evidence-type row directly under it. Both sit OUTSIDE the scroll
+          container so only the evidence body scrolls. */}
+      <div className={styles.gapEvidenceTopRow}>
+        <div className={styles.gapEvidenceHeadLeft}>
+          <span className={styles.gapEvidenceTitle}>
+            {gap.code} - {measureName}
+          </span>
+          <div className={styles.gapEvidenceStatusRow}>
+            <Badge size="S" variant="ai-care" label={gap.status} />
+            <span className={styles.headerDivider} aria-hidden="true" />
+            <AssigneeChange
+              size="S"
+              name={assignee}
+              initials={(assignee || '').split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('')}
+              showRole={false}
+              unassigned={!assignee}
+              unassignedLabel="Unassigned"
+              onClick={() => v.showToast('Assignee change — coming soon')}
             />
-            <span className={styles.gapEvidenceReadyLabel}>
-              Ready for Review
-              <Icon name="solar:info-circle-linear" size={13} color="var(--neutral-300)" />
-            </span>
           </div>
         </div>
-
-        <div className={`${styles.evidenceTypeRow} ${styles.evidenceTypeRowPinned}`}>
-          <Select
-            disabled
-            options={[{ value: gap.code, label: `${gap.code} Evidence` }]}
-            value={gap.code}
-            onChange={() => {}}
-            ariaLabel={`${gap.code} evidence type`}
+        <div className={styles.gapEvidenceReadyRow}>
+          <Switch
+            checked={ready}
+            disabled={!mandatoryComplete}
+            onChange={(next) => {
+              if (next && !mandatoryComplete) return;
+              v.updateGap(gap.code, { manuallyOff: !next });
+            }}
+            ariaLabel={`Ready for review — ${gap.code}`}
           />
-          <Input
-            aria-label="Evidence label"
-            value={data.evidenceLabel ?? `${gap.code} Evidence`}
-            onChange={(e) => v.updateGap(gap.code, { evidenceLabel: e.target.value })}
-          />
+          <span className={styles.gapEvidenceReadyLabel}>
+            Ready for Review
+            <Icon name="solar:info-circle-linear" size={13} color="var(--neutral-300)" />
+          </span>
         </div>
+      </div>
 
+      <div className={`${styles.evidenceTypeRow} ${styles.evidenceTypeRowPinned}`}>
+        <Select
+          disabled
+          options={[{ value: gap.code, label: `${gap.code} Evidence` }]}
+          value={gap.code}
+          onChange={() => {}}
+          ariaLabel={`${gap.code} evidence type`}
+        />
+        <Input
+          aria-label="Evidence label"
+          value={data.evidenceLabel ?? `${gap.code} Evidence`}
+          onChange={(e) => v.updateGap(gap.code, { evidenceLabel: e.target.value })}
+        />
+      </div>
+
+      <div className={styles.rightPaneScroll}>
         <div className={styles.evidenceBody}>
           {gap.code === 'EED' ? (
             <EedEvidenceForm v={v} data={data} submitted={v.submitted} />
           ) : gap.code === 'CBP' ? (
             <CbpEvidenceForm v={v} data={data} submitted={v.submitted} />
+          ) : GAP_TEMPLATES[gap.code] ? (
+            <GenericEvidenceForm code={gap.code} v={v} data={data} submitted={v.submitted} />
           ) : (
             <div className={styles.evidenceComingSoon}>
               <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-150)" />
@@ -307,6 +323,112 @@ export function GapEvidencePane({ v }) {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ConsolidatedNoteBody — stacked authoring layout used when the author
+   clicks Edit on a Pending Review note (leftWorkspace mode
+   'clinical-note-consolidated'). One shared DOS card at the top, then
+   one collapsible section per gap the submitted note bundled — each
+   section reuses the same evidence-form component the single-gap
+   workspace renders (EED, CBP, or the templated GenericEvidenceForm).
+   Content hydrates from the submitted note's payload via
+   useClinicalNotePanel's restore effect. */
+export function ConsolidatedNoteBody({ v }) {
+  return (
+    <div className={styles.consolidatedBody}>
+      <div className={styles.infoBanner}>
+        <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
+        <span>All signed notes sync to the patient's EHR.</span>
+      </div>
+
+      <div className={styles.consolidatedScroll}>
+        <div className={styles.dosCard}>
+          <div className={styles.dosHeader}>
+            <span className={styles.dosTitle}>
+              Date of Service &amp; Telehealth Statement <span className={styles.required}>•</span>
+            </span>
+            <span className={styles.dosPill}>Common for all gaps</span>
+          </div>
+          <div className={styles.dosBody}>
+            <div className={styles.fieldStack}>
+              <DatePicker
+                label="Date of Service"
+                required
+                value={v.dateOfService}
+                onSelect={v.setDateOfService}
+                hasError={v.submitted && !v.dateOfService}
+                placeholder="Select Date"
+              />
+              {v.submitted && !v.dateOfService && (
+                <div className={styles.fieldError}>Date of Service is required</div>
+              )}
+            </div>
+            <div className={styles.fieldStack}>
+              <div className={styles.fieldLabel}>Telehealth Statement</div>
+              <div className={styles.checkStack}>
+                <CheckboxRow
+                  checked={v.audioOnly}
+                  onChange={v.setAudioOnly}
+                  label="Audio-only visit"
+                  description="Verbal consent was obtained from the patient to conduct the visit via audio-only. The patient was informed of the nature of the visit, the limitations of audio-only communication, and agreed to proceed."
+                />
+                <CheckboxRow
+                  checked={v.audioVideo}
+                  onChange={v.setAudioVideo}
+                  label="Audio-video visit"
+                  description="Verbal consent was obtained from the patient to conduct the visit via audio and video. The patient was informed of the nature of the visit, the limitations of audio-video communication, and agreed to proceed."
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {v.activeGaps.map((gap) => (
+          <GapSection key={gap.code} v={v} gap={gap} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GapSection({ v, gap }) {
+  const [expanded, setExpanded] = useState(true);
+  const data = v.gapState[gap.code] ?? {};
+  const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
+  return (
+    <div className={styles.gapSection}>
+      <button
+        type="button"
+        className={styles.gapSectionHeader}
+        aria-expanded={expanded}
+        onClick={() => setExpanded(x => !x)}
+      >
+        <span className={`${styles.gapSectionChevron} ${expanded ? '' : styles.gapSectionChevronCollapsed}`}>
+          <Icon name="solar:alt-arrow-down-linear" size={16} />
+        </span>
+        <span className={styles.gapSectionTitle}>
+          {gap.code} - {measureName}
+        </span>
+      </button>
+      {expanded && (
+        <div className={styles.gapSectionBody}>
+          {gap.code === 'EED' ? (
+            <EedEvidenceForm v={v} data={data} submitted={v.submitted} />
+          ) : gap.code === 'CBP' ? (
+            <CbpEvidenceForm v={v} data={data} submitted={v.submitted} />
+          ) : GAP_TEMPLATES[gap.code] ? (
+            <GenericEvidenceForm code={gap.code} v={v} data={data} submitted={v.submitted} />
+          ) : (
+            <div className={styles.evidenceComingSoon}>
+              <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-150)" />
+              <p className={styles.evidenceComingSoonTitle}>Coming soon</p>
+              <p className={styles.evidenceComingSoonBody}>Evidence form pending design for {gap.code}.</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -394,10 +516,15 @@ function EedEvidenceForm({ v, data, submitted }) {
       <div className={styles.formGrid2}>
         <FieldStack>
           <FieldLabel>Laterality</FieldLabel>
-          <Input
+          <Select
+            options={[
+              { value: 'both',  label: 'Both eyes' },
+              { value: 'left',  label: 'Left eye' },
+              { value: 'right', label: 'Right eye' },
+            ]}
             value={data.laterality}
-            onChange={(e) => onUpdate({ laterality: e.target.value })}
-            placeholder="Enter Provider Name"
+            onChange={(v2) => onUpdate({ laterality: v2 })}
+            placeholder="Select Laterality"
           />
         </FieldStack>
         <FieldStack>
@@ -586,6 +713,148 @@ function CbpRadioGroup({ label, value, options, onChange, error }) {
   );
 }
 
+/* GenericEvidenceForm — renders any gap whose fields live in
+   GAP_TEMPLATES (utils). Backed by the parallel "{CODE} Visit Note"
+   template rows seeded in
+   supabase/hedis_gap_clinical_note_templates_seed.sql. Field types map to
+   library primitives: text/number → Input, date → DatePicker, select →
+   Select, radio → vertical RadioButton stack, checkbox → CheckboxRow.
+   Fields with `column: 2` pair up in a formGrid2 row (must appear in
+   pairs). */
+function GenericEvidenceForm({ code, v, data, submitted }) {
+  const template = GAP_TEMPLATES[code];
+  if (!template) return null;
+  const onUpdate = (patch) => v.updateGap(code, patch);
+  const err = (field, req) => submitted && req && !data[field];
+
+  const rows = [];
+  let i = 0;
+  while (i < template.length) {
+    const f = template[i];
+    const next = template[i + 1];
+    if (f.column === 2 && next && next.column === 2) {
+      rows.push({ kind: 'pair', a: f, b: next });
+      i += 2;
+    } else {
+      rows.push({ kind: 'single', field: f });
+      i += 1;
+    }
+  }
+
+  return (
+    <div className={styles.evidenceForm}>
+      {rows.map((row, idx) =>
+        row.kind === 'pair' ? (
+          <div key={idx} className={styles.formGrid2}>
+            <GenericField field={row.a} data={data} onUpdate={onUpdate} err={err} />
+            <GenericField field={row.b} data={data} onUpdate={onUpdate} err={err} />
+          </div>
+        ) : (
+          <GenericField
+            key={idx}
+            field={row.field}
+            data={data}
+            onUpdate={onUpdate}
+            err={err}
+          />
+        )
+      )}
+      <FieldStack>
+        <FieldLabel>Upload Evidence (if available):</FieldLabel>
+        <UploadDropField onChange={() => v.showToast('Attach evidence — coming soon')} />
+      </FieldStack>
+    </div>
+  );
+}
+
+function GenericField({ field, data, onUpdate, err }) {
+  const { key, label, type, options, required, placeholder } = field;
+  const value = data[key] ?? (type === 'checkbox' ? false : '');
+  const hasError = err(key, required);
+  const errorText = required ? `${label} is required` : null;
+
+  if (type === 'checkbox') {
+    return (
+      <FieldStack>
+        <CheckboxRow
+          checked={!!value}
+          onChange={(v2) => onUpdate({ [key]: v2 })}
+          label={label}
+        />
+      </FieldStack>
+    );
+  }
+
+  if (type === 'radio') {
+    return (
+      <FieldStack>
+        <span className={styles.cbpQuestionLabel}>
+          {label}
+          {required && <span className={styles.required}>&nbsp;•</span>}
+        </span>
+        <div className={styles.radioGroupStack}>
+          {options.map(opt => (
+            <RadioButton
+              key={opt.value}
+              checked={value === opt.value}
+              onChange={() => onUpdate({ [key]: opt.value })}
+              label={opt.label}
+            />
+          ))}
+        </div>
+        {hasError && <FieldError>{errorText}</FieldError>}
+      </FieldStack>
+    );
+  }
+
+  if (type === 'select') {
+    return (
+      <FieldStack>
+        <FieldLabel required={required}>{label}</FieldLabel>
+        <Select
+          options={options}
+          value={value}
+          onChange={(v2) => onUpdate({ [key]: v2 })}
+          placeholder={placeholder || `Select ${label}`}
+          variant={hasError ? 'error' : 'default'}
+        />
+        {hasError && <FieldError>{errorText}</FieldError>}
+      </FieldStack>
+    );
+  }
+
+  if (type === 'date') {
+    return (
+      <FieldStack>
+        <FieldLabel required={required}>{label}</FieldLabel>
+        <DatePicker
+          value={value}
+          onSelect={(v2) => onUpdate({ [key]: v2 })}
+          placeholder={placeholder || 'Select Date'}
+          hasError={hasError}
+        />
+        {hasError && <FieldError>{errorText}</FieldError>}
+      </FieldStack>
+    );
+  }
+
+  // text / number
+  return (
+    <FieldStack>
+      <FieldLabel required={required}>{label}</FieldLabel>
+      <Input
+        type={type === 'number' ? 'number' : 'text'}
+        inputMode={type === 'number' ? 'numeric' : undefined}
+        value={value}
+        onChange={(e) => onUpdate({ [key]: e.target.value })}
+        placeholder={placeholder}
+        variant={hasError ? 'error' : undefined}
+      />
+      {hasError && <FieldError>{errorText}</FieldError>}
+    </FieldStack>
+  );
+}
+
 function FieldStack({ children }) {
   return <div className={styles.fieldStack}>{children}</div>;
 }
@@ -678,6 +947,8 @@ export function ClinicalNoteWorkspaceBody({ v }) {
           <EedEvidenceForm v={v} data={data} submitted={v.submitted} />
         ) : gap.code === 'CBP' ? (
           <CbpEvidenceForm v={v} data={data} submitted={v.submitted} />
+        ) : GAP_TEMPLATES[gap.code] ? (
+          <GenericEvidenceForm code={gap.code} v={v} data={data} submitted={v.submitted} />
         ) : (
           <div className={styles.evidenceComingSoon}>
             <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-150)" />
