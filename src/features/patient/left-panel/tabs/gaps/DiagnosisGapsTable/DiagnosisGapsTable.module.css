@@ -45,3 +45,10 @@
 .moreBtn { display: flex; align-items: center; padding: 8px; flex-shrink: 0; opacity: 0; transition: opacity 0.1s; }
 .row:hover .moreBtn { opacity: 1; }
 
+.empty {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
