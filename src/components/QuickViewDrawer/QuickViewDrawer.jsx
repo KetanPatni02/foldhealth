@@ -13,12 +13,16 @@ export function QuickViewDrawer() {
   // The snapshot is whatever the opening row passed at click time — it goes
   // stale the moment the Update Member drawer saves. Merge the live slice
   // row (matched by id, then by memberId) over it so the banner always
-  // shows current name / dob / gender / age.
+  // shows current name / dob / gender / age. HEDIS members are real Fold
+  // patients (ids like ap-001/FOLD...), so they must be checked before the
+  // generic allPatients fallback or the synthetic hd1 names would be
+  // overwritten by a colliding Fold ID.
   const live = useAppStore(s => {
     const snap = s.quickViewPatient;
     if (!snap) return null;
     const matches = (m) => m && (m.id === snap.id || (snap.memberId != null && String(m.memberId) === String(snap.memberId)));
-    return s.patients.find(matches)
+    return (s.hedisMembers || []).find(matches)
+      || s.patients.find(matches)
       || (s.allPatients || []).find(matches)
       || s.hccMembers.find(matches)
       || (s.awvMembers || []).find(matches)
