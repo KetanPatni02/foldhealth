@@ -92,6 +92,7 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     sessionStorage.removeItem('__auth_bypass');
+    try { sessionStorage.removeItem('__auth_bypass_user'); } catch { /* */ }
     window.location.hash = '#/login';
     onClose();
   };
@@ -297,13 +298,39 @@ export function TopBar() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
+    const bypassDemoUser = () => {
+      try {
+        if (sessionStorage.getItem('__auth_bypass') !== 'true') return null;
+        const raw = sessionStorage.getItem('__auth_bypass_user');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            id: parsed.id || 'local-dev-demo',
+            email: parsed.email || 'demo@fold.health',
+            user_metadata: {
+              full_name: parsed.name || 'Fold Demo',
+              first_name: 'Fold',
+              last_name: 'Demo',
+            },
+          };
+        }
+        return {
+          id: 'local-dev-demo',
+          email: 'demo@fold.health',
+          user_metadata: { full_name: 'Fold Demo', first_name: 'Fold', last_name: 'Demo' },
+        };
+      } catch { return null; }
+    };
     // getSession() rather than getUser(): this `user` only feeds the avatar
     // initials and the assigned-roles lookup, and getSession() reads the
     // persisted session locally instead of spending a round trip re-validating
     // the token against the auth server. AppLayout made the same swap.
-    supabase.auth.getSession().then(({ data }) => setUser(data?.session?.user || null));
+    supabase.auth.getSession().then(({ data }) => {
+      const u = data?.session?.user || null;
+      setUser(u || bypassDemoUser());
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user || null);
+      setUser(session?.user || bypassDemoUser());
     });
     return () => subscription.unsubscribe();
   }, []);

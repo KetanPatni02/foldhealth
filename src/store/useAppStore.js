@@ -7113,6 +7113,35 @@ export const useAppStore = create((set, get) => ({
             || authUser.email?.split('@')[0] || '').trim();
           if (meName) me = { id: authUser.id, name: meName, email: authUser.email || '' };
         }
+      } else {
+        // Dev-bypass (no Supabase session) — resolve to the Fold Demo identity
+        // so the worklist defaults, activity actors, and profile popover all
+        // show "Fold Demo" instead of the empty fallback.
+        try {
+          if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('__auth_bypass') === 'true') {
+            const demoRow = raw.find(p => p.email && p.email.toLowerCase() === 'demo@fold.health')
+              || raw.find(p => (p.full_name || '').toLowerCase() === 'fold demo')
+              || null;
+            if (demoRow) {
+              me = {
+                id: demoRow.id,
+                name: (demoRow.full_name || demoRow.email?.split('@')[0] || 'Fold Demo').trim(),
+                email: demoRow.email || 'demo@fold.health',
+              };
+              meRoles = demoRow.clinical_roles || [];
+            } else {
+              // No seeded demo profile row yet — synthetic fallback so UI still
+              // shows the right name even on empty DBs.
+              let stored = null;
+              try { stored = JSON.parse(sessionStorage.getItem('__auth_bypass_user') || 'null'); } catch { /* */ }
+              me = {
+                id: stored?.id || 'local-dev-demo',
+                name: stored?.name || 'Fold Demo',
+                email: stored?.email || 'demo@fold.health',
+              };
+            }
+          }
+        } catch { /* ignore — leave me null */ }
       }
 
       // Dedupe by name — profiles occasionally carries the same full_name

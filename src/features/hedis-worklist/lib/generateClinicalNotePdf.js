@@ -124,11 +124,16 @@ export function generateClinicalNotePdf({
     'COA-FS': 'Care for Older Adults: Functional Status',
     'COA-M': 'Care for Older Adults: Medication Review',
     BCS: 'Breast Cancer Screening',
-    DM: 'Diabetes HbA1c Control',
+    DM: 'Diabetes Management',
+    GSD3: 'Glycemic Status Assessment (HbA1c > 9%)',
     ABA: 'Adult BMI Assessment',
     FUH: 'Follow-Up After Hospitalization',
     AMR: 'Asthma Medication Ratio',
     KED: 'Kidney Health Evaluation',
+    EED: 'Eye Exam for Patients With Diabetes',
+    OMW: 'Osteoporosis Management in Women',
+    BPD: 'Blood Pressure Documentation',
+    CCS: 'Cervical Cancer Screening',
   };
 
   gapCodes.forEach((code, i) => {
@@ -168,8 +173,40 @@ export function generateClinicalNotePdf({
       kv('eGFR result date', data.egfrResultDate);
       kv('uACR (mg/g)', data.uacr);
       kv('uACR result date', data.uacrResultDate);
+    } else if (code === 'DM') {
+      kv('HbA1c Value (%)', data.a1cValue);
+      kv('HbA1c Draw Date', data.a1cDate);
+      kv('Diabetes Type', data.diabetesType);
+      kv('Current Management', data.currentManagement);
+      kv('Last Eye Exam Date', data.lastEyeExamDate);
+      kv('Last Foot Exam Date', data.lastFootExamDate);
+      kv('Systolic BP (mmHg)', data.bpSystolic);
+      kv('Diastolic BP (mmHg)', data.bpDiastolic);
+      kv('Nephropathy screening completed?', data.nephropathyScreened);
+      kv('Plan updated?', data.planUpdated);
+      kv('Counseling provided?', data.counselingProvided ? 'Yes' : null);
+      kv('Additional Notes', data.notes);
+    } else if (code === 'GSD3') {
+      kv('HbA1c Value (%)', data.a1cValue);
+      kv('HbA1c Draw Date', data.a1cDate);
+      kv('Diabetes Type', data.diabetesType);
+      kv('Current Management', data.currentManagement);
+      kv('Plan updated?', data.planUpdated);
+      kv('Additional Notes', data.notes);
     } else {
-      body('Evidence template not yet configured for this measure.', { color: [120, 124, 132] });
+      // Generic fallback for GAP_TEMPLATES-driven gaps — render all stored
+      // key/value pairs so DM and future templates automatically appear in
+      // the PDF without needing a bespoke branch per code.
+      const entries = Object.entries(data || {}).filter(([, v]) => v !== '' && v !== null && v !== undefined && v !== false);
+      if (entries.length === 0) {
+        body('No evidence documented.', { color: [120, 124, 132] });
+      } else {
+        for (const [k, v] of entries) {
+          if (k === 'evidenceLabel' || k === 'manuallyOff') continue;
+          const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+          kv(label, typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v));
+        }
+      }
     }
   });
 

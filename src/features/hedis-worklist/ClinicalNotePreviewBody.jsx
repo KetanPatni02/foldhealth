@@ -13,20 +13,30 @@ import {
 } from './ClinicalNotePanel.utils';
 import styles from './ClinicalNotePreviewBody.module.css';
 
-/** Read-only note preview rendered in the CareGapDetailDrawer's left pane. */
+/**
+ * ClinicalNotePreviewBody — read-only signed-note summary.
+ *
+ * Rendered inside the CareGapDetailDrawer's left workspace slot when the
+ * user clicks the eye affordance on a Signed note. Mirrors Figma
+ * 511:105429 — sectioned key/value rows plus an Amend affordance that
+ * routes back to the editable workspace.
+ *
+ * The payload it renders is whatever `upsertClinicalNote` persisted for
+ * this member/gap — currently `{ dateOfService, audioOnly, audioVideo,
+ * gaps: { <code>: <gapState> } }`. Unknown fields are skipped so future
+ * form additions surface without touching this component.
+ */
 export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
   const notes = useAppStore(s => (memberId ? s.clinicalNotesByMember?.[memberId] : null)) || [];
-  const note = useMemo(() => {
-    if (noteId) {
-      const byId = notes.find(n => n.id === noteId);
-      if (byId) return byId;
-    }
-    // Prefer the freshest note that covers this gap; fall back to the
-    // freshest note tied to this member so a viewer never sees "empty".
-    return notes.find(n => (n.gapCodes || []).includes(gapCode))
+  const note = useMemo(() => (
+    // Prefer the exact note the eye affordance opened (noteId); fall back
+    // to the freshest note that covers this gap, then to the freshest note
+    // tied to this member so a viewer never sees "empty".
+    (noteId ? notes.find(n => n.id === noteId) : null)
+      || notes.find(n => (n.gapCodes || []).includes(gapCode))
       || notes[0]
-      || null;
-  }, [notes, gapCode, noteId]);
+      || null
+  ), [notes, gapCode, noteId]);
 
   if (!note) {
     return (

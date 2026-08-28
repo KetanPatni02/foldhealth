@@ -17,7 +17,7 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
       <Drawer
         title={<TitleBlock title={v.drawerTitle} />}
         onClose={onClose}
-        width={1260}
+        width={1280}
         bodyClassName={styles.body}
         headerRight={
           <HeaderActions

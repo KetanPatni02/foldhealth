@@ -12,7 +12,7 @@ const FORM_TYPE_LABEL = {
   cbp_visit_note: 'CBP Visit Note',
 };
 
-export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId = null, amendNoteId = null }) {
+export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, onClose, editingTaskId = null, amendNoteId = null }) {
   const showToast = useAppStore(s => s.showToast);
   const bulkUpdateGapStatuses = useAppStore(s => s.bulkUpdateGapStatuses);
   const logCareGapActivity = useAppStore(s => s.logCareGapActivity);
@@ -156,7 +156,12 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       const notes = await fetchClinicalNotesForMember(member.id);
       if (cancelled || !notes?.length) { setRestored(true); return; }
       const idSeed = {};
-      notes.forEach(n => (n.gapCodes || []).forEach(c => { idSeed[c] = n.id; }));
+      // Keep the newest note per gap (notes are ordered newest first, so
+      // only seed if not already set). Previously this overwrote with the
+      // oldest note covering the gap, causing consolidated-note saves to
+      // update the wrong row when multiple notes shared a gap (e.g., a
+      // 4-gap pending and a 2-gap pending both covering COL).
+      notes.forEach(n => (n.gapCodes || []).forEach(c => { if (!(c in idSeed)) idSeed[c] = n.id; }));
       setNoteIdByCode(prev => ({ ...idSeed, ...prev }));
       // Amend path takes precedence — hydrate from the note being amended
       // so the form shows the prior signed/submitted state, not just the
@@ -181,19 +186,31 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
           return;
         }
       }
-      // Prefer the freshest DRAFT — it holds the author's in-progress
-      // edits. Fall back to the freshest SUBMITTED (pending review) note
-      // so the Edit-from-preview flow lands with the last-sent-for-
-      // review values pre-populated instead of a blank form.
-      const draft = notes.find(n => n.status === 'draft')
-                 || notes.find(n => n.status === 'submitted');
-      if (draft?.payload) {
-        if (draft.payload.dateOfService) setDateOfService(draft.payload.dateOfService);
-        if (draft.payload.gaps) {
+      // If a specific note was selected (eye → preview), hydrate from that
+      // note so the reviewer sees the exact answers the author filled,
+      // regardless of status (draft / submitted / signed). Otherwise fall
+      // back to the freshest DRAFT (author's in-progress edits) then the
+      // freshest SUBMITTED (pending review) so the Edit-from-preview flow
+      // lands with the last-sent-for-review values pre-populated.
+      let target = null;
+      if (selectedNoteId) {
+        target = notes.find(n => n.id === selectedNoteId) || null;
+      }
+      if (!target) {
+        target = notes.find(n => n.status === 'draft')
+              || notes.find(n => n.status === 'submitted')
+              || null;
+      }
+      if (target?.payload) {
+        if (target.payload.dateOfService) setDateOfService(target.payload.dateOfService);
+        if (target.payload.audioOnly !== undefined) setAudioOnly(!!target.payload.audioOnly);
+        if (target.payload.audioVideo !== undefined) setAudioVideo(!!target.payload.audioVideo);
+        if (target.payload.gaps) {
           setGapState(prev => {
             const next = { ...prev };
-            for (const [code, data] of Object.entries(draft.payload.gaps)) {
+            for (const [code, data] of Object.entries(target.payload.gaps)) {
               if (next[code]) next[code] = { ...next[code], ...data };
+              else next[code] = { ...defaultGapData(code), ...data };
             }
             return next;
           });
@@ -202,9 +219,11 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       setRestored(true);
     })();
     return () => { cancelled = true; };
-    // Run once per member open — the panel remounts per member.
+    // Re-run when the selected note changes (eye → Edit) so the form
+    // re-hydrates to that note's answers. The panel remounts per member,
+    // but selectedNoteId can change without remounting.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member.id, amendNoteId]);
+  }, [member.id, selectedNoteId, amendNoteId]);
 
   // When Amend is clicked after the initial fetch, notes are already cached
   // but gapState was initialized from the draft. Rehydrate from the amended
@@ -253,6 +272,12 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     audioVideo,
     gaps: Object.fromEntries((codes || []).map(c => [c, gapState[c] ?? {}])),
   });
+
+  const formTypeForCodes = (codes) => {
+    if (!codes || codes.length === 0) return 'cbp_visit_note';
+    if (codes.length > 1) return 'consolidated_visit_note';
+    return `${codes[0].toLowerCase()}_visit_note`;
+  };
 
   const rememberNoteId = (code, id) => {
     if (!code || !id) return;
@@ -310,12 +335,13 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     const codes = dirty.length ? dirty : (activeGapCode ? [activeGapCode] : []);
     const primary = codes[0];
     if (!primary) { showToast('Nothing to save'); return; }
+    const effectiveId = selectedNoteId || noteIdByCode[primary];
     const note = await upsertClinicalNote({
-      id: noteIdByCode[primary],
+      id: effectiveId,
       hedisMemberId: member.id,
       patientId: member.id,
       gapCodes: codes,
-      formType: 'cbp_visit_note',
+      formType: formTypeForCodes(codes),
       status: 'draft',
       payload: buildNotePayload(codes),
     });
@@ -357,50 +383,77 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     const { codes, primary } = noteScope();
     if (codes.length === 0) { setReviewerPickerOpen(false); return; }
     const pdf = buildPdf(codes, CURRENT_USER);
+    // If editing an existing note (draft → submit, or resubmitting a
+    // pending note after edits), reuse its gap set and id so we update
+    // the SAME record. This is the core single-entity guarantee.
+    let finalCodes = codes;
+    let finalPrimary = primary;
+    let effectiveId = selectedNoteId || noteIdByCode[primary];
+    if (selectedNoteId) {
+      const existing = notesForMember.find(n => n.id === selectedNoteId);
+      if (existing?.gapCodes?.length) {
+        finalCodes = existing.gapCodes;
+        finalPrimary = finalCodes[0] || primary;
+        effectiveId = selectedNoteId;
+      }
+    }
     const note = await upsertClinicalNote({
-      id: noteIdByCode[primary],
+      id: effectiveId,
       hedisMemberId: member.id,
       patientId: member.id,
-      gapCodes: codes,
-      formType: 'cbp_visit_note',
+      gapCodes: finalCodes,
+      formType: formTypeForCodes(finalCodes),
       status: 'submitted',
-      payload: buildNotePayload(codes),
+      payload: buildNotePayload(finalCodes),
       pdf,
       reviewerId: reviewer.id,
       reviewerName: reviewer.name,
     });
-    if (note?.id) rememberNoteId(primary, note.id);
-    bulkUpdateGapStatuses(member.id, Object.fromEntries(codes.map(c => [c, 'Submitted'])), { assignee: reviewer.name });
+    if (note?.id) finalCodes.forEach(c => rememberNoteId(c, note.id));
+    bulkUpdateGapStatuses(member.id, Object.fromEntries(finalCodes.map(c => [c, 'Submitted'])), { assignee: reviewer.name });
     // Sign-off task + activity card share one derived name so the Tasks
     // table and the nested review-task card read identically. Single-gap
     // notes drop the "Consolidated" prefix — they're one gap's note, not a
     // consolidated pack.
-    const formLabel = codes.length > 1
+    const formLabel = finalCodes.length > 1
       ? 'Consolidated Clinical Note'
-      : `${codes[0]} Visit Note`;
+      : `${finalCodes[0]} Visit Note`;
     const signOffTaskName = `Request for Sign-off - ${formLabel}`;
-    // Create the sign-off task BEFORE logging activity so the entry can carry
-    // the real taskId — the activity feed's task card opens the TaskDetail
-    // drawer through it.
-    const task = await createCareGapSignOffTask({
-      hedisMemberId: member.id,
-      gapCodes: codes,
-      state: member.state,
-      pdf,
-      reviewerId: reviewer.id,
-      reviewerName: reviewer.name,
-      taskName: signOffTaskName,
-    });
+    // Reuse the existing sign-off task if this note already has one
+    // (edit → resubmit). Do NOT create a duplicate task for the same note.
+    const existingForTask = selectedNoteId ? notesForMember.find(n => n.id === selectedNoteId) : null;
+    const existingTaskId = existingForTask?.reviewTaskId || note?.reviewTaskId || null;
+    let task = null;
+    if (existingTaskId) {
+      // Update the existing task's PDF so the reviewer sees the latest
+      // content, but keep the same task id.
+      await updateSignOffTaskPdf(existingTaskId, pdf, CURRENT_USER);
+      task = (useAppStore.getState().tasks || []).find(t => String(t.id) === String(existingTaskId)) || { id: existingTaskId };
+      // Also ensure the note stays linked (idempotent).
+      if (note?.id) await linkClinicalNoteToReviewTask(note.id, existingTaskId);
+    } else {
+      // First submission — create the sign-off task BEFORE logging activity
+      // so the entry can carry the real taskId.
+      task = await createCareGapSignOffTask({
+        hedisMemberId: member.id,
+        gapCodes: finalCodes,
+        state: member.state,
+        pdf,
+        reviewerId: reviewer.id,
+        reviewerName: reviewer.name,
+        taskName: signOffTaskName,
+      });
+    }
     logCareGapActivity(member.id, {
       title: 'Clinical Note Added',
-      detail: `Ready gaps: ${codes.join(', ')}`,
+      detail: `Ready gaps: ${finalCodes.join(', ')}`,
       actor: CURRENT_USER,
       icon: 'solar:notes-linear',
-      gapCodes: codes,
+      gapCodes: finalCodes,
       attachment: pdf,
       t: 'clinical_note',
       detailCard: buildDetailCard({
-        codes,
+        codes: finalCodes,
         status: 'Pending Review',
         reviewer: reviewer.name,
         noteId: note?.id,
@@ -428,29 +481,52 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     if (!dateOfService) { showToast('Date of Service is required'); return; }
     if (codes.length === 0) { showToast('No gaps marked Ready for Review'); return; }
     const pdf = buildPdf(codes, 'Provider');
+    const effectiveId = selectedNoteId || noteIdByCode[primary];
+    // If we are signing an existing note (edit → sign), reuse its gapCodes
+    // so a 1-gap draft that was expanded to a consolidated note does not get
+    // split back to a single gap. The DB row must keep its consolidated
+    // gap set throughout the lifecycle.
+    let finalCodes = codes;
+    let finalPrimary = primary;
+    if (selectedNoteId) {
+      const existing = notesForMember.find(n => n.id === selectedNoteId);
+      if (existing?.gapCodes?.length) {
+        finalCodes = existing.gapCodes;
+        finalPrimary = finalCodes[0] || primary;
+      }
+    }
     const note = await upsertClinicalNote({
-      id: noteIdByCode[primary],
+      id: effectiveId,
       hedisMemberId: member.id,
       patientId: member.id,
-      gapCodes: codes,
-      formType: 'cbp_visit_note',
+      gapCodes: finalCodes,
+      formType: formTypeForCodes(finalCodes),
       status: 'signed',
-      payload: buildNotePayload(codes),
+      payload: buildNotePayload(finalCodes),
       pdf,
       signedByName: 'Provider',
     });
-    if (note?.id) rememberNoteId(primary, note.id);
-    bulkUpdateGapStatuses(member.id, Object.fromEntries(codes.map(c => [c, 'Completed'])));
+    if (note?.id) finalCodes.forEach(c => rememberNoteId(c, note.id));
+    bulkUpdateGapStatuses(member.id, Object.fromEntries(finalCodes.map(c => [c, 'Completed'])));
+    // If this note was previously submitted, its sign-off task must be
+    // completed — do not create a new task. The Clinical Notes tab is
+    // DB-driven (one row per note), so creating a new task would leave the
+    // old Pending task visible as a duplicate nested card.
+    const existingForTask = selectedNoteId ? notesForMember.find(n => n.id === selectedNoteId) : null;
+    const taskIdToComplete = existingForTask?.reviewTaskId || note?.reviewTaskId || null;
+    if (taskIdToComplete) {
+      try { await useAppStore.getState().updateTask(taskIdToComplete, { status: 'completed' }); } catch { /* optimistic */ }
+    }
     logCareGapActivity(member.id, {
       title: 'Clinical Note Signed',
-      detail: `Direct sign path · ${codes.join(', ')}`,
+      detail: `Direct sign path · ${finalCodes.join(', ')}`,
       actor: 'Provider',
       icon: 'solar:pen-new-square-linear',
-      gapCodes: codes,
+      gapCodes: finalCodes,
       attachment: pdf,
       t: 'clinical_note',
       detailCard: buildDetailCard({
-        codes,
+        codes: finalCodes,
         status: 'Signed',
         reviewer: 'Provider',
         signedDate: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
@@ -468,29 +544,44 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
     if (!dateOfService) { showToast('Date of Service is required'); return; }
     if (codes.length === 0) { showToast('No gaps marked Ready for Review'); return; }
     const pdf = buildPdf(codes, 'Provider');
+    const effectiveId = selectedNoteId || noteIdByCode[primary];
+    let finalCodes = codes;
+    let finalPrimary = primary;
+    if (selectedNoteId) {
+      const existing = notesForMember.find(n => n.id === selectedNoteId);
+      if (existing?.gapCodes?.length) {
+        finalCodes = existing.gapCodes;
+        finalPrimary = finalCodes[0] || primary;
+      }
+    }
     const note = await upsertClinicalNote({
-      id: noteIdByCode[primary],
+      id: effectiveId,
       hedisMemberId: member.id,
       patientId: member.id,
-      gapCodes: codes,
-      formType: 'cbp_visit_note',
+      gapCodes: finalCodes,
+      formType: formTypeForCodes(finalCodes),
       status: 'signed',
-      payload: buildNotePayload(codes),
+      payload: buildNotePayload(finalCodes),
       pdf,
       signedByName: 'Provider',
     });
-    if (note?.id) rememberNoteId(primary, note.id);
-    bulkUpdateGapStatuses(member.id, Object.fromEntries(codes.map(c => [c, 'Completed'])));
+    if (note?.id) finalCodes.forEach(c => rememberNoteId(c, note.id));
+    bulkUpdateGapStatuses(member.id, Object.fromEntries(finalCodes.map(c => [c, 'Completed'])));
+    const existingForTask = selectedNoteId ? notesForMember.find(n => n.id === selectedNoteId) : null;
+    const taskIdToComplete = existingForTask?.reviewTaskId || note?.reviewTaskId || null;
+    if (taskIdToComplete) {
+      try { await useAppStore.getState().updateTask(taskIdToComplete, { status: 'completed' }); } catch { /* optimistic */ }
+    }
     logCareGapActivity(member.id, {
       title: 'Clinical Note Signed',
-      detail: `Direct sign path · ${codes.join(', ')}`,
+      detail: `Direct sign path · ${finalCodes.join(', ')}`,
       actor: 'Provider',
       icon: 'solar:printer-linear',
-      gapCodes: codes,
+      gapCodes: finalCodes,
       attachment: pdf,
       t: 'clinical_note',
       detailCard: buildDetailCard({
-        codes,
+        codes: finalCodes,
         status: 'Signed',
         reviewer: 'Provider',
         signedDate: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),

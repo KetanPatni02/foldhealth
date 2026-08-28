@@ -1,3 +1,12 @@
+/* ── Panel sizing — mirrors Diagnosis Gaps 1280px expanded / 700px closed ── */
+.panel {
+  transition: width 280ms cubic-bezier(0.32, 0.72, 0.36, 1),
+              max-width 280ms cubic-bezier(0.32, 0.72, 0.36, 1) !important;
+}
+.panelExpanded {
+  width: 1280px !important;
+  max-width: calc(100vw - 16px) !important;
+}
 /* ── Header nav (prev/next + divider in Drawer headerRight) ── */
 .headerNav { display: flex; align-items: center; gap: 4px; }
 
@@ -6,24 +15,26 @@
    pattern mirrors HCC's Document Review LeftPane + RightPane split so
    both surfaces feel like one entity, not two stacked drawers).
 
-   The right pane is pinned at its natural 700px width so the Care Gap
-   content stays fixed in place; the left workspace pane fills the
-   remaining space that opens up as the drawer's width transitions from
-   700→1260. Combined with Drawer's own `width` transition, this reads
-   as the Add Task pane sliding out from behind the right pane — the
-   right side never moves. */
+   The right pane is pinned at 640px (700px drawer closed → 1280px
+   expanded = 640 + 640) so the Care Gap content stays fixed in place;
+   the left workspace fills the new space as the drawer's width
+   transitions 700→1280. Combined with Drawer's own `width` transition,
+   this reads as the workspace sliding out from behind the right pane —
+   the right side never moves. */
 .drawerBodySplit { flex-direction: row !important; }
 .drawerBodySplit .contentBody {
-  flex: 0 0 630px;
+  flex: 0 0 640px;
   min-width: 0;
 }
 
-/* Left workspace pane — hosts Add Task's form. Its own inner header
-   provides the pane's title + primary CTA + close button so users can
-   dismiss just the workspace without collapsing the parent drawer. */
+/* Left workspace pane — hosts Add Task / Add Note / Schedule. Fixed at
+   640px so the 1280px expanded drawer splits 640/640 with the right pane
+   (mirrors Diagnosis Gaps 50/50 split). `flex: 0 0 640px` guarantees the
+   two sides stay equal regardless of inner content. */
 .leftPane {
-  flex: 1;
+  flex: 0 0 640px;
   min-width: 0;
+  max-width: 640px;
   display: flex;
   flex-direction: column;
   border-right: 0.5px solid var(--neutral-150);
