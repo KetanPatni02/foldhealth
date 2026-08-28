@@ -35,7 +35,7 @@
   overflow: hidden;
   transform: translateX(0);
   /* `width` is also transitioned so consumers that swap the panel width
-     (e.g. Care Gap drawer widening from 700→1260 when the Add Task left
+     (e.g. Care Gap drawer widening from 700→1280 when the Add Task left
      workspace opens) slide open smoothly from the right edge — the same
      motion the HCC DiagPanel uses. Width lives on the inline style set
      by Drawer.jsx, but the transition runs from CSS. */

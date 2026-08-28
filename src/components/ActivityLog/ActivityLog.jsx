@@ -520,9 +520,9 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
   return (
     <>
       {/* subMeta (pre-title form-type label) and the "Linked Score Groups"
-          link are no longer part of the note-card design — dropped at the
-          render layer so historical entries with those fields still
-          persisted don't show them. */}
+           link are no longer part of the note-card design — dropped at the
+           render layer so historical entries with those fields still
+           persisted don't show them. */}
       <div className={styles.detailCardRow}>
         <div className={styles.detailCardText}>
           <div className={styles.detailCardTitleRow}>

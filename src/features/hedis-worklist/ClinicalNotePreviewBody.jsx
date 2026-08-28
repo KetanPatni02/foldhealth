@@ -25,15 +25,17 @@ import styles from './ClinicalNotePreviewBody.module.css';
  * gaps: { <code>: <gapState> } }`. Unknown fields are skipped so future
  * form additions surface without touching this component.
  */
-export function ClinicalNotePreviewBody({ memberId, gapCode }) {
+export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
   const notes = useAppStore(s => (memberId ? s.clinicalNotesByMember?.[memberId] : null)) || [];
   const note = useMemo(() => (
-    // Prefer the freshest note that covers this gap; fall back to the
-    // freshest note tied to this member so a viewer never sees "empty".
-    notes.find(n => (n.gapCodes || []).includes(gapCode))
+    // Prefer the exact note the eye affordance opened (noteId); fall back
+    // to the freshest note that covers this gap so Add-Note entry points
+    // still resolve. Fixes the Signed eye showing Pending Review.
+    (noteId ? notes.find(n => n.id === noteId) : null)
+      || notes.find(n => (n.gapCodes || []).includes(gapCode))
       || notes[0]
       || null
-  ), [notes, gapCode]);
+  ), [notes, gapCode, noteId]);
 
   if (!note) {
     return (

@@ -196,6 +196,16 @@ function App() {
     const legacyBypass = () => {
       track('auth.bypass_used');
       sessionStorage.setItem('__auth_bypass', 'true');
+      // Synthetic Fold Demo identity for dev sessions without real Supabase auth.
+      // TopBar and useAppStore read this to show "Fold Demo" instead of "User"
+      // when no Supabase session exists. Cleared on logout.
+      try {
+        sessionStorage.setItem('__auth_bypass_user', JSON.stringify({
+          id: 'local-dev-demo',
+          email: 'demo@fold.health',
+          name: 'Fold Demo',
+        }));
+      } catch { /* ignore */ }
       setBypassed(true);
       window.location.hash = '#/home';
     };
