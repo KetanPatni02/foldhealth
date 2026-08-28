@@ -19,11 +19,11 @@
   display: flex;
 }
 .measureSelect {
-  width: 10rem;
+  width: 160px;
   min-width: 0;
 }
 .measureSelectWide {
-  width: 17.5rem;
+  width: 280px;
 }
 
 .field {
@@ -37,7 +37,7 @@
   align-items: center;
   gap: var(--space-1);
   font-size: var(--font-base);
-  color: var(--neutral-400);
+  color: var(--neutral-200);
 }
 /* Required marker — the goal screens use a red asterisk. */
 .mandatoryStar {
@@ -50,7 +50,7 @@
 .titleField {
   display: flex;
   align-items: stretch;
-  height: var(--space-8);
+  height: 32px;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-200);
   border-radius: var(--space-1);
@@ -84,7 +84,7 @@
   gap: var(--space-2);
 }
 .comparator {
-  width: 6rem;
+  width: 96px;
   flex-shrink: 0;
 }
 .targetSlash {
@@ -122,7 +122,7 @@
 /* DatePicker's own input carries a 140px min-width; cap the field so it
    doesn't stretch the whole drawer. */
 .targetDate {
-  max-width: 18.75rem;
+  max-width: 300px;
 }
 .targetDate > * {
   width: 100%;
@@ -168,15 +168,108 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  min-height: var(--space-6);
+  min-height: 24px;
 }
+/* Added interventions — one 52px row each, split by hairlines (Figma
+   14537:196477). */
+.interventionList {
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  overflow: hidden;
+}
+.interventionRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 52px;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.interventionRow:last-child {
+  border-bottom: none;
+}
+.interventionPriority {
+  display: flex;
+  align-items: center;
+  align-self: stretch;
+  padding: 0 var(--space-2);
+  border-right: 0.5px solid var(--neutral-150);
+}
+.interventionText {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+/* Added items sit on their own white card inside the grey section. */
+.linkedList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+
+.linkedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-radius: var(--space-1);
+}
+.linkedRow:hover {
+  background: var(--primary-25);
+}
+.linkedRowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: text;
+  text-align: left;
+}
+.linkedRowActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  visibility: hidden;
+}
+.linkedRow:hover .linkedRowActions,
+.linkedRow:focus-within .linkedRowActions {
+  visibility: visible;
+}
+.linkedRowLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
 .linkedLabel {
   font-size: var(--font-base);
   font-weight: 500;
-  color: var(--neutral-400);
+  color: var(--neutral-300);
 }
 
 /* Pain Scale picks its value from a list rather than typing one. */
 .valueSelect {
-  width: 10rem;
+  width: 160px;
 }

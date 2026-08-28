@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { Button } from '../../../../../components/Button/Button';
 import { Input } from '../../../../../components/Input/Input';
@@ -6,6 +6,7 @@ import { Select } from '../../../../../components/Select/Select';
 import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
+import { useAppStore } from '../../../../../store/useAppStore';
 import styles from '../shared/InterventionDrawer.module.css';
 
 const CREATION_TIMINGS = ['day', 'week', 'immediate'];
@@ -32,6 +33,25 @@ export function SendFormDrawer({ onClose, onSave }) {
   const [durationType, setDurationType] = useState('calendar');
   const [dueUnitOpen, setDueUnitOpen] = useState(false);
   const dueUnitRef = useRef(null);
+
+  // Forms come from Settings → Content → Forms. Search is remote so the
+  // picker isn't limited to the first page.
+  const contentForms = useAppStore(s => s.contentForms);
+  const contentFormsLoading = useAppStore(s => s.contentFormsLoading);
+  const fetchContentForms = useAppStore(s => s.fetchContentForms);
+  const [formQuery, setFormQuery] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchContentForms?.({ page: 1, perPage: 50, search: formQuery.trim() });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fetchContentForms, formQuery]);
+
+  const formOptions = useMemo(
+    () => (contentForms || []).map(f => ({ value: f.id, label: f.name })),
+    [contentForms],
+  );
 
   const canSave = title.trim().length > 0 && form.length > 0;
 
@@ -78,12 +98,16 @@ export function SendFormDrawer({ onClose, onSave }) {
             Forms <span className={styles.mandatoryStar} aria-hidden="true">*</span>
           </span>
           <Select
-            options={[]}
+            options={formOptions}
             value={form}
             onChange={setForm}
             placeholder="Search Form"
             searchable
             searchPlaceholder="Search Form"
+            query={formQuery}
+            onQueryChange={setFormQuery}
+            searchLoading={contentFormsLoading}
+            emptyText={contentFormsLoading ? 'Loading forms…' : 'No forms found'}
           />
         </div>
 
