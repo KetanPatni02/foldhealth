@@ -1,12 +1,12 @@
 import { useEffect, useMemo } from 'react';
-import { Icon } from '../../../../../../../components/Icon/Icon';
-import { Badge } from '../../../../../../../components/Badge/Badge';
-import { Avatar } from '../../../../../../../components/Avatar/Avatar';
-import { CloseButton } from '../../../../../../../components/CloseButton/CloseButton';
-import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
-import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
-import { TableSkeleton } from '../../../../../../../components/TableSkeleton/TableSkeleton';
-import { useAppStore } from '../../../../../../../store/useAppStore';
+import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { Badge } from '../../../../../../../../components/Badge/Badge';
+import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
+import { CloseButton } from '../../../../../../../../components/CloseButton/CloseButton';
+import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
+import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
+import { TableSkeleton } from '../../../../../../../../components/TableSkeleton/TableSkeleton';
+import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from './CarePlanSummaryView.module.css';
 
 const norm = (s) => (s || '').trim().toLowerCase();

@@ -276,3 +276,10 @@
   margin: 0;
 }
 .required { color: var(--status-error); }
+
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}

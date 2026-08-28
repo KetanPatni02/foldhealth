@@ -1,4 +1,4 @@
-import bone from '../../../../../../../components/TableSkeleton/TableSkeleton.module.css';
+import bone from '../../../../../../../../components/TableSkeleton/TableSkeleton.module.css';
 import styles from './ProgramDetailSkeleton.module.css';
 
 const Bone = ({ w, h, r = 4, style }) => (

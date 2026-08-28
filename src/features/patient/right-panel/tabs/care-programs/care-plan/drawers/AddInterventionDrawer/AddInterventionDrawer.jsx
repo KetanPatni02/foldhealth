@@ -3,7 +3,7 @@ import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { Button } from '../../../../../../../../components/Button/Button';
 import { Input } from '../../../../../../../../components/Input/Input';
 import { Select } from '../../../../../../../../components/Select/Select';
-import styles from './CarePlanView.module.css';
+import styles from '../../CarePlanView/CarePlanView.module.css';
 
 const STATUS_OPTIONS = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met']
   .map(v => ({ value: v, label: v }));

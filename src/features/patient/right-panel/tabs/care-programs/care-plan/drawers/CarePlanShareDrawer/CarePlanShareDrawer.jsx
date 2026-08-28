@@ -7,7 +7,7 @@ import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/Shad
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { buildCarePlanHtml, downloadCarePlanDocument } from './carePlanExport';
+import { buildCarePlanHtml, downloadCarePlanDocument } from '../../lib/carePlanExport';
 import styles from './CarePlanShareDrawer.module.css';
 
 const TARGETS = ['EHR', 'Patient', 'POA'];

@@ -7,7 +7,7 @@ import { CcmBillingReview } from '../billing/CcmBillingReview/CcmBillingReview.j
 import { SendLetterDrawer } from '../letters/SendLetterDrawer/SendLetterDrawer.jsx';
 import { PreVisitStep } from '../steps/PreVisitStep/PreVisitStep.jsx';
 import { AssessmentFormView } from '../steps/AssessmentFormView/AssessmentFormView.jsx';
-import { CarePlanView } from '../steps/CarePlanView/CarePlanView.jsx';
+import { CarePlanView } from '../../care-plan/CarePlanView/CarePlanView.jsx';
 import { AppointmentStep } from '../steps/AppointmentStep/AppointmentStep.jsx';
 import { PostVisitChecklist } from '../steps/PostVisitChecklist/PostVisitChecklist.jsx';
 import { OpenCareGaps } from '../steps/OpenCareGaps/OpenCareGaps.jsx';

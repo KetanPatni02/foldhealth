@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ProgramStatusRing } from '../ProgramStatusRing/ProgramStatusRing.jsx';
-import { statusColorFor } from '../../../../../data/programStatus';
+import { statusColorFor } from '../../../../../../data/programStatus';
 import styles from './ProgramBadges.module.css';
 
 // How many program badges show before the rest collapse into a "+N" chip.

@@ -4,7 +4,7 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { Checkbox } from '../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { WorklistShell } from '../../../../../../components/WorklistShell/WorklistShell';
 import { RoleAssigneePicker } from '../../../../../hcc/RoleAssigneePicker';
-import { ProgramStatusRing } from '../program-detail/ProgramStatusRing/ProgramStatusRing.jsx';
+import { ProgramStatusRing } from '../program-detail/shared/ProgramStatusRing/ProgramStatusRing.jsx';
 import { stepProgress } from './CareProgramsTab.utils';
 import styles from './CareProgramsTab.module.css';
 
