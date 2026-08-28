@@ -24,4 +24,8 @@ export const CARE_PLAN_MOCK = {
     { id: 'i1', priority: 'high', icon: 'solar:book-linear', title: 'Learn how to use a blood pressure measuring device', duration: null, links: 3, assignee: { name: 'Terri Schuster', initials: 'TS' }, adherence: '-', status: 'Not Started' },
     { id: 'i2', priority: 'high', icon: 'solar:clipboard-list-linear', title: 'Measure blood pressure everyday', duration: '9D', links: 3, assignee: { name: 'Terri Schuster', initials: 'TS' }, adherence: '-', status: 'Not Started' },
   ],
+  barriers: [
+    { id: 'b1', priority: 'high', title: 'Transportation — no reliable ride to clinic', description: 'Patient reports missing appointments due to bus schedule.', status: 'Not Started' },
+    { id: 'b2', priority: 'medium', title: 'Health Literacy — confused about medication schedule', description: 'Needs simplified dosing calendar.', status: 'In Progress' },
+  ],
 };

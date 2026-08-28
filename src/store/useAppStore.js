@@ -242,6 +242,32 @@ function patientCarePlanInterventionToRow(i, planId) {
   };
 }
 
+function mapPatientCarePlanBarrierRow(row) {
+  return {
+    id: row.id,
+    goalId: row.goal_id || null,
+    title: row.title || '',
+    description: row.description || '',
+    status: row.status || 'Not Started',
+    priority: row.priority || 'medium',
+    sortOrder: row.sort_order ?? 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function patientCarePlanBarrierToRow(b, planId) {
+  return {
+    plan_id: planId,
+    goal_id: b.goalId || null,
+    title: (b.title || '').trim(),
+    description: b.description || '',
+    status: b.status || 'Not Started',
+    priority: b.priority || 'medium',
+    sort_order: b.sortOrder ?? 0,
+  };
+}
+
 function mapPatientCarePlanRow(row) {
   return {
     id: row.id,
@@ -2413,10 +2439,11 @@ export const useAppStore = create((set, get) => ({
 
   // ── Patient Care Plan (the Care Plan step in a program) ──
   // Per (patient, program) plan, persisted in patient_care_plan_* (see
-  // supabase/patient_care_plan_migration.sql). Keyed by `<patientId>::<programId>`.
-  // Until the migration is run the fetch returns nothing and CarePlanView
-  // falls back to its local mock, so the demo keeps rendering either way.
-  patientCarePlans: {},        // { [key]: { plan, goals, interventions } }
+  // supabase/patient_care_plan_migration.sql + patient_care_plan_barriers_migration.sql).
+  // Keyed by `<patientId>::<programId>`. Until the migration is run the fetch
+  // returns nothing and CarePlanView falls back to its local mock, so the demo
+  // keeps rendering either way.
+  patientCarePlans: {},        // { [key]: { plan, goals, interventions, barriers } }
   patientCarePlanLoading: {},  // { [key]: bool }
   patientCarePlanLoadedFor: {},// { [key]: bool }
   // The comprehensive (all-programs) view loads every plan for a patient in one
@@ -2438,21 +2465,26 @@ export const useAppStore = create((set, get) => ({
       .maybeSingle();
     if (planErr) console.warn('fetchPatientCarePlan:', planErr.message);
 
-    let plan = null, goals = [], interventions = [];
+    let plan = null, goals = [], interventions = [], barriers = [];
     if (planRow) {
       plan = mapPatientCarePlanRow(planRow);
-      const [g, i] = await Promise.all([
+      const [g, i, b] = await Promise.all([
         supabase.from('patient_care_plan_goals').select('*').eq('plan_id', planRow.id)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('patient_care_plan_interventions').select('*').eq('plan_id', planRow.id)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('patient_care_plan_barriers').select('*').eq('plan_id', planRow.id)
+          .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
       ]);
       goals = (g.data || []).map(mapPatientCarePlanGoalRow);
       interventions = (i.data || []).map(mapPatientCarePlanInterventionRow);
+      barriers = (b.data || []).map(mapPatientCarePlanBarrierRow);
+      // If barriers table hasn't been migrated yet, supabase returns error; treat as empty.
+      if (b.error && (b.error.code === '42P01' || b.error.code === 'PGRST205')) barriers = [];
     }
 
     set(s => ({
-      patientCarePlans: { ...s.patientCarePlans, [key]: plan ? { plan, goals, interventions } : null },
+      patientCarePlans: { ...s.patientCarePlans, [key]: plan ? { plan, goals, interventions, barriers } : null },
       patientCarePlanLoading: { ...s.patientCarePlanLoading, [key]: false },
       patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: true },
     }));
@@ -2477,10 +2509,50 @@ export const useAppStore = create((set, get) => ({
     set(s => ({
       patientCarePlans: {
         ...s.patientCarePlans,
-        [key]: { plan, goals: existing?.goals || [], interventions: existing?.interventions || [] },
+        [key]: { plan, goals: existing?.goals || [], interventions: existing?.interventions || [], barriers: existing?.barriers || [] },
       },
     }));
     return plan.id;
+  },
+
+  savePatientCarePlanBarrier: async (patientId, program, values, id = null) => {
+    const key = carePlanKey(patientId, program.id);
+    const prev = id ? (get().patientCarePlans[key]?.barriers || []).find(b => b.id === id) : null;
+    const planId = await get().ensurePatientCarePlan(patientId, program);
+    if (!planId) return null;
+    const row = patientCarePlanBarrierToRow(values, planId);
+    const q = id
+      ? supabase.from('patient_care_plan_barriers').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('patient_care_plan_barriers').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) { console.warn('savePatientCarePlanBarrier:', error.message); get().showToast('Could not save barrier'); return null; }
+    const barrier = mapPatientCarePlanBarrierRow(data);
+    get().logCarePlanAudit(patientId, program, auditForSave('barrier', barrier, prev));
+    set(s => {
+      const cur = s.patientCarePlans[key] || { goals: [], interventions: [], barriers: [] };
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: {
+            ...cur,
+            barriers: id ? cur.barriers.map(b => (b.id === barrier.id ? barrier : b)) : [...cur.barriers, barrier],
+          },
+        },
+      };
+    });
+    return barrier;
+  },
+
+  deletePatientCarePlanBarrier: async (patientId, programId, id) => {
+    const key = carePlanKey(patientId, programId);
+    const prev = get().patientCarePlans[key];
+    const removed = (prev?.barriers || []).find(b => b.id === id);
+    set(s => ({
+      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, barriers: prev.barriers.filter(b => b.id !== id) } },
+    }));
+    const { error } = await supabase.from('patient_care_plan_barriers').delete().eq('id', id);
+    if (error) { console.warn('deletePatientCarePlanBarrier:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete barrier'); return; }
+    if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'barrier', entityId: id, action: 'deleted', summary: removed.title });
   },
 
   savePatientCarePlanGoal: async (patientId, program, values, id = null) => {
@@ -2497,7 +2569,7 @@ export const useAppStore = create((set, get) => ({
     const goal = mapPatientCarePlanGoalRow(data);
     get().logCarePlanAudit(patientId, program, auditForSave('goal', goal, prevGoal));
     set(s => {
-      const cur = s.patientCarePlans[key] || { goals: [], interventions: [] };
+      const cur = s.patientCarePlans[key] || { goals: [], interventions: [], barriers: [] };
       return {
         patientCarePlans: {
           ...s.patientCarePlans,
@@ -2516,7 +2588,7 @@ export const useAppStore = create((set, get) => ({
     const prev = get().patientCarePlans[key];
     const removed = (prev?.goals || []).find(g => g.id === id);
     set(s => ({
-      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, goals: prev.goals.filter(g => g.id !== id) } },
+      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, goals: prev.goals.filter(g => g.id !== id), barriers: prev.barriers || [], interventions: prev.interventions || [] } },
     }));
     const { error } = await supabase.from('patient_care_plan_goals').delete().eq('id', id);
     if (error) { console.warn('deletePatientCarePlanGoal:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete goal'); return; }
@@ -2537,7 +2609,7 @@ export const useAppStore = create((set, get) => ({
     const intervention = mapPatientCarePlanInterventionRow(data);
     get().logCarePlanAudit(patientId, program, auditForSave('intervention', intervention, prevIntv));
     set(s => {
-      const cur = s.patientCarePlans[key] || { goals: [], interventions: [] };
+      const cur = s.patientCarePlans[key] || { goals: [], interventions: [], barriers: [] };
       return {
         patientCarePlans: {
           ...s.patientCarePlans,
@@ -2558,7 +2630,7 @@ export const useAppStore = create((set, get) => ({
     const prev = get().patientCarePlans[key];
     const removed = (prev?.interventions || []).find(x => x.id === id);
     set(s => ({
-      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, interventions: prev.interventions.filter(x => x.id !== id) } },
+      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, interventions: prev.interventions.filter(x => x.id !== id), barriers: prev.barriers || [], goals: prev.goals || [] } },
     }));
     const { error } = await supabase.from('patient_care_plan_interventions').delete().eq('id', id);
     if (error) { console.warn('deletePatientCarePlanIntervention:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete intervention'); return; }
@@ -2581,17 +2653,23 @@ export const useAppStore = create((set, get) => ({
     if (error) console.warn('fetchAllPatientCarePlans:', error.message);
 
     const rows = planRows || [];
-    let goalsByPlan = {}, intvByPlan = {};
+    let goalsByPlan = {}, intvByPlan = {}, barriersByPlan = {};
     if (rows.length) {
       const planIds = rows.map(r => r.id);
-      const [g, i] = await Promise.all([
+      const [g, i, b] = await Promise.all([
         supabase.from('patient_care_plan_goals').select('*').in('plan_id', planIds)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('patient_care_plan_interventions').select('*').in('plan_id', planIds)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('patient_care_plan_barriers').select('*').in('plan_id', planIds)
+          .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
       ]);
       for (const row of (g.data || [])) (goalsByPlan[row.plan_id] ||= []).push(mapPatientCarePlanGoalRow(row));
       for (const row of (i.data || [])) (intvByPlan[row.plan_id] ||= []).push(mapPatientCarePlanInterventionRow(row));
+      for (const row of (b.data || [])) (barriersByPlan[row.plan_id] ||= []).push(mapPatientCarePlanBarrierRow(row));
+      if (b.error && (b.error.code === '42P01' || b.error.code === 'PGRST205')) {
+        // barriers table not yet migrated — treat as empty, don't warn
+      }
     }
 
     set(s => {
@@ -2600,7 +2678,7 @@ export const useAppStore = create((set, get) => ({
       for (const r of rows) {
         const plan = mapPatientCarePlanRow(r);
         next[carePlanKey(patientId, r.program_id)] = {
-          plan, goals: goalsByPlan[r.id] || [], interventions: intvByPlan[r.id] || [],
+          plan, goals: goalsByPlan[r.id] || [], interventions: intvByPlan[r.id] || [], barriers: barriersByPlan[r.id] || [],
         };
         loaded[carePlanKey(patientId, r.program_id)] = true;
       }

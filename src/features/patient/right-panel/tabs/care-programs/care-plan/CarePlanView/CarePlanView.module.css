@@ -277,6 +277,32 @@
 }
 .required { color: var(--status-error); }
 
+.priorityBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.priorityBtn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.chipRemove {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.chipRemove:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
 .headerDivider {
   width: 1px;
   height: 16px;
