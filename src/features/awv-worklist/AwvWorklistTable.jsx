@@ -47,6 +47,7 @@ export function AwvWorklistTable() {
   const selectAll = useAppStore(s => s.selectAllAwv);
   const clearSelected = useAppStore(s => s.clearAwvSelected);
   const showToast = useAppStore(s => s.showToast);
+  const navigateToPatient = useAppStore(s => s.navigateToPatient);
   const openHistoryDrawer = useAppStore(s => s.openHccHistoryDrawer);
   const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
 
@@ -177,7 +178,13 @@ export function AwvWorklistTable() {
           hiddenSet={ctx.hiddenSet}
           selected={selectedIds.includes(m.id)}
           onToggle={() => selectMember(m.id)}
-          onView={() => showToast(`Program details for ${m.name} — coming soon`)}
+          onView={() => {
+            const programCode = m.progName === 'APE' ? 'APE' : 'AWV';
+            navigateToPatient(m.patientId || m.id, {
+              profileTab: 'Care Programs',
+              programCode,
+            });
+          }}
           onCall={() => showToast(`Calling ${m.name} — coming soon`)}
           showToast={showToast}
         />

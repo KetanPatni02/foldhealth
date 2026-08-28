@@ -16,12 +16,12 @@ import { FilterChip } from '../../../../../../../components/FilterChip/FilterChi
 import { Checkbox } from '../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../../../../../../store/useAppStore';
 import { CreateGoalDrawer } from '../../../../../../settings/care-plan-library/goals/CreateGoalDrawer/CreateGoalDrawer';
-import { CARE_PLAN_MOCK } from '../../../../../data/carePlanMock';
 import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
 import { CarePlanShareDrawer } from '../drawers/CarePlanShareDrawer/CarePlanShareDrawer';
 import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlanHistoryDrawer';
 import { CarePlanVersionsDrawer } from '../drawers/CarePlanVersionsDrawer/CarePlanVersionsDrawer';
 import { CarePlanLinkDrawer } from '../drawers/CarePlanLinkDrawer/CarePlanLinkDrawer';
+import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
 import styles from './CarePlanView.module.css';
 
 // The statuses a goal or intervention can move through. Kept flat and shared so
@@ -52,6 +52,25 @@ function StatusPill({ value, onOpen, disabled }) {
 
 function ProgressRing() {
   return <span className={styles.progressRing}>-</span>;
+}
+
+/** Per-section dashed empty card (Figma SNP-Story 8430:288488). */
+function SectionEmptyState({ icon, label, onAdd }) {
+  return (
+    <div className={styles.sectionEmpty}>
+      <RingEmptyState icon={icon} label={label} iconSize={31} />
+      <div className={styles.sectionEmptyActions}>
+        <Button
+          variant="tertiary"
+          size="L"
+          leadingIconElement={<AddIconMinimalist size={16} />}
+          onClick={onAdd}
+        >
+          Add New
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 // Title that swaps to an input on click (roadmap #31). Read-only rows (the mock
@@ -135,8 +154,8 @@ export function CarePlanView({ patientId, program }) {
   // with the flag still set) must not linger and auto-open the drawer next time.
   useEffect(() => () => clearCarePlanShareRequest(), [clearCarePlanShareRequest]);
 
-  // A saved plan is data-backed and editable; with none we show the mock as a
-  // read-only preview. The first Add creates the real plan and edits take over.
+  // No persisted plan yet — GBI lists start empty (Figma SNP-Story 8430:288488)
+  // instead of the old local mock preview.
   const usingMock = !live;
   const data = useMemo(() => (live ? {
     conditions: live.plan.conditions,
@@ -144,7 +163,13 @@ export function CarePlanView({ patientId, program }) {
     goals: live.goals,
     interventions: live.interventions,
     barriers: live.barriers || [],
-  } : { ...CARE_PLAN_MOCK, barriers: CARE_PLAN_MOCK.barriers || [] }), [live]);
+  } : {
+    conditions: [],
+    conditionTotal: 0,
+    goals: [],
+    interventions: [],
+    barriers: [],
+  }), [live]);
 
   const [conditionsOpen, setConditionsOpen] = useState(true);
   const [conditionsViewOpen, setConditionsViewOpen] = useState(false);
@@ -167,11 +192,11 @@ export function CarePlanView({ patientId, program }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [filters, setFilters] = useState({ status: [], priority: [], assignee: [] });
 
-  const canEdit = !usingMock;
-
   const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
   const clearFilters = () => setFilters({ status: [], priority: [], assignee: [] });
   const filtersActive = filters.status.length || filters.priority.length || filters.assignee.length;
+
+  const canEdit = !!(patientId && program);
 
   const assigneeOptions = useMemo(
     () => [...new Set((data.interventions || []).map(i => i.assignee?.name).filter(Boolean))],
@@ -463,19 +488,26 @@ export function CarePlanView({ patientId, program }) {
             <ActionButton size="S" tooltip="Add goal" onClick={() => setGoalDrawerOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
-        <div className={styles.table}>
-          <div className={styles.goalHead}>
-            <span className={styles.selectCell}><Checkbox checked={allSelected('goal', filteredGoals)} onCheckedChange={() => toggleSelectAll('goal', filteredGoals)} aria-label="Select all goals" disabled={!canEdit} /></span>
-            <span className={styles.pCell}>P</span>
-            <span className={styles.titleCell}>Goal Title</span>
-            <span className={styles.valueCell}>Current Value</span>
-            <span className={styles.trendCell}>Trend</span>
-            <span className={styles.progressCell}>Progress</span>
-            <span className={styles.statusCell}>Status</span>
-            <span className={styles.rowMenuCell} />
-          </div>
-          {filteredGoals.length === 0 && <div className={styles.emptyRow}>{data.goals.length ? 'No goals match the filters.' : 'No goals yet. Add one to get started.'}</div>}
-          {filteredGoals.map(g => (
+        {filteredGoals.length === 0 && data.goals.length === 0 ? (
+          <SectionEmptyState
+            icon="solar:heart-pulse-linear"
+            label="No Goals Added for Selected Problem"
+            onAdd={() => setGoalDrawerOpen(true)}
+          />
+        ) : (
+          <div className={styles.table}>
+            <div className={styles.goalHead}>
+              <span className={styles.selectCell}><Checkbox checked={allSelected('goal', filteredGoals)} onCheckedChange={() => toggleSelectAll('goal', filteredGoals)} aria-label="Select all goals" disabled={!canEdit} /></span>
+              <span className={styles.pCell}>P</span>
+              <span className={styles.titleCell}>Goal Title</span>
+              <span className={styles.valueCell}>Current Value</span>
+              <span className={styles.trendCell}>Trend</span>
+              <span className={styles.progressCell}>Progress</span>
+              <span className={styles.statusCell}>Status</span>
+              <span className={styles.rowMenuCell} />
+            </div>
+            {filteredGoals.length === 0 && <div className={styles.emptyRow}>No goals match the filters.</div>}
+            {filteredGoals.map(g => (
             <div key={g.id} className={styles.goalRow}>
               <span className={styles.selectCell} onClick={e => e.stopPropagation()}><Checkbox checked={selected.goal.has(g.id)} onCheckedChange={() => toggleSelect('goal', g.id)} aria-label={`Select ${g.title}`} disabled={!canEdit} /></span>
               <span className={styles.pCell}>
@@ -500,7 +532,8 @@ export function CarePlanView({ patientId, program }) {
               </span>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Interventions */}
@@ -511,18 +544,25 @@ export function CarePlanView({ patientId, program }) {
             <ActionButton size="S" tooltip="Add intervention" onClick={() => setIntvDrawer({ intervention: null })}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
-        <div className={styles.table}>
-          <div className={styles.intvHead}>
-            <span className={styles.selectCell}><Checkbox checked={allSelected('intv', filteredInterventions)} onCheckedChange={() => toggleSelectAll('intv', filteredInterventions)} aria-label="Select all interventions" disabled={!canEdit} /></span>
-            <span className={styles.pCell}>P</span>
-            <span className={styles.titleCell}>Name</span>
-            <span className={styles.assigneeCell}>Assigned To</span>
-            <span className={styles.adherenceCell}>Adherence</span>
-            <span className={styles.statusCell}>Status</span>
-            <span className={styles.rowMenuCell} />
-          </div>
-          {filteredInterventions.length === 0 && <div className={styles.emptyRow}>{data.interventions.length ? 'No interventions match the filters.' : 'No interventions yet.'}</div>}
-          {filteredInterventions.map(i => (
+        {filteredInterventions.length === 0 && data.interventions.length === 0 ? (
+          <SectionEmptyState
+            icon="solar:checklist-minimalistic-linear"
+            label="No Interventions Created for Selected Problem"
+            onAdd={() => setIntvDrawer({ intervention: null })}
+          />
+        ) : (
+          <div className={styles.table}>
+            <div className={styles.intvHead}>
+              <span className={styles.selectCell}><Checkbox checked={allSelected('intv', filteredInterventions)} onCheckedChange={() => toggleSelectAll('intv', filteredInterventions)} aria-label="Select all interventions" disabled={!canEdit} /></span>
+              <span className={styles.pCell}>P</span>
+              <span className={styles.titleCell}>Name</span>
+              <span className={styles.assigneeCell}>Assigned To</span>
+              <span className={styles.adherenceCell}>Adherence</span>
+              <span className={styles.statusCell}>Status</span>
+              <span className={styles.rowMenuCell} />
+            </div>
+            {filteredInterventions.length === 0 && <div className={styles.emptyRow}>No interventions match the filters.</div>}
+            {filteredInterventions.map(i => (
             <div key={i.id} className={styles.intvRow}>
               <span className={styles.selectCell} onClick={e => e.stopPropagation()}><Checkbox checked={selected.intv.has(i.id)} onCheckedChange={() => toggleSelect('intv', i.id)} aria-label={`Select ${i.title}`} disabled={!canEdit} /></span>
               <span className={styles.pCell}>
@@ -566,28 +606,36 @@ export function CarePlanView({ patientId, program }) {
               </span>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Barriers */}
+      {/* Open Barriers */}
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <span className={styles.sectionTitle}>Barriers</span>
+          <span className={styles.sectionTitle}>Open Barriers</span>
           <div className={styles.sectionActions}>
             <ActionButton size="S" tooltip="Add barrier" onClick={() => setBarrierDrawer({ barrier: null })} disabled={!canEdit}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
-        <div className={styles.table}>
-          <div className={styles.goalHead}>
-            <span className={styles.selectCell}><Checkbox checked={allSelected('barrier', filteredBarriers)} onCheckedChange={() => toggleSelectAll('barrier', filteredBarriers)} aria-label="Select all barriers" disabled={!canEdit} /></span>
-            <span className={styles.pCell}>P</span>
-            <span className={styles.titleCell}>Barrier Title</span>
-            <span className={styles.valueCell}>Description</span>
-            <span className={styles.statusCell}>Status</span>
-            <span className={styles.rowMenuCell} />
-          </div>
-          {filteredBarriers.length === 0 && <div className={styles.emptyRow}>{(data.barriers || []).length ? 'No barriers match the filters.' : 'No barriers yet. Add one to capture what blocks this patient.'}</div>}
-          {filteredBarriers.map(b => (
+        {filteredBarriers.length === 0 && (data.barriers || []).length === 0 ? (
+          <SectionEmptyState
+            icon="solar:signpost-2-linear"
+            label="No Barriers Created for Selected Problem"
+            onAdd={() => setBarrierDrawer({ barrier: null })}
+          />
+        ) : (
+          <div className={styles.table}>
+            <div className={styles.goalHead}>
+              <span className={styles.selectCell}><Checkbox checked={allSelected('barrier', filteredBarriers)} onCheckedChange={() => toggleSelectAll('barrier', filteredBarriers)} aria-label="Select all barriers" disabled={!canEdit} /></span>
+              <span className={styles.pCell}>P</span>
+              <span className={styles.titleCell}>Barrier Title</span>
+              <span className={styles.valueCell}>Description</span>
+              <span className={styles.statusCell}>Status</span>
+              <span className={styles.rowMenuCell} />
+            </div>
+            {filteredBarriers.length === 0 && <div className={styles.emptyRow}>No barriers match the filters.</div>}
+            {filteredBarriers.map(b => (
             <div key={b.id} className={styles.goalRow}>
               <span className={styles.selectCell} onClick={e => e.stopPropagation()}><Checkbox checked={selected.barrier.has(b.id)} onCheckedChange={() => toggleSelect('barrier', b.id)} aria-label={`Select ${b.title}`} disabled={!canEdit} /></span>
               <span className={styles.pCell}>
@@ -610,7 +658,8 @@ export function CarePlanView({ patientId, program }) {
               </span>
             </div>
           ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Status change menu (goals + interventions + barriers) */}

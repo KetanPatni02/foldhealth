@@ -298,6 +298,27 @@
   color: var(--neutral-300);
 }
 
+/* Figma SNP-Story 8430:288488 — per-section dashed empty card. */
+.sectionEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px dashed var(--neutral-200);
+  border-radius: var(--space-3);
+}
+.sectionEmpty > :first-child {
+  flex: 0 0 auto;
+}
+.sectionEmptyActions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
 /* ── Drawer form fields (Add Intervention / Save as Template) ── */
 .drawerBody {
   display: flex;
