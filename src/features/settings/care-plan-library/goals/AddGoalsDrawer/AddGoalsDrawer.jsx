@@ -1,43 +1,46 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { Button } from '../../../../../components/Button/Button';
 import { Toggle } from '../../../../../components/Toggle/Toggle';
-import { SearchBar } from '../../../../../components/SearchBar/SearchBar';
+import { Input } from '../../../../../components/Input/Input';
 import { Checkbox } from '../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Badge } from '../../../../../components/Badge/Badge';
 import { Link } from '../../../../../components/Link/Link';
 import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
+import { CreateGoalDrawer } from '../CreateGoalDrawer/CreateGoalDrawer';
+import { toast } from '../../../../../components/Toast/sonnerToast';
+import { useAppStore } from '../../../../../store/useAppStore';
+import { formatGoalTarget, formatGoalDuration } from '../../lib/goalFormat';
 import styles from './AddGoalsDrawer.module.css';
 
-const GOAL_CATEGORIES = ['All', 'Vitals', 'Labs', 'Diet', 'Exercise', 'Others'];
+// Rows shown under "Recently Used" — the newest goals in the library. There
+// is no per-user usage log, so recency stands in for it.
+const RECENT_COUNT = 5;
 
-// Goal catalogue — `recent` marks the rows shown under "Recently Used", which
-// the design separates from the rest with a hairline.
-const GOAL_CATALOGUE = [
-  { id: 'g-1', title: 'Recognize the signs of a low blood pressure', category: 'Vitals', priority: 'medium', recent: true },
-  { id: 'g-2', title: 'Target an average blood pressure', detail: 'Blood pressure < 140/90 mmHg • 3 Months', category: 'Vitals', priority: 'high', recent: true },
-  { id: 'g-3', title: 'Target an average blood pressure', detail: 'Blood pressure <120/80 mmHg', category: 'Vitals', priority: 'medium', recent: true },
-  { id: 'g-4', title: 'Target an average blood pressure of <130/80', detail: 'Blood pressure <130/80 mmHg', category: 'Vitals', priority: 'low', recent: true },
-  { id: 'g-5', title: 'Maintain oxygen saturation (SpO₂) >= 95%', detail: 'Oxygen Saturation >= 95% • 2 Months', category: 'Vitals', priority: 'high', recent: true },
-  { id: 'g-6', title: 'Keep resting heart rate', detail: 'Heart rate between 60-100 bpm', category: 'Vitals', priority: 'low' },
-  { id: 'g-7', title: 'Maintain HBA1c <= 7.5%', detail: 'HBA1c <= 7.5% • 1 Year', category: 'Labs', priority: 'medium' },
-  { id: 'g-8', title: 'Get my hypertension routine lab tests once a year', category: 'Labs', priority: 'high' },
-  { id: 'g-9', title: 'Maintain LDL cholesterol', detail: 'LDL cholesterol < 70 mg/dL • 1 Month', category: 'Labs', priority: 'low' },
-  { id: 'g-10', title: 'Maintain HBA1c levels', detail: 'HBA1c <= 8.5% • 2 Months', category: 'Labs', priority: 'high' },
-  { id: 'g-11', title: 'Maintain blood glucose after meals', detail: 'Blood Glucose After Meals <=120 • 2 Months', category: 'Labs', priority: 'high' },
-  { id: 'g-12', title: 'Eat a healthier diet for hypertensive patients', category: 'Diet', priority: 'medium' },
-  { id: 'g-13', title: 'Target to maintain normal BMI', detail: 'BMI <25 • 3 Months', category: 'Diet', priority: 'high' },
-  { id: 'g-14', title: 'Target to achieve a healthy weight < 160 lbs', detail: 'Weight <160 lbs • 2 Months', category: 'Diet', priority: 'low' },
-  { id: 'g-15', title: 'Develop an activity plan with moderate exercise', detail: 'Exercise > 150 Mins/week • 3 Months', category: 'Exercise', priority: 'medium' },
-  { id: 'g-16', title: 'Start exercise', detail: 'Exercise > 150 Mins/week • 3 Months', category: 'Exercise', priority: 'high' },
-];
+// A library goal's second line: what it measures, then how long for.
+function goalDetail(g) {
+  const target = formatGoalTarget(g);
+  return [[g.measure, target].filter(Boolean).join(' '), formatGoalDuration(g)]
+    .filter(Boolean)
+    .join(' • ');
+}
 
 /**
  * Add Goals — goal picker for the New Care Plan screen.
  * Figma Care-Plan-Creation 14109:296954.
  */
 export function AddGoalsDrawer({ onClose, onAdd }) {
+  const libraryGoals = useAppStore(s => s.carePlanGoals);
+  const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
+  const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
+  const saveCarePlanGoal = useAppStore(s => s.saveCarePlanGoal);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  useEffect(() => {
+    if (!libraryDidFetch) fetchCarePlanLibrary();
+  }, [libraryDidFetch, fetchCarePlanLibrary]);
+
   const [category, setCategory] = useState('All');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(() => new Set());
@@ -48,14 +51,32 @@ export function AddGoalsDrawer({ onClose, onAdd }) {
     return next;
   });
 
+  // Newest first, so "Recently Used" is the head of the list.
+  const goals = useMemo(() => {
+    const byNewest = [...libraryGoals].sort(
+      (a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')),
+    );
+    return byNewest.map((g, i) => ({
+      ...g,
+      detail: goalDetail(g),
+      recent: i < RECENT_COUNT,
+    }));
+  }, [libraryGoals]);
+
+  // Tabs follow whatever categories the library actually holds.
+  const categories = useMemo(
+    () => ['All', ...[...new Set(goals.map(g => g.category).filter(Boolean))]],
+    [goals],
+  );
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return GOAL_CATALOGUE.filter(g => {
+    return goals.filter(g => {
       if (category !== 'All' && g.category !== category) return false;
       if (!q) return true;
       return g.title.toLowerCase().includes(q) || (g.detail || '').toLowerCase().includes(q);
     });
-  }, [category, query]);
+  }, [goals, category, query]);
 
   // The hairline sits after the last "Recently Used" row, and only while the
   // list is unfiltered — otherwise the grouping is meaningless.
@@ -70,7 +91,7 @@ export function AddGoalsDrawer({ onClose, onAdd }) {
         variant="primary"
         size="L"
         disabled={selected.size === 0}
-        onClick={() => onAdd?.(GOAL_CATALOGUE.filter(g => selected.has(g.id)))}
+        onClick={() => onAdd?.(goals.filter(g => selected.has(g.id)))}
       >
         Add
       </Button>
@@ -82,17 +103,18 @@ export function AddGoalsDrawer({ onClose, onAdd }) {
     <Drawer title="Add Goals" onClose={onClose} headerRight={headerRight} noCloseDivider>
       <div className={styles.body}>
         <div className={styles.filterRow}>
-          <Toggle size="S" items={GOAL_CATEGORIES} active={category} onChange={setCategory} />
-          <Link className={styles.createLink}>
+          <Toggle size="S" items={categories} active={category} onChange={setCategory} />
+          <Link className={styles.createLink} onClick={() => setCreateOpen(true)}>
             <AddIconMinimalist size={14} color="currentColor" />
             Create New Goal
           </Link>
         </div>
 
-        <SearchBar
-          fullWidth
-          autoFocus={false}
+        <Input
+          type="search"
+          aria-label="Search Goal"
           placeholder="Search Goal"
+          leadingIcon="solar:magnifer-linear"
           value={query}
           onChange={e => setQuery(e.target.value)}
         />
@@ -100,7 +122,11 @@ export function AddGoalsDrawer({ onClose, onAdd }) {
         <div className={styles.list}>
           {showRecentLabel && <span className={styles.groupLabel}>Recently Used</span>}
           {rows.length === 0 ? (
-            <p className={styles.empty}>No goals match “{query.trim()}”.</p>
+            <p className={styles.empty}>
+              {goals.length === 0
+                ? 'No goals in the library yet.'
+                : `No goals match “${query.trim()}”.`}
+            </p>
           ) : rows.map(g => (
             <div key={g.id} className={styles.rowWrap}>
               <label className={styles.row}>
@@ -114,7 +140,7 @@ export function AddGoalsDrawer({ onClose, onAdd }) {
                   {g.detail && <span className={styles.rowDetail}>{g.detail}</span>}
                 </span>
                 <span className={styles.rowMeta}>
-                  <Badge tone="grey" size="S" label={g.category} />
+                  {g.category && <Badge tone="grey" size="S" label={g.category} />}
                   <PriorityIcon priority={g.priority} size={16} />
                 </span>
               </label>
@@ -123,6 +149,19 @@ export function AddGoalsDrawer({ onClose, onAdd }) {
           ))}
         </div>
       </div>
+      {createOpen && (
+        <CreateGoalDrawer
+          onClose={() => setCreateOpen(false)}
+          onSave={async (values) => {
+            const saved = await saveCarePlanGoal(values);
+            if (!saved) return;
+            toast.success('Goal created successfully');
+            // Creating a goal from inside the picker means you want it.
+            setSelected(prev => new Set(prev).add(saved.id));
+            setCreateOpen(false);
+          }}
+        />
+      )}
     </Drawer>
   );
 }

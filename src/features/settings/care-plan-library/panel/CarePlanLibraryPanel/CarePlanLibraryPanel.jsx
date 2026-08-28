@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../components/Badge/Badge';
+import { BadgeRow } from '../../../../../components/BadgeRow/BadgeRow';
 import { Button } from '../../../../../components/Button/Button';
 import { Input } from '../../../../../components/Input/Input';
 import { Textarea } from '../../../../../components/Textarea/Textarea';
@@ -14,6 +15,7 @@ import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../../../../components/ConfirmDialog/ConfirmDialog';
 import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
 import { TableSkeleton } from '../../../../../components/TableSkeleton/TableSkeleton';
+import { toast } from '../../../../../components/Toast/sonnerToast';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
 import { CreateGoalDrawer } from '../../goals/CreateGoalDrawer/CreateGoalDrawer';
@@ -31,7 +33,7 @@ const TAB_META = {
   template: { entityLabel: 'Template', emptyIcon: 'solar:clipboard-list-linear' },
   goals: { entityLabel: 'Goal', emptyIcon: 'solar:flag-linear' },
   interventions: { entityLabel: 'Intervention', emptyIcon: 'solar:clipboard-check-linear' },
-  barriers: { entityLabel: 'Barrier', emptyIcon: 'solar:shield-warning-linear' },
+  barriers: { entityLabel: 'Barrier', emptyIcon: 'custom:barrier' },
 };
 
 // The intervention kinds a template can carry — same vocabulary as the goal
@@ -314,21 +316,21 @@ export function CarePlanLibraryPanel() {
         draft.id,
       );
       if (!saved) return;
-      showToast(`"${draft.name.trim()}" ${draft.id ? 'updated' : 'created'}`);
+      toast.success(`"${draft.name.trim()}" ${draft.id ? 'updated' : 'created'}`);
     } else if (draft.kind === 'intervention') {
       const saved = await saveCarePlanInterventionTemplate(
         { title: draft.title.trim(), description: draft.description.trim(), kind: draft.interventionKind },
         draft.id,
       );
       if (!saved) return;
-      showToast(`"${draft.title.trim()}" ${draft.id ? 'updated' : 'created'}`);
+      toast.success(`"${draft.title.trim()}" ${draft.id ? 'updated' : 'created'}`);
     } else {
       const saved = await saveCarePlanBarrier(
         { title: draft.title.trim(), description: draft.description.trim() },
         draft.id,
       );
       if (!saved) return;
-      showToast(`"${draft.title.trim()}" ${draft.id ? 'updated' : 'created'}`);
+      toast.success(`"${draft.title.trim()}" ${draft.id ? 'updated' : 'created'}`);
     }
     closeDrawer();
   };
@@ -350,12 +352,12 @@ export function CarePlanLibraryPanel() {
       goals: t.goals.map(g => ({ ...g })),
       interventions: t.interventions.map(i => ({ ...i })),
     });
-    if (saved) showToast(`"${t.name}" duplicated`);
+    if (saved) toast.success(`"${t.name}" duplicated`);
   };
 
   const duplicateGoal = async (g) => {
     const saved = await saveCarePlanGoal({ ...g, title: `${g.title} (Copy)` });
-    if (saved) showToast(`"${g.title}" duplicated`);
+    if (saved) toast.success(`"${g.title}" duplicated`);
   };
 
   const addGoalRow = () => setDraft(d => ({ ...d, goals: [...d.goals, { id: `g-${Date.now()}`, title: '', subtitle: '' }] }));
@@ -426,11 +428,9 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdMuted}>{formatGoalTarget(g) || '—'}</td>
       <td className={styles.tdMuted}>{formatGoalDuration(g) || '—'}</td>
       <td className={styles.tdConditions}>
-        <div className={styles.chipRow}>
-          {(g.conditions || []).length
-            ? g.conditions.map(c => <Badge key={c} tone="grey" size="S" label={c} />)
-            : '—'}
-        </div>
+        {(g.conditions || []).length
+          ? <BadgeRow items={g.conditions} maxLines={2} />
+          : '—'}
       </td>
       <td className={styles.tdMuted}>{formatDateTime(g.createdAt)}</td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
@@ -695,7 +695,7 @@ export function CarePlanLibraryPanel() {
           onSave={async (values) => {
             const saved = await saveCarePlanGoal(values, draft.id);
             if (!saved) return;
-            showToast(`"${values.title}" ${draft.id ? 'updated' : 'created'}`);
+            toast.success(`Goal ${draft.id ? 'updated' : 'created'} successfully`);
             closeDrawer();
           }}
         />

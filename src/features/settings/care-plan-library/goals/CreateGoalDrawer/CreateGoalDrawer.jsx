@@ -3,6 +3,7 @@ import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { Button } from '../../../../../components/Button/Button';
 import { Toggle } from '../../../../../components/Toggle/Toggle';
 import { Badge } from '../../../../../components/Badge/Badge';
+import { Icon } from '../../../../../components/Icon/Icon';
 import { Select } from '../../../../../components/Select/Select';
 import { Switch } from '../../../../../components/Switch/Switch';
 import { Input } from '../../../../../components/Input/Input';
@@ -98,6 +99,17 @@ const INTERVENTION_ITEMS = [
   { key: 'internal-task', label: 'Internal Task', icon: 'solar:clipboard-check-linear' },
 ];
 
+// Kind → the row's leading button, keyed off the menu the row came from.
+const INTERVENTION_LABELS = Object.fromEntries(
+  INTERVENTION_ITEMS.filter(i => i.key).map(i => [i.key, { label: i.label, icon: i.icon }]),
+);
+
+// "execute after" — the due offset, compacted to 7d / 2w.
+function dueBadgeLabel(config) {
+  if (!config?.dueOffset) return '';
+  return `${config.dueOffset}${(config.dueUnit || 'day')[0]}`;
+}
+
 const PRIORITIES = [
   { key: 'high', label: 'High' },
   { key: 'medium', label: 'Medium' },
@@ -130,7 +142,14 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const [durationUnitOpen, setDurationUnitOpen] = useState(false);
   // Interventions are staged here and written with the goal, because a new
   // goal has no id to hang them off until it is saved.
-  const [interventions, setInterventions] = useState(goal?.interventions || []);
+  const [interventions, setInterventions] = useState(
+    () => (goal?.interventions || []).filter(i => i.kind !== 'barrier'),
+  );
+  const [barriers, setBarriers] = useState(
+    () => (goal?.interventions || []).filter(i => i.kind === 'barrier'),
+  );
+  const [barrierDraft, setBarrierDraft] = useState('');
+  const [barrierEditing, setBarrierEditing] = useState(null);
   const [interventionMenuOpen, setInterventionMenuOpen] = useState(false);
   const [taskDrawerOpen, setTaskDrawerOpen] = useState(null);
   const [sendFormOpen, setSendFormOpen] = useState(false);
@@ -188,13 +207,44 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
     setInterventions(prev => [...prev, { kind, title: itemTitle || '', config: config || {} }]);
   };
 
+  const cancelBarrier = () => { setBarrierEditing(null); setBarrierDraft(''); };
+  const removeBarrier = (index) => setBarriers(prev => prev.filter((_, i) => i !== index));
+  const editBarrier = (index) => {
+    setBarrierEditing(index);
+    setBarrierDraft(index === 'new' ? '' : barriers[index].title);
+  };
+  const saveBarrier = () => {
+    const text = barrierDraft.trim();
+    if (!text) { cancelBarrier(); return; }
+    setBarriers(prev => (barrierEditing === 'new'
+      ? [...prev, { kind: 'barrier', title: text, config: {} }]
+      : prev.map((b, i) => (i === barrierEditing ? { ...b, title: text } : b))));
+    cancelBarrier();
+  };
+
+  const barrierInput = (
+    <Input
+      autoFocus
+      value={barrierDraft}
+      onChange={e => setBarrierDraft(e.target.value)}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') { e.preventDefault(); cancelBarrier(); }
+        if (e.key === 'Enter') { e.preventDefault(); saveBarrier(); }
+      }}
+      onBlur={() => (barrierDraft.trim() ? saveBarrier() : cancelBarrier())}
+      placeholder="Add New Barriers"
+      aria-label="Add New Barriers"
+      trailingText={barrierDraft.trim() ? 'Enter to Save' : 'Esc to Cancel'}
+    />
+  );
+
   const headerRight = (
     <>
       <Button
         variant="primary"
         size="L"
         disabled={!canSave}
-        onClick={() => onSave?.({ category, measure, conditions, title: title.trim(), priority, comparator, targetValue, targetValue2, customUnit, setTarget, duration, durationUnit, frequency, targetDate, interventions })}
+        onClick={() => onSave?.({ category, measure, conditions, title: title.trim(), priority, comparator, targetValue, targetValue2, customUnit, setTarget, duration, durationUnit, frequency, targetDate, interventions: [...interventions, ...barriers] })}
       >
         Save
       </Button>
@@ -368,8 +418,8 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                 the mmHg suffix, but it opens a picker. */}
             <Input
               value={duration}
-              onChange={e => setDuration(e.target.value)}
-              placeholder="Select Duration"
+              onChange={e => setDuration(e.target.value.replace(/\D/g, ''))}
+              placeholder="Enter Duration"
               inputMode="numeric"
               aria-label="Duration"
               trailingTextSegment
@@ -433,6 +483,8 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                     {sec.label}
                     {sec.key === 'interventions' && interventions.length > 0
                       && <Badge tone="grey" size="S" label={String(interventions.length)} />}
+                    {sec.key === 'barriers' && barriers.length > 0
+                      && <Badge tone="grey" size="S" label={String(barriers.length)} />}
                   </span>
                   <ActionButton
                     ref={sec.key === 'interventions' ? interventionAddRef : undefined}
@@ -442,7 +494,9 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                     aria-expanded={sec.key === 'interventions' ? interventionMenuOpen : undefined}
                     onClick={sec.key === 'interventions'
                       ? () => setInterventionMenuOpen(v => !v)
-                      : undefined}
+                      : sec.key === 'barriers'
+                        ? () => editBarrier('new')
+                        : undefined}
                   >
                     <AddIconMinimalist size={16} color="var(--neutral-300)" />
                   </ActionButton>
@@ -464,6 +518,73 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                     />
                   )}
                 </div>
+                {sec.key === 'interventions' && interventions.length > 0 && (
+                  <div className={styles.interventionList}>
+                    {interventions.map((it, i) => {
+                      const kind = INTERVENTION_LABELS[it.kind] || { label: it.kind, icon: 'solar:clipboard-check-linear' };
+                      const due = dueBadgeLabel(it.config);
+                      return (
+                        <div key={`${it.kind}-${i}`} className={styles.interventionRow}>
+                          <span className={styles.interventionPriority}>
+                            <PriorityIcon priority={it.config?.priority?.toLowerCase() || 'medium'} size={16} />
+                          </span>
+                          <Button variant="ghost" size="L" leadingIcon={kind.icon}>
+                            {kind.label}
+                          </Button>
+                          <span className={styles.interventionText}>{it.title}</span>
+                          {due && (
+                            <Badge
+                              tone="grey"
+                              size="S"
+                              label={due}
+                              trailingIcon="solar:refresh-linear"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {sec.key === 'barriers' && (barriers.length > 0 || barrierEditing !== null) && (
+                  <div className={styles.linkedList}>
+                    {barriers.map((b, i) => (barrierEditing === i ? (
+                      <div key={`edit-${i}`}>{barrierInput}</div>
+                    ) : (
+                      <div key={`${b.title}-${i}`} className={styles.linkedRow}>
+                        {/* Only the label opens the editor — the row also
+                            carries its own actions, which can't nest here. */}
+                        <button
+                          type="button"
+                          className={styles.linkedRowMain}
+                          onClick={() => editBarrier(i)}
+                        >
+                          <Icon name="custom:barrier" size={16} color="var(--neutral-300)" />
+                          <span className={styles.linkedRowLabel}>{b.title}</span>
+                        </button>
+                        <span className={styles.linkedRowActions}>
+                          {(b.config?.linkCount || 0) > 0 && (
+                            <>
+                              <Badge
+                                tone="grey"
+                                size="S"
+                                icon="solar:link-minimalistic-linear"
+                                label={String(b.config.linkCount)}
+                              />
+                              <span className={styles.headerDivider} />
+                            </>
+                          )}
+                          <ActionButton
+                            icon="solar:trash-bin-minimalistic-linear"
+                            size="S"
+                            tooltip="Delete"
+                            onClick={() => removeBarrier(i)}
+                          />
+                        </span>
+                      </div>
+                    )))}
+                    {barrierEditing === 'new' && barrierInput}
+                  </div>
+                )}
               </div>
             ))}
           </div>

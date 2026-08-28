@@ -5,6 +5,7 @@ import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
 import { Badge } from '../Badge/Badge';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
+import { CloseIcon } from '../Icon/CloseIcon';
 import styles from './Select.module.css';
 
 /**
@@ -243,7 +244,15 @@ export function Select({
         {multiple && badges && selectedMulti.length > 0 ? (
           <span ref={badgeRowRef} className={styles.triggerBadges}>
             {selectedMulti.slice(0, visibleBadgeCount).map(o => (
-              <Badge key={o.value} tone="grey" size="S" label={o.triggerLabel ?? o.label} />
+              <Badge
+                key={o.value}
+                tone="grey"
+                size="S"
+                label={o.triggerLabel ?? o.label}
+                trailingIconElement={<CloseIcon size={12} color="currentColor" />}
+                trailingIconLabel={`Remove ${o.triggerLabel ?? o.label}`}
+                onTrailingIconClick={() => onChange(valueArray.filter(v => v !== o.value))}
+              />
             ))}
             {hiddenBadges.length > 0 && (
               <Tooltip
@@ -257,7 +266,13 @@ export function Select({
                 only for width measurement. */}
             <span ref={badgeMeasureRef} className={styles.triggerBadgesMeasure} aria-hidden="true">
               {selectedMulti.map(o => (
-                <Badge key={o.value} tone="grey" size="S" label={o.triggerLabel ?? o.label} />
+                <Badge
+                  key={o.value}
+                  tone="grey"
+                  size="S"
+                  label={o.triggerLabel ?? o.label}
+                  trailingIconElement={<CloseIcon size={12} color="currentColor" />}
+                />
               ))}
               <Badge tone="grey" size="S" label={`+${selectedMulti.length}`} />
             </span>
