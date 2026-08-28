@@ -43,13 +43,27 @@ const SLUG_TO_PROFILE_TAB = Object.fromEntries(PROFILE_TABS.map(t => [tabSlug(t)
 
 // Applies the tab/program/step segments of a patient URL onto a `hashToState`
 // updates object. Unknown tab slugs fall back to Overview; program/step ride
-// along only under the Care Programs tab.
+// along only under the Care Programs tab. 'summary' is a virtual program
+// key for the cross-program Care Plan summary view.
 function applyPatientSubRoute(updates, tabSeg, programSeg, stepSeg) {
   const tab = (tabSeg && SLUG_TO_PROFILE_TAB[tabSeg]) || 'Overview';
   updates.patientProfileTab = tab;
   const inPrograms = tab === 'Care Programs';
-  updates.selectedCareProgramKey = inPrograms ? (programSeg || null) : null;
-  updates.careProgramStep = inPrograms ? (stepSeg || null) : null;
+  if (!inPrograms) {
+    updates.selectedCareProgramKey = null;
+    updates.careProgramStep = null;
+    updates.carePlanSummaryOpen = false;
+    return;
+  }
+  if (programSeg === 'summary') {
+    updates.carePlanSummaryOpen = true;
+    updates.selectedCareProgramKey = null;
+    updates.careProgramStep = null;
+    return;
+  }
+  updates.carePlanSummaryOpen = false;
+  updates.selectedCareProgramKey = programSeg || null;
+  updates.careProgramStep = stepSeg || null;
 }
 
 // The tab/program/step tail of a patient URL, from store state.
@@ -57,9 +71,15 @@ function patientSubSegments(state) {
   const tab = state.patientProfileTab || 'Overview';
   if (tab === 'Overview') return [];
   const segs = [tabSlug(tab)];
-  if (tab === 'Care Programs' && state.selectedCareProgramKey) {
-    segs.push(state.selectedCareProgramKey);
-    if (state.careProgramStep) segs.push(state.careProgramStep);
+  if (tab === 'Care Programs') {
+    if (state.carePlanSummaryOpen) {
+      segs.push('summary');
+      return segs;
+    }
+    if (state.selectedCareProgramKey) {
+      segs.push(state.selectedCareProgramKey);
+      if (state.careProgramStep) segs.push(state.careProgramStep);
+    }
   }
   return segs;
 }
@@ -165,6 +185,7 @@ export function stateToHash(state) {
       return buildHash('settings', 'member-leads', mlTab);
     }
     if (settingsNavItem === 'care-plan-library') {
+      if (state.carePlanCreateOpen) return buildHash('settings', 'care-plan-library', 'create');
       const cplTab = state.carePlanTab || 'template';
       return buildHash('settings', 'care-plan-library', CARE_PLAN_TABS.includes(cplTab) ? cplTab : 'template');
     }
@@ -280,7 +301,7 @@ const SETTINGS_NAV_TO_SECTION = Object.fromEntries(
 );
 
 // Sections whose single tab strip lives in the store and rides the URL.
-const CARE_PLAN_TABS = ['template', 'goals', 'barriers'];
+const CARE_PLAN_TABS = ['template', 'goals', 'interventions', 'barriers'];
 
 function tabForListSlug(section, list) {
   if (list === 'TOC IP' || section === 'tcm-queue' || section === 'toc-queue') return 'toc-queue';
@@ -294,6 +315,8 @@ export function hashToState(route, state = null) {
     goalDetailId: null, goalWizardOpen: false, goalWizardEditId: null,
     chatGroupDetailId: null, agentRulesGroupId: null, businessHoursOpen: false,
     formViewId: null,
+    carePlanCreateOpen: false,
+    carePlanSummaryOpen: false,
   };
 
   // Shareable form fill-view: #/f/{id}
@@ -416,10 +439,16 @@ export function hashToState(route, state = null) {
       updates.memberLeadsTab = route.tab || 'care-team';
       return updates;
     }
-    // Care Plan Library — tab rides the URL so refresh restores it.
+    // Care Plan Library — tab + create overlay rides the URL so refresh restores it.
     if (route.section === 'care-plan-library') {
       updates.settingsNavItem = 'care-plan-library';
+      if (route.tab === 'create') {
+        updates.carePlanTab = 'template';
+        updates.carePlanCreateOpen = true;
+        return updates;
+      }
       updates.carePlanTab = CARE_PLAN_TABS.includes(route.tab) ? route.tab : 'template';
+      updates.carePlanCreateOpen = false;
       return updates;
     }
     // Every other known section slug (incl. not-yet-built panels) restores

@@ -187,7 +187,7 @@ export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
             <div className={`${styles.collapseOuter} ${diagnosisCollapsed ? styles.collapsedSection : ''}`}>
               <div className={styles.collapseInner}>
                 <div className={styles.sections}>
-                  <DiagnosisGapsTable />
+                  <DiagnosisGapsTable memberName={patient?.name} />
                 </div>
               </div>
             </div>

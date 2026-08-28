@@ -64,11 +64,11 @@
   padding: 4px 0 8px;
 }
 
-/* Shared 4-column grid: check | name | priority | due */
+/* Shared 5-column grid: check | name | priority | assignee | due */
 .colHead,
 .row {
   display: grid;
-  grid-template-columns: 32px 1fr 40px 92px;
+  grid-template-columns: 32px 1fr 40px 80px 92px;
   align-items: start;
 }
 .colHead {
@@ -154,6 +154,13 @@
   display: flex;
   align-items: flex-start;
   padding-top: 1px;
+}
+.assigneeCell {
+  display: flex;
+  align-items: flex-start;
+}
+.muted {
+  color: var(--neutral-200);
 }
 .dueCell {
   font-size: var(--font-base);

@@ -1,13 +1,13 @@
-import { Icon } from '../../../../../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
+import { useEffect } from 'react';
 import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPopover';
-import { RoleAssigneePicker } from '../../../../../../hcc/RoleAssigneePicker';
+import { AssigneeChange } from '../../../../../../../components/AssigneeChange/AssigneeChange';
+import { useAppStore } from '../../../../../../../store/useAppStore';
 import { OutreachTab } from '../../../../../left-panel/tabs/outreach/OutreachTab/OutreachTab.jsx';
 import { CcmBillingReview } from '../billing/CcmBillingReview/CcmBillingReview.jsx';
 import { SendLetterDrawer } from '../letters/SendLetterDrawer/SendLetterDrawer.jsx';
 import { PreVisitStep } from '../steps/PreVisitStep/PreVisitStep.jsx';
 import { AssessmentFormView } from '../steps/AssessmentFormView/AssessmentFormView.jsx';
-import { CarePlanView } from '../steps/CarePlanView/CarePlanView.jsx';
+import { CarePlanView } from '../../care-plan/CarePlanView/CarePlanView.jsx';
 import { AppointmentStep } from '../steps/AppointmentStep/AppointmentStep.jsx';
 import { PostVisitChecklist } from '../steps/PostVisitChecklist/PostVisitChecklist.jsx';
 import { OpenCareGaps } from '../steps/OpenCareGaps/OpenCareGaps.jsx';
@@ -16,6 +16,7 @@ import { ProgramRelatedTasks } from '../related/ProgramRelatedTasks/ProgramRelat
 import { AddTaskDrawer } from '../../../../../../tasks/TasksView';
 import { ProgramRelatedFiles } from '../related/ProgramRelatedFiles/ProgramRelatedFiles.jsx';
 import { ReferralReview } from '../steps/ReferralReview/ReferralReview.jsx';
+import { DiagnosisGapsTable } from '../../../../../left-panel/tabs/gaps/DiagnosisGapsTable/DiagnosisGapsTable.jsx';
 import { AddLetterDrawer } from '../letters/AddLetterDrawer/AddLetterDrawer.jsx';
 import { LetterHistoryDrawer } from '../letters/LetterHistoryDrawer/LetterHistoryDrawer.jsx';
 import { LetterPreviewDrawer } from '../letters/LetterPreviewDrawer/LetterPreviewDrawer.jsx';
@@ -33,28 +34,21 @@ import styles from './ProgramDetailView.module.css';
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false, onSwitchProgram }) {
   const v = useProgramDetailView({ program, onSwitchProgram });
   const { stepFlags } = v;
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
 
   const assigneePicker = (
-    <RoleAssigneePicker
-      role="care_program"
-      memberId={program.id}
-      dosDate="care-program"
-      titleLabel=""
-      currentName={v.isUnassigned ? null : v.assignee}
-      onAssign={user => v.updateCareProgram(v.patientId, program.id, { assignee: user.name })}
-      trigger={({ ref, onClick }) => (
-        v.isUnassigned ? (
-          <button ref={ref} type="button" className={styles.assigneeChipEmpty} onClick={onClick} title="Assign" aria-label="Assign">
-            <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
-            <DownChevronIcon size={11} color="var(--neutral-300)" />
-          </button>
-        ) : (
-          <button ref={ref} type="button" className={styles.assigneeChip} onClick={onClick} title={`Assigned to ${v.assignee}`} aria-label={v.assignee}>
-            <span className={styles.assigneeAvatar}>{v.initialsOf(v.assignee)}</span>
-            <DownChevronIcon size={11} color="var(--secondary-300)" />
-          </button>
-        )
-      )}
+    <AssigneeChange
+      avatarOnly
+      size="M"
+      name={v.isUnassigned ? undefined : v.assignee}
+      initials={v.isUnassigned ? '' : v.initialsOf(v.assignee)}
+      unassigned={v.isUnassigned}
+      showRole={false}
+      users={platformUsers}
+      pickerTitle="Assign"
+      onSelect={user => v.updateCareProgram(v.patientId, program.id, { assignee: user.name })}
     />
   );
 
@@ -68,7 +62,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
       );
     }
     if (stepFlags.isPreVisitStep) return <PreVisitStep programCode={program.code} />;
-    if (stepFlags.isCarePlanStep) return <CarePlanView />;
+    if (stepFlags.isCarePlanStep) return <CarePlanView patientId={v.patientId} program={program} />;
     if (stepFlags.isAppointmentStep) return <AppointmentStep patientId={v.currentPatient?.id} programCode={program.code} />;
     if (stepFlags.isOpenCareGapsStep) return <OpenCareGaps />;
     if (stepFlags.isMedReconStep) return <MedicationReconciliation />;
@@ -116,6 +110,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
         />
       );
     }
+    if (stepFlags.isDiagnosisGapsStep) return <DiagnosisGapsTable memberName={v.currentPatient?.name} />;
     return <StepPlaceholder name={v.stepName} />;
   };
 

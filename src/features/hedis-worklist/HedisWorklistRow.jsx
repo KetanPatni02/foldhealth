@@ -257,11 +257,14 @@ export const HEDIS_MIDDLE_COLUMNS = [
     key: 'tasks',
     label: 'Tasks',
     sortKey: 'tasks',
-    renderCell: (member) => (
-      member.tasks != null
-        ? <span className={styles.numText}>{member.tasks}</span>
-        : <span className={styles.muted}>—</span>
-    ),
+    renderCell: (member, ctx) => {
+      const count = (ctx?.allTasks || []).filter(
+        t => t.hedisMemberId && t.hedisMemberId === member.id,
+      ).length;
+      return count > 0
+        ? <span className={styles.numText}>{count}</span>
+        : <span className={styles.muted}>—</span>;
+    },
   },
 ];
 
@@ -270,6 +273,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
   const openQuickView = useAppStore(s => s.openQuickView);
   const platformUsers = useAppStore(s => s.platformUsers);
   const updateGapAssignee = useAppStore(s => s.updateGapAssignee);
+  const allTasks = useAppStore(s => s.tasks);
   // useState must sit above the early return: a row whose member loses its last
   // gap would otherwise render two hooks where it previously rendered three, and
   // React throws "rendered fewer hooks than expected".
@@ -298,6 +302,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
     platformUsers,
     updateGapAssignee,
     memberId: member.id,
+    allTasks,
   };
 
   const langShort = (member.language || 'en').toUpperCase();

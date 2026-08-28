@@ -35,7 +35,9 @@ function isDownChevron(name) {
  *   • dot — leading colored dot
  *   • icon — leading Solar icon name
  *   • trailingIcon — trailing Solar icon name
- *   • trailingIconElement — trailing custom node (wins over trailingIcon)
+ *   • trailingIconElement — trailing custom node (wins over trailingIcon).
+ *              Wrapped in the same dismiss button when `onTrailingIconClick`
+ *              is supplied.
  *   • chevron — when true, renders the shared DownChevronIcon trailing.
  *              Handy for popover-trigger badges without threading a Solar
  *              name through. Ignored when `trailingIcon` or
@@ -85,7 +87,18 @@ export function Badge({
           : <Icon name={toLinear(icon)} size={iconPx} />
       )}
       {label}
-      {trailingIconElement}
+      {trailingIconElement && (
+        onTrailingIconClick ? (
+          <button
+            type="button"
+            className={styles.trailingButton}
+            aria-label={trailingIconLabel || 'Remove'}
+            onClick={(e) => { e.stopPropagation(); onTrailingIconClick(e); }}
+          >
+            {trailingIconElement}
+          </button>
+        ) : trailingIconElement
+      )}
       {!trailingIconElement && trailingIcon && (
         onTrailingIconClick ? (
           <button

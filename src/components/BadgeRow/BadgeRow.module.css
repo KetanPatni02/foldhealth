@@ -1,0 +1,31 @@
+/* A condition longer than the column clips rather than vanishing into "+N" —
+   the mirror inherits the same cap so measured widths stay truthful. */
+.row > span,
+.measure > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  position: relative;
+  min-width: 0;
+}
+
+/* Full-set mirror used only for width measurement — laid out at the row's
+   own width so wrapping matches, but never painted. */
+.measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  width: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}

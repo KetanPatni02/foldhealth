@@ -4,7 +4,7 @@
 // comment. Keyed by HEDIS member id. Also the seed source for the
 // caregap_activity table (scripts/seed.js).
 export const CAREGAP_ACTIVITY_MOCK = {
-  hd1: [
+  'ap-001': [
     // Outreach — full OutreachTab.LogEntry shape (call details + transcript
     // + recording/transcript action buttons expand on "View Note").
     {
@@ -14,8 +14,8 @@ export const CAREGAP_ACTIVITY_MOCK = {
         via: '(581) 824-1591', to: '(336) 812-2923', durationMin: 5,
         recordingUrl: '#', transcriptUrl: '#',
         transcript: [
-          { speaker: 'Delores Conn', t: '00:09', text: 'Hi, Christian. Thanks for taking the time to speak with me today. How are you feeling?' },
-          { speaker: 'Christian Silva', t: '00:27', text: "Hi, Doctor. I've been feeling pretty tired lately. And I've noticed a bit of shortness of breath over the past week…" },
+          { speaker: 'Delores Conn', t: '00:09', text: 'Hi, Carlos. Thanks for taking the time to speak with me today. How are you feeling?' },
+          { speaker: 'Carlos Hernandez', t: '00:27', text: "Hi, Doctor. I've been feeling pretty tired lately. And I've noticed a bit of shortness of breath over the past week…" },
           { speaker: 'Delores Conn', t: '01:12', text: 'Understood — I want to make sure your PCP knows about that.' },
         ],
       },
@@ -42,6 +42,7 @@ export const CAREGAP_ACTIVITY_MOCK = {
         title: 'Request for Sign-off - Consolidated Clinical Note',
         locked: true, handle: true,
         assignee: 'Dr. Robert Langdon',
+        priority: 'medium',
         status: 'Pending',
       },
     },
@@ -91,14 +92,14 @@ export const CAREGAP_ACTIVITY_MOCK = {
       file: 'CBP Progress Note - 03-15-2026.pdf', fileType: 'Visit Note',
     },
   ],
-  hd2: [
+  'ap-002': [
     { id: 'a2-1', when: '2026-05-10T10:00:00', actor: 'Sarah Lee', t: 'outreach',
       title: '2nd Outreach — Outgoing Call', outcome: 'No answer — voicemail left' },
     { id: 'a2-2', when: '2026-04-18T13:45:00', actor: 'Marcus Chen', t: 'task',
       title: 'Task Added',
       detailCard: {
         title: 'Follow up for colorectal screening referral',
-        handle: true, assignee: 'Marcus Chen', status: 'Pending',
+        handle: true, assignee: 'Marcus Chen', priority: 'medium', status: 'Pending',
       },
     },
   ],

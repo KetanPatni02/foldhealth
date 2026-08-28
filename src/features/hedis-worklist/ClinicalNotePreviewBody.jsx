@@ -9,6 +9,7 @@ import {
   EED_EXAM_TYPES,
   EED_EXAM_RESULTS,
   EED_EVIDENCE_TYPES,
+  GAP_TEMPLATES,
 } from './ClinicalNotePanel.utils';
 import styles from './ClinicalNotePreviewBody.module.css';
 
@@ -29,8 +30,8 @@ export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
   const notes = useAppStore(s => (memberId ? s.clinicalNotesByMember?.[memberId] : null)) || [];
   const note = useMemo(() => (
     // Prefer the exact note the eye affordance opened (noteId); fall back
-    // to the freshest note that covers this gap so Add-Note entry points
-    // still resolve. Fixes the Signed eye showing Pending Review.
+    // to the freshest note that covers this gap, then to the freshest note
+    // tied to this member so a viewer never sees "empty".
     (noteId ? notes.find(n => n.id === noteId) : null)
       || notes.find(n => (n.gapCodes || []).includes(gapCode))
       || notes[0]
@@ -57,7 +58,6 @@ export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
     <div className={styles.wrap}>
       {/* Title + signer/reviewer subtitle are rendered by the pane header
           in CareGapDetailDrawer — the body focuses on section content only. */}
-
       <Section title="Date of Service & Telehealth Statement">
         <KV label="DOS" value={payload.dateOfService} />
         <KV label="Telehealth Statement" value={telehealth} wide />
@@ -68,10 +68,24 @@ export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
           {code === 'CBP' && <CbpRows data={gapsPayload[code] || {}} />}
           {code === 'EED' && <EedRows data={gapsPayload[code] || {}} />}
           {code !== 'CBP' && code !== 'EED' && (
-            <KV label="Evidence" value="—" wide />
+            <GenericRows code={code} data={gapsPayload[code] || {}} />
           )}
         </Section>
       ))}
+
+      {(note.uploadedDocuments || []).length > 0 && (
+        <Section title="Documents">
+          {note.uploadedDocuments.map((doc, i) => (
+            <div key={doc.id || i} className={styles.docRow}>
+              <Icon name="solar:document-text-linear" size={16} color="var(--neutral-300)" />
+              <span className={styles.docName}>{doc.filename || 'Uploaded Document'}</span>
+              <button type="button" className={styles.docAction} onClick={() => { const w = window.open(doc.url, '_blank'); try { w?.focus(); } catch {} }}>
+                <Icon name="solar:eye-linear" size={16} color="var(--neutral-400)" />
+              </button>
+            </div>
+          ))}
+        </Section>
+      )}
     </div>
   );
 }
@@ -98,9 +112,29 @@ function KV({ label, value, wide }) {
   );
 }
 
-/* Per-gap value rows kept here so the preview never has to fall back to
-   the raw payload keys — screen reads the same as the note-authoring
-   form's labels. */
+function GenericRows({ code, data }) {
+  const fields = GAP_TEMPLATES[code];
+  if (!fields?.length) return <KV label="Evidence" value="—" wide />;
+  const hasAnyValue = fields.some(f => data[f.key] != null && data[f.key] !== '');
+  if (!hasAnyValue) return <KV label="Evidence" value="—" wide />;
+  return (
+    <>
+      {fields.map(f => {
+        const raw = data[f.key];
+        let display;
+        if (f.type === 'checkbox') {
+          display = raw ? 'Yes' : 'No';
+        } else if ((f.type === 'select' || f.type === 'radio') && f.options) {
+          display = f.options.find(o => o.value === raw)?.label || raw;
+        } else {
+          display = raw;
+        }
+        return <KV key={f.key} label={f.label} value={display} wide={!f.column} />;
+      })}
+    </>
+  );
+}
+
 function CbpRows({ data }) {
   const loc = CBP_LOCATIONS.find(o => o.value === data.location)?.label || data.location;
   const yn = (v) => CBP_YES_NO.find(o => o.value === v)?.label

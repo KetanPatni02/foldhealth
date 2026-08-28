@@ -12,7 +12,7 @@ const FORM_TYPE_LABEL = {
   cbp_visit_note: 'CBP Visit Note',
 };
 
-export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, onClose, editingTaskId = null }) {
+export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, onClose, editingTaskId = null, amendNoteId = null }) {
   const showToast = useAppStore(s => s.showToast);
   const bulkUpdateGapStatuses = useAppStore(s => s.bulkUpdateGapStatuses);
   const logCareGapActivity = useAppStore(s => s.logCareGapActivity);
@@ -20,11 +20,24 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   const updateSignOffTaskPdf = useAppStore(s => s.updateSignOffTaskPdf);
   const upsertClinicalNote = useAppStore(s => s.upsertClinicalNote);
   const linkClinicalNoteToReviewTask = useAppStore(s => s.linkClinicalNoteToReviewTask);
+  const notesForMember = useAppStore(s => s.clinicalNotesByMember?.[member.id]) || [];
+  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
 
-  const activeGaps = useMemo(
-    () => member.gaps.filter(g => g.status !== 'Completed' && !String(g.status).startsWith('Closed')),
-    [member.gaps],
+  const amendNote = useMemo(
+    () => (amendNoteId ? (notesForMember.find(n => n.id === amendNoteId) || null) : null),
+    [amendNoteId, notesForMember],
   );
+
+  const activeGaps = useMemo(() => {
+    const base = member.gaps.filter(g => g.status !== 'Completed' && !String(g.status).startsWith('Closed'));
+    if (!amendNote?.gapCodes?.length) return base;
+    const baseCodes = new Set(base.map(g => g.code));
+    const missing = (amendNote.gapCodes || [])
+      .map(code => member.gaps.find(g => g.code === code))
+      .filter(Boolean)
+      .filter(g => !baseCodes.has(g.code));
+    return missing.length ? [...base, ...missing] : base;
+  }, [member.gaps, amendNote]);
 
   const assigneeFor = useCallback(
     (g) => g.assignee ?? member.assignee ?? CURRENT_USER,
@@ -76,6 +89,20 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     });
   }, []);
 
+  // Keep the RHS pane in sync when the drawer switches gaps (prev/next) or
+  // when Amend seeds a Completed gap that was filtered out of activeGaps.
+  // activeGapCode is intentionally excluded — including it creates a
+  // feedback loop that resets the user's selection back to gapCode on
+  // every click.
+  useEffect(() => {
+    if (amendNote?.gapCodes?.[0] && activeGaps.some(g => g.code === amendNote.gapCodes[0])) {
+      setActiveGapCode(amendNote.gapCodes[0]);
+    } else if (gapCode && activeGaps.some(g => g.code === gapCode)) {
+      setActiveGapCode(gapCode);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [amendNote, gapCode, activeGaps]);
+
   const updateGap = useCallback((code, patch) => {
     setGapState(prev => ({ ...prev, [code]: { ...prev[code], ...patch } }));
     // `manuallyOff` is a UI-only ready-toggle flag, not a form edit —
@@ -102,18 +129,18 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   });
 
   // Persistent note-row ids per gap so re-saves upsert the same row instead
-  // of spawning a fresh draft every click. For the reviewer path
-  // (editingTaskId set) we seed this from the note already linked to the
-  // task so the reviewer's Save-as-Draft edits the existing row instead of
-  // creating a parallel draft.
-  const notesForMember = useAppStore(s => s.clinicalNotesByMember?.[member.id]) || [];
-  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
-
-  // Restore persisted state on open: seed note-row ids for every saved note
-  // (so re-saves upsert instead of spawning duplicates) and rehydrate the
-  // form from the newest DRAFT note — without this, drafts "didn't persist":
-  // they saved fine but the panel reset to blanks on reopen.
+  // of spawning a fresh draft every click. amendNoteId covers the Amend-
+  // from-preview path — same row is edited, DB trigger snapshots prior
+  // version. Also restores persisted draft state on open.
   const [noteIdByCode, setNoteIdByCode] = useState(() => {
+    if (amendNoteId) {
+      const amended = notesForMember.find(n => n.id === amendNoteId);
+      if (amended) {
+        const seed = {};
+        (amended.gapCodes || []).forEach(c => { seed[c] = amended.id; });
+        return seed;
+      }
+    }
     if (!editingTaskId) return {};
     const linked = notesForMember.find(n => n.reviewTaskId === editingTaskId);
     if (!linked) return {};
@@ -136,19 +163,40 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       // 4-gap pending and a 2-gap pending both covering COL).
       notes.forEach(n => (n.gapCodes || []).forEach(c => { if (!(c in idSeed)) idSeed[c] = n.id; }));
       setNoteIdByCode(prev => ({ ...idSeed, ...prev }));
-      // If a specific note was selected (eye → preview → Edit/Amend), hydrate
-      // from that note so the reviewer sees the exact answers the author
-      // filled, regardless of status (draft / submitted / signed). This
-      // fixes "answers not visible to all users" for consolidated notes.
+      // Amend path takes precedence — hydrate from the note being amended
+      // so the form shows the prior signed/submitted state, not just the
+      // latest draft. The DB trigger will snapshot the old row on next save.
+      if (amendNoteId) {
+        const amended = notes.find(n => n.id === amendNoteId);
+        if (amended?.payload) {
+          if (amended.payload.dateOfService) setDateOfService(amended.payload.dateOfService);
+          if (amended.payload.gaps) {
+            setGapState(prev => {
+              const next = { ...prev };
+              for (const [code, data] of Object.entries(amended.payload.gaps)) {
+                if (next[code] !== undefined) next[code] = { ...next[code], ...data };
+                else next[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+              }
+              return next;
+            });
+          }
+          if (amended.payload.audioOnly !== undefined) setAudioOnly(!!amended.payload.audioOnly);
+          if (amended.payload.audioVideo !== undefined) setAudioVideo(!!amended.payload.audioVideo);
+          setRestored(true);
+          return;
+        }
+      }
+      // If a specific note was selected (eye → preview), hydrate from that
+      // note so the reviewer sees the exact answers the author filled,
+      // regardless of status (draft / submitted / signed). Otherwise fall
+      // back to the freshest DRAFT (author's in-progress edits) then the
+      // freshest SUBMITTED (pending review) so the Edit-from-preview flow
+      // lands with the last-sent-for-review values pre-populated.
       let target = null;
       if (selectedNoteId) {
         target = notes.find(n => n.id === selectedNoteId) || null;
       }
       if (!target) {
-        // Fall back to the freshest DRAFT — it holds the author's in-progress
-        // edits. Then the freshest SUBMITTED (pending review) so the
-        // Edit-from-preview flow lands with the last-sent-for-review values
-        // pre-populated instead of a blank form.
         target = notes.find(n => n.status === 'draft')
               || notes.find(n => n.status === 'submitted')
               || null;
@@ -175,7 +223,33 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     // re-hydrates to that note's answers. The panel remounts per member,
     // but selectedNoteId can change without remounting.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member.id, selectedNoteId]);
+  }, [member.id, selectedNoteId, amendNoteId]);
+
+  // When Amend is clicked after the initial fetch, notes are already cached
+  // but gapState was initialized from the draft. Rehydrate from the amended
+  // note's payload so the form immediately reflects the Signed/Pending state
+  // being amended (DB trigger preserves the prior version on save).
+  useEffect(() => {
+    if (!amendNoteId) return;
+    const note = notesForMember.find(n => n.id === amendNoteId) || null;
+    if (!note?.payload) return;
+    if (note.payload.dateOfService) setDateOfService(note.payload.dateOfService);
+    if (note.payload.gaps) {
+      setGapState(prev => {
+        const next = { ...prev };
+        for (const [code, data] of Object.entries(note.payload.gaps)) {
+          if (next[code] !== undefined) next[code] = { ...next[code], ...data };
+          else next[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+        }
+        return next;
+      });
+    }
+    if (note.payload.audioOnly !== undefined) setAudioOnly(!!note.payload.audioOnly);
+    if (note.payload.audioVideo !== undefined) setAudioVideo(!!note.payload.audioVideo);
+    const seed = {};
+    (note.gapCodes || []).forEach(c => { seed[c] = note.id; });
+    setNoteIdByCode(prev => ({ ...prev, ...seed }));
+  }, [amendNoteId, notesForMember]);
   // Submit-for-Review is a two-step flow: open the reviewer picker, then
   // finalize on selection. The picker UI itself lives with the Clinical
   // Note workspace (see plan §6, pending Figma).
@@ -336,7 +410,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       reviewerName: reviewer.name,
     });
     if (note?.id) finalCodes.forEach(c => rememberNoteId(c, note.id));
-    bulkUpdateGapStatuses(member.id, Object.fromEntries(finalCodes.map(c => [c, 'Submitted'])));
+    bulkUpdateGapStatuses(member.id, Object.fromEntries(finalCodes.map(c => [c, 'Submitted'])), { assignee: reviewer.name });
     // Sign-off task + activity card share one derived name so the Tasks
     // table and the nested review-task card read identically. Single-gap
     // notes drop the "Consolidated" prefix — they're one gap's note, not a
@@ -388,6 +462,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
           taskId: task?.id,
           title: signOffTaskName,
           assignee: reviewer.name,
+          priority: task?.priority || 'medium',
           status: 'Pending',
           locked: false,
         },

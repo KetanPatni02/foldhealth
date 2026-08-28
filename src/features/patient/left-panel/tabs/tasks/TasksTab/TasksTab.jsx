@@ -2,10 +2,18 @@ import { useState } from 'react';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { PriorityIcon } from '../../../../../../components/PriorityIcon/PriorityIcon';
+import { AssigneeChange } from '../../../../../../components/AssigneeChange/AssigneeChange';
 import { PATIENT_TASKS_MOCK } from '../../../../data/patientTasksMock';
 import styles from './TasksTab.module.css';
 
 const SCOPES = ['My Tasks', "Patient's Task"];
+
+function fmtDue(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+}
 
 function MetaCounts({ task }) {
   return (
@@ -48,7 +56,12 @@ function TaskRow({ task, done, onToggle, onClick }) {
         {hasMeta && <MetaCounts task={task} />}
       </div>
       <div className={styles.pCell}><PriorityIcon priority={task.priority} size={16} /></div>
-      <div className={`${styles.dueCell} ${task.overdue ? styles.dueOverdue : ''}`}>{task.due}</div>
+      <div className={styles.assigneeCell}>
+        {task.assignee
+          ? <AssigneeChange name={task.assignee} initials={task.assigneeInitials} avatarOnly />
+          : <span className={styles.muted}>—</span>}
+      </div>
+      <div className={`${styles.dueCell} ${task.overdue ? styles.dueOverdue : ''}`}>{fmtDue(task.due)}</div>
     </div>
   );
 }
@@ -62,6 +75,7 @@ function TaskSection({ title, tasks, done, overdue, onToggle, onTaskClick }) {
         <span className={styles.checkCell} />
         <span className={styles.nameCell}>Task Name</span>
         <span className={styles.pCell}>P</span>
+        <span className={styles.assigneeCell}>Assignee</span>
         <span className={styles.dueCell}>Due</span>
       </div>
       {tasks.map(t => (
@@ -94,10 +108,12 @@ export function TasksTab({
     setLocalCompleted(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   };
 
-  // Checking a pending/overdue task removes it from its section (marks it done).
   const pending = data.pending.filter(t => !completedIds.has(t.id));
   const overdue = data.overdue.filter(t => !completedIds.has(t.id));
-  const completed = data.completed || [];
+  const locallyCompleted = [...data.pending, ...data.overdue]
+    .filter(t => completedIds.has(t.id))
+    .map(t => ({ ...t, completedOn: fmtDue(new Date().toISOString()) }));
+  const completed = [...(data.completed || []), ...locallyCompleted];
   const empty = !pending.length && !overdue.length && !completed.length;
 
   return (

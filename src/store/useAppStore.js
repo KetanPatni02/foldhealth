@@ -132,6 +132,189 @@ function mapCarePlanTemplateRow(row) {
   };
 }
 
+// Standalone (goal-independent) reusable intervention — the Interventions
+// Library tab. Distinct from the goal-linked care_plan_interventions rows.
+function mapCarePlanInterventionTemplateRow(row) {
+  return {
+    id: row.id,
+    kind: row.kind || 'internal-task',
+    title: row.title,
+    description: row.description || '',
+    config: row.config || {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/* ── Patient Care Plan row ⇄ object mapping ──
+   The per-patient, per-program plan behind the Care Plan step. Goals mirror
+   the library goal shape (so a template instantiates cleanly) plus the fields
+   the patient view shows and edits: currentValue, trend, status. Kept beside
+   the library mappers so a shared column rename can't drift. */
+function mapPatientCarePlanGoalRow(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    subtitle: row.subtitle || '',
+    icon: row.icon || 'solar:flag-linear',
+    priority: row.priority || 'medium',
+    category: row.category || '',
+    measure: row.measure || '',
+    conditions: row.conditions || [],
+    comparator: row.comparator || '=',
+    targetValue: row.target_value || '',
+    targetValue2: row.target_value_2 || '',
+    customUnit: row.custom_unit || '',
+    setTarget: row.set_target !== false,
+    duration: row.duration || '',
+    durationUnit: row.duration_unit || '',
+    frequency: row.frequency || '',
+    targetDate: row.target_date || '',
+    currentValue: row.current_value || '',
+    trend: row.trend || '-',
+    status: row.status || 'Not Started',
+    links: 0,
+    sortOrder: row.sort_order ?? 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function patientCarePlanGoalToRow(g, planId) {
+  return {
+    plan_id: planId,
+    title: (g.title || '').trim(),
+    subtitle: g.subtitle || '',
+    icon: g.icon || 'solar:flag-linear',
+    priority: g.priority || 'medium',
+    category: g.category || '',
+    measure: g.measure || '',
+    conditions: g.conditions || [],
+    comparator: g.comparator || '=',
+    target_value: g.targetValue || '',
+    target_value_2: g.targetValue2 || '',
+    custom_unit: g.customUnit || '',
+    set_target: g.setTarget !== false,
+    duration: g.duration || '',
+    duration_unit: g.durationUnit || '',
+    frequency: g.frequency || '',
+    target_date: g.targetDate || '',
+    current_value: g.currentValue || '',
+    trend: g.trend || '-',
+    status: g.status || 'Not Started',
+    sort_order: g.sortOrder ?? 0,
+  };
+}
+
+function mapPatientCarePlanInterventionRow(row) {
+  return {
+    id: row.id,
+    goalId: row.goal_id || null,
+    kind: row.kind || '',
+    title: row.title || '',
+    icon: row.icon || 'solar:clipboard-list-linear',
+    duration: row.duration || null,
+    config: row.config || {},
+    assignee: { name: row.assignee_name || 'Unassigned', initials: row.assignee_initials || '' },
+    status: row.status || 'Not Started',
+    adherence: row.adherence || '-',
+    links: 0,
+    sortOrder: row.sort_order ?? 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function patientCarePlanInterventionToRow(i, planId) {
+  return {
+    plan_id: planId,
+    goal_id: i.goalId || null,
+    kind: i.kind || '',
+    title: (i.title || '').trim(),
+    icon: i.icon || 'solar:clipboard-list-linear',
+    duration: i.duration || null,
+    config: i.config || {},
+    assignee_name: i.assignee?.name || 'Unassigned',
+    assignee_initials: i.assignee?.initials || '',
+    status: i.status || 'Not Started',
+    adherence: i.adherence || '-',
+    sort_order: i.sortOrder ?? 0,
+  };
+}
+
+function mapPatientCarePlanBarrierRow(row) {
+  return {
+    id: row.id,
+    goalId: row.goal_id || null,
+    title: row.title || '',
+    description: row.description || '',
+    status: row.status || 'Not Started',
+    priority: row.priority || 'medium',
+    sortOrder: row.sort_order ?? 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function patientCarePlanBarrierToRow(b, planId) {
+  return {
+    plan_id: planId,
+    goal_id: b.goalId || null,
+    title: (b.title || '').trim(),
+    description: b.description || '',
+    status: b.status || 'Not Started',
+    priority: b.priority || 'medium',
+    sort_order: b.sortOrder ?? 0,
+  };
+}
+
+function mapPatientCarePlanRow(row) {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    programId: row.program_id,
+    programCode: row.program_code || '',
+    createdBy: row.created_by || '',
+    conditions: (row.conditions || []).map(label => ({ label })),
+    conditionTotal: row.condition_total ?? (row.conditions || []).length,
+    createdDate: row.created_at,
+    signedBy: row.signed_by || null,
+    signedAt: row.signed_at || null,
+  };
+}
+
+// State key for a patient's plan on one program.
+function carePlanKey(patientId, programId) {
+  return `${patientId}::${programId}`;
+}
+
+// Derive an audit entry from a goal/intervention save by diffing against its
+// previous state — a create, a status change, a rename, or a generic edit.
+function auditForSave(entityType, next, prev) {
+  if (!prev) return { entityType, entityId: next.id, action: 'created', summary: next.title };
+  if (prev.status !== next.status) {
+    return { entityType, entityId: next.id, action: 'status_changed', summary: next.title, detail: `${prev.status} → ${next.status}` };
+  }
+  if (prev.title !== next.title) {
+    return { entityType, entityId: next.id, action: 'updated', summary: next.title, detail: `Renamed from "${prev.title}"` };
+  }
+  return { entityType, entityId: next.id, action: 'updated', summary: next.title };
+}
+
+function mapCarePlanAuditRow(row) {
+  return {
+    id: row.id,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    action: row.action,
+    summary: row.summary || '',
+    detail: row.detail || '',
+    actor: row.actor || '',
+    programCode: row.program_code || '',
+    createdAt: row.created_at,
+  };
+}
+
 function mapInterventionRow(row) {
   return {
     id: row.id,
@@ -856,6 +1039,26 @@ function clinicalNoteRowToJs(row) {
   };
 }
 
+function clinicalNoteVersionRowToJs(row) {
+  return {
+    id: row.id,
+    noteId: row.note_id,
+    version: row.version,
+    status: row.status,
+    payload: row.payload || {},
+    pdfFilename: row.pdf_filename || null,
+    pdfDataUrl: row.pdf_data_url || null,
+    authorId: row.author_id || null,
+    authorName: row.author_name || null,
+    reviewerId: row.reviewer_id || null,
+    reviewerName: row.reviewer_name || null,
+    signedById: row.signed_by_id || null,
+    signedByName: row.signed_by_name || null,
+    signedAt: row.signed_at || null,
+    createdAt: row.created_at || null,
+  };
+}
+
 // ── Campaign row mapper ──
 // Single source of truth for translating Supabase campaigns rows into the JS
 // shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
@@ -1494,6 +1697,9 @@ export const useAppStore = create((set, get) => ({
   // Active step id inside that program ('step-3a', 'ccm-billing'). null means
   // the program's default step.
   careProgramStep: null,
+  // Summary view for Care Plans across all programs — a read-only pane in
+  // CareProgramsTab that must survive refresh via URL (#/.../care-programs/summary).
+  carePlanSummaryOpen: false,
   // When set alongside a navigateToPatient({ programCode }) call, the Care
   // Programs tab picks this up, ensures the program is enrolled, and opens
   // its ProgramDetailView on mount. Cleared once consumed.
@@ -1501,7 +1707,7 @@ export const useAppStore = create((set, get) => ({
   navigateToPatient: (patientId, opts = {}) => {
     const from = get().activePage;
     track('nav.patient_opened', { patientId, from });
-    const updates = { selectedPatientId: patientId, selectedCareProgramKey: null, careProgramStep: null };
+    const updates = { selectedPatientId: patientId, selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false };
     if (opts.profileTab) updates.patientProfileTab = opts.profileTab;
     if (opts.programCode) updates.pendingCareProgramCode = opts.programCode;
     set(updates);
@@ -1512,7 +1718,7 @@ export const useAppStore = create((set, get) => ({
   navigateBackToWorklist: () => {
     const patientId = get().selectedPatientId;
     track('nav.patient_closed', { patientId });
-    set({ selectedPatientId: null, pendingCareProgramCode: null, selectedCareProgramKey: null, careProgramStep: null });
+    set({ selectedPatientId: null, pendingCareProgramCode: null, selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
   },
   setPatientProfileTab: (tab) => {
@@ -1520,20 +1726,24 @@ export const useAppStore = create((set, get) => ({
     track('nav.patient_tab_changed', { patientId: get().selectedPatientId, from, to: tab });
     // Leaving the tab closes any open program detail (matches the previous
     // component-local behavior, where unmounting dropped the selection).
-    set({ patientProfileTab: tab, selectedCareProgramKey: null, careProgramStep: null });
+    set({ patientProfileTab: tab, selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
   },
   openCareProgram: (programKey) => {
     track('care_program.opened', { patientId: get().selectedPatientId, programKey });
-    set({ selectedCareProgramKey: programKey, careProgramStep: null });
+    set({ selectedCareProgramKey: programKey, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
   },
   closeCareProgram: () => {
-    set({ selectedCareProgramKey: null, careProgramStep: null });
+    set({ selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
   },
   setCareProgramStep: (stepId) => {
-    set({ careProgramStep: stepId });
+    set({ careProgramStep: stepId, carePlanSummaryOpen: false });
+    updateHash?.(get());
+  },
+  setCarePlanSummaryOpen: (open) => {
+    set({ carePlanSummaryOpen: !!open, selectedCareProgramKey: null, careProgramStep: null });
     updateHash?.(get());
   },
   clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null }),
@@ -2227,6 +2437,527 @@ export const useAppStore = create((set, get) => ({
   // only the app rail remains) — so the flag lives above CarePlanLibraryPanel.
   carePlanCreateOpen: false,
 
+  // ── Patient Care Plan (the Care Plan step in a program) ──
+  // Per (patient, program) plan, persisted in patient_care_plan_* (see
+  // supabase/patient_care_plan_migration.sql + patient_care_plan_barriers_migration.sql).
+  // Keyed by `<patientId>::<programId>`. Until the migration is run the fetch
+  // returns nothing and CarePlanView falls back to its local mock, so the demo
+  // keeps rendering either way.
+  patientCarePlans: {},        // { [key]: { plan, goals, interventions, barriers } }
+  patientCarePlanLoading: {},  // { [key]: bool }
+  patientCarePlanLoadedFor: {},// { [key]: bool }
+  // The comprehensive (all-programs) view loads every plan for a patient in one
+  // pass and warms the per-program cache above, keyed by patient id.
+  patientCarePlanAllLoading: {},   // { [patientId]: bool }
+  patientCarePlanAllLoadedFor: {},  // { [patientId]: bool }
+
+  fetchPatientCarePlan: async (patientId, programId) => {
+    if (!patientId || !programId) return;
+    const key = carePlanKey(patientId, programId);
+    if (get().patientCarePlanLoadedFor[key]) return;
+    set(s => ({ patientCarePlanLoading: { ...s.patientCarePlanLoading, [key]: true } }));
+
+    const { data: planRow, error: planErr } = await supabase
+      .from('patient_care_plans')
+      .select('*')
+      .eq('patient_id', patientId)
+      .eq('program_id', programId)
+      .maybeSingle();
+    if (planErr) console.warn('fetchPatientCarePlan:', planErr.message);
+
+    let plan = null, goals = [], interventions = [], barriers = [];
+    if (planRow) {
+      plan = mapPatientCarePlanRow(planRow);
+      const [g, i, b] = await Promise.all([
+        supabase.from('patient_care_plan_goals').select('*').eq('plan_id', planRow.id)
+          .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('patient_care_plan_interventions').select('*').eq('plan_id', planRow.id)
+          .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('patient_care_plan_barriers').select('*').eq('plan_id', planRow.id)
+          .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+      ]);
+      goals = (g.data || []).map(mapPatientCarePlanGoalRow);
+      interventions = (i.data || []).map(mapPatientCarePlanInterventionRow);
+      barriers = (b.data || []).map(mapPatientCarePlanBarrierRow);
+      // If barriers table hasn't been migrated yet, supabase returns error; treat as empty.
+      if (b.error && (b.error.code === '42P01' || b.error.code === 'PGRST205')) barriers = [];
+    }
+
+    set(s => ({
+      patientCarePlans: { ...s.patientCarePlans, [key]: plan ? { plan, goals, interventions, barriers } : null },
+      patientCarePlanLoading: { ...s.patientCarePlanLoading, [key]: false },
+      patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: true },
+    }));
+  },
+
+  // Lazily create the plan header row so the first goal/intervention has a
+  // plan_id to hang off. Returns the plan id, or null on failure.
+  ensurePatientCarePlan: async (patientId, program) => {
+    const key = carePlanKey(patientId, program.id);
+    const existing = get().patientCarePlans[key];
+    if (existing?.plan?.id) return existing.plan.id;
+    const { data, error } = await supabase
+      .from('patient_care_plans')
+      .upsert(
+        { patient_id: patientId, program_id: program.id, program_code: program.code || null },
+        { onConflict: 'patient_id,program_id' },
+      )
+      .select()
+      .single();
+    if (error) { console.warn('ensurePatientCarePlan:', error.message); get().showToast('Could not create care plan'); return null; }
+    const plan = mapPatientCarePlanRow(data);
+    set(s => ({
+      patientCarePlans: {
+        ...s.patientCarePlans,
+        [key]: { plan, goals: existing?.goals || [], interventions: existing?.interventions || [], barriers: existing?.barriers || [] },
+      },
+    }));
+    return plan.id;
+  },
+
+  savePatientCarePlanBarrier: async (patientId, program, values, id = null) => {
+    const key = carePlanKey(patientId, program.id);
+    const prev = id ? (get().patientCarePlans[key]?.barriers || []).find(b => b.id === id) : null;
+    const planId = await get().ensurePatientCarePlan(patientId, program);
+    if (!planId) return null;
+    const row = patientCarePlanBarrierToRow(values, planId);
+    const q = id
+      ? supabase.from('patient_care_plan_barriers').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('patient_care_plan_barriers').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) { console.warn('savePatientCarePlanBarrier:', error.message); get().showToast('Could not save barrier'); return null; }
+    const barrier = mapPatientCarePlanBarrierRow(data);
+    get().logCarePlanAudit(patientId, program, auditForSave('barrier', barrier, prev));
+    set(s => {
+      const cur = s.patientCarePlans[key] || { goals: [], interventions: [], barriers: [] };
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: {
+            ...cur,
+            barriers: id ? cur.barriers.map(b => (b.id === barrier.id ? barrier : b)) : [...cur.barriers, barrier],
+          },
+        },
+      };
+    });
+    return barrier;
+  },
+
+  deletePatientCarePlanBarrier: async (patientId, programId, id) => {
+    const key = carePlanKey(patientId, programId);
+    const prev = get().patientCarePlans[key];
+    const removed = (prev?.barriers || []).find(b => b.id === id);
+    set(s => ({
+      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, barriers: prev.barriers.filter(b => b.id !== id) } },
+    }));
+    const { error } = await supabase.from('patient_care_plan_barriers').delete().eq('id', id);
+    if (error) { console.warn('deletePatientCarePlanBarrier:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete barrier'); return; }
+    if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'barrier', entityId: id, action: 'deleted', summary: removed.title });
+  },
+
+  savePatientCarePlanGoal: async (patientId, program, values, id = null) => {
+    const key = carePlanKey(patientId, program.id);
+    const prevGoal = id ? (get().patientCarePlans[key]?.goals || []).find(g => g.id === id) : null;
+    const planId = await get().ensurePatientCarePlan(patientId, program);
+    if (!planId) return null;
+    const row = patientCarePlanGoalToRow(values, planId);
+    const q = id
+      ? supabase.from('patient_care_plan_goals').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('patient_care_plan_goals').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) { console.warn('savePatientCarePlanGoal:', error.message); get().showToast('Could not save goal'); return null; }
+    const goal = mapPatientCarePlanGoalRow(data);
+    get().logCarePlanAudit(patientId, program, auditForSave('goal', goal, prevGoal));
+    set(s => {
+      const cur = s.patientCarePlans[key] || { goals: [], interventions: [], barriers: [] };
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: {
+            ...cur,
+            goals: id ? cur.goals.map(g => (g.id === goal.id ? goal : g)) : [...cur.goals, goal],
+          },
+        },
+      };
+    });
+    return goal;
+  },
+
+  deletePatientCarePlanGoal: async (patientId, programId, id) => {
+    const key = carePlanKey(patientId, programId);
+    const prev = get().patientCarePlans[key];
+    const removed = (prev?.goals || []).find(g => g.id === id);
+    set(s => ({
+      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, goals: prev.goals.filter(g => g.id !== id), barriers: prev.barriers || [], interventions: prev.interventions || [] } },
+    }));
+    const { error } = await supabase.from('patient_care_plan_goals').delete().eq('id', id);
+    if (error) { console.warn('deletePatientCarePlanGoal:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete goal'); return; }
+    if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'goal', entityId: id, action: 'deleted', summary: removed.title });
+  },
+
+  savePatientCarePlanIntervention: async (patientId, program, values, id = null) => {
+    const key = carePlanKey(patientId, program.id);
+    const planId = await get().ensurePatientCarePlan(patientId, program);
+    if (!planId) return null;
+    const prevIntv = id ? (get().patientCarePlans[key]?.interventions || []).find(x => x.id === id) : null;
+    const row = patientCarePlanInterventionToRow(values, planId);
+    const q = id
+      ? supabase.from('patient_care_plan_interventions').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('patient_care_plan_interventions').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) { console.warn('savePatientCarePlanIntervention:', error.message); get().showToast('Could not save intervention'); return null; }
+    const intervention = mapPatientCarePlanInterventionRow(data);
+    get().logCarePlanAudit(patientId, program, auditForSave('intervention', intervention, prevIntv));
+    set(s => {
+      const cur = s.patientCarePlans[key] || { goals: [], interventions: [], barriers: [] };
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: {
+            ...cur,
+            interventions: id
+              ? cur.interventions.map(x => (x.id === intervention.id ? intervention : x))
+              : [...cur.interventions, intervention],
+          },
+        },
+      };
+    });
+    return intervention;
+  },
+
+  deletePatientCarePlanIntervention: async (patientId, programId, id) => {
+    const key = carePlanKey(patientId, programId);
+    const prev = get().patientCarePlans[key];
+    const removed = (prev?.interventions || []).find(x => x.id === id);
+    set(s => ({
+      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, interventions: prev.interventions.filter(x => x.id !== id), barriers: prev.barriers || [], goals: prev.goals || [] } },
+    }));
+    const { error } = await supabase.from('patient_care_plan_interventions').delete().eq('id', id);
+    if (error) { console.warn('deletePatientCarePlanIntervention:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete intervention'); return; }
+    if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'intervention', entityId: id, action: 'deleted', summary: removed.title });
+  },
+
+  // Save the patient's live plan back into the shared library as a reusable
+  // template (roadmap #4). Reuses the library's saveCarePlanTemplate — the
+  // template's goals/interventions are free-text line items, so we flatten.
+  // Load every care plan for a patient across all their programs, in one pass,
+  // for the comprehensive read-only view (roadmap E2). Warms the per-program
+  // cache so opening a program afterwards is instant.
+  fetchAllPatientCarePlans: async (patientId) => {
+    if (!patientId) return;
+    if (get().patientCarePlanAllLoadedFor[patientId]) return;
+    set(s => ({ patientCarePlanAllLoading: { ...s.patientCarePlanAllLoading, [patientId]: true } }));
+
+    const { data: planRows, error } = await supabase
+      .from('patient_care_plans').select('*').eq('patient_id', patientId);
+    if (error) console.warn('fetchAllPatientCarePlans:', error.message);
+
+    const rows = planRows || [];
+    let goalsByPlan = {}, intvByPlan = {}, barriersByPlan = {};
+    if (rows.length) {
+      const planIds = rows.map(r => r.id);
+      const [g, i, b] = await Promise.all([
+        supabase.from('patient_care_plan_goals').select('*').in('plan_id', planIds)
+          .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('patient_care_plan_interventions').select('*').in('plan_id', planIds)
+          .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('patient_care_plan_barriers').select('*').in('plan_id', planIds)
+          .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+      ]);
+      for (const row of (g.data || [])) (goalsByPlan[row.plan_id] ||= []).push(mapPatientCarePlanGoalRow(row));
+      for (const row of (i.data || [])) (intvByPlan[row.plan_id] ||= []).push(mapPatientCarePlanInterventionRow(row));
+      for (const row of (b.data || [])) (barriersByPlan[row.plan_id] ||= []).push(mapPatientCarePlanBarrierRow(row));
+      if (b.error && (b.error.code === '42P01' || b.error.code === 'PGRST205')) {
+        // barriers table not yet migrated — treat as empty, don't warn
+      }
+    }
+
+    set(s => {
+      const next = { ...s.patientCarePlans };
+      const loaded = { ...s.patientCarePlanLoadedFor };
+      for (const r of rows) {
+        const plan = mapPatientCarePlanRow(r);
+        next[carePlanKey(patientId, r.program_id)] = {
+          plan, goals: goalsByPlan[r.id] || [], interventions: intvByPlan[r.id] || [], barriers: barriersByPlan[r.id] || [],
+        };
+        loaded[carePlanKey(patientId, r.program_id)] = true;
+      }
+      return {
+        patientCarePlans: next,
+        patientCarePlanLoadedFor: loaded,
+        patientCarePlanAllLoading: { ...s.patientCarePlanAllLoading, [patientId]: false },
+        patientCarePlanAllLoadedFor: { ...s.patientCarePlanAllLoadedFor, [patientId]: true },
+      };
+    });
+  },
+
+  savePatientCarePlanAsTemplate: async (patientId, program, name) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    if (!cur) return null;
+    const conditions = (cur.plan?.conditions || []).map(c => c.label);
+    const goals = (cur.goals || []).map(g => ({ id: `g-${g.id}`, title: g.title, subtitle: g.subtitle || '' }));
+    const interventions = (cur.interventions || []).map(i => ({ id: `i-${i.id}`, title: i.title, duration: i.duration || '' }));
+    return get().saveCarePlanTemplate({ name: name.trim(), conditions, goals, interventions });
+  },
+
+  // Preview & share (E4). The header's Download / Sign & Share buttons live in
+  // a different component from the plan data, so they set this request flag and
+  // CarePlanView (which owns the data) opens the drawer in response.
+  carePlanShareRequest: null,  // null | 'preview' | 'share'
+  requestCarePlanShare: (mode) => set({ carePlanShareRequest: mode }),
+  clearCarePlanShareRequest: () => set({ carePlanShareRequest: null }),
+
+  // Record one share of a plan (or a selection of it) to an external party.
+  // Returns the saved record, or null on failure.
+  sharePatientCarePlan: async (patientId, program, { target, format = 'standard', note = '', goalIds = [], interventionIds = [] }) => {
+    const row = {
+      patient_id: patientId,
+      program_id: program.id,
+      program_code: program.code || null,
+      target,
+      format,
+      note,
+      goal_ids: goalIds,
+      intervention_ids: interventionIds,
+      shared_by: get().currentUserProfile?.name || null,
+    };
+    const { data, error } = await supabase.from('care_plan_shares').insert(row).select().single();
+    if (error) {
+      console.warn('sharePatientCarePlan:', error.message);
+      get().showToast('Could not share care plan');
+      return null;
+    }
+    const label = { ehr: 'EHR', patient: 'Patient', poa: 'POA' }[target] || target;
+    get().logCarePlanAudit(patientId, program, {
+      entityType: 'share', entityId: data.id, action: 'shared',
+      summary: `Shared to ${label}`,
+      detail: `${goalIds.length} goal(s), ${interventionIds.length} intervention(s)`,
+    });
+    return data;
+  },
+
+  // ── Care Plan audit (History) ──
+  // Append-only trail in care_plan_audit (roadmap #9). Writes are
+  // fire-and-forget — an audit failure must never block the user's action.
+  patientCarePlanAudit: {},        // { [key]: entries[] }
+  patientCarePlanAuditLoading: {}, // { [key]: bool }
+
+  logCarePlanAudit: (patientId, program, entry) => {
+    if (!patientId || !program?.id) return;
+    supabase.from('care_plan_audit').insert({
+      patient_id: patientId,
+      program_id: program.id,
+      program_code: program.code || null,
+      entity_type: entry.entityType,
+      entity_id: entry.entityId != null ? String(entry.entityId) : null,
+      action: entry.action,
+      summary: entry.summary || '',
+      detail: entry.detail || '',
+      actor: get().currentUserProfile?.name || null,
+    }).then(({ error }) => {
+      if (error) { console.warn('logCarePlanAudit:', error.message); return; }
+      // Invalidate the cached history for this program so the drawer refetches.
+      const key = carePlanKey(patientId, program.id);
+      set(s => ({ patientCarePlanAudit: { ...s.patientCarePlanAudit, [key]: undefined } }));
+    });
+  },
+
+  fetchCarePlanAudit: async (patientId, programId) => {
+    if (!patientId || !programId) return;
+    const key = carePlanKey(patientId, programId);
+    set(s => ({ patientCarePlanAuditLoading: { ...s.patientCarePlanAuditLoading, [key]: true } }));
+    const { data, error } = await supabase
+      .from('care_plan_audit').select('*')
+      .eq('patient_id', patientId).eq('program_id', programId)
+      .order('created_at', { ascending: false });
+    if (error) console.warn('fetchCarePlanAudit:', error.message);
+    set(s => ({
+      patientCarePlanAudit: { ...s.patientCarePlanAudit, [key]: (data || []).map(mapCarePlanAuditRow) },
+      patientCarePlanAuditLoading: { ...s.patientCarePlanAuditLoading, [key]: false },
+    }));
+  },
+
+  // ── Care Plan versioning & sign-off (roadmap #25, #36) ──
+  patientCarePlanVersions: {},         // { [key]: versions[] }
+  patientCarePlanVersionsLoading: {},  // { [key]: bool }
+
+  fetchCarePlanVersions: async (patientId, programId) => {
+    if (!patientId || !programId) return;
+    const key = carePlanKey(patientId, programId);
+    set(s => ({ patientCarePlanVersionsLoading: { ...s.patientCarePlanVersionsLoading, [key]: true } }));
+    const { data, error } = await supabase
+      .from('patient_care_plan_versions').select('*')
+      .eq('patient_id', patientId).eq('program_id', programId)
+      .order('version_number', { ascending: false });
+    if (error) console.warn('fetchCarePlanVersions:', error.message);
+    set(s => ({
+      patientCarePlanVersions: {
+        ...s.patientCarePlanVersions,
+        [key]: (data || []).map(r => ({
+          id: r.id, versionNumber: r.version_number, snapshot: r.snapshot || {},
+          reason: r.reason, note: r.note || '', createdBy: r.created_by || '', createdAt: r.created_at,
+        })),
+      },
+      patientCarePlanVersionsLoading: { ...s.patientCarePlanVersionsLoading, [key]: false },
+    }));
+  },
+
+  // Snapshot the current plan into an immutable version. Returns the version
+  // number, or null on failure.
+  snapshotCarePlanVersion: async (patientId, program, { reason = 'manual', note = '' } = {}) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    const planId = cur?.plan?.id || await get().ensurePatientCarePlan(patientId, program);
+    if (!planId) return null;
+    // Next version number = current max + 1.
+    const { data: last } = await supabase
+      .from('patient_care_plan_versions').select('version_number')
+      .eq('plan_id', planId).order('version_number', { ascending: false }).limit(1).maybeSingle();
+    const versionNumber = (last?.version_number || 0) + 1;
+    const snapshot = {
+      conditions: (cur?.plan?.conditions || []).map(c => c.label),
+      goals: cur?.goals || [],
+      interventions: cur?.interventions || [],
+    };
+    const { data, error } = await supabase.from('patient_care_plan_versions').insert({
+      plan_id: planId, patient_id: patientId, program_id: program.id,
+      version_number: versionNumber, snapshot, reason, note,
+      created_by: get().currentUserProfile?.name || null,
+    }).select().single();
+    if (error) { console.warn('snapshotCarePlanVersion:', error.message); get().showToast('Could not save version'); return null; }
+    // Invalidate cached versions so the drawer refetches.
+    set(s => ({ patientCarePlanVersions: { ...s.patientCarePlanVersions, [key]: undefined } }));
+    return data.version_number;
+  },
+
+  // Sign the plan: snapshot a version, stamp signed_by/at, and audit it.
+  signCarePlan: async (patientId, program, note = '') => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    const planId = cur?.plan?.id;
+    if (!planId) { get().showToast('Add a goal before signing.'); return null; }
+    const versionNumber = await get().snapshotCarePlanVersion(patientId, program, { reason: 'signed', note });
+    const name = get().currentUserProfile?.name || null;
+    const signedAt = new Date().toISOString();
+    const { error } = await supabase.from('patient_care_plans')
+      .update({ signed_by: name, signed_at: signedAt }).eq('id', planId);
+    if (error) { console.warn('signCarePlan:', error.message); get().showToast('Could not sign care plan'); return null; }
+    set(s => {
+      const c = s.patientCarePlans[key];
+      return c ? { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, plan: { ...c.plan, signedBy: name, signedAt } } } } : {};
+    });
+    get().logCarePlanAudit(patientId, program, {
+      entityType: 'plan', action: 'signed',
+      summary: `Signed${versionNumber ? ` (v${versionNumber})` : ''}`, detail: note,
+    });
+    return versionNumber;
+  },
+
+  // Post-sign maintenance note — recorded without editing the plan (roadmap #36).
+  addCarePlanNote: async (patientId, program, note) => {
+    if (!note?.trim()) return;
+    get().logCarePlanAudit(patientId, program, { entityType: 'plan', action: 'note', summary: 'Note added', detail: note.trim() });
+    get().showToast('Note added');
+  },
+
+  // Replace the live plan with a version's snapshot (roadmap #25 restore).
+  restoreCarePlanVersion: async (patientId, program, version) => {
+    const key = carePlanKey(patientId, program.id);
+    const planId = get().patientCarePlans[key]?.plan?.id;
+    if (!planId) return;
+    const snap = version.snapshot || {};
+    // Replace children: delete current, insert from the snapshot (new ids).
+    await supabase.from('patient_care_plan_goals').delete().eq('plan_id', planId);
+    await supabase.from('patient_care_plan_interventions').delete().eq('plan_id', planId);
+    const goalRows = (snap.goals || []).map((g, i) => ({ ...patientCarePlanGoalToRow(g, planId), sort_order: i }));
+    const intvRows = (snap.interventions || []).map((x, i) => ({ ...patientCarePlanInterventionToRow(x, planId), sort_order: i }));
+    if (goalRows.length) await supabase.from('patient_care_plan_goals').insert(goalRows);
+    if (intvRows.length) await supabase.from('patient_care_plan_interventions').insert(intvRows);
+    // Reload the plan from the DB and audit the restore.
+    set(s => ({ patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: false } }));
+    await get().fetchPatientCarePlan(patientId, program.id);
+    get().logCarePlanAudit(patientId, program, { entityType: 'plan', action: 'restored', summary: `Restored v${version.versionNumber}` });
+    get().showToast(`Restored version ${version.versionNumber}`);
+  },
+
+  // ── Care Plan links (roadmap #11) ──
+  // Links from a goal/intervention/barrier to existing tasks & appointments,
+  // persisted in care_plan_links. Keyed by `<patientId>::<programId>`.
+  patientCarePlanLinks: {},         // { [key]: links[] }
+  patientCarePlanLinksLoadedFor: {},// { [key]: bool }
+
+  fetchCarePlanLinks: async (patientId, programId) => {
+    if (!patientId || !programId) return;
+    const key = carePlanKey(patientId, programId);
+    const { data, error } = await supabase
+      .from('care_plan_links').select('*')
+      .eq('patient_id', patientId).eq('program_id', programId)
+      .order('created_at', { ascending: true });
+    if (error) console.warn('fetchCarePlanLinks:', error.message);
+    set(s => ({
+      patientCarePlanLinks: {
+        ...s.patientCarePlanLinks,
+        [key]: (data || []).map(r => ({
+          id: r.id, ownerType: r.owner_type, ownerId: r.owner_id,
+          entityType: r.entity_type, entityId: r.entity_id, entityLabel: r.entity_label || '',
+          createdAt: r.created_at,
+        })),
+      },
+      patientCarePlanLinksLoadedFor: { ...s.patientCarePlanLinksLoadedFor, [key]: true },
+    }));
+  },
+
+  addCarePlanLink: async (patientId, program, { ownerType, ownerId, entityType, entityId, entityLabel }) => {
+    const key = carePlanKey(patientId, program.id);
+    const planId = await get().ensurePatientCarePlan(patientId, program);
+    if (!planId) return null;
+    const { data, error } = await supabase.from('care_plan_links').insert({
+      plan_id: planId, patient_id: patientId, program_id: program.id,
+      owner_type: ownerType, owner_id: String(ownerId),
+      entity_type: entityType, entity_id: String(entityId), entity_label: entityLabel || '',
+      created_by: get().currentUserProfile?.name || null,
+    }).select().single();
+    if (error) { console.warn('addCarePlanLink:', error.message); get().showToast('Could not link item'); return null; }
+    const link = { id: data.id, ownerType, ownerId: String(ownerId), entityType, entityId: String(entityId), entityLabel: entityLabel || '', createdAt: data.created_at };
+    set(s => ({ patientCarePlanLinks: { ...s.patientCarePlanLinks, [key]: [...(s.patientCarePlanLinks[key] || []), link] } }));
+    return link;
+  },
+
+  removeCarePlanLink: async (patientId, programId, id) => {
+    const key = carePlanKey(patientId, programId);
+    const prev = get().patientCarePlanLinks[key] || [];
+    set(s => ({ patientCarePlanLinks: { ...s.patientCarePlanLinks, [key]: prev.filter(l => l.id !== id) } }));
+    const { error } = await supabase.from('care_plan_links').delete().eq('id', id);
+    if (error) { console.warn('removeCarePlanLink:', error.message); set(s => ({ patientCarePlanLinks: { ...s.patientCarePlanLinks, [key]: prev } })); get().showToast('Could not remove link'); }
+  },
+
+  // ── Care Plan report (roadmap #10) ──
+  // Patient-level share & audit metadata for the report. GBI totals come from
+  // the per-program plans loaded by fetchAllPatientCarePlans; this adds the
+  // cross-program share and activity aggregates. Keyed by patientId.
+  patientCarePlanReport: {},         // { [patientId]: { shares, audit } }
+  patientCarePlanReportLoading: {},  // { [patientId]: bool }
+
+  fetchCarePlanReport: async (patientId) => {
+    if (!patientId) return;
+    set(s => ({ patientCarePlanReportLoading: { ...s.patientCarePlanReportLoading, [patientId]: true } }));
+    await get().fetchAllPatientCarePlans(patientId);
+    const [shares, audit] = await Promise.all([
+      supabase.from('care_plan_shares').select('target, created_at').eq('patient_id', patientId),
+      supabase.from('care_plan_audit').select('action, created_at').eq('patient_id', patientId),
+    ]);
+    if (shares.error) console.warn('fetchCarePlanReport shares:', shares.error.message);
+    if (audit.error) console.warn('fetchCarePlanReport audit:', audit.error.message);
+    set(s => ({
+      patientCarePlanReport: {
+        ...s.patientCarePlanReport,
+        [patientId]: { shares: shares.data || [], audit: audit.data || [] },
+      },
+      patientCarePlanReportLoading: { ...s.patientCarePlanReportLoading, [patientId]: false },
+    }));
+  },
+
   // ── Care Plan Library (Settings → Care Plan Library) ──
   // Three sibling lists plus each goal's interventions, all persisted in
   // `care_plan_*` (supabase/care_plan_library_migration.sql). Unlike the
@@ -2235,17 +2966,62 @@ export const useAppStore = create((set, get) => ({
   carePlanTemplates: [],
   carePlanGoals: [],
   carePlanBarriers: [],
+  carePlanInterventionTemplates: [],
   carePlanLibraryLoading: false,
   carePlanLibraryDidFetch: false,
+  // Per-user starred templates (roadmap #3), persisted in
+  // care_plan_template_favorites. Held as an array of template ids for the
+  // signed-in user; favorites sort to the top of the library.
+  carePlanFavorites: [],
+  carePlanFavoritesLoaded: false,
+
+  fetchCarePlanFavorites: async () => {
+    if (get().carePlanFavoritesLoaded) return;
+    const userId = await get()._resolveWorklistUser();
+    const { data, error } = await supabase
+      .from('care_plan_template_favorites').select('template_id').eq('user_id', userId);
+    if (error) console.warn('fetchCarePlanFavorites:', error.message);
+    set({ carePlanFavorites: (data || []).map(r => r.template_id), carePlanFavoritesLoaded: true });
+  },
+
+  toggleCarePlanFavorite: async (templateId) => {
+    const userId = await get()._resolveWorklistUser();
+    const wasFav = get().carePlanFavorites.includes(templateId);
+    // Optimistic — the star flips immediately; revert on failure.
+    set(s => ({
+      carePlanFavorites: wasFav
+        ? s.carePlanFavorites.filter(id => id !== templateId)
+        : [...s.carePlanFavorites, templateId],
+    }));
+    const { error } = wasFav
+      ? await supabase.from('care_plan_template_favorites').delete().eq('user_id', userId).eq('template_id', templateId)
+      : await supabase.from('care_plan_template_favorites').upsert(
+          { user_id: userId, template_id: templateId }, { onConflict: 'user_id,template_id' });
+    if (error) {
+      console.warn('toggleCarePlanFavorite:', error.message);
+      set(s => ({
+        carePlanFavorites: wasFav
+          ? [...s.carePlanFavorites, templateId]
+          : s.carePlanFavorites.filter(id => id !== templateId),
+      }));
+      get().showToast('Could not update favorite');
+    }
+  },
 
   fetchCarePlanLibrary: async () => {
+    if (get().carePlanLibraryDidFetch) return;
+    if (get().carePlanLibraryLoading) return;
     set({ carePlanLibraryLoading: true });
-    const [templates, goals, barriers, interventions] = await Promise.all([
+    const [templates, goals, barriers, interventions, intvTemplates] = await Promise.all([
       supabase.from('care_plan_templates').select('*').order('created_at', { ascending: true }),
       supabase.from('care_plan_goals').select('*').order('created_at', { ascending: true }),
       supabase.from('care_plan_barriers').select('*').order('created_at', { ascending: true }),
       supabase.from('care_plan_interventions').select('*').order('created_at', { ascending: true }),
+      supabase.from('care_plan_intervention_templates').select('*').order('created_at', { ascending: true }),
     ]);
+    // intvTemplates is intentionally excluded from the gate: its table may not
+    // exist in an environment where that migration hasn't run, and its absence
+    // shouldn't blank the other three tabs.
     const firstError = templates.error || goals.error || barriers.error || interventions.error;
     if (firstError) {
       // Table missing (migration not run yet) or blocked — keep the tabs as
@@ -2254,6 +3030,7 @@ export const useAppStore = create((set, get) => ({
       set({ carePlanLibraryLoading: false, carePlanLibraryDidFetch: true });
       return;
     }
+    if (intvTemplates.error) console.warn('intervention templates fetch failed (run migration?):', intvTemplates.error.message);
     const byGoal = new Map();
     (interventions.data || []).forEach((row) => {
       const list = byGoal.get(row.goal_id) || [];
@@ -2264,9 +3041,46 @@ export const useAppStore = create((set, get) => ({
       carePlanTemplates: (templates.data || []).map(mapCarePlanTemplateRow),
       carePlanGoals: (goals.data || []).map(row => mapCarePlanGoalRow(row, byGoal.get(row.id) || [])),
       carePlanBarriers: (barriers.data || []).map(mapCarePlanBarrierRow),
+      carePlanInterventionTemplates: (intvTemplates.data || []).map(mapCarePlanInterventionTemplateRow),
       carePlanLibraryLoading: false,
       carePlanLibraryDidFetch: true,
     });
+  },
+
+  saveCarePlanInterventionTemplate: async (values, id = null) => {
+    const row = {
+      kind: values.kind || 'internal-task',
+      title: (values.title || '').trim(),
+      description: values.description || '',
+      config: values.config || {},
+    };
+    const q = id
+      ? supabase.from('care_plan_intervention_templates').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_intervention_templates').insert(row);
+    const { data, error } = await q.select().single();
+    if (error) {
+      console.warn('save intervention template failed:', error.message);
+      get().showToast('Could not save intervention');
+      return null;
+    }
+    const tpl = mapCarePlanInterventionTemplateRow(data);
+    set(s => ({
+      carePlanInterventionTemplates: id
+        ? s.carePlanInterventionTemplates.map(t => (t.id === tpl.id ? tpl : t))
+        : [...s.carePlanInterventionTemplates, tpl],
+    }));
+    return tpl;
+  },
+
+  deleteCarePlanInterventionTemplate: async (id) => {
+    const prev = get().carePlanInterventionTemplates;
+    set({ carePlanInterventionTemplates: prev.filter(t => t.id !== id) });
+    const { error } = await supabase.from('care_plan_intervention_templates').delete().eq('id', id);
+    if (error) {
+      console.warn('delete intervention template failed:', error.message);
+      set({ carePlanInterventionTemplates: prev });
+      get().showToast('Could not delete intervention');
+    }
   },
 
   /**
@@ -5120,14 +5934,16 @@ export const useAppStore = create((set, get) => ({
     persistHedisGaps(memberId);
     persistCaregapActivityInsert(memberId, entry);
   },
-  bulkUpdateGapStatuses: (memberId, updates) => {
-    // updates: { [gapCode]: nextStatus }
+  bulkUpdateGapStatuses: (memberId, updates, { assignee } = {}) => {
+    // updates: { [gapCode]: nextStatus }, assignee: optional name to set on all affected gaps
     track('hedis.gap_status_bulk_updated', { memberId, count: Object.keys(updates || {}).length });
     set(s => ({
       hedisMembers: (s.hedisMembers || []).map(m =>
         m.id !== memberId ? m : {
           ...m,
-          gaps: (m.gaps || []).map(g => updates[g.code] ? { ...g, status: updates[g.code] } : g),
+          gaps: (m.gaps || []).map(g => updates[g.code]
+            ? { ...g, status: updates[g.code], ...(assignee !== undefined ? { assignee } : {}) }
+            : g),
         }
       ),
     }));
@@ -5242,6 +6058,7 @@ export const useAppStore = create((set, get) => ({
   // Notes tab can each read a filtered list without re-fetching.
   clinicalNotesByMember: {},
   clinicalNotesByPatient: {},
+  clinicalNoteVersionsById: {},
 
   fetchClinicalNotesForMember: async (hedisMemberId) => {
     if (!hedisMemberId) return [];
@@ -5282,6 +6099,26 @@ export const useAppStore = create((set, get) => ({
     }
     const rows = (data || []).map(clinicalNoteRowToJs);
     set(s => ({ clinicalNotesByPatient: { ...s.clinicalNotesByPatient, [patientId]: rows } }));
+    return rows;
+  },
+
+  fetchClinicalNoteVersions: async (noteId) => {
+    if (!noteId) return [];
+    const { data, error } = await supabase
+      .from('clinical_note_versions')
+      .select('*')
+      .eq('note_id', noteId)
+      .order('version', { ascending: false });
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[fetchClinicalNoteVersions] clinical_note_versions missing — run supabase/clinical_note_versions_migration.sql');
+        return [];
+      }
+      console.error('fetchClinicalNoteVersions error:', error);
+      return [];
+    }
+    const rows = (data || []).map(clinicalNoteVersionRowToJs);
+    set(s => ({ clinicalNoteVersionsById: { ...s.clinicalNoteVersionsById, [noteId]: rows } }));
     return rows;
   },
 

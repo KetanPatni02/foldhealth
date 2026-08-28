@@ -17,7 +17,18 @@ export function CareProgramsTabToolbar({
   activeSubTab, setActiveSubTab, showFilters, setShowFilters,
   filters, filterOptionsFor, setFilter, clearFilters,
   npOpen, setNpOpen, npBtnRef, programOptions, handleAddProgram,
+  onOpenSummary, onOpenReport,
 }) {
+  const summaryControl = (
+    <>
+      <Button variant="secondary" size="L" leadingIcon="solar:document-text-linear" onClick={onOpenSummary}>
+        Care Plan
+      </Button>
+      <Button variant="secondary" size="L" leadingIcon="solar:chart-2-linear" onClick={onOpenReport}>
+        Report
+      </Button>
+    </>
+  );
   const newProgramControl = (align = 'left') => (
     <div className={styles.npWrap}>
       <Button
@@ -57,6 +68,7 @@ export function CareProgramsTabToolbar({
               onClose={() => { setSearchMode(false); setSearchText(''); }}
             />
           </div>
+          {summaryControl}
           {newProgramControl('right')}
           <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
           <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" tooltipLeft
@@ -73,6 +85,7 @@ export function CareProgramsTabToolbar({
                 onClick={() => setActiveSubTab(tab)}>{tab}</button>
             ))}
           </div>
+          {summaryControl}
           {newProgramControl('right')}
           <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
           <ActionButton icon="solar:filter-linear" size="S" tooltip="Filter" tooltipLeft

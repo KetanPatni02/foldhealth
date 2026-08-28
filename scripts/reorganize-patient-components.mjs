@@ -61,14 +61,21 @@ const COMPONENT_DEST = {
   // Right panel — Care Programs
   CareProgramsTab: 'right-panel/tabs/care-programs/CareProgramsTab/CareProgramsTab',
   ProgramDetailView: 'right-panel/tabs/care-programs/program-detail/ProgramDetailView/ProgramDetailView',
-  ProgramDetailSkeleton: 'right-panel/tabs/care-programs/program-detail/ProgramDetailSkeleton/ProgramDetailSkeleton',
-  ProgramStatusRing: 'right-panel/tabs/care-programs/program-detail/ProgramStatusRing/ProgramStatusRing',
-  ProgramBadges: 'right-panel/tabs/care-programs/program-detail/ProgramBadges/ProgramBadges',
+  ProgramDetailSkeleton: 'right-panel/tabs/care-programs/program-detail/shared/ProgramDetailSkeleton/ProgramDetailSkeleton',
+  ProgramStatusRing: 'right-panel/tabs/care-programs/program-detail/shared/ProgramStatusRing/ProgramStatusRing',
+  ProgramBadges: 'right-panel/tabs/care-programs/program-detail/shared/ProgramBadges/ProgramBadges',
 
-  // Program detail — steps
+  // Care Plan — dedicated module (elevated from steps)
+  CarePlanView: 'right-panel/tabs/care-programs/care-plan/CarePlanView/CarePlanView',
+  CarePlanShareDrawer: 'right-panel/tabs/care-programs/care-plan/drawers/CarePlanShareDrawer/CarePlanShareDrawer',
+  CarePlanHistoryDrawer: 'right-panel/tabs/care-programs/care-plan/drawers/CarePlanHistoryDrawer/CarePlanHistoryDrawer',
+  CarePlanVersionsDrawer: 'right-panel/tabs/care-programs/care-plan/drawers/CarePlanVersionsDrawer/CarePlanVersionsDrawer',
+  AddInterventionDrawer: 'right-panel/tabs/care-programs/care-plan/drawers/AddInterventionDrawer/AddInterventionDrawer',
+  CarePlanSummaryView: 'right-panel/tabs/care-programs/care-plan/summary/CarePlanSummaryView/CarePlanSummaryView',
+
+  // Program detail — steps (CarePlanView now lives in care-plan/)
   PreVisitStep: 'right-panel/tabs/care-programs/program-detail/steps/PreVisitStep/PreVisitStep',
   AssessmentFormView: 'right-panel/tabs/care-programs/program-detail/steps/AssessmentFormView/AssessmentFormView',
-  CarePlanView: 'right-panel/tabs/care-programs/program-detail/steps/CarePlanView/CarePlanView',
   AppointmentStep: 'right-panel/tabs/care-programs/program-detail/steps/AppointmentStep/AppointmentStep',
   PostVisitChecklist: 'right-panel/tabs/care-programs/program-detail/steps/PostVisitChecklist/PostVisitChecklist',
   OpenCareGaps: 'right-panel/tabs/care-programs/program-detail/steps/OpenCareGaps/OpenCareGaps',

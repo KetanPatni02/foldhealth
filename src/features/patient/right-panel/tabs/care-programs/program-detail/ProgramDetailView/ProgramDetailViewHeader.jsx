@@ -4,8 +4,8 @@ import { ActionButton } from '../../../../../../../components/ActionButton/Actio
 import { CloseButton } from '../../../../../../../components/CloseButton/CloseButton';
 import { BannerExpandIcon } from '../../../../../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../../../../../hcc/DiagPanel/ReviewProgressPopover';
-import { ProgramStatusRing } from '../ProgramStatusRing/ProgramStatusRing.jsx';
-import { ProgramBadges } from '../ProgramBadges/ProgramBadges.jsx';
+import { ProgramStatusRing } from '../shared/ProgramStatusRing/ProgramStatusRing.jsx';
+import { ProgramBadges } from '../shared/ProgramBadges/ProgramBadges.jsx';
 import { statusColorFor } from '../../../../../data/programStatus';
 import { ProgramDetailExpandPanel } from './ProgramDetailViewParts';
 import styles from './ProgramDetailView.module.css';

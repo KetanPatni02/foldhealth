@@ -74,7 +74,13 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   ]), [programTasks]);
 
   const addProgramTask = useAppStore(s => s.addProgramTask);
-  const currentPatient = useAppStore(s => s.patients.find(p => p.id === s.selectedPatientId));
+  const currentPatient = useAppStore(s => {
+    const pid = s.selectedPatientId;
+    return s.patients.find(p => p.id === pid)
+      || (s.allPatients || []).find(p => p.id === pid)
+      || s.hccMembers.find(p => p.id === pid)
+      || null;
+  });
   const patientId = useAppStore(s => s.selectedPatientId);
   const updateCareProgram = useAppStore(s => s.updateCareProgram);
   const storeLetters = useAppStore(s => s.letters);
@@ -182,6 +188,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
     isProgramFilesStep: stepName === 'Program Related Files' || stepName === 'Program Documents' || stepName === 'Documents',
     isReferralStep: stepName === 'Referral Review',
     isLettersStep: stepName === 'Letters',
+    isDiagnosisGapsStep: stepName === 'Diagnosis Gaps',
   };
 
   return {

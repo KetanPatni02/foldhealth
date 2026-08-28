@@ -1,7 +1,27 @@
+import { useMemo } from 'react';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { DiagnosisIcon } from '../../../../../../components/Icon/DiagnosisIcon';
-import { DIAGNOSIS_GAP_ITEMS } from '../../../../data/careGapsMock';
+import { getOpenIcdsForMember } from '../../../../../hcc/data/icds';
 import styles from './DiagnosisGapsTable.module.css';
+
+function groupByHcc(icds) {
+  const map = {};
+  for (const icd of icds) {
+    const key = icd.hcc || 'HCC Not Linked';
+    if (!map[key]) map[key] = { title: key, icds: [], lastDocumented: null };
+    map[key].icds.push(icd);
+    if (icd.last && (!map[key].lastDocumented || icd.last > map[key].lastDocumented)) {
+      map[key].lastDocumented = icd.last;
+    }
+  }
+  return Object.values(map).map((g, i) => ({
+    id: `dg-${i}`,
+    title: g.title,
+    status: 'Open',
+    icdCount: g.icds.length,
+    lastDocumented: g.lastDocumented || '—',
+  }));
+}
 
 function DiagnosisGapRow({ item }) {
   return (
@@ -24,7 +44,21 @@ function DiagnosisGapRow({ item }) {
   );
 }
 
-export function DiagnosisGapsTable() {
+export function DiagnosisGapsTable({ memberName }) {
+  const items = useMemo(() => {
+    if (!memberName) return [];
+    const { all } = getOpenIcdsForMember(memberName);
+    return groupByHcc(all);
+  }, [memberName]);
+
+  if (!items.length) {
+    return (
+      <div className={styles.wrapper}>
+        <div className={styles.empty}>No open diagnosis gaps</div>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.card}>
@@ -33,7 +67,7 @@ export function DiagnosisGapsTable() {
           <span className={styles.colStatus}>Status</span>
           <span className={styles.colActions} />
         </div>
-        {DIAGNOSIS_GAP_ITEMS.map(item => (
+        {items.map(item => (
           <DiagnosisGapRow key={item.id} item={item} />
         ))}
       </div>

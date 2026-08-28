@@ -4,7 +4,10 @@ import { statusColorFor } from '../../../../data/programStatus';
 import { CARE_PROGRAM_CATALOG } from '../../../../data/careProgramCatalog';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { ProgramDetailView } from '../program-detail/ProgramDetailView/ProgramDetailView.jsx';
-import { ProgramDetailSkeleton } from '../program-detail/ProgramDetailSkeleton/ProgramDetailSkeleton.jsx';
+import { ProgramDetailSkeleton } from '../program-detail/shared/ProgramDetailSkeleton/ProgramDetailSkeleton.jsx';
+import { CarePlanSummaryView } from '../care-plan/summary/CarePlanSummaryView/CarePlanSummaryView.jsx';
+import { CarePlanReportView } from '../care-plan/report/CarePlanReportView/CarePlanReportView.jsx';
+import { stepsFor, flatSteps } from '../program-detail/ProgramDetailView/ProgramDetailView.utils';
 import { CareProgramsTabTable } from './CareProgramsTabTable';
 import { CareProgramsTabToolbar, CareProgramsTabMenus } from './CareProgramsTabToolbar';
 import {
@@ -33,6 +36,9 @@ export function CareProgramsTab() {
   const [npOpen, setNpOpen] = useState(false);
   const [statusMenu, setStatusMenu] = useState(null);
   const [rowMenu, setRowMenu] = useState(null);
+  const carePlanSummaryOpen = useAppStore(s => s.carePlanSummaryOpen);
+  const setCarePlanSummaryOpen = useAppStore(s => s.setCarePlanSummaryOpen);
+  const [reportOpen, setReportOpen] = useState(false);
   const npBtnRef = useRef(null);
 
   const patientId = useAppStore(s => s.selectedPatientId);
@@ -46,6 +52,7 @@ export function CareProgramsTab() {
   const selectedCareProgramKey = useAppStore(s => s.selectedCareProgramKey);
   const openCareProgram = useAppStore(s => s.openCareProgram);
   const closeCareProgram = useAppStore(s => s.closeCareProgram);
+  const setCareProgramStep = useAppStore(s => s.setCareProgramStep);
 
   useEffect(() => {
     if (patientId) fetchCareProgramsForPatient(patientId);
@@ -119,6 +126,16 @@ export function CareProgramsTab() {
 
   const openProgram = (program) => setPendingProgram({ program, firstStep: false });
 
+  // From the comprehensive view, hand off to the owning program's Care Plan
+  // step. openCareProgram resets the step to null, so set it right after.
+  // Uses a loose match so "Care Plan" and "Care Plan Details" both resolve.
+  const openProgramAtCarePlan = (program) => {
+    const carePlanStep = flatSteps(stepsFor(program.code)).find(s => s.name.toLowerCase().includes('care plan'));
+    setCarePlanSummaryOpen(false);
+    openCareProgram(programUrlKey(program));
+    if (carePlanStep) setCareProgramStep(carePlanStep.id);
+  };
+
   const changeStatus = (program, status) => {
     const patch = { status, statusColor: statusColorFor(status) };
     if (status === 'Enrolled' && (!program.startDate || program.startDate === '—')) {
@@ -132,7 +149,7 @@ export function CareProgramsTab() {
 
   const handleRowAction = (key, program) => {
     if (key === 'assign') {
-      setTimeout(() => document.querySelector(`[data-assign-row="${program.id}"]`)?.click(), 0);
+      setTimeout(() => document.querySelector(`[data-assign-row="${program.id}"] button`)?.click(), 0);
     } else if (key === 'print') {
       showToast?.(`Preparing ${program.name} summary…`);
     } else if (key === 'close') {
@@ -176,6 +193,27 @@ export function CareProgramsTab() {
 
   if (pendingProgram) return <ProgramDetailSkeleton />;
 
+  if (carePlanSummaryOpen && !selectedProgram) {
+    return (
+      <CarePlanSummaryView
+        patientId={patientId}
+        programs={programs}
+        onClose={() => setCarePlanSummaryOpen(false)}
+        onOpenProgramStep={openProgramAtCarePlan}
+      />
+    );
+  }
+
+  if (reportOpen && !selectedProgram) {
+    return (
+      <CarePlanReportView
+        patientId={patientId}
+        programs={programs}
+        onClose={() => setReportOpen(false)}
+      />
+    );
+  }
+
   if (selectedProgram) {
     return (
       <ProgramDetailView
@@ -198,6 +236,8 @@ export function CareProgramsTab() {
         setFilter={setFilter} clearFilters={clearFilters}
         npOpen={npOpen} setNpOpen={setNpOpen} npBtnRef={npBtnRef}
         programOptions={programOptions} handleAddProgram={handleAddProgram}
+        onOpenSummary={() => setCarePlanSummaryOpen(true)}
+        onOpenReport={() => setReportOpen(true)}
       />
 
       {visible.length === 0 ? (
