@@ -1,0 +1,109 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-4);
+}
+
+.hero {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.heroIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--space-2);
+  background: var(--neutral-50);
+  flex-shrink: 0;
+}
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.title {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.subtitle {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+.metaGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+.metaRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.metaLabel {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  flex-shrink: 0;
+}
+.metaValue {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  text-align: right;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sectionTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.linkedList {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.linkedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.linkedRow:last-child { border-bottom: none; }
+.linkedIcon { display: flex; flex-shrink: 0; }
+.linkedText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+.linkedTitle {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+}
+.linkedMeta {
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+}

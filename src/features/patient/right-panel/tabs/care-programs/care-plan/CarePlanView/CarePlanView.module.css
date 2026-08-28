@@ -162,11 +162,35 @@
   padding: 12px 4px;
   border-bottom: 0.5px solid var(--neutral-100);
 }
+.goalRowClickable {
+  cursor: pointer;
+}
+.goalRowClickable:hover {
+  background: var(--neutral-50);
+}
 
 .pCell { display: flex; align-items: center; }
-.titleCell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.titleCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  width: 100%;
+}
+.titleMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.titleMainInline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
 .rowIcon { display: flex; flex-shrink: 0; }
-.titleText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.titleText { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
 .title {
   font-size: var(--font-base);
   color: var(--neutral-500);
@@ -186,12 +210,18 @@
 
 .linkChip {
   display: inline-flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 1px;
-  margin-left: auto;
   flex-shrink: 0;
 }
 .linkChipEmpty { opacity: 0.5; }
+.linkChipWrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.linkChipClickable { cursor: pointer; }
 .linkCount { font-size: var(--font-xs); color: var(--neutral-300); line-height: 1; }
 
 .valueCell { font-size: var(--font-base); color: var(--neutral-400); }

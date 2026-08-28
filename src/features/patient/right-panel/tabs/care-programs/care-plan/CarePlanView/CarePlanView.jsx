@@ -15,12 +15,13 @@ import { Select } from '../../../../../../../components/Select/Select';
 import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
 import { Checkbox } from '../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../../../../../../store/useAppStore';
-import { CreateGoalDrawer } from '../../../../../../settings/care-plan-library/goals/CreateGoalDrawer/CreateGoalDrawer';
+import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
 import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
 import { CarePlanShareDrawer } from '../drawers/CarePlanShareDrawer/CarePlanShareDrawer';
 import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlanHistoryDrawer';
 import { CarePlanVersionsDrawer } from '../drawers/CarePlanVersionsDrawer/CarePlanVersionsDrawer';
 import { CarePlanLinkDrawer } from '../drawers/CarePlanLinkDrawer/CarePlanLinkDrawer';
+import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
 import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
 import styles from './CarePlanView.module.css';
 
@@ -34,7 +35,7 @@ const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
 function LinkChip({ count }) {
   return (
     <span className={`${styles.linkChip} ${count ? '' : styles.linkChipEmpty}`}>
-      <Icon name="solar:link-linear" size={14} color="var(--neutral-300)" />
+      <Icon name="custom:link" size={14} color="#6F7A90" />
       {count > 0 && <span className={styles.linkCount}>{count}</span>}
     </span>
   );
@@ -175,7 +176,8 @@ export function CarePlanView({ patientId, program }) {
   const [conditionsViewOpen, setConditionsViewOpen] = useState(false);
   const [statusMenu, setStatusMenu] = useState(null); // { kind, item, rect }
   const [priorityMenu, setPriorityMenu] = useState(null); // { kind, item, rect }
-  const [goalDrawerOpen, setGoalDrawerOpen] = useState(false);
+  const [addGoalsDrawerOpen, setAddGoalsDrawerOpen] = useState(false);
+  const [previewGoal, setPreviewGoal] = useState(null);
   const [intvDrawer, setIntvDrawer] = useState(null);  // false | { intervention }
   const [barrierDrawer, setBarrierDrawer] = useState(null); // null | { barrier }
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -278,25 +280,32 @@ export function CarePlanView({ patientId, program }) {
     else savePatientCarePlanIntervention(patientId, program, { ...item, priority }, item.id);
   };
 
-  const renameGoal = (goal, title) => savePatientCarePlanGoal(patientId, program, { ...goal, title }, goal.id);
   const renameIntervention = (intv, title) => savePatientCarePlanIntervention(patientId, program, { ...intv, title }, intv.id);
   const renameBarrier = (barrier, title) => savePatientCarePlanBarrier(patientId, program, { ...barrier, title }, barrier.id);
 
-  const handleAddGoal = async (values) => {
-    setGoalDrawerOpen(false);
-    const goal = await savePatientCarePlanGoal(patientId, program, {
-      ...values,
-      icon: 'solar:flag-linear',
-      status: 'Not Started',
-    });
-    if (!goal) return;
-    // Persist any interventions the goal drawer collected, linked to the goal.
-    for (const it of (values.interventions || [])) {
-      await savePatientCarePlanIntervention(patientId, program, {
-        kind: it.kind, title: it.title, config: it.config, goalId: goal.id, status: 'Not Started',
+  const handleAddGoalsFromPicker = async (picked) => {
+    setAddGoalsDrawerOpen(false);
+    if (!picked?.length) return;
+    const existingTitles = new Set(data.goals.map(g => g.title.trim().toLowerCase()));
+    let added = 0;
+    for (const g of picked) {
+      const titleKey = g.title.trim().toLowerCase();
+      if (existingTitles.has(titleKey)) continue;
+      const goal = await savePatientCarePlanGoal(patientId, program, {
+        title: g.title,
+        subtitle: g.detail || '',
+        category: g.category || '',
+        priority: g.priority || 'medium',
+        icon: 'solar:flag-linear',
+        status: 'Not Started',
       });
+      if (goal) {
+        added += 1;
+        existingTitles.add(titleKey);
+      }
     }
-    showToast(`"${goal.title}" added`);
+    if (added) showToast(`Added ${added} goal${added === 1 ? '' : 's'}`);
+    else showToast('Selected goals are already on this plan');
   };
 
   const handleAddIntervention = async (values) => {
@@ -485,14 +494,14 @@ export function CarePlanView({ patientId, program }) {
               <Icon name="solar:chart-2-linear" size={16} color="var(--neutral-300)" />
               Trends
             </button>
-            <ActionButton size="S" tooltip="Add goal" onClick={() => setGoalDrawerOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
+            <ActionButton size="S" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
         {filteredGoals.length === 0 && data.goals.length === 0 ? (
           <SectionEmptyState
             icon="solar:heart-pulse-linear"
             label="No Goals Added for Selected Problem"
-            onAdd={() => setGoalDrawerOpen(true)}
+            onAdd={() => setAddGoalsDrawerOpen(true)}
           />
         ) : (
           <div className={styles.table}>
@@ -508,25 +517,39 @@ export function CarePlanView({ patientId, program }) {
             </div>
             {filteredGoals.length === 0 && <div className={styles.emptyRow}>No goals match the filters.</div>}
             {filteredGoals.map(g => (
-            <div key={g.id} className={styles.goalRow}>
+            <div
+              key={g.id}
+              className={`${styles.goalRow} ${styles.goalRowClickable}`}
+              onClick={() => setPreviewGoal(g)}
+            >
               <span className={styles.selectCell} onClick={e => e.stopPropagation()}><Checkbox checked={selected.goal.has(g.id)} onCheckedChange={() => toggleSelect('goal', g.id)} aria-label={`Select ${g.title}`} disabled={!canEdit} /></span>
-              <span className={styles.pCell}>
+              <span className={styles.pCell} onClick={e => e.stopPropagation()}>
                 <button type="button" className={styles.priorityBtn} onClick={(e) => canEdit && setPriorityMenu({ kind: 'goal', item: g, rect: e.currentTarget.getBoundingClientRect() })} disabled={!canEdit} aria-label="Change priority">
                   <PriorityIcon priority={g.priority} size={16} />
                 </button>
               </span>
               <span className={styles.titleCell}>
                 <span className={styles.rowIcon}><Icon name={g.icon} size={16} color="var(--neutral-400)" /></span>
-                <EditableTitle title={g.title} subtitle={g.subtitle} editable={canEdit} onCommit={t => renameGoal(g, t)} />
-                <span onClick={() => canEdit && setLinkOwner({ kind: 'goal', item: g })} style={{ cursor: canEdit ? 'pointer' : 'default' }}><LinkChip count={linkCount(g.id)} /></span>
+                <span className={styles.titleMain}>
+                  <EditableTitle title={g.title} subtitle={g.subtitle} editable={false} />
+                </span>
+                <span
+                  className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (canEdit) setLinkOwner({ kind: 'goal', item: g });
+                  }}
+                >
+                  <LinkChip count={linkCount(g.id)} />
+                </span>
               </span>
-              <span className={`${styles.valueCell} ${g.currentValue === 'No Data' ? styles.muted : ''}`}>{g.currentValue || ''}</span>
-              <span className={styles.trendCell}>{g.trend}</span>
-              <span className={styles.progressCell}><ProgressRing /></span>
-              <span className={styles.statusCell}>
+              <span className={`${styles.valueCell} ${g.currentValue === 'No Data' ? styles.muted : ''}`} onClick={e => e.stopPropagation()}>{g.currentValue || ''}</span>
+              <span className={styles.trendCell} onClick={e => e.stopPropagation()}>{g.trend}</span>
+              <span className={styles.progressCell} onClick={e => e.stopPropagation()}><ProgressRing /></span>
+              <span className={styles.statusCell} onClick={e => e.stopPropagation()}>
                 <StatusPill value={g.status} disabled={!canEdit} onOpen={rect => setStatusMenu({ kind: 'goal', item: g, rect })} />
               </span>
-              <span className={styles.rowMenuCell}>
+              <span className={styles.rowMenuCell} onClick={e => e.stopPropagation()}>
                 <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" disabled={!canEdit}
                   onClick={(e) => setStatusMenu({ kind: 'goal-menu', item: g, rect: e.currentTarget.getBoundingClientRect() })} />
               </span>
@@ -572,15 +595,22 @@ export function CarePlanView({ patientId, program }) {
               </span>
               <span className={styles.titleCell}>
                 <span className={styles.rowIcon}><Icon name={i.icon} size={16} color="var(--neutral-400)" /></span>
-                <EditableTitle title={i.title} editable={canEdit} onCommit={t => renameIntervention(i, t)} />
-                {i.duration && (
-                  <span className={styles.durationChip}>
-                    <Icon name="solar:clock-circle-linear" size={12} color="var(--neutral-300)" />
-                    {i.duration}
-                    <Icon name="solar:refresh-linear" size={12} color="var(--neutral-300)" />
-                  </span>
-                )}
-                <span onClick={() => canEdit && setLinkOwner({ kind: 'intervention', item: i })} style={{ cursor: canEdit ? 'pointer' : 'default' }}><LinkChip count={linkCount(i.id)} /></span>
+                <span className={`${styles.titleMain} ${styles.titleMainInline}`}>
+                  <EditableTitle title={i.title} editable={canEdit} onCommit={t => renameIntervention(i, t)} />
+                  {i.duration && (
+                    <span className={styles.durationChip}>
+                      <Icon name="solar:clock-circle-linear" size={12} color="var(--neutral-300)" />
+                      {i.duration}
+                      <Icon name="solar:refresh-linear" size={12} color="var(--neutral-300)" />
+                    </span>
+                  )}
+                </span>
+                <span
+                  className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
+                  onClick={() => canEdit && setLinkOwner({ kind: 'intervention', item: i })}
+                >
+                  <LinkChip count={linkCount(i.id)} />
+                </span>
               </span>
               <span className={styles.assigneeCell} onClick={e => e.stopPropagation()}>
                 <AssigneeChange
@@ -645,8 +675,15 @@ export function CarePlanView({ patientId, program }) {
               </span>
               <span className={styles.titleCell}>
                 <span className={styles.rowIcon}><Icon name="solar:shield-warning-linear" size={16} color="var(--neutral-400)" /></span>
-                <EditableTitle title={b.title} editable={canEdit} onCommit={t => renameBarrier(b, t)} />
-                <span onClick={() => canEdit && setLinkOwner({ kind: 'barrier', item: b })} style={{ cursor: canEdit ? 'pointer' : 'default' }}><LinkChip count={linkCount(b.id)} /></span>
+                <span className={styles.titleMain}>
+                  <EditableTitle title={b.title} editable={canEdit} onCommit={t => renameBarrier(b, t)} />
+                </span>
+                <span
+                  className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
+                  onClick={() => canEdit && setLinkOwner({ kind: 'barrier', item: b })}
+                >
+                  <LinkChip count={linkCount(b.id)} />
+                </span>
               </span>
               <span className={styles.valueCell} style={{ color: 'var(--neutral-500)' }}>{b.description || <span className={styles.muted}>—</span>}</span>
               <span className={styles.statusCell}>
@@ -714,7 +751,7 @@ export function CarePlanView({ patientId, program }) {
             else if (k === 'rename' && isBarrier) setBarrierDrawer({ barrier: item });
             else if (k === 'rename' && !isGoal) setIntvDrawer({ intervention: item });
             // Goal rename happens inline via EditableTitle; nudge the user there.
-            else if (k === 'rename' && isGoal) showToast('Click the goal title to rename it.');
+            else if (k === 'rename' && isGoal) showToast('Open the goal to review details — use Remove to delete it.');
           }}
           onClose={() => setStatusMenu(null)}
         />
@@ -733,8 +770,19 @@ export function CarePlanView({ patientId, program }) {
         />
       )}
 
-      {goalDrawerOpen && (
-        <CreateGoalDrawer onClose={() => setGoalDrawerOpen(false)} onSave={handleAddGoal} />
+      {addGoalsDrawerOpen && (
+        <AddGoalsDrawer
+          onClose={() => setAddGoalsDrawerOpen(false)}
+          onAdd={handleAddGoalsFromPicker}
+        />
+      )}
+
+      {previewGoal && (
+        <GoalPreviewDrawer
+          goal={previewGoal}
+          interventions={data.interventions}
+          onClose={() => setPreviewGoal(null)}
+        />
       )}
 
       {intvDrawer && (

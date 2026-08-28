@@ -24,6 +24,7 @@ import { UploadIcon } from './UploadIcon';
 import { TableIcon } from './TableIcon';
 import { BarrierIcon } from './BarrierIcon';
 import { MemberConsentIcon } from './MemberConsentIcon';
+import { LinkIcon } from './LinkIcon';
 
 export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:filter') return <FilterIcon size={size} color={color} />;
@@ -38,6 +39,7 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:table') return <TableIcon size={size} color={color} />;
   if (name === 'custom:barrier') return <BarrierIcon size={size} color={color} />;
   if (name === 'custom:member-consent') return <MemberConsentIcon size={size} color={color} />;
+  if (name === 'custom:link') return <LinkIcon size={size} color={color} />;
   if (name === 'custom:sms') return <SmsIcon size={size} color={color} />;
   if (name === 'custom:expand-drawer') return <ExpandDrawerIcon size={size} />;
   if (name === 'custom:call-pcp') return <CallPcpIcon size={size} color={color} />;

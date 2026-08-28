@@ -309,6 +309,14 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
     if (m.patientId) navigateToPatient(m.patientId);
     else showToast(`${m.name} — no linked patient record yet`);
   };
+
+  const openInCareProgram = (e) => {
+    e?.stopPropagation?.();
+    navigateToPatient(m.patientId || m.id, {
+      profileTab: 'Care Programs',
+      programCode: 'SNP',
+    });
+  };
   const handleNameClick = (e) => {
     e.stopPropagation();
     openQuickView?.({ id: m.patientId || m.id, name: m.name, initials: m.initials, gender: m.gender, age: m.age, memberId: m.memberId, language: m.language });
@@ -325,7 +333,7 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
   ]);
 
   const handleMenuSelect = (key) => {
-    if (key === 'View Program') { handleRowClick(); return; }
+    if (key === 'View Program') { openInCareProgram(); return; }
     if (key === 'Add Task') { requestAddTask?.({ member: m.name }); return; }
     if (key === 'Edit Details') {
       openPatientEdit('basic', {
@@ -390,7 +398,7 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
             icon="solar:clipboard-list-linear"
             size="L"
             tooltip="View Program"
-            onClick={handleRowClick}
+            onClick={openInCareProgram}
           />
           <span className={styles.actionDivider} />
           <ActionButton
