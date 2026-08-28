@@ -1671,6 +1671,9 @@ export const useAppStore = create((set, get) => ({
   // Active step id inside that program ('step-3a', 'ccm-billing'). null means
   // the program's default step.
   careProgramStep: null,
+  // Summary view for Care Plans across all programs — a read-only pane in
+  // CareProgramsTab that must survive refresh via URL (#/.../care-programs/summary).
+  carePlanSummaryOpen: false,
   // When set alongside a navigateToPatient({ programCode }) call, the Care
   // Programs tab picks this up, ensures the program is enrolled, and opens
   // its ProgramDetailView on mount. Cleared once consumed.
@@ -1678,7 +1681,7 @@ export const useAppStore = create((set, get) => ({
   navigateToPatient: (patientId, opts = {}) => {
     const from = get().activePage;
     track('nav.patient_opened', { patientId, from });
-    const updates = { selectedPatientId: patientId, selectedCareProgramKey: null, careProgramStep: null };
+    const updates = { selectedPatientId: patientId, selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false };
     if (opts.profileTab) updates.patientProfileTab = opts.profileTab;
     if (opts.programCode) updates.pendingCareProgramCode = opts.programCode;
     set(updates);
@@ -1689,7 +1692,7 @@ export const useAppStore = create((set, get) => ({
   navigateBackToWorklist: () => {
     const patientId = get().selectedPatientId;
     track('nav.patient_closed', { patientId });
-    set({ selectedPatientId: null, pendingCareProgramCode: null, selectedCareProgramKey: null, careProgramStep: null });
+    set({ selectedPatientId: null, pendingCareProgramCode: null, selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
   },
   setPatientProfileTab: (tab) => {
@@ -1697,20 +1700,24 @@ export const useAppStore = create((set, get) => ({
     track('nav.patient_tab_changed', { patientId: get().selectedPatientId, from, to: tab });
     // Leaving the tab closes any open program detail (matches the previous
     // component-local behavior, where unmounting dropped the selection).
-    set({ patientProfileTab: tab, selectedCareProgramKey: null, careProgramStep: null });
+    set({ patientProfileTab: tab, selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
   },
   openCareProgram: (programKey) => {
     track('care_program.opened', { patientId: get().selectedPatientId, programKey });
-    set({ selectedCareProgramKey: programKey, careProgramStep: null });
+    set({ selectedCareProgramKey: programKey, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
   },
   closeCareProgram: () => {
-    set({ selectedCareProgramKey: null, careProgramStep: null });
+    set({ selectedCareProgramKey: null, careProgramStep: null, carePlanSummaryOpen: false });
     updateHash?.(get());
   },
   setCareProgramStep: (stepId) => {
-    set({ careProgramStep: stepId });
+    set({ careProgramStep: stepId, carePlanSummaryOpen: false });
+    updateHash?.(get());
+  },
+  setCarePlanSummaryOpen: (open) => {
+    set({ carePlanSummaryOpen: !!open, selectedCareProgramKey: null, careProgramStep: null });
     updateHash?.(get());
   },
   clearPendingCareProgramCode: () => set({ pendingCareProgramCode: null }),
@@ -2847,6 +2854,8 @@ export const useAppStore = create((set, get) => ({
   },
 
   fetchCarePlanLibrary: async () => {
+    if (get().carePlanLibraryDidFetch) return;
+    if (get().carePlanLibraryLoading) return;
     set({ carePlanLibraryLoading: true });
     const [templates, goals, barriers, interventions, intvTemplates] = await Promise.all([
       supabase.from('care_plan_templates').select('*').order('created_at', { ascending: true }),

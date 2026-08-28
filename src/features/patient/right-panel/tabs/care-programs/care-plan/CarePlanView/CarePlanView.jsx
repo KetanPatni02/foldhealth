@@ -11,7 +11,7 @@ import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPop
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../../../../../../store/useAppStore';
-import { CreateGoalDrawer } from '../../../../../../settings/care-plan-library/CreateGoalDrawer';
+import { CreateGoalDrawer } from '../../../../../../settings/care-plan-library/goals/CreateGoalDrawer/CreateGoalDrawer';
 import { CARE_PLAN_MOCK } from '../../../../../data/carePlanMock';
 import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
 import { CarePlanShareDrawer } from '../drawers/CarePlanShareDrawer/CarePlanShareDrawer';

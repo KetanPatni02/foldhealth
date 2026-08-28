@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import { Input } from '../../../components/Input/Input';
-import { Textarea } from '../../../components/Textarea/Textarea';
-import { Button } from '../../../components/Button/Button';
-import { RadioButton } from '../../../components/RadioButton/RadioButton';
-import { CloseButton } from '../../../components/CloseButton/CloseButton';
-import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
-import { AIIcon } from '../../../components/Icon/AIIcon';
-import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
-import { Badge } from '../../../components/Badge/Badge';
-import { PriorityIcon } from '../../../components/PriorityIcon/PriorityIcon';
-import { AddGoalsDrawer } from './AddGoalsDrawer';
+import { Input } from '../../../../../components/Input/Input';
+import { Textarea } from '../../../../../components/Textarea/Textarea';
+import { Button } from '../../../../../components/Button/Button';
+import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
+import { CloseButton } from '../../../../../components/CloseButton/CloseButton';
+import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
+import { AIIcon } from '../../../../../components/Icon/AIIcon';
+import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
+import { Badge } from '../../../../../components/Badge/Badge';
+import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
+import { AddGoalsDrawer } from '../../goals/AddGoalsDrawer/AddGoalsDrawer';
 import styles from './CarePlanCreateView.module.css';
 
 const NAME_MAX = 25;

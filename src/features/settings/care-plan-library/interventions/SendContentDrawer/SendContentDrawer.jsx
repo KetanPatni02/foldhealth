@@ -1,13 +1,12 @@
 import { useRef, useState } from 'react';
-import { Drawer } from '../../../components/Drawer/Drawer';
-import { Button } from '../../../components/Button/Button';
-import { Input } from '../../../components/Input/Input';
-import { Select } from '../../../components/Select/Select';
-import { RadioButton } from '../../../components/RadioButton/RadioButton';
-import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
-import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
-import { VITAL_OPTIONS } from './vitalOptions';
-import styles from './InterventionDrawer.module.css';
+import { Drawer } from '../../../../../components/Drawer/Drawer';
+import { Button } from '../../../../../components/Button/Button';
+import { Input } from '../../../../../components/Input/Input';
+import { Select } from '../../../../../components/Select/Select';
+import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
+import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
+import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
+import styles from '../shared/InterventionDrawer.module.css';
 
 const CREATION_TIMINGS = ['day', 'week', 'immediate'];
 
@@ -20,13 +19,12 @@ const PRIORITIES = ['High', 'Medium', 'Low'];
 const asOptions = (list) => list.map(v => ({ value: v, label: v }));
 
 /**
- * Measure Vital — the vital-capture intervention from the Interventions "+"
- * menu. Same shape as Send Patient Education, with a vital picker and a note.
+ * Send Content — the patient-education intervention from the Interventions
+ * "+" menu. Same shape as Send Form, with an education picker and a priority.
  */
-export function MeasureVitalDrawer({ onClose, onSave }) {
+export function SendContentDrawer({ onClose, onSave }) {
   const [title, setTitle] = useState('');
-  const [vital, setVital] = useState('');
-  const [note, setNote] = useState('');
+  const [content, setContent] = useState('');
   const [priority, setPriority] = useState('Low');
   const [memberTaskTitle, setMemberTaskTitle] = useState('');
   const [creationTiming, setCreationTiming] = useState('immediate');
@@ -37,7 +35,7 @@ export function MeasureVitalDrawer({ onClose, onSave }) {
   const [dueUnitOpen, setDueUnitOpen] = useState(false);
   const dueUnitRef = useRef(null);
 
-  const canSave = title.trim().length > 0 && vital.length > 0;
+  const canSave = title.trim().length > 0 && content.length > 0;
 
   const headerRight = (
     <>
@@ -47,8 +45,7 @@ export function MeasureVitalDrawer({ onClose, onSave }) {
         disabled={!canSave}
         onClick={() => onSave?.({
           title: title.trim(),
-          vital,
-          note: note.trim(),
+          content,
           priority,
           memberTaskTitle: memberTaskTitle.trim(),
           creationTiming,
@@ -65,7 +62,7 @@ export function MeasureVitalDrawer({ onClose, onSave }) {
   );
 
   return (
-    <Drawer title="Measure Vital" onClose={onClose} headerRight={headerRight} noCloseDivider>
+    <Drawer title="Send Patient Education" onClose={onClose} headerRight={headerRight} noCloseDivider>
       <div className={styles.body}>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
@@ -81,25 +78,15 @@ export function MeasureVitalDrawer({ onClose, onSave }) {
 
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
-            Vital <span className={styles.mandatoryStar} aria-hidden="true">*</span>
+            Member Education <span className={styles.mandatoryStar} aria-hidden="true">*</span>
           </span>
           <Select
-            options={asOptions(VITAL_OPTIONS)}
-            value={vital}
-            onChange={setVital}
-            placeholder="Search Vital"
+            options={[]}
+            value={content}
+            onChange={setContent}
+            placeholder="Search Content"
             searchable
-            searchPlaceholder="Search Vital"
-          />
-        </div>
-
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>Note</span>
-          <Input
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="Enter the note"
-            aria-label="Note"
+            searchPlaceholder="Search Content"
           />
         </div>
 

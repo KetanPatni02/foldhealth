@@ -35,7 +35,8 @@ export function CareProgramsTab() {
   const [npOpen, setNpOpen] = useState(false);
   const [statusMenu, setStatusMenu] = useState(null);
   const [rowMenu, setRowMenu] = useState(null);
-  const [showSummary, setShowSummary] = useState(false);
+  const carePlanSummaryOpen = useAppStore(s => s.carePlanSummaryOpen);
+  const setCarePlanSummaryOpen = useAppStore(s => s.setCarePlanSummaryOpen);
   const npBtnRef = useRef(null);
 
   const patientId = useAppStore(s => s.selectedPatientId);
@@ -125,9 +126,10 @@ export function CareProgramsTab() {
 
   // From the comprehensive view, hand off to the owning program's Care Plan
   // step. openCareProgram resets the step to null, so set it right after.
+  // Uses a loose match so "Care Plan" and "Care Plan Details" both resolve.
   const openProgramAtCarePlan = (program) => {
-    const carePlanStep = flatSteps(stepsFor(program.code)).find(s => s.name === 'Care Plan');
-    setShowSummary(false);
+    const carePlanStep = flatSteps(stepsFor(program.code)).find(s => s.name.toLowerCase().includes('care plan'));
+    setCarePlanSummaryOpen(false);
     openCareProgram(programUrlKey(program));
     if (carePlanStep) setCareProgramStep(carePlanStep.id);
   };
@@ -189,12 +191,12 @@ export function CareProgramsTab() {
 
   if (pendingProgram) return <ProgramDetailSkeleton />;
 
-  if (showSummary && !selectedProgram) {
+  if (carePlanSummaryOpen && !selectedProgram) {
     return (
       <CarePlanSummaryView
         patientId={patientId}
         programs={programs}
-        onClose={() => setShowSummary(false)}
+        onClose={() => setCarePlanSummaryOpen(false)}
         onOpenProgramStep={openProgramAtCarePlan}
       />
     );
@@ -222,7 +224,7 @@ export function CareProgramsTab() {
         setFilter={setFilter} clearFilters={clearFilters}
         npOpen={npOpen} setNpOpen={setNpOpen} npBtnRef={npBtnRef}
         programOptions={programOptions} handleAddProgram={handleAddProgram}
-        onOpenSummary={() => setShowSummary(true)}
+        onOpenSummary={() => setCarePlanSummaryOpen(true)}
       />
 
       {visible.length === 0 ? (

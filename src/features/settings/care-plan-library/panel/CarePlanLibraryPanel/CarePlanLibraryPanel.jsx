@@ -1,23 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '../../../components/Icon/Icon';
-import { Badge } from '../../../components/Badge/Badge';
-import { Button } from '../../../components/Button/Button';
-import { Input } from '../../../components/Input/Input';
-import { Textarea } from '../../../components/Textarea/Textarea';
-import { Select } from '../../../components/Select/Select';
-import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { SectionTitleBar } from '../../../components/SectionTitleBar/SectionTitleBar';
-import { WorklistShell } from '../../../components/WorklistShell/WorklistShell';
-import { Drawer } from '../../../components/Drawer/Drawer';
-import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
-import { RingEmptyState } from '../../../components/RingEmptyState/RingEmptyState';
-import { TableSkeleton } from '../../../components/TableSkeleton/TableSkeleton';
-import { useAppStore } from '../../../store/useAppStore';
-import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
-import { CreateGoalDrawer } from './CreateGoalDrawer';
-import { formatGoalTarget, formatGoalDuration } from './goalFormat';
+import { Icon } from '../../../../../components/Icon/Icon';
+import { Badge } from '../../../../../components/Badge/Badge';
+import { Button } from '../../../../../components/Button/Button';
+import { Input } from '../../../../../components/Input/Input';
+import { Textarea } from '../../../../../components/Textarea/Textarea';
+import { Select } from '../../../../../components/Select/Select';
+import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
+import { Checkbox } from '../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { SectionTitleBar } from '../../../../../components/SectionTitleBar/SectionTitleBar';
+import { WorklistShell } from '../../../../../components/WorklistShell/WorklistShell';
+import { Drawer } from '../../../../../components/Drawer/Drawer';
+import { ConfirmDialog } from '../../../../../components/ConfirmDialog/ConfirmDialog';
+import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
+import { TableSkeleton } from '../../../../../components/TableSkeleton/TableSkeleton';
+import { useAppStore } from '../../../../../store/useAppStore';
+import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
+import { CreateGoalDrawer } from '../../goals/CreateGoalDrawer/CreateGoalDrawer';
+import { formatGoalTarget, formatGoalDuration } from '../../lib/goalFormat';
 import styles from './CarePlanLibraryPanel.module.css';
 
 const CARE_PLAN_TABS = [
@@ -209,10 +209,11 @@ export function CarePlanLibraryPanel() {
   const toggleCarePlanFavorite = useAppStore(s => s.toggleCarePlanFavorite);
   const isFavorite = (id) => favorites.includes(id);
 
+  const carePlanFavoritesLoaded = useAppStore(s => s.carePlanFavoritesLoaded);
   useEffect(() => {
     if (!libraryDidFetch) fetchCarePlanLibrary();
-    fetchCarePlanFavorites();
-  }, [libraryDidFetch, fetchCarePlanLibrary, fetchCarePlanFavorites]);
+    if (!carePlanFavoritesLoaded) fetchCarePlanFavorites();
+  }, [libraryDidFetch, carePlanFavoritesLoaded, fetchCarePlanLibrary, fetchCarePlanFavorites]);
 
   // A single draft/delete-target slot, discriminated by `kind` — only one
   // drawer or confirm dialog is ever open at a time regardless of tab.

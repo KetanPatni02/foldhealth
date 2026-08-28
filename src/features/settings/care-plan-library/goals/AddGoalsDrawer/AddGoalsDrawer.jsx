@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Drawer } from '../../../components/Drawer/Drawer';
-import { Button } from '../../../components/Button/Button';
-import { Toggle } from '../../../components/Toggle/Toggle';
-import { SearchBar } from '../../../components/SearchBar/SearchBar';
-import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { Badge } from '../../../components/Badge/Badge';
-import { Link } from '../../../components/Link/Link';
-import { PriorityIcon } from '../../../components/PriorityIcon/PriorityIcon';
-import { AddIconMinimalist } from '../../../components/Icon/AddIconMinimalist';
+import { Drawer } from '../../../../../components/Drawer/Drawer';
+import { Button } from '../../../../../components/Button/Button';
+import { Toggle } from '../../../../../components/Toggle/Toggle';
+import { SearchBar } from '../../../../../components/SearchBar/SearchBar';
+import { Checkbox } from '../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Badge } from '../../../../../components/Badge/Badge';
+import { Link } from '../../../../../components/Link/Link';
+import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
+import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
 import styles from './AddGoalsDrawer.module.css';
 
 const GOAL_CATEGORIES = ['All', 'Vitals', 'Labs', 'Diet', 'Exercise', 'Others'];

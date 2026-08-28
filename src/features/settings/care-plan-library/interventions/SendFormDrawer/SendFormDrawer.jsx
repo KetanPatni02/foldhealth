@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
-import { Drawer } from '../../../components/Drawer/Drawer';
-import { Button } from '../../../components/Button/Button';
-import { Input } from '../../../components/Input/Input';
-import { Select } from '../../../components/Select/Select';
-import { RadioButton } from '../../../components/RadioButton/RadioButton';
-import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
-import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
-import styles from './InterventionDrawer.module.css';
+import { Drawer } from '../../../../../components/Drawer/Drawer';
+import { Button } from '../../../../../components/Button/Button';
+import { Input } from '../../../../../components/Input/Input';
+import { Select } from '../../../../../components/Select/Select';
+import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
+import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
+import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
+import styles from '../shared/InterventionDrawer.module.css';
 
 const CREATION_TIMINGS = ['day', 'week', 'immediate'];
 
@@ -14,18 +14,16 @@ const CREATION_TRIGGERS = ['Program Start Date', 'Discharge Date', 'Care Plan Si
 
 const DUE_UNITS = ['day', 'week'];
 
-const PRIORITIES = ['High', 'Medium', 'Low'];
-
 const asOptions = (list) => list.map(v => ({ value: v, label: v }));
 
 /**
- * Send Content — the patient-education intervention from the Interventions
- * "+" menu. Same shape as Send Form, with an education picker and a priority.
+ * Send Form — the intervention created from the Interventions "+" menu.
+ * Laid out like Create New Goals (stacked label-over-field) rather than the
+ * label-beside-field grey cards in the source design.
  */
-export function SendContentDrawer({ onClose, onSave }) {
+export function SendFormDrawer({ onClose, onSave }) {
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [priority, setPriority] = useState('Low');
+  const [form, setForm] = useState('');
   const [memberTaskTitle, setMemberTaskTitle] = useState('');
   const [creationTiming, setCreationTiming] = useState('immediate');
   const [creationTrigger, setCreationTrigger] = useState('Care Plan Signed');
@@ -35,7 +33,7 @@ export function SendContentDrawer({ onClose, onSave }) {
   const [dueUnitOpen, setDueUnitOpen] = useState(false);
   const dueUnitRef = useRef(null);
 
-  const canSave = title.trim().length > 0 && content.length > 0;
+  const canSave = title.trim().length > 0 && form.length > 0;
 
   const headerRight = (
     <>
@@ -45,8 +43,7 @@ export function SendContentDrawer({ onClose, onSave }) {
         disabled={!canSave}
         onClick={() => onSave?.({
           title: title.trim(),
-          content,
-          priority,
+          form,
           memberTaskTitle: memberTaskTitle.trim(),
           creationTiming,
           creationTrigger,
@@ -62,7 +59,7 @@ export function SendContentDrawer({ onClose, onSave }) {
   );
 
   return (
-    <Drawer title="Send Patient Education" onClose={onClose} headerRight={headerRight} noCloseDivider>
+    <Drawer title="Send Form" onClose={onClose} headerRight={headerRight} noCloseDivider>
       <div className={styles.body}>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
@@ -78,23 +75,16 @@ export function SendContentDrawer({ onClose, onSave }) {
 
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
-            Member Education <span className={styles.mandatoryStar} aria-hidden="true">*</span>
+            Forms <span className={styles.mandatoryStar} aria-hidden="true">*</span>
           </span>
           <Select
             options={[]}
-            value={content}
-            onChange={setContent}
-            placeholder="Search Content"
+            value={form}
+            onChange={setForm}
+            placeholder="Search Form"
             searchable
-            searchPlaceholder="Search Content"
+            searchPlaceholder="Search Form"
           />
-        </div>
-
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Priority <span className={styles.mandatoryStar} aria-hidden="true">*</span>
-          </span>
-          <Select options={asOptions(PRIORITIES)} value={priority} onChange={setPriority} />
         </div>
 
         <div className={styles.field}>

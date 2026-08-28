@@ -19,11 +19,11 @@
   display: flex;
 }
 .measureSelect {
-  width: 160px;
+  width: 10rem;
   min-width: 0;
 }
 .measureSelectWide {
-  width: 280px;
+  width: 17.5rem;
 }
 
 .field {
@@ -37,7 +37,7 @@
   align-items: center;
   gap: var(--space-1);
   font-size: var(--font-base);
-  color: var(--neutral-200);
+  color: var(--neutral-400);
 }
 /* Required marker — the goal screens use a red asterisk. */
 .mandatoryStar {
@@ -50,7 +50,7 @@
 .titleField {
   display: flex;
   align-items: stretch;
-  height: 32px;
+  height: var(--space-8);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-200);
   border-radius: var(--space-1);
@@ -84,7 +84,7 @@
   gap: var(--space-2);
 }
 .comparator {
-  width: 96px;
+  width: 6rem;
   flex-shrink: 0;
 }
 .targetSlash {
@@ -122,7 +122,7 @@
 /* DatePicker's own input carries a 140px min-width; cap the field so it
    doesn't stretch the whole drawer. */
 .targetDate {
-  max-width: 300px;
+  max-width: 18.75rem;
 }
 .targetDate > * {
   width: 100%;
@@ -168,15 +168,15 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  min-height: 24px;
+  min-height: var(--space-6);
 }
 .linkedLabel {
   font-size: var(--font-base);
   font-weight: 500;
-  color: var(--neutral-300);
+  color: var(--neutral-400);
 }
 
 /* Pain Scale picks its value from a list rather than typing one. */
 .valueSelect {
-  width: 160px;
+  width: 10rem;
 }
