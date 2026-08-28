@@ -409,6 +409,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
           taskId: task?.id,
           title: signOffTaskName,
           assignee: reviewer.name,
+          priority: task?.priority || 'medium',
           status: 'Pending',
           locked: false,
         },

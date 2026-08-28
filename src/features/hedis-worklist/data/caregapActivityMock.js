@@ -42,6 +42,7 @@ export const CAREGAP_ACTIVITY_MOCK = {
         title: 'Request for Sign-off - Consolidated Clinical Note',
         locked: true, handle: true,
         assignee: 'Dr. Robert Langdon',
+        priority: 'medium',
         status: 'Pending',
       },
     },
@@ -98,7 +99,7 @@ export const CAREGAP_ACTIVITY_MOCK = {
       title: 'Task Added',
       detailCard: {
         title: 'Follow up for colorectal screening referral',
-        handle: true, assignee: 'Marcus Chen', status: 'Pending',
+        handle: true, assignee: 'Marcus Chen', priority: 'medium', status: 'Pending',
       },
     },
   ],

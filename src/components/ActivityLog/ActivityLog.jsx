@@ -375,6 +375,10 @@ function DetailCardEntryBody({ entry, variant, onOpenTask, onOpenNote }) {
   const [expanded, setExpanded] = useState(true);
   const dc = entry.detailCard;
   const expandable = !!dc;
+  const allTasks = useAppStore(s => s.tasks);
+  const taskPriority = dc?.priority
+    || (dc?.taskId && allTasks?.find(t => t.id === dc.taskId)?.priority)
+    || (variant === 'task' ? 'medium' : 'none');
 
   return (
     <>
@@ -397,7 +401,7 @@ function DetailCardEntryBody({ entry, variant, onOpenTask, onOpenNote }) {
         <div className={styles.detailCard}>
           {variant === 'task' ? (
             <div className={styles.detailCardRow}>
-              <PriorityIcon priority={dc.priority || 'none'} size={16} />
+              <PriorityIcon priority={taskPriority} size={16} />
               <div className={styles.detailCardText}>
                 <span className={styles.detailCardTitle}>{dc.title}</span>
                 {dc.assignee && (
@@ -470,6 +474,10 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
   // pendingOpenTaskId for TasksView). Fall back to openTaskFromNotification
   // for surfaces without a specific handler.
   const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
+  const allTasks = useAppStore(s => s.tasks);
+  const reviewTaskPriority = dc?.reviewTask?.priority
+    || (dc?.reviewTask?.taskId && allTasks?.find(t => t.id === dc.reviewTask.taskId)?.priority)
+    || 'medium';
   const openTask = (taskId) => (onOpenTask ? onOpenTask(taskId) : openTaskFromNotification?.(taskId));
   // `onOpenNote` gets the whole detailCard so the drawer can reopen the
   // note in its left workspace (matches "Add Note") — used by the eye
@@ -549,7 +557,7 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
       </div>
       {dc.reviewTask && (
         <div className={styles.detailCardNested}>
-          <PriorityIcon priority={dc.reviewTask.priority || 'none'} size={16} />
+          <PriorityIcon priority={reviewTaskPriority} size={16} />
           <div className={styles.detailCardText}>
             <span className={styles.detailCardTitle}>{deriveReviewTaskTitle(dc)}</span>
             {dc.reviewTask.assignee && (
