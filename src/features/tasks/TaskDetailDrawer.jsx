@@ -313,6 +313,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
             }
             onClose={() => setPreviewSignedNote(null)}
             width={700}
+            noCloseDivider
             headerRight={
               <>
                 <span className={styles.previewDisplayedTag}>
@@ -341,6 +342,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
                 >
                   Amend
                 </Button>
+                <span className={styles.previewHeaderDivider} aria-hidden />
               </>
             }
             banner={noteMember ? (
