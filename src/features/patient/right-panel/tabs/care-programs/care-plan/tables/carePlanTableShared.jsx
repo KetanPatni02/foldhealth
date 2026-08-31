@@ -1,7 +1,7 @@
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { Input } from '../../../../../../../components/Input/Input';
 import { Badge } from '../../../../../../../components/Badge/Badge';
-import { ProgressRing } from '../../../../../../hcc/DiagPanel/ReviewProgressPopover';
+import { CarePlanProgressRing } from '../../../../../../../components/CarePlanProgressRing/CarePlanProgressRing';
 import { useState } from 'react';
 import styles from './carePlanTables.module.css';
 
@@ -60,7 +60,7 @@ export const GOAL_COLUMNS = [
   { key: 'title', label: 'Goal Title' },
   { key: 'value', label: 'Current Value', width: 120, thStyle: BORDER_LEFT },
   { key: 'trend', label: 'Trend', width: 80, thStyle: BORDER_LEFT },
-  { key: 'progress', label: 'Progress', width: 80, thStyle: BORDER_LEFT },
+  { key: 'progress', label: 'Progress', width: 88, thStyle: BORDER_LEFT },
   { key: 'status', label: 'Status', width: 140, thStyle: BORDER_LEFT },
   { key: 'actions', label: '', width: 40, sticky: 'right', thStyle: BORDER_LEFT },
 ];
@@ -95,12 +95,7 @@ export function LinkChip({ count }) {
 
 export function GoalProgressCell({ progress }) {
   const pct = Math.max(0, Math.min(100, Number(progress) || 0));
-  return (
-    <div className={styles.goalProgress} aria-label={`${pct}% progress`}>
-      <ProgressRing progress={pct / 100} size={40} stroke={2} />
-      {pct > 0 && <span className={styles.goalProgressPct}>{pct}%</span>}
-    </div>
-  );
+  return <CarePlanProgressRing progress={pct} />;
 }
 
 export function TrendCell({ trend }) {
