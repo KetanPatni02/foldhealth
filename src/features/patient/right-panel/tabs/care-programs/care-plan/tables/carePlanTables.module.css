@@ -1,0 +1,164 @@
+/* Care-plan GBI tables — WorklistShell rows styled to Figma SNP-Story 8444:300069. */
+
+.tableWrap {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  overflow: hidden;
+  background: var(--neutral-0);
+}
+
+.row {
+  composes: row from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+}
+.rowClickable {
+  composes: rowClickable from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+}
+.td {
+  composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  border-left: 0.5px solid var(--neutral-150);
+}
+.td:first-child,
+.checkTd {
+  border-left: none;
+}
+.checkTd {
+  composes: checkTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  width: 28px;
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+.priorityTd {
+  composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  width: 32px;
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+  border-right: 0.5px solid var(--neutral-150);
+  text-align: center;
+}
+.titleTd {
+  composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  min-width: 280px;
+}
+.valueTd,
+.trendTd,
+.progressTd,
+.statusTd,
+.assigneeTd,
+.adherenceTd {
+  composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  border-left: 0.5px solid var(--neutral-150);
+}
+.actionsTd {
+  composes: actionsCell from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  border-left: 0.5px solid var(--neutral-150);
+}
+
+.titleCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  width: 100%;
+}
+.titleMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.titleMainInline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+.rowIcon { display: flex; flex-shrink: 0; }
+.titleText { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
+.title {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.titleEditable { cursor: text; font-weight: 400; }
+.titleEditable:hover { color: var(--primary-300); }
+.titleEditInput { max-width: 260px; }
+.subtitle { font-size: var(--font-md); color: var(--neutral-300); }
+
+.linkChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+}
+.linkChipEmpty { opacity: 0.5; }
+.linkChipWrap {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.linkChipClickable { cursor: pointer; }
+.linkCount { font-size: var(--font-xs); color: var(--neutral-300); line-height: 1; }
+
+.valueText {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.muted { color: var(--neutral-200); font-weight: 400; }
+
+.trendDash {
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+}
+
+.statusBtn {
+  display: inline-flex;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.statusBtn:disabled { cursor: default; }
+
+.priorityBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.priorityBtn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.durationChip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: fit-content;
+  height: var(--space-5);
+  padding: 0 var(--space-2);
+  border-radius: var(--space-1);
+  background: var(--neutral-50);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.emptyRow {
+  padding: var(--space-4);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  text-align: center;
+}

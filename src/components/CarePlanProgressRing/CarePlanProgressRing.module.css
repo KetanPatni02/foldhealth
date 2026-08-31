@@ -1,0 +1,46 @@
+/* Paper ProgressRing — Fold Design System, Care Plan, 2X-0 (46×46). */
+
+.shell {
+  position: relative;
+  width: 2.875rem;
+  height: 2.875rem;
+  padding: 0.268125rem;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--neutral-0);
+  outline: 0.5px solid var(--neutral-150);
+  outline-offset: -0.5px;
+}
+
+.track {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  overflow: visible;
+  border-radius: 50%;
+  box-shadow: var(--shadow-progress-ring-inset);
+}
+
+.progress {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  overflow: visible;
+}
+
+.label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: max-content;
+  font-size: 0.653125rem;
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  color: var(--neutral-400);
+  text-align: center;
+  pointer-events: none;
+}

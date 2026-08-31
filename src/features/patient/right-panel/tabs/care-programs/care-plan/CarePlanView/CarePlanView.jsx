@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { AddIconMinimalist } from '../../../../../../../components/Icon/AddIconMinimalist';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
-import { Avatar } from '../../../../../../../components/Avatar/Avatar';
-import { AssigneeChange } from '../../../../../../../components/AssigneeChange/AssigneeChange';
 import { Button } from '../../../../../../../components/Button/Button';
 import { Input } from '../../../../../../../components/Input/Input';
 import { Textarea } from '../../../../../../../components/Textarea/Textarea';
@@ -13,7 +11,6 @@ import { PriorityIcon } from '../../../../../../../components/PriorityIcon/Prior
 import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { Select } from '../../../../../../../components/Select/Select';
 import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
-import { Checkbox } from '../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../../../../../../store/useAppStore';
 import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
 import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
@@ -22,6 +19,10 @@ import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlan
 import { CarePlanVersionsDrawer } from '../drawers/CarePlanVersionsDrawer/CarePlanVersionsDrawer';
 import { CarePlanLinkDrawer } from '../drawers/CarePlanLinkDrawer/CarePlanLinkDrawer';
 import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
+import { deriveGoalTableFields } from '../lib/goalMetrics';
+import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
+import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
+import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
 import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
 import styles from './CarePlanView.module.css';
 
@@ -31,29 +32,6 @@ const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met']
 const PRIORITIES = ['high', 'medium', 'low'];
 // Capitalized labels for the priority filter chip (values compare case-insensitively).
 const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
-
-function LinkChip({ count }) {
-  return (
-    <span className={`${styles.linkChip} ${count ? '' : styles.linkChipEmpty}`}>
-      <Icon name="custom:link" size={14} color="#6F7A90" />
-      {count > 0 && <span className={styles.linkCount}>{count}</span>}
-    </span>
-  );
-}
-
-function StatusPill({ value, onOpen, disabled }) {
-  return (
-    <button type="button" className={styles.statusPill} disabled={disabled}
-      onClick={(e) => onOpen?.(e.currentTarget.getBoundingClientRect())}>
-      {value}
-      {!disabled && <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--neutral-300)" />}
-    </button>
-  );
-}
-
-function ProgressRing() {
-  return <span className={styles.progressRing}>-</span>;
-}
 
 /** Per-section dashed empty card (Figma SNP-Story 8430:288488). */
 function SectionEmptyState({ icon, label, onAdd }) {
@@ -71,51 +49,6 @@ function SectionEmptyState({ icon, label, onAdd }) {
         </Button>
       </div>
     </div>
-  );
-}
-
-// Title that swaps to an input on click (roadmap #31). Read-only rows (the mock
-// fallback) render a plain span.
-function EditableTitle({ title, subtitle, editable, onCommit }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(title);
-
-  const commit = () => {
-    setEditing(false);
-    const next = value.trim();
-    if (next && next !== title) onCommit(next);
-    else setValue(title);
-  };
-
-  if (editing) {
-    return (
-      <span className={styles.titleText}>
-        <Input
-          autoFocus
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onBlur={commit}
-          onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setValue(title); setEditing(false); } }}
-          aria-label="Edit title"
-          className={styles.titleEditInput}
-        />
-      </span>
-    );
-  }
-
-  return (
-    <span className={styles.titleText}>
-      <button
-        type="button"
-        className={`${styles.title} ${editable ? styles.titleEditable : ''}`}
-        onClick={editable ? () => { setValue(title); setEditing(true); } : undefined}
-        disabled={!editable}
-        title={editable ? 'Click to rename' : undefined}
-      >
-        {title}
-      </button>
-      {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
-    </span>
   );
 }
 
@@ -158,10 +91,11 @@ export function CarePlanView({ patientId, program }) {
   // No persisted plan yet — GBI lists start empty (Figma SNP-Story 8430:288488)
   // instead of the old local mock preview.
   const usingMock = !live;
+  const measurements = live?.measurements || [];
   const data = useMemo(() => (live ? {
     conditions: live.plan.conditions,
     conditionTotal: live.plan.conditionTotal,
-    goals: live.goals,
+    goals: live.goals.map(g => ({ ...g, ...deriveGoalTableFields(g, measurements) })),
     interventions: live.interventions,
     barriers: live.barriers || [],
   } : {
@@ -170,7 +104,7 @@ export function CarePlanView({ patientId, program }) {
     goals: [],
     interventions: [],
     barriers: [],
-  }), [live]);
+  }), [live, measurements]);
 
   const [conditionsOpen, setConditionsOpen] = useState(true);
   const [conditionsViewOpen, setConditionsViewOpen] = useState(false);
@@ -197,6 +131,11 @@ export function CarePlanView({ patientId, program }) {
   const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
   const clearFilters = () => setFilters({ status: [], priority: [], assignee: [] });
   const filtersActive = filters.status.length || filters.priority.length || filters.assignee.length;
+
+  const selectAllKind = (kind, rows, checked) => setSelected(prev => ({
+    ...prev,
+    [kind]: checked ? new Set(rows.map(r => r.id)) : new Set(),
+  }));
 
   const canEdit = !!(patientId && program);
 
@@ -226,12 +165,6 @@ export function CarePlanView({ patientId, program }) {
     if (next.has(id)) next.delete(id); else next.add(id);
     return { ...prev, [kind]: next };
   });
-  const toggleSelectAll = (kind, rows) => setSelected(prev => {
-    const ids = rows.map(r => r.id);
-    const allOn = ids.length > 0 && ids.every(id => prev[kind].has(id));
-    return { ...prev, [kind]: allOn ? new Set() : new Set(ids) };
-  });
-  const allSelected = (kind, rows) => rows.length > 0 && rows.every(r => selected[kind].has(r.id));
   const clearSelection = () => setSelected({ goal: new Set(), intv: new Set(), barrier: new Set() });
 
   const bulkSetStatus = async (status) => {
@@ -504,58 +437,20 @@ export function CarePlanView({ patientId, program }) {
             onAdd={() => setAddGoalsDrawerOpen(true)}
           />
         ) : (
-          <div className={styles.table}>
-            <div className={styles.goalHead}>
-              <span className={styles.selectCell}><Checkbox checked={allSelected('goal', filteredGoals)} onCheckedChange={() => toggleSelectAll('goal', filteredGoals)} aria-label="Select all goals" disabled={!canEdit} /></span>
-              <span className={styles.pCell}>P</span>
-              <span className={styles.titleCell}>Goal Title</span>
-              <span className={styles.valueCell}>Current Value</span>
-              <span className={styles.trendCell}>Trend</span>
-              <span className={styles.progressCell}>Progress</span>
-              <span className={styles.statusCell}>Status</span>
-              <span className={styles.rowMenuCell} />
-            </div>
-            {filteredGoals.length === 0 && <div className={styles.emptyRow}>No goals match the filters.</div>}
-            {filteredGoals.map(g => (
-            <div
-              key={g.id}
-              className={`${styles.goalRow} ${styles.goalRowClickable}`}
-              onClick={() => setPreviewGoal(g)}
-            >
-              <span className={styles.selectCell} onClick={e => e.stopPropagation()}><Checkbox checked={selected.goal.has(g.id)} onCheckedChange={() => toggleSelect('goal', g.id)} aria-label={`Select ${g.title}`} disabled={!canEdit} /></span>
-              <span className={styles.pCell} onClick={e => e.stopPropagation()}>
-                <button type="button" className={styles.priorityBtn} onClick={(e) => canEdit && setPriorityMenu({ kind: 'goal', item: g, rect: e.currentTarget.getBoundingClientRect() })} disabled={!canEdit} aria-label="Change priority">
-                  <PriorityIcon priority={g.priority} size={16} />
-                </button>
-              </span>
-              <span className={styles.titleCell}>
-                <span className={styles.rowIcon}><Icon name={g.icon} size={16} color="var(--neutral-400)" /></span>
-                <span className={styles.titleMain}>
-                  <EditableTitle title={g.title} subtitle={g.subtitle} editable={false} />
-                </span>
-                <span
-                  className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (canEdit) setLinkOwner({ kind: 'goal', item: g });
-                  }}
-                >
-                  <LinkChip count={linkCount(g.id)} />
-                </span>
-              </span>
-              <span className={`${styles.valueCell} ${g.currentValue === 'No Data' ? styles.muted : ''}`} onClick={e => e.stopPropagation()}>{g.currentValue || ''}</span>
-              <span className={styles.trendCell} onClick={e => e.stopPropagation()}>{g.trend}</span>
-              <span className={styles.progressCell} onClick={e => e.stopPropagation()}><ProgressRing /></span>
-              <span className={styles.statusCell} onClick={e => e.stopPropagation()}>
-                <StatusPill value={g.status} disabled={!canEdit} onOpen={rect => setStatusMenu({ kind: 'goal', item: g, rect })} />
-              </span>
-              <span className={styles.rowMenuCell} onClick={e => e.stopPropagation()}>
-                <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" disabled={!canEdit}
-                  onClick={(e) => setStatusMenu({ kind: 'goal-menu', item: g, rect: e.currentTarget.getBoundingClientRect() })} />
-              </span>
-            </div>
-          ))}
-          </div>
+          <CarePlanGoalsTable
+            rows={filteredGoals}
+            canEdit={canEdit}
+            selectedIds={[...selected.goal]}
+            onSelectAll={(checked) => selectAllKind('goal', filteredGoals, checked)}
+            onToggleSelect={(id) => toggleSelect('goal', id)}
+            onOpenGoal={setPreviewGoal}
+            onPriorityMenu={setPriorityMenu}
+            onLinkOwner={setLinkOwner}
+            onStatusMenu={setStatusMenu}
+            onRowMenu={setStatusMenu}
+            linkCount={linkCount}
+            emptyState={filteredGoals.length === 0 ? <div className={styles.emptyRow}>No goals match the filters.</div> : null}
+          />
         )}
       </div>
 
@@ -574,69 +469,22 @@ export function CarePlanView({ patientId, program }) {
             onAdd={() => setIntvDrawer({ intervention: null })}
           />
         ) : (
-          <div className={styles.table}>
-            <div className={styles.intvHead}>
-              <span className={styles.selectCell}><Checkbox checked={allSelected('intv', filteredInterventions)} onCheckedChange={() => toggleSelectAll('intv', filteredInterventions)} aria-label="Select all interventions" disabled={!canEdit} /></span>
-              <span className={styles.pCell}>P</span>
-              <span className={styles.titleCell}>Name</span>
-              <span className={styles.assigneeCell}>Assigned To</span>
-              <span className={styles.adherenceCell}>Adherence</span>
-              <span className={styles.statusCell}>Status</span>
-              <span className={styles.rowMenuCell} />
-            </div>
-            {filteredInterventions.length === 0 && <div className={styles.emptyRow}>No interventions match the filters.</div>}
-            {filteredInterventions.map(i => (
-            <div key={i.id} className={styles.intvRow}>
-              <span className={styles.selectCell} onClick={e => e.stopPropagation()}><Checkbox checked={selected.intv.has(i.id)} onCheckedChange={() => toggleSelect('intv', i.id)} aria-label={`Select ${i.title}`} disabled={!canEdit} /></span>
-              <span className={styles.pCell}>
-                <button type="button" className={styles.priorityBtn} onClick={(e) => canEdit && setPriorityMenu({ kind: 'intv', item: i, rect: e.currentTarget.getBoundingClientRect() })} disabled={!canEdit} aria-label="Change priority">
-                  <PriorityIcon priority={i.priority} size={16} />
-                </button>
-              </span>
-              <span className={styles.titleCell}>
-                <span className={styles.rowIcon}><Icon name={i.icon} size={16} color="var(--neutral-400)" /></span>
-                <span className={`${styles.titleMain} ${styles.titleMainInline}`}>
-                  <EditableTitle title={i.title} editable={canEdit} onCommit={t => renameIntervention(i, t)} />
-                  {i.duration && (
-                    <span className={styles.durationChip}>
-                      <Icon name="solar:clock-circle-linear" size={12} color="var(--neutral-300)" />
-                      {i.duration}
-                      <Icon name="solar:refresh-linear" size={12} color="var(--neutral-300)" />
-                    </span>
-                  )}
-                </span>
-                <span
-                  className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
-                  onClick={() => canEdit && setLinkOwner({ kind: 'intervention', item: i })}
-                >
-                  <LinkChip count={linkCount(i.id)} />
-                </span>
-              </span>
-              <span className={styles.assigneeCell} onClick={e => e.stopPropagation()}>
-                <AssigneeChange
-                  size="S"
-                  name={i.assignee.name}
-                  initials={i.assignee.initials}
-                  showRole={false}
-                  unassigned={i.assignee.name === 'Unassigned'}
-                  unassignedLabel="Unassigned"
-                  users={platformUsers}
-                  pickerTitle="Change assignee"
-                  onSelect={(u) => handleAssigneeChange(i, u)}
-                  disabled={!canEdit}
-                />
-              </span>
-              <span className={styles.adherenceCell}><ProgressRing /></span>
-              <span className={styles.statusCell}>
-                <StatusPill value={i.status} disabled={!canEdit} onOpen={rect => setStatusMenu({ kind: 'intv', item: i, rect })} />
-              </span>
-              <span className={styles.rowMenuCell}>
-                <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" disabled={!canEdit}
-                  onClick={(e) => setStatusMenu({ kind: 'intv-menu', item: i, rect: e.currentTarget.getBoundingClientRect() })} />
-              </span>
-            </div>
-          ))}
-          </div>
+          <CarePlanInterventionsTable
+            rows={filteredInterventions}
+            canEdit={canEdit}
+            selectedIds={[...selected.intv]}
+            onSelectAll={(checked) => selectAllKind('intv', filteredInterventions, checked)}
+            onToggleSelect={(id) => toggleSelect('intv', id)}
+            onPriorityMenu={setPriorityMenu}
+            onLinkOwner={setLinkOwner}
+            onStatusMenu={setStatusMenu}
+            onRowMenu={setStatusMenu}
+            onAssigneeChange={handleAssigneeChange}
+            onTitleCommit={renameIntervention}
+            linkCount={linkCount}
+            platformUsers={platformUsers}
+            emptyState={filteredInterventions.length === 0 ? <div className={styles.emptyRow}>No interventions match the filters.</div> : null}
+          />
         )}
       </div>
 
@@ -655,47 +503,20 @@ export function CarePlanView({ patientId, program }) {
             onAdd={() => setBarrierDrawer({ barrier: null })}
           />
         ) : (
-          <div className={styles.table}>
-            <div className={styles.goalHead}>
-              <span className={styles.selectCell}><Checkbox checked={allSelected('barrier', filteredBarriers)} onCheckedChange={() => toggleSelectAll('barrier', filteredBarriers)} aria-label="Select all barriers" disabled={!canEdit} /></span>
-              <span className={styles.pCell}>P</span>
-              <span className={styles.titleCell}>Barrier Title</span>
-              <span className={styles.valueCell}>Description</span>
-              <span className={styles.statusCell}>Status</span>
-              <span className={styles.rowMenuCell} />
-            </div>
-            {filteredBarriers.length === 0 && <div className={styles.emptyRow}>No barriers match the filters.</div>}
-            {filteredBarriers.map(b => (
-            <div key={b.id} className={styles.goalRow}>
-              <span className={styles.selectCell} onClick={e => e.stopPropagation()}><Checkbox checked={selected.barrier.has(b.id)} onCheckedChange={() => toggleSelect('barrier', b.id)} aria-label={`Select ${b.title}`} disabled={!canEdit} /></span>
-              <span className={styles.pCell}>
-                <button type="button" className={styles.priorityBtn} onClick={(e) => canEdit && setPriorityMenu({ kind: 'barrier', item: b, rect: e.currentTarget.getBoundingClientRect() })} disabled={!canEdit} aria-label="Change priority">
-                  <PriorityIcon priority={b.priority} size={16} />
-                </button>
-              </span>
-              <span className={styles.titleCell}>
-                <span className={styles.rowIcon}><Icon name="solar:shield-warning-linear" size={16} color="var(--neutral-400)" /></span>
-                <span className={styles.titleMain}>
-                  <EditableTitle title={b.title} editable={canEdit} onCommit={t => renameBarrier(b, t)} />
-                </span>
-                <span
-                  className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
-                  onClick={() => canEdit && setLinkOwner({ kind: 'barrier', item: b })}
-                >
-                  <LinkChip count={linkCount(b.id)} />
-                </span>
-              </span>
-              <span className={styles.valueCell} style={{ color: 'var(--neutral-500)' }}>{b.description || <span className={styles.muted}>—</span>}</span>
-              <span className={styles.statusCell}>
-                <StatusPill value={b.status} disabled={!canEdit} onOpen={rect => setStatusMenu({ kind: 'barrier', item: b, rect })} />
-              </span>
-              <span className={styles.rowMenuCell}>
-                <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" disabled={!canEdit}
-                  onClick={(e) => setStatusMenu({ kind: 'barrier-menu', item: b, rect: e.currentTarget.getBoundingClientRect() })} />
-              </span>
-            </div>
-          ))}
-          </div>
+          <CarePlanBarriersTable
+            rows={filteredBarriers}
+            canEdit={canEdit}
+            selectedIds={[...selected.barrier]}
+            onSelectAll={(checked) => selectAllKind('barrier', filteredBarriers, checked)}
+            onToggleSelect={(id) => toggleSelect('barrier', id)}
+            onPriorityMenu={setPriorityMenu}
+            onLinkOwner={setLinkOwner}
+            onStatusMenu={setStatusMenu}
+            onRowMenu={setStatusMenu}
+            onTitleCommit={renameBarrier}
+            linkCount={linkCount}
+            emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the filters.</div> : null}
+          />
         )}
       </div>
 
@@ -780,7 +601,8 @@ export function CarePlanView({ patientId, program }) {
       {previewGoal && (
         <GoalPreviewDrawer
           goal={previewGoal}
-          interventions={data.interventions}
+          patientId={patientId}
+          program={program}
           onClose={() => setPreviewGoal(null)}
         />
       )}
