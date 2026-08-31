@@ -315,12 +315,30 @@ function carePlanKey(patientId, programId) {
   return `${patientId}::${programId}`;
 }
 
+// Goal Details progress readout (Figma 2632:81504) — "70% - Moderate".
+function progressBandLabel(pct) {
+  const n = Number(pct) || 0;
+  if (n <= 0) return 'Poor';
+  if (n < 40) return 'Low';
+  if (n < 80) return 'Moderate';
+  if (n < 100) return 'High';
+  return 'Complete';
+}
+function progressAuditDetail(pct) {
+  return `${Number(pct) || 0}% - ${progressBandLabel(pct)}`;
+}
+
 // Derive an audit entry from a goal/intervention save by diffing against its
-// previous state — a create, a status change, a rename, or a generic edit.
+// previous state — a create, a status change, a progress change, a rename,
+// or a generic edit. Progress is its own action so the Goal Details activity
+// feed can render the "changed the Progress" row with from → to badges.
 function auditForSave(entityType, next, prev) {
   if (!prev) return { entityType, entityId: next.id, action: 'created', summary: next.title };
   if (prev.status !== next.status) {
     return { entityType, entityId: next.id, action: 'status_changed', summary: next.title, detail: `${prev.status} → ${next.status}` };
+  }
+  if ((prev.progress ?? 0) !== (next.progress ?? 0)) {
+    return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${progressAuditDetail(prev.progress)} → ${progressAuditDetail(next.progress)}` };
   }
   if (prev.title !== next.title) {
     return { entityType, entityId: next.id, action: 'updated', summary: next.title, detail: `Renamed from "${prev.title}"` };
@@ -2663,6 +2681,13 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase.from('patient_care_plan_goal_measurements').insert(row).select().single();
     if (error) { console.warn('saveGoalMeasurement:', error.message); get().showToast('Could not save measurement'); return null; }
     const measurement = mapGoalMeasurementRow(data);
+    const prior = (cur?.measurements || []).filter(m => m.goalId === goalId).slice().sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt)).at(-1);
+    const plan = cur?.plan;
+    get().logCarePlanAudit(patientId, { id: programId, code: plan?.programCode }, {
+      entityType: 'goal', entityId: goalId, action: 'value_changed',
+      summary: (cur?.goals || []).find(g => g.id === goalId)?.title || 'Value',
+      detail: prior?.value ? `${prior.value} → ${measurement.value}` : measurement.value,
+    });
     set(s => {
       const c = s.patientCarePlans[key] || { measurements: [] };
       return { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, measurements: [...(c.measurements || []), measurement] } } };
@@ -2874,11 +2899,16 @@ export const useAppStore = create((set, get) => ({
       summary: entry.summary || '',
       detail: entry.detail || '',
       actor: get().currentUserProfile?.name || null,
-    }).then(({ error }) => {
+    }).select().single().then(({ data, error }) => {
       if (error) { console.warn('logCarePlanAudit:', error.message); return; }
-      // Invalidate the cached history for this program so the drawer refetches.
       const key = carePlanKey(patientId, program.id);
-      set(s => ({ patientCarePlanAudit: { ...s.patientCarePlanAudit, [key]: undefined } }));
+      const mapped = mapCarePlanAuditRow(data);
+      set(s => ({
+        patientCarePlanAudit: {
+          ...s.patientCarePlanAudit,
+          [key]: [mapped, ...(s.patientCarePlanAudit[key] || [])],
+        },
+      }));
     });
   },
 
@@ -2974,6 +3004,8 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Post-sign maintenance note — recorded without editing the plan (roadmap #36).
+  // Goal Details also uses this for per-goal notes; those rows stay editable
+  // so the Figma Edit / Delete actions can persist.
   addCarePlanNote: async (patientId, program, note, meta = {}) => {
     if (!note?.trim()) return;
     get().logCarePlanAudit(patientId, program, {
@@ -2984,6 +3016,37 @@ export const useAppStore = create((set, get) => ({
       detail: note.trim(),
     });
     get().showToast('Note added');
+  },
+
+  updateCarePlanNote: async (patientId, programId, id, detail) => {
+    if (!id || !detail?.trim()) return;
+    const key = carePlanKey(patientId, programId);
+    const prev = get().patientCarePlanAudit[key] || [];
+    const { data, error } = await supabase.from('care_plan_audit')
+      .update({ detail: detail.trim() }).eq('id', id).eq('action', 'note').select().single();
+    if (error) { console.warn('updateCarePlanNote:', error.message); get().showToast('Could not update note'); return; }
+    const mapped = mapCarePlanAuditRow(data);
+    set(s => ({
+      patientCarePlanAudit: {
+        ...s.patientCarePlanAudit,
+        [key]: prev.map(e => (e.id === id ? mapped : e)),
+      },
+    }));
+  },
+
+  deleteCarePlanNote: async (patientId, programId, id) => {
+    if (!id) return;
+    const key = carePlanKey(patientId, programId);
+    const prev = get().patientCarePlanAudit[key] || [];
+    set(s => ({
+      patientCarePlanAudit: { ...s.patientCarePlanAudit, [key]: prev.filter(e => e.id !== id) },
+    }));
+    const { error } = await supabase.from('care_plan_audit').delete().eq('id', id).eq('action', 'note');
+    if (error) {
+      console.warn('deleteCarePlanNote:', error.message);
+      set(s => ({ patientCarePlanAudit: { ...s.patientCarePlanAudit, [key]: prev } }));
+      get().showToast('Could not delete note');
+    }
   },
 
   // Replace the live plan with a version's snapshot (roadmap #25 restore).
