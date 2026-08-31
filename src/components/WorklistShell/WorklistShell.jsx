@@ -122,6 +122,9 @@ export function WorklistShell({
   onPageChange,
   onPageSizeChange,
   minTableWidth = 900,
+  // When true, suppress the floating BulkBar even if rows are selected.
+  // Care Plan uses a parent-level bulk bar across goals/interventions/barriers.
+  hideBulkBar = false,
   // Auto-height mode. The default shell fills its pane (flex: 1) and owns an
   // internal scroller — correct for a full-page worklist, wrong for a table
   // stacked with siblings inside a parent that already scrolls (care-gap
@@ -418,7 +421,7 @@ export function WorklistShell({
         {!loading && rows.length === 0 && !emptyState && (
           <div className={styles.emptyDefault}>No results</div>
         )}
-        {checkboxCol && selectedIds.length > 0 && (
+        {checkboxCol && !hideBulkBar && selectedIds.length > 0 && (
           <BulkBar
             selectedIds={selectedIds}
             onClear={onClearSelection}

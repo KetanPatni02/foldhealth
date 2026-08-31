@@ -30,6 +30,7 @@ import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { CAREGAP_ACTIVITY_MOCK } from '../features/hedis-worklist/data/caregapActivityMock';
+import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 
 // Central failure reporter for every persistHccXxx helper. Historically
 // each of these was fire-and-forget with only console.warn on error — so
@@ -2627,7 +2628,16 @@ export const useAppStore = create((set, get) => ({
     const prevGoal = id ? (get().patientCarePlans[key]?.goals || []).find(g => g.id === id) : null;
     const planId = await get().ensurePatientCarePlan(patientId, program);
     if (!planId) return null;
-    const row = patientCarePlanGoalToRow(values, planId);
+    const goalId = id || values.id;
+    const derived = goalId
+      ? deriveGoalTableFields({ ...values, id: goalId }, get().patientCarePlans[key]?.measurements || [])
+      : null;
+    const merged = derived ? {
+      ...values,
+      currentValue: derived.currentValue === 'No Data' ? '' : derived.currentValue,
+      trend: derived.trend,
+    } : values;
+    const row = patientCarePlanGoalToRow(merged, planId);
     // Stamp the last editor so the Goal Details "Last Update … by <name>" line
     // has an actor.
     row.updated_by = get().currentUserProfile?.name || row.updated_by || null;
@@ -2666,6 +2676,40 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ── Goal Details: measurements (manual "Last N Values") ──────────────────
+  // Keep goal.current_value + goal.trend in sync with readings so the care-plan
+  // table and Goal Details drawer read the same Supabase row.
+  patchGoalDisplayFromMeasurements: async (patientId, programId, goalId) => {
+    const key = carePlanKey(patientId, programId);
+    const cur = get().patientCarePlans[key];
+    const goal = (cur?.goals || []).find(g => g.id === goalId);
+    if (!goal) return;
+    const { currentValue, trend } = deriveGoalTableFields(goal, cur?.measurements || []);
+    if (currentValue === (goal.currentValue || 'No Data') && trend === (goal.trend || '-')) return;
+    const row = {
+      current_value: currentValue === 'No Data' ? '' : currentValue,
+      trend,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from('patient_care_plan_goals')
+      .update(row)
+      .eq('id', goalId)
+      .select()
+      .single();
+    if (error) { console.warn('patchGoalDisplayFromMeasurements:', error.message); return; }
+    const patched = mapPatientCarePlanGoalRow(data);
+    set(s => {
+      const c = s.patientCarePlans[key];
+      if (!c) return {};
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: { ...c, goals: c.goals.map(g => (g.id === goalId ? patched : g)) },
+        },
+      };
+    });
+  },
+
   saveGoalMeasurement: async (patientId, programId, goalId, values) => {
     const key = carePlanKey(patientId, programId);
     const cur = get().patientCarePlans[key];
@@ -2692,15 +2736,18 @@ export const useAppStore = create((set, get) => ({
       const c = s.patientCarePlans[key] || { measurements: [] };
       return { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, measurements: [...(c.measurements || []), measurement] } } };
     });
+    await get().patchGoalDisplayFromMeasurements(patientId, programId, goalId);
     return measurement;
   },
 
   deleteGoalMeasurement: async (patientId, programId, id) => {
     const key = carePlanKey(patientId, programId);
     const prev = get().patientCarePlans[key];
+    const removed = (prev?.measurements || []).find(m => m.id === id);
     set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, measurements: (prev.measurements || []).filter(m => m.id !== id) } } }));
     const { error } = await supabase.from('patient_care_plan_goal_measurements').delete().eq('id', id);
-    if (error) { console.warn('deleteGoalMeasurement:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete measurement'); }
+    if (error) { console.warn('deleteGoalMeasurement:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete measurement'); return; }
+    if (removed?.goalId) await get().patchGoalDisplayFromMeasurements(patientId, programId, removed.goalId);
   },
 
   // ── Goal Details: automations ────────────────────────────────────────────

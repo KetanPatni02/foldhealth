@@ -1293,6 +1293,12 @@ async function main() {
             { goal_id: bpGoal.id, value: '128/85', unit: 'mmHg', favorable: false, taken_at: new Date(now - 10 * 3600000).toISOString(), sort_order: 4 },
           ]);
           mErr = error;
+          if (!mErr) {
+            await supabase.from('patient_care_plan_goals').update({
+              current_value: '128/85 mmHg',
+              trend: '↓',
+            }).eq('id', bpGoal.id);
+          }
           const auto = await supabase.from('patient_care_plan_automations').insert({
             plan_id: planRow.id, goal_id: bpGoal.id,
             title: 'Notify my care team if systolic BP has 5% deviation',
@@ -1349,6 +1355,10 @@ async function main() {
           console.log(`  ✗ SNP BP readings: ${mm.error.message}`);
           continue;
         }
+        await supabase.from('patient_care_plan_goals').update({
+          current_value: '128/85 mmHg',
+          trend: '↓',
+        }).eq('id', snpBp.id);
         await supabase.from('patient_care_plan_automations').delete().eq('plan_id', snpPlan.id).eq('goal_id', snpBp.id);
         await supabase.from('patient_care_plan_automations').insert({
           plan_id: snpPlan.id, goal_id: snpBp.id,

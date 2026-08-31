@@ -1,8 +1,7 @@
 /* Goal Details body — Figma SNP-Story 2632:81504.
-   Drawer chrome (title + close) is owned by <Drawer>; this file is the
-   padded content column (24px sides, 12px top). */
+   Uniform 16px inset is owned by <Drawer> .body; this class only lays out
+   the scroll column so children stay full width inside that padding. */
 .drawerPad {
-  padding: var(--space-3) var(--space-6) 0;
   display: flex;
   flex-direction: column;
 }
@@ -11,6 +10,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  width: 100%;
+  min-width: 0;
 }
 
 /* ── Status bar ── */
@@ -357,14 +358,15 @@
 
 /* ── Activity ── */
 .activityBlock {
-  margin: var(--space-4) calc(-1 * var(--space-6)) 0;
+  width: 100%;
+  margin-top: var(--space-4);
   border-top: 0.5px solid var(--neutral-150);
 }
 .activityList {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-6);
+  padding-top: var(--space-4);
 }
 .logRow {
   display: flex;
