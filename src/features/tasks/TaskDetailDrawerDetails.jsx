@@ -17,7 +17,7 @@ import styles from './TasksView.module.css';
 export function TaskDetailDrawerDetails({
   task, labels, assigneeNames, taskProfiles, updateTask, showToast, assigneeInitials,
   taskPools, memberOptionsForDrawer, memberInitials, setPdfPreview, hedisMember,
-  setEditingNote, setPreviewSignedNote, completeCareGapSignOffTask, onClose, editingDesc, setEditingDesc, descDraft, setDescDraft,
+  setEditingNote, setPreviewNote, completeCareGapSignOffTask, onClose, editingDesc, setEditingDesc, descDraft, setDescDraft,
 }) {
   // The sign-off task is linked to a clinical_notes row via review_task_id.
   // Surface it right below the description so the reviewer can jump into
@@ -168,71 +168,6 @@ export function TaskDetailDrawerDetails({
           </div>
         </div>
 
-        {/* HEDIS Sign-Off: consolidated PDF + completion CTA. Only renders
-            for tasks created by createCareGapSignOffTask (i.e. hedisMemberId set). */}
-        {task.hedisMemberId && task.consolidatedPdf?.blob && (
-          <div className={styles.drawerSection}>
-            <span className={styles.drawerSectionLabel}>Consolidated Clinical Note</span>
-            <button
-              type="button"
-              className={styles.hedisPdfCard}
-              onClick={() => setPdfPreview(task.consolidatedPdf)}
-            >
-              <span className={styles.hedisPdfIcon}>
-                <Icon name="solar:document-text-linear" size={20} color="var(--primary-300)" />
-              </span>
-              <span className={styles.hedisPdfInfo}>
-                <span className={styles.hedisPdfName}>
-                  {task.consolidatedPdf.filename || 'consolidated-clinical-note.pdf'}
-                </span>
-                <span className={styles.hedisPdfMeta}>
-                  Covers {(task.hedisGapCodes || []).length} care gap{(task.hedisGapCodes || []).length === 1 ? '' : 's'} · click to preview
-                </span>
-              </span>
-              <span className={styles.hedisPdfOpenBadge}>
-                <Icon name="solar:eye-linear" size={14} color="var(--neutral-300)" />
-                Preview
-              </span>
-            </button>
-
-            {task.status !== 'completed' && (
-              <div className={styles.hedisSignOffRow}>
-                {hedisMember && (
-                  <Button
-                    variant="secondary"
-                    size="L"
-                    leadingIcon="solar:pen-new-square-linear"
-                    onClick={() => setEditingNote(true)}
-                  >
-                    Edit clinical note
-                  </Button>
-                )}
-                <Button
-                  variant="primary"
-                  size="L"
-                  leadingIcon="solar:check-circle-linear"
-                  onClick={() => {
-                    completeCareGapSignOffTask(task.id, 'NP');
-                    showToast('Sign-off complete — all gaps marked Completed');
-                    onClose?.();
-                  }}
-                >
-                  Complete sign-off
-                </Button>
-                <span className={styles.hedisSignOffHint}>
-                  Marks all gaps ({(task.hedisGapCodes || []).join(', ')}) as Completed.
-                </span>
-              </div>
-            )}
-            {task.status === 'completed' && (
-              <div className={styles.hedisSignOffComplete}>
-                <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
-                Sign-off complete — gaps closed.
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Description */}
         <div className={styles.drawerSection}>
           <span className={styles.drawerSectionLabel}>Description</span>
@@ -276,7 +211,7 @@ export function TaskDetailDrawerDetails({
               task={task}
               synthetic={!linkedNote}
               setEditingNote={setEditingNote}
-              setPreviewSignedNote={setPreviewSignedNote}
+              setPreviewNote={setPreviewNote}
               showToast={showToast}
             />
           </div>
@@ -319,7 +254,17 @@ function syntheticLinkedNoteFromTask(task) {
   };
 }
 
-function LinkedNoteCard({ note, task, synthetic = false, setEditingNote, setPreviewSignedNote, showToast }) {
+function LinkedNoteCard({ note, task, synthetic = false, setEditingNote, setPreviewNote, showToast }) {
+  // A Pending-Review note has two audiences from this row:
+  //   • the assigned reviewer — should drop straight into the editable
+  //     ClinicalNotePanel so they can revise + sign; matches the CareGap
+  //     drawer's reviewer path.
+  //   • everyone else (the author, other viewers) — should see the
+  //     read-only preview, since they cannot sign on the reviewer's behalf.
+  // We compare the note's `reviewerName` against the signed-in user's
+  // display name; the CareGap flow uses the same equality check.
+  const currentActorName = useAppStore(s => s.currentActorName);
+  const iAmReviewer = !!note.reviewerName && note.reviewerName === currentActorName?.();
   const codes = note.gapCodes?.length ? note.gapCodes : (task.hedisGapCodes || []);
   const title = codes.length > 1 ? 'Consolidated Clinical Note' : `${codes[0] || task.hedisGapCodes?.[0] || 'Clinical'} Visit Note`;
   const status = note.status === 'signed' ? 'Signed'
@@ -360,15 +305,23 @@ function LinkedNoteCard({ note, task, synthetic = false, setEditingNote, setPrev
                 showToast?.('Note preview is available once the care gap flow saves this note.');
                 return;
               }
-              // Signed notes open the read-only preview drawer — direct
-              // edits aren't allowed once a note is Signed (Amend is the
-              // audit path elsewhere). Draft / Pending Review still open
-              // the editable ClinicalNotePanel via setEditingNote.
-              if (note.status === 'signed' && setPreviewSignedNote) {
-                setPreviewSignedNote(note);
-              } else {
-                setEditingNote?.(true);
+              // Signed → always read-only preview (Amend is the audit
+              // path). Pending Review → the assigned reviewer opens the
+              // editable panel so they can revise + sign; every other
+              // viewer sees the same read-only preview the reviewer would
+              // publish. Draft → editable panel so the author keeps
+              // composing.
+              if (note.status === 'signed' && setPreviewNote) {
+                setPreviewNote(note);
+                return;
               }
+              if (note.status === 'submitted') {
+                if (iAmReviewer) setEditingNote?.(true);
+                else if (setPreviewNote) setPreviewNote(note);
+                else setEditingNote?.(true);
+                return;
+              }
+              setEditingNote?.(true);
             }}
           >
             View

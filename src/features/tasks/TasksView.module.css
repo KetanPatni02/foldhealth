@@ -1207,6 +1207,19 @@
   white-space: nowrap;
 }
 
+/* Warning-toned counterpart shown on a Pending-Review preview (note is
+   out for reviewer sign-off, not yet Signed). Same shape as the Signed
+   tag — different icon/color and label. */
+.previewPendingReviewTag {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--status-warning);
+  white-space: nowrap;
+}
+
 /* Stacked title used inside the signed-note preview Drawer's title slot:
    note name on top and a small "Signed by … · date" subtitle underneath so
    the reader knows the author + when at a glance. Mirrors the .paneTitleStack

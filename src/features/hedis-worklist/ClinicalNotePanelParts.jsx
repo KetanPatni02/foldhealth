@@ -69,7 +69,29 @@ export function HeaderActions({
   );
 }
 
-export function TitleBlock({ title, statusLabel = 'In Progress' }) {
+export function TitleBlock({ title, statusLabel = 'In Progress', stacked = false, status = null }) {
+  // Stacked variant is used by the sign-off review drawer so the title
+  // reads the same way the read-only preview and the CareGap pane header
+  // do — main title on top, a small icon+text status row beneath —
+  // instead of an inline pill next to the title.
+  if (stacked) {
+    const stat = status === 'signed'
+      ? { icon: 'solar:check-circle-bold', color: 'var(--status-success)', label: 'Signed' }
+      : status === 'submitted'
+        ? { icon: 'solar:clock-circle-bold', color: 'var(--status-warning)', label: 'Pending Review' }
+        : status === 'draft'
+          ? { icon: 'solar:file-text-linear', color: 'var(--neutral-300)', label: 'Draft' }
+          : { icon: 'solar:sun-bold', color: 'var(--status-warning)', label: statusLabel };
+    return (
+      <span className={styles.titleBlockStacked}>
+        <span className={styles.titleTextStacked}>{title}</span>
+        <span className={styles.titleStatusRow} style={{ color: stat.color }}>
+          <Icon name={stat.icon} size={12} color={stat.color} />
+          {stat.label}
+        </span>
+      </span>
+    );
+  }
   return (
     <span className={styles.titleBlock}>
       <span className={styles.titleText}>{title}</span>
