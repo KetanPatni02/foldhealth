@@ -31,11 +31,12 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
   const [subtaskName, setSubtaskName] = useState('');
   const [pdfPreview, setPdfPreview] = useState(null);
   const [editingNote, setEditingNote] = useState(false);
-  // Signed linked notes open in a read-only preview drawer instead of the
-  // editable ClinicalNotePanel — signed notes are locked from direct edits
-  // (Amend is the audit path elsewhere), so a preview is the correct
-  // affordance for the "View" button on the task's Linked Note card.
-  const [previewSignedNote, setPreviewSignedNote] = useState(null);
+  // Linked-note "View" opens a read-only preview drawer for BOTH Signed
+  // and Pending-Review notes — Signed is locked from direct edits (Amend
+  // is the audit path) and Pending-Review is out for reviewer sign-off,
+  // so neither is a fit for the editable ClinicalNotePanel. The preview
+  // header branches its affordances by note.status.
+  const [previewNote, setPreviewNote] = useState(null);
   const updateTask = useAppStore(s => s.updateTask);
   const deleteTask = useAppStore(s => s.deleteTask);
   const createTask = useAppStore(s => s.createTask);
@@ -216,7 +217,7 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
           setPdfPreview={setPdfPreview}
           hedisMember={hedisMember}
           setEditingNote={setEditingNote}
-          setPreviewSignedNote={setPreviewSignedNote}
+          setPreviewNote={setPreviewNote}
           completeCareGapSignOffTask={completeCareGapSignOffTask}
           onClose={onClose}
           editingDesc={editingDesc}
@@ -275,8 +276,8 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
           onClose={() => setEditingNote(false)}
         />
       )}
-      {previewSignedNote && (() => {
-        const codes = previewSignedNote.gapCodes || [];
+      {previewNote && (() => {
+        const codes = previewNote.gapCodes || [];
         const noteTitle = codes.length > 1
           ? 'Consolidated Clinical Note'
           : codes[0]
@@ -285,14 +286,19 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
         // Resolve the patient this note belongs to so the drawer carries a
         // full-bleed PatientBanner right under the header — otherwise the
         // reader can't tell which member the note is for.
-        const noteMember = previewSignedNote.hedisMemberId
-          ? hedisMembers.find(m => m.id === previewSignedNote.hedisMemberId)
+        const noteMember = previewNote.hedisMemberId
+          ? hedisMembers.find(m => m.id === previewNote.hedisMemberId)
           : null;
-        const signer = previewSignedNote.signedByName
-          || previewSignedNote.reviewerName
-          || previewSignedNote.authorName
+        const isSigned = previewNote.status === 'signed';
+        // Subtitle mirrors the CareGap preview so a note out for reviewer
+        // sign-off reads "Submitted for Review to <reviewer>" (pen icon)
+        // while a Signed note reads "Signed by <signer> · MM/DD/YYYY"
+        // (green check).
+        const signer = previewNote.signedByName
+          || previewNote.reviewerName
+          || previewNote.authorName
           || 'Provider';
-        const signedAt = previewSignedNote.signedAt;
+        const signedAt = previewNote.signedAt;
         let signedWhen = '';
         if (signedAt) {
           const d = new Date(signedAt);
@@ -300,48 +306,77 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
             signedWhen = ` · ${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
           }
         }
+        const subtitleIcon = isSigned
+          ? { name: 'solar:check-circle-bold', color: 'var(--status-success)' }
+          : { name: 'solar:pen-new-square-linear', color: 'var(--primary-300)' };
+        const subtitleText = isSigned
+          ? `Signed by ${signer}${signedWhen}`
+          : `Submitted for Review to ${previewNote.reviewerName || '—'}`;
         return (
           <Drawer
             title={
               <span className={styles.previewTitleStack}>
                 <span className={styles.previewTitleMain}>{noteTitle}</span>
                 <span className={styles.previewTitleSub}>
-                  <Icon name="solar:check-circle-bold" size={12} color="var(--status-success)" />
-                  {`Signed by ${signer}${signedWhen}`}
+                  <Icon name={subtitleIcon.name} size={12} color={subtitleIcon.color} />
+                  {subtitleText}
                 </span>
               </span>
             }
-            onClose={() => setPreviewSignedNote(null)}
+            onClose={() => setPreviewNote(null)}
             width={700}
             noCloseDivider
             headerRight={
               <>
-                <span className={styles.previewDisplayedTag}>
-                  <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
-                  Displayed to Member
-                </span>
-                <span className={styles.previewHeaderDivider} aria-hidden />
-                <ActionButton
-                  icon="solar:printer-linear"
-                  size="L"
-                  tooltip="Print"
-                  onClick={() => {
-                    const url = previewSignedNote.pdfDataUrl;
-                    if (url) { const w = window.open(url, '_blank'); try { w?.focus(); } catch {} }
-                    else showToast?.('No PDF for this version');
-                  }}
-                />
-                <Button
-                  variant="tertiary"
-                  size="M"
-                  leadingIcon="solar:lock-keyhole-minimalistic-linear"
-                  onClick={() => {
-                    setPreviewSignedNote(null);
-                    setEditingNote(true);
-                  }}
-                >
-                  Amend
-                </Button>
+                {isSigned ? (
+                  <>
+                    <span className={styles.previewDisplayedTag}>
+                      <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
+                      Displayed to Member
+                    </span>
+                    <span className={styles.previewHeaderDivider} aria-hidden />
+                    <ActionButton
+                      icon="solar:printer-linear"
+                      size="L"
+                      tooltip="Print"
+                      onClick={() => {
+                        const url = previewNote.pdfDataUrl;
+                        if (url) { const w = window.open(url, '_blank'); try { w?.focus(); } catch {} }
+                        else showToast?.('No PDF for this version');
+                      }}
+                    />
+                    <Button
+                      variant="tertiary"
+                      size="M"
+                      leadingIcon="solar:lock-keyhole-minimalistic-linear"
+                      onClick={() => {
+                        setPreviewNote(null);
+                        setEditingNote(true);
+                      }}
+                    >
+                      Amend
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <span className={styles.previewPendingReviewTag}>
+                      <Icon name="solar:clock-circle-linear" size={16} color="var(--status-warning)" />
+                      Pending Review
+                    </span>
+                    <span className={styles.previewHeaderDivider} aria-hidden />
+                    <Button
+                      variant="tertiary"
+                      size="M"
+                      leadingIcon="solar:pen-new-square-linear"
+                      onClick={() => {
+                        setPreviewNote(null);
+                        setEditingNote(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </>
+                )}
                 <span className={styles.previewHeaderDivider} aria-hidden />
               </>
             }
@@ -359,9 +394,9 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
             ) : undefined}
           >
             <ClinicalNotePreviewBody
-              memberId={previewSignedNote.hedisMemberId || previewSignedNote.patientId}
-              gapCode={previewSignedNote.gapCodes?.[0]}
-              noteId={previewSignedNote.id}
+              memberId={previewNote.hedisMemberId || previewNote.patientId}
+              gapCode={previewNote.gapCodes?.[0]}
+              noteId={previewNote.id}
             />
           </Drawer>
         );
