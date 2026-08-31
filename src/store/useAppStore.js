@@ -2906,6 +2906,11 @@ export const useAppStore = create((set, get) => ({
   requestCarePlanShare: (mode) => set({ carePlanShareRequest: mode }),
   clearCarePlanShareRequest: () => set({ carePlanShareRequest: null }),
 
+  // Cross-header panel requests (versions, template, history, filter, note, sign).
+  carePlanPanelRequest: null,
+  requestCarePlanPanel: (panel) => set({ carePlanPanelRequest: panel }),
+  clearCarePlanPanelRequest: () => set({ carePlanPanelRequest: null }),
+
   // Record one share of a plan (or a selection of it) to an external party.
   // Returns the saved record, or null on failure.
   sharePatientCarePlan: async (patientId, program, { target, format = 'standard', note = '', goalIds = [], interventionIds = [] }) => {

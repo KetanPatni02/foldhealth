@@ -288,6 +288,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
 }
 /* Search icon → inline field transform in the Program Related Tasks header. */
 .taskSearch { width: 250px; }
@@ -323,6 +325,7 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1;
 }
 .assessmentHeaderText {
   display: flex;
@@ -335,6 +338,19 @@
   font-weight: 600;
   color: var(--neutral-500);
   white-space: nowrap;
+}
+.carePlanTitleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  min-width: 0;
+}
+.carePlanTitleBtn:hover .assessmentTitle {
+  color: var(--primary-300);
 }
 .assessmentMeta {
   font-size: var(--font-sm);
@@ -356,6 +372,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.carePlanActionBar {
+  gap: var(--space-3);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.carePlanActionDivider {
+  width: 0.5px;
+  height: var(--space-4);
+  background: var(--neutral-150);
+  flex-shrink: 0;
+  align-self: center;
 }
 
 /* ── Floating bulk-action bar (Letters selection) ── */

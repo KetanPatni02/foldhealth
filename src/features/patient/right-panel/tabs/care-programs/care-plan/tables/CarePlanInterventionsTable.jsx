@@ -117,6 +117,7 @@ export function CarePlanInterventionsTable({
                     <span className={styles.title}>{i.title}</span>
                     {i.duration && (
                       <Badge
+                        className={styles.intvDurationBadge}
                         tone="grey"
                         size="S"
                         label={i.duration}

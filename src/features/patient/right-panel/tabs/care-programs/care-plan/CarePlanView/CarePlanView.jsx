@@ -86,8 +86,11 @@ export function CarePlanView({ patientId, program }) {
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
   const carePlanShareRequest = useAppStore(s => s.carePlanShareRequest);
-  const requestCarePlanShare = useAppStore(s => s.requestCarePlanShare);
   const clearCarePlanShareRequest = useAppStore(s => s.clearCarePlanShareRequest);
+  const carePlanPanelRequest = useAppStore(s => s.carePlanPanelRequest);
+  const clearCarePlanPanelRequest = useAppStore(s => s.clearCarePlanPanelRequest);
+  const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
+  const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
 
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const live = useAppStore(s => (key ? s.patientCarePlans[key] : null));
@@ -103,6 +106,19 @@ export function CarePlanView({ patientId, program }) {
   useEffect(() => {
     if (patientId && program?.id) { fetchPatientCarePlan(patientId, program.id); fetchCarePlanLinks(patientId, program.id); }
   }, [patientId, program?.id, fetchPatientCarePlan, fetchCarePlanLinks]);
+
+  useEffect(() => { fetchCarePlanLibrary?.(); }, [fetchCarePlanLibrary]);
+
+  useEffect(() => {
+    if (!carePlanPanelRequest) return;
+    if (carePlanPanelRequest === 'versions') setVersionsOpen(true);
+    else if (carePlanPanelRequest === 'template') { setTemplateName(''); setTemplateOpen(true); }
+    else if (carePlanPanelRequest === 'history') setHistoryOpen(true);
+    else if (carePlanPanelRequest === 'filter') setFiltersOpen(true);
+    else if (carePlanPanelRequest === 'note') { setNoteText(''); setNoteOpen(true); }
+    else if (carePlanPanelRequest === 'sign') { setSignNote(''); setSignOpen(true); }
+    clearCarePlanPanelRequest();
+  }, [carePlanPanelRequest, clearCarePlanPanelRequest]);
 
   // A share request that was never opened/closed (e.g. the program was closed
   // with the flag still set) must not linger and auto-open the drawer next time.
@@ -126,8 +142,8 @@ export function CarePlanView({ patientId, program }) {
     barriers: [],
   }), [live, measurements]);
 
-  const [conditionsOpen, setConditionsOpen] = useState(true);
   const [conditionsViewOpen, setConditionsViewOpen] = useState(false);
+  const MAX_VISIBLE_CONDITIONS = 4;
   // Collapsible GBI sections (chevron in each section header).
   const [openSections, setOpenSections] = useState({ goals: true, interventions: true, barriers: true });
   const toggleSection = (name) => setOpenSections(s => ({ ...s, [name]: !s[name] }));
@@ -176,6 +192,26 @@ export function CarePlanView({ patientId, program }) {
     () => data.interventions.filter(i => matchesSP(i) && (!filters.assignee.length || filters.assignee.includes(i.assignee?.name))),
     [data.interventions, filters], // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  const conditionCounts = useMemo(() => {
+    const counts = new Map();
+    const bump = (label) => {
+      if (!label) return;
+      counts.set(label, (counts.get(label) || 0) + 1);
+    };
+    for (const g of data.goals) (g.conditions || []).forEach(bump);
+    for (const i of data.interventions) (i.conditions || []).forEach(bump);
+    for (const b of data.barriers || []) (b.conditions || []).forEach(bump);
+    if (!counts.size) {
+      const total = data.goals.length + data.interventions.length + (data.barriers?.length || 0);
+      if (total && data.conditions[0]) counts.set(data.conditions[0].label, total);
+    }
+    return counts;
+  }, [data.goals, data.interventions, data.barriers, data.conditions]);
+
+  const visibleConditions = data.conditions.slice(0, MAX_VISIBLE_CONDITIONS);
+  const hiddenConditionCount = Math.max(0, data.conditionTotal - visibleConditions.length);
+  const templateCount = carePlanTemplates.length;
   const signedBy = live?.plan?.signedBy;
   const signedAt = live?.plan?.signedAt;
 
@@ -304,6 +340,7 @@ export function CarePlanView({ patientId, program }) {
 
   const handleViewAllConditions = () => setConditionsViewOpen(true);
   const handleNewProblems = () => showToast('New Problems — coming soon');
+  const handleTemplates = () => showToast('Care plan templates — open Settings → Care Plan Library');
   const handleTrends = () => showToast('Trends — coming soon');
   const handleAssigneeChange = (intervention, user) => {
     if (!canEdit) return;
@@ -326,87 +363,56 @@ export function CarePlanView({ patientId, program }) {
 
   return (
     <div className={styles.container}>
-      {/* Condition chips */}
-      <div className={styles.conditionRow}>
-        <button type="button" className={styles.collapseBtn} onClick={() => setConditionsOpen(o => !o)} aria-label="Toggle conditions">
-          <Icon name={conditionsOpen ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={16} color="var(--secondary-300)" />
-        </button>
-        {conditionsOpen && (
+      {/* Sticky problems / templates bar — Paper BPH-0 */}
+      <div className={styles.problemsBar}>
+        <div className={styles.conditionRow}>
           <div className={styles.chips}>
-            {data.conditions.map(c => (
-              <span key={c.label} className={`${styles.chip} ${c.primary ? styles.chipPrimary : ''}`}>
-                {c.label}
-                {c.removable ? (
-                  <button type="button" className={styles.chipRemove} onClick={() => handleRemoveCondition(c.label)} aria-label={`Remove ${c.label}`} disabled={!canEdit}>
-                    <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
-                  </button>
-                ) : null}
-              </span>
-            ))}
+            {visibleConditions.map(c => {
+              const count = conditionCounts.get(c.label) ?? 0;
+              const isAlert = !!(c.primary || c.alert);
+              return (
+                <span
+                  key={c.label}
+                  className={`${styles.chip} ${isAlert ? styles.chipAlert : styles.chipDefault}`}
+                >
+                  {isAlert ? (
+                    <Icon name="solar:danger-circle-linear" size={12} color="var(--status-error)" className={styles.chipAlertIcon} />
+                  ) : null}
+                  <span className={styles.chipLabel}>{c.label}</span>
+                  <span className={styles.chipCount}>{count}</span>
+                  {c.removable ? (
+                    <>
+                      <span className={styles.chipInnerDivider} aria-hidden="true" />
+                      <button type="button" className={styles.chipRemove} onClick={() => handleRemoveCondition(c.label)} aria-label={`Remove ${c.label}`} disabled={!canEdit}>
+                        <Icon name="solar:close-linear" size={16} color="var(--neutral-300)" />
+                      </button>
+                    </>
+                  ) : null}
+                </span>
+              );
+            })}
+            {hiddenConditionCount > 0 ? (
+              <button type="button" className={`${styles.chip} ${styles.chipDefault} ${styles.chipOverflow}`} onClick={handleViewAllConditions}>
+                +{hiddenConditionCount}
+              </button>
+            ) : null}
           </div>
-        )}
-        <button type="button" className={styles.viewAll} onClick={handleViewAllConditions}>View All ({data.conditionTotal})</button>
-      </div>
-
-      <div className={styles.toolbarRow}>
-        <button type="button" className={styles.newProblems} onClick={handleNewProblems}>
-          <Icon name="solar:magic-stick-3-linear" size={16} color="var(--primary-300)" />
-          New Problems identified in HRA
-        </button>
-        <div className={styles.toolbarActions}>
-          <ActionButton
-            icon="solar:filter-linear"
-            size="S"
-            tooltip="Filter"
-            active={filtersOpen || !!filtersActive}
-            iconColor={filtersActive ? 'var(--primary-300)' : undefined}
-            onClick={() => setFiltersOpen(o => !o)}
-          />
-          <Button
-            variant="secondary"
-            size="M"
-            leadingIcon="solar:layers-minimalistic-linear"
-            onClick={() => setVersionsOpen(true)}
-          >
-            Versions
-          </Button>
-          {!usingMock && (signedBy ? (
-            <Button variant="secondary" size="M" leadingIcon="solar:notes-linear" onClick={() => { setNoteText(''); setNoteOpen(true); }}>
-              Add Note
-            </Button>
-          ) : (
-            <Button variant="secondary" size="M" leadingIcon="solar:pen-2-linear" onClick={() => { setSignNote(''); setSignOpen(true); }}>
-              Sign
-            </Button>
-          ))}
-          <Button
-            variant="secondary"
-            size="M"
-            leadingIconElement={<Icon name="custom:history" size={16} color="var(--neutral-400)" />}
-            onClick={() => setHistoryOpen(true)}
-          >
-            History
-          </Button>
-          <Button
-            variant="secondary"
-            size="M"
-            leadingIcon="solar:eye-linear"
-            onClick={() => requestCarePlanShare('preview')}
-          >
-            Preview &amp; Share
-          </Button>
-          <Button
-            variant="secondary"
-            size="M"
-            leadingIcon="solar:bookmark-linear"
-            disabled={usingMock}
-            onClick={() => { setTemplateName(''); setTemplateOpen(true); }}
-          >
-            Save as Template
-          </Button>
+          <div className={styles.conditionActions}>
+            <button type="button" className={styles.problemsBtn} onClick={handleNewProblems}>
+              <Icon name="solar:add-linear" size={16} color="var(--primary-300)" />
+              Problems
+            </button>
+            <span className={styles.conditionDivider} aria-hidden="true" />
+            <button type="button" className={styles.templatesBtn} onClick={handleTemplates}>
+              <Icon name="solar:bookmark-linear" size={16} color="var(--neutral-300)" />
+              Templates
+              {templateCount > 0 ? <span className={styles.templateCount}>{templateCount}</span> : null}
+            </button>
+          </div>
         </div>
       </div>
 
+      <div className={styles.contentBody}>
       {signedBy && (
         <div className={styles.signedBanner}>
           <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
@@ -548,6 +554,7 @@ export function CarePlanView({ patientId, program }) {
           />
         ))}
       </div>
+      </div>
 
       {/* Status change menu (goals + interventions + barriers) */}
       {statusMenu && (statusMenu.kind === 'goal' || statusMenu.kind === 'intv' || statusMenu.kind === 'barrier') && (
@@ -688,14 +695,18 @@ export function CarePlanView({ patientId, program }) {
           <div className={styles.drawerBody}>
             <p className={styles.drawerHint}>{data.conditionTotal} conditions on this plan — {data.conditions.length} shown in the header. Remove any chip above or manage them here.</p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-              {data.conditions.map(c => (
-                <span key={c.label} className={`${styles.chip} ${c.primary ? styles.chipPrimary : ''}`}>
-                  {c.label}
+              {data.conditions.map(c => {
+                const count = conditionCounts.get(c.label) ?? 0;
+                const isAlert = !!(c.primary || c.alert);
+                return (
+                <span key={c.label} className={`${styles.chip} ${isAlert ? styles.chipAlert : styles.chipDefault}`}>
+                  <span className={styles.chipLabel}>{c.label}</span>
+                  <span className={styles.chipCount}>{count}</span>
                   <button type="button" className={styles.chipRemove} onClick={() => handleRemoveCondition(c.label)} aria-label={`Remove ${c.label}`} disabled={!canEdit}>
-                    <Icon name="solar:close-circle-linear" size={14} color="var(--neutral-300)" />
+                    <Icon name="solar:close-linear" size={16} color="var(--neutral-300)" />
                   </button>
                 </span>
-              ))}
+              );})}
             </div>
           </div>
         </Drawer>
