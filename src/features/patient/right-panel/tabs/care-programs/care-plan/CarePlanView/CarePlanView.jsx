@@ -24,6 +24,8 @@ import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
 import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
+import { SimpleTableSkeleton } from '../../../../../../../components/SimpleTableSkeleton/SimpleTableSkeleton';
+import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
 import styles from './CarePlanView.module.css';
 
 // The statuses a goal or intervention can move through. Kept flat and shared so
@@ -32,6 +34,20 @@ const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met']
 const PRIORITIES = ['high', 'medium', 'low'];
 // Capitalized labels for the priority filter chip (values compare case-insensitively).
 const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
+
+/** Collapsible section title — chevron rotates to point right when closed. */
+function SectionTitle({ label, open, onToggle }) {
+  return (
+    <button type="button" className={styles.sectionToggle} onClick={onToggle} aria-expanded={open}>
+      <DownChevronIcon
+        size={16}
+        color="var(--neutral-400)"
+        className={`${styles.sectionChevron} ${open ? '' : styles.sectionChevronClosed}`}
+      />
+      <span className={styles.sectionTitle}>{label}</span>
+    </button>
+  );
+}
 
 /** Per-section dashed empty card (Figma SNP-Story 8430:288488). */
 function SectionEmptyState({ icon, label, onAdd }) {
@@ -74,6 +90,9 @@ export function CarePlanView({ patientId, program }) {
 
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const live = useAppStore(s => (key ? s.patientCarePlans[key] : null));
+  // First-load skeleton: true while the initial fetch is in flight (before the
+  // plan resolves), false once loaded.
+  const carePlanLoading = useAppStore(s => (key ? !!s.patientCarePlanLoading[key] : false));
 
   const fetchCarePlanLinks = useAppStore(s => s.fetchCarePlanLinks);
   const carePlanLinks = useAppStore(s => (key ? s.patientCarePlanLinks[key] : null)) || [];
@@ -108,6 +127,9 @@ export function CarePlanView({ patientId, program }) {
 
   const [conditionsOpen, setConditionsOpen] = useState(true);
   const [conditionsViewOpen, setConditionsViewOpen] = useState(false);
+  // Collapsible GBI sections (chevron in each section header).
+  const [openSections, setOpenSections] = useState({ goals: true, interventions: true, barriers: true });
+  const toggleSection = (name) => setOpenSections(s => ({ ...s, [name]: !s[name] }));
   const [statusMenu, setStatusMenu] = useState(null); // { kind, item, rect }
   const [priorityMenu, setPriorityMenu] = useState(null); // { kind, item, rect }
   const [addGoalsDrawerOpen, setAddGoalsDrawerOpen] = useState(false);
@@ -421,7 +443,7 @@ export function CarePlanView({ patientId, program }) {
       {/* Goals */}
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <span className={styles.sectionTitle}>Goals</span>
+          <SectionTitle label="Goals" open={openSections.goals} onToggle={() => toggleSection('goals')} />
           <div className={styles.sectionActions}>
             <button type="button" className={styles.trendsBtn} onClick={handleTrends}>
               <Icon name="solar:chart-2-linear" size={16} color="var(--neutral-300)" />
@@ -430,7 +452,9 @@ export function CarePlanView({ patientId, program }) {
             <ActionButton size="S" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
-        {filteredGoals.length === 0 && data.goals.length === 0 ? (
+        {openSections.goals && (carePlanLoading ? (
+          <SimpleTableSkeleton rows={3} cols={7} />
+        ) : filteredGoals.length === 0 && data.goals.length === 0 ? (
           <SectionEmptyState
             icon="solar:heart-pulse-linear"
             label="No Goals Added for Selected Problem"
@@ -451,18 +475,20 @@ export function CarePlanView({ patientId, program }) {
             linkCount={linkCount}
             emptyState={filteredGoals.length === 0 ? <div className={styles.emptyRow}>No goals match the filters.</div> : null}
           />
-        )}
+        ))}
       </div>
 
       {/* Interventions */}
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <span className={styles.sectionTitle}>Interventions</span>
+          <SectionTitle label="Interventions" open={openSections.interventions} onToggle={() => toggleSection('interventions')} />
           <div className={styles.sectionActions}>
             <ActionButton size="S" tooltip="Add intervention" onClick={() => setIntvDrawer({ intervention: null })}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
-        {filteredInterventions.length === 0 && data.interventions.length === 0 ? (
+        {openSections.interventions && (carePlanLoading ? (
+          <SimpleTableSkeleton rows={3} cols={6} />
+        ) : filteredInterventions.length === 0 && data.interventions.length === 0 ? (
           <SectionEmptyState
             icon="solar:checklist-minimalistic-linear"
             label="No Interventions Created for Selected Problem"
@@ -485,18 +511,20 @@ export function CarePlanView({ patientId, program }) {
             platformUsers={platformUsers}
             emptyState={filteredInterventions.length === 0 ? <div className={styles.emptyRow}>No interventions match the filters.</div> : null}
           />
-        )}
+        ))}
       </div>
 
       {/* Open Barriers */}
       <div className={styles.section}>
         <div className={styles.sectionHead}>
-          <span className={styles.sectionTitle}>Open Barriers</span>
+          <SectionTitle label="Open Barriers" open={openSections.barriers} onToggle={() => toggleSection('barriers')} />
           <div className={styles.sectionActions}>
             <ActionButton size="S" tooltip="Add barrier" onClick={() => setBarrierDrawer({ barrier: null })} disabled={!canEdit}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
           </div>
         </div>
-        {filteredBarriers.length === 0 && (data.barriers || []).length === 0 ? (
+        {openSections.barriers && (carePlanLoading ? (
+          <SimpleTableSkeleton rows={3} cols={5} />
+        ) : filteredBarriers.length === 0 && (data.barriers || []).length === 0 ? (
           <SectionEmptyState
             icon="solar:signpost-2-linear"
             label="No Barriers Created for Selected Problem"
@@ -517,7 +545,7 @@ export function CarePlanView({ patientId, program }) {
             linkCount={linkCount}
             emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the filters.</div> : null}
           />
-        )}
+        ))}
       </div>
 
       {/* Status change menu (goals + interventions + barriers) */}

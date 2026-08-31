@@ -88,6 +88,22 @@
   font-weight: 500;
   color: var(--neutral-500);
 }
+.sectionToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.sectionChevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.sectionChevronClosed {
+  transform: rotate(-90deg);
+}
 .sectionActions {
   display: flex;
   align-items: center;
