@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
 import { CloseButton } from '../CloseButton/CloseButton';
@@ -88,15 +88,32 @@ export function Drawer({
   // (e.g. "Discard unsaved changes?") over the still-open drawer.
   beforeClose,
 }) {
-  const panelStyle = width !== undefined
-    ? { width: typeof width === 'number' ? `${width}px` : width }
-    : undefined;
-  // `closing` flips true when the user requests close; we keep the drawer
-  // mounted for --drawer-duration so the transform + opacity transitions
-  // play, then call the parent's onClose to actually unmount. Overlay clicks
-  // and close-button clicks both go through this same gate.
+  // Stacking depth for nested drawers. When a second Drawer mounts on top
+  // of an already-open one (e.g. TaskDetailDrawer over CareGapDetailDrawer
+  // via the "Preview task" eye), both instances default to z-index 400
+  // (overlay) / 401 (panel), so the newer drawer's overlay lands BELOW
+  // the older drawer's panel — the older drawer stays visible with no
+  // dim behind the new one. Count existing drawer panels at mount and
+  // bump this instance's z-index by 10*N so each level layers cleanly.
+  const [stackDepth, setStackDepth] = useState(0);
   const [closing, setClosing] = useState(false);
   const panelRef = useRef(null);
+  useEffect(() => {
+    // useEffect fires after commit, so this instance's own panel is
+    // already in the DOM — subtract 1 so a solo drawer stays at the
+    // base z-index and only *nested* drawers get bumped.
+    const openPanels = document.querySelectorAll(`.${styles.panel}[data-closing="false"]`).length;
+    const alreadyOpen = Math.max(0, openPanels - 1);
+    if (alreadyOpen > 0) setStackDepth(alreadyOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const zOverlay = 400 + stackDepth * 10;
+  const zPanel = zOverlay + 1;
+  const overlayStyle = stackDepth > 0 ? { zIndex: zOverlay } : undefined;
+  const panelStyle = {
+    ...(width !== undefined ? { width: typeof width === 'number' ? `${width}px` : width } : {}),
+    ...(stackDepth > 0 ? { zIndex: zPanel } : {}),
+  };
   const requestClose = useCallback(() => {
     if (closing) return;
     // Let the caller veto the close (e.g. to show an unsaved-changes confirm
@@ -113,8 +130,8 @@ export function Drawer({
           assistive tech on purpose — the header CloseButton is the keyboard and
           screen-reader path, so the backdrop must not appear as a second,
           unlabelled control. */}
-      <div className={styles.overlay} data-closing={closing ? 'true' : 'false'} onClick={requestClose} aria-hidden="true" />
-      <div ref={panelRef} className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={closing ? 'true' : 'false'} style={panelStyle}>
+      <div className={styles.overlay} data-closing={closing ? 'true' : 'false'} onClick={requestClose} aria-hidden="true" style={overlayStyle} />
+      <div ref={panelRef} className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={closing ? 'true' : 'false'} style={Object.keys(panelStyle).length ? panelStyle : undefined}>
         <div className={styles.header} style={headerStyle}>
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>
           <div className={styles.headerRight}>

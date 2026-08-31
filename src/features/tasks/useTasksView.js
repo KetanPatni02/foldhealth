@@ -32,9 +32,25 @@ function buildGroupedTasks(sortedTasks, viewBy) {
   }
   return STATUS_ORDER.reduce((acc, status) => {
     const items = sortedTasks.filter(t => t.status === status);
-    if (items.length) acc.push({ status, tasks: items });
+    if (items.length) acc.push({ status, tasks: sortByDueDateDesc(items) });
     return acc;
   }, []);
+}
+
+// Within a status group (Pending / Missed / Completed) tasks come off the
+// server in creation order, which reads scrambled once a group grows past a
+// few rows. Order latest-due first so the most recent work sits at the top;
+// tasks with no due date drop to the bottom, and ties keep their relative
+// order (stable sort).
+function sortByDueDateDesc(items) {
+  return [...items].sort((a, b) => {
+    const da = parseTaskDate(a.due_date);
+    const db = parseTaskDate(b.due_date);
+    if (!da && !db) return 0;
+    if (!da) return 1;
+    if (!db) return -1;
+    return db - da;
+  });
 }
 
 function buildKanbanGroups(sortedTasks, viewBy) {
@@ -64,7 +80,7 @@ function buildKanbanGroups(sortedTasks, viewBy) {
   return STATUS_ORDER.map(status => ({
     status,
     label: STATUS_LABELS[status] || (status.charAt(0).toUpperCase() + status.slice(1)),
-    tasks: sortedTasks.filter(t => t.status === status),
+    tasks: sortByDueDateDesc(sortedTasks.filter(t => t.status === status)),
   }));
 }
 
