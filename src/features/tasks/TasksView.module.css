@@ -1195,6 +1195,52 @@
 }
 .linkedNoteView:hover { text-decoration: underline; }
 
+/* "Displayed to Member" success-toned tag shown in the signed-note
+   preview drawer's header (Task Detail → View on a Signed linked note). */
+.previewDisplayedTag {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--status-success);
+  white-space: nowrap;
+}
+
+/* Stacked title used inside the signed-note preview Drawer's title slot:
+   note name on top and a small "Signed by … · date" subtitle underneath so
+   the reader knows the author + when at a glance. Mirrors the .paneTitleStack
+   pattern in the Care Gap drawer's left workspace. */
+.previewTitleStack {
+  display: inline-flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.previewTitleMain {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-500);
+}
+.previewTitleSub {
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  line-height: 1;
+}
+
+.previewHeaderDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-1);
+  flex-shrink: 0;
+}
+
 .drawerSectionTitle {
   font-size: var(--font-lg);
   font-weight: 500;

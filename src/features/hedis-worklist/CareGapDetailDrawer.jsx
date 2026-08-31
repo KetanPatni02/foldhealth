@@ -237,7 +237,13 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   } : null;
   const handleOpenTaskInPlace = (taskIdOrObj) => {
     const id = typeof taskIdOrObj === 'object' ? taskIdOrObj?.id : taskIdOrObj;
-    if (id) setInPlaceTaskId(id);
+    if (!id) return;
+    // Open the task in the drawer's own left workspace (like Add Task /
+    // Schedule / Clinical Note) instead of a separate TaskDetailDrawer.
+    // Reviewers get task context inline while still seeing the Care Gap
+    // Details right pane behind it.
+    setInPlaceTaskId(id);
+    setLeftWorkspace('task-detail');
   };
 
   // Open-gap count drives the "Add Note" routing rule (see openClinicalNoteFlow).
@@ -346,7 +352,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const [leftClosing, setLeftClosing] = useState(false);
   const runLeftClose = () => {
     setLeftClosing(true);
-    setTimeout(() => { setLeftWorkspace(null); setLeftClosing(false); setSelectedNoteId(null); setAmendNoteId(null); }, 250);
+    setTimeout(() => { setLeftWorkspace(null); setLeftClosing(false); setSelectedNoteId(null); setAmendNoteId(null); setInPlaceTaskId(null); }, 250);
   };
   const closeLeftWorkspace = () => {
     // Task workspace has a "discard unsaved changes?" guard; the scheduler
@@ -481,9 +487,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
       {showClinicalNote && (
         <ClinicalNotePanel member={member} gapCode={gap.code} year={selectedYear} onClose={() => setShowClinicalNote(false)} />
       )}
-      {inPlaceTask && (
-        <TaskDetailDrawer task={inPlaceTask} onClose={() => setInPlaceTaskId(null)} />
-      )}
+      {/* The task detail no longer opens as its own standalone Drawer —
+          it renders inline as the left workspace when leftWorkspace ===
+          'task-detail' (see the leftPane branches below). */}
       {addTask.showCloseConfirm && (
         <ConfirmDialog
           icon="solar:danger-triangle-linear"
@@ -552,6 +558,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 }
                 if (leftWorkspace === 'clinical-note-consolidated') {
                   return <span className={styles.paneTitle}>Consolidated Clinical Note</span>;
+                }
+                if (leftWorkspace === 'task-detail') {
+                  return <span className={styles.paneTitle}>Task Details</span>;
                 }
                 const isPreview = leftWorkspace === 'clinical-note-preview';
                 const previewNote = previewNoteHoisted;
@@ -692,6 +701,11 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                     canSaveDraft={clinicalNote.hasChanges}
                     canSign={clinicalNote.anyReadyForReview}
                   />
+                ) : leftWorkspace === 'task-detail' ? (
+                  // Task detail is a read/edit surface; the task's own
+                  // header (status pill, title, etc.) lives in the body so
+                  // there's no CTA to render alongside the close button.
+                  null
                 ) : (
                   <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
                     Save Task
@@ -708,7 +722,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                         || leftWorkspace === 'clinical-note-preview'
                         || leftWorkspace === 'clinical-note-consolidated'
                         ? 'Close Clinical Note'
-                        : 'Close Add Task'
+                        : leftWorkspace === 'task-detail'
+                          ? 'Close Task Details'
+                          : 'Close Add Task'
                   }
                 />
               </div>
@@ -731,6 +747,10 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} noteId={selectedNoteId} />
               ) : leftWorkspace === 'clinical-note-consolidated' ? (
                 <ConsolidatedNoteBody v={clinicalNote} />
+              ) : leftWorkspace === 'task-detail' ? (
+                inPlaceTask ? (
+                  <TaskDetailDrawer task={inPlaceTask} inline onClose={closeLeftWorkspace} />
+                ) : null
               ) : (
                 <AddTaskDrawerBody {...addTask} />
               )}

@@ -138,7 +138,10 @@ export function formatDateFriendly(str) {
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Tomorrow';
   if (diff === -1) return 'Yesterday';
-  return str;
+  // Platform-wide date display is MM/DD/YYYY. Stored strings are MM-DD-YYYY
+  // (see `todayMMDDYYYY` / `parseTaskDate`) — just swap the separator so we
+  // don't re-derive month/day and risk drift from a bad parse.
+  return str.replace(/-/g, '/');
 }
 
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

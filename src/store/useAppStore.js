@@ -12860,6 +12860,26 @@ export const useAppStore = create((set, get) => ({
     }
     const dbOk = !error;
 
+    // Sign the linked clinical note when a HEDIS Sign-off task is marked
+    // Completed. The task row rehydrated from Supabase drops the
+    // client-only `hedisMemberId` / `hedisGapCodes` fields (they aren't
+    // persisted columns), so the older completeCareGapSignOffTask path
+    // that keyed on task.hedisMemberId silently no-ops when a Provider
+    // completes the task from the Tasks page — the linked note stays
+    // 'submitted'. Bridge the gap here by scanning every member's notes
+    // for one linked to this task and flipping it to signed.
+    if (prev && updates.status === 'completed' && prev.status !== 'completed') {
+      const notesByMember = get().clinicalNotesByMember || {};
+      for (const arr of Object.values(notesByMember)) {
+        const linked = (arr || []).find(n => n.reviewTaskId === id);
+        if (linked && linked.status !== 'signed') {
+          const signerName = get().currentActorName?.() || merged.assigned_to || 'Reviewer';
+          get().signClinicalNote(linked.id, { name: signerName });
+          break;
+        }
+      }
+    }
+
     // Audit logging
     if (prev) {
       Object.entries(updates).forEach(([key, val]) => {

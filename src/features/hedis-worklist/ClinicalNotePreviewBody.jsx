@@ -13,6 +13,22 @@ import {
 } from './ClinicalNotePanel.utils';
 import styles from './ClinicalNotePreviewBody.module.css';
 
+// Platform-wide date display is MM/DD/YYYY. Values come off the form as
+// either an ISO YYYY-MM-DD string (native <input type="date">) or a Date-
+// parseable string; anything else falls back to the raw value so the
+// reader still sees SOMETHING rather than a silent "—". Split the ISO
+// path manually so timezone doesn't shift the day boundary.
+function formatMDY(value) {
+  if (value == null || value === '') return value;
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value));
+  if (iso) return `${iso[2]}/${iso[3]}/${iso[1]}`;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
 /**
  * ClinicalNotePreviewBody — read-only signed-note summary.
  *
@@ -59,7 +75,7 @@ export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
       {/* Title + signer/reviewer subtitle are rendered by the pane header
           in CareGapDetailDrawer — the body focuses on section content only. */}
       <Section title="Date of Service & Telehealth Statement">
-        <KV label="DOS" value={payload.dateOfService} />
+        <KV label="DOS" value={formatMDY(payload.dateOfService)} />
         <KV label="Telehealth Statement" value={telehealth} wide />
       </Section>
 
@@ -126,6 +142,8 @@ function GenericRows({ code, data }) {
           display = raw ? 'Yes' : 'No';
         } else if ((f.type === 'select' || f.type === 'radio') && f.options) {
           display = f.options.find(o => o.value === raw)?.label || raw;
+        } else if (f.type === 'date') {
+          display = formatMDY(raw);
         } else {
           display = raw;
         }
@@ -143,7 +161,7 @@ function CbpRows({ data }) {
   const bp = data.systolic && data.diastolic ? `${data.systolic} / ${data.diastolic} mmHg` : null;
   return (
     <>
-      <KV label="Reading recorded Date" value={data.bpDate} />
+      <KV label="Reading recorded Date" value={formatMDY(data.bpDate)} />
       <KV label="Blood Pressure" value={bp} />
       <KV label="Location Type" value={loc} />
       <KV label="Self-monitors BP regularly" value={yn(data.selfMonitors)} wide />
@@ -163,7 +181,7 @@ function EedRows({ data }) {
     <>
       <KV label="Evidence Type" value={evidenceType} wide />
       <KV label="Exam Type" value={examType} />
-      <KV label="Exam Date" value={data.examDate} />
+      <KV label="Exam Date" value={formatMDY(data.examDate)} />
       <KV label="Examining Provider" value={data.examiningProvider} />
       <KV label="Exam Result" value={result} />
       <KV label="ICD-10 Diagnosis Code" value={data.icd10} wide />

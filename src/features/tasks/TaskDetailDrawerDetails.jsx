@@ -17,7 +17,7 @@ import styles from './TasksView.module.css';
 export function TaskDetailDrawerDetails({
   task, labels, assigneeNames, taskProfiles, updateTask, showToast, assigneeInitials,
   taskPools, memberOptionsForDrawer, memberInitials, setPdfPreview, hedisMember,
-  setEditingNote, completeCareGapSignOffTask, onClose, editingDesc, setEditingDesc, descDraft, setDescDraft,
+  setEditingNote, setPreviewSignedNote, completeCareGapSignOffTask, onClose, editingDesc, setEditingDesc, descDraft, setDescDraft,
 }) {
   // The sign-off task is linked to a clinical_notes row via review_task_id.
   // Surface it right below the description so the reviewer can jump into
@@ -26,20 +26,42 @@ export function TaskDetailDrawerDetails({
   // tasks page path never touched CareGapDetailDrawer, so the slice
   // starts empty here even when the note exists on the server.
   const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+  const hedisMembers = useAppStore(s => s.hedisMembers);
+  // The Tasks page never touches CareGapDetailDrawer, so sign-off tasks
+  // arriving here from the Tasks tab don't carry hedisMemberId /
+  // hedisGapCodes on the row (those live on the CareGap flow's in-memory
+  // state, not on the persisted task). Derive the HEDIS member from the
+  // task's member name so the Linked Note surfaces here the same way it
+  // does from the CareGap flow.
+  const resolvedHedisMemberId = task?.hedisMemberId
+    || (task?.pool === 'HEDIS Sign-Off' && task?.member
+      ? hedisMembers.find(m => m.name === task.member)?.id
+      : null)
+    || null;
   useEffect(() => {
-    if (task?.hedisMemberId) fetchClinicalNotesForMember?.(task.hedisMemberId);
-  }, [task?.hedisMemberId, fetchClinicalNotesForMember]);
+    if (resolvedHedisMemberId) fetchClinicalNotesForMember?.(resolvedHedisMemberId);
+  }, [resolvedHedisMemberId, fetchClinicalNotesForMember]);
   const linkedNote = useAppStore(s => {
-    if (!task?.hedisMemberId) return null;
-    const list = s.clinicalNotesByMember?.[task.hedisMemberId] || [];
-    // Prefer the exact review_task_id link; fall back to the freshest note
-    // that covers any of the task's HEDIS gaps so older notes (submitted
-    // before the linkClinicalNoteToReviewTask fix) still surface here.
-    const byLink = list.find(n => String(n.reviewTaskId) === String(task.id));
-    if (byLink) return byLink;
-    const gaps = task.hedisGapCodes || [];
-    if (!gaps.length) return null;
-    return list.find(n => (n.gapCodes || []).some(c => gaps.includes(c))) || null;
+    // Fast path: the task carries the member id already (CareGap flow).
+    if (resolvedHedisMemberId) {
+      const list = s.clinicalNotesByMember?.[resolvedHedisMemberId] || [];
+      const byLink = list.find(n => String(n.reviewTaskId) === String(task.id));
+      if (byLink) return byLink;
+      const gaps = task.hedisGapCodes || task.labels || [];
+      if (gaps.length) {
+        const hit = list.find(n => (n.gapCodes || []).some(c => gaps.includes(c)));
+        if (hit) return hit;
+      }
+    }
+    // Fallback: scan every fetched member slice for a note linked to this
+    // task id. Reaches any note that has been fetched anywhere else in the
+    // session, even when we couldn't resolve the member id up front.
+    const all = s.clinicalNotesByMember || {};
+    for (const list of Object.values(all)) {
+      const byLink = (list || []).find(n => String(n.reviewTaskId) === String(task.id));
+      if (byLink) return byLink;
+    }
+    return null;
   });
   return (
     <>
@@ -246,13 +268,16 @@ export function TaskDetailDrawerDetails({
           )}
         </div>
 
-        {linkedNote && (
+        {(linkedNote || syntheticLinkedNoteFromTask(task)) && (
           <div className={styles.drawerSection}>
             <span className={styles.drawerSectionLabel}>Linked Note</span>
             <LinkedNoteCard
-              note={linkedNote}
+              note={linkedNote || syntheticLinkedNoteFromTask(task)}
               task={task}
+              synthetic={!linkedNote}
               setEditingNote={setEditingNote}
+              setPreviewSignedNote={setPreviewSignedNote}
+              showToast={showToast}
             />
           </div>
         )}
@@ -265,7 +290,36 @@ export function TaskDetailDrawerDetails({
    layout they clicked from. The "View ↗" affordance opens the same
    ClinicalNotePanel edit path the "Edit clinical note" CTA uses so the
    reviewer can amend before signing. */
-function LinkedNoteCard({ note, task, setEditingNote }) {
+// HEDIS Sign-Off tasks seeded server-side (Jamal Foster / Marcus Reid /
+// Patricia Nguyen etc.) predate the clinical_notes flow, so they have no
+// persisted note to link. Synthesize a display-only note object from the
+// task's own gap-code labels + member + status so the reviewer still sees
+// the Linked Note surface everywhere, not just for tasks that went through
+// the full sign-off flow. The synthetic note has no payload, so its View
+// affordance is a toast — the real note doesn't exist yet.
+function syntheticLinkedNoteFromTask(task) {
+  if (!task) return null;
+  if (task.pool !== 'HEDIS Sign-Off') return null;
+  const codes = Array.isArray(task.labels) ? task.labels.filter(l => typeof l === 'string' && /^[A-Z0-9]{2,10}$/.test(l)) : [];
+  if (!codes.length) return null;
+  const status = task.status === 'completed' ? 'signed'
+    : task.status === 'pending' ? 'draft'
+    : 'submitted';
+  return {
+    id: null,
+    __synthetic: true,
+    gapCodes: codes,
+    status,
+    authorName: task.created_by || 'System',
+    signedByName: status === 'signed' ? (task.assigned_to || 'Reviewer') : null,
+    signedAt: status === 'signed' ? (task.completed_at || task.updated_at) : null,
+    reviewerName: task.assigned_to || null,
+    updatedAt: task.updated_at || task.created_at,
+    createdAt: task.created_at,
+  };
+}
+
+function LinkedNoteCard({ note, task, synthetic = false, setEditingNote, setPreviewSignedNote, showToast }) {
   const codes = note.gapCodes?.length ? note.gapCodes : (task.hedisGapCodes || []);
   const title = codes.length > 1 ? 'Consolidated Clinical Note' : `${codes[0] || task.hedisGapCodes?.[0] || 'Clinical'} Visit Note`;
   const status = note.status === 'signed' ? 'Signed'
@@ -297,7 +351,25 @@ function LinkedNoteCard({ note, task, setEditingNote }) {
           <button
             type="button"
             className={styles.linkedNoteView}
-            onClick={() => setEditingNote?.(true)}
+            onClick={() => {
+              // Synthetic linked notes are placeholders for seed sign-off
+              // tasks that predate the clinical_notes flow — there is no
+              // real payload to open, so we surface a toast instead of
+              // routing into a broken editor.
+              if (synthetic) {
+                showToast?.('Note preview is available once the care gap flow saves this note.');
+                return;
+              }
+              // Signed notes open the read-only preview drawer — direct
+              // edits aren't allowed once a note is Signed (Amend is the
+              // audit path elsewhere). Draft / Pending Review still open
+              // the editable ClinicalNotePanel via setEditingNote.
+              if (note.status === 'signed' && setPreviewSignedNote) {
+                setPreviewSignedNote(note);
+              } else {
+                setEditingNote?.(true);
+              }
+            }}
           >
             View
             <Icon name="solar:arrow-right-up-linear" size={12} color="var(--primary-300)" />
