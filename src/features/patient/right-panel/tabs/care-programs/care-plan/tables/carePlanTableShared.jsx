@@ -64,7 +64,7 @@ export const withSelectColumn = (columns, bulkMode) =>
   (bulkMode ? [SELECT_COLUMN, ...columns] : columns);
 
 export const GOAL_COLUMNS = [
-  { key: 'priority', label: 'P', width: 32, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
+  { key: 'priority', label: 'P', width: 32, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
   { key: 'title', label: 'Goal Title' },
   { key: 'value', label: 'Current Value', width: 120, thStyle: BORDER_LEFT },
   { key: 'trend', label: 'Trend', width: 80, thStyle: BORDER_LEFT },
@@ -74,7 +74,7 @@ export const GOAL_COLUMNS = [
 ];
 
 export const INTERVENTION_COLUMNS = [
-  { key: 'priority', label: 'P', width: 32, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
+  { key: 'priority', label: 'P', width: 32, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
   { key: 'title', label: 'Name' },
   { key: 'assignee', label: 'Assigned To', width: 130, thStyle: BORDER_LEFT },
   { key: 'adherence', label: 'Adherence', width: 100, thStyle: BORDER_LEFT },
@@ -83,7 +83,7 @@ export const INTERVENTION_COLUMNS = [
 ];
 
 export const BARRIER_COLUMNS = [
-  { key: 'priority', label: 'P', width: 32, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
+  { key: 'priority', label: 'P', width: 32, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
   { key: 'title', label: 'Barrier Title' },
   { key: 'description', label: 'Description', width: 200, thStyle: BORDER_LEFT },
   { key: 'status', label: 'Status', width: 140, thStyle: BORDER_LEFT },
@@ -125,7 +125,7 @@ export function TrendCell({ trend }) {
   return <Badge tone={tone} size="S" icon={icon} />;
 }
 
-export function GbiStatusButton({ value, disabled, onOpen, badgeSize = 'S' }) {
+export function GbiStatusButton({ value, disabled, onOpen, badgeSize = 'M' }) {
   return (
     <button
       type="button"

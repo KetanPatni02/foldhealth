@@ -308,6 +308,7 @@ function mapPatientCarePlanRow(row) {
     conditions: (row.conditions || []).map(label => ({ label })),
     conditionTotal: row.condition_total ?? (row.conditions || []).length,
     createdDate: row.created_at,
+    updatedAt: row.updated_at || null,
     signedBy: row.signed_by || null,
     signedAt: row.signed_at || null,
   };
@@ -2628,6 +2629,26 @@ export const useAppStore = create((set, get) => ({
     const { error } = await supabase.from('patient_care_plan_barriers').delete().eq('id', id);
     if (error) { console.warn('deletePatientCarePlanBarrier:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete barrier'); return; }
     if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'barrier', entityId: id, action: 'deleted', summary: removed.title });
+    get().touchCarePlanModified(patientId, programId);
+  },
+
+  touchCarePlanModified: async (patientId, programId) => {
+    const key = carePlanKey(patientId, programId);
+    const planId = get().patientCarePlans[key]?.plan?.id;
+    if (!planId) return;
+    const ts = new Date().toISOString();
+    const { error } = await supabase.from('patient_care_plans').update({ updated_at: ts }).eq('id', planId);
+    if (error) { console.warn('touchCarePlanModified:', error.message); return; }
+    set(s => {
+      const cur = s.patientCarePlans[key];
+      if (!cur?.plan) return {};
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: { ...cur, plan: { ...cur.plan, updatedAt: ts } },
+        },
+      };
+    });
   },
 
   savePatientCarePlanGoal: async (patientId, program, values, id = null) => {
@@ -2680,6 +2701,7 @@ export const useAppStore = create((set, get) => ({
     const { error } = await supabase.from('patient_care_plan_goals').delete().eq('id', id);
     if (error) { console.warn('deletePatientCarePlanGoal:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete goal'); return; }
     if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'goal', entityId: id, action: 'deleted', summary: removed.title });
+    get().touchCarePlanModified(patientId, programId);
   },
 
   // ── Goal Details: measurements (manual "Last N Values") ──────────────────
@@ -2833,6 +2855,7 @@ export const useAppStore = create((set, get) => ({
     const { error } = await supabase.from('patient_care_plan_interventions').delete().eq('id', id);
     if (error) { console.warn('deletePatientCarePlanIntervention:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete intervention'); return; }
     if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'intervention', entityId: id, action: 'deleted', summary: removed.title });
+    get().touchCarePlanModified(patientId, programId);
   },
 
   // Save the patient's live plan back into the shared library as a reusable
@@ -3056,11 +3079,11 @@ export const useAppStore = create((set, get) => ({
     const name = get().currentUserProfile?.name || null;
     const signedAt = new Date().toISOString();
     const { error } = await supabase.from('patient_care_plans')
-      .update({ signed_by: name, signed_at: signedAt }).eq('id', planId);
+      .update({ signed_by: name, signed_at: signedAt, updated_at: signedAt }).eq('id', planId);
     if (error) { console.warn('signCarePlan:', error.message); get().showToast('Could not sign care plan'); return null; }
     set(s => {
       const c = s.patientCarePlans[key];
-      return c ? { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, plan: { ...c.plan, signedBy: name, signedAt } } } } : {};
+      return c ? { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, plan: { ...c.plan, signedBy: name, signedAt, updatedAt: signedAt } } } } : {};
     });
     get().logCarePlanAudit(patientId, program, {
       entityType: 'plan', action: 'signed',
@@ -3131,6 +3154,7 @@ export const useAppStore = create((set, get) => ({
     // Reload the plan from the DB and audit the restore.
     set(s => ({ patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: false } }));
     await get().fetchPatientCarePlan(patientId, program.id);
+    get().touchCarePlanModified(patientId, program.id);
     get().logCarePlanAudit(patientId, program, { entityType: 'plan', action: 'restored', summary: `Restored v${version.versionNumber}` });
     get().showToast(`Restored version ${version.versionNumber}`);
   },

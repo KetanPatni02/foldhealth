@@ -34,6 +34,7 @@
   padding-right: var(--space-1);
   border-right: 0.5px solid var(--neutral-150);
   text-align: center;
+  vertical-align: middle;
 }
 .titleTd {
   composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
@@ -60,8 +61,13 @@
   vertical-align: middle;
 }
 .actionsTd {
-  composes: actionsCell from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  border-left: 0.5px solid var(--neutral-150);
+  composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  composes: stickyRight from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  width: 40px;
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+  text-align: center;
+  vertical-align: middle;
 }
 
 .titleCell {
@@ -142,9 +148,10 @@
 .statusBtn:disabled { cursor: default; }
 
 .priorityBtn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  vertical-align: middle;
   background: none;
   border: none;
   padding: 0;

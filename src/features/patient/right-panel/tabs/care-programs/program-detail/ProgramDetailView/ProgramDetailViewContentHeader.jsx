@@ -15,6 +15,7 @@ import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevro
 import { todayMMDDYYYY } from '../../../../../../tasks/TasksView.utils';
 import { MED_RECON_MOCK } from '../../../../../data/medReconMock';
 import { CARE_PLAN_MOCK } from '../../../../../data/carePlanMock';
+import { carePlanSignShareEnabled } from '../../care-plan/lib/carePlanSignState';
 import { EMPTY_TASK_FILTERS } from './ProgramDetailView.utils';
 import styles from './ProgramDetailView.module.css';
 
@@ -96,11 +97,20 @@ export function ProgramDetailViewContentHeader({
     return { createdBy, createdDate, versionNumber, usingMock, signedBy };
   }, [liveCarePlan, carePlanVersions]);
 
+  const signShareEnabled = useMemo(
+    () => carePlanSignShareEnabled(liveCarePlan, { usingMock: carePlanMeta.usingMock }),
+    [liveCarePlan, carePlanMeta.usingMock],
+  );
+
   const carePlanMoreItems = useMemo(() => {
     const items = [
       { key: 'versions', icon: 'solar:layers-minimalistic-linear', label: 'Versions' },
       { key: 'history', iconElement: <Icon name="custom:history" size={16} color="var(--neutral-400)" />, label: 'History' },
+      { key: 'preview', icon: 'solar:eye-linear', label: 'Preview' },
     ];
+    if (!carePlanMeta.usingMock) {
+      items.push({ key: 'template', icon: 'solar:bookmark-linear', label: 'Save as Template' });
+    }
     if (!carePlanMeta.usingMock && carePlanMeta.signedBy) {
       items.push({ key: 'note', icon: 'solar:notes-linear', label: 'Add Note' });
     } else if (!carePlanMeta.usingMock) {
@@ -111,7 +121,8 @@ export function ProgramDetailViewContentHeader({
 
   const handleCarePlanMoreSelect = (key) => {
     setCarePlanMoreMenu(null);
-    requestCarePlanPanel(key);
+    if (key === 'preview') requestCarePlanShare('preview');
+    else requestCarePlanPanel(key);
   };
 
   // "Send for Sign Off" → pick an assignee, then file a task against them.
@@ -172,8 +183,8 @@ export function ProgramDetailViewContentHeader({
   if (isBillingStep) return null;
 
   return (
-    <div className={styles.contentHeader}>
-      <div className={styles.contentHeaderRow}>
+    <div className={`${styles.contentHeader} ${isCarePlanStep ? styles.contentHeaderCarePlan : ''}`}>
+      <div className={`${styles.contentHeaderRow} ${isCarePlanStep ? styles.contentHeaderRowCarePlan : ''}`}>
         {assessmentCfg ? (
           <div className={styles.assessmentHeader}>
             <div className={styles.assessmentHeaderText}>
@@ -242,14 +253,15 @@ export function ProgramDetailViewContentHeader({
                 onClick={() => requestCarePlanPanel('history')}
               />
               <CarePlanActionDivider />
-              <ActionButton icon="solar:copy-linear" size="S" tooltip="Copy" onClick={() => showToast?.('Copy — coming soon')} />
-              <CarePlanActionDivider />
-              <BulkSelectToggle size="S" active={carePlanBulkMode} onToggle={toggleCarePlanBulkMode} />
+              <span className={styles.carePlanActionSecondaryGroup}>
+                <BulkSelectToggle size="S" active={carePlanBulkMode} onToggle={toggleCarePlanBulkMode} />
+              </span>
               <CarePlanActionDivider />
               <Button variant="secondary" size="L" leadingIcon="solar:eye-linear" onClick={() => requestCarePlanShare('preview')}>
                 Preview
               </Button>
               <Button
+                className={styles.carePlanBtnSaveTemplate}
                 variant="secondary"
                 size="L"
                 leadingIcon="solar:bookmark-linear"
@@ -258,7 +270,7 @@ export function ProgramDetailViewContentHeader({
               >
                 Save as Template
               </Button>
-              <Button variant="alt" size="L" leadingIcon="solar:pen-2-linear" onClick={() => requestCarePlanShare('share')}>
+              <Button variant="alt" size="L" leadingIcon="solar:pen-2-linear" disabled={!signShareEnabled} onClick={() => requestCarePlanShare('share')}>
                 Sign &amp; Share
               </Button>
               <CarePlanActionDivider />

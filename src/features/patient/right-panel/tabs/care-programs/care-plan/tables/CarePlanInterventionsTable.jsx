@@ -144,7 +144,6 @@ export function CarePlanInterventionsTable({
               <td className={styles.statusTd} onClick={e => e.stopPropagation()}>
                 <GbiStatusButton
                   value={i.status}
-                  badgeSize="M"
                   disabled={!canEdit}
                   onOpen={rect => onStatusMenu({ kind: 'intv', item: i, rect })}
                 />

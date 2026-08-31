@@ -21,6 +21,7 @@ import { CarePlanLinkDrawer } from '../drawers/CarePlanLinkDrawer/CarePlanLinkDr
 import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
 import { InterventionPreviewDrawer } from '../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { deriveGoalTableFields } from '../lib/goalMetrics';
+import { isCarePlanSigned } from '../lib/carePlanSignState';
 import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
@@ -80,6 +81,7 @@ export function CarePlanView({ patientId, program }) {
   const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
   const savePatientCarePlanAsTemplate = useAppStore(s => s.savePatientCarePlanAsTemplate);
   const signCarePlan = useAppStore(s => s.signCarePlan);
+  const touchCarePlanModified = useAppStore(s => s.touchCarePlanModified);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
   const showToast = useAppStore(s => s.showToast);
   const patientName = useAppStore(s => s.patients.find(p => p.id === patientId)?.name);
@@ -218,6 +220,7 @@ export function CarePlanView({ patientId, program }) {
   const templateCount = carePlanTemplates.length;
   const signedBy = live?.plan?.signedBy;
   const signedAt = live?.plan?.signedAt;
+  const showSignedBanner = isCarePlanSigned(live?.plan);
 
   // Bulk selection (#7). Selection is per section, over the visible (filtered)
   // rows; a bulk status change loops the normal save path so each write audits.
@@ -339,8 +342,7 @@ export function CarePlanView({ patientId, program }) {
     const next = (live.plan.conditions || []).filter(c => c.label !== label);
     const { error } = await import('../../../../../../../lib/supabase').then(m => m.supabase.from('patient_care_plans').update({ conditions: next.map(c => c.label), condition_total: live.plan.conditionTotal, updated_at: new Date().toISOString() }).eq('id', live.plan.id).select().single());
     if (!error) {
-      const { fetchPatientCarePlan } = useAppStore.getState();
-      fetchPatientCarePlan(patientId, program.id);
+      await touchCarePlanModified(patientId, program.id);
       showToast(`Removed "${label}"`);
     } else {
       showToast('Could not remove condition');
@@ -372,63 +374,65 @@ export function CarePlanView({ patientId, program }) {
 
   return (
     <div className={styles.container}>
-      {/* Sticky problems / templates bar — Paper BPH-0 */}
-      <div className={styles.problemsBar}>
-        <div className={styles.conditionRow}>
-          <div className={styles.chips}>
-            {visibleConditions.map(c => {
-              const count = conditionCounts.get(c.label) ?? 0;
-              const isAlert = !!(c.primary || c.alert);
-              return (
-                <span
-                  key={c.label}
-                  className={`${styles.chip} ${isAlert ? styles.chipAlert : styles.chipDefault}`}
-                >
-                  {isAlert ? (
-                    <Icon name="solar:danger-circle-linear" size={12} color="var(--status-error)" className={styles.chipAlertIcon} />
-                  ) : null}
-                  <span className={styles.chipLabel}>{c.label}</span>
-                  <span className={styles.chipCount}>{count}</span>
-                  {c.removable ? (
-                    <>
-                      <span className={styles.chipInnerDivider} aria-hidden="true" />
-                      <button type="button" className={styles.chipRemove} onClick={() => handleRemoveCondition(c.label)} aria-label={`Remove ${c.label}`} disabled={!canEdit}>
-                        <Icon name="solar:close-linear" size={16} color="var(--neutral-300)" />
-                      </button>
-                    </>
-                  ) : null}
-                </span>
-              );
-            })}
-            {hiddenConditionCount > 0 ? (
-              <button type="button" className={`${styles.chip} ${styles.chipDefault} ${styles.chipOverflow}`} onClick={handleViewAllConditions}>
-                +{hiddenConditionCount}
+      <div className={styles.stickyTop}>
+        {/* Sticky problems / templates bar — Paper BPH-0 */}
+        <div className={styles.problemsBar}>
+          <div className={styles.conditionRow}>
+            <div className={styles.chips}>
+              {visibleConditions.map(c => {
+                const count = conditionCounts.get(c.label) ?? 0;
+                const isAlert = !!(c.primary || c.alert);
+                return (
+                  <span
+                    key={c.label}
+                    className={`${styles.chip} ${isAlert ? styles.chipAlert : styles.chipDefault}`}
+                  >
+                    {isAlert ? (
+                      <Icon name="solar:danger-circle-linear" size={12} color="var(--status-error)" className={styles.chipAlertIcon} />
+                    ) : null}
+                    <span className={styles.chipLabel}>{c.label}</span>
+                    <span className={styles.chipCount}>{count}</span>
+                    {c.removable ? (
+                      <>
+                        <span className={styles.chipInnerDivider} aria-hidden="true" />
+                        <button type="button" className={styles.chipRemove} onClick={() => handleRemoveCondition(c.label)} aria-label={`Remove ${c.label}`} disabled={!canEdit}>
+                          <Icon name="solar:close-linear" size={16} color="var(--neutral-300)" />
+                        </button>
+                      </>
+                    ) : null}
+                  </span>
+                );
+              })}
+              {hiddenConditionCount > 0 ? (
+                <button type="button" className={`${styles.chip} ${styles.chipDefault} ${styles.chipOverflow}`} onClick={handleViewAllConditions}>
+                  +{hiddenConditionCount}
+                </button>
+              ) : null}
+            </div>
+            <div className={styles.conditionActions}>
+              <button type="button" className={styles.problemsBtn} onClick={handleNewProblems}>
+                <Icon name="solar:add-linear" size={16} color="var(--primary-300)" />
+                Problems
               </button>
-            ) : null}
-          </div>
-          <div className={styles.conditionActions}>
-            <button type="button" className={styles.problemsBtn} onClick={handleNewProblems}>
-              <Icon name="solar:add-linear" size={16} color="var(--primary-300)" />
-              Problems
-            </button>
-            <span className={styles.conditionDivider} aria-hidden="true" />
-            <button type="button" className={styles.templatesBtn} onClick={handleTemplates}>
-              <Icon name="solar:bookmark-linear" size={16} color="var(--neutral-300)" />
-              Templates
-              {templateCount > 0 ? <span className={styles.templateCount}>{templateCount}</span> : null}
-            </button>
+              <span className={styles.conditionDivider} aria-hidden="true" />
+              <button type="button" className={styles.templatesBtn} onClick={handleTemplates}>
+                <Icon name="solar:bookmark-linear" size={16} color="var(--neutral-300)" />
+                Templates
+                {templateCount > 0 ? <span className={styles.templateCount}>{templateCount}</span> : null}
+              </button>
+            </div>
           </div>
         </div>
+
+        {showSignedBanner && (
+          <div className={styles.signedBanner}>
+            <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
+            Signed by {signedBy}{signedAt ? ` on ${new Date(signedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+          </div>
+        )}
       </div>
 
       <div className={styles.contentBody}>
-      {signedBy && (
-        <div className={styles.signedBanner}>
-          <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
-          Signed by {signedBy}{signedAt ? ` on ${new Date(signedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
-        </div>
-      )}
-
       {filtersOpen && (
         <div className={styles.filterBar}>
           <FilterChip label="Status" options={GBI_STATUSES} selected={filters.status} onChange={v => setFilter('status', v)} />
