@@ -3,6 +3,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { generateClinicalNotePdf } from './lib/generateClinicalNotePdf';
 import {
   CURRENT_USER,
+  MEASURE_NAMES,
   defaultGapData,
   isMandatoryComplete,
 } from './ClinicalNotePanel.utils';
@@ -315,6 +316,11 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       pdfDataUrl,
       memberId: member?.id,
       gapCode: singleCode,
+      gapCodes: gapList,
+      // Human-readable HEDIS measure names for the "N Gaps" chip's
+      // tooltip — falls back to the raw code when a measure isn't in
+      // MEASURE_NAMES yet.
+      gapNames: gapList.map(c => MEASURE_NAMES[c] || c),
       title,
       chip,
       status,

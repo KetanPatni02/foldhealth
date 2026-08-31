@@ -100,6 +100,14 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
   useEffect(() => { if (member?.id) fetchClinicalNotesForMember?.(member.id); }, [member?.id, fetchClinicalNotesForMember]);
   const allTasks = useAppStore(s => s.tasks);
+  // Populate the tasks slice on mount so the nested "Preview task" eye
+  // on Pending Review / Sign-off cards can resolve their linked task
+  // (allTasks.find(t => t.id === reviewTask.taskId)). Without this,
+  // `state.tasks` is empty when the user opens the Care Gap drawer
+  // directly (bypassing Home / TasksView) and the eye silently no-ops.
+  // fetchTasks is idempotent (tasksDidFetch guard) so this is cheap.
+  const fetchTasks = useAppStore(s => s.fetchTasks);
+  useEffect(() => { fetchTasks?.(); }, [fetchTasks]);
   // The eye affordance inside the Clinical Notes tab (and Activity Log) can
   // navigate to the Tasks page for a linked sign-off task. When that
   // navigation fires (activePage flips to 'tasks'), close this drawer so
@@ -182,19 +190,41 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     if (dc.noteId) setSelectedNoteId(dc.noteId);
     else if (dc.id) setSelectedNoteId(dc.id);
     else setSelectedNoteId(null);
-    // Signed AND Pending Review both open the read-only summary
-    // (ClinicalNotePreviewBody). The Signed preview surfaces an "Amend"
-    // affordance that flips to the inline single-gap editor; the Pending
-    // Review preview surfaces an "Edit" affordance that flips to the
-    // stacked consolidated editor (leftWorkspace 'clinical-note-
-    // consolidated'). Draft still edits inline directly.
+    // Eye behavior per role/state — same underlying note record for
+    // both users. NEVER creates a duplicate note; permissions are
+    // decided by the current user's relationship to the note.
+    //   • Draft                            → inline editable (author).
+    //   • Signed                           → read-only preview (Amend
+    //                                        flips to editor per audit
+    //                                        rules — existing behavior).
+    //   • Pending Review AND current user
+    //     is the assigned reviewer         → editable consolidated view
+    //                                        directly (no extra Edit
+    //                                        click) — Provider path.
+    //   • Pending Review AND current user
+    //     is anyone else (author / NP)     → read-only preview with
+    //                                        Edit affordance to flip
+    //                                        into the editable
+    //                                        consolidated view — NP
+    //                                        path.
     if (dc.status === 'Draft') {
       setAmendNoteId(dc.noteId || null);
       setLeftWorkspace('clinical-note');
-    } else {
-      setAmendNoteId(null);
-      setLeftWorkspace('clinical-note-preview');
+      return;
     }
+    if (dc.status === 'Pending Review' || dc.status === 'Submitted') {
+      const noteForClick = dc.noteId
+        ? memberNotes.find(n => n.id === dc.noteId)
+        : memberNotes.find(n => (n.gapCodes || []).includes(dc.gapCode));
+      const iAmReviewer = !!noteForClick
+        && !!noteForClick.reviewerName
+        && noteForClick.reviewerName === currentActorName();
+      setAmendNoteId(null);
+      setLeftWorkspace(iAmReviewer ? 'clinical-note-consolidated' : 'clinical-note-preview');
+      return;
+    }
+    setAmendNoteId(null);
+    setLeftWorkspace('clinical-note-preview');
   };
   const [commentText, setCommentText] = useState('');
   const [commentExpanded, setCommentExpanded] = useState(false);
@@ -531,10 +561,31 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 const noteTitle = codes.length > 1
                   ? 'Consolidated Clinical Note'
                   : `${codes[0]} Visit Note`;
-                // Preview mode shows title + "Signed by / Submitted for
-                // Review to / Draft" subtitle stacked. Editable mode keeps a
-                // single-line title.
-                if (!isPreview) return <span className={styles.paneTitle}>{noteTitle}</span>;
+                // Editable mode: gap-specific title (COL Visit Note /
+                // Consolidated Clinical Note) with a small icon+text status
+                // subtitle underneath — same icon vocabulary the HCC
+                // worklist uses (solar:sun-bold for Action Needed / In
+                // Progress). Preview mode keeps its Signed / Submitted /
+                // Draft attribution subtitle instead.
+                if (!isPreview) {
+                  const status = previewNote?.status;
+                  const stat = status === 'signed'
+                    ? { icon: 'solar:check-circle-bold', color: 'var(--status-success)', label: 'Signed' }
+                    : status === 'submitted'
+                      ? { icon: 'solar:clock-circle-bold', color: 'var(--status-warning)', label: 'Pending Review' }
+                      : status === 'draft'
+                        ? { icon: 'solar:file-text-linear', color: 'var(--neutral-300)', label: 'Draft' }
+                        : { icon: 'solar:sun-bold', color: 'var(--status-warning)', label: 'In Progress' };
+                  return (
+                    <div className={styles.paneTitleStack}>
+                      <span className={styles.paneTitle}>{noteTitle}</span>
+                      <span className={styles.paneStatusRow} style={{ color: stat.color }}>
+                        <Icon name={stat.icon} size={12} color={stat.color} />
+                        {stat.label}
+                      </span>
+                    </div>
+                  );
+                }
                 let subtitle = null;
                 if (previewNote?.status === 'signed') {
                   const signer = previewNote.signedByName || previewNote.reviewerName || previewNote.authorName || 'Provider';
@@ -662,6 +713,15 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 />
               </div>
             </div>
+            {/* Consolidated workspace pins its info banner as a sibling of
+                leftPaneBody so it sits directly under the pane header,
+                edge-to-edge, and stays fixed while the body scrolls. */}
+            {leftWorkspace === 'clinical-note-consolidated' && (
+              <div className={styles.clinicalNoteInfoBanner}>
+                <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
+                <span>All signed notes sync to the patient's EHR.</span>
+              </div>
+            )}
             <div className={`${styles.leftPaneBody} ${leftWorkspace === 'clinical-note' ? styles.leftPaneBodyClinicalNote : ''}`}>
               {leftWorkspace === 'schedule' ? (
                 <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
