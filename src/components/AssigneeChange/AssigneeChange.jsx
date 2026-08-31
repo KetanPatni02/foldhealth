@@ -47,6 +47,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   // state. Ignored in `avatarOnly` mode (the avatar IS the affordance there).
   hideAvatar = false,
   leadingIconName = 'solar:user-plus-rounded-linear',
+  nameMuted = false,
   disabled = false,
   // Opt-in for table rows: drop the fixed 140px pill width and fill the
   // parent cell so long names use every pixel the column allocates.
@@ -212,7 +213,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
       )}
       {!avatarOnly && (
         <span className={styles.textBody}>
-          <span className={styles.name} title={name}>{name}</span>
+          <span className={[styles.name, nameMuted ? styles.nameMuted : ''].filter(Boolean).join(' ')} title={name}>{name}</span>
           {showRole && role && <span className={styles.role}>{role}</span>}
         </span>
       )}

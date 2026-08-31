@@ -63,6 +63,20 @@ export function PatientDetailView() {
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
+  const patientsLoading = useAppStore(s => s.patientsLoading);
+  const patientsDidFetch = useAppStore(s => s.patientsDidFetch);
+  const hccMembersLoading = useAppStore(s => s.hccMembersLoading);
+  const hccMembersDidFetch = useAppStore(s => s.hccMembersDidFetch);
+  const awvMembersLoading = useAppStore(s => s.awvMembersLoading);
+  const awvMembersDidFetch = useAppStore(s => s.awvMembersDidFetch);
+  const ccmWorklistLoading = useAppStore(s => s.ccmWorklistLoading);
+  const ccmWorklistDidFetch = useAppStore(s => s.ccmWorklistDidFetch);
+  const snpWorklistLoading = useAppStore(s => s.snpWorklistLoading);
+  const snpWorklistDidFetch = useAppStore(s => s.snpWorklistDidFetch);
+  const hedisLoading = useAppStore(s => s.hedisLoading);
+  const hedisDidFetch = useAppStore(s => s.hedisDidFetch);
+  const allPatientsLoading = useAppStore(s => s.allPatientsLoading);
+  const allPatientsDidFetch = useAppStore(s => s.allPatientsDidFetch);
   // Active profile tab is stored on the store so callers (e.g. the CCM
   // worklist's "View billing" button) can deep-link into a specific tab.
   const activeTab = useAppStore(s => s.patientProfileTab);
@@ -115,11 +129,21 @@ export function PatientDetailView() {
   // doesn't resolve to a patient (e.g. a stale hash from a deleted row, or a
   // worklist row wired to a placeholder id), bounce straight back to the
   // worklist instead of showing an orphan "Patient not found" screen.
-  // Skip while every slice is empty — that means initial load hasn't
-  // finished yet and a deep-link URL is still waiting for its data.
-  const anySliceLoaded = patients.length > 0 || hccMembers.length > 0 || (awvMembers?.length || 0) > 0
-    || (ccmWorklistMembers?.length || 0) > 0 || (snpWorklistMembers?.length || 0) > 0
-    || (hedisMembers?.length || 0) > 0 || (allPatients?.length || 0) > 0;
+  // A slice is still resolving when it's empty and either hasn't been fetched
+  // yet or its fetch is in flight. Wait for every slice before deciding the
+  // patient id is stale — otherwise the first slice to return (often
+  // `patients`) trips the bounce while SNP/HCC rows are still loading.
+  const slicePending = (items, didFetch, loading) =>
+    (items?.length || 0) === 0 && (!didFetch || loading);
+  const patientLookupPending = selectedPatientId && !patient && (
+    slicePending(patients, patientsDidFetch, patientsLoading)
+    || slicePending(hccMembers, hccMembersDidFetch, hccMembersLoading)
+    || slicePending(awvMembers, awvMembersDidFetch, awvMembersLoading)
+    || slicePending(ccmWorklistMembers, ccmWorklistDidFetch, ccmWorklistLoading)
+    || slicePending(snpWorklistMembers, snpWorklistDidFetch, snpWorklistLoading)
+    || slicePending(hedisMembers, hedisDidFetch, hedisLoading)
+    || slicePending(allPatients, allPatientsDidFetch, allPatientsLoading)
+  );
 
   // Cold-refresh into a patient URL (e.g. #/population/toc/patient/10003)
   // arrives with every worklist slice empty because no table has mounted
@@ -140,8 +164,17 @@ export function PatientDetailView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPatientId, patient]);
   useEffect(() => {
-    if (selectedPatientId && !patient && anySliceLoaded) navigateBackToWorklist();
-  }, [selectedPatientId, patient, anySliceLoaded, navigateBackToWorklist]);
+    if (selectedPatientId && !patient && !patientLookupPending) navigateBackToWorklist();
+  }, [selectedPatientId, patient, patientLookupPending, navigateBackToWorklist]);
+
+  // Deep links carry the fold member id; normalize to the store row id once
+  // slices load so downstream fetches (care programs, P360) query correctly.
+  useEffect(() => {
+    if (!patient?.id || !selectedPatientId || patient.id === selectedPatientId) return;
+    if (String(patient.memberId) === String(selectedPatientId)) {
+      useAppStore.setState({ selectedPatientId: patient.id });
+    }
+  }, [patient, selectedPatientId]);
 
   if (!patient) return null;
 

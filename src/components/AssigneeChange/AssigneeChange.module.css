@@ -123,6 +123,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.nameMuted {
+  font-weight: 400;
+  color: var(--neutral-200);
+}
 .role {
   font-size: var(--font-sm);
   color: var(--neutral-300);

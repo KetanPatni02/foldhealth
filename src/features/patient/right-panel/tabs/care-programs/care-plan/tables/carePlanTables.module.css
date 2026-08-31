@@ -37,7 +37,7 @@
 }
 .titleTd {
   composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  min-width: 280px;
+  min-width: 350px;
 }
 .valueTd,
 .trendTd,
@@ -47,6 +47,17 @@
 .adherenceTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
   border-left: 0.5px solid var(--neutral-150);
+}
+.assigneeTd { max-width: 130px; }
+.adherenceTd {
+  text-align: center;
+  vertical-align: middle;
+}
+.adherenceTd > * {
+  margin-inline: auto;
+}
+.statusTd {
+  vertical-align: middle;
 }
 .actionsTd {
   composes: actionsCell from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
@@ -122,6 +133,7 @@
 
 .statusBtn {
   display: inline-flex;
+  width: fit-content;
   background: none;
   border: none;
   padding: 0;
@@ -154,6 +166,42 @@
   background: var(--neutral-50);
   font-size: var(--font-sm);
   color: var(--neutral-300);
+}
+
+/* Intervention table — Figma SNP-Story 8448:480901 */
+.intvRow {
+  min-height: 48px;
+}
+.intvNameHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.intvNameCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  width: 100%;
+  padding-left: var(--space-1);
+}
+.intvRowCheck {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+.intvTitleStack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.intvTitleStack .title {
+  font-weight: 500;
 }
 
 .emptyRow {

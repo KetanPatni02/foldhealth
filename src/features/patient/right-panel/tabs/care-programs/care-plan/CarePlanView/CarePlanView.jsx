@@ -19,6 +19,7 @@ import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlan
 import { CarePlanVersionsDrawer } from '../drawers/CarePlanVersionsDrawer/CarePlanVersionsDrawer';
 import { CarePlanLinkDrawer } from '../drawers/CarePlanLinkDrawer/CarePlanLinkDrawer';
 import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
+import { InterventionPreviewDrawer } from '../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { deriveGoalTableFields } from '../lib/goalMetrics';
 import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
@@ -134,6 +135,7 @@ export function CarePlanView({ patientId, program }) {
   const [priorityMenu, setPriorityMenu] = useState(null); // { kind, item, rect }
   const [addGoalsDrawerOpen, setAddGoalsDrawerOpen] = useState(false);
   const [previewGoal, setPreviewGoal] = useState(null);
+  const [previewIntervention, setPreviewIntervention] = useState(null);
   const [intvDrawer, setIntvDrawer] = useState(null);  // false | { intervention }
   const [barrierDrawer, setBarrierDrawer] = useState(null); // null | { barrier }
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -235,7 +237,6 @@ export function CarePlanView({ patientId, program }) {
     else savePatientCarePlanIntervention(patientId, program, { ...item, priority }, item.id);
   };
 
-  const renameIntervention = (intv, title) => savePatientCarePlanIntervention(patientId, program, { ...intv, title }, intv.id);
   const renameBarrier = (barrier, title) => savePatientCarePlanBarrier(patientId, program, { ...barrier, title }, barrier.id);
 
   const handleAddGoalsFromPicker = async (picked) => {
@@ -501,12 +502,12 @@ export function CarePlanView({ patientId, program }) {
             selectedIds={[...selected.intv]}
             onSelectAll={(checked) => selectAllKind('intv', filteredInterventions, checked)}
             onToggleSelect={(id) => toggleSelect('intv', id)}
+            onOpenIntervention={setPreviewIntervention}
             onPriorityMenu={setPriorityMenu}
             onLinkOwner={setLinkOwner}
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
             onAssigneeChange={handleAssigneeChange}
-            onTitleCommit={renameIntervention}
             linkCount={linkCount}
             platformUsers={platformUsers}
             emptyState={filteredInterventions.length === 0 ? <div className={styles.emptyRow}>No interventions match the filters.</div> : null}
@@ -598,7 +599,7 @@ export function CarePlanView({ patientId, program }) {
             setStatusMenu(null);
             if (k === 'delete') setDeleteTarget({ kind: isGoal ? 'goal' : isBarrier ? 'barrier' : 'intv', id: item.id, name: item.title });
             else if (k === 'rename' && isBarrier) setBarrierDrawer({ barrier: item });
-            else if (k === 'rename' && !isGoal) setIntvDrawer({ intervention: item });
+            else if (k === 'rename' && !isGoal) setPreviewIntervention(item);
             // Goal rename happens inline via EditableTitle; nudge the user there.
             else if (k === 'rename' && isGoal) showToast('Open the goal to review details — use Remove to delete it.');
           }}
@@ -632,6 +633,15 @@ export function CarePlanView({ patientId, program }) {
           patientId={patientId}
           program={program}
           onClose={() => setPreviewGoal(null)}
+        />
+      )}
+
+      {previewIntervention && (
+        <InterventionPreviewDrawer
+          intervention={previewIntervention}
+          patientId={patientId}
+          program={program}
+          onClose={() => setPreviewIntervention(null)}
         />
       )}
 

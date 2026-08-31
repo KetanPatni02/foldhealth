@@ -43,6 +43,7 @@ export function CareProgramsTab() {
 
   const patientId = useAppStore(s => s.selectedPatientId);
   const careProgramsByPatient = useAppStore(s => s.careProgramsByPatient);
+  const careProgramsLoadedFor = useAppStore(s => s.careProgramsLoadedFor);
   const addCareProgram = useAppStore(s => s.addCareProgram);
   const updateCareProgram = useAppStore(s => s.updateCareProgram);
   const showToast = useAppStore(s => s.showToast);
@@ -212,6 +213,11 @@ export function CareProgramsTab() {
         onClose={() => setReportOpen(false)}
       />
     );
+  }
+
+  const programsLoaded = Boolean(patientId && careProgramsLoadedFor[patientId]);
+  if (selectedCareProgramKey && !selectedProgram && !programsLoaded) {
+    return <ProgramDetailSkeleton />;
   }
 
   if (selectedProgram) {

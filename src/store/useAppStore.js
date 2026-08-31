@@ -13,7 +13,7 @@ import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
 // chunk. They're only needed when Supabase returns empty or errors.
-import { updateHash } from '../lib/router';
+import { updateHash, syncFromHash } from '../lib/router';
 import { showBrowserNotification } from '../lib/browserNotifications';
 import { track } from '../lib/tracking';
 import { applyTheme, getResolvedTheme, getStoredTheme, subscribeToSystem, applyNavStyle, getStoredNavStyle, applyContrast, getStoredContrast, applyFontScale, getStoredFontScale } from '../lib/theme';
@@ -342,6 +342,11 @@ function auditForSave(entityType, next, prev) {
   }
   if ((prev.progress ?? 0) !== (next.progress ?? 0)) {
     return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${progressAuditDetail(prev.progress)} → ${progressAuditDetail(next.progress)}` };
+  }
+  if (entityType === 'intervention' && String(prev.adherence ?? '-') !== String(next.adherence ?? '-')) {
+    const from = Number(prev.adherence) || 0;
+    const to = Number(next.adherence) || 0;
+    return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${progressAuditDetail(from)} → ${progressAuditDetail(to)}` };
   }
   if (prev.title !== next.title) {
     return { entityType, entityId: next.id, action: 'updated', summary: next.title, detail: `Renamed from "${prev.title}"` };
@@ -3781,7 +3786,9 @@ export const useAppStore = create((set, get) => ({
 
     // Land the user on the top worklist — but never override a list they've
     // already picked this session.
-    if (!get()._subnavNavigated && merged[0] && get().activeSubnavList !== merged[0]) {
+    const hash = typeof window !== 'undefined' ? (window.location.hash || '') : '';
+    const deepPatientLink = /\/patient\//.test(hash);
+    if (!get()._subnavNavigated && !deepPatientLink && merged[0] && get().activeSubnavList !== merged[0]) {
       get().setActiveSubnavList(merged[0]);
       set({ _subnavNavigated: false }); // programmatic — keep the flag clear
     }
@@ -13320,6 +13327,15 @@ export const useAppStore = create((set, get) => ({
     }
   },
 }));
+
+// Hydrate patient/program/step from the URL before async worklist prefs can
+// auto-land on a different list and before PatientDetailView bounces.
+if (typeof window !== 'undefined') {
+  const bootHash = window.location.hash;
+  if (bootHash && bootHash !== '#/' && bootHash !== '#') {
+    syncFromHash(useAppStore.setState, useAppStore.getState);
+  }
+}
 
 // Dev-only: expose the store on window so the preview harness can read /
 // drive state without spinning up its own module instance. Vite serves the

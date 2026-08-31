@@ -1,6 +1,8 @@
+import { useMemo } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { AssigneeChange } from '../../../../../../../components/AssigneeChange/AssigneeChange';
+import { Badge } from '../../../../../../../components/Badge/Badge';
 import { Checkbox } from '../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
@@ -9,7 +11,6 @@ import {
   LinkChip,
   GoalProgressCell,
   GbiStatusButton,
-  EditableInlineTitle,
 } from './carePlanTableShared';
 import styles from './carePlanTables.module.css';
 
@@ -23,19 +24,57 @@ export function CarePlanInterventionsTable({
   onLinkOwner,
   onStatusMenu,
   onRowMenu,
+  onOpenIntervention,
   onAssigneeChange,
-  onTitleCommit,
   linkCount,
   platformUsers,
   emptyState,
 }) {
+  const columns = useMemo(() => {
+    const allSelected = rows.length > 0 && selectedIds.length === rows.length;
+    const someSelected = selectedIds.length > 0 && !allSelected;
+    return INTERVENTION_COLUMNS.map((col) => {
+      if (col.key === 'title') {
+        return {
+          ...col,
+          thLabel: (
+            <span className={styles.intvNameHeader}>
+              <Checkbox
+                checked={someSelected ? 'indeterminate' : allSelected}
+                onCheckedChange={(v) => onSelectAll?.(!!v)}
+                aria-label="Select all rows"
+                disabled={!canEdit || rows.length === 0}
+              />
+              <span>Name</span>
+            </span>
+          ),
+        };
+      }
+      if (col.key === 'actions') {
+        return {
+          ...col,
+          thLabel: (
+            <ActionButton
+              icon="custom:filter"
+              size="S"
+              tooltip="Table settings"
+              disabled
+              aria-label="Table settings"
+            />
+          ),
+        };
+      }
+      return col;
+    });
+  }, [rows.length, selectedIds.length, onSelectAll, canEdit]);
+
   return (
     <div className={styles.tableWrap}>
       <WorklistShell
         embedded
         header={null}
         hideBulkBar
-        columns={INTERVENTION_COLUMNS}
+        columns={columns}
         rows={rows}
         selectedIds={selectedIds}
         onSelectAll={onSelectAll}
@@ -45,16 +84,12 @@ export function CarePlanInterventionsTable({
           const adherence = Number(i.adherence);
           const showAdherence = Number.isFinite(adherence) && i.adherence !== '-';
           return (
-            <tr key={i.id} className={styles.row}>
-              <td className={styles.checkTd} onClick={e => e.stopPropagation()}>
-                <Checkbox
-                  checked={selectedIds.includes(i.id)}
-                  onCheckedChange={() => onToggleSelect(i.id)}
-                  aria-label={`Select ${i.title}`}
-                  disabled={!canEdit}
-                />
-              </td>
-              <td className={styles.priorityTd}>
+            <tr
+              key={i.id}
+              className={`${styles.row} ${styles.rowClickable} ${styles.intvRow}`}
+              onClick={() => onOpenIntervention(i)}
+            >
+              <td className={styles.priorityTd} onClick={e => e.stopPropagation()}>
                 <button
                   type="button"
                   className={styles.priorityBtn}
@@ -66,33 +101,46 @@ export function CarePlanInterventionsTable({
                 </button>
               </td>
               <td className={styles.titleTd}>
-                <div className={styles.titleCell}>
-                  <span className={styles.rowIcon}><Icon name={i.icon} size={16} color="var(--neutral-400)" /></span>
-                  <span className={`${styles.titleMain} ${styles.titleMainInline}`}>
-                    <EditableInlineTitle
-                      title={i.title}
-                      editable={canEdit}
-                      onCommit={(title) => onTitleCommit(i, title)}
+                <div className={styles.intvNameCell}>
+                  <span className={styles.intvRowCheck} onClick={e => e.stopPropagation()}>
+                    <Checkbox
+                      checked={selectedIds.includes(i.id)}
+                      onCheckedChange={() => onToggleSelect(i.id)}
+                      aria-label={`Select ${i.title}`}
+                      disabled={!canEdit}
                     />
-                    {i.duration && (
-                      <span className={styles.durationChip}>
-                        <Icon name="solar:clock-circle-linear" size={12} color="var(--neutral-300)" />
-                        {i.duration}
-                        <Icon name="solar:refresh-linear" size={12} color="var(--neutral-300)" />
-                      </span>
-                    )}
                   </span>
+                  <span className={styles.rowIcon}>
+                    <Icon name={i.icon} size={16} color="var(--neutral-400)" />
+                  </span>
+                  <div className={styles.intvTitleStack}>
+                    <span className={styles.title}>{i.title}</span>
+                    {i.duration && (
+                      <Badge
+                        tone="grey"
+                        size="S"
+                        label={i.duration}
+                        icon="solar:clock-circle-linear"
+                        trailingIcon="solar:refresh-linear"
+                      />
+                    )}
+                  </div>
                   <span
                     className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
-                    onClick={() => canEdit && onLinkOwner({ kind: 'intervention', item: i })}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (canEdit) onLinkOwner({ kind: 'intervention', item: i });
+                    }}
                   >
                     <LinkChip count={linkCount(i.id)} />
                   </span>
                 </div>
               </td>
-              <td className={styles.assigneeTd}>
+              <td className={styles.assigneeTd} onClick={e => e.stopPropagation()}>
                 <AssigneeChange
                   size="S"
+                  fillContainer
+                  nameMuted
                   name={i.assignee.name}
                   initials={i.assignee.initials}
                   showRole={false}
@@ -104,17 +152,18 @@ export function CarePlanInterventionsTable({
                   disabled={!canEdit}
                 />
               </td>
-              <td className={styles.adherenceTd}>
+              <td className={styles.adherenceTd} onClick={e => e.stopPropagation()}>
                 {showAdherence ? <GoalProgressCell progress={adherence} /> : <span className={styles.trendDash}>—</span>}
               </td>
-              <td className={styles.statusTd}>
+              <td className={styles.statusTd} onClick={e => e.stopPropagation()}>
                 <GbiStatusButton
                   value={i.status}
+                  badgeSize="M"
                   disabled={!canEdit}
                   onOpen={rect => onStatusMenu({ kind: 'intv', item: i, rect })}
                 />
               </td>
-              <td className={styles.actionsTd}>
+              <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
                 <ActionButton
                   icon="solar:menu-dots-linear"
                   size="S"

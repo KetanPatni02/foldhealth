@@ -66,10 +66,9 @@ export const GOAL_COLUMNS = [
 ];
 
 export const INTERVENTION_COLUMNS = [
-  { key: 'select', label: '', showCheckbox: true, width: 28 },
   { key: 'priority', label: 'P', width: 32, thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
   { key: 'title', label: 'Name' },
-  { key: 'assignee', label: 'Assigned To', width: 180, thStyle: BORDER_LEFT },
+  { key: 'assignee', label: 'Assigned To', width: 130, thStyle: BORDER_LEFT },
   { key: 'adherence', label: 'Adherence', width: 100, thStyle: BORDER_LEFT },
   { key: 'status', label: 'Status', width: 140, thStyle: BORDER_LEFT },
   { key: 'actions', label: '', width: 40, sticky: 'right', thStyle: BORDER_LEFT },
@@ -109,7 +108,7 @@ export function TrendCell({ trend }) {
   return <Badge tone={tone} size="S" icon={icon} />;
 }
 
-export function GbiStatusButton({ value, disabled, onOpen }) {
+export function GbiStatusButton({ value, disabled, onOpen, badgeSize = 'S' }) {
   return (
     <button
       type="button"
@@ -119,7 +118,7 @@ export function GbiStatusButton({ value, disabled, onOpen }) {
     >
       <Badge
         tone={GBI_STATUS_TONE[value] || 'grey'}
-        size="S"
+        size={badgeSize}
         label={value}
         chevron={!disabled}
       />

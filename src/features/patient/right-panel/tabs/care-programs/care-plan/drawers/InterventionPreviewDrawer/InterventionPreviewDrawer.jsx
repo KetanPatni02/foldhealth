@@ -14,8 +14,7 @@ import { TabStrip } from '../../../../../../../../components/TabStrip/TabStrip';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { AddInterventionDrawer } from '../AddInterventionDrawer/AddInterventionDrawer';
-import styles from './GoalPreviewDrawer.module.css';
+import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 const ACTIVITY_TABS = [
@@ -26,8 +25,8 @@ const ACTIVITY_FILTERS = [
   { key: 'all', label: 'All activity' },
   { key: 'note', label: 'Notes' },
   { key: 'status_changed', label: 'Status' },
-  { key: 'progress_changed', label: 'Progress' },
-  { key: 'value_changed', label: 'Values' },
+  { key: 'progress_changed', label: 'Adherence' },
+  { key: 'updated', label: 'Updates' },
 ];
 const STATUS_TONE = {
   'Not Started': 'grey',
@@ -36,6 +35,11 @@ const STATUS_TONE = {
   Met: 'success',
   'Not Met': 'error',
 };
+
+function adherenceNum(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && value !== '-' ? n : 0;
+}
 
 function progressBand(pct) {
   const n = Number(pct) || 0;
@@ -51,21 +55,6 @@ function progressTone(label) {
   if (/Moderate/.test(label)) return 'warning';
   if (/High|Complete/.test(label)) return 'success';
   return 'grey';
-}
-
-function relativeLabel(iso) {
-  if (!iso) return '';
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return '';
-  const mins = Math.max(0, Math.round((Date.now() - then) / 60000));
-  if (mins < 60) return `${mins || 1}m`;
-  const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.round(hours / 24);
-  if (days < 30) return `${days}d`;
-  const months = Math.round(days / 30);
-  if (months < 12) return `${months}mo`;
-  return `${Math.round(months / 12)}y`;
 }
 
 function fmtDate(iso) {
@@ -84,6 +73,11 @@ function fmtStamp(iso) {
   return `${date} ${time}`;
 }
 
+function formatKind(kind) {
+  if (!kind) return '';
+  return kind.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 const initialsOf = (name) => (name || '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
 function splitArrow(detail) {
@@ -96,70 +90,23 @@ function mapAuditEntry(e) {
   const [from, to] = splitArrow(e.detail);
   const base = { id: e.id, actor: e.actor || '', at: e.createdAt, createdAt: e.createdAt, action: e.action };
   if (e.action === 'note') return { ...base, verb: 'added a', field: 'Note', comment: e.detail };
-  if (e.action === 'created') return { ...base, verb: 'added a', field: 'Goal' };
-  if (e.action === 'deleted') return { ...base, verb: 'removed a', field: 'Goal' };
+  if (e.action === 'created') return { ...base, verb: 'added an', field: 'Intervention' };
+  if (e.action === 'deleted') return { ...base, verb: 'removed an', field: 'Intervention' };
   if (e.action === 'status_changed') return { ...base, verb: 'changed the', field: 'Status', from, to, fromTone: STATUS_TONE[from] || 'grey', toTone: STATUS_TONE[to] || 'grey' };
-  if (e.action === 'progress_changed') return { ...base, verb: 'changed the', field: 'Progress', from, to, fromTone: progressTone(from), toTone: progressTone(to) };
-  if (e.action === 'value_changed') {
-    if (from && to) return { ...base, verb: 'changed the', field: 'Value', from, to, fromTone: 'grey', toTone: 'grey' };
-    return { ...base, verb: 'added a', field: 'Value', comment: e.detail };
-  }
-  return { ...base, verb: 'updated', field: e.summary || 'Goal' };
+  if (e.action === 'progress_changed') return { ...base, verb: 'changed the', field: 'Adherence', from, to, fromTone: progressTone(from), toTone: progressTone(to) };
+  return { ...base, verb: 'updated', field: e.summary || 'Intervention' };
 }
 
-function sparkNum(v) {
-  const m = String(v).match(/(\d+(?:\.\d+)?)/);
-  return m ? parseFloat(m[1]) : NaN;
-}
-
-function Sparkline({ values }) {
-  const nums = values.map(sparkNum).filter(n => !Number.isNaN(n));
-  if (nums.length < 2) return <span className={styles.sparkEmpty}>—</span>;
-  const min = Math.min(...nums);
-  const max = Math.max(...nums);
-  const span = max - min || 1;
-  const w = 85;
-  const h = 47;
-  const padX = 8;
-  const padY = 6;
-  const step = nums.length > 1 ? (w - padX * 2) / (nums.length - 1) : 0;
-  const pts = nums.map((n, i) => ({
-    x: padX + i * step,
-    y: h - padY - ((n - min) / span) * (h - padY * 2),
-  }));
-  return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className={styles.spark} aria-hidden="true">
-      {pts.map((p, i) => {
-        const last = i === pts.length - 1;
-        const stroke = last ? 'var(--accent-blue)' : 'var(--neutral-150)';
-        return (
-          <g key={i}>
-            <line x1={p.x} y1={h - padY} x2={p.x} y2={p.y} stroke={stroke} strokeWidth="1" strokeLinecap="round" />
-            <circle cx={p.x} cy={p.y} r={last ? 2.5 : 2} fill={last ? 'var(--accent-blue)' : 'var(--neutral-200)'} />
-          </g>
-        );
-      })}
-    </svg>
-  );
-}
-
-function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit, muted }) {
+function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit }) {
   return (
     <div className={styles.accHead}>
       <button type="button" className={styles.accToggle} onClick={onToggle} aria-expanded={open}>
-        {!muted && (
-          <span className={`${styles.accChevron} ${open ? styles.accChevronOpen : ''}`}>
-            <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-          </span>
-        )}
-        <span className={muted ? styles.accTitleMuted : styles.accTitle}>{title}</span>
-        {muted && (
-          <span className={`${styles.accChevronAfter} ${open ? styles.accChevronOpen : ''}`}>
-            <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-300)" />
-          </span>
-        )}
+        <span className={`${styles.accChevron} ${open ? styles.accChevronOpen : ''}`}>
+          <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
+        </span>
+        <span className={styles.accTitle}>{title}</span>
       </button>
-      {canEdit && (
+      {canEdit && onAdd && (
         <ActionButton icon="solar:add-linear" size="S" tooltip={addTooltip} onClick={onAdd} />
       )}
     </div>
@@ -167,11 +114,10 @@ function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit, mute
 }
 
 /**
- * Goal Details — Figma SNP-Story 2632:81504.
- * Every edit (status, progress, readings, automations, notes, interventions,
- * barriers) writes through the care-plan store into Supabase.
+ * Intervention details — Paper 35-0. Mirrors Goal Details layout with
+ * adherence, linked goals, automations, notes, and activity feed.
  */
-export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
+export function InterventionPreviewDrawer({ intervention, patientId, program, onClose }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
@@ -180,39 +126,29 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
       || (s.allPatients || []).find(x => x.id === patientId);
     return p?.lastVisit || p?.last_visit || null;
   });
-  const currentUserName = useAppStore(s => s.currentUserProfile?.name);
-  const savePatientCarePlanGoal = useAppStore(s => s.savePatientCarePlanGoal);
-  const deletePatientCarePlanGoal = useAppStore(s => s.deletePatientCarePlanGoal);
-  const saveGoalMeasurement = useAppStore(s => s.saveGoalMeasurement);
-  const deleteGoalMeasurement = useAppStore(s => s.deleteGoalMeasurement);
+  const savePatientCarePlanIntervention = useAppStore(s => s.savePatientCarePlanIntervention);
+  const deletePatientCarePlanIntervention = useAppStore(s => s.deletePatientCarePlanIntervention);
   const saveCarePlanAutomation = useAppStore(s => s.saveCarePlanAutomation);
   const deleteCarePlanAutomation = useAppStore(s => s.deleteCarePlanAutomation);
-  const savePatientCarePlanIntervention = useAppStore(s => s.savePatientCarePlanIntervention);
-  const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
   const updateCarePlanNote = useAppStore(s => s.updateCarePlanNote);
   const deleteCarePlanNote = useAppStore(s => s.deleteCarePlanNote);
   const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
 
-  const live = (slice?.goals || []).find(g => g.id === goal?.id) || goal;
-  const interventions = useMemo(() => (slice?.interventions || []).filter(i => i.goalId === live?.id), [slice, live]);
-  const barriers = useMemo(() => (slice?.barriers || []).filter(b => b.goalId === live?.id), [slice, live]);
-  const measurements = useMemo(
-    () => (slice?.measurements || []).filter(m => m.goalId === live?.id).slice().sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt)),
+  const live = (slice?.interventions || []).find(i => i.id === intervention?.id) || intervention;
+  const linkedGoals = useMemo(
+    () => (slice?.goals || []).filter(g => g.id === live?.goalId),
     [slice, live],
   );
-  const automations = useMemo(() => (slice?.automations || []).filter(a => !a.goalId || a.goalId === live?.id), [slice, live]);
+  const automations = useMemo(
+    () => (slice?.automations || []).filter(a => !live?.goalId || a.goalId === live.goalId),
+    [slice, live],
+  );
 
-  const [pct, setPct] = useState(Number(live?.progress) || 0);
-  const [open, setOpen] = useState({ trends: true, interventions: false, barriers: false, automations: false });
-  const [addingReading, setAddingReading] = useState(false);
-  const [readingValue, setReadingValue] = useState('');
-  const [readingFavorable, setReadingFavorable] = useState(true);
+  const [pct, setPct] = useState(adherenceNum(live?.adherence));
+  const [open, setOpen] = useState({ goals: false, automations: false });
   const [addingAutomation, setAddingAutomation] = useState(false);
   const [automationTitle, setAutomationTitle] = useState('');
-  const [addingBarrier, setAddingBarrier] = useState(false);
-  const [barrierTitle, setBarrierTitle] = useState('');
-  const [intvOpen, setIntvOpen] = useState(false);
   const [note, setNote] = useState('');
   const [notePlain, setNotePlain] = useState('');
   const [activityTab, setActivityTab] = useState('all');
@@ -227,7 +163,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
   const moreBtnRef = useRef(null);
   const filterBtnRef = useRef(null);
 
-  useEffect(() => { setPct(Number(live?.progress) || 0); }, [live?.id, live?.progress]);
+  useEffect(() => { setPct(adherenceNum(live?.adherence)); }, [live?.id, live?.adherence]);
   useEffect(() => { if (patientId && program) fetchCarePlanAudit(patientId, program.id); }, [patientId, program, fetchCarePlanAudit]);
 
   const activity = useMemo(() => {
@@ -251,69 +187,57 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
   if (!live) return null;
 
   const canEdit = !!(patientId && program);
-  const unit = live.customUnit || measurements[0]?.unit || '';
-  const youSuffix = (name) => (name && currentUserName && name === currentUserName ? ` by ${name} (You)` : name ? ` by ${name}` : '');
-
+  const kindLabel = formatKind(live.kind);
   const toggle = (k) => setOpen(s => ({ ...s, [k]: !s[k] }));
   const expandAnd = (k, fn) => { setOpen(s => ({ ...s, [k]: true })); fn(); };
 
-  const commitProgress = (v) => {
+  const commitAdherence = (v) => {
     const next = v[0];
-    if (next === (live.progress ?? 0)) return;
-    savePatientCarePlanGoal(patientId, program, { ...live, progress: next }, live.id);
+    if (next === adherenceNum(live.adherence)) return;
+    savePatientCarePlanIntervention(patientId, program, { ...live, adherence: String(next) }, live.id);
   };
 
   const changeStatus = (status) => {
     if (!canEdit || status === live.status) return;
-    savePatientCarePlanGoal(patientId, program, { ...live, status }, live.id);
+    savePatientCarePlanIntervention(patientId, program, { ...live, status }, live.id);
   };
 
   const commitTitle = () => {
     const next = titleDraft.trim();
     setEditingTitle(false);
     if (!next || next === live.title) return;
-    savePatientCarePlanGoal(patientId, program, { ...live, title: next }, live.id);
-  };
-
-  const submitReading = async () => {
-    if (!readingValue.trim()) return;
-    await saveGoalMeasurement(patientId, program.id, live.id, { value: readingValue.trim(), unit, favorable: readingFavorable });
-    setReadingValue(''); setReadingFavorable(true); setAddingReading(false);
+    savePatientCarePlanIntervention(patientId, program, { ...live, title: next }, live.id);
   };
 
   const submitAutomation = async () => {
-    if (!automationTitle.trim()) return;
-    await saveCarePlanAutomation(patientId, program, live.id, { title: automationTitle.trim() });
-    setAutomationTitle(''); setAddingAutomation(false);
-  };
-
-  const submitBarrier = async () => {
-    if (!barrierTitle.trim()) return;
-    await savePatientCarePlanBarrier(patientId, program, { title: barrierTitle.trim(), goalId: live.id, status: 'Not Started', priority: live.priority || 'medium' });
-    setBarrierTitle(''); setAddingBarrier(false);
+    if (!automationTitle.trim() || !live.goalId) return;
+    await saveCarePlanAutomation(patientId, program, live.goalId, { title: automationTitle.trim() });
+    setAutomationTitle('');
+    setAddingAutomation(false);
   };
 
   const submitNote = async () => {
     const body = (notePlain || note).replace(/<[^>]+>/g, '').trim();
     if (!body) return;
-    await addCarePlanNote(patientId, program, body, { entityType: 'goal', entityId: live.id, summary: `Note on ${live.title}` });
+    await addCarePlanNote(patientId, program, body, { entityType: 'intervention', entityId: live.id, summary: `Note on ${live.title}` });
     setNote('');
     setNotePlain('');
   };
 
   const programBadges = [program?.code].filter(Boolean);
-  const conditionBadges = (live.conditions?.length
-    ? live.conditions
+  const linkedGoal = linkedGoals[0];
+  const conditionBadges = (linkedGoal?.conditions?.length
+    ? linkedGoal.conditions
     : (slice?.plan?.conditions || []).map(c => (typeof c === 'string' ? c : c.label)).filter(Boolean)
   ).slice(0, 4);
 
   const metaParts = [
     live.createdAt ? `Start Date : ${fmtDate(live.createdAt)}` : null,
-    live.updatedAt ? `Last Updated : ${fmtDate(live.updatedAt)}${youSuffix(live.updatedBy)}` : null,
+    live.updatedAt ? `Last Updated : ${fmtDate(live.updatedAt)}` : null,
   ].filter(Boolean);
 
   return (
-    <Drawer title="Goal Details" onClose={onClose} bodyClassName={styles.drawerPad}>
+    <Drawer title="Intervention" onClose={onClose} bodyClassName={styles.drawerPad}>
       <div className={styles.body}>
         <div className={styles.statusBar}>
           <Select
@@ -329,7 +253,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
             <ActionButton
               icon="solar:pen-linear"
               size="L"
-              tooltip="Edit Goal"
+              tooltip="Edit Intervention"
               disabled={!canEdit}
               onClick={() => { setTitleDraft(live.title); setEditingTitle(true); }}
             />
@@ -346,6 +270,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
         </div>
 
         <div className={styles.hero}>
+          {kindLabel && <Badge tone="grey" label={kindLabel} />}
           <div className={styles.titleRow}>
             <PriorityIcon priority={live.priority} size={16} />
             {editingTitle ? (
@@ -355,13 +280,12 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
                 onChange={e => setTitleDraft(e.target.value)}
                 onBlur={commitTitle}
                 onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
-                aria-label="Goal title"
+                aria-label="Intervention title"
               />
             ) : (
               <span className={styles.title}>{live.title}</span>
             )}
           </div>
-          {live.subtitle && <span className={styles.subtitle}>{live.subtitle}</span>}
           {metaParts.length > 0 && <span className={styles.meta}>{metaParts.join(' • ')}</span>}
           {(programBadges.length > 0 || conditionBadges.length > 0) && (
             <div className={styles.badges}>
@@ -370,10 +294,15 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
               {conditionBadges.map(b => <Badge key={b} tone="grey" label={b} />)}
             </div>
           )}
+          {live.duration && (
+            <div className={styles.badges}>
+              <Badge tone="grey" label={live.duration} icon="solar:clock-circle-linear" />
+            </div>
+          )}
         </div>
 
         <section className={styles.section}>
-          <span className={styles.progressLabel}>Progress</span>
+          <span className={styles.progressLabel}>Adherence</span>
           <div className={styles.progressCard}>
             <div className={styles.progressWrap}>
               <div className={styles.progressBubble} style={{ left: `${pct}%` }}>
@@ -387,146 +316,37 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
                 step={1}
                 disabled={!canEdit}
                 onValueChange={v => setPct(v[0])}
-                onValueCommit={commitProgress}
-                aria-label="Goal progress"
+                onValueCommit={commitAdherence}
+                aria-label="Intervention adherence"
               />
             </div>
           </div>
         </section>
 
-        <section className={styles.section}>
+        <section className={`${styles.accSection} ${open.goals ? styles.accSectionOpen : ''}`}>
           <AccordionHead
-            title="Last Trends"
-            open={open.trends}
-            onToggle={() => toggle('trends')}
-            canEdit={canEdit}
-            muted
-            addTooltip="Add reading"
-            onAdd={() => expandAnd('trends', () => setAddingReading(v => !v))}
+            title="Goals"
+            open={open.goals}
+            onToggle={() => toggle('goals')}
+            canEdit={false}
           />
-          {open.trends && (
-            <>
-              {addingReading && (
-                <div className={styles.addRow}>
-                  <Input
-                    placeholder={unit ? `Value (${unit})` : 'Value'}
-                    value={readingValue}
-                    onChange={e => setReadingValue(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') submitReading(); }}
-                    aria-label="Reading value"
-                  />
-                  <button
-                    type="button"
-                    className={`${styles.favorableToggle} ${readingFavorable ? styles.favorableOn : styles.favorableOff}`}
-                    onClick={() => setReadingFavorable(v => !v)}
-                  >
-                    {readingFavorable ? 'In target' : 'Out of target'}
-                  </button>
-                  <Button variant="primary" size="S" onClick={submitReading} disabled={!readingValue.trim()}>Save</Button>
-                </div>
-              )}
-              {measurements.length === 0 ? (
-                <div className={styles.emptyCard}>No readings recorded yet.</div>
-              ) : (
-                <div className={styles.trendsCard}>
-                  <div className={styles.trendsHead}>
-                    <span>Last {measurements.length} Values{unit ? ` (${unit})` : ''}</span>
-                    <span className={styles.trendsHeadRight}>Trend</span>
-                  </div>
-                  <div className={styles.trendsBody}>
-                    <div className={styles.trendsValues}>
-                      {measurements.map(m => (
-                        <div key={m.id} className={styles.valueCol}>
-                          <span className={`${styles.value} ${m.favorable ? styles.valueGood : styles.valueBad}`}>{m.value}</span>
-                          <span className={styles.valueAge}>{relativeLabel(m.takenAt)}</span>
-                          {canEdit && (
-                            <button type="button" className={styles.valueRemove} onClick={() => deleteGoalMeasurement(patientId, program.id, m.id)} aria-label="Remove reading">
-                              <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                    <div className={styles.trendsSpark}>
-                      <Sparkline values={measurements.map(m => m.value)} />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </section>
-
-        <section className={`${styles.accSection} ${open.interventions ? styles.accSectionOpen : ''}`}>
-          <AccordionHead
-            title="Interventions"
-            open={open.interventions}
-            onToggle={() => toggle('interventions')}
-            canEdit={canEdit}
-            addTooltip="Add Intervention"
-            onAdd={() => expandAnd('interventions', () => setIntvOpen(true))}
-          />
-          {open.interventions && (
-            interventions.length === 0 ? (
-              <div className={styles.emptyCard}>No interventions linked yet.</div>
+          {open.goals && (
+            linkedGoals.length === 0 ? (
+              <div className={styles.emptyCard}>No goals linked yet.</div>
             ) : (
               <div className={styles.linkedList}>
-                {interventions.map(i => (
-                  <div key={i.id} className={styles.linkedRow}>
-                    <span className={styles.linkedIcon}><Icon name={i.icon || 'solar:clipboard-list-linear'} size={16} color="var(--neutral-400)" /></span>
+                {linkedGoals.map(g => (
+                  <div key={g.id} className={styles.linkedRow}>
+                    <span className={styles.linkedIcon}><Icon name={g.icon || 'solar:flag-linear'} size={16} color="var(--neutral-400)" /></span>
                     <span className={styles.linkedText}>
-                      <span className={styles.linkedTitle}>{i.title}</span>
-                      {i.status && <span className={styles.linkedMeta}>{i.status}</span>}
+                      <span className={styles.linkedTitle}>{g.title}</span>
+                      {g.subtitle && <span className={styles.linkedMeta}>{g.subtitle}</span>}
                     </span>
-                    {i.assignee?.name && i.assignee.name !== 'Unassigned'
-                      ? <Avatar type="initial" variant="staff" size="S" initials={initialsOf(i.assignee.name)} />
-                      : <Badge tone="grey" label="Unassigned" />}
+                    {g.status && <Badge tone={STATUS_TONE[g.status] || 'grey'} size="S" label={g.status} />}
                   </div>
                 ))}
               </div>
             )
-          )}
-        </section>
-
-        <section className={`${styles.accSection} ${open.barriers ? styles.accSectionOpen : ''}`}>
-          <AccordionHead
-            title="Barriers"
-            open={open.barriers}
-            onToggle={() => toggle('barriers')}
-            canEdit={canEdit}
-            addTooltip="Add Barriers"
-            onAdd={() => expandAnd('barriers', () => setAddingBarrier(v => !v))}
-          />
-          {open.barriers && (
-            <>
-              {addingBarrier && (
-                <div className={styles.addRow}>
-                  <Input
-                    placeholder="Barrier title"
-                    value={barrierTitle}
-                    onChange={e => setBarrierTitle(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') submitBarrier(); }}
-                    aria-label="Barrier title"
-                  />
-                  <Button variant="primary" size="S" onClick={submitBarrier} disabled={!barrierTitle.trim()}>Save</Button>
-                </div>
-              )}
-              {barriers.length === 0 ? (
-                <div className={styles.emptyCard}>No barriers linked yet.</div>
-              ) : (
-                <div className={styles.linkedList}>
-                  {barriers.map(b => (
-                    <div key={b.id} className={styles.linkedRow}>
-                      <span className={styles.linkedIcon}><Icon name="solar:shield-warning-linear" size={16} color="var(--neutral-400)" /></span>
-                      <span className={styles.linkedText}>
-                        <span className={styles.linkedTitle}>{b.title}</span>
-                        {b.status && <span className={styles.linkedMeta}>{b.status}</span>}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
           )}
         </section>
 
@@ -535,7 +355,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
             title="Automations"
             open={open.automations}
             onToggle={() => toggle('automations')}
-            canEdit={canEdit}
+            canEdit={canEdit && !!live.goalId}
             addTooltip="Add Automations"
             onAdd={() => expandAnd('automations', () => setAddingAutomation(v => !v))}
           />
@@ -544,7 +364,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
               {addingAutomation && (
                 <div className={styles.addRow}>
                   <Input
-                    placeholder="Automation (e.g. Notify care team on 5% deviation)"
+                    placeholder="Automation (e.g. Notify care team on missed task)"
                     value={automationTitle}
                     onChange={e => setAutomationTitle(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') submitAutomation(); }}
@@ -683,7 +503,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
         <MenuPopover
           anchorRect={moreMenu}
           width={160}
-          ariaLabel="Goal actions"
+          ariaLabel="Intervention actions"
           items={[
             { key: 'rename', icon: 'solar:pen-linear', label: 'Rename', disabled: !canEdit },
             { key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Remove', danger: true, disabled: !canEdit },
@@ -691,7 +511,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
           onSelect={(k) => {
             setMoreMenu(null);
             if (k === 'rename') { setTitleDraft(live.title); setEditingTitle(true); }
-            if (k === 'delete') setConfirm({ kind: 'goal' });
+            if (k === 'delete') setConfirm({ kind: 'intervention' });
           }}
           onClose={() => setMoreMenu(null)}
         />
@@ -708,17 +528,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
         />
       )}
 
-      {intvOpen && (
-        <AddInterventionDrawer
-          onClose={() => setIntvOpen(false)}
-          onSave={async (values) => {
-            await savePatientCarePlanIntervention(patientId, program, { ...values, goalId: live.id });
-            setIntvOpen(false);
-          }}
-        />
-      )}
-
-      {confirm?.kind === 'goal' && (
+      {confirm?.kind === 'intervention' && (
         <ConfirmDialog
           variant="error"
           title={`Remove "${live.title}"?`}
@@ -726,7 +536,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
           confirmLabel="Remove"
           onCancel={() => setConfirm(null)}
           onConfirm={async () => {
-            await deletePatientCarePlanGoal(patientId, program.id, live.id);
+            await deletePatientCarePlanIntervention(patientId, program.id, live.id);
             setConfirm(null);
             onClose?.();
           }}
@@ -737,7 +547,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
         <ConfirmDialog
           variant="error"
           title="Delete this note?"
-          description="The note will be removed from this goal's activity."
+          description="The note will be removed from this intervention's activity."
           confirmLabel="Delete"
           onCancel={() => setConfirm(null)}
           onConfirm={async () => {
