@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
+import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
 import { Switch } from '../../components/Switch/Switch';
@@ -9,7 +10,7 @@ import { DatePicker } from '../../components/DatePicker/DatePicker';
 import { RadioButton } from '../../components/RadioButton/RadioButton';
 import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
-import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
+import { Avatar } from '../../components/Avatar/Avatar';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import {
   GENDER_LABEL,
@@ -54,7 +55,6 @@ export function HeaderActions({
       >
         Save as Draft
       </Button>
-      <span className={styles.headerDivider} aria-hidden />
       <Button
         variant="primary"
         size="L"
@@ -74,6 +74,61 @@ export function TitleBlock({ title, statusLabel = 'In Progress' }) {
     <span className={styles.titleBlock}>
       <span className={styles.titleText}>{title}</span>
       <Badge tone="warning" size="S" dot label={statusLabel} />
+    </span>
+  );
+}
+
+/* MultiUploadDropField — thin wrapper around UploadDropField that renders
+   one completed-file card per uploaded document + one live Dropzone at
+   the bottom for the next file. Each slot is its own UploadDropField
+   instance (fresh `key` so its internal state is scoped to that slot).
+   On the first successful upload we push another empty slot so the drop
+   area is always available. Clear a slot from its own trash icon —
+   UploadDropField already handles that. */
+function MultiUploadDropField({ onFile }) {
+  const [slots, setSlots] = useState([{ id: 0, hasFile: false }]);
+  const nextIdRef = useRef(1);
+  const handleChange = (slotId) => (file) => {
+    setSlots((prev) => {
+      const idx = prev.findIndex((s) => s.id === slotId);
+      if (idx < 0) return prev;
+      const willHaveFile = !!file;
+      // No-op if the slot's has-file flag isn't changing (the shared
+      // component fires onChange(null) mid-upload too).
+      if (prev[idx].hasFile === willHaveFile) return prev;
+      const next = prev.map((s, i) => (i === idx ? { ...s, hasFile: willHaveFile } : s));
+      // When the LAST slot receives a file, append a fresh empty slot so
+      // the dropzone stays reachable for the next document.
+      if (willHaveFile && idx === prev.length - 1) {
+        next.push({ id: nextIdRef.current++, hasFile: false });
+      }
+      return next;
+    });
+    if (file) onFile?.(file);
+  };
+  return (
+    <div className={styles.multiUpload}>
+      {slots.map((slot) => (
+        <UploadDropField key={slot.id} onChange={handleChange(slot.id)} />
+      ))}
+    </div>
+  );
+}
+
+/* AssigneeDisplay — read-only Avatar + full name used inside the
+   ClinicalNotePanel's LHS Visit Notes table and the RHS active-gap
+   header. Assignee changes on the clinical note itself aren't wired,
+   so this replaces the interactive AssigneeChange chip: no hover, no
+   dropdown chevron, name shown in full (no ellipsis). */
+function AssigneeDisplay({ name }) {
+  if (!name) {
+    return <span className={styles.assigneeName}>Unassigned</span>;
+  }
+  const initials = name.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('');
+  return (
+    <span className={styles.assigneeDisplay}>
+      <Avatar type="initial" variant="provider" size="XS" initials={initials} />
+      <span className={styles.assigneeName} title={name}>{name}</span>
     </span>
   );
 }
@@ -210,14 +265,7 @@ function GapRow({ gap, data, ready, mandatoryComplete, assignee, isActive, onSel
         </div>
       </div>
       <div className={styles.gapRowAssignee} onClick={(e) => e.stopPropagation()}>
-        <AssigneeChange
-          size="S"
-          name={assignee}
-          initials={(assignee || '').split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('')}
-          showRole={false}
-          unassigned={!assignee}
-          unassignedLabel="Unassigned"
-        />
+        <AssigneeDisplay name={assignee} />
       </div>
       <div className={styles.gapRowReady} onClick={(e) => e.stopPropagation()}>
         <Switch
@@ -263,15 +311,7 @@ export function GapEvidencePane({ v }) {
           <div className={styles.gapEvidenceStatusRow}>
             <Badge size="S" variant="ai-care" label={gap.status} />
             <span className={styles.headerDivider} aria-hidden="true" />
-            <AssigneeChange
-              size="S"
-              name={assignee}
-              initials={(assignee || '').split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('')}
-              showRole={false}
-              unassigned={!assignee}
-              unassignedLabel="Unassigned"
-              onClick={() => v.showToast('Assignee change — coming soon')}
-            />
+            <AssigneeDisplay name={assignee} />
           </div>
         </div>
         <div className={styles.gapEvidenceReadyRow}>
@@ -338,18 +378,16 @@ export function GapEvidencePane({ v }) {
 export function ConsolidatedNoteBody({ v }) {
   return (
     <div className={styles.consolidatedBody}>
-      <div className={styles.infoBanner}>
-        <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
-        <span>All signed notes sync to the patient's EHR.</span>
-      </div>
-
+      {/* Info banner is hoisted to CareGapDetailDrawer so it can sit as
+          a sibling of leftPaneBody — outside the padded, scrollable
+          container. See the 'clinical-note-consolidated' branch there. */}
       <div className={styles.consolidatedScroll}>
         <div className={styles.dosCard}>
           <div className={styles.dosHeader}>
             <span className={styles.dosTitle}>
               Date of Service &amp; Telehealth Statement <span className={styles.required}>•</span>
             </span>
-            <span className={styles.dosPill}>Common for all gaps</span>
+            <Badge tone="info" size="S" label="Common for all gaps" />
           </div>
           <div className={styles.dosBody}>
             <div className={styles.fieldStack}>
@@ -385,9 +423,25 @@ export function ConsolidatedNoteBody({ v }) {
           </div>
         </div>
 
-        {v.activeGaps.map((gap) => (
-          <GapSection key={gap.code} v={v} gap={gap} />
-        ))}
+        {/* Only gaps the user has BOTH completed (mandatory fields filled)
+            AND flagged as Ready for Review make it into the consolidated
+            note. Gaps that aren't ready are intentionally omitted — they
+            do not render as empty or "pending" sections. */}
+        {(() => {
+          const readyGaps = v.activeGaps.filter(g => v.isReadyForReview(g.code));
+          if (readyGaps.length === 0) {
+            return (
+              <div className={styles.consolidatedEmpty}>
+                <Icon name="solar:clipboard-list-linear" size={36} color="var(--neutral-200)" />
+                <p className={styles.consolidatedEmptyTitle}>No gaps ready for review yet</p>
+                <p className={styles.consolidatedEmptyBody}>
+                  Complete a care gap's note and toggle Ready for Review to include it here.
+                </p>
+              </div>
+            );
+          }
+          return readyGaps.map((gap) => <GapSection key={gap.code} v={v} gap={gap} />);
+        })()}
       </div>
     </div>
   );
@@ -406,7 +460,7 @@ function GapSection({ v, gap }) {
         onClick={() => setExpanded(x => !x)}
       >
         <span className={`${styles.gapSectionChevron} ${expanded ? '' : styles.gapSectionChevronCollapsed}`}>
-          <Icon name="solar:alt-arrow-down-linear" size={16} />
+          <DownChevronIcon size={16} color="var(--neutral-400)" />
         </span>
         <span className={styles.gapSectionTitle}>
           {gap.code} - {measureName}
@@ -583,7 +637,7 @@ function EedEvidenceForm({ v, data, submitted }) {
 
       <FieldStack>
         <FieldLabel>Upload Evidence (if available):</FieldLabel>
-        <UploadDropField onChange={() => v.showToast('Attach evidence — coming soon')} />
+        <MultiUploadDropField onFile={() => v.showToast('Attach evidence — coming soon')} />
       </FieldStack>
     </div>
   );
@@ -688,7 +742,7 @@ function CbpEvidenceForm({ v, data, submitted }) {
 
       <FieldStack>
         <FieldLabel>Upload Evidence (if available):</FieldLabel>
-        <UploadDropField onChange={() => v.showToast('Attach evidence — coming soon')} />
+        <MultiUploadDropField onFile={() => v.showToast('Attach evidence — coming soon')} />
       </FieldStack>
     </div>
   );
@@ -761,7 +815,7 @@ function GenericEvidenceForm({ code, v, data, submitted }) {
       )}
       <FieldStack>
         <FieldLabel>Upload Evidence (if available):</FieldLabel>
-        <UploadDropField onChange={() => v.showToast('Attach evidence — coming soon')} />
+        <MultiUploadDropField onFile={() => v.showToast('Attach evidence — coming soon')} />
       </FieldStack>
     </div>
   );
@@ -810,8 +864,9 @@ function GenericField({ field, data, onUpdate, err }) {
   if (type === 'select') {
     return (
       <FieldStack>
-        <FieldLabel required={required}>{label}</FieldLabel>
         <Select
+          label={label}
+          required={required}
           options={options}
           value={value}
           onChange={(v2) => onUpdate({ [key]: v2 })}
@@ -826,8 +881,9 @@ function GenericField({ field, data, onUpdate, err }) {
   if (type === 'date') {
     return (
       <FieldStack>
-        <FieldLabel required={required}>{label}</FieldLabel>
         <DatePicker
+          label={label}
+          required={required}
           value={value}
           onSelect={(v2) => onUpdate({ [key]: v2 })}
           placeholder={placeholder || 'Select Date'}
@@ -841,8 +897,9 @@ function GenericField({ field, data, onUpdate, err }) {
   // text / number
   return (
     <FieldStack>
-      <FieldLabel required={required}>{label}</FieldLabel>
       <Input
+        label={label}
+        required={required}
         type={type === 'number' ? 'number' : 'text'}
         inputMode={type === 'number' ? 'numeric' : undefined}
         value={value}

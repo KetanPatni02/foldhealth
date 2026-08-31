@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { Badge } from '../Badge/Badge';
+import { Tooltip } from '../Tooltip/Tooltip';
 import { Avatar } from '../Avatar/Avatar';
 import { PriorityIcon } from '../PriorityIcon/PriorityIcon';
 import { useAppStore } from '../../store/useAppStore';
@@ -527,7 +528,20 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
         <div className={styles.detailCardText}>
           <div className={styles.detailCardTitleRow}>
             <span className={styles.detailCardTitle}>{dc.title}</span>
-            {dc.chip && <Badge tone="grey" size="M" label={dc.chip} />}
+            {dc.chip && (
+              // Wrap in a Tooltip so hover reveals the exact set of gaps
+              // the note bundles — prefer human-readable HEDIS measure
+              // names (dc.gapNames) e.g. "Colorectal Cancer Screening,
+              // Breast Cancer Screening"; fall back to raw codes for
+              // older activity entries.
+              (dc.gapNames?.length || dc.gapCodes?.length) ? (
+                <Tooltip label={(dc.gapNames || dc.gapCodes).join(', ')}>
+                  <Badge tone="grey" size="S" label={dc.chip} />
+                </Tooltip>
+              ) : (
+                <Badge tone="grey" size="S" label={dc.chip} />
+              )
+            )}
           </div>
           {dc.subtitle && <div className={styles.detailCardSubtitle}>{dc.subtitle}</div>}
         </div>

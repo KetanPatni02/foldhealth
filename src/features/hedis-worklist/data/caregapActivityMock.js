@@ -71,6 +71,8 @@ export const CAREGAP_ACTIVITY_MOCK = {
         subtitle: 'Submitted for Review to Dr. Robert Langdon',
         status: 'Pending Review',
         linkedGroups: true,
+        gapCodes: ['CBP', 'BCS', 'COL'],
+        gapNames: ['Controlling Blood Pressure', 'Breast Cancer Screening', 'Colorectal Cancer Screening'],
       },
     },
     // Comment — HCC inline paragraph under the headline.
