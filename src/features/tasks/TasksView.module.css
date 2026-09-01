@@ -1230,6 +1230,22 @@
   flex-direction: column;
   gap: var(--space-1);
 }
+/* Empty state shown when a HEDIS Sign-Off task has no persisted clinical
+   note yet — replaces the old `syntheticLinkedNoteFromTask` ghost card
+   that fabricated data from `task.labels`. Honest empty state instead of
+   a fake row whose View action was a toast. */
+.linkedNoteEmpty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-25);
+  color: var(--neutral-300);
+  font-size: var(--font-sm);
+}
+.linkedNoteEmptyText { line-height: 1.4; }
 .linkedNoteMeta {
   font-size: var(--font-sm);
   color: var(--neutral-300);
