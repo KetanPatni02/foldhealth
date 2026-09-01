@@ -20,6 +20,21 @@
   transform: translate(-50%, 0);
 }
 
+/* Edge-anchored variants: `left` here is the trigger's own edge, so the
+   bubble grows inward instead of overflowing the panel. */
+.bubbleAlignRight {
+  transform: translate(-100%, -100%);
+}
+.bubbleAlignRight.bubbleBottom {
+  transform: translate(-100%, 0);
+}
+.bubbleAlignLeft {
+  transform: translate(0, -100%);
+}
+.bubbleAlignLeft.bubbleBottom {
+  transform: translate(0, 0);
+}
+
 @keyframes tt-fade {
   from { opacity: 0; }
   to   { opacity: 1; }

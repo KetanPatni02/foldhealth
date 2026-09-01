@@ -227,6 +227,11 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
+/* At the cap the counter is the only signal the field stopped accepting
+   input, so it goes error-dark. */
+.characterLimitFull {
+  color: var(--status-error-dark);
+}
 
 /* ── Structural wrapper (label + shell + helper/error) ── */
 

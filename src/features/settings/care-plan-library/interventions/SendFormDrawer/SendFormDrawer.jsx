@@ -6,6 +6,7 @@ import { Select } from '../../../../../components/Select/Select';
 import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
+import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
 import { useAppStore } from '../../../../../store/useAppStore';
 import styles from '../shared/InterventionDrawer.module.css';
 
@@ -15,6 +16,10 @@ const CREATION_TRIGGERS = ['Program Start Date', 'Discharge Date', 'Care Plan Si
 
 const DUE_UNITS = ['day', 'week'];
 
+const PRIORITIES = ['High', 'Medium', 'Low'];
+
+const TITLE_MAX = 150;
+
 const asOptions = (list) => list.map(v => ({ value: v, label: v }));
 
 /**
@@ -22,17 +27,20 @@ const asOptions = (list) => list.map(v => ({ value: v, label: v }));
  * Laid out like Create New Goals (stacked label-over-field) rather than the
  * label-beside-field grey cards in the source design.
  */
-export function SendFormDrawer({ onClose, onSave }) {
-  const [title, setTitle] = useState('');
-  const [form, setForm] = useState('');
-  const [memberTaskTitle, setMemberTaskTitle] = useState('');
-  const [creationTiming, setCreationTiming] = useState('immediate');
-  const [creationTrigger, setCreationTrigger] = useState('Care Plan Signed');
-  const [dueOffset, setDueOffset] = useState('7');
-  const [dueUnit, setDueUnit] = useState('day');
-  const [durationType, setDurationType] = useState('calendar');
+export function SendFormDrawer({ onClose, onSave, intervention }) {
+  const [title, setTitle] = useState(intervention?.title ?? '');
+  const [priority, setPriority] = useState(intervention?.priority ?? 'Medium');
+  const [form, setForm] = useState(intervention?.form ?? '');
+  const [memberTaskTitle, setMemberTaskTitle] = useState(intervention?.memberTaskTitle ?? '');
+  const [creationTiming, setCreationTiming] = useState(intervention?.creationTiming ?? 'immediate');
+  const [creationTrigger, setCreationTrigger] = useState(intervention?.creationTrigger ?? 'Care Plan Signed');
+  const [dueOffset, setDueOffset] = useState(intervention?.dueOffset ?? '7');
+  const [dueUnit, setDueUnit] = useState(intervention?.dueUnit ?? 'day');
+  const [durationType, setDurationType] = useState(intervention?.durationType ?? 'calendar');
   const [dueUnitOpen, setDueUnitOpen] = useState(false);
   const dueUnitRef = useRef(null);
+  const [priorityOpen, setPriorityOpen] = useState(false);
+  const priorityRef = useRef(null);
 
   // Forms come from Settings → Content → Forms. Search is remote so the
   // picker isn't limited to the first page.
@@ -53,7 +61,8 @@ export function SendFormDrawer({ onClose, onSave }) {
     [contentForms],
   );
 
-  const canSave = title.trim().length > 0 && form.length > 0;
+  // `form` is a forms.id (bigint), not a string — don't read .length off it.
+  const canSave = title.trim().length > 0 && String(form ?? '').length > 0;
 
   const headerRight = (
     <>
@@ -63,6 +72,7 @@ export function SendFormDrawer({ onClose, onSave }) {
         disabled={!canSave}
         onClick={() => onSave?.({
           title: title.trim(),
+          priority,
           form,
           memberTaskTitle: memberTaskTitle.trim(),
           creationTiming,
@@ -79,25 +89,57 @@ export function SendFormDrawer({ onClose, onSave }) {
   );
 
   return (
-    <Drawer title="Send Form" onClose={onClose} headerRight={headerRight} noCloseDivider>
+    <Drawer title={intervention ? 'Edit Intervention - Send Form' : 'Send Form'} onClose={onClose} headerRight={headerRight} noCloseDivider>
       <div className={styles.body}>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
-            Title <span className={styles.mandatoryStar} aria-hidden="true">*</span>
+            Title<span className={styles.mandatoryDot} aria-hidden="true" />
           </span>
-          <Input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="Enter The Task Title"
-            aria-label="Title"
-          />
+          <div className={styles.titleField}>
+            <button
+              ref={priorityRef}
+              type="button"
+              className={styles.priorityTrigger}
+              aria-label={`Priority: ${priority}`}
+              aria-haspopup="menu"
+              aria-expanded={priorityOpen}
+              onClick={() => setPriorityOpen(v => !v)}
+            >
+              <PriorityIcon priority={priority.toLowerCase()} size={16} />
+              <DownChevronIcon size={10} color="var(--neutral-300)" />
+            </button>
+            <Input
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Enter The Task Title"
+              aria-label="Title"
+              maxLength={TITLE_MAX}
+              characterLimit={TITLE_MAX}
+              className={styles.titleInput}
+              wrapperClassName={styles.titleInputWrap}
+            />
+          </div>
+          {priorityOpen && (
+            <MenuPopover
+              anchorRef={priorityRef}
+              align="left"
+              width={140}
+              ariaLabel="Intervention priority"
+              items={PRIORITIES.map(p => ({
+                key: p,
+                label: p,
+                iconElement: <PriorityIcon priority={p.toLowerCase()} size={16} />,
+              }))}
+              onSelect={setPriority}
+              onClose={() => setPriorityOpen(false)}
+            />
+          )}
         </div>
 
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Forms <span className={styles.mandatoryStar} aria-hidden="true">*</span>
-          </span>
           <Select
+            label="Forms"
+            required
             options={formOptions}
             value={form}
             onChange={setForm}
@@ -112,18 +154,19 @@ export function SendFormDrawer({ onClose, onSave }) {
         </div>
 
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Member Task Title</span>
           <Input
+            label="Member Task Title"
             value={memberTaskTitle}
             onChange={e => setMemberTaskTitle(e.target.value)}
             placeholder="Enter Task Title"
-            aria-label="Member Task Title"
+            maxLength={TITLE_MAX}
+            characterLimit={TITLE_MAX}
           />
         </div>
 
         <div className={styles.dateSection}>
           <span className={styles.sectionTitle}>
-            Set Task Dates <span className={styles.mandatoryStar} aria-hidden="true">*</span>
+            Set Task Dates<span className={styles.mandatoryDot} aria-hidden="true" />
           </span>
           <div className={styles.dateGroup}>
             <div className={styles.field}>

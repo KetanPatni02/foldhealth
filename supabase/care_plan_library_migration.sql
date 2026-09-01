@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS public.care_plan_goals (
   frequency     text,
   target_date   text,
   priority      text,
+  created_by    text,
+  updated_by    text,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
@@ -63,6 +65,8 @@ CREATE TABLE IF NOT EXISTS public.care_plan_barriers (
   id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   title        text NOT NULL,
   description  text NOT NULL DEFAULT '',
+  created_by   text,
+  updated_by   text,
   created_at   timestamptz NOT NULL DEFAULT now(),
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
@@ -73,6 +77,8 @@ CREATE TABLE IF NOT EXISTS public.care_plan_templates (
   conditions     text[] NOT NULL DEFAULT '{}',
   goals          jsonb NOT NULL DEFAULT '[]'::jsonb,
   interventions  jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_by     text,
+  updated_by     text,
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now()
 );
@@ -107,3 +113,12 @@ BEGIN
       t);
   END LOOP;
 END $$;
+
+-- Authorship, added after the first cut of this file. Written as separate
+-- ALTERs so a database that already ran the CREATEs above picks them up.
+ALTER TABLE public.care_plan_goals     ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE public.care_plan_barriers  ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE public.care_plan_templates ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE public.care_plan_goals     ADD COLUMN IF NOT EXISTS updated_by text;
+ALTER TABLE public.care_plan_barriers  ADD COLUMN IF NOT EXISTS updated_by text;
+ALTER TABLE public.care_plan_templates ADD COLUMN IF NOT EXISTS updated_by text;

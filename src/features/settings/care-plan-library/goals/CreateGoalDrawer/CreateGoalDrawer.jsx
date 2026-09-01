@@ -9,6 +9,7 @@ import { Switch } from '../../../../../components/Switch/Switch';
 import { Input } from '../../../../../components/Input/Input';
 import { DatePicker } from '../../../../../components/DatePicker/DatePicker';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
+import { Tooltip } from '../../../../../components/Tooltip/Tooltip';
 import { AddTaskDrawer } from '../../../../tasks/AddTaskDrawer';
 import { SendFormDrawer } from '../../interventions/SendFormDrawer/SendFormDrawer';
 import { SendContentDrawer } from '../../interventions/SendContentDrawer/SendContentDrawer';
@@ -110,6 +111,34 @@ function dueBadgeLabel(config) {
   return `${config.dueOffset}${(config.dueUnit || 'day')[0]}`;
 }
 
+// Which drawer edits which intervention kind. Patient/Internal tasks go
+// through the shared Add Task drawer instead.
+const INTERVENTION_EDITORS = {
+  'send-form': SendFormDrawer,
+  'patient-education': SendContentDrawer,
+  'measure-vital': MeasureVitalDrawer,
+};
+
+// Titles across the library share one ceiling.
+const TITLE_MAX = 150;
+
+const UNIT_WORDS = { day: 'Days', week: 'Weeks', month: 'Months', year: 'Years' };
+
+function dueTooltip(config) {
+  if (!config?.dueOffset) return null;
+  const unit = UNIT_WORDS[config.dueUnit] || 'Days';
+  const timing = config.creationTiming;
+  const immediate = !timing || timing === 'immediate';
+  return {
+    primary: `Executes After ${config.dueOffset} ${unit}`,
+    secondary: immediate
+      ? 'Occurs Immediately'
+      : `Occurs Every ${timing.charAt(0).toUpperCase()}${timing.slice(1)}`,
+    // "Occurs Immediately" reads as part of the statement, not an aside.
+    secondaryMuted: !immediate,
+  };
+}
+
 const PRIORITIES = [
   { key: 'high', label: 'High' },
   { key: 'medium', label: 'Medium' },
@@ -151,10 +180,14 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const [barrierDraft, setBarrierDraft] = useState('');
   const [barrierEditing, setBarrierEditing] = useState(null);
   const [interventionMenuOpen, setInterventionMenuOpen] = useState(false);
+  // Row-level editing: which row's priority menu is open, and which row's
+  // title is in its text-field state.
+  const [priorityMenuFor, setPriorityMenuFor] = useState(null);
+  const [interventionEditing, setInterventionEditing] = useState(null);
+  const [interventionDraft, setInterventionDraft] = useState('');
   const [taskDrawerOpen, setTaskDrawerOpen] = useState(null);
-  const [sendFormOpen, setSendFormOpen] = useState(false);
-  const [sendContentOpen, setSendContentOpen] = useState(false);
-  const [measureVitalOpen, setMeasureVitalOpen] = useState(false);
+  // { kind, index } — index null while adding, a row index while editing.
+  const [interventionDrawer, setInterventionDrawer] = useState(null);
   const durationUnitRef = useRef(null);
   const priorityRef = useRef(null);
   const interventionAddRef = useRef(null);
@@ -203,6 +236,16 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const separator = cfg.dual ? (cfg.separator || '/') : 'and';
   const canSave = title.trim().length > 0;
 
+  const updateIntervention = (index, patch) => {
+    setInterventions(prev => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
+  };
+
+  const commitInterventionTitle = () => {
+    if (interventionEditing === null) return;
+    updateIntervention(interventionEditing, { title: interventionDraft.trim() });
+    setInterventionEditing(null);
+  };
+
   const addIntervention = (kind, itemTitle, config) => {
     setInterventions(prev => [...prev, { kind, title: itemTitle || '', config: config || {} }]);
   };
@@ -234,6 +277,8 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
       onBlur={() => (barrierDraft.trim() ? saveBarrier() : cancelBarrier())}
       placeholder="Add New Barriers"
       aria-label="Add New Barriers"
+      maxLength={TITLE_MAX}
+      characterLimit={TITLE_MAX}
       trailingText={barrierDraft.trim() ? 'Enter to Save' : 'Esc to Cancel'}
     />
   );
@@ -257,6 +302,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
       <div className={styles.body}>
         <Toggle
           size="S"
+          className={styles.categoryToggle}
           items={GOAL_CATEGORIES}
           active={category}
           onChange={(next) => { setCategory(next); setMeasure(''); }}
@@ -277,8 +323,8 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         )}
 
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Chronic condition</span>
           <Select
+            label="Chronic condition"
             options={conditionOptions}
             value={conditions}
             onChange={setConditions}
@@ -299,7 +345,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
 
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
-            Goal Title <span className={styles.mandatoryStar} aria-hidden="true">*</span>
+            Goal Title<span className={styles.mandatoryDot} aria-hidden="true" />
           </span>
           {/* Priority sits inside the field, divided from the text input —
               the design treats it as one control, not two. */}
@@ -319,6 +365,8 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
               onChange={e => setTitle(e.target.value)}
               placeholder="Enter the Goal Title"
               aria-label="Goal Title"
+              maxLength={TITLE_MAX}
+              characterLimit={TITLE_MAX}
               className={styles.titleInput}
               wrapperClassName={styles.titleInputWrap}
             />
@@ -344,15 +392,14 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
 
         {!isOther && (
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Current Value</span>
-          <Input value="" disabled placeholder="No initial value found" aria-label="Current Value" />
+          <Input label="Current Value" value="" disabled placeholder="No initial value found" />
         </div>
         )}
 
         {setTarget && (
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
-            Target Value <span className={styles.mandatoryStar} aria-hidden="true">*</span>
+            Target Value<span className={styles.mandatoryDot} aria-hidden="true" />
           </span>
           <div className={styles.targetRow}>
             <Select
@@ -386,7 +433,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
               <Input
                 value={customUnit}
                 onChange={e => setCustomUnit(e.target.value)}
-                placeholder="Pegs a Day"
+                placeholder="Enter Unit"
                 aria-label="Unit"
               />
             )}
@@ -411,12 +458,11 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         {setTarget && (
         <div className={styles.twoUp}>
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Duration <span className={styles.mandatoryStar} aria-hidden="true">*</span>
-            </span>
             {/* One field — the unit is the trailing segment, same treatment as
                 the mmHg suffix, but it opens a picker. */}
             <Input
+              label="Duration"
+              required
               value={duration}
               onChange={e => setDuration(e.target.value.replace(/\D/g, ''))}
               placeholder="Enter Duration"
@@ -451,19 +497,21 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
           </div>
 
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>
-              Frequency <span className={styles.mandatoryStar} aria-hidden="true">*</span>
-            </span>
-            <Select options={asOptions(FREQUENCIES)} value={frequency} onChange={setFrequency} />
+            <Select
+              label="Frequency"
+              required
+              options={asOptions(FREQUENCIES)}
+              value={frequency}
+              onChange={setFrequency}
+            />
           </div>
         </div>
         )}
 
         {!isOther && setTarget && (
         <div className={styles.field}>
-          <span className={styles.fieldLabel}>Target Date</span>
           <div className={styles.targetDate}>
-            <DatePicker value={targetDate} onSelect={setTargetDate} aria-label="Target Date" />
+            <DatePicker label="Target Date" value={targetDate} onSelect={setTargetDate} />
           </div>
         </div>
         )}
@@ -510,9 +558,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                       onSelect={(key) => {
                         setInterventionMenuOpen(false);
                         if (key === 'patient-task' || key === 'internal-task') setTaskDrawerOpen(key);
-                        if (key === 'send-form') setSendFormOpen(true);
-                        if (key === 'patient-education') setSendContentOpen(true);
-                        if (key === 'measure-vital') setMeasureVitalOpen(true);
+                        else setInterventionDrawer({ kind: key, index: null });
                       }}
                       onClose={() => setInterventionMenuOpen(false)}
                     />
@@ -523,30 +569,124 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                     {interventions.map((it, i) => {
                       const kind = INTERVENTION_LABELS[it.kind] || { label: it.kind, icon: 'solar:clipboard-check-linear' };
                       const due = dueBadgeLabel(it.config);
+                      const tip = dueTooltip(it.config);
                       return (
-                        <div key={`${it.kind}-${i}`} className={styles.interventionRow}>
-                          <span className={styles.interventionPriority}>
+                        <div
+                          key={`${it.kind}-${i}`}
+                          className={`${styles.interventionRow} ${INTERVENTION_EDITORS[it.kind] ? styles.interventionRowClickable : ''}`}
+                          role={INTERVENTION_EDITORS[it.kind] ? 'button' : undefined}
+                          tabIndex={INTERVENTION_EDITORS[it.kind] ? 0 : undefined}
+                          onClick={() => INTERVENTION_EDITORS[it.kind]
+                            && setInterventionDrawer({ kind: it.kind, index: i })}
+                          onKeyDown={(e) => {
+                            if ((e.key === 'Enter' || e.key === ' ') && INTERVENTION_EDITORS[it.kind]) {
+                              e.preventDefault();
+                              setInterventionDrawer({ kind: it.kind, index: i });
+                            }
+                          }}
+                        >
+                          <button
+                            type="button"
+                            className={styles.interventionPriority}
+                            aria-label={`Priority: ${it.config?.priority || 'Medium'}`}
+                            aria-haspopup="menu"
+                            aria-expanded={priorityMenuFor?.index === i}
+                            onClick={(e) => { e.stopPropagation(); setPriorityMenuFor(
+                              priorityMenuFor?.index === i
+                                ? null
+                                : { index: i, rect: e.currentTarget.getBoundingClientRect() },
+                            ); }}
+                          >
                             <PriorityIcon priority={it.config?.priority?.toLowerCase() || 'medium'} size={16} />
+                          </button>
+                          <span className={styles.interventionKind}>
+                            {/* Reads as a cell, not a control — it only names
+                                the intervention kind. */}
+                            <Button
+                              variant="ghost"
+                              size="L"
+                              leadingIcon={kind.icon}
+                              className={styles.interventionKindLabel}
+                            >
+                              {kind.label}
+                            </Button>
                           </span>
-                          <Button variant="ghost" size="L" leadingIcon={kind.icon}>
-                            {kind.label}
-                          </Button>
-                          <span className={styles.interventionText}>{it.title}</span>
-                          {due && (
-                            <Badge
-                              tone="grey"
-                              size="S"
-                              label={due}
-                              trailingIcon="solar:refresh-linear"
-                            />
+                          {interventionEditing === i ? (
+                            <span className={styles.interventionText}>
+                              <Input
+                                value={interventionDraft}
+                                onChange={e => setInterventionDraft(e.target.value)}
+                                onBlur={commitInterventionTitle}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') commitInterventionTitle();
+                                  if (e.key === 'Escape') setInterventionEditing(null);
+                                }}
+                                aria-label="Intervention name"
+                                maxLength={TITLE_MAX}
+                                characterLimit={TITLE_MAX}
+                                autoFocus
+                              />
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className={`${styles.interventionText} ${styles.interventionTextButton}`}
+                              onClick={(e) => { e.stopPropagation(); setInterventionEditing(i); setInterventionDraft(it.title); }}
+                            >
+                              <span className={styles.interventionTextInner}>{it.title}</span>
+                            </button>
                           )}
+                          <span className={styles.interventionActions} onClick={e => e.stopPropagation()}>
+                            {!due && <span className={styles.interventionNoDue}>-</span>}
+                            {due && (
+                              <Tooltip
+                                align="right"
+                                label={tip && (
+                                  <span className={styles.dueTooltip}>
+                                    <span>{tip.primary}</span>
+                                    <span className={tip.secondaryMuted ? styles.dueTooltipSecondary : undefined}>{tip.secondary}</span>
+                                  </span>
+                                )}
+                              >
+                                <Badge
+                                  tone="grey"
+                                  size="S"
+                                  label={due}
+                                  trailingIcon="solar:refresh-linear"
+                                />
+                              </Tooltip>
+                            )}
+                          </span>
                         </div>
                       );
                     })}
                   </div>
                 )}
+                {sec.key === 'interventions' && priorityMenuFor && (
+                  <MenuPopover
+                    anchorRect={priorityMenuFor.rect}
+                    align="left"
+                    width={140}
+                    ariaLabel="Intervention priority"
+                    items={PRIORITIES.map(p => ({
+                      key: p.key,
+                      label: p.label,
+                      iconElement: <PriorityIcon priority={p.key} size={16} />,
+                    }))}
+                    onSelect={(key) => {
+                      const picked = PRIORITIES.find(p => p.key === key);
+                      updateIntervention(priorityMenuFor.index, {
+                        config: { ...interventions[priorityMenuFor.index].config, priority: picked?.label || key },
+                      });
+                      setPriorityMenuFor(null);
+                    }}
+                    onClose={() => setPriorityMenuFor(null)}
+                  />
+                )}
                 {sec.key === 'barriers' && (barriers.length > 0 || barrierEditing !== null) && (
-                  <div className={styles.linkedList}>
+                  /* The very first barrier is just the field — the white card
+                     only earns its place once there is a list to hold. */
+                  <div className={barriers.length === 0 ? undefined : styles.linkedList}>
                     {barriers.map((b, i) => (barrierEditing === i ? (
                       <div key={`edit-${i}`}>{barrierInput}</div>
                     ) : (
@@ -590,24 +730,25 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
           </div>
         </div>
       </div>
-      {sendFormOpen && (
-        <SendFormDrawer
-          onClose={() => setSendFormOpen(false)}
-          onSave={(config) => { addIntervention('send-form', config.title, config); setSendFormOpen(false); }}
-        />
-      )}
-      {sendContentOpen && (
-        <SendContentDrawer
-          onClose={() => setSendContentOpen(false)}
-          onSave={(config) => { addIntervention('patient-education', config.title, config); setSendContentOpen(false); }}
-        />
-      )}
-      {measureVitalOpen && (
-        <MeasureVitalDrawer
-          onClose={() => setMeasureVitalOpen(false)}
-          onSave={(config) => { addIntervention('measure-vital', config.title, config); setMeasureVitalOpen(false); }}
-        />
-      )}
+      {interventionDrawer && (() => {
+        const Editor = INTERVENTION_EDITORS[interventionDrawer.kind];
+        if (!Editor) return null;
+        const editing = interventionDrawer.index !== null;
+        return (
+          <Editor
+            intervention={editing ? interventions[interventionDrawer.index]?.config : undefined}
+            onClose={() => setInterventionDrawer(null)}
+            onSave={(config) => {
+              if (editing) {
+                updateIntervention(interventionDrawer.index, { title: config.title, config });
+              } else {
+                addIntervention(interventionDrawer.kind, config.title, config);
+              }
+              setInterventionDrawer(null);
+            }}
+          />
+        );
+      })()}
       {taskDrawerOpen && (
         <AddTaskDrawer
           onClose={() => setTaskDrawerOpen(false)}
