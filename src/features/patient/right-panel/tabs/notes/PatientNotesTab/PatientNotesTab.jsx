@@ -134,8 +134,19 @@ export function PatientNotesTab({ patient }) {
   );
 }
 
+const ORIGIN_LABEL = {
+  care_gap: 'Care Gap',
+  care_program: 'Care Program',
+  care_plan_goal: 'Goal',
+  care_plan_intervention: 'Intervention',
+  diagnosis_gap: 'Diagnosis Gap',
+  task: 'Task',
+  patient: 'Patient',
+};
+
 function NoteRow({ note, onOpen }) {
   const codes = note.gapCodes || [];
+  const originLabel = ORIGIN_LABEL[note.originKind] || (codes.length ? 'Care Gap' : null);
   const title = codes.length > 1
     ? 'Consolidated Clinical Note'
     : codes[0]
@@ -152,6 +163,7 @@ function NoteRow({ note, onOpen }) {
       <span className={styles.date}>{formatDate(when)}</span>
       <span className={styles.title}>{title}</span>
       <span className={styles.chips}>
+        {originLabel && <Badge tone="info" size="S" label={originLabel} />}
         {codes.slice(0, 3).map(c => <Badge key={c} tone="grey" size="S" label={c} />)}
         {codes.length > 3 && <span className={styles.more}>+{codes.length - 3}</span>}
       </span>

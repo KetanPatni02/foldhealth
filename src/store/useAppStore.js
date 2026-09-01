@@ -1097,6 +1097,9 @@ function clinicalNoteRowToJs(row) {
     signedAt: row.signed_at || null,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
+    // clinical_notes_origin_migration.sql
+    originKind: row.origin_kind || null,
+    originRef: row.origin_ref || null,
   };
 }
 
@@ -6452,9 +6455,19 @@ export const useAppStore = create((set, get) => ({
     reviewerId,
     reviewerName,
     signedByName,
+    // Polymorphic origin — see clinical_notes_origin_migration.sql.
+    // Callers pass e.g. { originKind: 'care_gap' }, { originKind: 'task',
+    // originRef: String(task.id) }, or the Global Add Note surface
+    // passes 'patient' with no ref. HEDIS Care Gap notes default to
+    // 'care_gap' since gap_codes is populated; other origins must
+    // supply their own kind.
+    originKind,
+    originRef,
   } = {}) => {
     if (!hedisMemberId || !patientId || !status) return null;
     const me = get().currentUserProfile;
+    const resolvedOriginKind = originKind
+      || ((gapCodes && gapCodes.length) ? 'care_gap' : null);
     const row = {
       id: id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `local-${Date.now()}`),
       patient_id: patientId,
@@ -6473,12 +6486,26 @@ export const useAppStore = create((set, get) => ({
       signed_by_id: status === 'signed' ? (me?.id || null) : null,
       signed_by_name: status === 'signed' ? (signedByName || me?.name || null) : null,
       signed_at: status === 'signed' ? new Date().toISOString() : null,
+      origin_kind: resolvedOriginKind,
+      origin_ref: originRef || null,
     };
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('clinical_notes')
       .upsert(row, { onConflict: 'id' })
       .select('*')
       .single();
+    // Legacy fallback: clinical_notes_origin_migration.sql may not have
+    // landed yet. If the DB rejects because origin_kind/origin_ref
+    // don't exist, drop them and retry.
+    if (error && /column .* does not exist|origin_kind|origin_ref/i.test(error.message || '')) {
+      // eslint-disable-next-line no-unused-vars
+      const { origin_kind, origin_ref, ...legacyRow } = row;
+      ({ data, error } = await supabase
+        .from('clinical_notes')
+        .upsert(legacyRow, { onConflict: 'id' })
+        .select('*')
+        .single());
+    }
     let saved;
     if (error) {
       if (error.code === '42P01' || error.code === 'PGRST205') {
