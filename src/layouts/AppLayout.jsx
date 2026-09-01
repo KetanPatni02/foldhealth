@@ -207,9 +207,10 @@ function SettingsView() {
   // New Care Plan is a full-screen takeover: no TopBar, no Settings sub-nav —
   // just the app rail beside the card (Figma Care-Plan-Creation 14108:294859).
   const carePlanCreateOpen = useAppStore(s => s.carePlanCreateOpen);
+  const carePlanTemplateScreen = useAppStore(s => s.carePlanTemplateScreen);
   return (
     <div className={styles.main}>
-      {!carePlanCreateOpen && <TopBar />}
+      {!carePlanCreateOpen && !carePlanTemplateScreen && <TopBar />}
       <div className={styles.content}>
         <Suspense fallback={<LazyFallback />}>
           <SettingsLayout />
