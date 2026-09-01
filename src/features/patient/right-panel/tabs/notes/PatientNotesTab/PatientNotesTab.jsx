@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { Button } from '../../../../../../components/Button/Button';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
+import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
 import styles from './PatientNotesTab.module.css';
 
@@ -78,7 +80,6 @@ export function PatientNotesTab({ patient }) {
   }, [clinicalNotesByPatient, clinicalNotesByMember, uniqueIds.join('|')]);
   const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
   const fetchClinicalNotesForPatient = useAppStore(s => s.fetchClinicalNotesForPatient);
-  const openNotePreview = useAppStore(s => s.openNotePreview);
   const patientId = uniqueIds[0] || null;
 
   useEffect(() => {
@@ -154,7 +155,6 @@ export function PatientNotesTab({ patient }) {
                 <NoteRow
                   key={note.id}
                   note={note}
-                  onOpen={() => openNotePreview?.(note)}
                 />
               ))}
             </tbody>
@@ -179,7 +179,13 @@ const ORIGIN_LABEL = {
   patient: 'Patient',
 };
 
-function NoteRow({ note, onOpen }) {
+function NoteRow({ note }) {
+  const openNotePreview = useAppStore(s => s.openNotePreview);
+  const deleteClinicalNote = useAppStore(s => s.deleteClinicalNote);
+  const showToast = useAppStore(s => s.showToast);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const menuBtnRef = useRef(null);
   const codes = note.gapCodes || [];
   const isNonVisit = note.formType === 'non_visit_note';
   const title = isNonVisit
@@ -206,8 +212,25 @@ function NoteRow({ note, onOpen }) {
     ? 'Non-Visit Note'
     : (note.formType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
       || (codes[0] ? `${codes[0]} Visit Note` : 'Clinical Note');
+
+  const handlePreview = () => openNotePreview?.(note);
+  const handlePrint = () => {
+    const url = note.pdfDataUrl;
+    if (url) {
+      const w = window.open(url, '_blank');
+      try { w?.focus(); } catch { /* ignore */ }
+    } else {
+      showToast?.('No PDF available for this note');
+    }
+  };
+  const handleDelete = async () => {
+    setShowDeleteConfirm(false);
+    const ok = await deleteClinicalNote?.(note.id);
+    showToast?.(ok ? 'Note deleted' : 'Failed to delete note');
+  };
+
   return (
-    <tr className={styles.tr} onClick={onOpen}>
+    <tr className={styles.tr} onClick={handlePreview}>
       <td className={styles.checkCol} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" className={styles.checkbox} aria-label={`Select ${title}`} />
       </td>
@@ -226,7 +249,50 @@ function NoteRow({ note, onOpen }) {
         <div>{note.signedByName || note.reviewerName || note.authorName || '—'}</div>
         <div className={styles.dateText}>{formatDate(note.updatedAt || note.createdAt)}</div>
       </td>
-      <td>{templateName}</td>
+      <td className={styles.templateCell}>
+        <span className={styles.templateText}>{templateName}</span>
+        <span className={styles.rowKebab}>
+          <ActionButton
+            ref={menuBtnRef}
+            icon="solar:menu-dots-bold"
+            size="L"
+            tooltip="Note actions"
+            onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
+          />
+        </span>
+        {menuOpen && (
+          <MenuPopover
+            anchorRef={menuBtnRef}
+            items={[
+              { key: 'preview', label: 'Preview', icon: 'solar:eye-linear' },
+              { key: 'print', label: 'Print Note', icon: 'solar:printer-linear' },
+              { key: 'delete', label: 'Delete Note', icon: 'solar:trash-bin-trash-linear', danger: true },
+            ]}
+            onSelect={(key) => {
+              if (key === 'preview') handlePreview();
+              else if (key === 'print') handlePrint();
+              else if (key === 'delete') setShowDeleteConfirm(true);
+            }}
+            onClose={() => setMenuOpen(false)}
+            width={180}
+            align="right"
+            ariaLabel="Note actions"
+          />
+        )}
+        {showDeleteConfirm && (
+          <ConfirmDialog
+            icon="solar:danger-triangle-linear"
+            iconColor="var(--status-error)"
+            title="Delete this note?"
+            description="This will permanently remove the note. This cannot be undone."
+            confirmLabel="Delete"
+            cancelLabel="Cancel"
+            variant="error"
+            onConfirm={handleDelete}
+            onCancel={() => setShowDeleteConfirm(false)}
+          />
+        )}
+      </td>
     </tr>
   );
 }

@@ -25,9 +25,15 @@
   gap: var(--space-2);
 }
 
-/* Table */
-.tableWrap { overflow-x: auto; }
-.table { width: 100%; border-collapse: collapse; }
+/* Table — the outer card sets the width; the table never introduces a
+   horizontal scrollbar of its own. Long note titles wrap, the Template
+   Name column truncates around the kebab. */
+.tableWrap { overflow-x: hidden; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
 .table th {
   text-align: left;
   font-size: var(--font-base);
@@ -43,10 +49,43 @@
   padding: var(--space-2);
   border-bottom: 0.5px solid var(--neutral-100);
   vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .table tbody tr:last-child td { border-bottom: none; }
 .tr { cursor: pointer; }
 .tr:hover td { background: var(--neutral-25); }
+
+/* Template Name cell doubles as the anchor for the row-hover kebab.
+   The button is visually hidden until the row is hovered so the cell
+   reads as clean text in the resting state. */
+.templateCell {
+  position: relative;
+  padding-right: var(--space-8) !important;
+}
+.templateText {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.rowKebab {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.tr:hover .rowKebab,
+.rowKebab:focus-within {
+  opacity: 1;
+}
 
 .checkCol {
   width: var(--space-8);

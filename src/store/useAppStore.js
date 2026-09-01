@@ -6632,6 +6632,23 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  deleteClinicalNote: async (noteId) => {
+    if (!noteId) return false;
+    set(s => {
+      const drop = (list) => (list || []).filter(n => n.id !== noteId);
+      return {
+        clinicalNotesByMember: Object.fromEntries(Object.entries(s.clinicalNotesByMember).map(([k, v]) => [k, drop(v)])),
+        clinicalNotesByPatient: Object.fromEntries(Object.entries(s.clinicalNotesByPatient).map(([k, v]) => [k, drop(v)])),
+      };
+    });
+    const { error } = await supabase.from('clinical_notes').delete().eq('id', noteId);
+    if (error && !(error.code === '42P01' || error.code === 'PGRST205')) {
+      console.error('deleteClinicalNote error:', error);
+      return false;
+    }
+    return true;
+  },
+
   // NP marks the sign-off task complete → every gap in the task transitions to
   // Completed atomically (AC-13), the task moves to status=completed, and an
   // activity entry is appended for the patient's history.
