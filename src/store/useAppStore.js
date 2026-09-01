@@ -6507,10 +6507,14 @@ export const useAppStore = create((set, get) => ({
   signClinicalNote: async (noteId, signer) => {
     if (!noteId) return false;
     const me = get().currentUserProfile;
+    // Fall back to the current signed-in user's identity; never to a
+    // hardcoded 'Provider' string. If neither the caller nor the store
+    // knows who the signer is, leave the name as 'Unknown' so the row
+    // is honest instead of misattributing to a placeholder.
     const patch = {
       status: 'signed',
       signed_by_id: signer?.id || me?.id || null,
-      signed_by_name: signer?.name || me?.name || 'Provider',
+      signed_by_name: signer?.name || me?.name || 'Unknown',
       signed_at: new Date().toISOString(),
     };
     const { data, error } = await supabase
@@ -6565,7 +6569,7 @@ export const useAppStore = create((set, get) => ({
   // NP marks the sign-off task complete → every gap in the task transitions to
   // Completed atomically (AC-13), the task moves to status=completed, and an
   // activity entry is appended for the patient's history.
-  completeCareGapSignOffTask: async (taskId, actor = 'NP') => {
+  completeCareGapSignOffTask: async (taskId) => {
     const task = get().tasks.find(t => t.id === taskId);
     if (!task || !task.hedisMemberId) return false;
     // Persist status via updateTask so the completed state survives reload;
@@ -6575,14 +6579,17 @@ export const useAppStore = create((set, get) => ({
     get().bulkUpdateGapStatuses(task.hedisMemberId, updates);
     // Flip any linked clinical_note row from submitted → signed so the
     // Clinical Notes tab, P360 Notes tab, and the reviewer's note history
-    // all agree the review is done.
+    // all agree the review is done. Sign as the actual current user
+    // (usually the reviewer completing their own task) — signClinicalNote
+    // falls back to `currentUserProfile` when no `signer` is passed.
     const memberNotes = get().clinicalNotesByMember?.[task.hedisMemberId] || [];
     const linkedNote = memberNotes.find(n => n.reviewTaskId === taskId);
     if (linkedNote && linkedNote.status !== 'signed') {
-      get().signClinicalNote(linkedNote.id, { name: actor });
+      get().signClinicalNote(linkedNote.id);
     }
+    const actor = get().currentActorName?.() || 'Unknown';
     get().logCareGapActivity(task.hedisMemberId, {
-      title: 'Task completed by NP',
+      title: 'Task completed',
       detail: `Gaps closed: ${(task.hedisGapCodes || []).join(', ')}`,
       actor,
       icon: 'solar:check-circle-linear',

@@ -23,6 +23,12 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   const linkClinicalNoteToReviewTask = useAppStore(s => s.linkClinicalNoteToReviewTask);
   const notesForMember = useAppStore(s => s.clinicalNotesByMember?.[member.id]) || [];
   const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+  // Real signed-in user resolved lazily at call time — `currentActorName`
+  // reads `currentUserProfile?.name` from the store. Falls back to the
+  // mock `CURRENT_USER` constant only when no session is present (dev
+  // launches without sign-in). Never returns 'Provider' any more — the
+  // note's signer identity now matches whoever actually clicked Sign.
+  const actorName = () => useAppStore.getState().currentActorName?.() || CURRENT_USER;
 
   const amendNote = useMemo(
     () => (amendNoteId ? (notesForMember.find(n => n.id === amendNoteId) || null) : null),
@@ -303,13 +309,17 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     const chip = multi ? `${gapList.length} Gaps` : undefined;
     let subtitle;
     if (status === 'Draft') {
-      subtitle = `Save as Draft by ${CURRENT_USER}`;
+      subtitle = `Save as Draft by ${actorName()}`;
     } else if (status === 'Pending Review') {
       subtitle = reviewer ? `Submitted for Review to ${reviewer}` : `Submitted for Review`;
     } else if (status === 'Signed') {
+      // `reviewer` here is the signer name the caller resolved from the
+      // signed-in user. Fall back to the current actor if the caller
+      // didn't pass one — never to a placeholder like "Provider".
+      const signer = reviewer || actorName();
       subtitle = signedDate
-        ? `Signed by ${reviewer || 'Provider'} · ${signedDate}`
-        : `Signed by ${reviewer || 'Provider'}`;
+        ? `Signed by ${signer} · ${signedDate}`
+        : `Signed by ${signer}`;
     }
     return {
       noteId,
@@ -356,7 +366,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     logCareGapActivity(member.id, {
       title: 'Clinical Note Added',
       detail: codes.join(', '),
-      actor: CURRENT_USER,
+      actor: actorName(),
       icon: 'solar:notes-linear',
       gapCodes: codes,
       t: 'clinical_note',
@@ -375,8 +385,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     const { codes } = noteScope();
     if (codes.length === 0) { showToast('No gaps marked Ready for Review'); return; }
     if (editingTaskId) {
-      const pdf = buildPdf(codes, CURRENT_USER);
-      await updateSignOffTaskPdf(editingTaskId, pdf, CURRENT_USER);
+      const pdf = buildPdf(codes, actorName());
+      await updateSignOffTaskPdf(editingTaskId, pdf, actorName());
       showToast('Sign-off note updated');
       onClose();
       return;
@@ -388,7 +398,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     if (!reviewer?.id) { setReviewerPickerOpen(false); return; }
     const { codes, primary } = noteScope();
     if (codes.length === 0) { setReviewerPickerOpen(false); return; }
-    const pdf = buildPdf(codes, CURRENT_USER);
+    const pdf = buildPdf(codes, actorName());
     // If editing an existing note (draft → submit, or resubmitting a
     // pending note after edits), reuse its gap set and id so we update
     // the SAME record. This is the core single-entity guarantee.
@@ -433,7 +443,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     if (existingTaskId) {
       // Update the existing task's PDF so the reviewer sees the latest
       // content, but keep the same task id.
-      await updateSignOffTaskPdf(existingTaskId, pdf, CURRENT_USER);
+      await updateSignOffTaskPdf(existingTaskId, pdf, actorName());
       task = (useAppStore.getState().tasks || []).find(t => String(t.id) === String(existingTaskId)) || { id: existingTaskId };
       // Also ensure the note stays linked (idempotent).
       if (note?.id) await linkClinicalNoteToReviewTask(note.id, existingTaskId);
@@ -453,7 +463,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     logCareGapActivity(member.id, {
       title: 'Clinical Note Added',
       detail: `Ready gaps: ${finalCodes.join(', ')}`,
-      actor: CURRENT_USER,
+      actor: actorName(),
       icon: 'solar:notes-linear',
       gapCodes: finalCodes,
       attachment: pdf,
@@ -486,7 +496,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     const { codes, primary } = noteScope();
     if (!dateOfService) { showToast('Date of Service is required'); return; }
     if (codes.length === 0) { showToast('No gaps marked Ready for Review'); return; }
-    const pdf = buildPdf(codes, 'Provider');
+    const signer = actorName();
+    const pdf = buildPdf(codes, signer);
     const effectiveId = selectedNoteId || noteIdByCode[primary];
     // If we are signing an existing note (edit → sign), reuse its gapCodes
     // so a 1-gap draft that was expanded to a consolidated note does not get
@@ -510,7 +521,9 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       status: 'signed',
       payload: buildNotePayload(finalCodes),
       pdf,
-      signedByName: 'Provider',
+      // Omit signedByName — upsertClinicalNote stamps signed_by_id +
+      // signed_by_name from currentUserProfile so the row records the
+      // actual signer instead of a placeholder.
     });
     if (note?.id) finalCodes.forEach(c => rememberNoteId(c, note.id));
     bulkUpdateGapStatuses(member.id, Object.fromEntries(finalCodes.map(c => [c, 'Completed'])));
@@ -526,7 +539,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     logCareGapActivity(member.id, {
       title: 'Clinical Note Signed',
       detail: `Direct sign path · ${finalCodes.join(', ')}`,
-      actor: 'Provider',
+      actor: signer,
       icon: 'solar:pen-new-square-linear',
       gapCodes: finalCodes,
       attachment: pdf,
@@ -534,13 +547,13 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       detailCard: buildDetailCard({
         codes: finalCodes,
         status: 'Signed',
-        reviewer: 'Provider',
+        reviewer: signer,
         signedDate: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         noteId: note?.id,
         pdfDataUrl: pdf?.dataUrl,
       }),
     });
-    showToast('Saved and signed — provider sign path');
+    showToast('Saved and signed');
     onClose();
   };
 
@@ -549,7 +562,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     const { codes, primary } = noteScope();
     if (!dateOfService) { showToast('Date of Service is required'); return; }
     if (codes.length === 0) { showToast('No gaps marked Ready for Review'); return; }
-    const pdf = buildPdf(codes, 'Provider');
+    const signer = actorName();
+    const pdf = buildPdf(codes, signer);
     const effectiveId = selectedNoteId || noteIdByCode[primary];
     let finalCodes = codes;
     let finalPrimary = primary;
@@ -569,7 +583,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       status: 'signed',
       payload: buildNotePayload(finalCodes),
       pdf,
-      signedByName: 'Provider',
+      // Store stamps the real signer from currentUserProfile.
     });
     if (note?.id) finalCodes.forEach(c => rememberNoteId(c, note.id));
     bulkUpdateGapStatuses(member.id, Object.fromEntries(finalCodes.map(c => [c, 'Completed'])));
@@ -581,7 +595,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     logCareGapActivity(member.id, {
       title: 'Clinical Note Signed',
       detail: `Direct sign path · ${finalCodes.join(', ')}`,
-      actor: 'Provider',
+      actor: signer,
       icon: 'solar:printer-linear',
       gapCodes: finalCodes,
       attachment: pdf,
@@ -589,7 +603,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       detailCard: buildDetailCard({
         codes: finalCodes,
         status: 'Signed',
-        reviewer: 'Provider',
+        reviewer: signer,
         signedDate: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
         noteId: note?.id,
         pdfDataUrl: pdf?.dataUrl,
