@@ -239,9 +239,6 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
           <div>
             <div className={styles.patientName}>
               <button type="button" className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{member.name}</button>{' '}
-              >
-                {member.name}
-              </button>{' '}
               {(() => {
                 const dobLabel = formatDobDisplay(member.dob) || deriveDob(member.age, member.name);
                 return (
