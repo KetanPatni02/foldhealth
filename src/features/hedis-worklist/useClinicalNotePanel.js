@@ -23,6 +23,11 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   const linkClinicalNoteToReviewTask = useAppStore(s => s.linkClinicalNoteToReviewTask);
   const notesForMember = useAppStore(s => s.clinicalNotesByMember?.[member.id]) || [];
   const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+  // P2-1: hydrate Note Templates from public.forms on panel open so the
+  // GenericEvidenceForm reads its field schema from the DB. Idempotent
+  // (guarded by noteTemplatesDidFetch); no-op after the first call.
+  const fetchNoteTemplates = useAppStore(s => s.fetchNoteTemplates);
+  useEffect(() => { fetchNoteTemplates?.(); }, [fetchNoteTemplates]);
   // Real signed-in user resolved lazily at call time — `currentActorName`
   // reads `currentUserProfile?.name` from the store. Falls back to the
   // mock `CURRENT_USER` constant only when no session is present (dev

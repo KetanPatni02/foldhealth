@@ -6375,6 +6375,45 @@ export const useAppStore = create((set, get) => ({
   clinicalNotesByPatient: {},
   clinicalNoteVersionsById: {},
 
+  // ── Note Templates (DB-backed, P2-1) ──
+  // Mirrors `public.forms` rows where form_type='Note'. `noteTemplatesById`
+  // stores every fetched template row; `noteTemplatesByGap` maps a HEDIS
+  // gap code (e.g. 'CBP') to the default template row. Callers should
+  // prefer `noteTemplateForGap(code)` — it falls back to the hand-rolled
+  // GAP_TEMPLATES JS constant when the DB hasn't been seeded yet.
+  noteTemplatesById: {},
+  noteTemplatesByGap: {},
+  noteTemplatesDidFetch: false,
+  fetchNoteTemplates: async () => {
+    if (get().noteTemplatesDidFetch) return;
+    const { data, error } = await supabase
+      .from('forms')
+      .select('id, name, description, gap_code, form_type, is_default_for_gap, category, status, schema, updated_at')
+      .eq('form_type', 'Note');
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205' || /column .* does not exist/i.test(error.message || '')) {
+        // Table or gap_code column missing — happens before
+        // note_templates_migration.sql lands. Mark fetched so we don't
+        // spam the console; the store selector falls back to
+        // GAP_TEMPLATES automatically.
+        console.warn('[fetchNoteTemplates] forms table or gap_code column missing — run supabase/note_templates_migration.sql');
+        set({ noteTemplatesDidFetch: true });
+        return;
+      }
+      console.error('fetchNoteTemplates error:', error);
+      return;
+    }
+    const byId = {};
+    const byGap = {};
+    for (const row of (data || [])) {
+      byId[row.id] = row;
+      if (row.gap_code && row.is_default_for_gap !== false) {
+        byGap[row.gap_code] = row;
+      }
+    }
+    set({ noteTemplatesById: byId, noteTemplatesByGap: byGap, noteTemplatesDidFetch: true });
+  },
+
   fetchClinicalNotesForMember: async (hedisMemberId) => {
     if (!hedisMemberId) return [];
     const { data, error } = await supabase

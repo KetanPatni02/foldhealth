@@ -120,6 +120,7 @@ const CONTENT_TABS = [
   { key: 'emails',     label: 'Emails' },
   { key: 'components', label: 'Components' },
   { key: 'forms',      label: 'Forms' },
+  { key: 'notes',      label: 'Notes' },
   { key: 'sms',        label: 'SMS' },
   { key: 'push',       label: 'Push Notifications' },
   { key: 'media',      label: 'Media' },
@@ -555,6 +556,154 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
 }
 
 // ────────────────────────────────────────────────────────────────────────────
+// Note Templates tab — Settings → Content → Notes (P2-1)
+//
+// Reads `noteTemplatesById` (populated by fetchNoteTemplates from
+// public.forms where form_type='Note'). Table: name · gap code · field
+// count · updated. Click a row → inline read-only inspector shows the
+// schema field descriptors. Full editing (drag-and-drop builder) is a
+// follow-up; MVP surfaces the templates so admins can audit them from
+// the UI instead of grepping the JS constant.
+// ────────────────────────────────────────────────────────────────────────────
+function NoteTemplatesTab({ searchVal }) {
+  const templatesById = useAppStore(s => s.noteTemplatesById);
+  const fetchNoteTemplates = useAppStore(s => s.fetchNoteTemplates);
+  const [inspected, setInspected] = useState(null);
+
+  useEffect(() => { fetchNoteTemplates?.(); }, [fetchNoteTemplates]);
+
+  const rows = Object.values(templatesById || {})
+    .filter(t => !searchVal
+      || (t.name || '').toLowerCase().includes(searchVal.toLowerCase())
+      || (t.gap_code || '').toLowerCase().includes(searchVal.toLowerCase()))
+    .sort((a, b) => (a.gap_code || '').localeCompare(b.gap_code || ''));
+
+  if (!rows.length) {
+    return (
+      <div className={styles.placeholder}>
+        <Icon name="solar:notes-linear" size={40} color="var(--neutral-150)" />
+        <p className={styles.placeholderTitle}>No Note Templates</p>
+        <p className={styles.placeholderSub}>
+          Run <code>supabase/note_templates_migration.sql</code> then
+          <code> bun scripts/sync-note-templates.mjs </code>
+          to seed the HEDIS Care Gap templates.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <WorklistShell
+        rows={rows}
+        loading={false}
+        header={
+          <tr className={styles.headRow}>
+            <th className={styles.thName}>Template</th>
+            <th className={styles.thCategory}>Gap Code</th>
+            <th className={styles.thCategory}>Fields</th>
+            <th className={styles.thCategory}>Status</th>
+            <th className={styles.thUpdated}>Updated</th>
+          </tr>
+        }
+        renderRow={(t) => {
+          const fieldCount = Array.isArray(t.schema?.items) ? t.schema.items.length : 0;
+          return (
+            <tr key={t.id} className={styles.row} onClick={() => setInspected(t)}>
+              <td className={styles.tdName}>
+                <div className={styles.nameStack}>
+                  <span className={styles.nameText}>{t.name}</span>
+                  {t.description ? <span className={styles.nameDesc}>{t.description}</span> : null}
+                </div>
+              </td>
+              <td className={styles.tdCategory}>
+                {t.gap_code ? <Badge variant="ai-neutral" label={t.gap_code} /> : <span className={styles.cellMuted}>—</span>}
+              </td>
+              <td className={styles.tdCategory}>
+                <span className={styles.cellMuted}>{fieldCount} field{fieldCount === 1 ? '' : 's'}</span>
+              </td>
+              <td className={styles.tdCategory}>
+                <Badge tone="grey" size="S" label={t.status || 'active'} />
+              </td>
+              <td className={styles.tdUpdated}>
+                <span className={styles.cellMuted}>{fmtWhen(t.updated_at)}</span>
+              </td>
+            </tr>
+          );
+        }}
+        minTableWidth={900}
+      />
+      {inspected && (
+        <NoteTemplateInspector template={inspected} onClose={() => setInspected(null)} />
+      )}
+    </>
+  );
+}
+
+function NoteTemplateInspector({ template, onClose }) {
+  const items = Array.isArray(template.schema?.items) ? template.schema.items : [];
+  return createPortal(
+    <>
+      <div className={styles.inspectorOverlay} onClick={onClose} aria-hidden />
+      <aside className={styles.inspectorPanel} role="dialog" aria-label={`${template.name} inspector`}>
+        <header className={styles.inspectorHeader}>
+          <div>
+            <div className={styles.inspectorTitle}>{template.name}</div>
+            {template.description && <div className={styles.inspectorSub}>{template.description}</div>}
+          </div>
+          <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Close" onClick={onClose} />
+        </header>
+        <div className={styles.inspectorMeta}>
+          {template.gap_code && <Badge variant="ai-neutral" label={`Gap: ${template.gap_code}`} />}
+          <Badge tone="grey" size="S" label={`${items.length} field${items.length === 1 ? '' : 's'}`} />
+          <Badge tone="grey" size="S" label={template.status || 'active'} />
+        </div>
+        <div className={styles.inspectorBody}>
+          {items.length === 0 ? (
+            <div className={styles.placeholderSub}>
+              This template has no field schema yet. Run
+              <code> bun scripts/sync-note-templates.mjs </code>
+              to push the JS descriptors into <code>forms.schema</code>.
+            </div>
+          ) : (
+            <ol className={styles.fieldList}>
+              {items.map((f, i) => (
+                <li key={i} className={styles.fieldRow}>
+                  <div className={styles.fieldLabel}>
+                    <span className={styles.fieldName}>{f.label || f.key}</span>
+                    {f.required && <span className={styles.fieldReq}>required</span>}
+                  </div>
+                  <div className={styles.fieldMeta}>
+                    <Badge tone="grey" size="S" label={f.type || 'text'} />
+                    {f.column === 2 && <Badge tone="grey" size="S" label="half-width" />}
+                    {Array.isArray(f.options) && f.options.length > 0 && (
+                      <span className={styles.fieldOpts}>
+                        {f.options.map(o => o.label || o.value).slice(0, 4).join(' · ')}
+                        {f.options.length > 4 ? ` · +${f.options.length - 4}` : ''}
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </aside>
+    </>,
+    document.body,
+  );
+}
+
+function fmtWhen(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
 // Placeholder for unbuilt tabs
 // ────────────────────────────────────────────────────────────────────────────
 function PlaceholderTab({ label }) {
@@ -781,6 +930,8 @@ export function ContentSettings() {
             onToggleId={toggleId}
             onToggleAll={toggleAllOnPage}
           />
+        ) : activeTab === 'notes' ? (
+          <NoteTemplatesTab searchVal={searchVal} />
         ) : (
           <PlaceholderTab
             label={CONTENT_TABS.find(t => t.key === activeTab)?.label ?? ''}
