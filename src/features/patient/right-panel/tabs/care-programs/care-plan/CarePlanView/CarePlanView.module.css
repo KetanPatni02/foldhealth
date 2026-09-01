@@ -199,6 +199,17 @@
   align-items: center;
   gap: 8px;
 }
+.barriersSectionHead {
+  justify-content: flex-start;
+  gap: var(--space-1);
+}
+.sectionActionDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
 .trendsBtn {
   display: inline-flex;
   align-items: center;

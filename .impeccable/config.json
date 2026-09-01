@@ -53,6 +53,14 @@
         ],
         "createdAt": "2026-08-19T10:00:00.000Z",
         "reason": "Progress-bar fill: width is the intended property for a determinate track, not a layout animation to avoid"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "width",
+        "files": [
+          "src/features/hedis-worklist/CareGapDetailDrawer.module.css"
+        ],
+        "createdAt": "2026-09-01T07:35:24.147Z"
       }
     ]
   }

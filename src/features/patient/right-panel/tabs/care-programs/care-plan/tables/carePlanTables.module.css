@@ -3,8 +3,11 @@
 .tableWrap {
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
-  overflow: hidden;
+  overflow: visible;
   background: var(--neutral-0);
+}
+.tableWrap table {
+  table-layout: fixed;
 }
 
 .row {
@@ -48,26 +51,125 @@
 .adherenceTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
   border-left: 0.5px solid var(--neutral-150);
+  box-sizing: border-box;
 }
-.assigneeTd { max-width: 130px; }
+.valueTd {
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+}
+.trendTd {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+}
+.progressTd,
 .adherenceTd {
+  width: 88px;
+  min-width: 88px;
+  max-width: 88px;
   text-align: center;
   vertical-align: middle;
 }
+.progressTd > *,
 .adherenceTd > * {
   margin-inline: auto;
 }
-.statusTd {
+.assigneeTd {
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
+}
+.statusTd,
+.barrierStatusTd {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
   vertical-align: middle;
 }
 .actionsTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
   composes: stickyRight from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
   width: 40px;
+  min-width: 40px;
+  max-width: 40px;
+  box-sizing: border-box;
   padding-left: var(--space-2);
   padding-right: var(--space-2);
   text-align: center;
   vertical-align: middle;
+  overflow: visible;
+}
+
+/* Barriers table — Figma SNP-Story 8455:288936 */
+.barrierRow {
+  min-height: 48px;
+}
+.barrierNameTd {
+  composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  min-width: 350px;
+}
+.barrierNameCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  width: 100%;
+  padding: var(--space-1) 0 var(--space-1) var(--space-1);
+}
+.barrierIcon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+.barrierTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.barrierStatusTd {
+  composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  border-left: 0.5px solid var(--neutral-150);
+  box-sizing: border-box;
+}
+.closedBarriers {
+  border-top: 0.5px solid var(--neutral-100);
+  background: var(--neutral-0);
+}
+.closedBarriersToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-1) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.closedBarriersChevron {
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+.closedBarriersChevronClosed {
+  transform: rotate(-90deg);
+}
+.closedBarriersLabel {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.closedBarriersTable {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.closedBarriersTable tbody tr {
+  border-top: 0.5px solid var(--neutral-150);
 }
 
 .titleCell {

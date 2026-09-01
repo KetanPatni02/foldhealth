@@ -6,6 +6,13 @@ keep entries short and specific. Newest at the top.
 
 ## Working agreements
 
+- **Never use em dashes (—) in any prose you generate.** This applies to
+  everything you write: UI copy, form descriptions, docs, README entries,
+  commit messages, PR descriptions, and chat replies. Rewrite the sentence
+  with a comma, colon, parentheses, or two separate sentences instead. En
+  dashes (–) in numeric ranges are fine; the ban is on the em dash as a
+  punctuation/aside device.
+
 - **Building any new UI? Invoke the `fold-feature-builder` skill FIRST.**
   For every request that generates, builds, creates, scaffolds, or adds new
   front-end code (a component, page, screen, view, table, drawer, modal, form,
