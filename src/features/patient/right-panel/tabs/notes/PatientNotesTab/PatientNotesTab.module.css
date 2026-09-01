@@ -1,102 +1,85 @@
-.wrap {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-4);
-  height: 100%;
-  min-height: 0;
-  overflow-y: auto;
-}
+/* PatientNotesTab — visually mirrors the Overview Recent Notes card so
+   the P360 Notes tab reads as the same primitive, not a bespoke list. */
 
-.actionsRow {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-.header {
-  display: grid;
-  grid-template-columns: 100px minmax(0, 1.4fr) minmax(0, 1fr) 120px minmax(0, 1fr) minmax(0, 1fr) 32px;
-  gap: var(--space-3);
-  padding: 0 var(--space-3);
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-300);
-}
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.row {
-  display: grid;
-  grid-template-columns: 100px minmax(0, 1.4fr) minmax(0, 1fr) 120px minmax(0, 1fr) minmax(0, 1fr) 32px;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-3);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
+.card {
   border-radius: var(--space-2);
-  text-align: left;
-  cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease;
-}
-.row:hover {
-  background: var(--neutral-25);
-  border-color: var(--neutral-200);
+  background: var(--neutral-0);
+  margin: var(--space-3);
 }
 
-.date {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
+/* Section header — title left, "+" and (future) View All right */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2);
 }
-.title {
+.sectionTitle {
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-500);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.chips {
-  display: inline-flex;
+.sectionActions {
+  display: flex;
   align-items: center;
-  gap: calc(var(--space-1) / 2);
-  flex-wrap: wrap;
+  gap: var(--space-2);
 }
-.more {
+
+/* Table */
+.tableWrap { overflow-x: auto; }
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+.table td {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  padding: var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-100);
+  vertical-align: top;
+}
+.table tbody tr:last-child td { border-bottom: none; }
+.tr { cursor: pointer; }
+.tr:hover td { background: var(--neutral-25); }
+
+.checkCol {
+  width: var(--space-8);
+}
+.checkbox {
+  accent-color: var(--primary-300);
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.noteTitle {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  font-weight: 400;
+}
+.noteSub {
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
-.status {
-  display: inline-flex;
-}
-.author, .reviewer {
+.dateText {
   font-size: var(--font-sm);
-  color: var(--neutral-400);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  color: var(--neutral-300);
 }
 
+/* Empty state */
 .empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   padding: var(--space-8) var(--space-4);
   color: var(--neutral-300);
   text-align: center;
-  height: 100%;
 }
 .emptyTitle {
   font-size: var(--font-base);
@@ -106,6 +89,6 @@
 .emptyBody {
   font-size: var(--font-sm);
   color: var(--neutral-300);
-  max-width: 320px;
+  max-width: 340px;
   line-height: var(--leading-normal, 1.4);
 }

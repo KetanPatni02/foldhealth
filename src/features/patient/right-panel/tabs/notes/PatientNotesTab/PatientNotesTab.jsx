@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { Icon } from '../../../../../../components/Icon/Icon';
-import { Badge } from '../../../../../../components/Badge/Badge';
 import { Button } from '../../../../../../components/Button/Button';
+import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
 import styles from './PatientNotesTab.module.css';
 
@@ -105,9 +105,21 @@ export function PatientNotesTab({ patient }) {
 
   if (!patientId) return null;
 
-  if (sorted.length === 0) {
-    return (
-      <>
+  return (
+    <div className={styles.card}>
+      <div className={styles.sectionHeader}>
+        <span className={styles.sectionTitle}>Clinical Notes</span>
+        <div className={styles.sectionActions}>
+          <ActionButton
+            icon="solar:add-circle-linear"
+            size="S"
+            tooltip="New Non-Visit Note"
+            onClick={() => setShowNonVisitDrawer(true)}
+          />
+        </div>
+      </div>
+
+      {sorted.length === 0 ? (
         <div className={styles.empty}>
           <Icon name="solar:notes-linear" size={40} color="var(--neutral-200)" />
           <span className={styles.emptyTitle}>No clinical notes yet</span>
@@ -124,39 +136,32 @@ export function PatientNotesTab({ patient }) {
             New Non-Visit Note
           </Button>
         </div>
-        {showNonVisitDrawer && (
-          <NonVisitNoteDrawer patient={patient} onClose={() => setShowNonVisitDrawer(false)} />
-        )}
-      </>
-    );
-  }
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.checkCol} />
+                <th>Note Title</th>
+                <th>Status</th>
+                <th>Created By</th>
+                <th>Last Updated</th>
+                <th>Template Name</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map(note => (
+                <NoteRow
+                  key={note.id}
+                  note={note}
+                  onOpen={() => openNotePreview?.(note)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-  return (
-    <div className={styles.wrap}>
-      <div className={styles.actionsRow}>
-        <Button
-          variant="secondary"
-          size="M"
-          leadingIcon="solar:add-circle-linear"
-          onClick={() => setShowNonVisitDrawer(true)}
-        >
-          New Non-Visit Note
-        </Button>
-      </div>
-      <div className={styles.header}>
-        <span>Date</span>
-        <span>Note</span>
-        <span>Gaps</span>
-        <span>Status</span>
-        <span>Author</span>
-        <span>Reviewer</span>
-        <span aria-hidden />
-      </div>
-      <div className={styles.list}>
-        {sorted.map(note => (
-          <NoteRow key={note.id} note={note} onOpen={() => openNotePreview?.(note)} />
-        ))}
-      </div>
       {showNonVisitDrawer && (
         <NonVisitNoteDrawer patient={patient} onClose={() => setShowNonVisitDrawer(false)} />
       )}
@@ -177,9 +182,6 @@ const ORIGIN_LABEL = {
 function NoteRow({ note, onOpen }) {
   const codes = note.gapCodes || [];
   const isNonVisit = note.formType === 'non_visit_note';
-  const originLabel = isNonVisit
-    ? 'Non-Visit'
-    : (ORIGIN_LABEL[note.originKind] || (codes.length ? 'Care Gap' : null));
   const title = isNonVisit
     ? (note.payload?.title || 'Non-Visit Note')
     : codes.length > 1
@@ -187,31 +189,52 @@ function NoteRow({ note, onOpen }) {
       : codes[0]
         ? `${codes[0]} Visit Note`
         : 'Clinical Note';
+  // Subtitle mirrors the Overview `noteSub` line — short context under
+  // the title. Non-Visit → snippet of the body; Care Gap → the gap
+  // measures the note covers; origin fallback for any other kind.
+  const subtitle = isNonVisit
+    ? (note.payload?.body ? shorten(note.payload.body, 80) : '—')
+    : codes.length
+      ? codes.join(' · ')
+      : (ORIGIN_LABEL[note.originKind] || 'Clinical Note');
   const status = note.status === 'signed'
-    ? { label: 'Signed', tone: 'success' }
+    ? { label: 'Signed', color: 'var(--status-success)' }
     : note.status === 'submitted'
-      ? { label: 'Pending Review', tone: 'warning' }
-      : { label: 'Draft', tone: 'grey' };
-  const when = note.updatedAt || note.createdAt;
+      ? { label: 'Pending Review', color: 'var(--status-warning)' }
+      : { label: 'In Progress', color: 'var(--status-warning)' };
+  const templateName = isNonVisit
+    ? 'Non-Visit Note'
+    : (note.formType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      || (codes[0] ? `${codes[0]} Visit Note` : 'Clinical Note');
   return (
-    <button type="button" className={styles.row} onClick={onOpen}>
-      <span className={styles.date}>{formatDate(when)}</span>
-      <span className={styles.title}>{title}</span>
-      <span className={styles.chips}>
-        {originLabel && <Badge tone="info" size="S" label={originLabel} />}
-        {codes.slice(0, 3).map(c => <Badge key={c} tone="grey" size="S" label={c} />)}
-        {codes.length > 3 && <span className={styles.more}>+{codes.length - 3}</span>}
-      </span>
-      <span className={styles.status}>
-        <Badge tone={status.tone} size="S" label={status.label} />
-      </span>
-      <span className={styles.author}>{note.authorName || '—'}</span>
-      <span className={styles.reviewer}>{note.reviewerName || '—'}</span>
-      <span className={styles.action} aria-hidden>
-        <Icon name="solar:arrow-right-up-linear" size={14} color="var(--primary-300)" />
-      </span>
-    </button>
+    <tr className={styles.tr} onClick={onOpen}>
+      <td className={styles.checkCol} onClick={(e) => e.stopPropagation()}>
+        <input type="checkbox" className={styles.checkbox} aria-label={`Select ${title}`} />
+      </td>
+      <td>
+        <div className={styles.noteTitle}>{title}</div>
+        <div className={styles.noteSub}>{subtitle}</div>
+      </td>
+      <td>
+        <span style={{ color: status.color }}>{status.label}</span>
+      </td>
+      <td>
+        <div>{note.authorName || '—'}</div>
+        <div className={styles.dateText}>{formatDate(note.createdAt)}</div>
+      </td>
+      <td>
+        <div>{note.signedByName || note.reviewerName || note.authorName || '—'}</div>
+        <div className={styles.dateText}>{formatDate(note.updatedAt || note.createdAt)}</div>
+      </td>
+      <td>{templateName}</td>
+    </tr>
   );
+}
+
+function shorten(text, max) {
+  const t = String(text || '').trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
 }
 
 function formatDate(iso) {
