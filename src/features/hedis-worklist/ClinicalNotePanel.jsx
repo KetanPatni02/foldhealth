@@ -39,6 +39,16 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
     : reviewCodes[0]
       ? `${reviewCodes[0]} Visit Note`
       : 'Consolidated Clinical Note';
+  // Author revisiting their own submitted note → primary flips to
+  // "Update and Save" (routed through handleSubmitForReview so the
+  // reviewer is re-notified). Reviewer's Edit path stays on "Update
+  // Note" via primaryLabel below; the authorName !== reviewerName
+  // guard keeps a name-collision from stealing the reviewer's UI.
+  const currentActorName = useAppStore(s => s.currentActorName);
+  const isAuthorEditingSubmitted = !!linkedNote
+    && linkedNote.status === 'submitted'
+    && linkedNote.authorName === currentActorName?.()
+    && linkedNote.authorName !== linkedNote.reviewerName;
 
   return (
     <>
@@ -72,6 +82,7 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
             primaryLabel={isReviewFlow ? 'Update Note' : 'Sign & Save'}
             canSaveDraft={v.hasChanges}
             canSign={isReviewFlow ? v.anyReadyForReview : v.activeMandatoryComplete}
+            authorEditingSubmitted={isAuthorEditingSubmitted}
           />
         }
       >

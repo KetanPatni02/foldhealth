@@ -35,15 +35,33 @@ export function HeaderActions({
   primaryLabel = 'Sign & Save',
   canSaveDraft = true,
   canSign = true,
+  // True when the CURRENT USER is the author of a note that is already
+  // Pending Review (i.e. they submitted it, the reviewer hasn't signed
+  // yet, and they've reopened it to edit). In that state the primary
+  // action becomes "Update and Save" — pushes the revised state back
+  // to the same reviewer via `onSubmitForReview` (which re-notifies) —
+  // and the chevron replaces "Submit for Review" (redundant, already
+  // submitted) with the two sign-off escape hatches. Reviewers keep
+  // their `primaryLabel` ("Update Note") and every other status keeps
+  // the default Sign & Save primary.
+  authorEditingSubmitted = false,
 }) {
-  const menuItems = [
-    { key: 'submit',  label: 'Submit for Review', icon: 'solar:upload-square-linear' },
-    { key: 'print',   label: 'Sign and Print',    icon: 'solar:printer-linear' },
-  ];
+  const menuItems = authorEditingSubmitted
+    ? [
+        { key: 'sign',  label: 'Sign & Save',    icon: 'solar:check-circle-linear' },
+        { key: 'print', label: 'Sign and Print', icon: 'solar:printer-linear' },
+      ]
+    : [
+        { key: 'submit', label: 'Submit for Review', icon: 'solar:upload-square-linear' },
+        { key: 'print',  label: 'Sign and Print',    icon: 'solar:printer-linear' },
+      ];
   const runMenu = (key) => {
     if (key === 'submit') onSubmitForReview();
+    else if (key === 'sign') onSaveAndSign();
     else if (key === 'print') onSignAndPrint();
   };
+  const effectivePrimaryLabel = authorEditingSubmitted ? 'Update and Save' : primaryLabel;
+  const primaryOnClick = authorEditingSubmitted ? onSubmitForReview : onSaveAndSign;
   return (
     <>
       <Button
@@ -60,10 +78,10 @@ export function HeaderActions({
         size="L"
         menuItems={menuItems}
         onMenuSelect={runMenu}
-        onClick={onSaveAndSign}
+        onClick={primaryOnClick}
         disabled={!canSign}
       >
-        {primaryLabel}
+        {effectivePrimaryLabel}
       </Button>
     </>
   );

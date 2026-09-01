@@ -623,14 +623,29 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                     Schedule
                   </Button>
                 ) : leftWorkspace === 'clinical-note' ? (
-                  <ClinicalNoteHeaderActions
-                    onSaveDraft={clinicalNote.handleSaveDraft}
-                    onSubmitForReview={clinicalNote.handleSubmitForReview}
-                    onSaveAndSign={clinicalNote.handleSaveAndSign}
-                    onSignAndPrint={clinicalNote.handleSignAndPrint}
-                    canSaveDraft={clinicalNote.hasChanges}
-                    canSign={clinicalNote.activeMandatoryComplete}
-                  />
+                  (() => {
+                    // The author revisiting their own Pending Review note
+                    // sees Update-and-Save instead of Sign & Save — pushes
+                    // the revised state back to the same reviewer via
+                    // handleSubmitForReview (which re-notifies). Signing is
+                    // still available from the chevron menu as an escape
+                    // hatch.
+                    const amendNote = amendNoteId ? memberNotes.find(n => n.id === amendNoteId) : null;
+                    const authorEditingSubmitted = !!amendNote
+                      && amendNote.status === 'submitted'
+                      && amendNote.authorName === currentActorName();
+                    return (
+                      <ClinicalNoteHeaderActions
+                        onSaveDraft={clinicalNote.handleSaveDraft}
+                        onSubmitForReview={clinicalNote.handleSubmitForReview}
+                        onSaveAndSign={clinicalNote.handleSaveAndSign}
+                        onSignAndPrint={clinicalNote.handleSignAndPrint}
+                        canSaveDraft={clinicalNote.hasChanges}
+                        canSign={clinicalNote.activeMandatoryComplete}
+                        authorEditingSubmitted={authorEditingSubmitted}
+                      />
+                    );
+                  })()
                 ) : leftWorkspace === 'clinical-note-preview' ? (
                   // Preview affordances branch on the note's DB status:
                   //   • signed    → Displayed-to-Member + Print + Amend
@@ -693,14 +708,23 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                     </>
                   )
                 ) : leftWorkspace === 'clinical-note-consolidated' ? (
-                  <ClinicalNoteHeaderActions
-                    onSaveDraft={clinicalNote.handleSaveDraft}
-                    onSubmitForReview={clinicalNote.handleSubmitForReview}
-                    onSaveAndSign={clinicalNote.handleSaveAndSign}
-                    onSignAndPrint={clinicalNote.handleSignAndPrint}
-                    canSaveDraft={clinicalNote.hasChanges}
-                    canSign={clinicalNote.anyReadyForReview}
-                  />
+                  (() => {
+                    const amendNote = amendNoteId ? memberNotes.find(n => n.id === amendNoteId) : null;
+                    const authorEditingSubmitted = !!amendNote
+                      && amendNote.status === 'submitted'
+                      && amendNote.authorName === currentActorName();
+                    return (
+                      <ClinicalNoteHeaderActions
+                        onSaveDraft={clinicalNote.handleSaveDraft}
+                        onSubmitForReview={clinicalNote.handleSubmitForReview}
+                        onSaveAndSign={clinicalNote.handleSaveAndSign}
+                        onSignAndPrint={clinicalNote.handleSignAndPrint}
+                        canSaveDraft={clinicalNote.hasChanges}
+                        canSign={clinicalNote.anyReadyForReview}
+                        authorEditingSubmitted={authorEditingSubmitted}
+                      />
+                    );
+                  })()
                 ) : leftWorkspace === 'task-detail' ? (
                   // Task detail is a read/edit surface; the task's own
                   // header (status pill, title, etc.) lives in the body so
