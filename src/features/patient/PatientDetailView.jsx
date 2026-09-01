@@ -7,6 +7,8 @@ import { ProfileTabBar } from './shell/ProfileTabBar/ProfileTabBar';
 import { CareManagementView } from './right-panel/tabs/care-management/CareManagementView/CareManagementView';
 import { CareProgramsTab } from './right-panel/tabs/care-programs/CareProgramsTab/CareProgramsTab';
 import { OverviewTab } from './right-panel/tabs/overview/OverviewTab/OverviewTab';
+import { PatientNotesTab } from './right-panel/tabs/notes/PatientNotesTab';
+import { ClinicalNotePreviewDrawer } from '../tasks/ClinicalNotePreviewDrawer';
 import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
 import { TasksTab } from './left-panel/tabs/tasks/TasksTab/TasksTab';
 import { CcmTimerWidget } from './shell/CcmTimerWidget/CcmTimerWidget';
@@ -204,6 +206,8 @@ export function PatientDetailView() {
           <div className={styles.tabContent}>
             {activeTab === 'Overview' ? (
               <OverviewTab />
+            ) : activeTab === 'Notes' ? (
+              <PatientNotesTab patient={patient} />
             ) : activeTab === 'Care Management' ? (
               <CareManagementView />
             ) : activeTab === 'Care Programs' ? (
@@ -218,6 +222,23 @@ export function PatientDetailView() {
           </div>
         </div>
       </div>
+      <P360NotePreviewMount />
     </div>
+  );
+}
+
+/**
+ * P360-level mount for the standalone `ClinicalNotePreviewDrawer`, driven
+ * by the store's `previewNoteFromHover` slice. The P360 Notes tab (and
+ * anywhere else on this page that calls `openNotePreview`) needs a mount
+ * point — TasksView already owns one for the Tasks page, but P360 didn't
+ * have one, so the Notes-tab View action was a silent no-op.
+ */
+function P360NotePreviewMount() {
+  const previewNote = useAppStore(s => s.previewNoteFromHover);
+  const closeNotePreview = useAppStore(s => s.closeNotePreview);
+  if (!previewNote) return null;
+  return (
+    <ClinicalNotePreviewDrawer note={previewNote} onClose={closeNotePreview} />
   );
 }
