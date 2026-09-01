@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { ClinicalNotePreviewBody } from '../hedis-worklist/ClinicalNotePreviewBody';
+import { ClinicalNoteVersionsDrawer } from './ClinicalNoteVersionsDrawer';
 import { useAppStore } from '../../store/useAppStore';
 import styles from './TasksView.module.css';
 
@@ -27,6 +29,7 @@ import styles from './TasksView.module.css';
 export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
   const hedisMembers = useAppStore(s => s.hedisMembers);
   const showToast = useAppStore(s => s.showToast);
+  const [showHistory, setShowHistory] = useState(false);
   if (!note) return null;
 
   const codes = note.gapCodes || [];
@@ -62,6 +65,7 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
   };
 
   return (
+    <>
     <Drawer
       title={
         <span className={styles.previewTitleStack}>
@@ -93,6 +97,12 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
                   if (url) { const w = window.open(url, '_blank'); try { w?.focus(); } catch { /* */ } }
                   else showToast?.('No PDF for this version');
                 }}
+              />
+              <ActionButton
+                icon="solar:history-linear"
+                size="L"
+                tooltip="Amend history"
+                onClick={() => setShowHistory(true)}
               />
               <Button
                 variant="tertiary"
@@ -142,5 +152,9 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
         noteId={note.id}
       />
     </Drawer>
+    {showHistory && (
+      <ClinicalNoteVersionsDrawer note={note} onClose={() => setShowHistory(false)} />
+    )}
+    </>
   );
 }
