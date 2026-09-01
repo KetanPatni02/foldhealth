@@ -39,18 +39,45 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
   const claimTask = useAppStore(s => s.claimTask);
   const completeCareGapSignOffTask = useAppStore(s => s.completeCareGapSignOffTask);
   const hedisMembers = useAppStore(s => s.hedisMembers);
+  const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const showToast = useAppStore(s => s.showToast);
-  // Tasks-tab tasks don't carry `hedisMemberId` (the CareGap flow's
-  // in-memory field), so fall back to a member-name lookup for HEDIS
-  // Sign-Off tasks; without this the ClinicalNotePanel gate
-  // (`editingNote && hedisMember`) never opens the editor from Task
-  // Details even after Edit is clicked in the preview drawer.
-  const hedisMember = (task?.hedisMemberId
-    ? hedisMembers.find(m => m.id === task.hedisMemberId)
-    : (task?.pool === 'HEDIS Sign-Off' && task?.member
-      ? hedisMembers.find(m => m.name === task.member)
-      : null))
+  // Lazy-fetch on drawer open so a cold Tasks session (never touched
+  // the HEDIS worklist) still resolves a member row for the editable
+  // ClinicalNotePanel. Without this the DB-only store starts with
+  // hedisMembers = [] on this page and every Alok View click silently
+  // no-ops.
+  useEffect(() => {
+    if (task?.pool === 'HEDIS Sign-Off' && !hedisMembers.length) {
+      fetchHedisMembers?.();
+    }
+  }, [task?.pool, hedisMembers.length, fetchHedisMembers]);
+  // Resolve first from the persisted `task.hedis_member_id`
+  // (tasks_hedis_linkage_migration.sql), then fall back to a name
+  // match for legacy rows. When neither hits — DB empty, name
+  // mismatch — synthesize a minimal member from the task's own
+  // fields so ClinicalNotePanel still mounts. The panel only needs
+  // id / name / initials / gaps to render.
+  const resolvedHedisMemberId = task?.hedisMemberId
+    || (task?.pool === 'HEDIS Sign-Off' && task?.member
+      ? hedisMembers.find(m => m.name === task.member)?.id
+      : null)
     || null;
+  const hedisMember = (resolvedHedisMemberId
+    ? hedisMembers.find(m => m.id === resolvedHedisMemberId)
+    : null)
+    || (task?.pool === 'HEDIS Sign-Off' && (resolvedHedisMemberId || task?.member)
+      ? {
+          id: resolvedHedisMemberId || `task-${task.id}`,
+          name: task.member || 'Member',
+          in: task.member ? task.member.split(' ').map(w => w[0]).slice(0, 2).join('') : 'M',
+          gender: null,
+          age: null,
+          dob: null,
+          memberId: null,
+          state: null,
+          gaps: (task.hedisGapCodes || task.labels || []).map(code => ({ code, status: 'Open' })),
+        }
+      : null);
   const allTasks = useAppStore(s => s.tasks);
   const taskAuditLogs = useAppStore(s => s.taskAuditLogs);
   const fetchTaskAuditLog = useAppStore(s => s.fetchTaskAuditLog);
