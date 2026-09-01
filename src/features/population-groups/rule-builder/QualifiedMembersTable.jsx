@@ -78,17 +78,26 @@ export function QualifiedMembersTable({ members, loading, error, onRetry }) {
       rows={pageRows}
       renderRow={(m) => {
         const canOpen = quickViewable.has(m.id);
+        const payload = patients.find(p => p.id === m.id);
+        const handleMemberCellClick = (e) => {
+          e.stopPropagation();
+          if (canOpen && payload) openQuickView(payload);
+        };
         return (
           <tr key={m.id} className={styles.qmRow}>
-            <td className={`${styles.qmMembersTd} ${styles.qmStickyLeft}`} style={{ left: 0 }}>
+            <td
+              className={`${styles.qmMembersTd} ${styles.qmStickyLeft}`}
+              style={{ left: 0, cursor: canOpen ? 'pointer' : 'default' }}
+              onClick={canOpen ? handleMemberCellClick : undefined}
+              role={canOpen ? 'button' : undefined}
+              tabIndex={canOpen ? 0 : undefined}
+              title={canOpen ? 'Open patient quick view' : undefined}
+              onKeyDown={canOpen ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } } : undefined}
+            >
               <div className={styles.qmPatientCell}>
                 <div>
                   {canOpen ? (
-                    <button
-                      type="button"
-                      className={styles.qmPatientNameLink}
-                      onClick={() => openQuickView(patients.find(p => p.id === m.id))}
-                    >
+                    <button type="button" className={styles.qmPatientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>
                       {m.name}
                     </button>
                   ) : (

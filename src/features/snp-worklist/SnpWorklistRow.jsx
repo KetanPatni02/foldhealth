@@ -321,6 +321,11 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
     e.stopPropagation();
     openQuickView?.({ id: m.patientId || m.id, name: m.name, initials: m.initials, gender: m.gender, age: m.age, memberId: m.memberId, language: m.language });
   };
+  const quickViewPayload = { id: m.patientId || m.id, name: m.name, initials: m.initials, gender: m.gender, age: m.age, memberId: m.memberId, language: m.language };
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    openQuickView?.(quickViewPayload);
+  };
 
   const handleCallClick = (e) => {
     e.stopPropagation();
@@ -355,12 +360,20 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
         <Checkbox checked={isSelected} onCheckedChange={() => onSelect(m.id)} aria-label={`Select ${m.name}`} />
       </td>
 
-      <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 36 }}>
+      <td
+        className={`${styles.membersTd} ${styles.stickyLeft}`}
+        style={{ left: 36, cursor: 'pointer' }}
+        onClick={handleMemberCellClick}
+        role="button"
+        tabIndex={0}
+        title="Open patient quick view"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+      >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={m.initials} />
           <div>
             <div className={styles.patientName}>
-              <button className={styles.patientNameLink} onClick={handleNameClick}>{m.name}</button>{' '}
+              <button className={styles.patientNameLink} onClick={handleNameClick} tabIndex={-1}>{m.name}</button>{' '}
               {(() => {
                 const dobLabel = formatDobDisplay(m.dob) || deriveDob(m.age, m.name);
                 return (
@@ -371,8 +384,10 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
               })()}
             </div>
             <div className={styles.patientMeta}>
-              <FoldIdTag id={m.memberId} className={styles.foldId} showToast={showToast} />{' '}•{' '}
-              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
+              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                <FoldIdTag id={m.memberId} className={styles.foldId} showToast={showToast} />
+              </span>{' '}•{' '}
+              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
                 {(m.language || 'en').toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[m.language] || 'English'}</span>
               </button>

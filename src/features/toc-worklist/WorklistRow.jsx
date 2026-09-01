@@ -286,6 +286,11 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
   };
 
   const p = patient;
+  const quickViewPayload = { id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace };
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    openQuickView(quickViewPayload);
+  };
 
   const menuItems = buildPatientRowMenuItems([
     ...(p.status === 'scheduled' || p.status === 'queued'
@@ -314,18 +319,26 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
             onCheckedChange={() => onSelect(p.id)}
           />
         </td>
-        <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 36 }}>
+        <td
+          className={`${styles.membersTd} ${styles.stickyLeft}`}
+          style={{ left: 36, cursor: 'pointer' }}
+          onClick={handleMemberCellClick}
+          role="button"
+          tabIndex={0}
+          title="Open patient quick view"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+        >
           <div className={styles.patientCell}>
             <Avatar variant="patient" initials={p.initials} />
             <div>
-              <div className={styles.patientName}><button className={styles.patientNameLink} onClick={e => { e.stopPropagation(); useAppStore.getState().openQuickView({ id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, memberId: p.memberId, language: p.language, lace: p.lace }); }}>{p.name}</button> {(() => { const dobLabel = formatDobDisplay(p.dob) || deriveDob(p.age, p.name); return (<Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom"><span className={styles.patientDemo}>({p.gender}•{p.age})</span></Tooltip>); })()}</div>
+              <div className={styles.patientName}>
+                <button className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{p.name}</button> {(() => { const dobLabel = formatDobDisplay(p.dob) || deriveDob(p.age, p.name); return (<Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom"><span className={styles.patientDemo}>({p.gender}•{p.age})</span></Tooltip>); })()}
+              </div>
               <div className={styles.patientMeta}>
-                <FoldIdTag id={p.memberId} className={styles.foldId} showToast={showToast} />{' '}•{' '}
-                <button
-                  type="button"
-                  className={styles.langBadge}
-                  onClick={(e) => e.stopPropagation()}
-                >
+                <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                  <FoldIdTag id={p.memberId} className={styles.foldId} showToast={showToast} />
+                </span>{' '}•{' '}
+                <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
                   {(p.language || 'en').toUpperCase()}
                   <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
                 </button>
