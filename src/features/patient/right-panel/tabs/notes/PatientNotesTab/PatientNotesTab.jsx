@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../../components/Badge/Badge';
+import { Button } from '../../../../../../components/Button/Button';
+import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
 import styles from './PatientNotesTab.module.css';
 
 /**
@@ -99,23 +101,48 @@ export function PatientNotesTab({ patient }) {
     [notes],
   );
 
+  const [showNonVisitDrawer, setShowNonVisitDrawer] = useState(false);
+
   if (!patientId) return null;
 
   if (sorted.length === 0) {
     return (
-      <div className={styles.empty}>
-        <Icon name="solar:notes-linear" size={40} color="var(--neutral-200)" />
-        <span className={styles.emptyTitle}>No clinical notes yet</span>
-        <span className={styles.emptyBody}>
-          Notes created from the Care Gap workflow will appear here once the
-          patient has one.
-        </span>
-      </div>
+      <>
+        <div className={styles.empty}>
+          <Icon name="solar:notes-linear" size={40} color="var(--neutral-200)" />
+          <span className={styles.emptyTitle}>No clinical notes yet</span>
+          <span className={styles.emptyBody}>
+            Notes created from the Care Gap workflow will appear here once the
+            patient has one — or start a Non-Visit Note right from here.
+          </span>
+          <Button
+            variant="primary"
+            size="M"
+            leadingIcon="solar:add-circle-linear"
+            onClick={() => setShowNonVisitDrawer(true)}
+          >
+            New Non-Visit Note
+          </Button>
+        </div>
+        {showNonVisitDrawer && (
+          <NonVisitNoteDrawer patient={patient} onClose={() => setShowNonVisitDrawer(false)} />
+        )}
+      </>
     );
   }
 
   return (
     <div className={styles.wrap}>
+      <div className={styles.actionsRow}>
+        <Button
+          variant="secondary"
+          size="M"
+          leadingIcon="solar:add-circle-linear"
+          onClick={() => setShowNonVisitDrawer(true)}
+        >
+          New Non-Visit Note
+        </Button>
+      </div>
       <div className={styles.header}>
         <span>Date</span>
         <span>Note</span>
@@ -130,6 +157,9 @@ export function PatientNotesTab({ patient }) {
           <NoteRow key={note.id} note={note} onOpen={() => openNotePreview?.(note)} />
         ))}
       </div>
+      {showNonVisitDrawer && (
+        <NonVisitNoteDrawer patient={patient} onClose={() => setShowNonVisitDrawer(false)} />
+      )}
     </div>
   );
 }
@@ -146,12 +176,17 @@ const ORIGIN_LABEL = {
 
 function NoteRow({ note, onOpen }) {
   const codes = note.gapCodes || [];
-  const originLabel = ORIGIN_LABEL[note.originKind] || (codes.length ? 'Care Gap' : null);
-  const title = codes.length > 1
-    ? 'Consolidated Clinical Note'
-    : codes[0]
-      ? `${codes[0]} Visit Note`
-      : 'Clinical Note';
+  const isNonVisit = note.formType === 'non_visit_note';
+  const originLabel = isNonVisit
+    ? 'Non-Visit'
+    : (ORIGIN_LABEL[note.originKind] || (codes.length ? 'Care Gap' : null));
+  const title = isNonVisit
+    ? (note.payload?.title || 'Non-Visit Note')
+    : codes.length > 1
+      ? 'Consolidated Clinical Note'
+      : codes[0]
+        ? `${codes[0]} Visit Note`
+        : 'Clinical Note';
   const status = note.status === 'signed'
     ? { label: 'Signed', tone: 'success' }
     : note.status === 'submitted'
