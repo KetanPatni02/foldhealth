@@ -56,6 +56,10 @@ const EMPTY_SELECTED_IDS = [];
  *                          Pagination state. Omit `totalItems` to hide.
  *  - minTableWidth        Minimum table width in px so wide column sets
  *                          get a horizontal scroll instead of squishing.
+ *  - embedded             Auto-height mode for tables stacked in a parent
+ *                          scroller (see prop default above).
+ *  - embeddedNoScroll     With `embedded`, skip the per-table horizontal
+ *                          scroller so columns align across stacked tables.
  */
 // Stable identities for omitted array props. An inline `= []` default allocates
 // a fresh array on every render, which breaks the referential-equality checks
@@ -131,6 +135,9 @@ export function WorklistShell({
   // sections, pre-visit blocks). `embedded` drops the flex/overflow so the
   // table grows to its content and the parent keeps the scroll.
   embedded = false,
+  // With `embedded`, suppress the per-table horizontal scroller so stacked
+  // tables (e.g. Care Plan GBI) share one parent scroll and aligned columns.
+  embeddedNoScroll = false,
   // When provided, WorklistShell handles column preferences end-to-end:
   //   • orders/filters `columns` per the user's saved prefs
   //   • injects a "Show / hide columns" button into the last column's header
@@ -321,12 +328,20 @@ export function WorklistShell({
       {/* Table body — sticky-left checkbox + Members col, sticky-right
           Actions col by convention. Callers control which columns are
           sticky via `sticky: 'left' | 'right'` on the column def. */}
-      <div className={embedded ? `${styles.tableScroll} ${styles.tableScrollEmbedded}` : styles.tableScroll}>
+      <div className={embedded
+        ? (embeddedNoScroll
+          ? styles.tableScrollEmbeddedFlush
+          : `${styles.tableScroll} ${styles.tableScrollEmbedded}`)
+        : styles.tableScroll}>
         {loading ? (
           <TableSkeleton rows={perPage || 10} columns={columns.length || 8} />
         ) : (
           <table
-            className={rows.length === 0 && emptyState ? `${styles.table} ${styles.tableEmpty}` : styles.table}
+            className={[
+              styles.table,
+              rows.length === 0 && emptyState && styles.tableEmpty,
+              embedded && embeddedNoScroll && styles.tableFlush,
+            ].filter(Boolean).join(' ')}
             style={{ minWidth: minTableWidth }}
           >
             <thead>
@@ -374,6 +389,7 @@ export function WorklistShell({
                         activeDir={sortDir}
                         onSort={onSort}
                         align={col.align || 'left'}
+                        hideSortIcon={col.hideSortIcon}
                         className={styles.th}
                         style={{ ...stickyStyle, width: col.width, ...col.thStyle }}
                       />

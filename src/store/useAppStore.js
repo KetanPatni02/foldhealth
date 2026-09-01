@@ -30,6 +30,7 @@ import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
+import { goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 
 // Central failure reporter for every persistHccXxx helper. Historically
 // each of these was fire-and-forget with only console.warn on error — so
@@ -312,6 +313,7 @@ function mapPatientCarePlanRow(row) {
     createdBy: row.created_by || '',
     conditions: (row.conditions || []).map(label => ({ label })),
     conditionTotal: row.condition_total ?? (row.conditions || []).length,
+    appliedTemplateIds: row.applied_template_ids || [],
     createdDate: row.created_at,
     updatedAt: row.updated_at || null,
     signedBy: row.signed_by || null,
@@ -2946,6 +2948,76 @@ export const useAppStore = create((set, get) => ({
     const goals = (cur.goals || []).map(g => ({ id: `g-${g.id}`, title: g.title, subtitle: g.subtitle || '' }));
     const interventions = (cur.interventions || []).map(i => ({ id: `i-${i.id}`, title: i.title, duration: i.duration || '' }));
     return get().saveCarePlanTemplate({ name: name.trim(), conditions, goals, interventions });
+  },
+
+  setPatientCarePlanAppliedTemplates: async (patientId, program, templateIds) => {
+    const key = carePlanKey(patientId, program.id);
+    const planId = await get().ensurePatientCarePlan(patientId, program);
+    if (!planId) return false;
+    const ids = [...new Set(templateIds)];
+    const { error } = await supabase
+      .from('patient_care_plans')
+      .update({ applied_template_ids: ids, updated_at: new Date().toISOString() })
+      .eq('id', planId);
+    if (error) {
+      console.warn('setPatientCarePlanAppliedTemplates:', error.message);
+      get().showToast('Could not save applied templates');
+      return false;
+    }
+    set(s => {
+      const cur = s.patientCarePlans[key];
+      if (!cur?.plan) return {};
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: { ...cur, plan: { ...cur.plan, appliedTemplateIds: ids } },
+        },
+      };
+    });
+    return true;
+  },
+
+  applyPatientCarePlanTemplates: async (patientId, program, nextTemplateIds) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    const prevIds = cur?.plan?.appliedTemplateIds || [];
+    const nextIds = [...new Set(nextTemplateIds)];
+    const toAdd = nextIds.filter(id => !prevIds.includes(id));
+    const libraryGoals = get().carePlanGoals;
+    const templates = get().carePlanTemplates;
+
+    for (const templateId of toAdd) {
+      const template = templates.find(t => t.id === templateId);
+      if (!template) continue;
+      const existingGoalTitles = new Set((get().patientCarePlans[key]?.goals || []).map(g => g.title.trim().toLowerCase()));
+      const existingIntvTitles = new Set((get().patientCarePlans[key]?.interventions || []).map(i => i.title.trim().toLowerCase()));
+
+      for (const entry of template.goals || []) {
+        const payload = goalPayloadFromTemplateEntry(entry, libraryGoals);
+        const titleKey = payload.title.trim().toLowerCase();
+        if (!payload.title || existingGoalTitles.has(titleKey)) continue;
+        const saved = await get().savePatientCarePlanGoal(patientId, program, payload);
+        if (saved) existingGoalTitles.add(titleKey);
+      }
+
+      for (const entry of template.interventions || []) {
+        const payload = interventionPayloadFromTemplateEntry(entry);
+        const titleKey = payload.title.trim().toLowerCase();
+        if (!payload.title || existingIntvTitles.has(titleKey)) continue;
+        const saved = await get().savePatientCarePlanIntervention(patientId, program, payload);
+        if (saved) existingIntvTitles.add(titleKey);
+      }
+    }
+
+    const ok = await get().setPatientCarePlanAppliedTemplates(patientId, program, nextIds);
+    if (!ok) return false;
+    const added = toAdd.length;
+    const removed = prevIds.filter(id => !nextIds.includes(id)).length;
+    if (added) get().showToast(`Applied ${added} template${added === 1 ? '' : 's'}`);
+    else if (removed) get().showToast('Updated applied templates');
+    else get().showToast('Templates updated');
+    get().touchCarePlanModified(patientId, program.id);
+    return true;
   },
 
   // Preview & share (E4). The header's Download / Sign & Share buttons live in

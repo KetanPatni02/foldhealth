@@ -3,6 +3,7 @@ import { Icon } from '../../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
+import { useTableSort } from '../../../../../../../components/HeaderCell/useTableSort';
 import {
   BARRIER_COLUMNS,
   withSelectColumn,
@@ -10,6 +11,7 @@ import {
   LinkChip,
   GbiStatusButton,
   isClosedBarrier,
+  GBI_COL_WIDTH,
 } from './carePlanTableShared';
 import styles from './carePlanTables.module.css';
 
@@ -84,25 +86,30 @@ export function CarePlanBarriersTable({
   emptyState,
 }) {
   const [closedOpen, setClosedOpen] = useState(false);
+  const { sorted, sortKey, sortDir, requestSort } = useTableSort(rows, 'title', 'asc');
 
   const { openRows, closedRows } = useMemo(() => {
     const open = [];
     const closed = [];
-    for (const row of rows) {
+    for (const row of sorted) {
       if (isClosedBarrier(row.status)) closed.push(row);
       else open.push(row);
     }
     return { openRows: open, closedRows: closed };
-  }, [rows]);
+  }, [sorted]);
 
   return (
     <div className={styles.tableWrap}>
       <WorklistShell
         embedded
+        embeddedNoScroll
         header={null}
         hideBulkBar
         columns={withSelectColumn(BARRIER_COLUMNS, bulkMode)}
         rows={openRows}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={requestSort}
         selectedIds={selectedIds}
         onSelectAll={onSelectAll}
         minTableWidth={0}
@@ -138,6 +145,11 @@ export function CarePlanBarriersTable({
           </button>
           {closedOpen && (
             <table className={styles.closedBarriersTable}>
+              <colgroup>
+                <col />
+                <col style={{ width: GBI_COL_WIDTH.status }} />
+                <col style={{ width: GBI_COL_WIDTH.actions }} />
+              </colgroup>
               <tbody>
                 {closedRows.map(b => (
                   <BarrierRow

@@ -5,6 +5,7 @@ import { AssigneeChange } from '../../../../../../../components/AssigneeChange/A
 import { Badge } from '../../../../../../../components/Badge/Badge';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
+import { useTableSort } from '../../../../../../../components/HeaderCell/useTableSort';
 import {
   INTERVENTION_COLUMNS,
   withSelectColumn,
@@ -13,6 +14,7 @@ import {
   GoalProgressCell,
   GbiStatusButton,
 } from './carePlanTableShared';
+import { enrichInterventionRows } from './carePlanTableSort';
 import styles from './carePlanTables.module.css';
 
 export function CarePlanInterventionsTable({
@@ -55,14 +57,21 @@ export function CarePlanInterventionsTable({
     return withSelectColumn(base, bulkMode);
   }, [bulkMode]);
 
+  const sortableRows = useMemo(() => enrichInterventionRows(rows), [rows]);
+  const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortableRows, 'title', 'asc');
+
   return (
     <div className={styles.tableWrap}>
       <WorklistShell
         embedded
+        embeddedNoScroll
         header={null}
         hideBulkBar
         columns={columns}
-        rows={rows}
+        rows={sorted}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={requestSort}
         selectedIds={selectedIds}
         onSelectAll={onSelectAll}
         minTableWidth={0}
@@ -126,7 +135,7 @@ export function CarePlanInterventionsTable({
               </td>
               <td className={styles.assigneeTd} onClick={e => e.stopPropagation()}>
                 <AssigneeChange
-                  size="S"
+                  size="M"
                   fillContainer
                   nameMuted
                   name={i.assignee.name}

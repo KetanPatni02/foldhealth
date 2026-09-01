@@ -16,6 +16,8 @@ import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { AddInterventionDrawer } from '../AddInterventionDrawer/AddInterventionDrawer';
 import { CreateGoalDrawer } from '../../../../../../../settings/care-plan-library/goals/CreateGoalDrawer/CreateGoalDrawer';
+import { CarePlanLinkDrawer } from '../CarePlanLinkDrawer/CarePlanLinkDrawer';
+import { GoalLinkedInterventionsList } from './GoalLinkedInterventionsList';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../../settings/care-plan-library/lib';
 import styles from './GoalPreviewDrawer.module.css';
 
@@ -31,6 +33,7 @@ const ACTIVITY_FILTERS = [
   { key: 'progress_changed', label: 'Progress' },
   { key: 'value_changed', label: 'Values' },
 ];
+const PRIORITIES = ['high', 'medium', 'low'];
 const STATUS_TONE = {
   'Not Started': 'grey',
   'In Progress': 'warning',
@@ -183,7 +186,7 @@ function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit, mute
  * Every edit (status, progress, readings, automations, notes, interventions,
  * barriers) writes through the care-plan store into Supabase.
  */
-export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
+export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
@@ -200,15 +203,29 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
   const saveCarePlanAutomation = useAppStore(s => s.saveCarePlanAutomation);
   const deleteCarePlanAutomation = useAppStore(s => s.deleteCarePlanAutomation);
   const savePatientCarePlanIntervention = useAppStore(s => s.savePatientCarePlanIntervention);
+  const deletePatientCarePlanIntervention = useAppStore(s => s.deletePatientCarePlanIntervention);
   const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
   const showToast = useAppStore(s => s.showToast);
   const updateCarePlanNote = useAppStore(s => s.updateCarePlanNote);
   const deleteCarePlanNote = useAppStore(s => s.deleteCarePlanNote);
   const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
+  const fetchCarePlanLinks = useAppStore(s => s.fetchCarePlanLinks);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const patientName = useAppStore(s => {
+    const p = (s.patients || []).find(x => x.id === patientId)
+      || (s.allPatients || []).find(x => x.id === patientId);
+    return p?.name;
+  });
+  const carePlanLinks = useAppStore(s => (key ? s.patientCarePlanLinks[key] : null)) || [];
+  const linkCount = (id) => carePlanLinks.filter(l => l.ownerId === String(id)).length;
 
   const live = (slice?.goals || []).find(g => g.id === goal?.id) || goal;
-  const interventions = useMemo(() => (slice?.interventions || []).filter(i => i.goalId === live?.id), [slice, live]);
+  const interventions = useMemo(
+    () => (slice?.interventions || []).filter(i => String(i.goalId) === String(live?.id)),
+    [slice, live],
+  );
   const barriers = useMemo(() => (slice?.barriers || []).filter(b => b.goalId === live?.id), [slice, live]);
   const measurements = useMemo(
     () => (slice?.measurements || []).filter(m => m.goalId === live?.id).slice().sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt)),
@@ -238,11 +255,21 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
   const [editingNoteId, setEditingNoteId] = useState(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [confirm, setConfirm] = useState(null);
+  const [priorityMenu, setPriorityMenu] = useState(null);
+  const [rowMenu, setRowMenu] = useState(null);
+  const [linkOwner, setLinkOwner] = useState(null);
   const moreBtnRef = useRef(null);
   const filterBtnRef = useRef(null);
 
   useEffect(() => { setPct(Number(live?.progress) || 0); }, [live?.id, live?.progress]);
   useEffect(() => { if (patientId && program) fetchCarePlanAudit(patientId, program.id); }, [patientId, program, fetchCarePlanAudit]);
+  useEffect(() => {
+    if (patientId && program?.id) fetchCarePlanLinks(patientId, program.id);
+  }, [patientId, program?.id, fetchCarePlanLinks]);
+  useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
+  useEffect(() => {
+    if (interventions.length > 0) setOpen(s => ({ ...s, interventions: true }));
+  }, [live?.id, interventions.length]);
 
   const activity = useMemo(() => {
     const rows = audit
@@ -329,6 +356,25 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
     await addCarePlanNote(patientId, program, body, { entityType: 'goal', entityId: live.id, summary: `Note on ${live.title}` });
     setNote('');
     setNotePlain('');
+  };
+
+  const handleAssigneeChange = (intervention, user) => {
+    if (!canEdit) return;
+    savePatientCarePlanIntervention(
+      patientId,
+      program,
+      { ...intervention, assignee: { name: user.name, initials: user.initials } },
+      intervention.id,
+    );
+    showToast?.(`Assigned to ${user.name}`);
+  };
+
+  const changePriority = (priority) => {
+    const { kind, item } = priorityMenu;
+    setPriorityMenu(null);
+    if (kind === 'intv') {
+      savePatientCarePlanIntervention(patientId, program, { ...item, priority }, item.id);
+    }
   };
 
   const programBadges = [program?.code].filter(Boolean);
@@ -513,20 +559,17 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
             interventions.length === 0 ? (
               <div className={styles.emptyCard}>No interventions linked yet.</div>
             ) : (
-              <div className={styles.linkedList}>
-                {interventions.map(i => (
-                  <div key={i.id} className={styles.linkedRow}>
-                    <span className={styles.linkedIcon}><Icon name={i.icon || 'solar:clipboard-list-linear'} size={16} color="var(--neutral-400)" /></span>
-                    <span className={styles.linkedText}>
-                      <span className={styles.linkedTitle}>{i.title}</span>
-                      {i.status && <span className={styles.linkedMeta}>{i.status}</span>}
-                    </span>
-                    {i.assignee?.name && i.assignee.name !== 'Unassigned'
-                      ? <Avatar type="initial" variant="staff" size="S" initials={initialsOf(i.assignee.name)} />
-                      : <Badge tone="grey" label="Unassigned" />}
-                  </div>
-                ))}
-              </div>
+              <GoalLinkedInterventionsList
+                interventions={interventions}
+                canEdit={canEdit}
+                linkCount={linkCount}
+                platformUsers={platformUsers}
+                onOpen={onOpenIntervention}
+                onPriorityMenu={setPriorityMenu}
+                onLinkOwner={setLinkOwner}
+                onAssigneeChange={handleAssigneeChange}
+                onRowMenu={setRowMenu}
+              />
             )
           )}
         </section>
@@ -761,6 +804,51 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
         />
       )}
 
+      {linkOwner && (
+        <CarePlanLinkDrawer
+          patientId={patientId}
+          program={program}
+          patientName={patientName}
+          owner={linkOwner}
+          onClose={() => setLinkOwner(null)}
+        />
+      )}
+
+      {priorityMenu && (
+        <MenuPopover
+          anchorRect={priorityMenu.rect}
+          align="left"
+          width={160}
+          ariaLabel="Change priority"
+          items={PRIORITIES.map(p => ({
+            key: p,
+            label: p.charAt(0).toUpperCase() + p.slice(1),
+            iconElement: <PriorityIcon priority={p} size={16} />,
+          }))}
+          onSelect={changePriority}
+          onClose={() => setPriorityMenu(null)}
+        />
+      )}
+
+      {rowMenu && (
+        <MenuPopover
+          anchorRect={rowMenu.rect}
+          width={160}
+          ariaLabel="Intervention actions"
+          items={[
+            { key: 'rename', icon: 'solar:pen-linear', label: 'Rename', disabled: !canEdit },
+            { key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Remove', danger: true, disabled: !canEdit },
+          ]}
+          onSelect={(k) => {
+            const item = rowMenu.item;
+            setRowMenu(null);
+            if (k === 'delete') setConfirm({ kind: 'intv', id: item.id, name: item.title });
+            else if (k === 'rename') onOpenIntervention?.(item);
+          }}
+          onClose={() => setRowMenu(null)}
+        />
+      )}
+
       {confirm?.kind === 'goal' && (
         <ConfirmDialog
           variant="error"
@@ -772,6 +860,20 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose }) {
             await deletePatientCarePlanGoal(patientId, program.id, live.id);
             setConfirm(null);
             onClose?.();
+          }}
+        />
+      )}
+
+      {confirm?.kind === 'intv' && (
+        <ConfirmDialog
+          variant="error"
+          title={`Remove "${confirm.name}"?`}
+          description="This removes the intervention from the patient's care plan."
+          confirmLabel="Remove"
+          onCancel={() => setConfirm(null)}
+          onConfirm={async () => {
+            await deletePatientCarePlanIntervention(patientId, program.id, confirm.id);
+            setConfirm(null);
           }}
         />
       )}
