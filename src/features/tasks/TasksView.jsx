@@ -2,8 +2,11 @@ import { Toggle } from '../../components/Toggle/Toggle';
 import { TopBar } from '../../components/TopBar/TopBar';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { useAppStore } from '../../store/useAppStore';
 import { AddTaskDrawer } from './AddTaskDrawer';
 import { TaskDetailDrawer } from './TaskDetailDrawer';
+import { ClinicalNotePreviewDrawer } from './ClinicalNotePreviewDrawer';
+import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { KanbanIcon } from './TasksViewIcons';
 import { useTasksView } from './useTasksView';
 import { TasksViewContent } from './TasksViewContent';
@@ -23,6 +26,18 @@ export { TaskListSection } from './TasksViewListSection';
 
 export function TasksView() {
   const view = useTasksView();
+  // Standalone linked-note preview + Edit surface — driven by the store
+  // slice `previewNoteFromHover` (set by the paperclip hover card's
+  // "View note" action). This lives at the TasksView root so it opens
+  // WITHOUT dragging the Task Details drawer in behind it.
+  const previewNoteFromHover = useAppStore(s => s.previewNoteFromHover);
+  const closeNotePreview = useAppStore(s => s.closeNotePreview);
+  const hedisMembers = useAppStore(s => s.hedisMembers);
+  const editHoverNote = useAppStore(s => s.editHoverNote);
+  const clearEditHoverNote = useAppStore(s => s.clearEditHoverNote);
+  const editHoverMember = editHoverNote?.hedisMemberId
+    ? hedisMembers.find(m => m.id === editHoverNote.hedisMemberId)
+    : null;
 
   return (
     <div className={styles.wrapper}>
@@ -94,6 +109,22 @@ export function TasksView() {
             view.setAddDrawerInitialMember(null);
             view.setSelectedTask(task);
           }}
+        />
+      )}
+      {previewNoteFromHover && (
+        <ClinicalNotePreviewDrawer
+          note={previewNoteFromHover}
+          onClose={closeNotePreview}
+          onEdit={(note) => useAppStore.getState().setEditHoverNote(note)}
+        />
+      )}
+      {editHoverNote && editHoverMember && (
+        <ClinicalNotePanel
+          member={editHoverMember}
+          gapCode={editHoverNote.gapCodes?.[0]}
+          year={2026}
+          editingTaskId={editHoverNote.reviewTaskId}
+          onClose={clearEditHoverNote}
         />
       )}
     </div>
