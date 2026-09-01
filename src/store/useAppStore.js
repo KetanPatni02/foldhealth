@@ -132,6 +132,7 @@ function mapCarePlanTemplateRow(row) {
     conditions: row.conditions || [],
     goals: row.goals || [],
     interventions: row.interventions || [],
+    barriers: row.barriers || [],
     createdBy: row.created_by || '',
     updatedBy: row.updated_by || '',
     createdAt: row.created_at,
@@ -2526,6 +2527,10 @@ export const useAppStore = create((set, get) => ({
   // New Care Plan takes over the entire Settings area (the sub-nav is hidden,
   // only the app rail remains) — so the flag lives above CarePlanLibraryPanel.
   carePlanCreateOpen: false,
+  // { mode: 'view' | 'edit', template } — the full-pane template screen,
+  // which owns the Settings area the same way New Care Plan does.
+  carePlanTemplateScreen: null,
+  setCarePlanTemplateScreen: (v) => set({ carePlanTemplateScreen: v }),
 
   // ── Patient Care Plan (the Care Plan step in a program) ──
   // Per (patient, program) plan, persisted in patient_care_plan_* (see
@@ -3544,6 +3549,7 @@ export const useAppStore = create((set, get) => ({
       conditions: values.conditions || [],
       goals: values.goals || [],
       interventions: values.interventions || [],
+      barriers: values.barriers || [],
     };
     const q = id
       ? supabase.from('care_plan_templates').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)

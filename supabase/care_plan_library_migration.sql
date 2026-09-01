@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.care_plan_templates (
   conditions     text[] NOT NULL DEFAULT '{}',
   goals          jsonb NOT NULL DEFAULT '[]'::jsonb,
   interventions  jsonb NOT NULL DEFAULT '[]'::jsonb,
+  barriers       jsonb NOT NULL DEFAULT '[]'::jsonb,
   created_by     text,
   updated_by     text,
   created_at     timestamptz NOT NULL DEFAULT now(),
@@ -122,3 +123,9 @@ ALTER TABLE public.care_plan_templates ADD COLUMN IF NOT EXISTS created_by text;
 ALTER TABLE public.care_plan_goals     ADD COLUMN IF NOT EXISTS updated_by text;
 ALTER TABLE public.care_plan_barriers  ADD COLUMN IF NOT EXISTS updated_by text;
 ALTER TABLE public.care_plan_templates ADD COLUMN IF NOT EXISTS updated_by text;
+
+-- A template carries barriers as well as goals and interventions: the three
+-- GBI sections a care plan is made of. Same jsonb treatment as `goals` — the
+-- entries reference library rows by id but are ordered, plan-local copies.
+ALTER TABLE public.care_plan_templates
+  ADD COLUMN IF NOT EXISTS barriers jsonb NOT NULL DEFAULT '[]'::jsonb;

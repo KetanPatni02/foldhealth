@@ -1,0 +1,115 @@
+/* Same full-pane card as New Care Plan (CarePlanCreateView) — a template is
+   read and edited on the screen it was authored on. */
+.view {
+  flex: 1;
+  min-height: 0;
+  margin: var(--space-2);
+  display: flex;
+  align-items: stretch;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-3);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+}
+
+/* ── Left: template identity ── */
+.formPane {
+  width: 500px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.formHeader {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.formTitle {
+  font-size: var(--font-2xl);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.formBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.fieldLabel {
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+}
+.fieldValue {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* ── Right: the plan itself ── */
+.planPane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--neutral-50);
+  border-left: 0.5px solid var(--neutral-150);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.toolbarDivider {
+  width: 0.5px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+.planBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-6);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.sectionTitle {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-400);
+}

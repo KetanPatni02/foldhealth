@@ -25,6 +25,7 @@ import { CARE_PLAN_BARRIER_LIBRARY, carePlanBarrierLibraryToRow } from '../src/f
 import { CARE_PLAN_GOAL_LIBRARY, carePlanGoalLibraryToRow, carePlanGoalLibraryLinkRows } from '../src/features/settings/care-plan-library/data/carePlanGoalLibrarySeed.js';
 import { CARE_PLAN_INTERVENTION_LIBRARY } from '../src/features/settings/care-plan-library/data/carePlanInterventionLibrarySeed.js';
 import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY } from '../src/features/settings/care-plan-library/data/carePlanBarrierStructuredSeed.js';
+import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src/features/settings/care-plan-library/data/carePlanTemplateLibrarySeed.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -770,6 +771,17 @@ async function main() {
     .upsert(goalLibraryRows, { onConflict: 'id' });
   if (cpgErr) console.error('  ✗', cpgErr.message);
   else console.log(`  ✓ ${goalLibraryRows.length} library goals`);
+
+  console.log('Seeding care_plan_templates (library)...');
+  const templateRows = CARE_PLAN_TEMPLATE_LIBRARY.map(carePlanTemplateLibraryToRow);
+  const { error: cptErr } = await supabase
+    .from('care_plan_templates')
+    .upsert(templateRows, { onConflict: 'id' });
+  if (cptErr) {
+    if (cptErr.code === '42703') {
+      console.log('  ⚠ care_plan_templates.barriers missing — run supabase/care_plan_library_migration.sql');
+    } else console.error('  ✗', cptErr.message);
+  } else console.log(`  ✓ ${templateRows.length} care plan templates`);
 
   console.log('Seeding care_plan_interventions (goal GIB links)...');
   const goalLinkRows = CARE_PLAN_GOAL_LIBRARY.flatMap(carePlanGoalLibraryLinkRows);

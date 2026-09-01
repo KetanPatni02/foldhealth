@@ -135,16 +135,6 @@ const INTERVENTION_COLUMNS = [
   { key: 'actions', label: 'Actions', sticky: 'right', width: 100 },
 ];
 
-function templateDraftFrom(t) {
-  return {
-    kind: 'template',
-    id: t.id,
-    name: t.name,
-    conditionsText: t.conditions.join(', '),
-    goals: t.goals.map(g => ({ ...g })),
-    interventions: t.interventions.map(i => ({ ...i })),
-  };
-}
 function blankSimpleDraft(kind) {
   return { kind, id: null, title: '', description: '' };
 }
@@ -193,6 +183,7 @@ function TemplateRowMenu({ onDelete }) {
 export function CarePlanLibraryPanel() {
   const showToast = useAppStore(s => s.showToast);
   const setCarePlanCreateOpen = useAppStore(s => s.setCarePlanCreateOpen);
+  const setCarePlanTemplateScreen = useAppStore(s => s.setCarePlanTemplateScreen);
 
   // Tab lives in the store (mirrored to #/settings/care-plan-library/<tab>)
   // so a refresh or shared link restores the exact library.
@@ -310,7 +301,10 @@ export function CarePlanLibraryPanel() {
     setDraft(blankSimpleDraft('barrier'));
   };
 
-  const openEditTemplate = (t) => setDraft(templateDraftFrom(t));
+  // Both open the full-pane template screen — the name read-only, the pencil
+  // in edit mode.
+  const openViewTemplate = (t) => setCarePlanTemplateScreen({ mode: 'view', template: t });
+  const openEditTemplate = (t) => setCarePlanTemplateScreen({ mode: 'edit', template: t });
   const openEditSimple = (kind, item) => setDraft(simpleDraftFrom(kind, item));
   const openEditIntervention = (item) => setDraft({
     kind: 'intervention', id: item.id, title: item.title,
@@ -326,7 +320,13 @@ export function CarePlanLibraryPanel() {
     if (draft.kind === 'template') {
       const conditions = draft.conditionsText.split(',').map(c => c.trim()).filter(Boolean);
       const saved = await saveCarePlanTemplate(
-        { name: draft.name.trim(), conditions, goals: draft.goals, interventions: draft.interventions },
+        {
+          name: draft.name.trim(),
+          conditions,
+          goals: draft.goals,
+          interventions: draft.interventions,
+          barriers: draft.barriers,
+        },
         draft.id,
       );
       if (!saved) return;
@@ -365,6 +365,7 @@ export function CarePlanLibraryPanel() {
       conditions: t.conditions,
       goals: t.goals.map(g => ({ ...g })),
       interventions: t.interventions.map(i => ({ ...i })),
+      barriers: (t.barriers || []).map(b => ({ ...b })),
     });
     if (saved) toast.success(`"${t.name}" duplicated`);
   };
@@ -374,13 +375,7 @@ export function CarePlanLibraryPanel() {
     if (saved) toast.success(`"${g.title}" duplicated`);
   };
 
-  const addGoalRow = () => setDraft(d => ({ ...d, goals: [...d.goals, { id: `g-${Date.now()}`, title: '', subtitle: '' }] }));
-  const updateGoalRow = (id, patch) => setDraft(d => ({ ...d, goals: d.goals.map(g => (g.id === id ? { ...g, ...patch } : g)) }));
-  const removeGoalRow = (id) => setDraft(d => ({ ...d, goals: d.goals.filter(g => g.id !== id) }));
 
-  const addInterventionRow = () => setDraft(d => ({ ...d, interventions: [...d.interventions, { id: `i-${Date.now()}`, title: '', duration: '' }] }));
-  const updateInterventionRow = (id, patch) => setDraft(d => ({ ...d, interventions: d.interventions.map(i => (i.id === id ? { ...i, ...patch } : i)) }));
-  const removeInterventionRow = (id) => setDraft(d => ({ ...d, interventions: d.interventions.filter(i => i.id !== id) }));
 
   const renderTemplateRow = (t) => (
     <tr key={t.id} className={styles.row}>
@@ -388,7 +383,7 @@ export function CarePlanLibraryPanel() {
         <Checkbox aria-label={`Select ${t.name}`} />
       </td>
       <td className={`${styles.tdName} ${styles.tdNameOffset}`}>
-        <button type="button" className={styles.nameLink} onClick={() => openEditTemplate(t)}>{t.name}</button>
+        <button type="button" className={styles.nameLink} onClick={() => openViewTemplate(t)}>{t.name}</button>
       </td>
       <td className={styles.tdConditions}>
         <div className={styles.chipRow}>
@@ -618,89 +613,6 @@ export function CarePlanLibraryPanel() {
           )
         )}
       </div>
-
-      {draft && draft.kind === 'template' && (
-        <Drawer
-          title={draft.id ? 'Edit Care Plan Template' : 'New Care Plan Template'}
-          onClose={closeDrawer}
-          secondaryAction={<Button variant="secondary" size="L" onClick={closeDrawer}>Cancel</Button>}
-          primaryAction={<Button variant="primary" size="L" onClick={saveDraft} disabled={!canSave}>Save</Button>}
-        >
-          <div className={styles.formField}>
-            <span className={styles.formLabel}>Template Name <span className={styles.required}>•</span></span>
-            <Input
-              value={draft.name}
-              onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
-              placeholder="e.g. Type 2 Diabetes — Standard"
-            />
-          </div>
-
-          <div className={styles.formField}>
-            <span className={styles.formLabel}>Conditions</span>
-            <Input
-              value={draft.conditionsText}
-              onChange={e => setDraft(d => ({ ...d, conditionsText: e.target.value }))}
-              placeholder="Comma-separated, e.g. Type 2 Diabetes, Hypertension"
-            />
-          </div>
-
-          <div className={styles.formSection}>
-            <div className={styles.formSectionHeader}>
-              <span className={styles.formLabel}>Goals</span>
-              <button type="button" className={styles.addRowLink} onClick={addGoalRow}>
-                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
-                Add Goal
-              </button>
-            </div>
-            {draft.goals.map(g => (
-              <div key={g.id} className={styles.listRow}>
-                <Input
-                  value={g.title}
-                  onChange={e => updateGoalRow(g.id, { title: e.target.value })}
-                  placeholder="Goal title"
-                  wrapperClassName={styles.listRowTitle}
-                />
-                <Input
-                  value={g.subtitle}
-                  onChange={e => updateGoalRow(g.id, { subtitle: e.target.value })}
-                  placeholder="Detail (optional)"
-                  wrapperClassName={styles.listRowSubtitle}
-                />
-                <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove goal" onClick={() => removeGoalRow(g.id)} />
-              </div>
-            ))}
-            {draft.goals.length === 0 && <div className={styles.listEmpty}>No goals added yet.</div>}
-          </div>
-
-          <div className={styles.formSection}>
-            <div className={styles.formSectionHeader}>
-              <span className={styles.formLabel}>Interventions</span>
-              <button type="button" className={styles.addRowLink} onClick={addInterventionRow}>
-                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
-                Add Intervention
-              </button>
-            </div>
-            {draft.interventions.map(i => (
-              <div key={i.id} className={styles.listRow}>
-                <Input
-                  value={i.title}
-                  onChange={e => updateInterventionRow(i.id, { title: e.target.value })}
-                  placeholder="Intervention title"
-                  wrapperClassName={styles.listRowTitle}
-                />
-                <Input
-                  value={i.duration}
-                  onChange={e => updateInterventionRow(i.id, { duration: e.target.value })}
-                  placeholder="Duration (e.g. 30 min)"
-                  wrapperClassName={styles.listRowDuration}
-                />
-                <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove intervention" onClick={() => removeInterventionRow(i.id)} />
-              </div>
-            ))}
-            {draft.interventions.length === 0 && <div className={styles.listEmpty}>No interventions added yet.</div>}
-          </div>
-        </Drawer>
-      )}
 
       {draft && draft.kind === 'goal' && (
         <CreateGoalDrawer

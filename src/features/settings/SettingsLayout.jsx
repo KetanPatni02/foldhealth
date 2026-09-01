@@ -9,6 +9,7 @@ import { BillingPanel } from './billing/BillingPanel';
 import { MemberLeadsPanel } from './member-leads/MemberLeadsPanel';
 import { CarePlanLibraryPanel } from './care-plan-library/panel/CarePlanLibraryPanel/CarePlanLibraryPanel';
 import { CarePlanCreateView } from './care-plan-library/create/CarePlanCreateView/CarePlanCreateView';
+import { CarePlanTemplateView } from './care-plan-library/templates';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import styles from './SettingsLayout.module.css';
@@ -38,6 +39,28 @@ export function SettingsLayout() {
   const setSettingsNavItem = useAppStore(s => s.setSettingsNavItem);
   const carePlanCreateOpen = useAppStore(s => s.carePlanCreateOpen);
   const setCarePlanCreateOpen = useAppStore(s => s.setCarePlanCreateOpen);
+  const carePlanTemplateScreen = useAppStore(s => s.carePlanTemplateScreen);
+  const setCarePlanTemplateScreen = useAppStore(s => s.setCarePlanTemplateScreen);
+  const saveCarePlanTemplate = useAppStore(s => s.saveCarePlanTemplate);
+
+  // Viewing or editing a template owns the whole Settings area, same as New
+  // Care Plan.
+  if (carePlanTemplateScreen) {
+    const { mode, template } = carePlanTemplateScreen;
+    return (
+      <div className={styles.layout}>
+        <CarePlanTemplateView
+          template={template}
+          mode={mode}
+          onClose={() => setCarePlanTemplateScreen(null)}
+          onSave={async (values) => {
+            const saved = await saveCarePlanTemplate(values, template.id);
+            if (saved) setCarePlanTemplateScreen(null);
+          }}
+        />
+      </div>
+    );
+  }
 
   // The New Care Plan screen owns the whole Settings area — no sub-nav.
   if (carePlanCreateOpen) {
