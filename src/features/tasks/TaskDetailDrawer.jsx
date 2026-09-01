@@ -3,11 +3,7 @@ import { Drawer } from '../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { PdfPreviewOverlay } from '../../components/PdfPreviewOverlay/PdfPreviewOverlay';
 import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
-import { ClinicalNotePreviewBody } from '../hedis-worklist/ClinicalNotePreviewBody';
-import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Button } from '../../components/Button/Button';
-import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
+import { ClinicalNotePreviewDrawer } from './ClinicalNotePreviewDrawer';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from '../../components/Toast/sonnerToast';
 import {
@@ -44,7 +40,17 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
   const completeCareGapSignOffTask = useAppStore(s => s.completeCareGapSignOffTask);
   const hedisMembers = useAppStore(s => s.hedisMembers);
   const showToast = useAppStore(s => s.showToast);
-  const hedisMember = task?.hedisMemberId ? hedisMembers.find(m => m.id === task.hedisMemberId) : null;
+  // Tasks-tab tasks don't carry `hedisMemberId` (the CareGap flow's
+  // in-memory field), so fall back to a member-name lookup for HEDIS
+  // Sign-Off tasks; without this the ClinicalNotePanel gate
+  // (`editingNote && hedisMember`) never opens the editor from Task
+  // Details even after Edit is clicked in the preview drawer.
+  const hedisMember = (task?.hedisMemberId
+    ? hedisMembers.find(m => m.id === task.hedisMemberId)
+    : (task?.pool === 'HEDIS Sign-Off' && task?.member
+      ? hedisMembers.find(m => m.name === task.member)
+      : null))
+    || null;
   const allTasks = useAppStore(s => s.tasks);
   const taskAuditLogs = useAppStore(s => s.taskAuditLogs);
   const fetchTaskAuditLog = useAppStore(s => s.fetchTaskAuditLog);
@@ -57,6 +63,35 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
   useEffect(() => {
     if (task?.id) fetchTaskAuditLog(task.id);
   }, [task?.id, fetchTaskAuditLog]);
+
+  // Auto-open the linked-note preview when the drawer opens as a result of
+  // the paperclip hover card's "View note" click (which pairs
+  // pendingOpenTaskId with pendingPreviewNoteForTaskId). Runs once per
+  // task open; clears the signal after consuming.
+  const pendingPreviewNoteForTaskId = useAppStore(s => s.pendingPreviewNoteForTaskId);
+  const clearPendingPreviewNoteForTaskId = useAppStore(s => s.clearPendingPreviewNoteForTaskId);
+  const clinicalNotesByMember = useAppStore(s => s.clinicalNotesByMember);
+  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+  useEffect(() => {
+    if (!task?.id) return;
+    if (String(pendingPreviewNoteForTaskId) !== String(task.id)) return;
+    const memberId = hedisMember?.id;
+    if (!memberId) return;
+    const resolve = () => {
+      const list = clinicalNotesByMember?.[memberId] || [];
+      const note = list.find(n => String(n.reviewTaskId) === String(task.id))
+        || list.find(n => (n.gapCodes || []).some(c => (task.hedisGapCodes || task.labels || []).includes(c)));
+      if (note) {
+        setPreviewNote(note);
+        clearPendingPreviewNoteForTaskId?.();
+      }
+    };
+    resolve();
+    // If notes weren't loaded yet, fetch and try again.
+    if (!clinicalNotesByMember?.[memberId]?.length) {
+      fetchClinicalNotesForMember?.(memberId).then(resolve);
+    }
+  }, [task?.id, pendingPreviewNoteForTaskId, hedisMember?.id, clinicalNotesByMember, fetchClinicalNotesForMember, clearPendingPreviewNoteForTaskId]);
 
   const auditLog = task ? (taskAuditLogs[task.id] || []) : [];
   const effectiveAuditLog = useMemo(
@@ -276,131 +311,13 @@ export function TaskDetailDrawer({ task, onClose, onSelectTask, inline = false }
           onClose={() => setEditingNote(false)}
         />
       )}
-      {previewNote && (() => {
-        const codes = previewNote.gapCodes || [];
-        const noteTitle = codes.length > 1
-          ? 'Consolidated Clinical Note'
-          : codes[0]
-            ? `${codes[0]} Visit Note`
-            : 'Clinical Note';
-        // Resolve the patient this note belongs to so the drawer carries a
-        // full-bleed PatientBanner right under the header — otherwise the
-        // reader can't tell which member the note is for.
-        const noteMember = previewNote.hedisMemberId
-          ? hedisMembers.find(m => m.id === previewNote.hedisMemberId)
-          : null;
-        const isSigned = previewNote.status === 'signed';
-        // Subtitle mirrors the CareGap preview so a note out for reviewer
-        // sign-off reads "Submitted for Review to <reviewer>" (pen icon)
-        // while a Signed note reads "Signed by <signer> · MM/DD/YYYY"
-        // (green check).
-        const signer = previewNote.signedByName
-          || previewNote.reviewerName
-          || previewNote.authorName
-          || 'Provider';
-        const signedAt = previewNote.signedAt;
-        let signedWhen = '';
-        if (signedAt) {
-          const d = new Date(signedAt);
-          if (!Number.isNaN(d.getTime())) {
-            signedWhen = ` · ${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
-          }
-        }
-        const subtitleIcon = isSigned
-          ? { name: 'solar:check-circle-bold', color: 'var(--status-success)' }
-          : { name: 'solar:pen-new-square-linear', color: 'var(--primary-300)' };
-        const subtitleText = isSigned
-          ? `Signed by ${signer}${signedWhen}`
-          : `Submitted for Review to ${previewNote.reviewerName || '—'}`;
-        return (
-          <Drawer
-            title={
-              <span className={styles.previewTitleStack}>
-                <span className={styles.previewTitleMain}>{noteTitle}</span>
-                <span className={styles.previewTitleSub}>
-                  <Icon name={subtitleIcon.name} size={12} color={subtitleIcon.color} />
-                  {subtitleText}
-                </span>
-              </span>
-            }
-            onClose={() => setPreviewNote(null)}
-            width={700}
-            noCloseDivider
-            headerRight={
-              <>
-                {isSigned ? (
-                  <>
-                    <span className={styles.previewDisplayedTag}>
-                      <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
-                      Displayed to Member
-                    </span>
-                    <span className={styles.previewHeaderDivider} aria-hidden />
-                    <ActionButton
-                      icon="solar:printer-linear"
-                      size="L"
-                      tooltip="Print"
-                      onClick={() => {
-                        const url = previewNote.pdfDataUrl;
-                        if (url) { const w = window.open(url, '_blank'); try { w?.focus(); } catch {} }
-                        else showToast?.('No PDF for this version');
-                      }}
-                    />
-                    <Button
-                      variant="tertiary"
-                      size="M"
-                      leadingIcon="solar:lock-keyhole-minimalistic-linear"
-                      onClick={() => {
-                        setPreviewNote(null);
-                        setEditingNote(true);
-                      }}
-                    >
-                      Amend
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <span className={styles.previewPendingReviewTag}>
-                      <Icon name="solar:clock-circle-linear" size={16} color="var(--status-warning)" />
-                      Pending Review
-                    </span>
-                    <span className={styles.previewHeaderDivider} aria-hidden />
-                    <Button
-                      variant="tertiary"
-                      size="M"
-                      leadingIcon="solar:pen-new-square-linear"
-                      onClick={() => {
-                        setPreviewNote(null);
-                        setEditingNote(true);
-                      }}
-                    >
-                      Edit
-                    </Button>
-                  </>
-                )}
-                <span className={styles.previewHeaderDivider} aria-hidden />
-              </>
-            }
-            banner={noteMember ? (
-              <PatientBanner
-                initials={noteMember.in}
-                name={noteMember.name}
-                gender={noteMember.gender}
-                age={noteMember.age}
-                dob={noteMember.dob}
-                memberId={noteMember.memberId}
-                hidePatientLabel
-                onCall={() => showToast?.('Call — coming soon')}
-              />
-            ) : undefined}
-          >
-            <ClinicalNotePreviewBody
-              memberId={previewNote.hedisMemberId || previewNote.patientId}
-              gapCode={previewNote.gapCodes?.[0]}
-              noteId={previewNote.id}
-            />
-          </Drawer>
-        );
-      })()}
+      {previewNote && (
+        <ClinicalNotePreviewDrawer
+          note={previewNote}
+          onClose={() => setPreviewNote(null)}
+          onEdit={() => setEditingNote(true)}
+        />
+      )}
     </>
   );
   if (inline) return content;

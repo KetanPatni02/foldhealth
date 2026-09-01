@@ -29,7 +29,6 @@ import { ASTRANA_STAFF, staffById as hccStaffById } from '../features/hcc/assign
 import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features/hcc/reviewedBy';
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
-import { CAREGAP_ACTIVITY_MOCK } from '../features/hedis-worklist/data/caregapActivityMock';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 
 // Central failure reporter for every persistHccXxx helper. Historically
@@ -1586,13 +1585,34 @@ export const useAppStore = create((set, get) => ({
   // Pending "open this task's drawer" request — set by NotificationsPopover
   // (or a copied task link) and consumed by TasksView on mount.
   pendingOpenTaskId: null,
-  openTaskFromNotification: (taskId) => {
-    set({ activePage: 'tasks', pendingOpenTaskId: taskId });
+  // Optional companion signal — when set alongside pendingOpenTaskId, the
+  // TaskDetailDrawer auto-opens the linked-note preview after mount so a
+  // caller like the paperclip hover card's "View note" action lands the
+  // reader on the note itself, not just the task shell.
+  pendingPreviewNoteForTaskId: null,
+  openTaskFromNotification: (taskId, { previewNote = false } = {}) => {
+    set({ activePage: 'tasks', pendingOpenTaskId: taskId, pendingPreviewNoteForTaskId: previewNote ? taskId : null });
     try {
       if (typeof window !== 'undefined') window.location.hash = `#/tasks?taskId=${taskId}`;
     } catch { /* */ }
   },
   clearPendingOpenTaskId: () => set({ pendingOpenTaskId: null }),
+  clearPendingPreviewNoteForTaskId: () => set({ pendingPreviewNoteForTaskId: null }),
+
+  // Standalone linked-note preview surface — TasksView mounts a
+  // ClinicalNotePreviewDrawer against this state so a caller (paperclip
+  // hover card, activity log, etc.) can open just the note without
+  // dragging the whole task drawer in behind it. Payload is the note
+  // object itself so downstream renderers don't need to re-query.
+  previewNoteFromHover: null,
+  openNotePreview: (note) => set({ previewNoteFromHover: note || null }),
+  closeNotePreview: () => set({ previewNoteFromHover: null }),
+  // Edit target for the standalone note preview's "Edit" affordance —
+  // TasksView renders a ClinicalNotePanel against this state so the
+  // preview → edit flow doesn't require the Task Details drawer either.
+  editHoverNote: null,
+  setEditHoverNote: (note) => set({ editHoverNote: note || null }),
+  clearEditHoverNote: () => set({ editHoverNote: null }),
 
   // "Reopen this clinical note for editing" signal — set from the
   // ActivityLog note-variant card's pencil affordance. The HEDIS worklist
@@ -5562,26 +5582,27 @@ export const useAppStore = create((set, get) => ({
   },
 
   // ─── HCC Worklist (Supabase-backed) ───
-  // ── HEDIS worklist — local state for now, no Supabase backing yet ───────
-  caregapActivity: CAREGAP_ACTIVITY_MOCK,
+  // ─── HEDIS worklist — DB is the sole source of truth. `caregapActivity`
+  //     starts empty and is filled by `fetchCaregapActivity`; the local
+  //     mock (`CAREGAP_ACTIVITY_MOCK`) is used only by `scripts/seed.js`
+  //     to populate a fresh Supabase env. Removing the in-store mock
+  //     union prevents half-persisted feeds where some entries are DB-
+  //     backed and others live only in memory.
+  caregapActivity: {},
   caregapActivityLoaded: false,
-  // Hydrate the activity feeds from Supabase. Rows exist per member; when the
-  // table is empty or unreachable we keep the local mock so the drawer still
-  // renders a realistic feed. `caregapActivityLoaded` gates the drawer's
-  // skeleton so it shows once on cold load and never sticks.
   fetchCaregapActivity: async () => {
     if (get().caregapActivityLoaded) return;
     const { data, error } = await supabase
       .from('caregap_activity')
       .select('*')
       .order('at', { ascending: false });
-    if (error || !data?.length) {
-      if (error) console.warn('fetchCaregapActivity — keeping local mock:', error.message);
+    if (error) {
+      console.warn('fetchCaregapActivity failed:', error.message);
       set({ caregapActivityLoaded: true });
       return;
     }
     const byMember = {};
-    for (const row of data) {
+    for (const row of (data || [])) {
       (byMember[row.member_id] ??= []).push(caregapRowToEntry(row));
     }
     set({ caregapActivity: byMember, caregapActivityLoaded: true });
@@ -5599,14 +5620,20 @@ export const useAppStore = create((set, get) => ({
       .from('hedis_members')
       .select('*')
       .order('start_date', { ascending: false });
-    if (error || !data?.length) {
-      if (error) console.warn('fetchHedisMembers — falling back to local mock:', error.message);
-      const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
-      set({
-        hedisMembers: HEDIS_MEMBERS,
-        hedisLoading: false,
-        ...(error ? { hedisDidFetch: false } : {}),
-      });
+    if (error) {
+      // Log and stop — do NOT paper over a Supabase error with the local
+      // mock (the UI has no way to distinguish "seed hasn't run" from
+      // "network down" when the mock silently fills in). Reset the
+      // one-shot guard so a future call can retry.
+      console.warn('fetchHedisMembers failed:', error.message);
+      set({ hedisMembers: [], hedisLoading: false, hedisDidFetch: false });
+      return;
+    }
+    if (!data?.length) {
+      // DB is empty — surface the empty state instead of unioning the
+      // mock. Fresh dev envs should run `bun run seed` to populate.
+      console.warn('fetchHedisMembers — hedis_members table is empty; run `bun run seed` to load HEDIS mock data.');
+      set({ hedisMembers: [], hedisLoading: false });
       return;
     }
     const fromDb = data.map(r => ({
@@ -5636,14 +5663,12 @@ export const useAppStore = create((set, get) => ({
       city:            r.city,
       state:           r.state,
     }));
-    // Union the local mock with the DB rows so new mock members surface
-    // BEFORE the parallel Supabase seed runs. DB rows win on conflict; any
-    // mock member whose id is already in the DB is dropped so the DB row
-    // stays authoritative.
-    const { HEDIS_MEMBERS } = await import('../features/hedis-worklist/data/mock');
-    const dbIds = new Set(fromDb.map(m => m.id));
-    const mockOnly = HEDIS_MEMBERS.filter(m => !dbIds.has(m.id));
-    set({ hedisMembers: [...fromDb, ...mockOnly], hedisLoading: false });
+    // DB is the authoritative source once the seed has landed — do NOT
+    // union the local mock here. Any mock member not yet in the DB is
+    // treated as missing from the worklist rather than silently patched
+    // in, so a stale seed shows up as an obvious data gap instead of a
+    // half-persisted UI. Run `bun run seed` to load the full mock set.
+    set({ hedisMembers: fromDb, hedisLoading: false });
   },
 
   // ─── Practice Locations (Settings → Account → Locations) ──────────────
@@ -6276,6 +6301,12 @@ export const useAppStore = create((set, get) => ({
       labels: [...gapCodes],
       due_date: `${String(dueDate.getMonth() + 1).padStart(2, '0')}-${String(dueDate.getDate()).padStart(2, '0')}-${dueDate.getFullYear()}`,
       meta: `HEDIS Sign-Off · ${state || member.state || 'Unknown state'}`,
+      // These camelCase fields ride the in-memory task; createTask maps
+      // them to hedis_member_id / hedis_gap_codes on the DB write
+      // (tasks_hedis_linkage_migration.sql adds the columns). The DB
+      // write path also strips them from `dbPayload` on the legacy
+      // "column not found" retry so the migration can roll forward
+      // before it reaches every env.
       hedisMemberId,
       hedisGapCodes: [...gapCodes],
       state: state || member.state,
@@ -6287,9 +6318,10 @@ export const useAppStore = create((set, get) => ({
     return get().createTask(payload, {
       auditUserName: me?.name || 'HEDIS Automation',
       auditUserId: me?.id || null,
-      // Client-only fields — the tasks table has no columns for these; they
-      // ride the in-memory task + the returned object for the UI.
-      dbOmit: ['hedisMemberId', 'hedisGapCodes', 'consolidatedPdf', 'state'],
+      // Only these two remain client-only — `consolidatedPdf` because the
+      // PDF blob lives on `clinical_notes.pdf_data_url`, and `state`
+      // because the string is duplicated in `meta` already.
+      dbOmit: ['consolidatedPdf', 'state'],
     });
   },
 
@@ -12877,15 +12909,24 @@ export const useAppStore = create((set, get) => ({
       return;
     }
 
-    // Auto-mark overdue pending tasks as missed
+    // Auto-mark overdue pending tasks as missed. Also translate the
+    // HEDIS-linkage columns (tasks_hedis_linkage_migration.sql) back to
+    // the camelCase shape the UI code already expects, so a reload of
+    // Tasks lands with `hedisMemberId` + `hedisGapCodes` intact instead
+    // of falling through to the legacy name-match reconstruction.
     const now = (data || []).map(t => {
-      if (t.status === 'pending' && isPastDate(t.due_date)) {
-        return { ...t, status: 'missed', due_missed: true };
+      const withCamel = {
+        ...t,
+        hedisMemberId: t.hedis_member_id ?? null,
+        hedisGapCodes: t.hedis_gap_codes ?? [],
+      };
+      if (withCamel.status === 'pending' && isPastDate(withCamel.due_date)) {
+        return { ...withCamel, status: 'missed', due_missed: true };
       }
-      if (t.status === 'completed' && t.due_missed) {
-        return { ...t, due_missed: false };
+      if (withCamel.status === 'completed' && withCamel.due_missed) {
+        return { ...withCamel, due_missed: false };
       }
-      return t;
+      return withCamel;
     });
     const overdueIds = [];
     for (let i = 0; i < (data || []).length; i++) {
@@ -12938,20 +12979,38 @@ export const useAppStore = create((set, get) => ({
     const optimistic = { ...normalized, id: tempId };
     set(s => ({ tasks: [...s.tasks, optimistic] }));
 
-    // dbOmit: client-only fields the tasks table has no columns for (e.g.
-    // HEDIS sign-off's hedisMemberId/hedisGapCodes/consolidatedPdf/state).
-    // They stay on the in-memory task (and in the returned object) but are
-    // stripped from the INSERT — without this the insert fails, the legacy
-    // retry keeps failing on the same unknown columns, and the task silently
-    // vanishes while the caller's success toast still fires.
-    const dbPayload = opts.dbOmit?.length
-      ? Object.fromEntries(Object.entries(normalized).filter(([k]) => !opts.dbOmit.includes(k)))
-      : normalized;
+    // dbOmit: client-only fields the tasks table has no columns for
+    // (consolidatedPdf blob, duplicated state string). They stay on the
+    // in-memory task but are stripped from the INSERT — without this the
+    // insert fails, the legacy retry keeps failing on the same unknown
+    // columns, and the task silently vanishes while the caller's success
+    // toast still fires.
+    const {
+      hedisMemberId: normalizedHedisMemberId,
+      hedisGapCodes: normalizedHedisGapCodes,
+      ...restNormalized
+    } = normalized;
+    const filteredRest = opts.dbOmit?.length
+      ? Object.fromEntries(Object.entries(restNormalized).filter(([k]) => !opts.dbOmit.includes(k)))
+      : restNormalized;
+    // Map camelCase → snake_case for the two HEDIS linkage columns
+    // (tasks_hedis_linkage_migration.sql). Omit the key entirely when
+    // undefined so a non-HEDIS task doesn't stamp NULL over defaults.
+    const dbPayload = { ...filteredRest };
+    if (normalizedHedisMemberId !== undefined) dbPayload.hedis_member_id = normalizedHedisMemberId;
+    if (normalizedHedisGapCodes !== undefined) dbPayload.hedis_gap_codes = normalizedHedisGapCodes;
 
     // Try insert with full schema; if fails due to missing column, retry with reduced payload
     let { data, error } = await supabase.from('tasks').insert(dbPayload).select().single();
     if (error && /column .* does not exist|schema cache/.test(error.message || '')) {
-      const { parent_task_id, pool, mentions, completed_at, description, assigned_to_id, created_by_id, program_code, patient_id, source_key, ...legacy } = dbPayload;
+      // Legacy fallback for envs where the HEDIS-linkage migration hasn't
+      // landed yet — drop the new columns too so the row still lands.
+      const {
+        parent_task_id, pool, mentions, completed_at, description,
+        assigned_to_id, created_by_id, program_code, patient_id, source_key,
+        hedis_member_id, hedis_gap_codes,
+        ...legacy
+      } = dbPayload;
       ({ data, error } = await supabase.from('tasks').insert(legacy).select().single());
     }
     if (error) {
@@ -12959,8 +13018,15 @@ export const useAppStore = create((set, get) => ({
       set(s => ({ tasks: s.tasks.filter(t => t.id !== tempId) }));
       return null;
     }
-    // Merge full payload back so UI keeps client-side fields even if DB ignored them
-    const final = { ...normalized, ...data };
+    // Merge full payload back so UI keeps client-side fields even if DB
+    // ignored them. Translate the DB's snake_case HEDIS-linkage columns
+    // back to the camelCase shape the UI reads.
+    const final = {
+      ...normalized,
+      ...data,
+      hedisMemberId: data?.hedis_member_id ?? normalizedHedisMemberId ?? null,
+      hedisGapCodes: data?.hedis_gap_codes ?? normalizedHedisGapCodes ?? [],
+    };
     set(s => ({ tasks: s.tasks.map(t => t.id === tempId ? final : t) }));
     if (!opts.skipAudit) {
       get().logTaskAudit(final.id, 'created', {

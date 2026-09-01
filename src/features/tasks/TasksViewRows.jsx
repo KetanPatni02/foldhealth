@@ -257,10 +257,7 @@ export function TaskRow({ task, onToggle, onTaskClick, hideAssignedTo, hideMembe
         </div>
         <div className={styles.taskAttachments}>
           {task.attachments > 0 && (
-            <span className={styles.attachBadge}>
-              <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
-              {task.attachments}
-            </span>
+            <LinkedNotePaperclip task={task} count={task.attachments} />
           )}
           {task.comments > 0 && (
             <span className={styles.attachBadge}>
@@ -365,10 +362,7 @@ export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo, hide
           </div>
           <div className={styles.taskAttachments}>
             {task.attachments > 0 && (
-              <span className={styles.attachBadge}>
-                <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
-                {task.attachments}
-              </span>
+              <LinkedNotePaperclip task={task} count={task.attachments} />
             )}
             {task.comments > 0 && (
               <span className={styles.attachBadge}>
@@ -430,6 +424,156 @@ export function TaskTableRow({ task, onToggle, onTaskClick, hideAssignedTo, hide
         <RowActionMenu task={task} />
       </td>
     </tr>
+  );
+}
+
+/* ── Linked-Note hover preview for the paperclip badge ──
+   HEDIS Sign-Off tasks always link back to a clinical note — the row
+   already shows an attachments count via the paperclip badge, but there
+   is no fast way to know WHICH note is linked without opening the task
+   drawer. On hover (after a 300ms intent delay) surface a compact card
+   with the note title, gap chips, status pill, and author line so the
+   reviewer/author can triage from the list.
+   Falls back to the standard paperclip badge (no popover) for non-
+   HEDIS tasks and for HEDIS rows whose linked note can't be resolved. */
+function LinkedNotePaperclip({ task, count }) {
+  const resolvedMemberId = useAppStore(s => {
+    if (!task || task.pool !== 'HEDIS Sign-Off') return null;
+    return task.hedisMemberId
+      || (task.member ? s.hedisMembers?.find(m => m.name === task.member)?.id : null)
+      || null;
+  });
+  const linkedNote = useAppStore(s => {
+    if (!resolvedMemberId) return null;
+    const list = s.clinicalNotesByMember?.[resolvedMemberId] || [];
+    const byLink = list.find(n => String(n.reviewTaskId) === String(task.id));
+    if (byLink) return byLink;
+    const gaps = task.hedisGapCodes || task.labels || [];
+    if (!gaps.length) return null;
+    return list.find(n => (n.gapCodes || []).some(c => gaps.includes(c))) || null;
+  });
+  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+  const openNotePreview = useAppStore(s => s.openNotePreview);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const anchorRef = useRef(null);
+  const timerRef = useRef(null);
+  const canPreview = !!resolvedMemberId;
+  const handleEnter = () => {
+    if (!canPreview) return;
+    // Lazy-fetch the member's notes on first hover — Tasks-tab rows
+    // never trigger the CareGap-flow fetches, so the slice can be empty
+    // when the user hovers without ever having opened the drawer.
+    if (!linkedNote && resolvedMemberId) fetchClinicalNotesForMember?.(resolvedMemberId);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      const rect = anchorRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setPos({ top: rect.bottom + 8, left: Math.max(12, rect.left + rect.width / 2 - 160) });
+      setOpen(true);
+    }, 300);
+  };
+  const handleLeave = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    // Small grace period so the cursor can travel from the badge into
+    // the card without dismissing it. Cancelled by the card's own
+    // mouseenter bridge.
+    timerRef.current = setTimeout(() => setOpen(false), 120);
+  };
+  return (
+    <span
+      ref={anchorRef}
+      className={styles.attachBadge}
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
+    >
+      <Icon name="solar:paperclip-linear" size={14} color="var(--neutral-300)" />
+      {count}
+      {open && pos && linkedNote && createPortal(
+        <LinkedNoteHoverCard
+          note={linkedNote}
+          style={{ top: pos.top, left: pos.left }}
+          onOpen={(e) => {
+            e?.stopPropagation();
+            setOpen(false);
+            // Opens ONLY the note preview drawer — not the task drawer.
+            // TasksView owns the mount point via the `previewNoteFromHover`
+            // store slice.
+            openNotePreview?.(linkedNote);
+          }}
+          onHoverBridge={(e) => {
+            // Keep the card open while the pointer is over it — the
+            // paperclip badge's mouseleave still fires as the cursor
+            // travels the gap, and cursor entering the card must
+            // supersede that so the reader can click "View note".
+            if (e.type === 'mouseenter') {
+              if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+            } else if (e.type === 'mouseleave') {
+              setOpen(false);
+            }
+          }}
+        />,
+        document.body,
+      )}
+    </span>
+  );
+}
+
+function LinkedNoteHoverCard({ note, style, onOpen, onHoverBridge }) {
+  const codes = note.gapCodes || [];
+  const title = codes.length > 1
+    ? 'Consolidated Clinical Note'
+    : codes[0]
+      ? `${codes[0]} Visit Note`
+      : 'Clinical Note';
+  const status = note.status === 'signed' ? 'Signed'
+    : note.status === 'submitted' ? 'Pending Review'
+    : 'Draft';
+  const tone = status === 'Signed' ? 'success' : status === 'Draft' ? 'grey' : 'warning';
+  const subtitle = note.status === 'signed'
+    ? `Signed by ${note.signedByName || note.reviewerName || 'Provider'}`
+    : note.status === 'submitted'
+      ? `Submitted for Review to ${note.reviewerName || '—'}`
+      : `Draft by ${note.authorName || 'You'}`;
+  const when = note.updatedAt || note.createdAt;
+  let whenStr = '';
+  if (when) {
+    const d = new Date(when);
+    if (!Number.isNaN(d.getTime())) {
+      whenStr = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    }
+  }
+  return (
+    <div
+      className={styles.linkedNoteHoverCard}
+      style={{ position: 'fixed', ...style }}
+      role="tooltip"
+      onMouseEnter={onHoverBridge}
+      onMouseLeave={onHoverBridge}
+    >
+      <div className={styles.linkedNoteHoverHeader}>
+        <div className={styles.linkedNoteHoverTitleWrap}>
+          <div className={styles.linkedNoteHoverTitle}>{title}</div>
+          <div className={styles.linkedNoteHoverSubtitle}>{subtitle}</div>
+        </div>
+      </div>
+      {!!codes.length && (
+        <div className={styles.linkedNoteHoverChips}>
+          {codes.map(c => <Badge key={c} tone="grey" size="S" label={c} />)}
+        </div>
+      )}
+      <div className={styles.linkedNoteHoverFooter}>
+        <Badge tone={tone} size="S" label={status} />
+        <button
+          type="button"
+          className={styles.linkedNoteHoverAction}
+          onClick={onOpen}
+        >
+          View note
+          <Icon name="solar:arrow-right-up-linear" size={12} color="var(--primary-300)" />
+        </button>
+      </div>
+    </div>
   );
 }
 
