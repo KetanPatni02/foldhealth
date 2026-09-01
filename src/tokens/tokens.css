@@ -49,6 +49,7 @@
      (e.g. `--neutral-500`), not white. */
   --status-error:         #D72825;
   --status-error-light:   #FFF5F5;
+  --status-error-dark:    #D92D20; /* Figma Colors/Status Dark/Error */
   --status-warning:       #D9A50B;
   --status-warning-light: #FFFCF5;
   --status-warning-dark:  #F79009; /* Fold-Pixel ProgressRing 8700:4713 */
@@ -333,6 +334,7 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
   /* Status — adjusted for readability on dark surfaces */
   --status-error:         #F15B58;
   --status-error-light:   #2D1414;
+  --status-error-dark:    #D92D20;
   --status-warning:       #F5C429;
   --status-warning-light: #2A2310;
   --status-warning-dark:  #F79009;

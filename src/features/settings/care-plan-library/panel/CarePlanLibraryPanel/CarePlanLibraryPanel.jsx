@@ -64,6 +64,20 @@ function formatRelative(iso) {
 
 // Matches Figma's "MM/DD/YYYY | hh:mm AM/PM" cell format for Created On /
 // Last Update columns.
+/* Created On / Last Update both show who above when — the person is the more
+   useful of the two at a glance, so it leads. */
+function StampCell({ name, children }) {
+  return (
+    <div className={styles.createdCell}>
+      {name && <span className={styles.createdBy}>{name}</span>}
+      <span className={styles.createdAt}>{children}</span>
+    </div>
+  );
+}
+
+// Titles across the library share one ceiling.
+const TITLE_MAX = 150;
+
 function formatDateTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -381,8 +395,8 @@ export function CarePlanLibraryPanel() {
           {t.conditions.map(c => <Badge key={c} tone="grey" size="S" label={c} />)}
         </div>
       </td>
-      <td className={styles.tdUpdated}>{formatDateTime(t.createdAt)}</td>
-      <td className={styles.tdUpdated}>{formatDateTime(t.updatedAt)}</td>
+      <td className={styles.tdUpdated}><StampCell name={t.createdBy}>{formatDateTime(t.createdAt)}</StampCell></td>
+      <td className={styles.tdUpdated}><StampCell name={t.updatedBy}>{formatDateTime(t.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton
@@ -432,7 +446,7 @@ export function CarePlanLibraryPanel() {
           ? <BadgeRow items={g.conditions} maxLines={2} />
           : '—'}
       </td>
-      <td className={styles.tdMuted}>{formatDateTime(g.createdAt)}</td>
+      <td className={styles.tdMuted}><StampCell name={g.createdBy}>{formatDateTime(g.createdAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditSimple('goal', g)} />
@@ -454,8 +468,8 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdLinked}>
         <Badge tone="grey" size="S" label={String(linkedCount(item))} />
       </td>
-      <td className={styles.tdMuted}>{formatDateTime(item.createdAt)}</td>
-      <td className={styles.tdUpdated}>{formatRelative(item.updatedAt)}</td>
+      <td className={styles.tdMuted}><StampCell name={item.createdBy}>{formatDateTime(item.createdAt)}</StampCell></td>
+      <td className={styles.tdUpdated}><StampCell name={item.updatedBy}>{formatRelative(item.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditSimple(kind, item)} />
@@ -475,8 +489,8 @@ export function CarePlanLibraryPanel() {
         <Badge tone="grey" size="S" label={kindLabel(item.kind)} />
       </td>
       <td className={styles.tdDescription}>{item.description || '—'}</td>
-      <td className={styles.tdMuted}>{formatDateTime(item.createdAt)}</td>
-      <td className={styles.tdUpdated}>{formatRelative(item.updatedAt)}</td>
+      <td className={styles.tdMuted}><StampCell name={item.createdBy}>{formatDateTime(item.createdAt)}</StampCell></td>
+      <td className={styles.tdUpdated}><StampCell name={item.updatedBy}>{formatRelative(item.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditIntervention(item)} />
@@ -714,6 +728,8 @@ export function CarePlanLibraryPanel() {
               value={draft.title}
               onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
               placeholder={draft.kind === 'goal' ? 'e.g. A1C below 7%' : 'e.g. Transportation'}
+              maxLength={TITLE_MAX}
+              characterLimit={TITLE_MAX}
             />
           </div>
           <div className={styles.formField}>
@@ -748,6 +764,8 @@ export function CarePlanLibraryPanel() {
               value={draft.title}
               onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
               placeholder="e.g. Measure blood pressure daily"
+              maxLength={TITLE_MAX}
+              characterLimit={TITLE_MAX}
             />
           </div>
           <div className={styles.formField}>

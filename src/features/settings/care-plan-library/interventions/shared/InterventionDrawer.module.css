@@ -27,8 +27,13 @@
   font-size: var(--font-base);
   color: var(--neutral-200);
 }
-.mandatoryStar {
-  color: var(--status-error);
+/* Same marker Input/Select render for `required` — these labels head a row of
+   controls, so no single component can own them. */
+.mandatoryDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
   flex-shrink: 0;
 }
 .sectionTitle {
@@ -92,4 +97,48 @@
   display: flex;
   align-items: center;
   gap: var(--space-5);
+}
+
+/* Priority rides inside the Title field, matching Goal Title in the goal
+   drawer (CreateGoalDrawer). */
+.titleField {
+  display: flex;
+  align-items: stretch;
+  height: 32px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-200);
+  border-radius: var(--space-1);
+  overflow: hidden;
+}
+.priorityTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  background: none;
+  border: none;
+  border-right: 0.5px solid var(--neutral-200);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.titleInputWrap {
+  flex: 1;
+  min-width: 0;
+}
+/* The character counter promotes Input to its shell path, which draws its own
+   border — inside our own bordered shell that reads as a second field. Strip
+   it and let the outer shell own the border and the focus ring. */
+.titleInputWrap > div {
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.titleField:focus-within {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+.titleInput {
+  border: none;
+  height: 100%;
 }

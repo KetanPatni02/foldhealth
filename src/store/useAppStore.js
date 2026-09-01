@@ -86,6 +86,8 @@ function mapCarePlanGoalRow(row, interventions = []) {
     targetDate: row.target_date || '',
     priority: row.priority || 'medium',
     interventions,
+    createdBy: row.created_by || '',
+    updatedBy: row.updated_by || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -116,6 +118,8 @@ function mapCarePlanBarrierRow(row) {
     id: row.id,
     title: row.title,
     description: row.description || '',
+    createdBy: row.created_by || '',
+    updatedBy: row.updated_by || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -128,6 +132,8 @@ function mapCarePlanTemplateRow(row) {
     conditions: row.conditions || [],
     goals: row.goals || [],
     interventions: row.interventions || [],
+    createdBy: row.created_by || '',
+    updatedBy: row.updated_by || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -3369,8 +3375,8 @@ export const useAppStore = create((set, get) => ({
   saveCarePlanGoal: async (values, id = null) => {
     const row = carePlanGoalToRow(values);
     const q = id
-      ? supabase.from('care_plan_goals').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
-      : supabase.from('care_plan_goals').insert(row);
+      ? supabase.from('care_plan_goals').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_goals').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
     const { data, error } = await q.select().single();
     if (error) {
       console.warn('save care plan goal failed:', error.message);
@@ -3412,8 +3418,8 @@ export const useAppStore = create((set, get) => ({
   saveCarePlanBarrier: async (values, id = null) => {
     const row = { title: values.title, description: values.description || '' };
     const q = id
-      ? supabase.from('care_plan_barriers').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
-      : supabase.from('care_plan_barriers').insert(row);
+      ? supabase.from('care_plan_barriers').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_barriers').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
     const { data, error } = await q.select().single();
     if (error) {
       console.warn('save care plan barrier failed:', error.message);
@@ -3448,8 +3454,8 @@ export const useAppStore = create((set, get) => ({
       interventions: values.interventions || [],
     };
     const q = id
-      ? supabase.from('care_plan_templates').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
-      : supabase.from('care_plan_templates').insert(row);
+      ? supabase.from('care_plan_templates').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_templates').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
     const { data, error } = await q.select().single();
     if (error) {
       console.warn('save care plan template failed:', error.message);
