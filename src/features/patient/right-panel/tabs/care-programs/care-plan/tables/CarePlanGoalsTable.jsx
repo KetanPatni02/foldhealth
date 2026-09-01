@@ -114,6 +114,8 @@ export function CarePlanGoalsTable({
                 icon="solar:menu-dots-linear"
                 size="S"
                 tooltip="More"
+                tooltipBelow
+                tooltipLeft
                 disabled={!canEdit}
                 onClick={(e) => onRowMenu({ kind: 'goal-menu', item: g, rect: e.currentTarget.getBoundingClientRect() })}
               />

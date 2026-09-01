@@ -247,7 +247,7 @@ export function ProgramDetailViewContentHeader({
               <ActionButton icon="solar:download-minimalistic-linear" size="S" tooltip="Download" onClick={() => requestCarePlanShare('preview')} />
               <CarePlanActionDivider />
               <ActionButton
-                iconElement={<Icon name="custom:history" size={16} color="var(--neutral-400)" />}
+                icon="solar:history-linear"
                 size="S"
                 tooltip="History"
                 onClick={() => requestCarePlanPanel('history')}

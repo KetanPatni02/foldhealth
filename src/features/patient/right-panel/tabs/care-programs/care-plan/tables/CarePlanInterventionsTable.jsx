@@ -44,6 +44,8 @@ export function CarePlanInterventionsTable({
               icon="custom:filter"
               size="S"
               tooltip="Table settings"
+              tooltipBelow
+              tooltipLeft
               disabled
               aria-label="Table settings"
             />
@@ -149,13 +151,15 @@ export function CarePlanInterventionsTable({
                 />
               </td>
               <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
-                <ActionButton
-                  icon="solar:menu-dots-linear"
-                  size="S"
-                  tooltip="More"
-                  disabled={!canEdit}
-                  onClick={(e) => onRowMenu({ kind: 'intv-menu', item: i, rect: e.currentTarget.getBoundingClientRect() })}
-                />
+              <ActionButton
+                icon="solar:menu-dots-linear"
+                size="S"
+                tooltip="More"
+                tooltipBelow
+                tooltipLeft
+                disabled={!canEdit}
+                onClick={(e) => onRowMenu({ kind: 'intv-menu', item: i, rect: e.currentTarget.getBoundingClientRect() })}
+              />
               </td>
             </tr>
           );

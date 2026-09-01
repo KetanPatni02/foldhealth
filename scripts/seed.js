@@ -21,6 +21,7 @@ import { HCC_MEMBER_BY_NAME } from '../src/features/hcc/data/mock.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 import { CARE_PLAN_MOCK } from '../src/features/patient/data/carePlanMock.js';
+import { CARE_PLAN_BARRIER_LIBRARY, carePlanBarrierLibraryToRow } from '../src/features/settings/care-plan-library/data/barrierLibrarySeed.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -725,6 +726,21 @@ async function main() {
     .from('snp_worklist_members')
     .upsert(snpWorklistRows, { onConflict: 'id' });
   if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} SNP worklist members`); }
+
+  console.log('Seeding care_plan_barriers (library)...');
+  const barrierLibraryRows = CARE_PLAN_BARRIER_LIBRARY.map(carePlanBarrierLibraryToRow);
+  const { error: cplbErr } = await supabase
+    .from('care_plan_barriers')
+    .upsert(barrierLibraryRows, { onConflict: 'id' });
+  if (cplbErr) {
+    if (cplbErr.code === '42P01' || cplbErr.code === 'PGRST205') {
+      console.log('  ⚠ care_plan_barriers table missing — run supabase/care_plan_library_migration.sql first');
+    } else {
+      console.error('  ✗', cplbErr.message);
+    }
+  } else {
+    console.log(`  ✓ ${barrierLibraryRows.length} library barriers`);
+  }
 
   console.log('Seeding practice_locations...');
   const locationRows = PRACTICE_LOCATIONS.map(practiceLocationToRow);

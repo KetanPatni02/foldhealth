@@ -13,6 +13,7 @@ import { Select } from '../../../../../../../components/Select/Select';
 import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../../../../../../store/useAppStore';
 import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
+import { AddBarriersDrawer } from '../../../../../../settings/care-plan-library/barriers/AddBarriersDrawer/AddBarriersDrawer';
 import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
 import { CarePlanShareDrawer } from '../drawers/CarePlanShareDrawer/CarePlanShareDrawer';
 import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlanHistoryDrawer';
@@ -156,6 +157,7 @@ export function CarePlanView({ patientId, program }) {
   const [statusMenu, setStatusMenu] = useState(null); // { kind, item, rect }
   const [priorityMenu, setPriorityMenu] = useState(null); // { kind, item, rect }
   const [addGoalsDrawerOpen, setAddGoalsDrawerOpen] = useState(false);
+  const [addBarriersDrawerOpen, setAddBarriersDrawerOpen] = useState(false);
   const [previewGoal, setPreviewGoal] = useState(null);
   const [previewIntervention, setPreviewIntervention] = useState(null);
   const [intvDrawer, setIntvDrawer] = useState(null);  // false | { intervention }
@@ -317,6 +319,29 @@ export function CarePlanView({ patientId, program }) {
     setIntvDrawer(false);
     const saved = await savePatientCarePlanIntervention(patientId, program, values, editingId);
     if (saved) showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
+  };
+
+  const handleAddBarriersFromPicker = async (picked) => {
+    setAddBarriersDrawerOpen(false);
+    if (!picked?.length) return;
+    const existingTitles = new Set((data.barriers || []).map(b => b.title.trim().toLowerCase()));
+    let added = 0;
+    for (const b of picked) {
+      const titleKey = b.title.trim().toLowerCase();
+      if (existingTitles.has(titleKey)) continue;
+      const saved = await savePatientCarePlanBarrier(patientId, program, {
+        title: b.title,
+        description: b.description || '',
+        status: 'Not Started',
+        priority: 'medium',
+      });
+      if (saved) {
+        added += 1;
+        existingTitles.add(titleKey);
+      }
+    }
+    if (added) showToast(`Added ${added} barrier${added === 1 ? '' : 's'}`);
+    else showToast('Selected barriers are already on this plan');
   };
 
   const handleAddBarrier = async (values) => {
@@ -544,19 +569,18 @@ export function CarePlanView({ patientId, program }) {
 
       {/* Open Barriers */}
       <div className={styles.section}>
-        <div className={styles.sectionHead}>
+        <div className={`${styles.sectionHead} ${styles.barriersSectionHead}`}>
           <SectionTitle label="Open Barriers" open={openSections.barriers} onToggle={() => toggleSection('barriers')} />
-          <div className={styles.sectionActions}>
-            <ActionButton size="S" tooltip="Add barrier" onClick={() => setBarrierDrawer({ barrier: null })} disabled={!canEdit}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
-          </div>
+          <span className={styles.sectionActionDivider} aria-hidden="true" />
+          <ActionButton size="S" tooltip="Add barrier" onClick={() => setAddBarriersDrawerOpen(true)} disabled={!canEdit}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
         </div>
         {openSections.barriers && (carePlanLoading ? (
-          <SimpleTableSkeleton rows={3} cols={5} />
+          <SimpleTableSkeleton rows={3} cols={3} />
         ) : filteredBarriers.length === 0 && (data.barriers || []).length === 0 ? (
           <SectionEmptyState
             icon="solar:signpost-2-linear"
             label="No Barriers Created for Selected Problem"
-            onAdd={() => setBarrierDrawer({ barrier: null })}
+            onAdd={() => setAddBarriersDrawerOpen(true)}
           />
         ) : (
           <CarePlanBarriersTable
@@ -566,11 +590,9 @@ export function CarePlanView({ patientId, program }) {
             selectedIds={[...selected.barrier]}
             onSelectAll={(checked) => selectAllKind('barrier', filteredBarriers, checked)}
             onToggleSelect={(id) => toggleSelect('barrier', id)}
-            onPriorityMenu={setPriorityMenu}
             onLinkOwner={setLinkOwner}
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
-            onTitleCommit={renameBarrier}
             linkCount={linkCount}
             emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the filters.</div> : null}
           />
@@ -682,9 +704,17 @@ export function CarePlanView({ patientId, program }) {
         />
       )}
 
-      {barrierDrawer && (
+      {addBarriersDrawerOpen && (
+        <AddBarriersDrawer
+          onClose={() => setAddBarriersDrawerOpen(false)}
+          onAdd={handleAddBarriersFromPicker}
+          existingBarriers={data.barriers || []}
+        />
+      )}
+
+      {barrierDrawer?.barrier && (
         <Drawer
-          title={barrierDrawer.barrier ? 'Edit Barrier' : 'Add Barrier'}
+          title="Edit Barrier"
           onClose={() => setBarrierDrawer(null)}
           noCloseDivider
           headerRight={<span className={styles.headerDivider} />}

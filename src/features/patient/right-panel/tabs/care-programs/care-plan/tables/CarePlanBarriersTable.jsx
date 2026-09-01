@@ -1,16 +1,74 @@
+import { useMemo, useState } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
-import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
+import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
 import {
   BARRIER_COLUMNS,
   withSelectColumn,
   GbiCheckboxCell,
   LinkChip,
   GbiStatusButton,
-  EditableInlineTitle,
+  isClosedBarrier,
 } from './carePlanTableShared';
 import styles from './carePlanTables.module.css';
+
+function BarrierRow({
+  barrier: b,
+  bulkMode,
+  selectedIds,
+  canEdit,
+  onToggleSelect,
+  onLinkOwner,
+  onStatusMenu,
+  onRowMenu,
+  linkCount,
+}) {
+  return (
+    <tr key={b.id} className={`${styles.row} ${styles.barrierRow}`}>
+      {bulkMode && (
+        <GbiCheckboxCell
+          checked={selectedIds.includes(b.id)}
+          onToggle={() => onToggleSelect(b.id)}
+          label={`Select ${b.title}`}
+          disabled={!canEdit}
+        />
+      )}
+      <td className={styles.barrierNameTd}>
+        <div className={styles.barrierNameCell}>
+          <span className={styles.barrierIcon}>
+            <Icon name="custom:barrier" size={16} color="var(--neutral-400)" />
+          </span>
+          <span className={styles.barrierTitle}>{b.title}</span>
+          <span
+            className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
+            onClick={() => canEdit && onLinkOwner({ kind: 'barrier', item: b })}
+          >
+            <LinkChip count={linkCount(b.id)} />
+          </span>
+        </div>
+      </td>
+      <td className={styles.barrierStatusTd} onClick={e => e.stopPropagation()}>
+        <GbiStatusButton
+          value={b.status}
+          disabled={!canEdit}
+          onOpen={rect => onStatusMenu({ kind: 'barrier', item: b, rect })}
+        />
+      </td>
+      <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
+        <ActionButton
+          icon="solar:menu-dots-linear"
+          size="S"
+          tooltip="More"
+          tooltipBelow
+          tooltipLeft
+          disabled={!canEdit}
+          onClick={(e) => onRowMenu({ kind: 'barrier-menu', item: b, rect: e.currentTarget.getBoundingClientRect() })}
+        />
+      </td>
+    </tr>
+  );
+}
 
 export function CarePlanBarriersTable({
   rows,
@@ -19,14 +77,24 @@ export function CarePlanBarriersTable({
   selectedIds,
   onSelectAll,
   onToggleSelect,
-  onPriorityMenu,
   onLinkOwner,
   onStatusMenu,
   onRowMenu,
-  onTitleCommit,
   linkCount,
   emptyState,
 }) {
+  const [closedOpen, setClosedOpen] = useState(false);
+
+  const { openRows, closedRows } = useMemo(() => {
+    const open = [];
+    const closed = [];
+    for (const row of rows) {
+      if (isClosedBarrier(row.status)) closed.push(row);
+      else open.push(row);
+    }
+    return { openRows: open, closedRows: closed };
+  }, [rows]);
+
   return (
     <div className={styles.tableWrap}>
       <WorklistShell
@@ -34,74 +102,62 @@ export function CarePlanBarriersTable({
         header={null}
         hideBulkBar
         columns={withSelectColumn(BARRIER_COLUMNS, bulkMode)}
-        rows={rows}
+        rows={openRows}
         selectedIds={selectedIds}
         onSelectAll={onSelectAll}
         minTableWidth={0}
-        emptyState={emptyState}
+        emptyState={openRows.length === 0 && closedRows.length === 0 ? emptyState : null}
         renderRow={(b) => (
-          <tr key={b.id} className={styles.row}>
-            {bulkMode && (
-              <GbiCheckboxCell
-                checked={selectedIds.includes(b.id)}
-                onToggle={() => onToggleSelect(b.id)}
-                label={`Select ${b.title}`}
-                disabled={!canEdit}
-              />
-            )}
-            <td className={styles.priorityTd}>
-              <button
-                type="button"
-                className={styles.priorityBtn}
-                onClick={(e) => canEdit && onPriorityMenu({ kind: 'barrier', item: b, rect: e.currentTarget.getBoundingClientRect() })}
-                disabled={!canEdit}
-                aria-label="Change priority"
-              >
-                <PriorityIcon priority={b.priority} size={16} />
-              </button>
-            </td>
-            <td className={styles.titleTd}>
-              <div className={styles.titleCell}>
-                <span className={styles.rowIcon}><Icon name="solar:shield-warning-linear" size={16} color="var(--neutral-400)" /></span>
-                <span className={styles.titleMain}>
-                  <EditableInlineTitle
-                    title={b.title}
-                    editable={canEdit}
-                    onCommit={(title) => onTitleCommit(b, title)}
-                  />
-                </span>
-                <span
-                  className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
-                  onClick={() => canEdit && onLinkOwner({ kind: 'barrier', item: b })}
-                >
-                  <LinkChip count={linkCount(b.id)} />
-                </span>
-              </div>
-            </td>
-            <td className={styles.valueTd}>
-              {b.description
-                ? <span className={styles.valueText}>{b.description}</span>
-                : <span className={styles.muted}>—</span>}
-            </td>
-            <td className={styles.statusTd}>
-              <GbiStatusButton
-                value={b.status}
-                disabled={!canEdit}
-                onOpen={rect => onStatusMenu({ kind: 'barrier', item: b, rect })}
-              />
-            </td>
-            <td className={styles.actionsTd}>
-              <ActionButton
-                icon="solar:menu-dots-linear"
-                size="S"
-                tooltip="More"
-                disabled={!canEdit}
-                onClick={(e) => onRowMenu({ kind: 'barrier-menu', item: b, rect: e.currentTarget.getBoundingClientRect() })}
-              />
-            </td>
-          </tr>
+          <BarrierRow
+            barrier={b}
+            bulkMode={bulkMode}
+            selectedIds={selectedIds}
+            canEdit={canEdit}
+            onToggleSelect={onToggleSelect}
+            onLinkOwner={onLinkOwner}
+            onStatusMenu={onStatusMenu}
+            onRowMenu={onRowMenu}
+            linkCount={linkCount}
+          />
         )}
       />
+      {closedRows.length > 0 && (
+        <div className={styles.closedBarriers}>
+          <button
+            type="button"
+            className={styles.closedBarriersToggle}
+            onClick={() => setClosedOpen(v => !v)}
+            aria-expanded={closedOpen}
+          >
+            <DownChevronIcon
+              size={6}
+              color="var(--neutral-300)"
+              className={`${styles.closedBarriersChevron} ${closedOpen ? '' : styles.closedBarriersChevronClosed}`}
+            />
+            <span className={styles.closedBarriersLabel}>Closed Barriers</span>
+          </button>
+          {closedOpen && (
+            <table className={styles.closedBarriersTable}>
+              <tbody>
+                {closedRows.map(b => (
+                  <BarrierRow
+                    key={b.id}
+                    barrier={b}
+                    bulkMode={bulkMode}
+                    selectedIds={selectedIds}
+                    canEdit={canEdit}
+                    onToggleSelect={onToggleSelect}
+                    onLinkOwner={onLinkOwner}
+                    onStatusMenu={onStatusMenu}
+                    onRowMenu={onRowMenu}
+                    linkCount={linkCount}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -49,11 +49,27 @@ export const GBI_STATUS_TONE = {
   'Not Started': 'grey',
   'In Progress': 'warning',
   'On Hold': 'grey',
+  Overdue: 'error',
   Met: 'success',
   'Not Met': 'error',
 };
 
+export const CLOSED_BARRIER_STATUSES = new Set(['Met', 'Not Met']);
+
+export const isClosedBarrier = (status) => CLOSED_BARRIER_STATUSES.has(status);
+
 const BORDER_LEFT = { borderLeft: '0.5px solid var(--neutral-150)' };
+
+/** Fixed widths shared across Goals / Interventions / Barriers so columns align when stacked. */
+export const GBI_COL_WIDTH = {
+  priority: 32,
+  value: 120,
+  trend: 80,
+  progress: 88,
+  assignee: 130,
+  status: 140,
+  actions: 40,
+};
 
 // The bulk-select checkbox column. Prepended to a table's columns only while
 // bulk mode is on (see withSelectColumn) so the three GBI tables share one
@@ -64,30 +80,28 @@ export const withSelectColumn = (columns, bulkMode) =>
   (bulkMode ? [SELECT_COLUMN, ...columns] : columns);
 
 export const GOAL_COLUMNS = [
-  { key: 'priority', label: 'P', width: 32, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
+  { key: 'priority', label: 'P', width: GBI_COL_WIDTH.priority, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
   { key: 'title', label: 'Goal Title' },
-  { key: 'value', label: 'Current Value', width: 120, thStyle: BORDER_LEFT },
-  { key: 'trend', label: 'Trend', width: 80, thStyle: BORDER_LEFT },
-  { key: 'progress', label: 'Progress', width: 88, thStyle: BORDER_LEFT },
-  { key: 'status', label: 'Status', width: 140, thStyle: BORDER_LEFT },
-  { key: 'actions', label: '', width: 40, sticky: 'right', thStyle: BORDER_LEFT },
+  { key: 'value', label: 'Current Value', width: GBI_COL_WIDTH.value, thStyle: BORDER_LEFT },
+  { key: 'trend', label: 'Trend', width: GBI_COL_WIDTH.trend, thStyle: BORDER_LEFT },
+  { key: 'progress', label: 'Progress', width: GBI_COL_WIDTH.progress, thStyle: BORDER_LEFT },
+  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, thStyle: BORDER_LEFT },
+  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, sticky: 'right', thStyle: BORDER_LEFT },
 ];
 
 export const INTERVENTION_COLUMNS = [
-  { key: 'priority', label: 'P', width: 32, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
+  { key: 'priority', label: 'P', width: GBI_COL_WIDTH.priority, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
   { key: 'title', label: 'Name' },
-  { key: 'assignee', label: 'Assigned To', width: 130, thStyle: BORDER_LEFT },
-  { key: 'adherence', label: 'Adherence', width: 100, thStyle: BORDER_LEFT },
-  { key: 'status', label: 'Status', width: 140, thStyle: BORDER_LEFT },
-  { key: 'actions', label: '', width: 40, sticky: 'right', thStyle: BORDER_LEFT },
+  { key: 'assignee', label: 'Assigned To', width: GBI_COL_WIDTH.assignee, thStyle: BORDER_LEFT },
+  { key: 'adherence', label: 'Adherence', width: GBI_COL_WIDTH.progress, thStyle: BORDER_LEFT },
+  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, thStyle: BORDER_LEFT },
+  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, sticky: 'right', thStyle: BORDER_LEFT },
 ];
 
 export const BARRIER_COLUMNS = [
-  { key: 'priority', label: 'P', width: 32, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
-  { key: 'title', label: 'Barrier Title' },
-  { key: 'description', label: 'Description', width: 200, thStyle: BORDER_LEFT },
-  { key: 'status', label: 'Status', width: 140, thStyle: BORDER_LEFT },
-  { key: 'actions', label: '', width: 40, sticky: 'right', thStyle: BORDER_LEFT },
+  { key: 'title', label: 'Name' },
+  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, thStyle: BORDER_LEFT },
+  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, sticky: 'right', thStyle: BORDER_LEFT },
 ];
 
 // The per-row bulk checkbox cell shared by all three GBI tables — stops click

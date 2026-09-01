@@ -1,0 +1,70 @@
+.headerDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-1);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.groupLabel {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+.rowWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border-radius: var(--space-1);
+  cursor: pointer;
+}
+
+.row:hover:not(.rowDisabled) {
+  background: var(--neutral-50);
+}
+
+.rowDisabled {
+  cursor: default;
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupDivider {
+  height: 0.5px;
+  background: var(--neutral-150);
+}
+
+.empty {
+  padding: var(--space-4) 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  text-align: center;
+}
