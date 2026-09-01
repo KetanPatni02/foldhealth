@@ -3,6 +3,7 @@
  * Bidirectional sync between URL hash and Zustand store.
  */
 import { PROFILE_TABS } from '../features/patient/data/programActivityMock';
+import { getFirstWorklistLabel, tabPatchForWorklist } from './worklistDefaults';
 
 // ── Parse hash into structured route ──
 export function parseHash() {
@@ -548,10 +549,11 @@ export function hashToState(route, state = null) {
     return updates;
   }
 
-  // Bare #/population (or unknown section) lands on TCM worklist.
-  updates.activeSubnavList = 'TCM';
-  updates.activeTab = 'toc-worklist';
-  updates._subnavNavigated = true;
+  // Bare #/population (or unknown section) lands on the first sidenav worklist.
+  const first = state?.worklistOrder?.[0] || getFirstWorklistLabel();
+  updates.activeSubnavList = first;
+  Object.assign(updates, tabPatchForWorklist(first));
+  updates._subnavNavigated = false;
   return updates;
 }
 

@@ -9,6 +9,7 @@ import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTi
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
+import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch } from '../lib/worklistDefaults';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
@@ -1019,6 +1020,7 @@ function formatDuration(secs) {
 
 // Restore navigation state from sessionStorage on reload
 const _savedPage = sessionStorage.getItem('activePage') || 'population';
+const _cachedWorklistOrder = readCachedWorklistOrder();
 const _savedTab = sessionStorage.getItem('activeTab') || 'toc-worklist';
 const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 
@@ -3738,7 +3740,7 @@ export const useAppStore = create((set, get) => ({
 
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
-  activeSubnavList: 'TCM',  // which SubNav list is selected
+  activeSubnavList: getFirstWorklistLabel(_cachedWorklistOrder),  // which SubNav list is selected
 
   // ── Per-user worklist ordering (SubNav drag-and-drop) ──
   // Array of worklist labels in the user's preferred display order. Loaded
@@ -3746,18 +3748,7 @@ export const useAppStore = create((set, get) => ({
   // order and the user initially lands on the first entry. Seeded from
   // localStorage so the first paint already shows the saved order instead
   // of flashing the default and re-sorting when the DB fetch resolves.
-  worklistOrder: (() => {
-    try {
-      const cached = JSON.parse(localStorage.getItem('worklistOrder') || 'null');
-      if (!Array.isArray(cached) || cached.length === 0) return null;
-      // Pre-split caches stored the care-manager list as "TOC"; that list is TCM.
-      if (Array.isArray(cached) && cached.includes('TOC')) {
-        const hasTcm = cached.includes('TCM');
-        return cached.map(l => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l));
-      }
-      return cached;
-    } catch { return null; }
-  })(),
+  worklistOrder: _cachedWorklistOrder,
   worklistOrderLoaded: false,
   // Set once the user manually picks a list this session — fetchWorklistOrder
   // only auto-lands on the top worklist while this is still false.
@@ -4087,7 +4078,8 @@ export const useAppStore = create((set, get) => ({
 
   // Goals Directory
   goalsData: null, // null = not yet loaded, array = loaded from DB/fallback
-  goalsLoading: true,
+  goalsLoading: false,
+  goalsFetched: false,
   goalDetailId: null,
   goalWizardOpen: false,
   goalWizardEditId: null,
@@ -4126,7 +4118,7 @@ export const useAppStore = create((set, get) => ({
 
   // Agents (settings)
   agents: [],
-  agentsLoading: true,
+  agentsLoading: false,
   agentsFetched: false,
   settingsTab: _savedSettingsTab || 'agents',
   showCreateAgent: false,
@@ -4499,7 +4491,8 @@ export const useAppStore = create((set, get) => ({
     const from = get().activePage;
     if (from !== page) track('nav.page_changed', { from, to: page });
     sessionStorage.setItem('activePage', page);
-    set({ activePage: page });
+    const popPatch = page === 'population' ? populationEntryPatch(get()) : {};
+    set({ activePage: page, ...popPatch });
     updateHash(get);
   },
 
@@ -4557,7 +4550,8 @@ export const useAppStore = create((set, get) => ({
     }
     // No takeover open — plain navigation.
     sessionStorage.setItem('activePage', page);
-    set({ activePage: page });
+    const popPatch = page === 'population' ? populationEntryPatch(get()) : {};
+    set({ activePage: page, ...popPatch });
     updateHash(get);
   },
   requestAddTask: (opts = {}) => {
@@ -5223,7 +5217,7 @@ export const useAppStore = create((set, get) => ({
 
     if (error) {
       console.warn('goals fetch failed:', error.message);
-      set({ goalsData: [], goalsLoading: false, goalsError: error.message });
+      set({ goalsData: [], goalsLoading: false, goalsFetched: true, goalsError: error.message });
     } else {
       // Map DB snake_case → JS camelCase
       const mapped = data.map(row => ({
@@ -5243,7 +5237,7 @@ export const useAppStore = create((set, get) => ({
         totalRuns: row.total_runs || 0,
         created: row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
       }));
-      set({ goalsData: mapped, goalsLoading: false });
+      set({ goalsData: mapped, goalsLoading: false, goalsFetched: true });
     }
   },
 
