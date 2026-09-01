@@ -194,6 +194,11 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
   const updateJsaMemberStatus = useAppStore(s => s.updateJsaMemberStatus);
   const openQuickView = useAppStore(s => s.openQuickView);
   const [statusAnchor, setStatusAnchor] = useState(null);
+  const quickViewPayload = { id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, memberId: member.memberId, language: member.language };
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    openQuickView(quickViewPayload);
+  };
 
   const language = member.language || 'en';
 
@@ -219,30 +224,21 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
         />
       </td>
 
-      {/* Sticky-left Members cell — mirrors TOC's DOM structure exactly */}
-      <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 36 }}>
+      {/* Sticky-left Members cell — entire cell clickable for patient quick view */}
+      <td
+        className={`${styles.membersTd} ${styles.stickyLeft}`}
+        style={{ left: 36, cursor: 'pointer' }}
+        onClick={handleMemberCellClick}
+        role="button"
+        tabIndex={0}
+        title="Open patient quick view"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+      >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} />
           <div>
             <div className={styles.patientName}>
-              <button
-                type="button"
-                className={styles.patientNameLink}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openQuickView({
-                    id: member.id,
-                    name: member.name,
-                    initials: member.in,
-                    gender: member.g,
-                    age: member.age,
-                    memberId: member.memberId,
-                    language: member.language,
-                  });
-                }}
-              >
-                {member.name}
-              </button>{' '}
+              <button type="button" className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{member.name}</button>{' '}
               {(() => {
                 const dobLabel = formatDobDisplay(member.dob) || deriveDob(member.age, member.name);
                 return (
@@ -253,12 +249,10 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
               })()}
             </div>
             <div className={styles.patientMeta}>
-              <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}•{' '}
-              <button
-                type="button"
-                className={styles.langBadge}
-                onClick={(e) => e.stopPropagation()}
-              >
+              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />
+              </span>{' '}•{' '}
+              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
                 {language.toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[language] || 'English'}</span>
               </button>

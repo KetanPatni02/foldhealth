@@ -311,6 +311,11 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
   // Multi-gap rows top-align member / per-member cells so the patient name
   // and single-value columns don't float in the middle of a tall stacked row.
   const multiGap = gaps.length > 1;
+  const quickViewPayload = { id: member.id, name: member.name, initials: member.in, gender: member.gender, age: member.age, memberId: member.memberId, language: member.language };
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    openQuickView(quickViewPayload);
+  };
 
   return (
     <tr
@@ -326,18 +331,24 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
         <Checkbox checked={isSelected} onCheckedChange={() => onSelect(member.id)} aria-label={`Select ${member.name}`} />
       </td>
 
-      {/* Member */}
-      <td className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember}`}>
+      {/* Member — entire cell clickable for patient quick view */}
+      <td
+        className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember}`}
+        onClick={handleMemberCellClick}
+        role="button"
+        tabIndex={0}
+        title="Open patient quick view"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+        style={{ cursor: 'pointer' }}
+      >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} />
           <div>
             <div className={styles.patientName}>
               <button
                 className={styles.patientNameLink}
-                onClick={e => {
-                  e.stopPropagation();
-                  openQuickView({ id: member.id, name: member.name, initials: member.in, gender: member.gender, age: member.age, memberId: member.memberId, language: member.language });
-                }}
+                onClick={handleMemberCellClick}
+                tabIndex={-1}
               >
                 {member.name}
               </button>{' '}
@@ -351,7 +362,9 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
               })()}
             </div>
             <div className={styles.patientMeta}>
-              <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}&bull;{' '}
+              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />
+              </span>{' '}&bull;{' '}
               <span className={styles.langBadge}>
                 {langShort}
                 <span className={styles.langTooltip}>Preferred Language: {langFull}</span>

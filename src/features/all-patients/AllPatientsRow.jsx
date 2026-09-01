@@ -257,23 +257,30 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
   const handleRowClick = () => {
     openQuickView(quickViewPayload);
   };
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    openQuickView(quickViewPayload);
+  };
 
   return (
     <tr className={rowStyles.row} onClick={handleRowClick}>
       <td className={`${rowStyles.checkTd} ${rowStyles.stickyLeft}`} style={{ left: 0 }} onClick={e => e.stopPropagation()}>
         <Checkbox checked={isSelected} onCheckedChange={() => onSelect(row.id)} />
       </td>
-      <td className={`${rowStyles.membersTd} ${rowStyles.stickyLeft}`} style={{ left: 36 }}>
+      <td
+        className={`${rowStyles.membersTd} ${rowStyles.stickyLeft}`}
+        style={{ left: 36, cursor: 'pointer' }}
+        onClick={handleMemberCellClick}
+        role="button"
+        tabIndex={0}
+        title="Open patient quick view"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+      >
         <div className={rowStyles.patientCell}>
           <Avatar variant="patient" initials={row.initials} />
           <div>
             <div className={rowStyles.patientName}>
-              <button
-                className={rowStyles.patientNameLink}
-                onClick={(e) => { e.stopPropagation(); openQuickView(quickViewPayload); }}
-              >
-                {row.name}
-              </button>
+              <button className={rowStyles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{row.name}</button>
               {row.gender && ageDisplay && (() => {
                 // DOB tooltip mirrors WorklistRow: stored dob wins, else a
                 // deterministic derivation from the displayed age + name so
@@ -287,12 +294,10 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
               })()}
             </div>
             <div className={rowStyles.patientMeta}>
-              <FoldIdTag id={row.memberId || row.id} className={rowStyles.foldId} showToast={showToast} />{' '}•{' '}
-              <button
-                type="button"
-                className={rowStyles.langBadge}
-                onClick={(e) => e.stopPropagation()}
-              >
+              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                <FoldIdTag id={row.memberId || row.id} className={rowStyles.foldId} showToast={showToast} />
+              </span>{' '}•{' '}
+              <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
                 {(row.language || 'en').toUpperCase()}
                 <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[row.language] || 'English'}</span>
               </button>

@@ -49,6 +49,11 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
   const checked = selectedHccIds.includes(member.id);
   const isOpenInDrawer = diagPanelMemberId === member.id;
   const isHidden = (k) => hiddenCols?.has(k);
+  const quickViewPayload = { id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, memberId: member.memberId, language: member.language, raf: member.raf };
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    openQuickView(quickViewPayload);
+  };
 
   const dosEntries = Array.isArray(member.dos_list) && member.dos_list.length > 0
     ? member.dos_list
@@ -158,15 +163,20 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
         </div>
       </td>
 
-      <td className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}>
+      <td
+        className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}
+        onClick={handleMemberCellClick}
+        role="button"
+        tabIndex={0}
+        title="Open patient quick view"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+        style={{ cursor: 'pointer' }}
+      >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} locked={isRecordRejected} />
           <div>
             <div className={styles.patientName}>
-              <button
-                className={styles.patientNameLink}
-                onClick={e => { e.stopPropagation(); openQuickView({ id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, memberId: member.memberId, language: member.language, raf: member.raf }); }}
-              >{member.name}</button>{' '}
+              <button className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{member.name}</button>{' '}
               {(() => {
                 const dobLabel = formatDobDisplay(member.dob) || deriveDob(member.age, member.name);
                 return (
@@ -177,8 +187,10 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
               })()}
             </div>
             <div className={styles.patientMeta}>
-              <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />{' '}&bull;{' '}
-              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
+              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />
+              </span>{' '}&bull;{' '}
+              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()} tabIndex={-1}>
                 {(member.language || 'en').toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: English</span>
               </button>
@@ -336,6 +348,11 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns, staggerIndex = 0
   const isHidden = (k) => hiddenCols?.has(k);
   const dash = <span className={styles.emptyDash} aria-hidden="true" />;
   const profile = useMemo(() => synthesizeHccProfile(patient), [patient]);
+  const quickViewPayload = { id: patient.id, name: patient.name, initials: patient.initials, gender: patient.gender, age: patient.age, memberId: patient.memberId, language: patient.language };
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    openQuickView(quickViewPayload);
+  };
 
   const handleRecord = (e) => {
     e.stopPropagation();
@@ -358,31 +375,27 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns, staggerIndex = 0
         </div>
       </td>
 
-      <td className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}>
+      <td
+        className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}
+        onClick={handleMemberCellClick}
+        role="button"
+        tabIndex={0}
+        title="Open patient quick view"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+        style={{ cursor: 'pointer' }}
+      >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={patient.initials} />
           <div>
             <div className={styles.patientName}>
-              <button
-                className={styles.patientNameLink}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openQuickView({
-                    id: patient.id,
-                    name: patient.name,
-                    initials: patient.initials,
-                    gender: patient.gender,
-                    age: patient.age,
-                    memberId: patient.memberId,
-                    language: patient.language,
-                  });
-                }}
-              >{patient.name}</button>{' '}
+              <button className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{patient.name}</button>{' '}
               <span className={styles.patientDemo}>({patient.gender}&bull;{patient.age})</span>
             </div>
             <div className={styles.patientMeta}>
-              <FoldIdTag id={patient.memberId || patient.id} className={styles.foldId} showToast={showToast} />{' '}&bull;{' '}
-              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
+              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                <FoldIdTag id={patient.memberId || patient.id} className={styles.foldId} showToast={showToast} />
+              </span>{' '}&bull;{' '}
+              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()} tabIndex={-1}>
                 {(patient.language || 'en').toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: English</span>
               </button>

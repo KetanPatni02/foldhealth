@@ -400,6 +400,10 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
     id: p.id, name: p.name, initials: p.initials, gender: p.gender,
     age: p.age, memberId: p.memberId, language: p.language, lace: p.lace,
   });
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    openPatientQuickView();
+  };
 
   const middleCols = (columns || QUEUE_MIDDLE_COLUMNS)
     .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
@@ -448,30 +452,27 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
           aria-label={`Select ${p.name}`}
         />
       </td>
-      <td className={`${rowStyles.membersTd} ${rowStyles.stickyLeft}`} style={{ left: 36 }}>
+      <td
+        className={`${rowStyles.membersTd} ${rowStyles.stickyLeft}`}
+        style={{ left: 36, cursor: 'pointer' }}
+        onClick={handleMemberCellClick}
+        role="button"
+        tabIndex={0}
+        title="Open patient quick view"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+      >
         <div className={rowStyles.patientCell}>
           <Avatar variant="patient" initials={p.initials} />
           <div>
             <div className={rowStyles.patientName}>
-              <button
-                type="button"
-                className={rowStyles.patientNameLink}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openPatientQuickView();
-                }}
-              >
-                {p.name}
-              </button>{' '}
+              <button type="button" className={rowStyles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{p.name}</button>{' '}
               <span className={rowStyles.patientDemo}>({p.gender}•{p.age})</span>
             </div>
             <div className={rowStyles.patientMeta}>
-              <FoldIdTag id={p.memberId} className={rowStyles.foldId} showToast={showToast} />{' '}•{' '}
-              <button
-                type="button"
-                className={rowStyles.langBadge}
-                onClick={(e) => e.stopPropagation()}
-              >
+              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                <FoldIdTag id={p.memberId} className={rowStyles.foldId} showToast={showToast} />
+              </span>{' '}•{' '}
+              <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
                 {(p.language || 'en').toUpperCase()}
                 <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
               </button>

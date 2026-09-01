@@ -105,10 +105,17 @@ function ReasonsCell({ reasons }) {
 
 export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTriggerBill, onCommentChange, onMarkChronic, onOpenPatient }) {
   const showToast = useAppStore(s => s.showToast);
+  const openQuickView = useAppStore(s => s.openQuickView);
   const langCode = (patient.language || 'en').toUpperCase();
   const langFull = LANG_MAP[patient.language] || patient.language;
   const patientInitials = getInitials(patient.name);
   const providerInitials = getInitials(patient.renderingProvider);
+  const quickViewPayload = { id: patient.id, name: patient.name, initials: patientInitials, gender: patient.gender, age: patient.age, memberId: patient.memberId, language: patient.language };
+  const handleMemberCellClick = (e) => {
+    e.stopPropagation();
+    if (onOpenPatient) onOpenPatient();
+    else openQuickView(quickViewPayload);
+  };
 
   // ── Three-state attestation logic (derived from reasons + per-ICD docs flag)
   // Case A: 1:many ambiguous + chronic-not-selected + has docs in 36mo
@@ -165,35 +172,27 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
         />
       </td>
 
-      {/* Member — matches TOC Worklist's two-line layout:
-           row 1: name
-           row 2: memberId • LANG_CODE (with tooltip on hover) */}
-      <td className={`${styles.stickyLeft} ${styles.stickyMember} ${styles.memberTd}`}>
+      {/* Member — entire cell clickable for patient quick view */}
+      <td
+        className={`${styles.stickyLeft} ${styles.stickyMember} ${styles.memberTd}`}
+        onClick={handleMemberCellClick}
+        role="button"
+        tabIndex={0}
+        title="Open patient quick view"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
+        style={{ cursor: 'pointer' }}
+      >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={patientInitials} />
           <div className={styles.patientInfo}>
-            <button
-              type="button"
-              className={styles.patientName}
-              onClick={(e) => { e.stopPropagation(); onOpenPatient?.(); }}
-              title="View patient"
-            >
+            <button type="button" className={styles.patientName} onClick={handleMemberCellClick} tabIndex={-1} title="View patient">
               {patient.name}
             </button>
             <div className={styles.patientMeta}>
-              {/* APCM is an independent billing roster — shown as its own
-                  payer member id (no `#` prefix), copied via the same tag. */}
-              <FoldIdTag
-                id={patient.memberId}
-                display={patient.memberId || '—'}
-                className={styles.foldId}
-                showToast={showToast}
-              />{' '}•{' '}
-              <button
-                type="button"
-                className={styles.langBadge}
-                onClick={(e) => e.stopPropagation()}
-              >
+              <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
+                <FoldIdTag id={patient.memberId} display={patient.memberId || '—'} className={styles.foldId} showToast={showToast} />
+              </span>{' '}•{' '}
+              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
                 {langCode}
                 <span className={styles.langTooltip}>Preferred Language: {langFull}</span>
               </button>
