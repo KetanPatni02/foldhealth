@@ -278,11 +278,24 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     return { codes, primary: codes[0] || inlineCode };
   };
 
+  // P3-2: strip `manuallyOff` from every gap's saved payload. It's a
+  // UI-only ready-toggle flag (see updateGap at ~line 120) — persisting
+  // it inside payload.gaps was leaking client state into the DB row.
+  // Readiness is inferred from `gap_codes` alone at read time: a code
+  // present in the array is "ready" (it was written), a code absent is
+  // "not ready" (it was skipped). No per-gap flag on the DB row.
+  const stripUiFlags = (obj) => {
+    if (!obj || typeof obj !== 'object') return obj;
+    const { manuallyOff, ...rest } = obj;
+    void manuallyOff;
+    return rest;
+  };
+
   const buildNotePayload = (codes) => ({
     dateOfService,
     audioOnly,
     audioVideo,
-    gaps: Object.fromEntries((codes || []).map(c => [c, gapState[c] ?? {}])),
+    gaps: Object.fromEntries((codes || []).map(c => [c, stripUiFlags(gapState[c] ?? {})])),
   });
 
   const formTypeForCodes = (codes) => {
