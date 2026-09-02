@@ -103,10 +103,9 @@ const TEMPLATE_COLUMNS = [
 // design's min/max column bounds.
 const GOAL_COLUMNS = [
   { key: 'select', label: '', showCheckbox: true, width: 44, sticky: 'left', left: 0 },
-  { key: 'title', label: 'Goals Title', sortKey: 'title', sortType: 'alpha', sticky: 'left', left: 44, width: 280 },
+  { key: 'title', label: 'Goals Title', sortKey: 'title', sortType: 'alpha', sticky: 'left', left: 44, width: 360 },
   { key: 'type', label: 'Type', sortKey: 'type', sortType: 'alpha', width: 120 },
   { key: 'linked', label: 'Linked Items', width: 140 },
-  { key: 'target', label: 'Target Value', width: 200 },
   { key: 'duration', label: 'Duration', width: 120 },
   { key: 'conditions', label: 'Chronic Conditions', sortKey: 'conditions', sortType: 'alpha', width: 250 },
   { key: 'createdOn', label: 'Created On', sortKey: 'createdAt', sortType: 'date', width: 220 },
@@ -437,7 +436,10 @@ export function CarePlanLibraryPanel() {
         />
       </td>
       <td className={`${styles.tdName} ${styles.tdNameOffset}`}>
-        <button type="button" className={styles.nameLink} onClick={() => openEditSimple('goal', g)}>{g.title}</button>
+        <span className={styles.nameCell}>
+          <button type="button" className={styles.nameLink} onClick={() => openEditSimple('goal', g)}>{g.title}</button>
+          {formatGoalTarget(g) ? <span className={styles.nameSub}>{formatGoalTarget(g)}</span> : null}
+        </span>
       </td>
       <td className={styles.tdType}>
         {g.type ? <Badge tone="grey" size="S" label={g.type} /> : '—'}
@@ -445,7 +447,6 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdLinked}>
         <Badge tone="grey" size="S" label={String(linkedCount(g))} />
       </td>
-      <td className={styles.tdMuted}>{formatGoalTarget(g) || '—'}</td>
       <td className={styles.tdMuted}>{formatGoalDuration(g) || '—'}</td>
       <td className={styles.tdConditions}>
         {(g.conditions || []).length
