@@ -11,7 +11,13 @@ import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { useAppStore } from '../../../store/useAppStore';
 import { EmailPreviewDrawer } from './EmailPreviewDrawer';
+import { AddNoteTemplateDrawer } from './AddNoteTemplateDrawer';
+import { NoteTemplatePreviewDrawer } from './NoteTemplatePreviewDrawer';
+import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
+import { ActivityLog } from '../../../components/ActivityLog/ActivityLog';
 import { formShareLink, copyToClipboard } from '../../forms/formLink';
+import { MEASURE_NAMES } from '../../hedis-worklist/ClinicalNotePanel.utils';
+import { toActivityLogEntries } from '../../hedis-worklist/CareGapDetailDrawer.utils';
 import styles from './ContentSettings.module.css';
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -372,6 +378,35 @@ const FORM_COLUMNS = [
   { key: 'action',    label: 'Action',          sticky: 'right', width: 100 },
 ];
 
+// Note Templates tab columns. Template Name stays pinned on the left,
+// Actions on the right; everything between scrolls. Sortable columns
+// declare `sortKey` and route through the caller-owned onSort in the
+// tab component below.
+const NOTE_COLUMNS = [
+  { key: 'template', label: 'Template Name', sortKey: 'name',       sticky: 'left', left: 0, width: 320 },
+  { key: 'type',     label: 'Type',          sortKey: 'type',       width: 120 },
+  { key: 'gap',      label: 'Care Gap',      sortKey: 'gap',        width: 200 },
+  { key: 'score',    label: 'Score Group',   sortKey: 'score',      width: 160 },
+  { key: 'status',   label: 'Status',        sortKey: 'status',     width: 110 },
+  { key: 'updated',  label: 'Updated',       sortKey: 'updated_at', width: 180 },
+  { key: 'actions',  label: 'Actions',                              sticky: 'right', width: 132 },
+];
+
+// Sort accessors for NoteTemplatesTab. `type` and `gap` derive from
+// `gap_code`; `updated_at` sorts by timestamp; everything else is a
+// direct field read.
+function valueFor(row, key) {
+  switch (key) {
+    case 'name':       return (row.name || '').toLowerCase();
+    case 'type':       return row.gap_code ? 'care gap' : 'normal';
+    case 'gap':        return (row.gap_code || '').toLowerCase();
+    case 'score':      return (row.category || '').toLowerCase();
+    case 'status':     return (row.status || '').toLowerCase();
+    case 'updated_at': return row.updated_at ? new Date(row.updated_at).getTime() : 0;
+    default:           return '';
+  }
+}
+
 // Tone map for the Type badge so each form_type reads as a distinct chip.
 // Mirrors the enum in supabase/forms_type_column_and_cbp_visit_note_migration.sql.
 const FORM_TYPE_TONE = {
@@ -565,83 +600,353 @@ function FormsTab({ searchVal, onDuplicate, onDelete, bulkMode, selectedIds, onT
 // follow-up; MVP surfaces the templates so admins can audit them from
 // the UI instead of grepping the JS constant.
 // ────────────────────────────────────────────────────────────────────────────
-function NoteTemplatesTab({ searchVal }) {
+function NoteTemplatesTab({ searchVal, showArchived }) {
   const templatesById = useAppStore(s => s.noteTemplatesById);
   const fetchNoteTemplates = useAppStore(s => s.fetchNoteTemplates);
+  const archiveNoteTemplate = useAppStore(s => s.archiveNoteTemplate);
+  const deleteNoteTemplate = useAppStore(s => s.deleteNoteTemplate);
+  const setNoteTemplateAsDefault = useAppStore(s => s.setNoteTemplateAsDefault);
+  const openFormBuilder = useAppStore(s => s.openFormBuilder);
+  const showToast = useAppStore(s => s.showToast);
   const [inspected, setInspected] = useState(null);
+  const [previewTarget, setPreviewTarget] = useState(null);
+  const [archiveTarget, setArchiveTarget] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [activityTarget, setActivityTarget] = useState(null);
+  const [sortKey, setSortKey] = useState('updated_at');
+  const [sortDir, setSortDir] = useState('desc');
+  const onSort = (key) => {
+    if (key === sortKey) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
 
   useEffect(() => { fetchNoteTemplates?.(); }, [fetchNoteTemplates]);
 
-  const rows = Object.values(templatesById || {})
-    .filter(t => !searchVal
-      || (t.name || '').toLowerCase().includes(searchVal.toLowerCase())
-      || (t.gap_code || '').toLowerCase().includes(searchVal.toLowerCase()))
-    .sort((a, b) => (a.gap_code || '').localeCompare(b.gap_code || ''));
+  const rows = (() => {
+    const filtered = Object.values(templatesById || {})
+      .filter(t => showArchived ? true : t.status !== 'archived')
+      .filter(t => !searchVal
+        || (t.name || '').toLowerCase().includes(searchVal.toLowerCase())
+        || (t.gap_code || '').toLowerCase().includes(searchVal.toLowerCase())
+        || (t.category || '').toLowerCase().includes(searchVal.toLowerCase()));
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const cmp = (a, b) => {
+      const va = valueFor(a, sortKey);
+      const vb = valueFor(b, sortKey);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      if (typeof va === 'number' && typeof vb === 'number') return (va - vb) * dir;
+      return String(va).localeCompare(String(vb)) * dir;
+    };
+    return filtered.sort(cmp);
+  })();
 
   if (!rows.length) {
     return (
       <div className={styles.placeholder}>
         <Icon name="solar:notes-linear" size={40} color="var(--neutral-150)" />
-        <p className={styles.placeholderTitle}>No Note Templates</p>
+        <p className={styles.placeholderTitle}>No Note Templates yet</p>
         <p className={styles.placeholderSub}>
-          Run <code>supabase/note_templates_migration.sql</code> then
-          <code> bun scripts/sync-note-templates.mjs </code>
-          to seed the HEDIS Care Gap templates.
+          Click <strong>New Note</strong> to create the first template. Care
+          Gap templates plug into the Add Note flow automatically once you
+          set them as the Visit or Non-Visit default for a gap.
         </p>
       </div>
     );
   }
+
+  const setDefault = async (id) => {
+    try { await setNoteTemplateAsDefault?.(id); showToast?.('Default updated'); }
+    catch (e) { showToast?.(e?.message || 'Could not set default'); }
+  };
 
   return (
     <>
       <WorklistShell
         rows={rows}
         loading={false}
-        header={
-          <tr className={styles.headRow}>
-            <th className={styles.thName}>Template</th>
-            <th className={styles.thCategory}>Gap Code</th>
-            <th className={styles.thCategory}>Fields</th>
-            <th className={styles.thCategory}>Status</th>
-            <th className={styles.thUpdated}>Updated</th>
-          </tr>
-        }
+        header={null}
+        columns={NOTE_COLUMNS}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={onSort}
         renderRow={(t) => {
-          const fieldCount = Array.isArray(t.schema?.items) ? t.schema.items.length : 0;
+          const isCareGap = !!t.gap_code;
+          const isDefault = !!(t.is_default_for_gap && t.gap_code && t.context);
+          const isArchived = t.status === 'archived';
+          const isActive = t.status === 'active';
+          const creatorName = t.updated_by_profile?.full_name || null;
+          const createdMeta = t.created_at
+            ? `Created ${fmtWhen(t.created_at)}${creatorName ? ` by ${creatorName}` : ''}`
+            : null;
           return (
-            <tr key={t.id} className={styles.row} onClick={() => setInspected(t)}>
+            <tr key={t.id} className={styles.row} onClick={() => setPreviewTarget(t)}>
               <td className={styles.tdName}>
                 <div className={styles.nameStack}>
                   <span className={styles.nameText}>{t.name}</span>
-                  {t.description ? <span className={styles.nameDesc}>{t.description}</span> : null}
+                  {createdMeta ? <span className={styles.nameDesc}>{createdMeta}</span> : null}
                 </div>
               </td>
               <td className={styles.tdCategory}>
-                {t.gap_code ? <Badge variant="ai-neutral" label={t.gap_code} /> : <span className={styles.cellMuted}>—</span>}
+                <Badge tone="grey" size="S" label={isCareGap ? 'Care Gap' : 'Normal'} />
               </td>
               <td className={styles.tdCategory}>
-                <span className={styles.cellMuted}>{fieldCount} field{fieldCount === 1 ? '' : 's'}</span>
+                {t.gap_code
+                  ? (
+                    <div className={styles.gapStack}>
+                      <Badge variant="ai-neutral" label={t.gap_code} />
+                      {t.context && (
+                        <span className={styles.cellMuted}>
+                          {t.context === 'non_visit' ? 'Non-Visit' : 'Visit'}
+                        </span>
+                      )}
+                    </div>
+                  )
+                  : <span className={styles.cellMuted}>—</span>}
+              </td>
+              {/* Score Group is intentionally empty until the scoring
+                  system is wired end-to-end. FormBuilder's Score tab is
+                  the authoring surface; once its output flows through
+                  we can bind `t.category` or a dedicated `score_group`
+                  column here. */}
+              <td className={styles.tdCategory}>
+                <span className={styles.cellMuted}>—</span>
               </td>
               <td className={styles.tdCategory}>
-                <Badge tone="grey" size="S" label={t.status || 'active'} />
+                <Badge tone={isActive ? 'success' : 'grey'} size="S" label={t.status || 'active'} />
               </td>
-              <td className={styles.tdUpdated}>
-                <span className={styles.cellMuted}>{fmtWhen(t.updated_at)}</span>
+              <td className={styles.tdCategory}>
+                <div className={styles.updatedStack}>
+                  <span className={styles.cellMuted}>{fmtWhen(t.updated_at)}</span>
+                  {creatorName && <span className={styles.updatedBy}>by {creatorName}</span>}
+                </div>
+              </td>
+              <td className={styles.tdCategory} onClick={(e) => e.stopPropagation()}>
+                <NoteRowActions
+                  template={t}
+                  isCareGap={isCareGap}
+                  isDefault={isDefault}
+                  isArchived={isArchived}
+                  onPreview={() => setPreviewTarget(t)}
+                  onEdit={() => openFormBuilder?.(t.id)}
+                  onSetDefault={() => setDefault(t.id)}
+                  onArchive={() => setArchiveTarget(t)}
+                  onDelete={() => setDeleteTarget(t)}
+                  onActivity={() => setActivityTarget(t)}
+                />
               </td>
             </tr>
           );
         }}
-        minTableWidth={900}
+        minTableWidth={1100}
       />
+      {previewTarget && (
+        <NoteTemplatePreviewDrawer
+          template={previewTarget}
+          onClose={() => setPreviewTarget(null)}
+        />
+      )}
       {inspected && (
-        <NoteTemplateInspector template={inspected} onClose={() => setInspected(null)} />
+        <NoteTemplateInspector
+          template={inspected}
+          onClose={() => setInspected(null)}
+          onEditFields={() => { openFormBuilder?.(inspected.id); setInspected(null); }}
+          onSetDefault={async () => { await setDefault(inspected.id); setInspected(null); }}
+          onArchive={() => { setArchiveTarget(inspected); setInspected(null); }}
+        />
+      )}
+      {archiveTarget && (
+        <ConfirmDialog
+          icon="solar:archive-down-linear"
+          iconColor="var(--status-warning)"
+          title={`Archive "${archiveTarget.name}"?`}
+          description="Archived templates are hidden from pickers, and the notes already created from them keep working. You can restore an archived template later."
+          confirmLabel="Archive"
+          cancelLabel="Cancel"
+          onConfirm={async () => {
+            try {
+              await archiveNoteTemplate?.(archiveTarget.id);
+              showToast?.('Template archived');
+            } catch (e) {
+              showToast?.(e?.message || 'Could not archive');
+            } finally {
+              setArchiveTarget(null);
+            }
+          }}
+          onCancel={() => setArchiveTarget(null)}
+        />
+      )}
+      {deleteTarget && (
+        <ConfirmDialog
+          icon="solar:danger-triangle-linear"
+          iconColor="var(--status-error)"
+          title={`Delete "${deleteTarget.name}"?`}
+          description="This permanently removes the template. Notes already authored from it stay intact (their answers are snapshotted), but you can't restore the template. Prefer Archive if you're unsure."
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          variant="error"
+          onConfirm={async () => {
+            try {
+              await deleteNoteTemplate?.(deleteTarget.id);
+              showToast?.('Template deleted');
+            } catch (e) {
+              showToast?.(e?.message || 'Could not delete');
+            } finally {
+              setDeleteTarget(null);
+            }
+          }}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+      {activityTarget && (
+        <NoteTemplateActivityDrawer
+          template={activityTarget}
+          onClose={() => setActivityTarget(null)}
+        />
       )}
     </>
   );
 }
 
-function NoteTemplateInspector({ template, onClose }) {
+/**
+ * NoteRowActions — Preview and Edit inline; everything else in a
+ * 3-dot MenuPopover so the sticky Actions column stays compact and the
+ * primary CTAs read at a glance.
+ */
+function NoteRowActions({
+  template,
+  isCareGap,
+  isDefault,
+  isArchived,
+  onPreview,
+  onEdit,
+  onSetDefault,
+  onArchive,
+  onDelete,
+  onActivity,
+}) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef(null);
+  const contextLabel = template.context === 'non_visit' ? 'Non-Visit' : 'Visit';
+  const items = [];
+  if (isCareGap) {
+    items.push({
+      key: 'default',
+      icon: isDefault ? 'solar:star-bold' : 'solar:star-linear',
+      label: isDefault ? `Current ${contextLabel} default` : `Set as ${contextLabel} default`,
+      disabled: isDefault || isArchived,
+      hint: isDefault ? 'This template is already the default for its (gap, context) lane.' : undefined,
+    });
+    items.push({ divider: true });
+  }
+  items.push({ key: 'activity', icon: 'solar:history-linear', label: 'Activity log' });
+  if (!isArchived) {
+    items.push({ key: 'archive', icon: 'solar:archive-down-linear', label: 'Archive' });
+  }
+  items.push({ key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true });
+
+  return (
+    <div className={styles.rowActions}>
+      <ActionButton icon="solar:eye-linear" size="S" tooltip="Preview" onClick={onPreview} />
+      <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={onEdit} />
+      <div ref={btnRef}>
+        <ActionButton
+          icon="solar:menu-dots-bold"
+          size="S"
+          tooltip="More"
+          onClick={() => setOpen(v => !v)}
+        />
+      </div>
+      {open && (
+        <MenuPopover
+          anchorRef={btnRef}
+          items={items}
+          onSelect={(key) => {
+            if (key === 'default')  onSetDefault?.();
+            if (key === 'archive')  onArchive?.();
+            if (key === 'delete')   onDelete?.();
+            if (key === 'activity') onActivity?.();
+          }}
+          onClose={() => setOpen(false)}
+          ariaLabel="Note template actions"
+          width={220}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * NoteTemplateActivityDrawer — thin portaled aside listing the template's
+ * lifecycle events. Today the DB stores only `created_at` and
+ * `updated_at` on `forms` (no per-edit audit table), so the drawer
+ * surfaces those two anchors with the updater's name. A dedicated
+ * `form_template_versions` table is the natural follow-up if we need
+ * fine-grained diffs.
+ */
+function NoteTemplateActivityDrawer({ template, onClose }) {
+  // Two lifecycle events for now, month-grouped by the same helper the
+  // Care Gap Detail Drawer uses so the timeline reads identically. When
+  // a real form_template_versions table lands, we can push more entries
+  // (per-field diffs, default-swap history, archive/restore) into the
+  // same shape.
+  const actor = template.updated_by_profile?.full_name || 'Unknown';
+  const raw = [];
+  if (template.updated_at && template.updated_at !== template.created_at) {
+    raw.push({
+      when: template.updated_at,
+      at: template.updated_at,
+      actor,
+      t: 'note',
+      title: 'Template edited',
+    });
+  }
+  if (template.created_at) {
+    raw.push({
+      when: template.created_at,
+      at: template.created_at,
+      actor,
+      t: 'create',
+      title: 'Template created',
+    });
+  }
+  const entries = toActivityLogEntries(raw);
+  return createPortal(
+    <>
+      <div className={styles.inspectorOverlay} onClick={onClose} aria-hidden />
+      <aside className={styles.inspectorPanel} role="dialog" aria-label={`${template.name} activity log`}>
+        <header className={styles.inspectorHeader}>
+          <div>
+            <div className={styles.inspectorTitle}>Activity Log</div>
+            <div className={styles.inspectorSub}>{template.name}</div>
+          </div>
+          <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Close" onClick={onClose} />
+        </header>
+        <div className={styles.inspectorBody}>
+          <ActivityLog entries={entries} emptyLabel="No activity recorded yet." />
+          <p className={styles.placeholderSub} style={{ marginTop: 'var(--space-3)' }}>
+            Per-field edit history will surface here once we snapshot template
+            versions.
+          </p>
+        </div>
+      </aside>
+    </>,
+    document.body,
+  );
+}
+
+function NoteTemplateInspector({ template, onClose, onEditFields, onSetDefault, onArchive }) {
   const items = Array.isArray(template.schema?.items) ? template.schema.items : [];
+  const isCareGap = !!template.gap_code;
+  const contextLabel = template.context === 'non_visit' ? 'Non-Visit' : template.context === 'visit' ? 'Visit' : null;
+  const isDefault = !!(template.is_default_for_gap && template.gap_code && template.context);
+  const isArchived = template.status === 'archived';
+  const gapName = template.gap_code ? MEASURE_NAMES?.[template.gap_code] : null;
   return createPortal(
     <>
       <div className={styles.inspectorOverlay} onClick={onClose} aria-hidden />
@@ -654,16 +959,37 @@ function NoteTemplateInspector({ template, onClose }) {
           <ActionButton icon="solar:close-circle-linear" size="S" tooltip="Close" onClick={onClose} />
         </header>
         <div className={styles.inspectorMeta}>
-          {template.gap_code && <Badge variant="ai-neutral" label={`Gap: ${template.gap_code}`} />}
+          <Badge tone="grey" size="S" label={isCareGap ? 'Care Gap Note' : 'Normal Note'} />
+          {template.gap_code && (
+            <Badge variant="ai-neutral" label={gapName ? `${template.gap_code} · ${gapName}` : `Gap: ${template.gap_code}`} />
+          )}
+          {contextLabel && <Badge tone="grey" size="S" label={contextLabel} />}
+          {isDefault && (
+            <Badge tone="success" size="S" label={template.context === 'non_visit' ? 'Non-Visit default' : 'Visit default'} />
+          )}
           <Badge tone="grey" size="S" label={`${items.length} field${items.length === 1 ? '' : 's'}`} />
           <Badge tone="grey" size="S" label={template.status || 'active'} />
+        </div>
+        <div className={styles.inspectorActions}>
+          <Button variant="primary" size="M" leadingIcon="solar:pen-linear" onClick={onEditFields}>
+            Edit fields
+          </Button>
+          {isCareGap && !isDefault && !isArchived && (
+            <Button variant="secondary" size="M" leadingIcon="solar:star-linear" onClick={onSetDefault}>
+              Set as {template.context === 'non_visit' ? 'Non-Visit' : 'Visit'} default
+            </Button>
+          )}
+          {!isArchived && (
+            <Button variant="tertiary" size="M" leadingIcon="solar:archive-down-linear" onClick={onArchive}>
+              Archive
+            </Button>
+          )}
         </div>
         <div className={styles.inspectorBody}>
           {items.length === 0 ? (
             <div className={styles.placeholderSub}>
-              This template has no field schema yet. Run
-              <code> bun scripts/sync-note-templates.mjs </code>
-              to push the JS descriptors into <code>forms.schema</code>.
+              This template has no fields yet. Click <strong>Edit fields</strong>
+              &nbsp;to open the form builder and add them.
             </div>
           ) : (
             <ol className={styles.fieldList}>
@@ -785,8 +1111,12 @@ export function ContentSettings() {
 
   const isEmails    = activeTab === 'emails';
   const isForms     = activeTab === 'forms';
-  const isListTab   = isEmails || isForms;
+  const isNotes     = activeTab === 'notes';
+  const isListTab   = isEmails || isForms || isNotes;
   const statusBadge = STATUS_FILTER_BADGE[statusFilter];
+
+  const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
+  const [notesShowArchived, setNotesShowArchived] = useState(false);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -847,12 +1177,18 @@ export function ContentSettings() {
   }, [activeTab]);
 
   const primaryActionLabel = isListTab
-    ? isForms
-      ? (formBuilderSaving ? 'Creating…' : 'New Form')
-      : (campaignBuilderSaving ? 'Creating…' : 'New Email')
+    ? isNotes
+      ? 'New Note'
+      : isForms
+        ? (formBuilderSaving ? 'Creating…' : 'New Form')
+        : (campaignBuilderSaving ? 'Creating…' : 'New Email')
     : undefined;
-  const primaryActionDisabled = isListTab && (isForms ? formBuilderSaving : campaignBuilderSaving);
-  const onPrimaryAction = () => (isForms ? openFormBuilder(null) : openContentEmailBuilder(null));
+  const primaryActionDisabled = isListTab && !isNotes && (isForms ? formBuilderSaving : campaignBuilderSaving);
+  const onPrimaryAction = () => {
+    if (isNotes) { setNotesDrawerOpen(true); return; }
+    if (isForms) { openFormBuilder(null); return; }
+    openContentEmailBuilder(null);
+  };
 
   return (
     <div className={styles.wrapper}>
@@ -861,7 +1197,7 @@ export function ContentSettings() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         actions={isListTab ? ['search'] : []}
-        searchPlaceholder={isForms ? 'Search forms…' : 'Search emails…'}
+        searchPlaceholder={isNotes ? 'Search note templates…' : isForms ? 'Search forms…' : 'Search emails…'}
         searchValue={searchInputVal}
         onSearchChange={setSearchInputVal}
         primaryActionLabel={primaryActionLabel}
@@ -869,17 +1205,31 @@ export function ContentSettings() {
         onPrimaryAction={onPrimaryAction}
         rightExtras={isListTab && (
           <>
-            <ActionButton
-              size="L"
-              tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
-              iconColor={bulkMode ? 'var(--primary-300)' : 'var(--neutral-300)'}
-              onClick={() => {
-                if (bulkMode) exitBulkMode();
-                else setBulkMode(true);
-              }}
-            >
-              {bulkMode ? <BulkSelectCloseIcon /> : <BulkSelectIcon />}
-            </ActionButton>
+            {isNotes && (
+              <button
+                type="button"
+                className={notesShowArchived ? styles.filterChipActive : styles.filterChipIdle}
+                onClick={() => setNotesShowArchived(v => !v)}
+                aria-pressed={notesShowArchived}
+                aria-label="Toggle archived templates"
+              >
+                <Icon name="solar:archive-down-linear" size={14} color="currentColor" />
+                <span>{notesShowArchived ? 'Hide archived' : 'Show archived'}</span>
+              </button>
+            )}
+            {!isNotes && (
+              <ActionButton
+                size="L"
+                tooltip={bulkMode ? 'Exit bulk select' : 'Bulk select'}
+                iconColor={bulkMode ? 'var(--primary-300)' : 'var(--neutral-300)'}
+                onClick={() => {
+                  if (bulkMode) exitBulkMode();
+                  else setBulkMode(true);
+                }}
+              >
+                {bulkMode ? <BulkSelectCloseIcon /> : <BulkSelectIcon />}
+              </ActionButton>
+            )}
             {isEmails && (
               <>
                 <ActionButton
@@ -931,7 +1281,7 @@ export function ContentSettings() {
             onToggleAll={toggleAllOnPage}
           />
         ) : activeTab === 'notes' ? (
-          <NoteTemplatesTab searchVal={searchVal} />
+          <NoteTemplatesTab searchVal={searchVal} showArchived={notesShowArchived} />
         ) : (
           <PlaceholderTab
             label={CONTENT_TABS.find(t => t.key === activeTab)?.label ?? ''}
@@ -947,6 +1297,10 @@ export function ContentSettings() {
           onEdit={handleEditFromPreview}
         />
       ) : null}
+
+      {notesDrawerOpen && (
+        <AddNoteTemplateDrawer onClose={() => setNotesDrawerOpen(false)} />
+      )}
 
       {/* Delete confirmation (single row) */}
       {deleteTarget ? (

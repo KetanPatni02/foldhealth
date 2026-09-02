@@ -128,7 +128,6 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
 
   const [statusOpen, setStatusOpen] = useState(false);
   const [statusAnchorRect, setStatusAnchorRect] = useState(null);
-  const [moreOpen, setMoreOpen] = useState(false);
 
   const [selectedYear, setSelectedYear] = useState(year);
   const [prevYear, setPrevYear] = useState(year);
@@ -804,7 +803,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           <CareGapDetailDrawerHeader
             gap={gap} member={member} selectedYear={selectedYear} setSelectedYear={setSelectedYear}
             yearOpen={yearOpen} setYearOpen={setYearOpen} yearOptions={yearOptions}
-            moreOpen={moreOpen} setMoreOpen={setMoreOpen} status={status} statusLocked={statusLocked}
+            status={status} statusLocked={statusLocked}
             statusOpen={statusOpen} setStatusOpen={setStatusOpen} statusAnchorRect={statusAnchorRect} setStatusAnchorRect={setStatusAnchorRect} updateGapStatus={updateGapStatus}
             platformUsers={platformUsers} updateGapAssignee={updateGapAssignee}
             showToast={showToast} setShowClinicalNote={setShowClinicalNote}
@@ -834,7 +833,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             size="S"
           />
 
-          <div className={`${styles.tabContentWrap} ${activeTab === 'Tasks' ? styles.tabContentWrapFlush : ''}`}>
+          <div className={`${styles.tabContentWrap} ${(activeTab === 'Tasks' || activeTab === 'Outreaches') ? styles.tabContentWrapFlush : ''}`}>
             {activeTab === 'Activity Log' ? (
               <div className={styles.activityLog}>
                 <div className={styles.commentInput}>

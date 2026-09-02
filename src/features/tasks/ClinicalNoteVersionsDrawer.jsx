@@ -65,8 +65,8 @@ export function ClinicalNoteVersionsDrawer({ note, onClose }) {
         <div className={styles.summary}>
           <span className={styles.summaryLabel}>Note</span>
           <span className={styles.summaryValue}>
-            {note.formType === 'non_visit_note'
-              ? (note.payload?.title || 'Non-Visit Note')
+            {(note.formType === 'non_visit_note' || note.formType === 'normal_note')
+              ? (note.payload?.title || (note.formType === 'normal_note' ? 'Clinical Note' : 'Non-Visit Note'))
               : (note.gapCodes || []).length > 1
                 ? 'Consolidated Clinical Note'
                 : `${(note.gapCodes || [])[0] || ''} Visit Note`.trim()}

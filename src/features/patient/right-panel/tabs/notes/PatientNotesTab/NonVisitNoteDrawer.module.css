@@ -64,3 +64,17 @@
   cursor: pointer;
 }
 .chipActive { }
+
+/* Template-picker helper text and empty-template placeholder. */
+.templateHelp {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.templateEmpty {
+  padding: var(--space-3);
+  border: 0.5px dashed var(--neutral-200);
+  border-radius: var(--space-2);
+  color: var(--neutral-400);
+  font-size: var(--font-sm);
+}
