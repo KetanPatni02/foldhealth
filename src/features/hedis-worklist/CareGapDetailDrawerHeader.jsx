@@ -46,6 +46,7 @@ export function CareGapDetailDrawerHeader({
   setShowClinicalNote,
   onOpenClinicalNote,
   onScheduleAppointment,
+  onOpenMeasureInfo,
   moreBtnRef,
   moreMenuRect,
   openMoreMenu,
@@ -78,6 +79,8 @@ export function CareGapDetailDrawerHeader({
               }}
               singleSelect
               noClear
+              size="S"
+              info={`Evidence uploaded will be recorded for measurement year ${selectedYear}.`}
             />
           </div>
           <div className={styles.gapToolbarRight}>
@@ -147,6 +150,16 @@ export function CareGapDetailDrawerHeader({
               )}
             </div>
 
+            {onOpenMeasureInfo && (
+              <ActionButton
+                icon="solar:book-2-linear"
+                size="L"
+                tooltip="Measure Tutorial"
+                tooltipBelow
+                tooltipLeft
+                onClick={() => onOpenMeasureInfo(gap.code)}
+              />
+            )}
             <span className={styles.headerDivider} />
             <ActionButton ref={moreBtnRef} icon="solar:menu-dots-linear" size="L" tooltip="More" tooltipBelow tooltipLeft
               onClick={moreMenuRect ? closeMoreMenu : openMoreMenu} />
@@ -177,12 +190,6 @@ export function CareGapDetailDrawerHeader({
         <div className={`${styles.moreDetails} ${moreOpen ? styles.moreDetailsOpen : ''}`} style={{ padding: '0 16px' }}>
           <div className={styles.moreDetailsInner}>
             <div className={styles.moreDetailsBody}>
-              <div className={styles.infoBanner}>
-                <span className={styles.infoBannerIcon}>
-                  <Icon name="solar:info-circle-linear" size={15} color="var(--status-info, #145ECC)" />
-                </span>
-                <span>Evidence uploaded will be recorded for measurement year {selectedYear}. The measurement year filter is displayed above for your reference.</span>
-              </div>
               <div className={styles.accordionSection}>
                 <button className={styles.accordionBtn} onClick={() => showToast('Measure Requirements — coming soon')}>
                   <Icon name="solar:alt-arrow-down-linear" size={13} /> Measure Requirements

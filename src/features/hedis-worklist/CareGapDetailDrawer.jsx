@@ -9,6 +9,7 @@ import { ClinicalNoteWorkspaceBody, ConsolidatedNoteBody, HeaderActions as Clini
 import { ReviewerPickerPopover } from './ReviewerPickerPopover';
 import { ClinicalNotesTab } from './ClinicalNotesTab';
 import { ClinicalNotePreviewBody } from './ClinicalNotePreviewBody';
+import { MeasureInfoBody } from './MeasureInfoBody';
 import { TasksTab } from '../patient/left-panel/tabs/tasks/TasksTab/TasksTab';
 import { TaskDetailDrawer } from '../tasks/TaskDetailDrawer';
 import { useAddTaskDrawer } from '../tasks/useAddTaskDrawer';
@@ -562,6 +563,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 if (leftWorkspace === 'task-detail') {
                   return <span className={styles.paneTitle}>Task Details</span>;
                 }
+                if (leftWorkspace === 'measure-info') {
+                  return <span className={styles.paneTitle}>Measure Tutorial</span>;
+                }
                 const isPreview = leftWorkspace === 'clinical-note-preview';
                 const previewNote = previewNoteHoisted;
                 const codes = previewNote?.gapCodes?.length
@@ -730,6 +734,10 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                   // header (status pill, title, etc.) lives in the body so
                   // there's no CTA to render alongside the close button.
                   null
+                ) : leftWorkspace === 'measure-info' ? (
+                  // Measure Details is a read-only reference pane — no
+                  // CTA next to the close button.
+                  null
                 ) : (
                   <Button variant="primary" size="M" disabled={!addTask.canSave} onClick={addTask.handleSave}>
                     Save Task
@@ -748,7 +756,9 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                         ? 'Close Clinical Note'
                         : leftWorkspace === 'task-detail'
                           ? 'Close Task Details'
-                          : 'Close Add Task'
+                          : leftWorkspace === 'measure-info'
+                            ? 'Close Measure Tutorial'
+                            : 'Close Add Task'
                   }
                 />
               </div>
@@ -775,6 +785,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                 inPlaceTask ? (
                   <TaskDetailDrawer task={inPlaceTask} inline onClose={closeLeftWorkspace} />
                 ) : null
+              ) : leftWorkspace === 'measure-info' ? (
+                <MeasureInfoBody gapCode={currentCode} />
               ) : (
                 <AddTaskDrawerBody {...addTask} />
               )}
@@ -797,7 +809,8 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
             platformUsers={platformUsers} updateGapAssignee={updateGapAssignee}
             showToast={showToast} setShowClinicalNote={setShowClinicalNote}
             onOpenClinicalNote={openClinicalNoteFlow}
-            onScheduleAppointment={() => setLeftWorkspace('schedule')} moreBtnRef={moreBtnRef}
+            onScheduleAppointment={() => setLeftWorkspace('schedule')}
+            onOpenMeasureInfo={() => setLeftWorkspace('measure-info')} moreBtnRef={moreBtnRef}
             moreMenuRect={moreMenuRect} openMoreMenu={openMoreMenu} closeMoreMenu={closeMoreMenu}
             goPrev={goPrev} goNext={goNext} canPrev={canPrev} canNext={canNext}
           />
