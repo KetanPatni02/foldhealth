@@ -15,41 +15,48 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
-.groupLabel {
-  font-size: var(--font-base);
+.sectionLabel {
+  font-size: var(--font-sm);
+  font-weight: 500;
   color: var(--neutral-300);
+  padding: var(--space-2) var(--space-2) var(--space-1);
+}
+.sectionLabel:not(:first-child) {
+  margin-top: var(--space-2);
+  border-top: 0.5px solid var(--neutral-150);
 }
 
 .rowWrap {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
 }
 
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 32px;
-  padding: 0 var(--space-2);
+  min-height: 40px;
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--space-1);
   cursor: pointer;
 }
 
-.row:hover:not(.rowDisabled) {
+.row:hover {
   background: var(--neutral-50);
-}
-
-.rowDisabled {
-  cursor: default;
 }
 
 .rowText {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.rowTitle {
   font-size: var(--font-base);
   color: var(--neutral-400);
   overflow: hidden;
@@ -57,34 +64,8 @@
   white-space: nowrap;
 }
 
-.createRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 32px;
-  padding: 0 var(--space-2);
-  border: none;
-  border-radius: var(--space-1);
-  background: none;
-  cursor: pointer;
-  text-align: left;
-}
-.createRow:hover {
-  background: var(--neutral-50);
-}
-.createText {
-  flex: 1;
+.rowConditions {
   min-width: 0;
-  font-size: var(--font-base);
-  color: var(--primary-300);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.groupDivider {
-  height: 0.5px;
-  background: var(--neutral-150);
 }
 
 .empty {

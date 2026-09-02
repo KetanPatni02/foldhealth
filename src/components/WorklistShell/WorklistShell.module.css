@@ -79,6 +79,13 @@
   overflow-x: auto;
   overflow-y: visible;
 }
+.tableScrollEmbeddedFlush {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+  position: relative;
+  background: var(--neutral-0);
+}
 
 .tableScroll {
   flex: 1;
@@ -105,6 +112,10 @@
   width: 100%;
   border-collapse: collapse;
   font-size: var(--font-base);
+}
+/* Stacked embedded tables (Care Plan GBI) — no internal scroll or sticky headers. */
+.tableFlush .headRow > th {
+  position: static;
 }
 
 /* Row-load animation — default for every WorklistShell consumer, so

@@ -1,0 +1,105 @@
+.anchor {
+  display: inline-flex;
+  align-self: center;
+}
+
+.card {
+  position: fixed;
+  z-index: 10050;
+  width: 280px;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-3);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+  animation: hintFadeIn 0.2s ease;
+}
+
+@keyframes hintFadeIn {
+  from { opacity: 0; transform: translateY(var(--space-1)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.caret {
+  position: absolute;
+  top: calc(-1 * var(--space-1));
+  left: var(--space-2);
+  width: var(--space-3);
+  height: var(--space-3);
+  background: var(--neutral-0);
+  border-top: 0.5px solid var(--neutral-150);
+  border-left: 0.5px solid var(--neutral-150);
+  transform: rotate(45deg);
+}
+
+.closeBtn {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border: none;
+  border-radius: var(--space-1);
+  background: none;
+  cursor: pointer;
+}
+
+.closeBtn:hover {
+  background: var(--neutral-50);
+}
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) 0;
+  background: linear-gradient(
+    135deg,
+    var(--primary-50) 0%,
+    var(--secondary-50) 55%,
+    var(--status-info-light) 100%
+  );
+}
+
+.heroIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-12);
+  height: var(--space-12);
+  border-radius: var(--space-3);
+  background: color-mix(in srgb, var(--neutral-0) 72%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--primary-300) 18%, transparent);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--neutral-500);
+  line-height: var(--leading-tight);
+}
+
+.desc {
+  margin: 0;
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-300);
+  line-height: var(--leading-normal);
+}
+
+.cta {
+  margin-top: var(--space-1);
+  align-self: center;
+}

@@ -64,6 +64,20 @@ function formatRelative(iso) {
 
 // Matches Figma's "MM/DD/YYYY | hh:mm AM/PM" cell format for Created On /
 // Last Update columns.
+/* Created On / Last Update both show who above when — the person is the more
+   useful of the two at a glance, so it leads. */
+function StampCell({ name, children }) {
+  return (
+    <div className={styles.createdCell}>
+      {name && <span className={styles.createdBy}>{name}</span>}
+      <span className={styles.createdAt}>{children}</span>
+    </div>
+  );
+}
+
+// Titles across the library share one ceiling.
+const TITLE_MAX = 150;
+
 function formatDateTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -121,16 +135,6 @@ const INTERVENTION_COLUMNS = [
   { key: 'actions', label: 'Actions', sticky: 'right', width: 100 },
 ];
 
-function templateDraftFrom(t) {
-  return {
-    kind: 'template',
-    id: t.id,
-    name: t.name,
-    conditionsText: t.conditions.join(', '),
-    goals: t.goals.map(g => ({ ...g })),
-    interventions: t.interventions.map(i => ({ ...i })),
-  };
-}
 function blankSimpleDraft(kind) {
   return { kind, id: null, title: '', description: '' };
 }
@@ -179,6 +183,7 @@ function TemplateRowMenu({ onDelete }) {
 export function CarePlanLibraryPanel() {
   const showToast = useAppStore(s => s.showToast);
   const setCarePlanCreateOpen = useAppStore(s => s.setCarePlanCreateOpen);
+  const setCarePlanTemplateScreen = useAppStore(s => s.setCarePlanTemplateScreen);
 
   // Tab lives in the store (mirrored to #/settings/care-plan-library/<tab>)
   // so a refresh or shared link restores the exact library.
@@ -217,6 +222,15 @@ export function CarePlanLibraryPanel() {
     if (!carePlanFavoritesLoaded) fetchCarePlanFavorites();
   }, [libraryDidFetch, carePlanFavoritesLoaded, fetchCarePlanLibrary, fetchCarePlanFavorites]);
 
+  // Ordering snapshot: which templates float to the top is frozen at the
+  // moment the list first loads, so starring/unstarring a row updates its icon
+  // without yanking the row up or down. Re-mounting the panel (return to this
+  // screen / reload) re-snapshots, applying the new favourites-at-top order.
+  const [favOrder, setFavOrder] = useState(null);
+  useEffect(() => {
+    if (carePlanFavoritesLoaded && favOrder === null) setFavOrder(new Set(favorites));
+  }, [carePlanFavoritesLoaded]); // eslint-disable-line react-hooks/exhaustive-deps -- snapshot once per mount
+
   // A single draft/delete-target slot, discriminated by `kind` — only one
   // drawer or confirm dialog is ever open at a time regardless of tab.
   const [draft, setDraft] = useState(null);
@@ -239,15 +253,17 @@ export function CarePlanLibraryPanel() {
       templateSort.key === 'updatedAt' ? t.updatedAt :
       t.name
     );
-    // Favorites always float to the top; the chosen column sorts within each
-    // group so a starred template never sinks below an unstarred one.
+    // Favorites float to the top by the frozen snapshot (favOrder), not live
+    // `favorites`, so toggling a star doesn't reorder until the next mount. The
+    // chosen column sorts within each group.
+    const orderFav = favOrder || new Set(favorites);
     return base.toSorted((a, b) => {
-      const favDiff = Number(favorites.includes(b.id)) - Number(favorites.includes(a.id));
+      const favDiff = Number(orderFav.has(b.id)) - Number(orderFav.has(a.id));
       if (favDiff) return favDiff;
       if (!templateSort.key) return 0;
       return valueOf(a).localeCompare(valueOf(b)) * dir;
     });
-  }, [templates, searchValue, templateSort, favorites]);
+  }, [templates, searchValue, templateSort, favOrder, favorites]);
 
   const [goalSort, setGoalSort] = useState({ key: 'title', dir: 'asc' });
   const [selectedGoalIds, setSelectedGoalIds] = useState([]);
@@ -296,7 +312,10 @@ export function CarePlanLibraryPanel() {
     setDraft(blankSimpleDraft('barrier'));
   };
 
-  const openEditTemplate = (t) => setDraft(templateDraftFrom(t));
+  // Both open the full-pane template screen — the name read-only, the pencil
+  // in edit mode.
+  const openViewTemplate = (t) => setCarePlanTemplateScreen({ mode: 'view', template: t });
+  const openEditTemplate = (t) => setCarePlanTemplateScreen({ mode: 'edit', template: t });
   const openEditSimple = (kind, item) => setDraft(simpleDraftFrom(kind, item));
   const openEditIntervention = (item) => setDraft({
     kind: 'intervention', id: item.id, title: item.title,
@@ -312,7 +331,13 @@ export function CarePlanLibraryPanel() {
     if (draft.kind === 'template') {
       const conditions = draft.conditionsText.split(',').map(c => c.trim()).filter(Boolean);
       const saved = await saveCarePlanTemplate(
-        { name: draft.name.trim(), conditions, goals: draft.goals, interventions: draft.interventions },
+        {
+          name: draft.name.trim(),
+          conditions,
+          goals: draft.goals,
+          interventions: draft.interventions,
+          barriers: draft.barriers,
+        },
         draft.id,
       );
       if (!saved) return;
@@ -351,6 +376,7 @@ export function CarePlanLibraryPanel() {
       conditions: t.conditions,
       goals: t.goals.map(g => ({ ...g })),
       interventions: t.interventions.map(i => ({ ...i })),
+      barriers: (t.barriers || []).map(b => ({ ...b })),
     });
     if (saved) toast.success(`"${t.name}" duplicated`);
   };
@@ -360,13 +386,7 @@ export function CarePlanLibraryPanel() {
     if (saved) toast.success(`"${g.title}" duplicated`);
   };
 
-  const addGoalRow = () => setDraft(d => ({ ...d, goals: [...d.goals, { id: `g-${Date.now()}`, title: '', subtitle: '' }] }));
-  const updateGoalRow = (id, patch) => setDraft(d => ({ ...d, goals: d.goals.map(g => (g.id === id ? { ...g, ...patch } : g)) }));
-  const removeGoalRow = (id) => setDraft(d => ({ ...d, goals: d.goals.filter(g => g.id !== id) }));
 
-  const addInterventionRow = () => setDraft(d => ({ ...d, interventions: [...d.interventions, { id: `i-${Date.now()}`, title: '', duration: '' }] }));
-  const updateInterventionRow = (id, patch) => setDraft(d => ({ ...d, interventions: d.interventions.map(i => (i.id === id ? { ...i, ...patch } : i)) }));
-  const removeInterventionRow = (id) => setDraft(d => ({ ...d, interventions: d.interventions.filter(i => i.id !== id) }));
 
   const renderTemplateRow = (t) => (
     <tr key={t.id} className={styles.row}>
@@ -374,15 +394,15 @@ export function CarePlanLibraryPanel() {
         <Checkbox aria-label={`Select ${t.name}`} />
       </td>
       <td className={`${styles.tdName} ${styles.tdNameOffset}`}>
-        <button type="button" className={styles.nameLink} onClick={() => openEditTemplate(t)}>{t.name}</button>
+        <button type="button" className={styles.nameLink} onClick={() => openViewTemplate(t)}>{t.name}</button>
       </td>
       <td className={styles.tdConditions}>
         <div className={styles.chipRow}>
           {t.conditions.map(c => <Badge key={c} tone="grey" size="S" label={c} />)}
         </div>
       </td>
-      <td className={styles.tdUpdated}>{formatDateTime(t.createdAt)}</td>
-      <td className={styles.tdUpdated}>{formatDateTime(t.updatedAt)}</td>
+      <td className={styles.tdUpdated}><StampCell name={t.createdBy}>{formatDateTime(t.createdAt)}</StampCell></td>
+      <td className={styles.tdUpdated}><StampCell name={t.updatedBy}>{formatDateTime(t.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton
@@ -432,7 +452,7 @@ export function CarePlanLibraryPanel() {
           ? <BadgeRow items={g.conditions} maxLines={2} />
           : '—'}
       </td>
-      <td className={styles.tdMuted}>{formatDateTime(g.createdAt)}</td>
+      <td className={styles.tdMuted}><StampCell name={g.createdBy}>{formatDateTime(g.createdAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditSimple('goal', g)} />
@@ -454,8 +474,8 @@ export function CarePlanLibraryPanel() {
       <td className={styles.tdLinked}>
         <Badge tone="grey" size="S" label={String(linkedCount(item))} />
       </td>
-      <td className={styles.tdMuted}>{formatDateTime(item.createdAt)}</td>
-      <td className={styles.tdUpdated}>{formatRelative(item.updatedAt)}</td>
+      <td className={styles.tdMuted}><StampCell name={item.createdBy}>{formatDateTime(item.createdAt)}</StampCell></td>
+      <td className={styles.tdUpdated}><StampCell name={item.updatedBy}>{formatRelative(item.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditSimple(kind, item)} />
@@ -475,8 +495,8 @@ export function CarePlanLibraryPanel() {
         <Badge tone="grey" size="S" label={kindLabel(item.kind)} />
       </td>
       <td className={styles.tdDescription}>{item.description || '—'}</td>
-      <td className={styles.tdMuted}>{formatDateTime(item.createdAt)}</td>
-      <td className={styles.tdUpdated}>{formatRelative(item.updatedAt)}</td>
+      <td className={styles.tdMuted}><StampCell name={item.createdBy}>{formatDateTime(item.createdAt)}</StampCell></td>
+      <td className={styles.tdUpdated}><StampCell name={item.updatedBy}>{formatRelative(item.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
         <div className={styles.actionCell}>
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditIntervention(item)} />
@@ -605,89 +625,6 @@ export function CarePlanLibraryPanel() {
         )}
       </div>
 
-      {draft && draft.kind === 'template' && (
-        <Drawer
-          title={draft.id ? 'Edit Care Plan Template' : 'New Care Plan Template'}
-          onClose={closeDrawer}
-          secondaryAction={<Button variant="secondary" size="L" onClick={closeDrawer}>Cancel</Button>}
-          primaryAction={<Button variant="primary" size="L" onClick={saveDraft} disabled={!canSave}>Save</Button>}
-        >
-          <div className={styles.formField}>
-            <span className={styles.formLabel}>Template Name <span className={styles.required}>•</span></span>
-            <Input
-              value={draft.name}
-              onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
-              placeholder="e.g. Type 2 Diabetes — Standard"
-            />
-          </div>
-
-          <div className={styles.formField}>
-            <span className={styles.formLabel}>Conditions</span>
-            <Input
-              value={draft.conditionsText}
-              onChange={e => setDraft(d => ({ ...d, conditionsText: e.target.value }))}
-              placeholder="Comma-separated, e.g. Type 2 Diabetes, Hypertension"
-            />
-          </div>
-
-          <div className={styles.formSection}>
-            <div className={styles.formSectionHeader}>
-              <span className={styles.formLabel}>Goals</span>
-              <button type="button" className={styles.addRowLink} onClick={addGoalRow}>
-                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
-                Add Goal
-              </button>
-            </div>
-            {draft.goals.map(g => (
-              <div key={g.id} className={styles.listRow}>
-                <Input
-                  value={g.title}
-                  onChange={e => updateGoalRow(g.id, { title: e.target.value })}
-                  placeholder="Goal title"
-                  wrapperClassName={styles.listRowTitle}
-                />
-                <Input
-                  value={g.subtitle}
-                  onChange={e => updateGoalRow(g.id, { subtitle: e.target.value })}
-                  placeholder="Detail (optional)"
-                  wrapperClassName={styles.listRowSubtitle}
-                />
-                <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove goal" onClick={() => removeGoalRow(g.id)} />
-              </div>
-            ))}
-            {draft.goals.length === 0 && <div className={styles.listEmpty}>No goals added yet.</div>}
-          </div>
-
-          <div className={styles.formSection}>
-            <div className={styles.formSectionHeader}>
-              <span className={styles.formLabel}>Interventions</span>
-              <button type="button" className={styles.addRowLink} onClick={addInterventionRow}>
-                <Icon name="solar:add-circle-linear" size={14} color="var(--primary-300)" />
-                Add Intervention
-              </button>
-            </div>
-            {draft.interventions.map(i => (
-              <div key={i.id} className={styles.listRow}>
-                <Input
-                  value={i.title}
-                  onChange={e => updateInterventionRow(i.id, { title: e.target.value })}
-                  placeholder="Intervention title"
-                  wrapperClassName={styles.listRowTitle}
-                />
-                <Input
-                  value={i.duration}
-                  onChange={e => updateInterventionRow(i.id, { duration: e.target.value })}
-                  placeholder="Duration (e.g. 30 min)"
-                  wrapperClassName={styles.listRowDuration}
-                />
-                <ActionButton icon="solar:trash-bin-trash-linear" size="S" tooltip="Remove intervention" onClick={() => removeInterventionRow(i.id)} />
-              </div>
-            ))}
-            {draft.interventions.length === 0 && <div className={styles.listEmpty}>No interventions added yet.</div>}
-          </div>
-        </Drawer>
-      )}
-
       {draft && draft.kind === 'goal' && (
         <CreateGoalDrawer
           goal={draft.goal}
@@ -714,6 +651,8 @@ export function CarePlanLibraryPanel() {
               value={draft.title}
               onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
               placeholder={draft.kind === 'goal' ? 'e.g. A1C below 7%' : 'e.g. Transportation'}
+              maxLength={TITLE_MAX}
+              characterLimit={TITLE_MAX}
             />
           </div>
           <div className={styles.formField}>
@@ -748,6 +687,8 @@ export function CarePlanLibraryPanel() {
               value={draft.title}
               onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
               placeholder="e.g. Measure blood pressure daily"
+              maxLength={TITLE_MAX}
+              characterLimit={TITLE_MAX}
             />
           </div>
           <div className={styles.formField}>

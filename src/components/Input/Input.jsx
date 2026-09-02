@@ -68,7 +68,8 @@ const TYPE_DEFAULTS = {
  *                      icon-only action button; wire via `onTrailingAction`.
  *     - trailingButton String label or `{ label, onClick }` for the small
  *                      purple pill button on the right.
- *     - characterLimit Number cap; shows "N/limit". Uses `value.length`
+ *     - characterLimit Number cap; shows "N/limit", turning error-dark at
+ *                      the cap. Uses `value.length`
  *                      when controlled, otherwise tracks length internally.
  *
  *   Below the field
@@ -443,7 +444,11 @@ export const Input = forwardRef(function Input(
         </Button>
       )}
       {characterLimit != null && (
-        <span className={styles.characterLimit}>
+        <span className={[
+          styles.characterLimit,
+          currentLen >= characterLimit ? styles.characterLimitFull : '',
+        ].filter(Boolean).join(' ')}
+        >
           {currentLen}/{characterLimit}
         </span>
       )}

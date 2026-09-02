@@ -9,6 +9,7 @@ import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTi
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
+import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch } from '../lib/worklistDefaults';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
@@ -30,6 +31,7 @@ import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
+import { goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 
 // Central failure reporter for every persistHccXxx helper. Historically
 // each of these was fire-and-forget with only console.warn on error — so
@@ -85,6 +87,8 @@ function mapCarePlanGoalRow(row, interventions = []) {
     targetDate: row.target_date || '',
     priority: row.priority || 'medium',
     interventions,
+    createdBy: row.created_by || '',
+    updatedBy: row.updated_by || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -115,6 +119,8 @@ function mapCarePlanBarrierRow(row) {
     id: row.id,
     title: row.title,
     description: row.description || '',
+    createdBy: row.created_by || '',
+    updatedBy: row.updated_by || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -127,6 +133,9 @@ function mapCarePlanTemplateRow(row) {
     conditions: row.conditions || [],
     goals: row.goals || [],
     interventions: row.interventions || [],
+    barriers: row.barriers || [],
+    createdBy: row.created_by || '',
+    updatedBy: row.updated_by || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -306,6 +315,7 @@ function mapPatientCarePlanRow(row) {
     createdBy: row.created_by || '',
     conditions: (row.conditions || []).map(label => ({ label })),
     conditionTotal: row.condition_total ?? (row.conditions || []).length,
+    appliedTemplateIds: row.applied_template_ids || [],
     createdDate: row.created_at,
     updatedAt: row.updated_at || null,
     signedBy: row.signed_by || null,
@@ -1010,6 +1020,7 @@ function formatDuration(secs) {
 
 // Restore navigation state from sessionStorage on reload
 const _savedPage = sessionStorage.getItem('activePage') || 'population';
+const _cachedWorklistOrder = readCachedWorklistOrder();
 const _savedTab = sessionStorage.getItem('activeTab') || 'toc-worklist';
 const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 
@@ -2521,6 +2532,10 @@ export const useAppStore = create((set, get) => ({
   // New Care Plan takes over the entire Settings area (the sub-nav is hidden,
   // only the app rail remains) — so the flag lives above CarePlanLibraryPanel.
   carePlanCreateOpen: false,
+  // { mode: 'view' | 'edit', template } — the full-pane template screen,
+  // which owns the Settings area the same way New Care Plan does.
+  carePlanTemplateScreen: null,
+  setCarePlanTemplateScreen: (v) => set({ carePlanTemplateScreen: v }),
 
   // ── Patient Care Plan (the Care Plan step in a program) ──
   // Per (patient, program) plan, persisted in patient_care_plan_* (see
@@ -2531,6 +2546,12 @@ export const useAppStore = create((set, get) => ({
   patientCarePlans: {},        // { [key]: { plan, goals, interventions, barriers } }
   patientCarePlanLoading: {},  // { [key]: bool }
   patientCarePlanLoadedFor: {},// { [key]: bool }
+  // Possible-duplicate flags raised when a goal/intervention/barrier is added
+  // that matches one already on this patient's plans (this program or another).
+  // Keyed by `<patientId>::<programId>`; each entry drives one "Possible
+  // Duplicate" banner in the Care Plan (Figma SNP-Story 8464:289403).
+  carePlanDuplicateFlags: {},  // { [key]: Flag[] }
+  carePlanDuplicateDismissed: {}, // { [key]: Set<flagId> } — Ignored/resolved this session
   // The comprehensive (all-programs) view loads every plan for a patient in one
   // pass and warms the per-program cache above, keyed by patient id.
   patientCarePlanAllLoading: {},   // { [patientId]: bool }
@@ -2673,6 +2694,97 @@ export const useAppStore = create((set, get) => ({
       };
     });
   },
+
+  // ── Possible-duplicate detection (Figma SNP-Story 8464:289403) ──
+  // Recompute every possible-duplicate banner for the current plan by scanning
+  // ALL of a patient's care plans (every program). A G/B/I on this plan is
+  // flagged when another item of the same kind + title lives on another
+  // program's plan (cross-program) or elsewhere on this plan (same-plan). Runs
+  // on load — so duplicates already sitting on existing plans surface too — and
+  // after each add. Flags the user dismissed/resolved this session stay hidden.
+  refreshCarePlanDuplicates: async (patientId, program, { reset = false } = {}) => {
+    if (!patientId || !program?.id) return 0;
+    const key = carePlanKey(patientId, program.id);
+    // A manual scan (reset) clears prior Ignore/resolve choices so every current
+    // duplicate is surfaced again; the automatic load/add refresh keeps them.
+    if (reset) set(s => ({ carePlanDuplicateDismissed: { ...s.carePlanDuplicateDismissed, [key]: new Set() } }));
+    let shown = 0;
+    const setFlags = (flags) => set(s => {
+      const dismissed = s.carePlanDuplicateDismissed[key] || new Set();
+      const kept = flags.filter(f => !dismissed.has(f.flagId));
+      shown = kept.length;
+      return { carePlanDuplicateFlags: { ...s.carePlanDuplicateFlags, [key]: kept } };
+    });
+
+    const { data: plans, error: pErr } = await supabase
+      .from('patient_care_plans')
+      .select('id, program_id, program_code, created_by, created_at')
+      .eq('patient_id', patientId);
+    if (pErr || !plans?.length) { setFlags([]); return 0; }
+    const planById = Object.fromEntries(plans.map(p => [p.id, p]));
+    const currentPlan = plans.find(p => p.program_id === program.id);
+    if (!currentPlan) { setFlags([]); return 0; }
+    const planIds = plans.map(p => p.id);
+
+    const KINDS = [
+      { kind: 'goal', table: 'patient_care_plan_goals', map: mapPatientCarePlanGoalRow },
+      { kind: 'intervention', table: 'patient_care_plan_interventions', map: mapPatientCarePlanInterventionRow },
+      { kind: 'barrier', table: 'patient_care_plan_barriers', map: mapPatientCarePlanBarrierRow },
+    ];
+    const meta = (planRow) => ({
+      programId: planRow.program_id,
+      programCode: planRow.program_code || '',
+      sameplan: planRow.program_id === program.id,
+      createdBy: planRow.created_by || '',
+      startDate: planRow.created_at,
+    });
+
+    const flags = [];
+    for (const { kind, table, map } of KINDS) {
+      const { data: rows, error } = await supabase.from(table).select('*').in('plan_id', planIds);
+      if (error) continue;
+      const groups = new Map();
+      for (const r of (rows || [])) {
+        const norm = (r.title || '').trim().toLowerCase();
+        if (!norm) continue;
+        (groups.get(norm) || groups.set(norm, []).get(norm)).push(r);
+      }
+      for (const items of groups.values()) {
+        if (items.length < 2) continue;
+        const inCurrent = items.filter(r => r.plan_id === currentPlan.id);
+        if (!inCurrent.length) continue;
+        const others = items.filter(r => r.plan_id !== currentPlan.id);
+        if (others.length) {
+          // Cross-program: every copy on this plan is redundant vs the other's.
+          const ref = others[0];
+          for (const cur of inCurrent) {
+            flags.push({ flagId: `${kind}-${cur.id}`, kind, newItem: { ...map(cur), createdBy: currentPlan.created_by || '' }, existing: { item: map(ref), ...meta(planById[ref.plan_id]) } });
+          }
+        } else {
+          // Same-plan only: keep the oldest as "existing", flag the rest as new.
+          const sorted = [...inCurrent].sort((a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+          const ref = sorted[0];
+          for (const cur of sorted.slice(1)) {
+            flags.push({ flagId: `${kind}-${cur.id}`, kind, newItem: { ...map(cur), createdBy: currentPlan.created_by || '' }, existing: { item: map(ref), ...meta(currentPlan) } });
+          }
+        }
+      }
+    }
+    setFlags(flags);
+    return shown;
+  },
+
+  dismissCarePlanDuplicate: (key, flagId) => set(s => {
+    const dismissed = new Set(s.carePlanDuplicateDismissed[key] || []);
+    dismissed.add(flagId);
+    return {
+      carePlanDuplicateFlags: {
+        ...s.carePlanDuplicateFlags,
+        [key]: (s.carePlanDuplicateFlags[key] || []).filter(f => f.flagId !== flagId),
+      },
+      carePlanDuplicateDismissed: { ...s.carePlanDuplicateDismissed, [key]: dismissed },
+    };
+  }),
 
   savePatientCarePlanGoal: async (patientId, program, values, id = null) => {
     const key = carePlanKey(patientId, program.id);
@@ -2943,6 +3055,76 @@ export const useAppStore = create((set, get) => ({
     const goals = (cur.goals || []).map(g => ({ id: `g-${g.id}`, title: g.title, subtitle: g.subtitle || '' }));
     const interventions = (cur.interventions || []).map(i => ({ id: `i-${i.id}`, title: i.title, duration: i.duration || '' }));
     return get().saveCarePlanTemplate({ name: name.trim(), conditions, goals, interventions });
+  },
+
+  setPatientCarePlanAppliedTemplates: async (patientId, program, templateIds) => {
+    const key = carePlanKey(patientId, program.id);
+    const planId = await get().ensurePatientCarePlan(patientId, program);
+    if (!planId) return false;
+    const ids = [...new Set(templateIds)];
+    const { error } = await supabase
+      .from('patient_care_plans')
+      .update({ applied_template_ids: ids, updated_at: new Date().toISOString() })
+      .eq('id', planId);
+    if (error) {
+      console.warn('setPatientCarePlanAppliedTemplates:', error.message);
+      get().showToast('Could not save applied templates');
+      return false;
+    }
+    set(s => {
+      const cur = s.patientCarePlans[key];
+      if (!cur?.plan) return {};
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: { ...cur, plan: { ...cur.plan, appliedTemplateIds: ids } },
+        },
+      };
+    });
+    return true;
+  },
+
+  applyPatientCarePlanTemplates: async (patientId, program, nextTemplateIds) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    const prevIds = cur?.plan?.appliedTemplateIds || [];
+    const nextIds = [...new Set(nextTemplateIds)];
+    const toAdd = nextIds.filter(id => !prevIds.includes(id));
+    const libraryGoals = get().carePlanGoals;
+    const templates = get().carePlanTemplates;
+
+    for (const templateId of toAdd) {
+      const template = templates.find(t => t.id === templateId);
+      if (!template) continue;
+      const existingGoalTitles = new Set((get().patientCarePlans[key]?.goals || []).map(g => g.title.trim().toLowerCase()));
+      const existingIntvTitles = new Set((get().patientCarePlans[key]?.interventions || []).map(i => i.title.trim().toLowerCase()));
+
+      for (const entry of template.goals || []) {
+        const payload = goalPayloadFromTemplateEntry(entry, libraryGoals);
+        const titleKey = payload.title.trim().toLowerCase();
+        if (!payload.title || existingGoalTitles.has(titleKey)) continue;
+        const saved = await get().savePatientCarePlanGoal(patientId, program, payload);
+        if (saved) existingGoalTitles.add(titleKey);
+      }
+
+      for (const entry of template.interventions || []) {
+        const payload = interventionPayloadFromTemplateEntry(entry);
+        const titleKey = payload.title.trim().toLowerCase();
+        if (!payload.title || existingIntvTitles.has(titleKey)) continue;
+        const saved = await get().savePatientCarePlanIntervention(patientId, program, payload);
+        if (saved) existingIntvTitles.add(titleKey);
+      }
+    }
+
+    const ok = await get().setPatientCarePlanAppliedTemplates(patientId, program, nextIds);
+    if (!ok) return false;
+    const added = toAdd.length;
+    const removed = prevIds.filter(id => !nextIds.includes(id)).length;
+    if (added) get().showToast(`Applied ${added} template${added === 1 ? '' : 's'}`);
+    else if (removed) get().showToast('Updated applied templates');
+    else get().showToast('Templates updated');
+    get().touchCarePlanModified(patientId, program.id);
+    return true;
   },
 
   // Preview & share (E4). The header's Download / Sign & Share buttons live in
@@ -3392,8 +3574,8 @@ export const useAppStore = create((set, get) => ({
   saveCarePlanGoal: async (values, id = null) => {
     const row = carePlanGoalToRow(values);
     const q = id
-      ? supabase.from('care_plan_goals').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
-      : supabase.from('care_plan_goals').insert(row);
+      ? supabase.from('care_plan_goals').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_goals').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
     const { data, error } = await q.select().single();
     if (error) {
       console.warn('save care plan goal failed:', error.message);
@@ -3435,8 +3617,8 @@ export const useAppStore = create((set, get) => ({
   saveCarePlanBarrier: async (values, id = null) => {
     const row = { title: values.title, description: values.description || '' };
     const q = id
-      ? supabase.from('care_plan_barriers').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
-      : supabase.from('care_plan_barriers').insert(row);
+      ? supabase.from('care_plan_barriers').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_barriers').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
     const { data, error } = await q.select().single();
     if (error) {
       console.warn('save care plan barrier failed:', error.message);
@@ -3469,10 +3651,11 @@ export const useAppStore = create((set, get) => ({
       conditions: values.conditions || [],
       goals: values.goals || [],
       interventions: values.interventions || [],
+      barriers: values.barriers || [],
     };
     const q = id
-      ? supabase.from('care_plan_templates').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
-      : supabase.from('care_plan_templates').insert(row);
+      ? supabase.from('care_plan_templates').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_templates').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
     const { data, error } = await q.select().single();
     if (error) {
       console.warn('save care plan template failed:', error.message);
@@ -3657,7 +3840,7 @@ export const useAppStore = create((set, get) => ({
 
   // Filters
   activeFilters: {},  // { gender: 'F', language: 'es', lace: 'High', ... }
-  activeSubnavList: 'TCM',  // which SubNav list is selected
+  activeSubnavList: getFirstWorklistLabel(_cachedWorklistOrder),  // which SubNav list is selected
 
   // ── Per-user worklist ordering (SubNav drag-and-drop) ──
   // Array of worklist labels in the user's preferred display order. Loaded
@@ -3665,18 +3848,7 @@ export const useAppStore = create((set, get) => ({
   // order and the user initially lands on the first entry. Seeded from
   // localStorage so the first paint already shows the saved order instead
   // of flashing the default and re-sorting when the DB fetch resolves.
-  worklistOrder: (() => {
-    try {
-      const cached = JSON.parse(localStorage.getItem('worklistOrder') || 'null');
-      if (!Array.isArray(cached) || cached.length === 0) return null;
-      // Pre-split caches stored the care-manager list as "TOC"; that list is TCM.
-      if (Array.isArray(cached) && cached.includes('TOC')) {
-        const hasTcm = cached.includes('TCM');
-        return cached.map(l => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l));
-      }
-      return cached;
-    } catch { return null; }
-  })(),
+  worklistOrder: _cachedWorklistOrder,
   worklistOrderLoaded: false,
   // Set once the user manually picks a list this session — fetchWorklistOrder
   // only auto-lands on the top worklist while this is still false.
@@ -4006,7 +4178,8 @@ export const useAppStore = create((set, get) => ({
 
   // Goals Directory
   goalsData: null, // null = not yet loaded, array = loaded from DB/fallback
-  goalsLoading: true,
+  goalsLoading: false,
+  goalsFetched: false,
   goalDetailId: null,
   goalWizardOpen: false,
   goalWizardEditId: null,
@@ -4045,7 +4218,7 @@ export const useAppStore = create((set, get) => ({
 
   // Agents (settings)
   agents: [],
-  agentsLoading: true,
+  agentsLoading: false,
   agentsFetched: false,
   settingsTab: _savedSettingsTab || 'agents',
   showCreateAgent: false,
@@ -4418,7 +4591,8 @@ export const useAppStore = create((set, get) => ({
     const from = get().activePage;
     if (from !== page) track('nav.page_changed', { from, to: page });
     sessionStorage.setItem('activePage', page);
-    set({ activePage: page });
+    const popPatch = page === 'population' ? populationEntryPatch(get()) : {};
+    set({ activePage: page, ...popPatch });
     updateHash(get);
   },
 
@@ -4476,7 +4650,8 @@ export const useAppStore = create((set, get) => ({
     }
     // No takeover open — plain navigation.
     sessionStorage.setItem('activePage', page);
-    set({ activePage: page });
+    const popPatch = page === 'population' ? populationEntryPatch(get()) : {};
+    set({ activePage: page, ...popPatch });
     updateHash(get);
   },
   requestAddTask: (opts = {}) => {
@@ -5142,7 +5317,7 @@ export const useAppStore = create((set, get) => ({
 
     if (error) {
       console.warn('goals fetch failed:', error.message);
-      set({ goalsData: [], goalsLoading: false, goalsError: error.message });
+      set({ goalsData: [], goalsLoading: false, goalsFetched: true, goalsError: error.message });
     } else {
       // Map DB snake_case → JS camelCase
       const mapped = data.map(row => ({
@@ -5162,7 +5337,7 @@ export const useAppStore = create((set, get) => ({
         totalRuns: row.total_runs || 0,
         created: row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }),
       }));
-      set({ goalsData: mapped, goalsLoading: false });
+      set({ goalsData: mapped, goalsLoading: false, goalsFetched: true });
     }
   },
 

@@ -216,3 +216,16 @@
 .emptyPane > :first-child {
   flex: 0 0 auto;
 }
+
+/* Created On: author on top, timestamp beneath in the muted table colour. */
+.createdCell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.createdBy {
+  color: var(--neutral-400);
+}
+.createdAt {
+  color: var(--neutral-300);
+}

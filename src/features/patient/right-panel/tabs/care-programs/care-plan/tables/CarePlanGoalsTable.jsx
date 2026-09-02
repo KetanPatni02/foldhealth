@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
+import { useTableSort } from '../../../../../../../components/HeaderCell/useTableSort';
 import {
   GOAL_COLUMNS,
   withSelectColumn,
@@ -11,6 +13,7 @@ import {
   TrendCell,
   GbiStatusButton,
 } from './carePlanTableShared';
+import { enrichGoalRows } from './carePlanTableSort';
 import styles from './carePlanTables.module.css';
 
 function GoalTitle({ title, subtitle }) {
@@ -37,14 +40,21 @@ export function CarePlanGoalsTable({
   linkCount,
   emptyState,
 }) {
+  const sortableRows = useMemo(() => enrichGoalRows(rows), [rows]);
+  const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortableRows, 'title', 'asc');
+
   return (
     <div className={styles.tableWrap}>
       <WorklistShell
         embedded
+        embeddedNoScroll
         header={null}
         hideBulkBar
         columns={withSelectColumn(GOAL_COLUMNS, bulkMode)}
-        rows={rows}
+        rows={sorted}
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={requestSort}
         selectedIds={selectedIds}
         onSelectAll={onSelectAll}
         minTableWidth={0}

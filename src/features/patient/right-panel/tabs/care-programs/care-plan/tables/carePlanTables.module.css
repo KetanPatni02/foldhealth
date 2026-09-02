@@ -3,11 +3,25 @@
 .tableWrap {
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
-  overflow: visible;
+  overflow: hidden;
   background: var(--neutral-0);
 }
 .tableWrap table {
   table-layout: fixed;
+  width: 100%;
+}
+.tableWrap thead th {
+  box-sizing: border-box;
+}
+.tableWrap thead th:not([data-sort-field]) {
+  overflow: hidden;
+}
+/* Last row border + tableWrap bottom border stacks to a darker stroke. */
+.tableWrap table tbody > tr:last-child {
+  border-bottom: none;
+}
+.closedBarriersTable tbody tr:last-child {
+  border-bottom: none;
 }
 
 .row {
@@ -41,7 +55,8 @@
 }
 .titleTd {
   composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  min-width: 350px;
+  min-width: 0;
+  width: auto;
 }
 .valueTd,
 .trendTd,
@@ -76,9 +91,10 @@
   margin-inline: auto;
 }
 .assigneeTd {
-  width: 130px;
-  min-width: 130px;
-  max-width: 130px;
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
+  vertical-align: middle;
 }
 .statusTd,
 .barrierStatusTd {
@@ -89,7 +105,6 @@
 }
 .actionsTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  composes: stickyRight from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
   width: 40px;
   min-width: 40px;
   max-width: 40px;
@@ -98,7 +113,7 @@
   padding-right: var(--space-2);
   text-align: center;
   vertical-align: middle;
-  overflow: visible;
+  border-left: 0.5px solid var(--neutral-150);
 }
 
 /* Barriers table — Figma SNP-Story 8455:288936 */
@@ -107,7 +122,8 @@
 }
 .barrierNameTd {
   composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  min-width: 350px;
+  min-width: 0;
+  width: auto;
 }
 .barrierNameCell {
   display: flex;

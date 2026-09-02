@@ -39,6 +39,9 @@ const SORT_LABELS = {
  *                   sort field and the trigger `<th>`'s bounding rect so
  *                   callers can either toggle direction or anchor a popover.
  * @param {'left'|'right'|'center'} [props.align='left']
+ * @param {boolean}  [props.hideSortIcon] When true, the header stays
+ *                                     sortable but omits the chevron icon
+ *                                     (for ultra-narrow columns like "P").
  * @param {string}   [props.className]
  * @param {object}   [props.style]
  */
@@ -50,6 +53,7 @@ export function HeaderCell({
   activeDir,
   onSort,
   align = 'left',
+  hideSortIcon = false,
   className,
   style,
 }) {
@@ -99,10 +103,11 @@ export function HeaderCell({
       tabIndex={isSortable ? 0 : undefined}
       aria-sort={isActive ? (activeDir === 'desc' ? 'descending' : 'ascending') : undefined}
       data-sort-field={sortField}
+      title={isSortable && hideSortIcon ? tooltip : undefined}
     >
-      <span className={styles.headerLabel}>
-        <span>{label}</span>
-        {isSortable && (
+      <span className={[styles.headerLabel, hideSortIcon ? styles.headerLabelNoIcon : ''].filter(Boolean).join(' ')}>
+        <span className={styles.headerLabelText}>{label}</span>
+        {isSortable && !hideSortIcon && (
           <span className={[styles.sortIcon, isActive ? styles.sortIconActive : ''].filter(Boolean).join(' ')}>
             <svg
               width="12"

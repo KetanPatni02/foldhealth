@@ -59,6 +59,7 @@ export const CLOSED_BARRIER_STATUSES = new Set(['Met', 'Not Met']);
 export const isClosedBarrier = (status) => CLOSED_BARRIER_STATUSES.has(status);
 
 const BORDER_LEFT = { borderLeft: '0.5px solid var(--neutral-150)' };
+const HEADER_COMPACT = { paddingLeft: 6, paddingRight: 6 };
 
 /** Fixed widths shared across Goals / Interventions / Barriers so columns align when stacked. */
 export const GBI_COL_WIDTH = {
@@ -66,7 +67,8 @@ export const GBI_COL_WIDTH = {
   value: 120,
   trend: 80,
   progress: 88,
-  assignee: 130,
+  // Spans Goals Current Value + Trend so Interventions Assigned To aligns and has room for M assignee chips.
+  assignee: 120 + 80,
   status: 140,
   actions: 40,
 };
@@ -80,28 +82,28 @@ export const withSelectColumn = (columns, bulkMode) =>
   (bulkMode ? [SELECT_COLUMN, ...columns] : columns);
 
 export const GOAL_COLUMNS = [
-  { key: 'priority', label: 'P', width: GBI_COL_WIDTH.priority, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
-  { key: 'title', label: 'Goal Title' },
-  { key: 'value', label: 'Current Value', width: GBI_COL_WIDTH.value, thStyle: BORDER_LEFT },
-  { key: 'trend', label: 'Trend', width: GBI_COL_WIDTH.trend, thStyle: BORDER_LEFT },
-  { key: 'progress', label: 'Progress', width: GBI_COL_WIDTH.progress, thStyle: BORDER_LEFT },
-  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, thStyle: BORDER_LEFT },
-  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, sticky: 'right', thStyle: BORDER_LEFT },
+  { key: 'priority', label: 'P', width: GBI_COL_WIDTH.priority, align: 'center', sortKey: '_sortPriority', sortType: 'priority', hideSortIcon: true, thStyle: { borderRight: '0.5px solid var(--neutral-150)', paddingLeft: 4, paddingRight: 4 } },
+  { key: 'title', label: 'Goal Title', sortKey: 'title', sortType: 'alpha' },
+  { key: 'value', label: 'Current Value', width: GBI_COL_WIDTH.value, sortKey: '_sortValue', sortType: 'generic', thStyle: { ...BORDER_LEFT, ...HEADER_COMPACT } },
+  { key: 'trend', label: 'Trend', width: GBI_COL_WIDTH.trend, sortKey: 'trend', sortType: 'generic', thStyle: { ...BORDER_LEFT, ...HEADER_COMPACT } },
+  { key: 'progress', label: 'Progress', width: GBI_COL_WIDTH.progress, sortKey: '_sortProgress', sortType: 'number', thStyle: { ...BORDER_LEFT, ...HEADER_COMPACT } },
+  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, sortKey: 'status', sortType: 'alpha', thStyle: { ...BORDER_LEFT, ...HEADER_COMPACT } },
+  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, thStyle: { ...BORDER_LEFT, paddingLeft: 4, paddingRight: 4 } },
 ];
 
 export const INTERVENTION_COLUMNS = [
-  { key: 'priority', label: 'P', width: GBI_COL_WIDTH.priority, align: 'center', thStyle: { borderRight: '0.5px solid var(--neutral-150)' } },
-  { key: 'title', label: 'Name' },
-  { key: 'assignee', label: 'Assigned To', width: GBI_COL_WIDTH.assignee, thStyle: BORDER_LEFT },
-  { key: 'adherence', label: 'Adherence', width: GBI_COL_WIDTH.progress, thStyle: BORDER_LEFT },
-  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, thStyle: BORDER_LEFT },
-  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, sticky: 'right', thStyle: BORDER_LEFT },
+  { key: 'priority', label: 'P', width: GBI_COL_WIDTH.priority, align: 'center', sortKey: '_sortPriority', sortType: 'priority', hideSortIcon: true, thStyle: { borderRight: '0.5px solid var(--neutral-150)', paddingLeft: 4, paddingRight: 4 } },
+  { key: 'title', label: 'Name', sortKey: 'title', sortType: 'alpha' },
+  { key: 'assignee', label: 'Assigned To', width: GBI_COL_WIDTH.assignee, sortKey: '_sortAssignee', sortType: 'alpha', thStyle: BORDER_LEFT },
+  { key: 'adherence', label: 'Adherence', width: GBI_COL_WIDTH.progress, sortKey: '_sortAdherence', sortType: 'number', thStyle: { ...BORDER_LEFT, ...HEADER_COMPACT } },
+  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, sortKey: 'status', sortType: 'alpha', thStyle: { ...BORDER_LEFT, ...HEADER_COMPACT } },
+  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, thStyle: { ...BORDER_LEFT, paddingLeft: 4, paddingRight: 4 } },
 ];
 
 export const BARRIER_COLUMNS = [
-  { key: 'title', label: 'Name' },
-  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, thStyle: BORDER_LEFT },
-  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, sticky: 'right', thStyle: BORDER_LEFT },
+  { key: 'title', label: 'Name', sortKey: 'title', sortType: 'alpha' },
+  { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, sortKey: 'status', sortType: 'alpha', thStyle: { ...BORDER_LEFT, ...HEADER_COMPACT } },
+  { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, thStyle: { ...BORDER_LEFT, paddingLeft: 4, paddingRight: 4 } },
 ];
 
 // The per-row bulk checkbox cell shared by all three GBI tables — stops click

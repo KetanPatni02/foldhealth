@@ -16,8 +16,12 @@ import styles from './Tooltip.module.css';
  *  - className (string)  Optional class on the inline wrapper span.
  *  - maxWidth (number)  Wrap long content at this pixel width (default is a
  *             single nowrap line — pass this for sentence-length tooltips).
+ *  - align   ('center' | 'left' | 'right')  Horizontal anchoring. Defaults to
+ *             centring on the trigger; 'right' pins the bubble's right edge to
+ *             the trigger's, for triggers near the right edge of a panel where
+ *             a centred bubble would be clipped.
  */
-export function Tooltip({ label, children, placement = 'top', className, maxWidth }) {
+export function Tooltip({ label, children, placement = 'top', className, maxWidth, align = 'center' }) {
   const triggerRef = useRef(null);
   const openTimer = useRef(null);
   const [rect, setRect] = useState(null);
@@ -36,10 +40,15 @@ export function Tooltip({ label, children, placement = 'top', className, maxWidt
   };
   useEffect(() => () => clearTimeout(openTimer.current), []);
 
+  const anchorX = rect
+    ? align === 'right' ? rect.right
+      : align === 'left' ? rect.left
+        : rect.left + rect.width / 2
+    : 0;
   const style = rect
     ? placement === 'bottom'
-      ? { top: rect.bottom + 6, left: rect.left + rect.width / 2 }
-      : { top: rect.top - 6,     left: rect.left + rect.width / 2 }
+      ? { top: rect.bottom + 6, left: anchorX }
+      : { top: rect.top - 6,     left: anchorX }
     : null;
   if (style && maxWidth) {
     style.maxWidth = maxWidth;
@@ -60,7 +69,12 @@ export function Tooltip({ label, children, placement = 'top', className, maxWidt
       {rect && label && createPortal(
         <span
           role="tooltip"
-          className={[styles.bubble, placement === 'bottom' ? styles.bubbleBottom : styles.bubbleTop].join(' ')}
+          className={[
+            styles.bubble,
+            placement === 'bottom' ? styles.bubbleBottom : styles.bubbleTop,
+            align === 'right' ? styles.bubbleAlignRight : '',
+            align === 'left' ? styles.bubbleAlignLeft : '',
+          ].filter(Boolean).join(' ')}
           style={style}
         >
           {label}

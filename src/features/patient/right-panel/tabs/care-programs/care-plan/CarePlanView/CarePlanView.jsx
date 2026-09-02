@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { AddIconMinimalist } from '../../../../../../../components/Icon/AddIconMinimalist';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
@@ -15,6 +15,16 @@ import { useAppStore } from '../../../../../../../store/useAppStore';
 import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
 import { AddBarriersDrawer } from '../../../../../../settings/care-plan-library/barriers/AddBarriersDrawer/AddBarriersDrawer';
 import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
+import { SendFormDrawer } from '../../../../../../settings/care-plan-library/interventions/SendFormDrawer/SendFormDrawer';
+import { SendContentDrawer } from '../../../../../../settings/care-plan-library/interventions/SendContentDrawer/SendContentDrawer';
+import { MeasureVitalDrawer } from '../../../../../../settings/care-plan-library/interventions/MeasureVitalDrawer/MeasureVitalDrawer';
+import { AddTaskDrawer } from '../../../../../../tasks/AddTaskDrawer';
+import {
+  CARE_PLAN_INTERVENTION_MENU,
+  CARE_PLAN_INTERVENTION_ICONS,
+  interventionDurationFromConfig,
+  interventionPriorityFromConfig,
+} from '../lib/carePlanInterventionMenu';
 import { CarePlanShareDrawer } from '../drawers/CarePlanShareDrawer/CarePlanShareDrawer';
 import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlanHistoryDrawer';
 import { CarePlanVersionsDrawer } from '../drawers/CarePlanVersionsDrawer/CarePlanVersionsDrawer';
@@ -30,7 +40,13 @@ import { RingEmptyState } from '../../../../../../../components/RingEmptyState/R
 import { SimpleTableSkeleton } from '../../../../../../../components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
 import { BulkBar } from '../../../../../../../components/BulkBar/BulkBar';
+import { Badge } from '../../../../../../../components/Badge/Badge';
+import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
+import { CarePlanDuplicateFlag } from '../DuplicateFlag/CarePlanDuplicateFlag';
+import { templateGoalCount } from '../lib/carePlanTemplateApply';
 import styles from './CarePlanView.module.css';
+
+const EMPTY_ARR = [];
 
 // The statuses a goal or intervention can move through. Kept flat and shared so
 // the pill menu and the intervention drawer offer the same vocabulary.
@@ -39,7 +55,23 @@ const PRIORITIES = ['high', 'medium', 'low'];
 // Capitalized labels for the priority filter chip (values compare case-insensitively).
 const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
 
-/** Collapsible section title — chevron rotates to point right when closed. */
+const INTERVENTION_EDITORS = {
+  'send-form': SendFormDrawer,
+  'patient-education': SendContentDrawer,
+  'measure-vital': MeasureVitalDrawer,
+};
+
+/** Collapsible GBI section header: title · divider · add action · [optional trailing end]. */
+function GbiSectionHead({ title, open, onToggle, addButton, trailingEnd }) {
+  return (
+    <div className={`${styles.sectionHead} ${styles.gbiSectionHead}`}>
+      <SectionTitle label={title} open={open} onToggle={onToggle} />
+      <span className={styles.sectionActionDivider} aria-hidden="true" />
+      {addButton}
+      {trailingEnd ? <div className={styles.gbiSectionHeadEnd}>{trailingEnd}</div> : null}
+    </div>
+  );
+}
 function SectionTitle({ label, open, onToggle }) {
   return (
     <button type="button" className={styles.sectionToggle} onClick={onToggle} aria-expanded={open}>
@@ -80,6 +112,8 @@ export function CarePlanView({ patientId, program }) {
   const deletePatientCarePlanIntervention = useAppStore(s => s.deletePatientCarePlanIntervention);
   const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
   const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
+  const refreshCarePlanDuplicates = useAppStore(s => s.refreshCarePlanDuplicates);
+  const dismissCarePlanDuplicate = useAppStore(s => s.dismissCarePlanDuplicate);
   const savePatientCarePlanAsTemplate = useAppStore(s => s.savePatientCarePlanAsTemplate);
   const signCarePlan = useAppStore(s => s.signCarePlan);
   const touchCarePlanModified = useAppStore(s => s.touchCarePlanModified);
@@ -98,9 +132,11 @@ export function CarePlanView({ patientId, program }) {
   const clearCarePlanPanelRequest = useAppStore(s => s.clearCarePlanPanelRequest);
   const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
+  const applyPatientCarePlanTemplates = useAppStore(s => s.applyPatientCarePlanTemplates);
 
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const live = useAppStore(s => (key ? s.patientCarePlans[key] : null));
+  const duplicateFlags = useAppStore(s => (key ? s.carePlanDuplicateFlags[key] : null)) || EMPTY_ARR;
   // First-load skeleton: true while the initial fetch is in flight (before the
   // plan resolves), false once loaded.
   const carePlanLoading = useAppStore(s => (key ? !!s.patientCarePlanLoading[key] : false));
@@ -111,8 +147,13 @@ export function CarePlanView({ patientId, program }) {
   const linkCount = (id) => carePlanLinks.filter(l => l.ownerId === String(id)).length;
 
   useEffect(() => {
-    if (patientId && program?.id) { fetchPatientCarePlan(patientId, program.id); fetchCarePlanLinks(patientId, program.id); }
-  }, [patientId, program?.id, fetchPatientCarePlan, fetchCarePlanLinks]);
+    if (patientId && program?.id) {
+      fetchPatientCarePlan(patientId, program.id);
+      fetchCarePlanLinks(patientId, program.id);
+      // Surface duplicates already sitting on this (and other) plans on load.
+      refreshCarePlanDuplicates(patientId, program);
+    }
+  }, [patientId, program?.id, fetchPatientCarePlan, fetchCarePlanLinks, refreshCarePlanDuplicates]); // eslint-disable-line react-hooks/exhaustive-deps -- program object is stable by id
 
   useEffect(() => { fetchCarePlanLibrary?.(); }, [fetchCarePlanLibrary]);
 
@@ -124,8 +165,9 @@ export function CarePlanView({ patientId, program }) {
     else if (carePlanPanelRequest === 'filter') setFiltersOpen(true);
     else if (carePlanPanelRequest === 'note') { setNoteText(''); setNoteOpen(true); }
     else if (carePlanPanelRequest === 'sign') { setSignNote(''); setSignOpen(true); }
+    else if (carePlanPanelRequest === 'scan-duplicates') { scanForDuplicates(); }
     clearCarePlanPanelRequest();
-  }, [carePlanPanelRequest, clearCarePlanPanelRequest]);
+  }, [carePlanPanelRequest, clearCarePlanPanelRequest]); // eslint-disable-line react-hooks/exhaustive-deps -- request handlers are stable
 
   // A share request that was never opened/closed (e.g. the program was closed
   // with the flag still set) must not linger and auto-open the drawer next time.
@@ -161,7 +203,12 @@ export function CarePlanView({ patientId, program }) {
   const [previewGoal, setPreviewGoal] = useState(null);
   const [previewIntervention, setPreviewIntervention] = useState(null);
   const [intvDrawer, setIntvDrawer] = useState(null);  // false | { intervention }
+  const [intvTypeMenuOpen, setIntvTypeMenuOpen] = useState(false);
+  const [intvSpecialDrawer, setIntvSpecialDrawer] = useState(null); // null | { kind, intervention? }
+  const [taskDrawerOpen, setTaskDrawerOpen] = useState(null); // null | 'patient-task' | 'internal-task'
+  const intvAddRef = useRef(null);
   const [barrierDrawer, setBarrierDrawer] = useState(null); // null | { barrier }
+  const [templatesDrawerOpen, setTemplatesDrawerOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind, id, name }
@@ -219,7 +266,14 @@ export function CarePlanView({ patientId, program }) {
 
   const visibleConditions = data.conditions.slice(0, MAX_VISIBLE_CONDITIONS);
   const hiddenConditionCount = Math.max(0, data.conditionTotal - visibleConditions.length);
-  const templateCount = carePlanTemplates.length;
+  const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
+  const appliedTemplates = useMemo(
+    () => appliedTemplateIds
+      .map(id => carePlanTemplates.find(t => t.id === id))
+      .filter(Boolean),
+    [appliedTemplateIds, carePlanTemplates],
+  );
+  const appliedTemplateCount = appliedTemplates.length;
   const signedBy = live?.plan?.signedBy;
   const signedAt = live?.plan?.signedAt;
   const showSignedBanner = isCarePlanSigned(live?.plan);
@@ -228,6 +282,7 @@ export function CarePlanView({ patientId, program }) {
   // rows; a bulk status change loops the normal save path so each write audits.
   const [selected, setSelected] = useState({ goal: new Set(), intv: new Set(), barrier: new Set() });
   const [bulkMenu, setBulkMenu] = useState(null); // { rect }
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const selectedCount = selected.goal.size + selected.intv.size + selected.barrier.size;
   const toggleSelect = (kind, id) => setSelected(prev => {
     const next = new Set(prev[kind]);
@@ -252,6 +307,19 @@ export function CarePlanView({ patientId, program }) {
     const n = g.length + iv.length + br.length;
     clearSelection();
     if (n) showToast(`Updated ${n} item${n === 1 ? '' : 's'} to "${status}"`);
+  };
+
+  const bulkDelete = async () => {
+    setBulkDeleteOpen(false);
+    const g = filteredGoals.filter(x => selected.goal.has(x.id));
+    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
+    const br = filteredBarriers.filter(x => selected.barrier.has(x.id));
+    for (const x of g) await deletePatientCarePlanGoal(patientId, program.id, x.id);
+    for (const x of iv) await deletePatientCarePlanIntervention(patientId, program.id, x.id);
+    for (const x of br) await deletePatientCarePlanBarrier(patientId, program.id, x.id);
+    const n = g.length + iv.length + br.length;
+    clearSelection();
+    if (n) { showToast(`Removed ${n} item${n === 1 ? '' : 's'}`); refreshCarePlanDuplicates(patientId, program); }
   };
 
   const doSign = async () => {
@@ -310,7 +378,7 @@ export function CarePlanView({ patientId, program }) {
         existingTitles.add(titleKey);
       }
     }
-    if (added) showToast(`Added ${added} goal${added === 1 ? '' : 's'}`);
+    if (added) { showToast(`Added ${added} goal${added === 1 ? '' : 's'}`); refreshCarePlanDuplicates(patientId, program); }
     else showToast('Selected goals are already on this plan');
   };
 
@@ -318,7 +386,39 @@ export function CarePlanView({ patientId, program }) {
     const editingId = intvDrawer?.intervention?.id || null;
     setIntvDrawer(false);
     const saved = await savePatientCarePlanIntervention(patientId, program, values, editingId);
-    if (saved) showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
+    if (saved) {
+      showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
+      if (!editingId) refreshCarePlanDuplicates(patientId, program);
+    }
+  };
+
+  const openInterventionTypeMenu = () => {
+    if (!canEdit) return;
+    setIntvTypeMenuOpen(v => !v);
+  };
+
+  const saveInterventionFromConfig = async (kind, config, editingId = null) => {
+    const saved = await savePatientCarePlanIntervention(patientId, program, {
+      kind,
+      title: config.title,
+      icon: CARE_PLAN_INTERVENTION_ICONS[kind] || 'solar:clipboard-list-linear',
+      duration: interventionDurationFromConfig(config),
+      priority: interventionPriorityFromConfig(config),
+      config,
+      status: 'Not Started',
+      assignee: { name: 'Unassigned', initials: '' },
+    }, editingId);
+    if (saved) {
+      showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
+      if (!editingId) refreshCarePlanDuplicates(patientId, program);
+    }
+    return saved;
+  };
+
+  const handleInterventionTypeSelect = (key) => {
+    setIntvTypeMenuOpen(false);
+    if (key === 'patient-task' || key === 'internal-task') setTaskDrawerOpen(key);
+    else setIntvSpecialDrawer({ kind: key });
   };
 
   const handleAddBarriersFromPicker = async (picked) => {
@@ -340,7 +440,7 @@ export function CarePlanView({ patientId, program }) {
         existingTitles.add(titleKey);
       }
     }
-    if (added) showToast(`Added ${added} barrier${added === 1 ? '' : 's'}`);
+    if (added) { showToast(`Added ${added} barrier${added === 1 ? '' : 's'}`); refreshCarePlanDuplicates(patientId, program); }
     else showToast('Selected barriers are already on this plan');
   };
 
@@ -348,7 +448,10 @@ export function CarePlanView({ patientId, program }) {
     const editingId = barrierDrawer?.barrier?.id || null;
     setBarrierDrawer(null);
     const saved = await savePatientCarePlanBarrier(patientId, program, values, editingId);
-    if (saved) showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
+    if (saved) {
+      showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
+      if (!editingId) refreshCarePlanDuplicates(patientId, program);
+    }
   };
 
   const confirmDelete = () => {
@@ -359,6 +462,51 @@ export function CarePlanView({ patientId, program }) {
     setDeleteTarget(null);
     showToast(`"${name}" removed`);
   };
+
+  // ── Possible-duplicate resolution (Figma SNP-Story 8464:289403) ──
+  // Every action only mutates THIS plan's item (never another program's plan).
+  const deleteGbiById = (kind, id) => {
+    if (kind === 'goal') deletePatientCarePlanGoal(patientId, program.id, id);
+    else if (kind === 'barrier') deletePatientCarePlanBarrier(patientId, program.id, id);
+    else deletePatientCarePlanIntervention(patientId, program.id, id);
+  };
+  const openGbiEditor = (kind, item) => {
+    if (kind === 'goal') setPreviewGoal(item);
+    else if (kind === 'barrier') setBarrierDrawer({ barrier: item });
+    else setIntvDrawer({ intervention: item });
+  };
+  // Manual "Scan for Duplicates" (care plan ⋯ menu). Resets prior Ignore/resolve
+  // choices so every current duplicate is re-surfaced, and reports the count.
+  const scanForDuplicates = async () => {
+    const n = await refreshCarePlanDuplicates(patientId, program, { reset: true });
+    showToast(n > 0 ? `Found ${n} possible duplicate${n === 1 ? '' : 's'}` : 'No possible duplicates found');
+  };
+  const handleDuplicateIgnore = (flag) => dismissCarePlanDuplicate(key, flag.flagId);
+  const handleDuplicateAcceptExisting = (flag) => {
+    deleteGbiById(flag.kind, flag.newItem.id);
+    dismissCarePlanDuplicate(key, flag.flagId);
+  };
+  const handleDuplicateAcceptNew = (flag) => {
+    if (flag.existing.sameplan) deleteGbiById(flag.kind, flag.existing.item.id);
+    dismissCarePlanDuplicate(key, flag.flagId);
+  };
+  const handleDuplicateEditExisting = (flag) => {
+    deleteGbiById(flag.kind, flag.newItem.id);
+    openGbiEditor(flag.kind, flag.existing.item);
+    dismissCarePlanDuplicate(key, flag.flagId);
+  };
+  const renderDuplicateFlags = (kind) => duplicateFlags
+    .filter(f => f.kind === kind)
+    .map(flag => (
+      <CarePlanDuplicateFlag
+        key={flag.flagId}
+        flag={flag}
+        onIgnore={() => handleDuplicateIgnore(flag)}
+        onAcceptExisting={() => handleDuplicateAcceptExisting(flag)}
+        onAcceptNew={() => handleDuplicateAcceptNew(flag)}
+        onEditExisting={() => handleDuplicateEditExisting(flag)}
+      />
+    ));
 
   // Condition chip interactions — View All, remove, New Problems. All persist via
   // the plan header row (conditions array) so they survive reload.
@@ -376,7 +524,12 @@ export function CarePlanView({ patientId, program }) {
 
   const handleViewAllConditions = () => setConditionsViewOpen(true);
   const handleNewProblems = () => showToast('New Problems — coming soon');
-  const handleTemplates = () => showToast('Care plan templates — open Settings → Care Plan Library');
+  const handleTemplates = () => setTemplatesDrawerOpen(true);
+  const handleApplyTemplates = async (ids) => {
+    setTemplatesDrawerOpen(false);
+    if (!canEdit) return;
+    await applyPatientCarePlanTemplates(patientId, program, ids);
+  };
   const handleTrends = () => showToast('Trends — coming soon');
   const handleAssigneeChange = (intervention, user) => {
     if (!canEdit) return;
@@ -404,6 +557,23 @@ export function CarePlanView({ patientId, program }) {
         <div className={styles.problemsBar}>
           <div className={styles.conditionRow}>
             <div className={styles.chips}>
+              {appliedTemplates.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={styles.appliedTemplateBadge}
+                  onClick={() => setTemplatesDrawerOpen(true)}
+                  aria-label={`${t.name}, ${templateGoalCount(t)} goals`}
+                >
+                  <Badge
+                    tone="grey"
+                    size="S"
+                    icon="solar:bookmark-linear"
+                    label={t.name}
+                    trailingIconElement={<span className={styles.appliedTemplateCount}>{templateGoalCount(t)}</span>}
+                  />
+                </button>
+              ))}
               {visibleConditions.map(c => {
                 const count = conditionCounts.get(c.label) ?? 0;
                 const isAlert = !!(c.primary || c.alert);
@@ -443,7 +613,7 @@ export function CarePlanView({ patientId, program }) {
               <button type="button" className={styles.templatesBtn} onClick={handleTemplates}>
                 <Icon name="solar:bookmark-linear" size={16} color="var(--neutral-300)" />
                 Templates
-                {templateCount > 0 ? <span className={styles.templateCount}>{templateCount}</span> : null}
+                {appliedTemplateCount > 0 ? <span className={styles.templateCount}>{appliedTemplateCount}</span> : null}
               </button>
             </div>
           </div>
@@ -487,22 +657,34 @@ export function CarePlanView({ patientId, program }) {
               const el = document.querySelector('.js-careplan-bulkbar');
               setBulkMenu({ rect: el ? el.getBoundingClientRect() : null });
             },
+          }, {
+            label: 'Delete',
+            icon: 'solar:trash-bin-trash-linear',
+            variant: 'danger',
+            onClick: () => setBulkDeleteOpen(true),
           }]}
         />
       )}
 
       {/* Goals */}
       <div className={styles.section}>
-        <div className={styles.sectionHead}>
-          <SectionTitle label="Goals" open={openSections.goals} onToggle={() => toggleSection('goals')} />
-          <div className={styles.sectionActions}>
+        <GbiSectionHead
+          title="Goals"
+          open={openSections.goals}
+          onToggle={() => toggleSection('goals')}
+          trailingEnd={(
             <button type="button" className={styles.trendsBtn} onClick={handleTrends}>
               <Icon name="solar:chart-2-linear" size={16} color="var(--neutral-300)" />
               Trends
             </button>
-            <ActionButton size="S" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
-          </div>
-        </div>
+          )}
+          addButton={(
+            <ActionButton size="S" tooltip="Add goal" onClick={() => setAddGoalsDrawerOpen(true)} disabled={!canEdit}>
+              <AddIconMinimalist size={16} color="var(--neutral-300)" />
+            </ActionButton>
+          )}
+        />
+        {renderDuplicateFlags('goal')}
         {openSections.goals && (carePlanLoading ? (
           <SimpleTableSkeleton rows={3} cols={7} />
         ) : filteredGoals.length === 0 && data.goals.length === 0 ? (
@@ -532,19 +714,43 @@ export function CarePlanView({ patientId, program }) {
 
       {/* Interventions */}
       <div className={styles.section}>
-        <div className={styles.sectionHead}>
-          <SectionTitle label="Interventions" open={openSections.interventions} onToggle={() => toggleSection('interventions')} />
-          <div className={styles.sectionActions}>
-            <ActionButton size="S" tooltip="Add intervention" onClick={() => setIntvDrawer({ intervention: null })}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
-          </div>
-        </div>
+        <GbiSectionHead
+          title="Interventions"
+          open={openSections.interventions}
+          onToggle={() => toggleSection('interventions')}
+          addButton={(
+            <ActionButton
+              ref={intvAddRef}
+              size="S"
+              tooltip="Add intervention"
+              aria-haspopup="menu"
+              aria-expanded={intvTypeMenuOpen}
+              onClick={openInterventionTypeMenu}
+              disabled={!canEdit}
+            >
+              <AddIconMinimalist size={16} color="var(--neutral-300)" />
+            </ActionButton>
+          )}
+        />
+        {intvTypeMenuOpen && (
+          <MenuPopover
+            anchorRef={intvAddRef}
+            align="right"
+            width={200}
+            ariaLabel="Add intervention"
+            items={CARE_PLAN_INTERVENTION_MENU}
+            onSelect={handleInterventionTypeSelect}
+            onClose={() => setIntvTypeMenuOpen(false)}
+          />
+        )}
+        {renderDuplicateFlags('intervention')}
         {openSections.interventions && (carePlanLoading ? (
           <SimpleTableSkeleton rows={3} cols={6} />
         ) : filteredInterventions.length === 0 && data.interventions.length === 0 ? (
           <SectionEmptyState
             icon="solar:checklist-minimalistic-linear"
             label="No Interventions Created for Selected Problem"
-            onAdd={() => setIntvDrawer({ intervention: null })}
+            onAdd={openInterventionTypeMenu}
           />
         ) : (
           <CarePlanInterventionsTable
@@ -569,11 +775,17 @@ export function CarePlanView({ patientId, program }) {
 
       {/* Open Barriers */}
       <div className={styles.section}>
-        <div className={`${styles.sectionHead} ${styles.barriersSectionHead}`}>
-          <SectionTitle label="Open Barriers" open={openSections.barriers} onToggle={() => toggleSection('barriers')} />
-          <span className={styles.sectionActionDivider} aria-hidden="true" />
-          <ActionButton size="S" tooltip="Add barrier" onClick={() => setAddBarriersDrawerOpen(true)} disabled={!canEdit}><AddIconMinimalist size={16} color="var(--neutral-300)" /></ActionButton>
-        </div>
+        <GbiSectionHead
+          title="Open Barriers"
+          open={openSections.barriers}
+          onToggle={() => toggleSection('barriers')}
+          addButton={(
+            <ActionButton size="S" tooltip="Add barrier" onClick={() => setAddBarriersDrawerOpen(true)} disabled={!canEdit}>
+              <AddIconMinimalist size={16} color="var(--neutral-300)" />
+            </ActionButton>
+          )}
+        />
+        {renderDuplicateFlags('barrier')}
         {openSections.barriers && (carePlanLoading ? (
           <SimpleTableSkeleton rows={3} cols={3} />
         ) : filteredBarriers.length === 0 && (data.barriers || []).length === 0 ? (
@@ -684,6 +896,7 @@ export function CarePlanView({ patientId, program }) {
           patientId={patientId}
           program={program}
           onClose={() => setPreviewGoal(null)}
+          onOpenIntervention={setPreviewIntervention}
         />
       )}
 
@@ -701,6 +914,35 @@ export function CarePlanView({ patientId, program }) {
           intervention={intvDrawer.intervention}
           onClose={() => setIntvDrawer(false)}
           onSave={handleAddIntervention}
+        />
+      )}
+
+      {intvSpecialDrawer && (() => {
+        const Editor = INTERVENTION_EDITORS[intvSpecialDrawer.kind];
+        if (!Editor) return null;
+        return (
+          <Editor
+            intervention={intvSpecialDrawer.intervention?.config}
+            onClose={() => setIntvSpecialDrawer(null)}
+            onSave={async (config) => {
+              await saveInterventionFromConfig(
+                intvSpecialDrawer.kind,
+                config,
+                intvSpecialDrawer.intervention?.id || null,
+              );
+              setIntvSpecialDrawer(null);
+            }}
+          />
+        );
+      })()}
+
+      {taskDrawerOpen && (
+        <AddTaskDrawer
+          onClose={() => setTaskDrawerOpen(null)}
+          onTaskCreated={async (t) => {
+            await saveInterventionFromConfig(taskDrawerOpen, { title: t?.name || '', taskId: t?.id });
+            setTaskDrawerOpen(null);
+          }}
         />
       )}
 
@@ -817,6 +1059,14 @@ export function CarePlanView({ patientId, program }) {
         </Drawer>
       )}
 
+      {templatesDrawerOpen && (
+        <ApplyTemplatesDrawer
+          appliedTemplateIds={appliedTemplateIds}
+          onClose={() => setTemplatesDrawerOpen(false)}
+          onApply={handleApplyTemplates}
+        />
+      )}
+
       {templateOpen && (
         <Drawer
           title="Save as Template"
@@ -844,6 +1094,19 @@ export function CarePlanView({ patientId, program }) {
           variant="error"
           onCancel={() => setDeleteTarget(null)}
           onConfirm={confirmDelete}
+        />
+      )}
+
+      {bulkDeleteOpen && (
+        <ConfirmDialog
+          icon="solar:danger-triangle-linear"
+          iconColor="var(--status-error)"
+          title={`Remove ${selectedCount} item${selectedCount === 1 ? '' : 's'}?`}
+          description="This removes the selected goals, interventions, and barriers from the patient's care plan. This action cannot be undone."
+          confirmLabel="Remove"
+          variant="error"
+          onCancel={() => setBulkDeleteOpen(false)}
+          onConfirm={bulkDelete}
         />
       )}
     </div>

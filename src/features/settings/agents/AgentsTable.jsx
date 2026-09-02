@@ -416,10 +416,14 @@ export function AgentsTable() {
   // re-query `agents`.
   const agentsFetched = useAppStore(s => s.agentsFetched);
   useEffect(() => {
-    if (settingsTab !== 'agents' || agentsFetched || agentsLoading) return;
+    if (settingsTab !== 'agents' || agentsFetched) return;
     fetchAgents();
-  }, [settingsTab, agentsFetched, agentsLoading, fetchAgents]);
-  useEffect(() => { if (settingsTab === 'goals') fetchGoals(); }, [settingsTab, fetchGoals]);
+  }, [settingsTab, agentsFetched, fetchAgents]);
+  const goalsFetched = useAppStore(s => s.goalsFetched);
+  useEffect(() => {
+    if (settingsTab !== 'goals' || goalsFetched) return;
+    fetchGoals();
+  }, [settingsTab, goalsFetched, fetchGoals]);
 
   const currentPage = useAppStore(s => s.currentPage);
   const perPage = useAppStore(s => s.perPage);

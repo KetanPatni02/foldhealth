@@ -351,6 +351,110 @@
 .linkedTitle { font-size: var(--font-base); color: var(--neutral-400); }
 .linkedMeta { font-size: var(--font-md); color: var(--neutral-300); }
 
+/* ── Linked interventions (Goal Details) — Figma SNP-Story 2632:80869 ── */
+.intvList {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  overflow: hidden;
+}
+.intvRow {
+  display: flex;
+  align-items: stretch;
+  min-height: 40px;
+  border-bottom: 0.5px solid var(--neutral-100);
+  cursor: pointer;
+}
+.intvRow:last-child { border-bottom: none; }
+.intvRow:hover { background: var(--neutral-50); }
+.intvPriority {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: var(--space-2);
+}
+.intvPriorityBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.intvPriorityBtn:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.intvMain {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2);
+}
+.intvTypeIcon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: var(--space-5);
+}
+.intvTitleStack {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.intvTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.intvDurationBadge { align-self: flex-start; }
+.intvLinkChip {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  align-self: center;
+}
+.intvLinkChipClickable { cursor: pointer; }
+.intvAssignee {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  padding: var(--space-2);
+}
+.intvAdherence {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 60px;
+  max-width: 90px;
+  padding: var(--space-2);
+}
+.intvAdherenceDash {
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+}
+.intvActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: var(--space-2);
+}
+
 .emptyCard {
   padding: var(--space-3);
   border: 0.5px dashed var(--neutral-200);
