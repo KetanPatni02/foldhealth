@@ -30,7 +30,19 @@
 --     template that authored it.
 --
 -- Idempotent; safe to re-run.
+--
+-- Lifecycle guard bypass
+-- The tail backfill runs `update public.clinical_notes set form_id = ...`,
+-- which trips the `clinical_notes_enforce_lifecycle` trigger (installed by
+-- clinical_notes_lifecycle_guards_migration.sql) because migrations run as
+-- the postgres role, not auth.uid(). The trigger exposes an escape hatch
+-- via `app.bypass_clinical_note_lifecycle = 'on'` for exactly this case
+-- (admin backfill, no app-level identity). SET LOCAL scopes it to this
+-- migration's implicit transaction, so nothing else on the connection
+-- inherits the bypass.
 -- =====================================================================
+
+set local app.bypass_clinical_note_lifecycle = 'on';
 
 -- ---------------------------------------------------------------------
 -- forms — gap linkage + default flag
