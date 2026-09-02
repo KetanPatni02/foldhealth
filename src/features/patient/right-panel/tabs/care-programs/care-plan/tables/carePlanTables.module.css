@@ -7,7 +7,7 @@
   overflow-y: hidden;
   background: var(--neutral-0);
   -webkit-overflow-scrolling: touch;
-  --gbi-col-value: 172px;
+  --gbi-col-value: 120px;
   --gbi-col-progress: 100px;
 }
 .tableWrap table {
@@ -265,6 +265,10 @@
 .linkCount { font-size: var(--font-xs); color: var(--neutral-300); line-height: 1; }
 
 .valueText {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
