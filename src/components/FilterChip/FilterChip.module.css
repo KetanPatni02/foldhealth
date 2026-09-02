@@ -68,3 +68,26 @@
   cursor: pointer;
 }
 .clearIcon:hover { background: var(--primary-100); }
+
+/* Info tooltip trigger — a passive hover target next to the chip
+   value, separated from the trailing glyph by a hairline divider so
+   it reads as its own affordance, not part of the value. */
+.infoIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: calc(var(--space-1) / 2);
+  cursor: help;
+  color: var(--neutral-300);
+}
+.infoIcon:hover { color: var(--neutral-500); }
+.infoDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  margin-top: 0;
+  margin-right: var(--space-1);
+  margin-bottom: 0;
+  margin-left: calc(var(--space-1) / 2);
+  background: var(--neutral-150);
+}

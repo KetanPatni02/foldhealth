@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
+import { Icon } from '../Icon/Icon';
+import { Tooltip } from '../Tooltip/Tooltip';
 import { CheckboxListPopover } from '../CheckboxListPopover/CheckboxListPopover';
 import { RadioListPopover } from '../RadioListPopover/RadioListPopover';
 import styles from './FilterChip.module.css';
@@ -58,6 +60,12 @@ export function FilterChip({
   // grey down-chevron (same glyph the idle state uses) instead of the
   // primary "✕", and clicks fall through to toggling the popover.
   noClear = false,
+  // Optional tooltip content shown from a small info icon rendered
+  // between the chip value and the trailing glyph. Active state only:
+  // idle chips have no value to sit beside. Anything truthy renders
+  // the icon + a hairline divider so it visually separates from the
+  // chevron / clear glyph.
+  info,
 }) {
   const [rect, setRect] = useState(null);
   const custom = typeof renderPopover === 'function';
@@ -96,6 +104,22 @@ export function FilterChip({
             <span className={styles.chipValue}>{summary.text}</span>
             {summary.extra != null && (
               <span className={styles.chipExtra}>+{summary.extra}</span>
+            )}
+            {info && (
+              <>
+                <Tooltip label={info} placement="bottom" maxWidth={280}>
+                  <span
+                    className={styles.infoIcon}
+                    tabIndex={0}
+                    role="img"
+                    aria-label="More information"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Icon name="solar:info-circle-linear" size={iconSize} color="var(--neutral-300)" />
+                  </span>
+                </Tooltip>
+                <span className={styles.infoDivider} aria-hidden="true" />
+              </>
             )}
             {noClear ? (
               // Never-empty filters (e.g. Measurement Year) skip the clear
