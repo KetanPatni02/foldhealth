@@ -7,6 +7,7 @@ import { Input } from '../../../../../../../components/Input/Input';
 import { Textarea } from '../../../../../../../components/Textarea/Textarea';
 import { Drawer } from '../../../../../../../components/Drawer/Drawer';
 import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPopover';
+import { SelectAssigneeModal } from '../../../../../../../components/SelectAssigneeModal/SelectAssigneeModal';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { Select } from '../../../../../../../components/Select/Select';
@@ -29,6 +30,7 @@ import { CarePlanShareDrawer } from '../drawers/CarePlanShareDrawer/CarePlanShar
 import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlanHistoryDrawer';
 import { CarePlanVersionsDrawer } from '../drawers/CarePlanVersionsDrawer/CarePlanVersionsDrawer';
 import { CarePlanLinkDrawer } from '../drawers/CarePlanLinkDrawer/CarePlanLinkDrawer';
+import { CarePlanTrendsDrawer } from '../drawers/CarePlanTrendsDrawer/CarePlanTrendsDrawer';
 import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
 import { InterventionPreviewDrawer } from '../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { deriveGoalTableFields } from '../lib/goalMetrics';
@@ -42,7 +44,7 @@ import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevro
 import { BulkBar } from '../../../../../../../components/BulkBar/BulkBar';
 import { Badge } from '../../../../../../../components/Badge/Badge';
 import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
-import { CarePlanDuplicateFlag } from '../DuplicateFlag/CarePlanDuplicateFlag';
+import { CarePlanDuplicateGroup } from '../DuplicateFlag/CarePlanDuplicateGroup';
 import { templateGoalCount } from '../lib/carePlanTemplateApply';
 import styles from './CarePlanView.module.css';
 
@@ -62,17 +64,17 @@ const INTERVENTION_EDITORS = {
 };
 
 /** Collapsible GBI section header: title · divider · add action · [optional trailing end]. */
-function GbiSectionHead({ title, open, onToggle, addButton, trailingEnd }) {
+function GbiSectionHead({ title, count, open, onToggle, addButton, trailingEnd }) {
   return (
     <div className={`${styles.sectionHead} ${styles.gbiSectionHead}`}>
-      <SectionTitle label={title} open={open} onToggle={onToggle} />
+      <SectionTitle label={title} count={count} open={open} onToggle={onToggle} />
       <span className={styles.sectionActionDivider} aria-hidden="true" />
       {addButton}
       {trailingEnd ? <div className={styles.gbiSectionHeadEnd}>{trailingEnd}</div> : null}
     </div>
   );
 }
-function SectionTitle({ label, open, onToggle }) {
+function SectionTitle({ label, count, open, onToggle }) {
   return (
     <button type="button" className={styles.sectionToggle} onClick={onToggle} aria-expanded={open}>
       <DownChevronIcon
@@ -81,6 +83,7 @@ function SectionTitle({ label, open, onToggle }) {
         className={`${styles.sectionChevron} ${open ? '' : styles.sectionChevronClosed}`}
       />
       <span className={styles.sectionTitle}>{label}</span>
+      {count > 0 ? <span className={styles.sectionCount}>{count}</span> : null}
     </button>
   );
 }
@@ -116,7 +119,6 @@ export function CarePlanView({ patientId, program }) {
   const dismissCarePlanDuplicate = useAppStore(s => s.dismissCarePlanDuplicate);
   const savePatientCarePlanAsTemplate = useAppStore(s => s.savePatientCarePlanAsTemplate);
   const signCarePlan = useAppStore(s => s.signCarePlan);
-  const touchCarePlanModified = useAppStore(s => s.touchCarePlanModified);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
   const showToast = useAppStore(s => s.showToast);
   const patientName = useAppStore(s => s.patients.find(p => p.id === patientId)?.name);
@@ -133,6 +135,7 @@ export function CarePlanView({ patientId, program }) {
   const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
   const applyPatientCarePlanTemplates = useAppStore(s => s.applyPatientCarePlanTemplates);
+  const savePatientCarePlanConditions = useAppStore(s => s.savePatientCarePlanConditions);
 
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const live = useAppStore(s => (key ? s.patientCarePlans[key] : null));
@@ -178,7 +181,8 @@ export function CarePlanView({ patientId, program }) {
   const usingMock = !live;
   const measurements = live?.measurements || [];
   const data = useMemo(() => (live ? {
-    conditions: live.plan.conditions,
+    // Plan-level problems are user-managed, so every chip gets a remove control.
+    conditions: (live.plan.conditions || []).map(c => ({ ...c, removable: true })),
     conditionTotal: live.plan.conditionTotal,
     goals: live.goals.map(g => ({ ...g, ...deriveGoalTableFields(g, measurements) })),
     interventions: live.interventions,
@@ -192,9 +196,22 @@ export function CarePlanView({ patientId, program }) {
   }), [live, measurements]);
 
   const [conditionsViewOpen, setConditionsViewOpen] = useState(false);
+  const [problemOpen, setProblemOpen] = useState(false);
+  const [problemText, setProblemText] = useState('');
+  const [trendsOpen, setTrendsOpen] = useState(false);
   const MAX_VISIBLE_CONDITIONS = 4;
   // Collapsible GBI sections (chevron in each section header).
-  const [openSections, setOpenSections] = useState({ goals: true, interventions: true, barriers: true });
+  // Remember which GBI sections are collapsed across visits (per-device UI pref).
+  const [openSections, setOpenSections] = useState(() => {
+    const fallback = { goals: true, interventions: true, barriers: true };
+    try {
+      const saved = JSON.parse(localStorage.getItem('carePlanOpenSections') || 'null');
+      return saved && typeof saved === 'object' ? { ...fallback, ...saved } : fallback;
+    } catch { return fallback; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('carePlanOpenSections', JSON.stringify(openSections)); } catch { /* storage unavailable */ }
+  }, [openSections]);
   const toggleSection = (name) => setOpenSections(s => ({ ...s, [name]: !s[name] }));
   const [statusMenu, setStatusMenu] = useState(null); // { kind, item, rect }
   const [priorityMenu, setPriorityMenu] = useState(null); // { kind, item, rect }
@@ -264,6 +281,25 @@ export function CarePlanView({ patientId, program }) {
     return counts;
   }, [data.goals, data.interventions, data.barriers, data.conditions]);
 
+  // Plan-level rollup for the summary strip: counts, status mix, avg goal progress.
+  const planStats = useMemo(() => {
+    const goals = data.goals, iv = data.interventions, br = data.barriers || [];
+    const all = [...goals, ...iv, ...br];
+    const avgProgress = goals.length
+      ? Math.round(goals.reduce((sum, g) => sum + (Number(g.progress) || 0), 0) / goals.length)
+      : 0;
+    return {
+      goals: goals.length,
+      iv: iv.length,
+      br: br.length,
+      total: all.length,
+      met: all.filter(x => x.status === 'Met').length,
+      inProgress: all.filter(x => x.status === 'In Progress').length,
+      overdue: all.filter(x => x.status === 'Overdue').length,
+      avgProgress,
+    };
+  }, [data]);
+
   const visibleConditions = data.conditions.slice(0, MAX_VISIBLE_CONDITIONS);
   const hiddenConditionCount = Math.max(0, data.conditionTotal - visibleConditions.length);
   const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
@@ -274,6 +310,12 @@ export function CarePlanView({ patientId, program }) {
     [appliedTemplateIds, carePlanTemplates],
   );
   const appliedTemplateCount = appliedTemplates.length;
+  // Cap the applied-template chips so a heavily-templated plan doesn't bury the
+  // GBI tables under rows of badges; the rest collapse into a "+N" that opens
+  // the templates drawer.
+  const MAX_VISIBLE_TEMPLATES = 4;
+  const visibleTemplates = appliedTemplates.slice(0, MAX_VISIBLE_TEMPLATES);
+  const hiddenTemplateCount = appliedTemplateCount - visibleTemplates.length;
   const signedBy = live?.plan?.signedBy;
   const signedAt = live?.plan?.signedAt;
   const showSignedBanner = isCarePlanSigned(live?.plan);
@@ -281,8 +323,9 @@ export function CarePlanView({ patientId, program }) {
   // Bulk selection (#7). Selection is per section, over the visible (filtered)
   // rows; a bulk status change loops the normal save path so each write audits.
   const [selected, setSelected] = useState({ goal: new Set(), intv: new Set(), barrier: new Set() });
-  const [bulkMenu, setBulkMenu] = useState(null); // { rect }
+  const [bulkMenu, setBulkMenu] = useState(null); // { rect, type }
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
   const selectedCount = selected.goal.size + selected.intv.size + selected.barrier.size;
   const toggleSelect = (kind, id) => setSelected(prev => {
     const next = new Set(prev[kind]);
@@ -309,6 +352,45 @@ export function CarePlanView({ patientId, program }) {
     if (n) showToast(`Updated ${n} item${n === 1 ? '' : 's'} to "${status}"`);
   };
 
+  const bulkSetPriority = async (priority) => {
+    setBulkMenu(null);
+    const g = filteredGoals.filter(x => selected.goal.has(x.id));
+    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
+    const br = filteredBarriers.filter(x => selected.barrier.has(x.id));
+    for (const x of g) await savePatientCarePlanGoal(patientId, program, { ...x, priority }, x.id);
+    for (const x of iv) await savePatientCarePlanIntervention(patientId, program, { ...x, priority }, x.id);
+    for (const x of br) await savePatientCarePlanBarrier(patientId, program, { ...x, priority }, x.id);
+    const n = g.length + iv.length + br.length;
+    clearSelection();
+    if (n) showToast(`Set ${n} item${n === 1 ? '' : 's'} to ${priority.charAt(0).toUpperCase() + priority.slice(1)} priority`);
+  };
+
+  // Bulk assign applies to selected interventions only (goals/barriers have no assignee).
+  const bulkAssign = async (user) => {
+    setBulkAssignOpen(false);
+    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
+    if (!iv.length) { showToast('Select one or more interventions to assign'); return; }
+    for (const x of iv) await savePatientCarePlanIntervention(patientId, program, { ...x, assignee: { name: user.name, initials: user.initials } }, x.id);
+    clearSelection();
+    showToast(`Assigned ${iv.length} intervention${iv.length === 1 ? '' : 's'} to ${user.name}`);
+  };
+
+  // Re-insert a removed goal/intervention/barrier (undo). Drops the old id so it
+  // saves as a fresh row; derived fields are ignored by the row mappers.
+  const restoreGbi = ({ kind, item }) => {
+    const { id, ...values } = item; // eslint-disable-line no-unused-vars
+    if (kind === 'goal') return savePatientCarePlanGoal(patientId, program, values);
+    if (kind === 'barrier') return savePatientCarePlanBarrier(patientId, program, values);
+    return savePatientCarePlanIntervention(patientId, program, values);
+  };
+  const undoAction = (removed) => ({
+    label: 'Undo',
+    onClick: async () => {
+      for (const r of removed) await restoreGbi(r);
+      refreshCarePlanDuplicates(patientId, program);
+    },
+  });
+
   const bulkDelete = async () => {
     setBulkDeleteOpen(false);
     const g = filteredGoals.filter(x => selected.goal.has(x.id));
@@ -319,7 +401,15 @@ export function CarePlanView({ patientId, program }) {
     for (const x of br) await deletePatientCarePlanBarrier(patientId, program.id, x.id);
     const n = g.length + iv.length + br.length;
     clearSelection();
-    if (n) { showToast(`Removed ${n} item${n === 1 ? '' : 's'}`); refreshCarePlanDuplicates(patientId, program); }
+    if (n) {
+      const removed = [
+        ...g.map(item => ({ kind: 'goal', item })),
+        ...iv.map(item => ({ kind: 'intervention', item })),
+        ...br.map(item => ({ kind: 'barrier', item })),
+      ];
+      showToast(`Removed ${n} item${n === 1 ? '' : 's'}`, { action: undoAction(removed), duration: 6000 });
+      refreshCarePlanDuplicates(patientId, program);
+    }
   };
 
   const doSign = async () => {
@@ -455,12 +545,12 @@ export function CarePlanView({ patientId, program }) {
   };
 
   const confirmDelete = () => {
-    const { kind, id, name } = deleteTarget;
+    const { kind, id, name, item } = deleteTarget;
     if (kind === 'goal') deletePatientCarePlanGoal(patientId, program.id, id);
     else if (kind === 'barrier') deletePatientCarePlanBarrier(patientId, program.id, id);
     else deletePatientCarePlanIntervention(patientId, program.id, id);
     setDeleteTarget(null);
-    showToast(`"${name}" removed`);
+    showToast(`"${name}" removed`, item ? { action: undoAction([{ kind: kind === 'intv' ? 'intervention' : kind, item }]), duration: 6000 } : undefined);
   };
 
   // ── Possible-duplicate resolution (Figma SNP-Story 8464:289403) ──
@@ -495,42 +585,44 @@ export function CarePlanView({ patientId, program }) {
     openGbiEditor(flag.kind, flag.existing.item);
     dismissCarePlanDuplicate(key, flag.flagId);
   };
-  const renderDuplicateFlags = (kind) => duplicateFlags
-    .filter(f => f.kind === kind)
-    .map(flag => (
-      <CarePlanDuplicateFlag
-        key={flag.flagId}
-        flag={flag}
-        onIgnore={() => handleDuplicateIgnore(flag)}
-        onAcceptExisting={() => handleDuplicateAcceptExisting(flag)}
-        onAcceptNew={() => handleDuplicateAcceptNew(flag)}
-        onEditExisting={() => handleDuplicateEditExisting(flag)}
-      />
-    ));
+  const renderDuplicateFlags = (kind) => (
+    <CarePlanDuplicateGroup
+      flags={duplicateFlags.filter(f => f.kind === kind)}
+      onIgnore={handleDuplicateIgnore}
+      onAcceptExisting={handleDuplicateAcceptExisting}
+      onAcceptNew={handleDuplicateAcceptNew}
+      onEditExisting={handleDuplicateEditExisting}
+    />
+  );
 
-  // Condition chip interactions — View All, remove, New Problems. All persist via
-  // the plan header row (conditions array) so they survive reload.
+  // Condition/problem chip interactions — View All, remove, add. All persist to
+  // the plan header row (conditions array) and update the cache immediately.
   const handleRemoveCondition = async (label) => {
     if (!canEdit || !live?.plan) return;
-    const next = (live.plan.conditions || []).filter(c => c.label !== label);
-    const { error } = await import('../../../../../../../lib/supabase').then(m => m.supabase.from('patient_care_plans').update({ conditions: next.map(c => c.label), condition_total: live.plan.conditionTotal, updated_at: new Date().toISOString() }).eq('id', live.plan.id).select().single());
-    if (!error) {
-      await touchCarePlanModified(patientId, program.id);
-      showToast(`Removed "${label}"`);
-    } else {
-      showToast('Could not remove condition');
-    }
+    const next = (live.plan.conditions || []).map(c => c.label).filter(l => l !== label);
+    const ok = await savePatientCarePlanConditions(patientId, program, next);
+    if (ok) showToast(`Removed "${label}"`);
+  };
+
+  const doAddProblem = async () => {
+    const label = problemText.trim();
+    if (!label || !live?.plan) return;
+    const next = [...(live.plan.conditions || []).map(c => c.label), label];
+    const ok = await savePatientCarePlanConditions(patientId, program, next);
+    setProblemOpen(false);
+    setProblemText('');
+    if (ok) showToast(`Added "${label}"`);
   };
 
   const handleViewAllConditions = () => setConditionsViewOpen(true);
-  const handleNewProblems = () => showToast('New Problems — coming soon');
+  const handleNewProblems = () => { setProblemText(''); setProblemOpen(true); };
   const handleTemplates = () => setTemplatesDrawerOpen(true);
   const handleApplyTemplates = async (ids) => {
     setTemplatesDrawerOpen(false);
     if (!canEdit) return;
     await applyPatientCarePlanTemplates(patientId, program, ids);
   };
-  const handleTrends = () => showToast('Trends — coming soon');
+  const handleTrends = () => setTrendsOpen(true);
   const handleAssigneeChange = (intervention, user) => {
     if (!canEdit) return;
     savePatientCarePlanIntervention(patientId, program, { ...intervention, assignee: { name: user.name, initials: user.initials } }, intervention.id);
@@ -557,7 +649,7 @@ export function CarePlanView({ patientId, program }) {
         <div className={styles.problemsBar}>
           <div className={styles.conditionRow}>
             <div className={styles.chips}>
-              {appliedTemplates.map(t => (
+              {visibleTemplates.map(t => (
                 <button
                   key={t.id}
                   type="button"
@@ -574,6 +666,16 @@ export function CarePlanView({ patientId, program }) {
                   />
                 </button>
               ))}
+              {hiddenTemplateCount > 0 ? (
+                <button
+                  type="button"
+                  className={styles.appliedTemplateBadge}
+                  onClick={() => setTemplatesDrawerOpen(true)}
+                  aria-label={`Show ${hiddenTemplateCount} more applied templates`}
+                >
+                  <Badge tone="grey" size="S" label={`+${hiddenTemplateCount}`} />
+                </button>
+              ) : null}
               {visibleConditions.map(c => {
                 const count = conditionCounts.get(c.label) ?? 0;
                 const isAlert = !!(c.primary || c.alert);
@@ -628,6 +730,20 @@ export function CarePlanView({ patientId, program }) {
       </div>
 
       <div className={styles.contentBody}>
+      {!carePlanLoading && planStats.total > 0 && (
+        <div className={styles.summaryStrip}>
+          <span className={styles.summaryMetric}><strong>{planStats.goals}</strong> Goals</span>
+          <span className={styles.summaryMetric}><strong>{planStats.iv}</strong> Interventions</span>
+          <span className={styles.summaryMetric}><strong>{planStats.br}</strong> Barriers</span>
+          <span className={styles.summaryDivider} aria-hidden="true" />
+          <span className={styles.summaryMetric}><strong>{planStats.avgProgress}%</strong> avg goal progress</span>
+          <span className={styles.summaryStatuses}>
+            {planStats.met > 0 && <Badge tone="success" size="S" label={`${planStats.met} Met`} />}
+            {planStats.inProgress > 0 && <Badge tone="warning" size="S" label={`${planStats.inProgress} In Progress`} />}
+            {planStats.overdue > 0 && <Badge tone="error" size="S" label={`${planStats.overdue} Overdue`} />}
+          </span>
+        </div>
+      )}
       {filtersOpen && (
         <div className={styles.filterBar}>
           <FilterChip label="Status" options={GBI_STATUSES} selected={filters.status} onChange={v => setFilter('status', v)} />
@@ -651,12 +767,23 @@ export function CarePlanView({ patientId, program }) {
             label: 'Set status',
             icon: 'solar:checklist-minimalistic-linear',
             // BulkBar action callbacks don't carry the event, so anchor the
-            // status menu to the floating bar itself (MenuPopover opens upward
-            // near the viewport bottom).
+            // menu to the floating bar itself (MenuPopover opens upward near
+            // the viewport bottom).
             onClick: () => {
               const el = document.querySelector('.js-careplan-bulkbar');
-              setBulkMenu({ rect: el ? el.getBoundingClientRect() : null });
+              setBulkMenu({ rect: el ? el.getBoundingClientRect() : null, type: 'status' });
             },
+          }, {
+            label: 'Set priority',
+            icon: 'solar:flag-linear',
+            onClick: () => {
+              const el = document.querySelector('.js-careplan-bulkbar');
+              setBulkMenu({ rect: el ? el.getBoundingClientRect() : null, type: 'priority' });
+            },
+          }, {
+            label: 'Assign',
+            icon: 'solar:user-plus-linear',
+            onClick: () => setBulkAssignOpen(true),
           }, {
             label: 'Delete',
             icon: 'solar:trash-bin-trash-linear',
@@ -670,6 +797,7 @@ export function CarePlanView({ patientId, program }) {
       <div className={styles.section}>
         <GbiSectionHead
           title="Goals"
+          count={data.goals.length}
           open={openSections.goals}
           onToggle={() => toggleSection('goals')}
           trailingEnd={(
@@ -716,6 +844,7 @@ export function CarePlanView({ patientId, program }) {
       <div className={styles.section}>
         <GbiSectionHead
           title="Interventions"
+          count={data.interventions.length}
           open={openSections.interventions}
           onToggle={() => toggleSection('interventions')}
           addButton={(
@@ -777,6 +906,7 @@ export function CarePlanView({ patientId, program }) {
       <div className={styles.section}>
         <GbiSectionHead
           title="Open Barriers"
+          count={(data.barriers || []).length}
           open={openSections.barriers}
           onToggle={() => toggleSection('barriers')}
           addButton={(
@@ -830,9 +960,11 @@ export function CarePlanView({ patientId, program }) {
           anchorRect={bulkMenu.rect}
           align="left"
           width={180}
-          ariaLabel="Set status for selected"
-          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
-          onSelect={bulkSetStatus}
+          ariaLabel={bulkMenu.type === 'priority' ? 'Set priority for selected' : 'Set status for selected'}
+          items={bulkMenu.type === 'priority'
+            ? PRIORITIES.map(p => ({ key: p, label: p.charAt(0).toUpperCase() + p.slice(1), iconElement: <PriorityIcon priority={p} size={16} /> }))
+            : GBI_STATUSES.map(s => ({ key: s, label: s }))}
+          onSelect={bulkMenu.type === 'priority' ? bulkSetPriority : bulkSetStatus}
           onClose={() => setBulkMenu(null)}
         />
       )}
@@ -860,7 +992,7 @@ export function CarePlanView({ patientId, program }) {
             const isBarrier = kind === 'barrier-menu';
             const item = statusMenu.item;
             setStatusMenu(null);
-            if (k === 'delete') setDeleteTarget({ kind: isGoal ? 'goal' : isBarrier ? 'barrier' : 'intv', id: item.id, name: item.title });
+            if (k === 'delete') setDeleteTarget({ kind: isGoal ? 'goal' : isBarrier ? 'barrier' : 'intv', id: item.id, name: item.title, item });
             else if (k === 'rename' && isBarrier) setBarrierDrawer({ barrier: item });
             else if (k === 'rename' && !isGoal) setPreviewIntervention(item);
             // Goal rename happens inline via EditableTitle; nudge the user there.
@@ -1059,6 +1191,38 @@ export function CarePlanView({ patientId, program }) {
         </Drawer>
       )}
 
+      {problemOpen && (
+        <Drawer
+          title="Add Problem"
+          onClose={() => setProblemOpen(false)}
+          secondaryAction={<Button variant="secondary" size="L" onClick={() => setProblemOpen(false)}>Cancel</Button>}
+          primaryAction={<Button variant="primary" size="L" onClick={doAddProblem} disabled={!problemText.trim()}>Add</Button>}
+        >
+          <div className={styles.drawerBody}>
+            <p className={styles.drawerHint}>Adds a problem/condition to this care plan. It shows in the problems bar and groups the goals, interventions, and barriers that address it.</p>
+            <div className={styles.drawerField}>
+              <span className={styles.drawerLabel}>Problem <span className={styles.required}>*</span></span>
+              <Input
+                autoFocus
+                value={problemText}
+                onChange={e => setProblemText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && problemText.trim()) { e.preventDefault(); doAddProblem(); } }}
+                placeholder="e.g. Chronic Kidney Disease"
+                aria-label="Problem"
+              />
+            </div>
+          </div>
+        </Drawer>
+      )}
+
+      {trendsOpen && (
+        <CarePlanTrendsDrawer
+          goals={data.goals}
+          measurements={measurements}
+          onClose={() => setTrendsOpen(false)}
+        />
+      )}
+
       {templatesDrawerOpen && (
         <ApplyTemplatesDrawer
           appliedTemplateIds={appliedTemplateIds}
@@ -1096,6 +1260,14 @@ export function CarePlanView({ patientId, program }) {
           onConfirm={confirmDelete}
         />
       )}
+
+      <SelectAssigneeModal
+        open={bulkAssignOpen}
+        onClose={() => setBulkAssignOpen(false)}
+        onConfirm={bulkAssign}
+        title="Assign interventions"
+        confirmLabel="Assign"
+      />
 
       {bulkDeleteOpen && (
         <ConfirmDialog
