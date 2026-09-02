@@ -1108,6 +1108,9 @@ function clinicalNoteRowToJs(row) {
     signedAt: row.signed_at || null,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
+    // clinical_notes_origin_migration.sql
+    originKind: row.origin_kind || null,
+    originRef: row.origin_ref || null,
   };
 }
 
@@ -6547,6 +6550,45 @@ export const useAppStore = create((set, get) => ({
   clinicalNotesByPatient: {},
   clinicalNoteVersionsById: {},
 
+  // ── Note Templates (DB-backed, P2-1) ──
+  // Mirrors `public.forms` rows where form_type='Note'. `noteTemplatesById`
+  // stores every fetched template row; `noteTemplatesByGap` maps a HEDIS
+  // gap code (e.g. 'CBP') to the default template row. Callers should
+  // prefer `noteTemplateForGap(code)` — it falls back to the hand-rolled
+  // GAP_TEMPLATES JS constant when the DB hasn't been seeded yet.
+  noteTemplatesById: {},
+  noteTemplatesByGap: {},
+  noteTemplatesDidFetch: false,
+  fetchNoteTemplates: async () => {
+    if (get().noteTemplatesDidFetch) return;
+    const { data, error } = await supabase
+      .from('forms')
+      .select('id, name, description, gap_code, form_type, is_default_for_gap, category, status, schema, updated_at')
+      .eq('form_type', 'Note');
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205' || /column .* does not exist/i.test(error.message || '')) {
+        // Table or gap_code column missing — happens before
+        // note_templates_migration.sql lands. Mark fetched so we don't
+        // spam the console; the store selector falls back to
+        // GAP_TEMPLATES automatically.
+        console.warn('[fetchNoteTemplates] forms table or gap_code column missing — run supabase/note_templates_migration.sql');
+        set({ noteTemplatesDidFetch: true });
+        return;
+      }
+      console.error('fetchNoteTemplates error:', error);
+      return;
+    }
+    const byId = {};
+    const byGap = {};
+    for (const row of (data || [])) {
+      byId[row.id] = row;
+      if (row.gap_code && row.is_default_for_gap !== false) {
+        byGap[row.gap_code] = row;
+      }
+    }
+    set({ noteTemplatesById: byId, noteTemplatesByGap: byGap, noteTemplatesDidFetch: true });
+  },
+
   fetchClinicalNotesForMember: async (hedisMemberId) => {
     if (!hedisMemberId) return [];
     const { data, error } = await supabase
@@ -6627,9 +6669,19 @@ export const useAppStore = create((set, get) => ({
     reviewerId,
     reviewerName,
     signedByName,
+    // Polymorphic origin — see clinical_notes_origin_migration.sql.
+    // Callers pass e.g. { originKind: 'care_gap' }, { originKind: 'task',
+    // originRef: String(task.id) }, or the Global Add Note surface
+    // passes 'patient' with no ref. HEDIS Care Gap notes default to
+    // 'care_gap' since gap_codes is populated; other origins must
+    // supply their own kind.
+    originKind,
+    originRef,
   } = {}) => {
     if (!hedisMemberId || !patientId || !status) return null;
     const me = get().currentUserProfile;
+    const resolvedOriginKind = originKind
+      || ((gapCodes && gapCodes.length) ? 'care_gap' : null);
     const row = {
       id: id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `local-${Date.now()}`),
       patient_id: patientId,
@@ -6648,12 +6700,26 @@ export const useAppStore = create((set, get) => ({
       signed_by_id: status === 'signed' ? (me?.id || null) : null,
       signed_by_name: status === 'signed' ? (signedByName || me?.name || null) : null,
       signed_at: status === 'signed' ? new Date().toISOString() : null,
+      origin_kind: resolvedOriginKind,
+      origin_ref: originRef || null,
     };
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('clinical_notes')
       .upsert(row, { onConflict: 'id' })
       .select('*')
       .single();
+    // Legacy fallback: clinical_notes_origin_migration.sql may not have
+    // landed yet. If the DB rejects because origin_kind/origin_ref
+    // don't exist, drop them and retry.
+    if (error && /column .* does not exist|origin_kind|origin_ref/i.test(error.message || '')) {
+      // eslint-disable-next-line no-unused-vars
+      const { origin_kind, origin_ref, ...legacyRow } = row;
+      ({ data, error } = await supabase
+        .from('clinical_notes')
+        .upsert(legacyRow, { onConflict: 'id' })
+        .select('*')
+        .single());
+    }
     let saved;
     if (error) {
       if (error.code === '42P01' || error.code === 'PGRST205') {
@@ -6682,10 +6748,14 @@ export const useAppStore = create((set, get) => ({
   signClinicalNote: async (noteId, signer) => {
     if (!noteId) return false;
     const me = get().currentUserProfile;
+    // Fall back to the current signed-in user's identity; never to a
+    // hardcoded 'Provider' string. If neither the caller nor the store
+    // knows who the signer is, leave the name as 'Unknown' so the row
+    // is honest instead of misattributing to a placeholder.
     const patch = {
       status: 'signed',
       signed_by_id: signer?.id || me?.id || null,
-      signed_by_name: signer?.name || me?.name || 'Provider',
+      signed_by_name: signer?.name || me?.name || 'Unknown',
       signed_at: new Date().toISOString(),
     };
     const { data, error } = await supabase
@@ -6737,10 +6807,27 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  deleteClinicalNote: async (noteId) => {
+    if (!noteId) return false;
+    set(s => {
+      const drop = (list) => (list || []).filter(n => n.id !== noteId);
+      return {
+        clinicalNotesByMember: Object.fromEntries(Object.entries(s.clinicalNotesByMember).map(([k, v]) => [k, drop(v)])),
+        clinicalNotesByPatient: Object.fromEntries(Object.entries(s.clinicalNotesByPatient).map(([k, v]) => [k, drop(v)])),
+      };
+    });
+    const { error } = await supabase.from('clinical_notes').delete().eq('id', noteId);
+    if (error && !(error.code === '42P01' || error.code === 'PGRST205')) {
+      console.error('deleteClinicalNote error:', error);
+      return false;
+    }
+    return true;
+  },
+
   // NP marks the sign-off task complete → every gap in the task transitions to
   // Completed atomically (AC-13), the task moves to status=completed, and an
   // activity entry is appended for the patient's history.
-  completeCareGapSignOffTask: async (taskId, actor = 'NP') => {
+  completeCareGapSignOffTask: async (taskId) => {
     const task = get().tasks.find(t => t.id === taskId);
     if (!task || !task.hedisMemberId) return false;
     // Persist status via updateTask so the completed state survives reload;
@@ -6750,14 +6837,17 @@ export const useAppStore = create((set, get) => ({
     get().bulkUpdateGapStatuses(task.hedisMemberId, updates);
     // Flip any linked clinical_note row from submitted → signed so the
     // Clinical Notes tab, P360 Notes tab, and the reviewer's note history
-    // all agree the review is done.
+    // all agree the review is done. Sign as the actual current user
+    // (usually the reviewer completing their own task) — signClinicalNote
+    // falls back to `currentUserProfile` when no `signer` is passed.
     const memberNotes = get().clinicalNotesByMember?.[task.hedisMemberId] || [];
     const linkedNote = memberNotes.find(n => n.reviewTaskId === taskId);
     if (linkedNote && linkedNote.status !== 'signed') {
-      get().signClinicalNote(linkedNote.id, { name: actor });
+      get().signClinicalNote(linkedNote.id);
     }
+    const actor = get().currentActorName?.() || 'Unknown';
     get().logCareGapActivity(task.hedisMemberId, {
-      title: 'Task completed by NP',
+      title: 'Task completed',
       detail: `Gaps closed: ${(task.hedisGapCodes || []).join(', ')}`,
       actor,
       icon: 'solar:check-circle-linear',

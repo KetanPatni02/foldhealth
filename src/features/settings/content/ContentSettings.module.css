@@ -448,3 +448,100 @@
   transition: background 0.1s;
 }
 .bulkClose:hover { background: var(--neutral-50); }
+
+/* ─── Notes tab — template inspector drawer (P2-1) ─────────────── */
+.inspectorOverlay {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-overlay);
+  z-index: 400;
+  animation: fadeIn 120ms ease-out;
+}
+.inspectorPanel {
+  position: fixed;
+  top: var(--space-2);
+  right: var(--space-2);
+  bottom: var(--space-2);
+  width: 480px;
+  max-width: calc(100vw - var(--space-4));
+  z-index: 401;
+  background: var(--neutral-0);
+  border-radius: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  box-shadow: var(--shadow-popover);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.inspectorHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.inspectorTitle {
+  font-size: var(--font-lg);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.inspectorSub {
+  margin-top: calc(var(--space-1) / 2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.inspectorMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.inspectorBody {
+  padding: var(--space-4);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.fieldList {
+  list-style: decimal inside;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.fieldRow {
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-25);
+}
+.fieldLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+.fieldName {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.fieldReq {
+  font-size: var(--font-sm);
+  color: var(--status-error);
+}
+.fieldMeta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.fieldOpts {
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

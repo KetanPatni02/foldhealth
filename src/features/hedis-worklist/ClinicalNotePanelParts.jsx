@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Button } from '../../components/Button/Button';
@@ -816,7 +817,14 @@ function CbpRadioGroup({ label, value, options, onChange, error }) {
    Fields with `column: 2` pair up in a formGrid2 row (must appear in
    pairs). */
 function GenericEvidenceForm({ code, v, data, submitted }) {
-  const template = GAP_TEMPLATES[code];
+  // Prefer the DB-backed template schema (public.forms.schema.items) so
+  // Settings → Content → Notes edits reach the app immediately; fall
+  // back to the JS constant when the DB hasn't been synced yet
+  // (fresh clone, migration not run, etc.). Same descriptor shape in
+  // both places — see scripts/sync-note-templates.mjs.
+  const dbTemplate = useAppStore(s => s.noteTemplatesByGap?.[code]);
+  const dbFields = Array.isArray(dbTemplate?.schema?.items) ? dbTemplate.schema.items : null;
+  const template = dbFields && dbFields.length ? dbFields : GAP_TEMPLATES[code];
   if (!template) return null;
   const onUpdate = (patch) => v.updateGap(code, patch);
   const err = (field, req) => submitted && req && !data[field];

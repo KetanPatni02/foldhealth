@@ -69,6 +69,40 @@ export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
   const telehealth = payload.audioOnly ? 'Audio-only visit — Verbal consent obtained.'
     : payload.audioVideo ? 'Audio-video visit — Verbal consent obtained.'
     : '—';
+  const isNonVisit = note.formType === 'non_visit_note';
+
+  // Non-Visit Notes (P2-2) skip the DOS/telehealth statement and the
+  // per-gap evidence sections — they carry a plain title + body and
+  // an optional list of related gap chips. Render a dedicated layout
+  // and return early so the visit-note sections below don't run.
+  if (isNonVisit) {
+    return (
+      <div className={styles.wrap}>
+        {payload.title && (
+          <Section title={payload.title}>
+            <div className={styles.nonVisitBody}>{payload.body || '—'}</div>
+          </Section>
+        )}
+        {!payload.title && (
+          <Section title="Note">
+            <div className={styles.nonVisitBody}>{payload.body || '—'}</div>
+          </Section>
+        )}
+        {gapCodes.length > 0 && (
+          <Section title="Related Care Gaps">
+            <div className={styles.nonVisitChipRow}>
+              {gapCodes.map(c => (
+                <span key={c} className={styles.nonVisitChip}>
+                  {c} — {MEASURE_NAMES[c] ?? c}
+                </span>
+              ))}
+            </div>
+          </Section>
+        )}
+        <KV label="Written on" value={formatMDY(payload.dateOfService)} wide />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.wrap}>

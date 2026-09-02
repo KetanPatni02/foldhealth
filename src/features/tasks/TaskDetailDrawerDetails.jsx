@@ -203,58 +203,32 @@ export function TaskDetailDrawerDetails({
           )}
         </div>
 
-        {(linkedNote || syntheticLinkedNoteFromTask(task)) && (
+        {task?.pool === 'HEDIS Sign-Off' && (
           <div className={styles.drawerSection}>
             <span className={styles.drawerSectionLabel}>Linked Note</span>
-            <LinkedNoteCard
-              note={linkedNote || syntheticLinkedNoteFromTask(task)}
-              task={task}
-              synthetic={!linkedNote}
-              setEditingNote={setEditingNote}
-              setPreviewNote={setPreviewNote}
-              showToast={showToast}
-            />
+            {linkedNote ? (
+              <LinkedNoteCard
+                note={linkedNote}
+                task={task}
+                setEditingNote={setEditingNote}
+                setPreviewNote={setPreviewNote}
+                showToast={showToast}
+              />
+            ) : (
+              <div className={styles.linkedNoteEmpty}>
+                <Icon name="solar:notes-linear" size={20} color="var(--neutral-200)" />
+                <span className={styles.linkedNoteEmptyText}>
+                  No clinical note attached to this task yet.
+                </span>
+              </div>
+            )}
           </div>
         )}
     </>
   );
 }
 
-/* Card rendered under the "Linked Note" section — mirrors the Clinical
-   Notes tab card so the reviewer sees the same meta / title / status
-   layout they clicked from. The "View ↗" affordance opens the same
-   ClinicalNotePanel edit path the "Edit clinical note" CTA uses so the
-   reviewer can amend before signing. */
-// HEDIS Sign-Off tasks seeded server-side (Jamal Foster / Marcus Reid /
-// Patricia Nguyen etc.) predate the clinical_notes flow, so they have no
-// persisted note to link. Synthesize a display-only note object from the
-// task's own gap-code labels + member + status so the reviewer still sees
-// the Linked Note surface everywhere, not just for tasks that went through
-// the full sign-off flow. The synthetic note has no payload, so its View
-// affordance is a toast — the real note doesn't exist yet.
-function syntheticLinkedNoteFromTask(task) {
-  if (!task) return null;
-  if (task.pool !== 'HEDIS Sign-Off') return null;
-  const codes = Array.isArray(task.labels) ? task.labels.filter(l => typeof l === 'string' && /^[A-Z0-9]{2,10}$/.test(l)) : [];
-  if (!codes.length) return null;
-  const status = task.status === 'completed' ? 'signed'
-    : task.status === 'pending' ? 'draft'
-    : 'submitted';
-  return {
-    id: null,
-    __synthetic: true,
-    gapCodes: codes,
-    status,
-    authorName: task.created_by || 'System',
-    signedByName: status === 'signed' ? (task.assigned_to || 'Reviewer') : null,
-    signedAt: status === 'signed' ? (task.completed_at || task.updated_at) : null,
-    reviewerName: task.assigned_to || null,
-    updatedAt: task.updated_at || task.created_at,
-    createdAt: task.created_at,
-  };
-}
-
-function LinkedNoteCard({ note, task, synthetic = false, setEditingNote, setPreviewNote, showToast }) {
+function LinkedNoteCard({ note, task, setEditingNote, setPreviewNote }) {
   // A Pending-Review note has two audiences from this row:
   //   • the assigned reviewer — should drop straight into the editable
   //     ClinicalNotePanel so they can revise + sign; matches the CareGap
@@ -297,14 +271,6 @@ function LinkedNoteCard({ note, task, synthetic = false, setEditingNote, setPrev
             type="button"
             className={styles.linkedNoteView}
             onClick={() => {
-              // Synthetic linked notes are placeholders for seed sign-off
-              // tasks that predate the clinical_notes flow — there is no
-              // real payload to open, so we surface a toast instead of
-              // routing into a broken editor.
-              if (synthetic) {
-                showToast?.('Note preview is available once the care gap flow saves this note.');
-                return;
-              }
               // Signed → always read-only preview (Amend is the audit
               // path). Pending Review → the assigned reviewer opens the
               // editable panel so they can revise + sign; every other

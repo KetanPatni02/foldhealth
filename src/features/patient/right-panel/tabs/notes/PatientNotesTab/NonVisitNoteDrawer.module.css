@@ -1,0 +1,66 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+}
+
+.infoBanner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--status-info-light);
+  color: var(--neutral-400);
+  font-size: var(--font-sm);
+  border-radius: var(--space-2);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.textareaLabel,
+.groupLabel {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.required { color: var(--status-error); }
+
+.textarea {
+  width: 100%;
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+  font: inherit;
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  resize: vertical;
+  min-height: 160px;
+  line-height: var(--leading-normal, 1.4);
+}
+.textarea:focus-visible {
+  outline: none;
+  border-color: var(--primary-300);
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.chip,
+.chipActive {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.chipActive { }

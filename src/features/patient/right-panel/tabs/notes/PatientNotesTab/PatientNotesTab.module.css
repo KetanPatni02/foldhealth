@@ -1,0 +1,133 @@
+/* PatientNotesTab — visually mirrors the Overview Recent Notes card so
+   the P360 Notes tab reads as the same primitive, not a bespoke list. */
+
+.card {
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+  margin: var(--space-3);
+}
+
+/* Section header — title left, "+" and (future) View All right */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2);
+}
+.sectionTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Table — the outer card sets the width; the table never introduces a
+   horizontal scrollbar of its own. Long note titles wrap, the Template
+   Name column truncates around the kebab. */
+.tableWrap { overflow-x: hidden; }
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.table th {
+  text-align: left;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-300);
+  padding: var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+.table td {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  padding: var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-100);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.table tbody tr:last-child td { border-bottom: none; }
+.tr { cursor: pointer; }
+.tr:hover td { background: var(--neutral-25); }
+
+/* Template Name cell doubles as the anchor for the row-hover kebab.
+   The button is visually hidden until the row is hovered so the cell
+   reads as clean text in the resting state. */
+.templateCell {
+  position: relative;
+  padding-right: var(--space-8) !important;
+}
+.templateText {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.rowKebab {
+  position: absolute;
+  top: 50%;
+  right: var(--space-2);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.tr:hover .rowKebab,
+.rowKebab:focus-within {
+  opacity: 1;
+}
+
+.checkCol {
+  width: var(--space-8);
+}
+.checkbox {
+  accent-color: var(--primary-300);
+  width: var(--space-4);
+  height: var(--space-4);
+}
+
+.noteTitle {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  font-weight: 400;
+}
+.noteSub {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.dateText {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+/* Empty state */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-4);
+  color: var(--neutral-300);
+  text-align: center;
+}
+.emptyTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.emptyBody {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  max-width: 340px;
+  line-height: var(--leading-normal, 1.4);
+}
