@@ -13,9 +13,72 @@ const STROKE = R_OUTER - R_INNER;
 const R_MID = (R_OUTER + R_INNER) / 2;
 const CIRC = 2 * Math.PI * R_MID;
 
-export function CarePlanProgressRing({ progress = 0, className, title }) {
-  const pct = Math.round(Math.max(0, Math.min(100, Number(progress) || 0)));
-  const label = title ?? `${pct}% progress`;
+const COMPACT = { dim: 24, stroke: 2.5, r: 9.75 };
+
+function clampPct(progress) {
+  return Math.round(Math.max(0, Math.min(100, Number(progress) || 0)));
+}
+
+function progressTone(pct) {
+  if (pct >= 80) return 'var(--status-success)';
+  if (pct >= 40) return 'var(--status-warning-dark)';
+  return 'var(--neutral-200)';
+}
+
+function ProgressBarCompact({ pct, label, className }) {
+  return (
+    <div
+      className={[styles.barShell, className].filter(Boolean).join(' ')}
+      role="progressbar"
+      aria-valuenow={pct}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-label={label}
+    >
+      <div className={styles.barTrack}>
+        <div className={styles.barFill} style={{ width: `${pct}%`, background: progressTone(pct) }} />
+      </div>
+      <span className={styles.barLabel}>{pct}%</span>
+    </div>
+  );
+}
+
+function ProgressRingCompact({ pct, label, className }) {
+  const { dim, stroke, r } = COMPACT;
+  const cx = dim / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - pct / 100);
+  const tone = progressTone(pct);
+
+  return (
+    <div
+      className={[styles.shellCompact, className].filter(Boolean).join(' ')}
+      role="img"
+      aria-label={label}
+    >
+      <svg viewBox={`0 0 ${dim} ${dim}`} width={dim} height={dim} aria-hidden="true">
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="var(--neutral-100)" strokeWidth={stroke} />
+        {pct > 0 && (
+          <circle
+            cx={cx}
+            cy={cx}
+            r={r}
+            fill="none"
+            stroke={tone}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            transform={`rotate(-90 ${cx} ${cx})`}
+          />
+        )}
+      </svg>
+      <span className={styles.labelCompact}>{pct}%</span>
+    </div>
+  );
+}
+
+function ProgressRingMedium({ pct, label, className }) {
   const offset = CIRC * (1 - pct / 100);
 
   return (
@@ -58,4 +121,25 @@ export function CarePlanProgressRing({ progress = 0, className, title }) {
       <span className={styles.label}>{pct}%</span>
     </div>
   );
+}
+
+/**
+ * CarePlanProgressRing — goal/intervention progress indicator.
+ *
+ * @param {'bar'|'ring'} variant — bar for dense tables; ring for drawers and cards.
+ * @param {'S'|'M'} size — ring sizes only: S (24px), M (46px).
+ */
+export function CarePlanProgressRing({ progress = 0, variant = 'ring', size = 'M', className, title }) {
+  const pct = clampPct(progress);
+  const label = title ?? `${pct}% progress`;
+
+  if (variant === 'bar') {
+    return <ProgressBarCompact pct={pct} label={label} className={className} />;
+  }
+
+  if (size === 'S') {
+    return <ProgressRingCompact pct={pct} label={label} className={className} />;
+  }
+
+  return <ProgressRingMedium pct={pct} label={label} className={className} />;
 }

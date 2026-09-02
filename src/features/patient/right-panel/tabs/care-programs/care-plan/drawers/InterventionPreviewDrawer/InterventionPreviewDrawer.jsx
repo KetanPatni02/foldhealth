@@ -134,6 +134,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   const updateCarePlanNote = useAppStore(s => s.updateCarePlanNote);
   const deleteCarePlanNote = useAppStore(s => s.deleteCarePlanNote);
   const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
+  const currentUserName = useAppStore(s => s.currentUserProfile?.name);
 
   const live = (slice?.interventions || []).find(i => i.id === intervention?.id) || intervention;
   const linkedGoals = useMemo(
@@ -188,6 +189,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
 
   const canEdit = !!(patientId && program);
   const kindLabel = formatKind(live.kind);
+  const youSuffix = (name) => (name && currentUserName && name === currentUserName ? ` by ${name} (You)` : name ? ` by ${name}` : '');
   const toggle = (k) => setOpen(s => ({ ...s, [k]: !s[k] }));
   const expandAnd = (k, fn) => { setOpen(s => ({ ...s, [k]: true })); fn(); };
 
@@ -233,7 +235,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
 
   const metaParts = [
     live.createdAt ? `Start Date : ${fmtDate(live.createdAt)}` : null,
-    live.updatedAt ? `Last Updated : ${fmtDate(live.updatedAt)}` : null,
+    live.updatedAt ? `Last Updated : ${fmtDate(live.updatedAt)}${youSuffix(live.updatedBy)}` : null,
   ].filter(Boolean);
 
   return (
@@ -269,8 +271,8 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           </div>
         </div>
 
-        <div className={styles.hero}>
-          {kindLabel && <Badge tone="grey" label={kindLabel} />}
+        <div className={`${styles.hero} ${styles.heroWithKind}`}>
+          {kindLabel && <span className={styles.subtitle}>{kindLabel}</span>}
           <div className={styles.titleRow}>
             <PriorityIcon priority={live.priority} size={16} />
             {editingTitle ? (

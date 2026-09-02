@@ -27,10 +27,6 @@ function fmtCarePlanDate(isoOrDisplay) {
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
 }
 
-function CarePlanActionDivider() {
-  return <span className={styles.carePlanActionDivider} aria-hidden="true" />;
-}
-
 // Sign dropdown actions — Figma SNP-Story 3039:621576. "Send for Sign Off"
 // carries the right-chevron submenu affordance from the design; its submenu
 // isn't specced yet, so selecting it currently has no handler.
@@ -94,7 +90,8 @@ export function ProgramDetailViewContentHeader({
     const versionNumber = Math.max(1, carePlanVersions?.[0]?.versionNumber ?? 0);
     const usingMock = !plan;
     const signedBy = plan?.signedBy || null;
-    return { createdBy, createdDate, versionNumber, usingMock, signedBy };
+    const signedAt = plan?.signedAt || null;
+    return { createdBy, createdDate, versionNumber, usingMock, signedBy, signedAt };
   }, [liveCarePlan, carePlanVersions]);
 
   const signShareEnabled = useMemo(
@@ -104,6 +101,7 @@ export function ProgramDetailViewContentHeader({
 
   const carePlanMoreItems = useMemo(() => {
     const items = [
+      { key: 'bulk', icon: 'solar:checklist-minimalistic-linear', label: carePlanBulkMode ? 'Exit bulk select' : 'Select multiple' },
       { key: 'versions', icon: 'solar:layers-minimalistic-linear', label: 'Versions' },
       { key: 'history', iconElement: <Icon name="custom:history" size={16} color="var(--neutral-400)" />, label: 'History' },
       { key: 'preview', icon: 'solar:eye-linear', label: 'Preview' },
@@ -118,11 +116,12 @@ export function ProgramDetailViewContentHeader({
       items.push({ key: 'sign', icon: 'solar:pen-2-linear', label: 'Sign' });
     }
     return items;
-  }, [carePlanMeta]);
+  }, [carePlanMeta, carePlanBulkMode]);
 
   const handleCarePlanMoreSelect = (key) => {
     setCarePlanMoreMenu(null);
-    if (key === 'preview') requestCarePlanShare('preview');
+    if (key === 'bulk') toggleCarePlanBulkMode();
+    else if (key === 'preview') requestCarePlanShare('preview');
     else requestCarePlanPanel(key);
   };
 
@@ -225,6 +224,15 @@ export function ProgramDetailViewContentHeader({
               </button>
               <span className={styles.assessmentMeta}>
                 Created by {carePlanMeta.createdBy} on {carePlanMeta.createdDate}
+                {carePlanMeta.signedBy ? (
+                  <>
+                    <span className={styles.carePlanMetaDot} aria-hidden="true"> • </span>
+                    <span className={styles.carePlanSignedMeta}>
+                      Signed by {carePlanMeta.signedBy}
+                      {carePlanMeta.signedAt ? ` on ${new Date(carePlanMeta.signedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                    </span>
+                  </>
+                ) : null}
               </span>
             </div>
           </div>
@@ -240,27 +248,18 @@ export function ProgramDetailViewContentHeader({
               : stepName}
           </span>
         )}
-        <div className={`${styles.contentActions} ${isCarePlanStep ? styles.carePlanActionBar : ''}`}>
+        <div className={isCarePlanStep ? styles.carePlanActionBar : styles.contentActions}>
           {isCarePlanStep ? (
             <>
-              <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search" onClick={() => requestCarePlanPanel('filter')} />
-              <CarePlanActionDivider />
-              <ActionButton icon="solar:download-minimalistic-linear" size="L" tooltip="Download" onClick={() => requestCarePlanShare('preview')} />
-              <CarePlanActionDivider />
-              <ActionButton
-                icon="solar:history-linear"
-                size="L"
-                tooltip="History"
-                onClick={() => requestCarePlanPanel('history')}
-              />
-              <CarePlanActionDivider />
+              <div className={styles.carePlanIconGroup}>
+                <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search & filter" onClick={() => requestCarePlanPanel('filter')} />
+                <ActionButton icon="solar:eye-linear" size="L" tooltip="Preview" onClick={() => requestCarePlanShare('preview')} />
+                <ActionButton icon="solar:download-minimalistic-linear" size="L" tooltip="Download" onClick={() => requestCarePlanShare('preview')} />
+                <ActionButton icon="solar:history-linear" size="L" tooltip="History" onClick={() => requestCarePlanPanel('history')} />
+              </div>
               <span className={styles.carePlanActionSecondaryGroup}>
                 <BulkSelectToggle size="S" active={carePlanBulkMode} onToggle={toggleCarePlanBulkMode} />
               </span>
-              <CarePlanActionDivider />
-              <Button variant="secondary" size="L" leadingIcon="solar:eye-linear" onClick={() => requestCarePlanShare('preview')}>
-                Preview
-              </Button>
               <Button
                 className={styles.carePlanBtnSaveTemplate}
                 variant="secondary"
@@ -274,7 +273,6 @@ export function ProgramDetailViewContentHeader({
               <Button variant="alt" size="L" leadingIcon="solar:pen-2-linear" disabled={!signShareEnabled} onClick={() => requestCarePlanShare('share')}>
                 Sign &amp; Share
               </Button>
-              <CarePlanActionDivider />
               <ActionButton
                 icon="solar:menu-dots-linear"
                 size="L"
@@ -285,7 +283,7 @@ export function ProgramDetailViewContentHeader({
                 <MenuPopover
                   anchorRect={carePlanMoreMenu.rect}
                   align="right"
-                  width={180}
+                  width={200}
                   ariaLabel="Care plan actions"
                   items={carePlanMoreItems}
                   onSelect={handleCarePlanMoreSelect}

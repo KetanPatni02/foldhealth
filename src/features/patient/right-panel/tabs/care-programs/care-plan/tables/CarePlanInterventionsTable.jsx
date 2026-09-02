@@ -1,8 +1,6 @@
 import { useMemo } from 'react';
-import { Icon } from '../../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { AssigneeChange } from '../../../../../../../components/AssigneeChange/AssigneeChange';
-import { Badge } from '../../../../../../../components/Badge/Badge';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { useTableSort } from '../../../../../../../components/HeaderCell/useTableSort';
@@ -10,8 +8,8 @@ import {
   INTERVENTION_COLUMNS,
   withSelectColumn,
   GbiCheckboxCell,
-  LinkChip,
-  GoalProgressCell,
+  GbiNameCell,
+  GbiProgressCell,
   GbiStatusButton,
 } from './carePlanTableShared';
 import { enrichInterventionRows } from './carePlanTableSort';
@@ -34,9 +32,6 @@ export function CarePlanInterventionsTable({
   platformUsers,
   emptyState,
 }) {
-  // Bulk mode injects the shared checkbox column (with WorklistShell's built-in
-  // select-all header checkbox). The actions header keeps its table-settings
-  // affordance.
   const columns = useMemo(() => {
     const base = INTERVENTION_COLUMNS.map((col) => (col.key === 'actions'
       ? {
@@ -76,13 +71,10 @@ export function CarePlanInterventionsTable({
         onSelectAll={onSelectAll}
         minTableWidth={0}
         emptyState={emptyState}
-        renderRow={(i) => {
-          const adherence = Number(i.adherence);
-          const showAdherence = Number.isFinite(adherence) && i.adherence !== '-';
-          return (
+        renderRow={(i) => (
             <tr
               key={i.id}
-              className={`${styles.row} ${styles.rowClickable} ${styles.intvRow}`}
+              className={`${styles.row} ${styles.rowClickable} ${styles.gbiRow}`}
               onClick={() => onOpenIntervention(i)}
             >
               {bulkMode && (
@@ -105,37 +97,18 @@ export function CarePlanInterventionsTable({
                 </button>
               </td>
               <td className={styles.titleTd}>
-                <div className={styles.intvNameCell}>
-                  <span className={styles.rowIcon}>
-                    <Icon name={i.icon} size={16} color="var(--neutral-400)" />
-                  </span>
-                  <div className={styles.intvTitleStack}>
-                    <span className={styles.title}>{i.title}</span>
-                    {i.duration && (
-                      <Badge
-                        className={styles.intvDurationBadge}
-                        tone="grey"
-                        size="S"
-                        label={i.duration}
-                        icon="solar:clock-circle-linear"
-                        trailingIcon="solar:refresh-linear"
-                      />
-                    )}
-                  </div>
-                  <span
-                    className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (canEdit) onLinkOwner({ kind: 'intervention', item: i });
-                    }}
-                  >
-                    <LinkChip count={linkCount(i.id)} />
-                  </span>
-                </div>
+                <GbiNameCell
+                  icon={i.icon}
+                  title={i.title}
+                  meta={i.duration || null}
+                  linkCount={linkCount(i.id)}
+                  canEdit={canEdit}
+                  onLinkClick={() => onLinkOwner({ kind: 'intervention', item: i })}
+                />
               </td>
               <td className={styles.assigneeTd} onClick={e => e.stopPropagation()}>
                 <AssigneeChange
-                  size="M"
+                  size="S"
                   fillContainer
                   nameMuted
                   name={i.assignee.name}
@@ -150,7 +123,7 @@ export function CarePlanInterventionsTable({
                 />
               </td>
               <td className={styles.adherenceTd} onClick={e => e.stopPropagation()}>
-                {showAdherence ? <GoalProgressCell progress={adherence} /> : <span className={styles.trendDash}>—</span>}
+                <GbiProgressCell progress={i.adherence} />
               </td>
               <td className={styles.statusTd} onClick={e => e.stopPropagation()}>
                 <GbiStatusButton
@@ -160,19 +133,18 @@ export function CarePlanInterventionsTable({
                 />
               </td>
               <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
-              <ActionButton
-                icon="solar:menu-dots-linear"
-                size="S"
-                tooltip="More"
-                tooltipBelow
-                tooltipLeft
-                disabled={!canEdit}
-                onClick={(e) => onRowMenu({ kind: 'intv-menu', item: i, rect: e.currentTarget.getBoundingClientRect() })}
-              />
+                <ActionButton
+                  icon="solar:menu-dots-linear"
+                  size="S"
+                  tooltip="More"
+                  tooltipBelow
+                  tooltipLeft
+                  disabled={!canEdit}
+                  onClick={(e) => onRowMenu({ kind: 'intv-menu', item: i, rect: e.currentTarget.getBoundingClientRect() })}
+                />
               </td>
             </tr>
-          );
-        }}
+        )}
       />
     </div>
   );

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { Icon } from '../../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
@@ -8,7 +7,7 @@ import {
   BARRIER_COLUMNS,
   withSelectColumn,
   GbiCheckboxCell,
-  LinkChip,
+  GbiNameCell,
   GbiStatusButton,
   isClosedBarrier,
   GBI_COL_WIDTH,
@@ -27,7 +26,7 @@ function BarrierRow({
   linkCount,
 }) {
   return (
-    <tr key={b.id} className={`${styles.row} ${styles.barrierRow}`}>
+    <tr key={b.id} className={`${styles.row} ${styles.gbiRow}`}>
       {bulkMode && (
         <GbiCheckboxCell
           checked={selectedIds.includes(b.id)}
@@ -36,19 +35,16 @@ function BarrierRow({
           disabled={!canEdit}
         />
       )}
-      <td className={styles.barrierNameTd}>
-        <div className={styles.barrierNameCell}>
-          <span className={styles.barrierIcon}>
-            <Icon name="custom:barrier" size={16} color="var(--neutral-400)" />
-          </span>
-          <span className={styles.barrierTitle}>{b.title}</span>
-          <span
-            className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
-            onClick={() => canEdit && onLinkOwner({ kind: 'barrier', item: b })}
-          >
-            <LinkChip count={linkCount(b.id)} />
-          </span>
-        </div>
+      <td className={styles.priorityTd} aria-hidden="true" />
+      <td className={styles.titleTd}>
+        <GbiNameCell
+          icon="custom:barrier"
+          title={b.title}
+          meta={b.description || null}
+          linkCount={linkCount(b.id)}
+          canEdit={canEdit}
+          onLinkClick={() => onLinkOwner({ kind: 'barrier', item: b })}
+        />
       </td>
       <td className={styles.barrierStatusTd} onClick={e => e.stopPropagation()}>
         <GbiStatusButton
@@ -146,6 +142,7 @@ export function CarePlanBarriersTable({
           {closedOpen && (
             <table className={styles.closedBarriersTable}>
               <colgroup>
+                <col style={{ width: GBI_COL_WIDTH.priority }} />
                 <col />
                 <col style={{ width: GBI_COL_WIDTH.status }} />
                 <col style={{ width: GBI_COL_WIDTH.actions }} />

@@ -34,7 +34,6 @@ import { CarePlanTrendsDrawer } from '../drawers/CarePlanTrendsDrawer/CarePlanTr
 import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
 import { InterventionPreviewDrawer } from '../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { deriveGoalTableFields } from '../lib/goalMetrics';
-import { isCarePlanSigned } from '../lib/carePlanSignState';
 import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
@@ -316,9 +315,6 @@ export function CarePlanView({ patientId, program }) {
   const MAX_VISIBLE_TEMPLATES = 4;
   const visibleTemplates = appliedTemplates.slice(0, MAX_VISIBLE_TEMPLATES);
   const hiddenTemplateCount = appliedTemplateCount - visibleTemplates.length;
-  const signedBy = live?.plan?.signedBy;
-  const signedAt = live?.plan?.signedAt;
-  const showSignedBanner = isCarePlanSigned(live?.plan);
 
   // Bulk selection (#7). Selection is per section, over the visible (filtered)
   // rows; a bulk status change loops the normal save path so each write audits.
@@ -645,7 +641,6 @@ export function CarePlanView({ patientId, program }) {
   return (
     <div className={styles.container}>
       <div className={styles.stickyTop}>
-        {/* Sticky problems / templates bar — Paper BPH-0 */}
         <div className={styles.problemsBar}>
           <div className={styles.conditionRow}>
             <div className={styles.chips}>
@@ -707,41 +702,37 @@ export function CarePlanView({ patientId, program }) {
               ) : null}
             </div>
             <div className={styles.conditionActions}>
-              <button type="button" className={styles.problemsBtn} onClick={handleNewProblems}>
+              <button type="button" className={styles.problemsBtn} onClick={handleNewProblems} aria-label="Add problem">
                 <Icon name="solar:add-linear" size={16} color="var(--primary-300)" />
-                Problems
+                <span className={styles.problemsBtnLabel}>Problems</span>
               </button>
-              <span className={styles.conditionDivider} aria-hidden="true" />
-              <button type="button" className={styles.templatesBtn} onClick={handleTemplates}>
+              <button type="button" className={styles.templatesBtn} onClick={handleTemplates} aria-label="Apply templates">
                 <Icon name="solar:bookmark-linear" size={16} color="var(--neutral-300)" />
-                Templates
+                <span className={styles.templatesBtnLabel}>Templates</span>
                 {appliedTemplateCount > 0 ? <span className={styles.templateCount}>{appliedTemplateCount}</span> : null}
               </button>
             </div>
           </div>
         </div>
-
-        {showSignedBanner && (
-          <div className={styles.signedBanner}>
-            <Icon name="solar:check-circle-bold" size={16} color="var(--status-success)" />
-            Signed by {signedBy}{signedAt ? ` on ${new Date(signedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
-          </div>
-        )}
       </div>
 
       <div className={styles.contentBody}>
       {!carePlanLoading && planStats.total > 0 && (
         <div className={styles.summaryStrip}>
-          <span className={styles.summaryMetric}><strong>{planStats.goals}</strong> Goals</span>
-          <span className={styles.summaryMetric}><strong>{planStats.iv}</strong> Interventions</span>
-          <span className={styles.summaryMetric}><strong>{planStats.br}</strong> Barriers</span>
-          <span className={styles.summaryDivider} aria-hidden="true" />
-          <span className={styles.summaryMetric}><strong>{planStats.avgProgress}%</strong> avg goal progress</span>
-          <span className={styles.summaryStatuses}>
-            {planStats.met > 0 && <Badge tone="success" size="S" label={`${planStats.met} Met`} />}
-            {planStats.inProgress > 0 && <Badge tone="warning" size="S" label={`${planStats.inProgress} In Progress`} />}
-            {planStats.overdue > 0 && <Badge tone="error" size="S" label={`${planStats.overdue} Overdue`} />}
-          </span>
+          <span className={styles.summaryMetric}><strong>{planStats.goals}</strong> goals</span>
+          <span className={styles.summaryDot} aria-hidden="true" />
+          <span className={styles.summaryMetric}><strong>{planStats.iv}</strong> interventions</span>
+          <span className={styles.summaryDot} aria-hidden="true" />
+          <span className={styles.summaryMetric}><strong>{planStats.br}</strong> barriers</span>
+          <span className={styles.summaryDot} aria-hidden="true" />
+          <span className={styles.summaryMetric}><strong>{planStats.avgProgress}%</strong> avg progress</span>
+          {(planStats.met > 0 || planStats.inProgress > 0 || planStats.overdue > 0) && (
+            <span className={styles.summaryStatuses}>
+              {planStats.met > 0 && <Badge tone="success" size="S" label={`${planStats.met} Met`} />}
+              {planStats.inProgress > 0 && <Badge tone="warning" size="S" label={`${planStats.inProgress} In Progress`} />}
+              {planStats.overdue > 0 && <Badge tone="error" size="S" label={`${planStats.overdue} Overdue`} />}
+            </span>
+          )}
         </div>
       )}
       {filtersOpen && (
@@ -814,7 +805,7 @@ export function CarePlanView({ patientId, program }) {
         />
         {renderDuplicateFlags('goal')}
         {openSections.goals && (carePlanLoading ? (
-          <SimpleTableSkeleton rows={3} cols={7} />
+          <SimpleTableSkeleton rows={3} cols={6} />
         ) : filteredGoals.length === 0 && data.goals.length === 0 ? (
           <SectionEmptyState
             icon="solar:heart-pulse-linear"

@@ -20,8 +20,10 @@ import styles from './Tooltip.module.css';
  *             centring on the trigger; 'right' pins the bubble's right edge to
  *             the trigger's, for triggers near the right edge of a panel where
  *             a centred bubble would be clipped.
+ *  - variant ('dark' | 'light')  Visual treatment. Defaults to 'dark'; 'light'
+ *             matches ActionButton tooltips (white bubble, border, shadow).
  */
-export function Tooltip({ label, children, placement = 'top', className, maxWidth, align = 'center' }) {
+export function Tooltip({ label, children, placement = 'top', className, maxWidth, align = 'center', variant = 'dark' }) {
   const triggerRef = useRef(null);
   const openTimer = useRef(null);
   const [rect, setRect] = useState(null);
@@ -71,6 +73,7 @@ export function Tooltip({ label, children, placement = 'top', className, maxWidt
           role="tooltip"
           className={[
             styles.bubble,
+            variant === 'light' ? styles.bubbleLight : '',
             placement === 'bottom' ? styles.bubbleBottom : styles.bubbleTop,
             align === 'right' ? styles.bubbleAlignRight : '',
             align === 'left' ? styles.bubbleAlignLeft : '',

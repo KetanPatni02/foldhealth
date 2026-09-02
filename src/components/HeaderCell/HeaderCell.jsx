@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { Tooltip } from '../Tooltip/Tooltip';
 import styles from './HeaderCell.module.css';
 
 // Per-column-type sort language (Notion convention). `sortType` picks the
@@ -19,8 +20,8 @@ const SORT_LABELS = {
  *  - Idle sortable columns show a double-chevron affordance.
  *  - The column that owns the current sort morphs one chevron into a
  *    full arrow via a single SVG with three fade-in/out parts.
- *  - Hovering the icon paints a grey-50 chip and reveals a dark tooltip
- *    whose copy is column-type-aware:
+ *  - Hovering the icon paints a grey-50 chip and reveals a light tooltip
+ *    (same treatment as ActionButton) whose copy is column-type-aware:
  *        alpha → "Sort A to Z" / "Sorted Z to A"
  *        date → "Sort oldest to newest" / "Sorted newest to oldest"
  *        number|priority → "Sort lowest to highest" / "Sorted highest to lowest"
@@ -102,13 +103,18 @@ export function HeaderCell({
       role={isSortable ? 'button' : undefined}
       tabIndex={isSortable ? 0 : undefined}
       aria-sort={isActive ? (activeDir === 'desc' ? 'descending' : 'ascending') : undefined}
+      aria-label={isSortable && hideSortIcon ? tooltip : undefined}
       data-sort-field={sortField}
-      title={isSortable && hideSortIcon ? tooltip : undefined}
     >
       <span className={[styles.headerLabel, hideSortIcon ? styles.headerLabelNoIcon : ''].filter(Boolean).join(' ')}>
         <span className={styles.headerLabelText}>{label}</span>
         {isSortable && !hideSortIcon && (
-          <span className={[styles.sortIcon, isActive ? styles.sortIconActive : ''].filter(Boolean).join(' ')}>
+          <Tooltip
+            label={tooltip}
+            placement="top"
+            variant="light"
+            className={[styles.sortIcon, isActive ? styles.sortIconActive : ''].filter(Boolean).join(' ')}
+          >
             <svg
               width="12"
               height="12"
@@ -140,8 +146,7 @@ export function HeaderCell({
                 className={[styles.sortIconPart, showTail ? '' : styles.sortIconPartHidden].filter(Boolean).join(' ')}
               />
             </svg>
-            <span className={styles.sortTooltip}>{tooltip}</span>
-          </span>
+          </Tooltip>
         )}
       </span>
     </th>

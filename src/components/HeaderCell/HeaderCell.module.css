@@ -13,15 +13,10 @@
   user-select: none;
   vertical-align: middle;
   box-sizing: border-box;
-  overflow: hidden;
+  overflow: visible;
 }
 
-/* Lift the hovered header above its neighbours so the sort tooltip
- * (which lives inside this <th>'s stacking context) can paint over
- * adjacent columns. Sticky-positioned <th>s each open their own
- * stacking context, and without this every sibling with an equal or
- * higher z-index would occlude the tooltip regardless of how large
- * the tooltip's own z-index is. */
+/* Lift the hovered header above its neighbours when sticky columns overlap. */
 .headerCell:hover,
 .headerCell:focus-within {
   z-index: 50;
@@ -36,15 +31,17 @@
 .headerCellActive { color: var(--primary-300); }
 
 .headerLabel {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
   position: relative;
   width: 100%;
   min-width: 0;
-  padding-right: var(--space-4);
 }
 
 .headerLabelText {
-  display: block;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -55,10 +52,7 @@
 }
 
 .sortIcon {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -74,7 +68,7 @@
    fades independently via opacity so idle ↔ active swaps read as one
    motion instead of an unmount/mount cut. */
 .sortIconSvg {
-  color: var(--neutral-200);
+  color: var(--neutral-300);
   transition: color 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sortIconActive .sortIconSvg { color: var(--primary-300); }
@@ -84,38 +78,3 @@
   transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sortIconPartHidden { opacity: 0; }
-
-/* Hover tooltip — dark bubble below the sort chip. Only revealed when
-   the arrow itself is hovered. */
-.sortTooltip {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--neutral-500);
-  color: var(--neutral-0);
-  font-size: var(--font-sm);
-  font-weight: 500;
-  line-height: 1.2;
-  white-space: nowrap;
-  padding: 5px 10px;
-  border-radius: 6px;
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s, visibility 0.15s;
-  z-index: 2147483647;
-}
-.sortTooltip::after {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-bottom-color: var(--neutral-500);
-}
-.sortIcon:hover .sortTooltip {
-  opacity: 1;
-  visibility: visible;
-}

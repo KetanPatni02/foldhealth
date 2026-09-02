@@ -257,6 +257,7 @@ function mapPatientCarePlanInterventionRow(row) {
     adherence: row.adherence || '-',
     links: 0,
     sortOrder: row.sort_order ?? 0,
+    updatedBy: row.updated_by || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -276,6 +277,7 @@ function patientCarePlanInterventionToRow(i, planId) {
     assignee_initials: i.assignee?.initials || '',
     status: i.status || 'Not Started',
     adherence: i.adherence || '-',
+    updated_by: i.updatedBy || null,
     sort_order: i.sortOrder ?? 0,
   };
 }
@@ -2988,6 +2990,8 @@ export const useAppStore = create((set, get) => ({
     if (!planId) return null;
     const prevIntv = id ? (get().patientCarePlans[key]?.interventions || []).find(x => x.id === id) : null;
     const row = patientCarePlanInterventionToRow(values, planId);
+    // Stamp the last editor so the Intervention Details "Last Updated … by <name>" line has an actor.
+    row.updated_by = get().currentUserProfile?.name || row.updated_by || null;
     const q = id
       ? supabase.from('patient_care_plan_interventions').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
       : supabase.from('patient_care_plan_interventions').insert(row);

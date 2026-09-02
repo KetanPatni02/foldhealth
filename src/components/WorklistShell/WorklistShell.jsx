@@ -344,6 +344,14 @@ export function WorklistShell({
             ].filter(Boolean).join(' ')}
             style={{ minWidth: minTableWidth }}
           >
+            <colgroup>
+              {columnsToRender.map((col, idx) => (
+                <col
+                  key={col.key || idx}
+                  style={col.width != null ? { width: col.width } : undefined}
+                />
+              ))}
+            </colgroup>
             <thead>
               <tr className={styles.headRow}>
                 {columnsToRender.map((col, idx) => {

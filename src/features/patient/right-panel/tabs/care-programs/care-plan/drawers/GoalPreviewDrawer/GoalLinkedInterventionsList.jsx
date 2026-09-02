@@ -3,7 +3,7 @@ import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { AssigneeChange } from '../../../../../../../../components/AssigneeChange/AssigneeChange';
 import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
-import { LinkChip, GoalProgressCell } from '../../tables/carePlanTableShared';
+import { LinkChip, GbiProgressCell } from '../../tables/carePlanTableShared';
 import styles from './GoalPreviewDrawer.module.css';
 
 /** Linked interventions inside Goal Details — Figma SNP-Story 2632:80869. */
@@ -93,7 +93,7 @@ export function GoalLinkedInterventionsList({
 
             <div className={styles.intvAdherence} onClick={(e) => e.stopPropagation()}>
               {showAdherence
-                ? <GoalProgressCell progress={adherence} />
+                ? <GbiProgressCell progress={adherence} variant="ring" />
                 : <span className={styles.intvAdherenceDash}>—</span>}
             </div>
 

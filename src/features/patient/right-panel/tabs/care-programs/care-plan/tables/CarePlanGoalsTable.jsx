@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { Icon } from '../../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
@@ -8,22 +7,12 @@ import {
   GOAL_COLUMNS,
   withSelectColumn,
   GbiCheckboxCell,
-  LinkChip,
-  GoalProgressCell,
-  TrendCell,
+  GbiNameCell,
+  GbiProgressCell,
   GbiStatusButton,
 } from './carePlanTableShared';
 import { enrichGoalRows } from './carePlanTableSort';
 import styles from './carePlanTables.module.css';
-
-function GoalTitle({ title, subtitle }) {
-  return (
-    <span className={styles.titleText}>
-      <span className={styles.title}>{title}</span>
-      {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
-    </span>
-  );
-}
 
 export function CarePlanGoalsTable({
   rows,
@@ -62,7 +51,7 @@ export function CarePlanGoalsTable({
         renderRow={(g) => (
           <tr
             key={g.id}
-            className={`${styles.row} ${styles.rowClickable}`}
+            className={`${styles.row} ${styles.rowClickable} ${styles.gbiRow}`}
             onClick={() => onOpenGoal(g)}
           >
             {bulkMode && (
@@ -85,32 +74,23 @@ export function CarePlanGoalsTable({
               </button>
             </td>
             <td className={styles.titleTd}>
-              <div className={styles.titleCell}>
-                <span className={styles.rowIcon}><Icon name={g.icon} size={16} color="var(--neutral-400)" /></span>
-                <span className={styles.titleMain}>
-                  <GoalTitle title={g.title} subtitle={g.subtitle} />
-                </span>
-                <span
-                  className={`${styles.linkChipWrap} ${canEdit ? styles.linkChipClickable : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (canEdit) onLinkOwner({ kind: 'goal', item: g });
-                  }}
-                >
-                  <LinkChip count={linkCount(g.id)} />
-                </span>
-              </div>
+              <GbiNameCell
+                icon={g.icon}
+                title={g.title}
+                meta={g.subtitle || null}
+                layout="stacked"
+                linkCount={linkCount(g.id)}
+                canEdit={canEdit}
+                onLinkClick={() => onLinkOwner({ kind: 'goal', item: g })}
+              />
             </td>
             <td className={styles.valueTd} onClick={e => e.stopPropagation()}>
               <span className={`${styles.valueText} ${g.currentValue === 'No Data' ? styles.muted : ''}`}>
                 {g.currentValue}
               </span>
             </td>
-            <td className={styles.trendTd} onClick={e => e.stopPropagation()}>
-              <TrendCell trend={g.trend} />
-            </td>
             <td className={styles.progressTd} onClick={e => e.stopPropagation()}>
-              <GoalProgressCell progress={g.progress} />
+              <GbiProgressCell progress={g.progress} />
             </td>
             <td className={styles.statusTd} onClick={e => e.stopPropagation()}>
               <GbiStatusButton

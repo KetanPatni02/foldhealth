@@ -1332,7 +1332,9 @@ async function main() {
           goal_id: bpGoal?.id || null,
           assignee_name: i.assignee?.name || 'Unassigned',
           assignee_initials: i.assignee?.initials || '',
-          status: i.status || 'Not Started', adherence: i.adherence || '-', sort_order: idx,
+          status: i.status || 'Not Started', adherence: i.adherence || '-',
+          updated_by: idx === 0 ? 'Ivy Ralph' : null,
+          sort_order: idx,
         }));
         const { error: iErr } = await supabase.from('patient_care_plan_interventions').insert(intvRows);
 

@@ -3,12 +3,25 @@
 .tableWrap {
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   background: var(--neutral-0);
+  -webkit-overflow-scrolling: touch;
+  --gbi-col-value: 172px;
+  --gbi-col-progress: 100px;
 }
 .tableWrap table {
   table-layout: fixed;
   width: 100%;
+  min-width: 560px;
+}
+.tableWrap thead th {
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
+  font-size: var(--font-sm);
+  border-left: none;
+  border-right: none;
+  overflow: visible;
 }
 .tableWrap thead th {
   box-sizing: border-box;
@@ -32,7 +45,9 @@
 }
 .td {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  border-left: 0.5px solid var(--neutral-150);
+  padding: var(--space-1) var(--space-2);
+  vertical-align: middle;
+  border-left: none;
 }
 .td:first-child,
 .checkTd {
@@ -46,10 +61,10 @@
 }
 .priorityTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  width: 32px;
-  padding-left: var(--space-1);
-  padding-right: var(--space-1);
-  border-right: 0.5px solid var(--neutral-150);
+  width: 28px;
+  padding: var(--space-1);
+  border-right: none;
+  border-left: none;
   text-align: center;
   vertical-align: middle;
 }
@@ -57,101 +72,69 @@
   composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
   min-width: 0;
   width: auto;
+  padding: var(--space-1) var(--space-2);
+  vertical-align: middle;
 }
 .valueTd,
-.trendTd,
 .progressTd,
 .statusTd,
 .assigneeTd,
 .adherenceTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  border-left: 0.5px solid var(--neutral-150);
+  border-left: none;
   box-sizing: border-box;
+  padding: var(--space-1) var(--space-2);
+  vertical-align: middle;
 }
 .valueTd {
-  width: 120px;
-  min-width: 120px;
-  max-width: 120px;
-}
-.trendTd {
-  width: 80px;
-  min-width: 80px;
-  max-width: 80px;
+  width: var(--gbi-col-value);
+  min-width: var(--gbi-col-value);
+  max-width: var(--gbi-col-value);
 }
 .progressTd,
 .adherenceTd {
-  width: 88px;
-  min-width: 88px;
-  max-width: 88px;
-  text-align: center;
+  width: var(--gbi-col-progress);
+  min-width: var(--gbi-col-progress);
+  max-width: var(--gbi-col-progress);
+  text-align: left;
   vertical-align: middle;
 }
 .progressTd > *,
 .adherenceTd > * {
-  margin-inline: auto;
+  width: 100%;
 }
 .assigneeTd {
-  width: 200px;
-  min-width: 200px;
-  max-width: 200px;
+  width: var(--gbi-col-value);
+  min-width: var(--gbi-col-value);
+  max-width: var(--gbi-col-value);
   vertical-align: middle;
 }
 .statusTd,
 .barrierStatusTd {
-  width: 140px;
-  min-width: 140px;
-  max-width: 140px;
+  width: 124px;
+  min-width: 124px;
+  max-width: 124px;
   vertical-align: middle;
 }
 .actionsTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  width: 40px;
-  min-width: 40px;
-  max-width: 40px;
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
   box-sizing: border-box;
-  padding-left: var(--space-2);
-  padding-right: var(--space-2);
+  padding: var(--space-1);
   text-align: center;
   vertical-align: middle;
-  border-left: 0.5px solid var(--neutral-150);
+  border-left: none;
 }
 
-/* Barriers table — Figma SNP-Story 8455:288936 */
-.barrierRow {
-  min-height: 48px;
-}
-.barrierNameTd {
-  composes: membersTd from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  min-width: 0;
-  width: auto;
-}
-.barrierNameCell {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-  width: 100%;
-  padding: var(--space-1) 0 var(--space-1) var(--space-1);
-}
-.barrierIcon {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-}
-.barrierTitle {
-  flex: 1;
-  min-width: 0;
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: var(--neutral-400);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+/* Barriers table — shares GBI row + name cell patterns */
 .barrierStatusTd {
   composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
-  border-left: 0.5px solid var(--neutral-150);
+  border-left: none;
   box-sizing: border-box;
+  padding: var(--space-1) var(--space-2);
+  vertical-align: middle;
 }
 .closedBarriers {
   border-top: 0.5px solid var(--neutral-100);
@@ -188,39 +171,77 @@
   border-top: 0.5px solid var(--neutral-150);
 }
 
-.titleCell {
+/* Shared GBI row height across Goals, Interventions, and Barriers. */
+.gbiRow {
+  min-height: 36px;
+}
+
+.titleCell,
+.nameCell {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
   width: 100%;
 }
-.titleMain {
+.nameCellStacked {
+  align-items: center;
+}
+.nameText {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+}
+.nameTextStacked {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
-.titleMainInline {
-  flex-direction: row;
-  align-items: center;
-  gap: var(--space-2);
+.nameTextStacked .namePrimary,
+.nameTextStacked .nameSecondary {
+  width: 100%;
 }
-.rowIcon { display: flex; flex-shrink: 0; }
-.titleText { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1; }
+.namePrimary {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-400);
+}
+.nameSecondary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.nameSep {
+  flex-shrink: 0;
+  color: var(--neutral-200);
+  font-size: var(--font-sm);
+}
+.rowIcon { display: flex; flex-shrink: 0; align-items: center; }
 .title {
   font-size: var(--font-base);
-  font-weight: 500;
+  font-weight: 400;
   color: var(--neutral-400);
   background: none;
   border: none;
   padding: 0;
   text-align: left;
   cursor: inherit;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .titleEditable { cursor: text; font-weight: 400; }
 .titleEditable:hover { color: var(--primary-300); }
@@ -244,14 +265,14 @@
 .linkCount { font-size: var(--font-xs); color: var(--neutral-300); line-height: 1; }
 
 .valueText {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-400);
 }
 .muted { color: var(--neutral-200); font-weight: 400; }
 
 .trendDash {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   color: var(--neutral-200);
 }
 
@@ -293,56 +314,14 @@
   color: var(--neutral-300);
 }
 
-/* Intervention table — Figma SNP-Story 8448:480901 */
-.intvRow {
-  min-height: 48px;
-}
+/* Intervention table — shares GBI row + name cell patterns */
 .intvNameHeader {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
-}
-.intvNameCell {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  min-width: 0;
-  width: 100%;
-  padding: var(--space-1) 0 var(--space-1) var(--space-1);
-}
-.intvRowCheck {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  height: var(--space-5);
-}
-.intvNameCell > .rowIcon {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  height: var(--space-5);
-}
-.intvTitleStack {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-1);
-  min-width: 0;
-}
-.intvTitleStack .title {
-  font-weight: 500;
-  width: 100%;
-}
-.intvTitleStack .intvDurationBadge {
-  align-self: flex-start;
-}
-.intvNameCell .linkChipWrap {
-  align-self: center;
-  margin-top: 0;
 }
 
 .emptyRow {

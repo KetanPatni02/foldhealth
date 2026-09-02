@@ -39,3 +39,33 @@
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+/* Light variant — matches ActionButton tooltips. */
+.bubbleLight {
+  background: var(--neutral-0);
+  color: var(--neutral-400);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  padding: var(--space-1) var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  box-shadow: var(--shadow-popover);
+}
+.bubbleLight.bubbleTop::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: var(--space-1) solid transparent;
+  border-top-color: var(--neutral-0);
+}
+.bubbleLight.bubbleBottom::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: var(--space-1) solid transparent;
+  border-bottom-color: var(--neutral-0);
+}

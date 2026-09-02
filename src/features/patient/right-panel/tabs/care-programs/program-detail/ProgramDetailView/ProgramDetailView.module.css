@@ -174,15 +174,16 @@
 }
 
 /* ── Body ── */
-.body { display: flex; flex: 1; overflow: hidden; }
+.body { display: flex; flex: 1; overflow: hidden; min-width: 0; }
 
 /* ── Step list sidebar ── */
 .stepList {
-  width: 240px;
-  min-width: 240px;
+  width: 220px;
+  min-width: 220px;
   border-right: 0.5px solid var(--neutral-150);
   overflow-y: auto;
   background: white;
+  flex-shrink: 0;
 }
 .stepItem {
   display: flex;
@@ -271,7 +272,30 @@
 
 /* ── Right content area ── */
 /* position: relative so the letters bulk-action bar can center on this column. */
-.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+.content { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; min-width: 0; }
+
+@media (max-width: 960px) {
+  .stepList {
+    width: 56px;
+    min-width: 56px;
+  }
+  .stepName,
+  .stepNameActive,
+  .sectionName {
+    display: none;
+  }
+  .stepItem {
+    justify-content: center;
+    padding: var(--space-3) var(--space-2);
+  }
+  .stepChild {
+    padding-left: var(--space-2);
+  }
+  .sectionHeader {
+    justify-content: center;
+    padding: var(--space-2);
+  }
+}
 
 .contentHeader {
   display: flex;
@@ -283,26 +307,27 @@
 }
 .contentHeaderCarePlan {
   container-type: inline-size;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-3);
 }
 /* Top row: title on the left, actions on the right. The header becomes a
    column so the tasks filter chips can sit on a second row inside the same
    bar — the bar just grows taller when filters are shown. */
 .contentHeaderRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
   min-width: 0;
 }
-/* Care Plan header — stack title + actions when the column is narrow so
-   icon buttons never overlap the title block. */
+/* Care Plan header — stack title + actions on narrow columns. */
 .contentHeaderRowCarePlan {
   flex-wrap: wrap;
   align-items: flex-start;
-  row-gap: var(--space-2);
+  row-gap: var(--space-3);
 }
 .contentHeaderRowCarePlan .assessmentHeader {
-  flex: 1 1 100%;
+  flex: 1 1 220px;
   max-width: 100%;
   min-width: 0;
 }
@@ -314,36 +339,29 @@
   text-overflow: ellipsis;
 }
 .contentHeaderRowCarePlan .carePlanActionBar {
-  flex: 1 1 100%;
-  flex-wrap: wrap;
+  flex: 1 1 280px;
   justify-content: flex-end;
   min-width: 0;
-  margin-left: 0;
-  row-gap: var(--space-2);
+  margin-left: auto;
 }
-@container (min-width: 640px) {
-  .contentHeaderRowCarePlan .assessmentHeader {
-    flex: 1 1 auto;
-    max-width: min(100%, 40%);
+@container (max-width: 720px) {
+  .contentHeaderCarePlan {
+    padding: var(--space-2) var(--space-3);
   }
   .contentHeaderRowCarePlan .carePlanActionBar {
-    flex: 1 1 auto;
-    margin-left: auto;
+    flex: 1 1 100%;
+    margin-left: 0;
+    justify-content: flex-start;
   }
 }
 @container (max-width: 520px) {
-  .carePlanActionSecondaryGroup {
-    display: none;
-  }
+  .carePlanActionSecondaryGroup,
   .carePlanBtnSaveTemplate {
     display: none;
   }
-}
-.carePlanActionSecondaryGroup {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-shrink: 0;
+  .carePlanIconGroup {
+    margin-right: auto;
+  }
 }
 /* Search icon → inline field transform in the Program Related Tasks header. */
 .taskSearch { width: 250px; }
@@ -409,9 +427,14 @@
 .assessmentMeta {
   font-size: var(--font-sm);
   color: var(--neutral-300);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+.carePlanMetaDot {
+  color: var(--neutral-200);
+}
+.carePlanSignedMeta {
+  color: var(--status-success);
+  font-weight: 500;
 }
 /* Signed attribution — success green per Figma 482:427660 (#009B53 maps to
    the closest existing token, --status-success). */
@@ -428,10 +451,25 @@
   gap: 8px;
 }
 .carePlanActionBar {
-  gap: var(--space-3);
+  display: flex;
+  align-items: center;
   flex-wrap: wrap;
+  gap: var(--space-2);
   min-width: 0;
-  margin-left: auto;
+}
+.carePlanIconGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--space-2);
+  background: var(--neutral-50);
+  flex-shrink: 0;
+}
+.carePlanActionSecondaryGroup {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 .carePlanActionDivider {
   width: 0.5px;
