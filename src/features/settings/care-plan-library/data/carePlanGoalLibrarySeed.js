@@ -4610,10 +4610,32 @@ export const CARE_PLAN_GOAL_LIBRARY = [
   }
 ];
 
-// care_plan_goals row (drops the embedded links).
+// The seed authored every goal as "Other"; derive the real category from the
+// goal's title + description against the five library types the Create Goal
+// drawer offers (Vital / Activity / Lab result / Assessment / Other). Domain
+// keywords (a measured vital, a lab, an activity) win over the generic
+// "education/review" bucket, so "Maintain blood pressure" → Vital while
+// "Hypertension education" → Assessment. Heuristic and easy to override per
+// goal in the Edit Goal drawer.
+const GOAL_CATEGORY_RULES = [
+  ['Lab result', /\b(a1c|hba1c|ldl|hdl|cholesterol|lipid|triglyceride|kidney|renal|egfr|creatinine|urine|microalbumin|labs?)\b/i],
+  ['Vital', /\b(blood pressure|heart[ -]?rate|resting heart|pulse|spo2|oxygen satur|daily weight|weight monitoring|weight for|body weight|glucose|glycemic|hypoglycem|hyperglycem|temperature|respiratory rate|vital sign)\b/i],
+  ['Activity', /\b(activity|exercise|walk|physical activit|steps|strength|aerobic|mobility|balance)\b/i],
+  ['Assessment', /\b(education|counsel|screening|screen for|assessment|assess |review|teach|wellness visit|preventive|immuniz|vaccin|depression screen|phq|gad|action plan)\b/i],
+];
+
+export function goalLibraryCategory(g) {
+  // Title only — descriptions list adjacent services ("...labs, therapy...")
+  // that would misclassify a coordination goal as a lab goal.
+  const hay = g.title || '';
+  for (const [cat, re] of GOAL_CATEGORY_RULES) if (re.test(hay)) return cat;
+  return 'Other';
+}
+
+// care_plan_goals row (drops the embedded links; derives the category).
 export function carePlanGoalLibraryToRow(g) {
   const { links, ...row } = g;
-  return row;
+  return { ...row, category: goalLibraryCategory(g) };
 }
 
 // Per-goal care_plan_interventions rows (a goal's linked interventions +
