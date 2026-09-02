@@ -69,22 +69,26 @@ export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
   const telehealth = payload.audioOnly ? 'Audio-only visit — Verbal consent obtained.'
     : payload.audioVideo ? 'Audio-video visit — Verbal consent obtained.'
     : '—';
-  const isNonVisit = note.formType === 'non_visit_note';
+  // Non-Visit Notes carry either a free-form title/body (legacy shape)
+  // or a template-driven `{ formId, answers }` shape. Normal Notes use
+  // the same template-driven shape but a different formType tag; both
+  // render as a flat schema summary here.
+  const isNonVisit = note.formType === 'non_visit_note' || note.formType === 'normal_note';
+  const templateAnswers = payload.answers && typeof payload.answers === 'object' ? payload.answers : null;
+  const templateRow = useAppStore.getState().noteTemplatesById?.[note.formId] || null;
+  const templateFields = templateAnswers && Array.isArray(templateRow?.schema?.items)
+    ? templateRow.schema.items
+    : null;
 
-  // Non-Visit Notes (P2-2) skip the DOS/telehealth statement and the
-  // per-gap evidence sections — they carry a plain title + body and
-  // an optional list of related gap chips. Render a dedicated layout
-  // and return early so the visit-note sections below don't run.
   if (isNonVisit) {
     return (
       <div className={styles.wrap}>
-        {payload.title && (
-          <Section title={payload.title}>
-            <div className={styles.nonVisitBody}>{payload.body || '—'}</div>
+        {templateFields ? (
+          <Section title={templateRow?.name || 'Note'}>
+            <NonVisitAnswers fields={templateFields} answers={templateAnswers} />
           </Section>
-        )}
-        {!payload.title && (
-          <Section title="Note">
+        ) : (
+          <Section title={payload.title || 'Note'}>
             <div className={styles.nonVisitBody}>{payload.body || '—'}</div>
           </Section>
         )}
@@ -160,6 +164,25 @@ function KV({ label, value, wide }) {
       <span className={styles.rowValue}>{display}</span>
     </div>
   );
+}
+
+// Renders template-driven answers for a Non-Visit / Normal note. Each
+// field prints as a KV row, using its stored value verbatim; select/
+// radio values resolve back to their label from the field descriptor.
+function NonVisitAnswers({ fields, answers }) {
+  return fields.map((f) => {
+    const raw = answers?.[f.key];
+    let value = raw;
+    if ((f.type === 'select' || f.type === 'radio') && Array.isArray(f.options)) {
+      const hit = f.options.find(o => o.value === raw);
+      if (hit) value = hit.label;
+    } else if (f.type === 'checkbox') {
+      value = raw === true ? 'Yes' : raw === false ? 'No' : value;
+    } else if (f.type === 'date') {
+      value = formatMDY(raw);
+    }
+    return <KV key={f.key} label={f.label || f.key} value={value} wide />;
+  });
 }
 
 function GenericRows({ code, data }) {

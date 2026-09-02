@@ -31,8 +31,6 @@ export function CareGapDetailDrawerHeader({
   yearOpen,
   setYearOpen,
   yearOptions,
-  moreOpen,
-  setMoreOpen,
   status,
   statusLocked,
   statusOpen,
@@ -151,14 +149,17 @@ export function CareGapDetailDrawerHeader({
             </div>
 
             {onOpenMeasureInfo && (
-              <ActionButton
-                icon="solar:book-2-linear"
-                size="L"
-                tooltip="Measure Tutorial"
-                tooltipBelow
-                tooltipLeft
-                onClick={() => onOpenMeasureInfo(gap.code)}
-              />
+              <>
+                <span className={styles.headerDivider} />
+                <ActionButton
+                  icon="solar:book-2-linear"
+                  size="L"
+                  tooltip="Measure Tutorial"
+                  tooltipBelow
+                  tooltipLeft
+                  onClick={() => onOpenMeasureInfo(gap.code)}
+                />
+              </>
             )}
             <span className={styles.headerDivider} />
             <ActionButton ref={moreBtnRef} icon="solar:menu-dots-linear" size="L" tooltip="More" tooltipBelow tooltipLeft
@@ -170,36 +171,11 @@ export function CareGapDetailDrawerHeader({
           <div className={styles.gapTitleRow}>
             <div className={styles.gapTitleCol}>
               <div className={styles.gapTitle}>{gap.code} - {measureName}</div>
-              <div className={styles.gapSubRow}>
-                {gap.startDate && (
-                  <>
-                    <span>{gap.startDate}{daysAgo(gap.startDate) ? ` (${daysAgo(gap.startDate)})` : ''}</span>
-                    <span className={styles.gapSubDot}>&bull;</span>
-                  </>
-                )}
-                <button className={styles.moreDetailsBtn} onClick={() => setMoreOpen(v => !v)}>
-                  More Details
-                  <Icon name="solar:alt-arrow-down-linear" size={13} color="currentColor"
-                    className={`${styles.moreChevron} ${moreOpen ? styles.moreChevronOpen : ''}`} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className={`${styles.moreDetails} ${moreOpen ? styles.moreDetailsOpen : ''}`} style={{ padding: '0 16px' }}>
-          <div className={styles.moreDetailsInner}>
-            <div className={styles.moreDetailsBody}>
-              <div className={styles.accordionSection}>
-                <button className={styles.accordionBtn} onClick={() => showToast('Measure Requirements — coming soon')}>
-                  <Icon name="solar:alt-arrow-down-linear" size={13} /> Measure Requirements
-                </button>
-              </div>
-              <div className={styles.accordionSection}>
-                <button className={styles.accordionBtn} onClick={() => showToast('Measure Instructions — coming soon')}>
-                  <Icon name="solar:alt-arrow-down-linear" size={13} /> Measure Instructions
-                </button>
-              </div>
+              {gap.startDate && (
+                <div className={styles.gapSubRow}>
+                  <span>{gap.startDate}{daysAgo(gap.startDate) ? ` (${daysAgo(gap.startDate)})` : ''}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

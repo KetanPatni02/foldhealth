@@ -114,7 +114,7 @@ export function PatientNotesTab({ patient }) {
           <ActionButton
             icon="solar:add-circle-linear"
             size="S"
-            tooltip="New Non-Visit Note"
+            tooltip="New Note"
             onClick={() => setShowNonVisitDrawer(true)}
           />
         </div>
@@ -126,7 +126,7 @@ export function PatientNotesTab({ patient }) {
           <span className={styles.emptyTitle}>No clinical notes yet</span>
           <span className={styles.emptyBody}>
             Notes created from the Care Gap workflow will appear here once the
-            patient has one — or start a Non-Visit Note right from here.
+            patient has one, or start a new note right from here.
           </span>
           <Button
             variant="primary"
@@ -134,7 +134,7 @@ export function PatientNotesTab({ patient }) {
             leadingIcon="solar:add-circle-linear"
             onClick={() => setShowNonVisitDrawer(true)}
           >
-            New Non-Visit Note
+            New Note
           </Button>
         </div>
       ) : (
@@ -182,36 +182,42 @@ const ORIGIN_LABEL = {
 function NoteRow({ note }) {
   const openNotePreview = useAppStore(s => s.openNotePreview);
   const deleteClinicalNote = useAppStore(s => s.deleteClinicalNote);
+  const templatesById = useAppStore(s => s.noteTemplatesById);
   const showToast = useAppStore(s => s.showToast);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const menuBtnRef = useRef(null);
   const codes = note.gapCodes || [];
-  const isNonVisit = note.formType === 'non_visit_note';
-  const title = isNonVisit
-    ? (note.payload?.title || 'Non-Visit Note')
-    : codes.length > 1
-      ? 'Consolidated Clinical Note'
-      : codes[0]
-        ? `${codes[0]} Visit Note`
-        : 'Clinical Note';
-  // Subtitle mirrors the Overview `noteSub` line — short context under
-  // the title. Non-Visit → snippet of the body; Care Gap → the gap
-  // measures the note covers; origin fallback for any other kind.
-  const subtitle = isNonVisit
-    ? (note.payload?.body ? shorten(note.payload.body, 80) : '—')
-    : codes.length
-      ? codes.join(' · ')
-      : (ORIGIN_LABEL[note.originKind] || 'Clinical Note');
+  const template = note.formId ? templatesById?.[note.formId] : null;
+  const isNormal = note.formType === 'normal_note';
+  const isNonVisit = note.formType === 'non_visit_note' || isNormal;
+  const isTemplateDriven = !!template && note.payload?.answers && typeof note.payload.answers === 'object';
+  const title = isTemplateDriven
+    ? template.name
+    : isNonVisit
+      ? (note.payload?.title || (isNormal ? 'Clinical Note' : 'Non-Visit Note'))
+      : codes.length > 1
+        ? 'Consolidated Clinical Note'
+        : codes[0]
+          ? `${codes[0]} Visit Note`
+          : 'Clinical Note';
+  const subtitle = isTemplateDriven
+    ? (codes.length ? codes.join(' · ') : (template.description || 'Clinical Note'))
+    : isNonVisit
+      ? (note.payload?.body ? shorten(note.payload.body, 80) : '—')
+      : codes.length
+        ? codes.join(' · ')
+        : (ORIGIN_LABEL[note.originKind] || 'Clinical Note');
   const status = note.status === 'signed'
     ? { label: 'Signed', color: 'var(--status-success)' }
     : note.status === 'submitted'
       ? { label: 'Pending Review', color: 'var(--status-warning)' }
       : { label: 'In Progress', color: 'var(--status-warning)' };
-  const templateName = isNonVisit
-    ? 'Non-Visit Note'
-    : (note.formType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-      || (codes[0] ? `${codes[0]} Visit Note` : 'Clinical Note');
+  const templateName = template?.name
+    || (isNormal ? 'Clinical Note' : isNonVisit
+      ? 'Non-Visit Note'
+      : (note.formType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        || (codes[0] ? `${codes[0]} Visit Note` : 'Clinical Note'));
 
   const handlePreview = () => openNotePreview?.(note);
   const handlePrint = () => {

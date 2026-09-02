@@ -33,14 +33,17 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
   if (!note) return null;
 
   const codes = note.gapCodes || [];
-  const isNonVisit = note.formType === 'non_visit_note';
-  const noteTitle = isNonVisit
-    ? (note.payload?.title || 'Non-Visit Note')
-    : codes.length > 1
-      ? 'Consolidated Clinical Note'
-      : codes[0]
-        ? `${codes[0]} Visit Note`
-        : 'Clinical Note';
+  const templatesById = useAppStore.getState().noteTemplatesById;
+  const template = note.formId ? templatesById?.[note.formId] : null;
+  const isNonVisit = note.formType === 'non_visit_note' || note.formType === 'normal_note';
+  const noteTitle = template?.name
+    || (isNonVisit
+      ? (note.payload?.title || (note.formType === 'normal_note' ? 'Clinical Note' : 'Non-Visit Note'))
+      : codes.length > 1
+        ? 'Consolidated Clinical Note'
+        : codes[0]
+          ? `${codes[0]} Visit Note`
+          : 'Clinical Note');
   const noteMember = note.hedisMemberId
     ? hedisMembers.find(m => m.id === note.hedisMemberId)
     : null;

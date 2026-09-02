@@ -1096,6 +1096,7 @@ function clinicalNoteRowToJs(row) {
     hedisMemberId: row.hedis_member_id,
     gapCodes: row.gap_codes || [],
     formType: row.form_type || 'cbp_visit_note',
+    formId: row.form_id ?? null,
     status: row.status,
     payload: row.payload || {},
     pdfFilename: row.pdf_filename || null,
@@ -6593,14 +6594,41 @@ export const useAppStore = create((set, get) => ({
   // prefer `noteTemplateForGap(code)` — it falls back to the hand-rolled
   // GAP_TEMPLATES JS constant when the DB hasn't been seeded yet.
   noteTemplatesById: {},
+  // `noteTemplatesByGap[code]` — the Visit-context default template for
+  // a care gap (kept as the flat shape existing callers already expect;
+  // see GenericEvidenceForm in ClinicalNotePanelParts). Non-Visit
+  // defaults live in `noteTemplatesByGapNonVisit[code]` alongside so
+  // Phase-2 consumers can pick them up without changing this map's
+  // shape.
   noteTemplatesByGap: {},
+  noteTemplatesByGapNonVisit: {},
   noteTemplatesDidFetch: false,
-  fetchNoteTemplates: async () => {
-    if (get().noteTemplatesDidFetch) return;
-    const { data, error } = await supabase
+  fetchNoteTemplates: async ({ force = false } = {}) => {
+    if (!force && get().noteTemplatesDidFetch) return;
+    // `context` was added by note_templates_context_migration.sql. Older
+    // DBs return the row without it — the catch-block below downgrades
+    // to a schema-tolerant re-select so the Settings tab still renders.
+    // `updated_by_profile:profiles!updated_by(...)` hydrates the display
+    // name for the Updated column; degrades gracefully on PGRST200.
+    const BASE_COLS = 'id, name, description, gap_code, form_type, is_default_for_gap, context, category, status, schema, created_at, updated_at, updated_by';
+    let { data, error } = await supabase
       .from('forms')
-      .select('id, name, description, gap_code, form_type, is_default_for_gap, category, status, schema, updated_at')
+      .select(`${BASE_COLS}, updated_by_profile:profiles!updated_by(id, full_name)`)
       .eq('form_type', 'Note');
+    if (error?.code === 'PGRST200') {
+      ({ data, error } = await supabase
+        .from('forms')
+        .select(BASE_COLS)
+        .eq('form_type', 'Note'));
+    }
+    if (error && /column .*context.* does not exist/i.test(error.message || '')) {
+      const legacy = await supabase
+        .from('forms')
+        .select('id, name, description, gap_code, form_type, is_default_for_gap, category, status, schema, created_at, updated_at, updated_by')
+        .eq('form_type', 'Note');
+      data = legacy.data;
+      error = legacy.error;
+    }
     if (error) {
       if (error.code === '42P01' || error.code === 'PGRST205' || /column .* does not exist/i.test(error.message || '')) {
         // Table or gap_code column missing — happens before
@@ -6616,13 +6644,196 @@ export const useAppStore = create((set, get) => ({
     }
     const byId = {};
     const byGap = {};
+    const byGapNonVisit = {};
     for (const row of (data || [])) {
       byId[row.id] = row;
-      if (row.gap_code && row.is_default_for_gap !== false) {
-        byGap[row.gap_code] = row;
+      if (!row.gap_code || row.is_default_for_gap === false) continue;
+      // Legacy rows (before the context migration) had no context; treat
+      // them as Visit defaults, which is what they were.
+      const ctx = row.context || 'visit';
+      if (ctx === 'non_visit') byGapNonVisit[row.gap_code] = row;
+      else byGap[row.gap_code] = row;
+    }
+    set({
+      noteTemplatesById: byId,
+      noteTemplatesByGap: byGap,
+      noteTemplatesByGapNonVisit: byGapNonVisit,
+      noteTemplatesDidFetch: true,
+    });
+  },
+
+  // ── Note Template CRUD (Settings → Content → Notes) ─────────────────
+  //
+  // These actions write to `public.forms` with `form_type='Note'`. The
+  // existing generic `saveForm` / `deleteForm` cover the schema-editing
+  // path (via the shared FormBuilder), so what lives here is only the
+  // Note-specific metadata: type routing, gap linkage, Visit/Non-Visit
+  // context, and the atomic "set as default" swap.
+  createNoteTemplate: async ({ name, description, gapCode, context, isDefault = false, status = 'draft' }) => {
+    // Validation matches the drawer's own guard so a raw store call
+    // can't sneak in an invalid combination.
+    if (!name || !name.trim()) throw new Error('Note template requires a title.');
+    if (gapCode && !context) throw new Error('Care Gap templates require a context.');
+    if (!gapCode && (context || isDefault)) {
+      throw new Error('Normal Note templates cannot carry a context or default flag.');
+    }
+    // Stamp updated_by so the Notes list's "Created by" line resolves
+    // without waiting on the DB trigger (auth.uid() is null in most
+    // dev sessions, and the client is the only authoritative source for
+    // who authored the row).
+    const updatedBy = await get()._resolveUpdatedBy();
+    const insertRow = {
+      name: name.trim(),
+      description: description?.trim() || null,
+      form_type: 'Note',
+      status,
+      schema: { items: [] },
+      gap_code: gapCode || null,
+      context: context || null,
+      is_default_for_gap: !!(gapCode && isDefault),
+      ...(updatedBy ? { updated_by: updatedBy } : {}),
+    };
+    // If this row is being created as the default, atomically unset any
+    // previous default for the same (gap, context) so the partial unique
+    // index never trips.
+    if (insertRow.is_default_for_gap && gapCode && context) {
+      const { error: prevErr } = await supabase
+        .from('forms')
+        .update({ is_default_for_gap: false })
+        .eq('form_type', 'Note')
+        .eq('gap_code', gapCode)
+        .eq('context', context)
+        .eq('is_default_for_gap', true);
+      if (prevErr && prevErr.code !== '42P01' && prevErr.code !== 'PGRST205') {
+        console.error('createNoteTemplate default-clear error:', prevErr);
       }
     }
-    set({ noteTemplatesById: byId, noteTemplatesByGap: byGap, noteTemplatesDidFetch: true });
+    let { data, error } = await supabase
+      .from('forms')
+      .insert(insertRow)
+      .select('*')
+      .single();
+    // Legacy DB fallback: note_templates_context_migration.sql may not
+    // have run yet — the `context` column is missing. Same fallback we
+    // already do in fetchNoteTemplates. Also handle missing gap_code /
+    // is_default_for_gap for a pre-P2-1 DB.
+    if (error && /column .* does not exist|context|gap_code|is_default_for_gap/i.test(error.message || '')) {
+      // eslint-disable-next-line no-unused-vars
+      const { context: _c, gap_code: _g, is_default_for_gap: _d, ...legacyRow } = insertRow;
+      ({ data, error } = await supabase
+        .from('forms')
+        .insert(legacyRow)
+        .select('*')
+        .single());
+    }
+    if (error) {
+      console.error('createNoteTemplate error:', error);
+      throw error;
+    }
+    // Locally stitch the current user's display name onto the returned
+    // row so the Notes list can render "Created ... by {name}"
+    // immediately, without waiting on Supabase to hydrate the
+    // profiles!updated_by join. `fetchNoteTemplates` still runs so a
+    // real join result overwrites this once it arrives.
+    const me = get().currentUserProfile;
+    if (data && me?.name && !data.updated_by_profile) {
+      data.updated_by_profile = { id: me.id || null, full_name: me.name };
+    }
+    await get().fetchNoteTemplates({ force: true });
+    // If the re-fetch replaced the row without a profile join (RLS or
+    // missing FK), merge the local stub back in so the UI keeps the
+    // name we just captured.
+    const merged = get().noteTemplatesById?.[data.id];
+    if (data && me?.name && merged && !merged.updated_by_profile) {
+      set(s => ({
+        noteTemplatesById: {
+          ...s.noteTemplatesById,
+          [data.id]: { ...merged, updated_by_profile: { id: me.id || null, full_name: me.name } },
+        },
+      }));
+    }
+    return data;
+  },
+
+  updateNoteTemplate: async (id, patch) => {
+    if (!id) return null;
+    const { data, error } = await supabase
+      .from('forms')
+      .update(patch)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) {
+      console.error('updateNoteTemplate error:', error);
+      throw error;
+    }
+    await get().fetchNoteTemplates({ force: true });
+    return data;
+  },
+
+  // Atomic default swap for a (gap_code, context) pair. Clears the
+  // previous default (if any) then flips the target on. Done as two
+  // updates on the server; the partial unique index guarantees neither
+  // observer ever sees two defaults for the same lane.
+  setNoteTemplateAsDefault: async (id) => {
+    const row = get().noteTemplatesById?.[id];
+    if (!row?.gap_code || !row?.context) {
+      throw new Error('Only Care Gap templates with a context can be set as default.');
+    }
+    const { error: clearErr } = await supabase
+      .from('forms')
+      .update({ is_default_for_gap: false })
+      .eq('form_type', 'Note')
+      .eq('gap_code', row.gap_code)
+      .eq('context', row.context)
+      .eq('is_default_for_gap', true);
+    if (clearErr) {
+      console.error('setNoteTemplateAsDefault clear error:', clearErr);
+      throw clearErr;
+    }
+    const { error: setErr } = await supabase
+      .from('forms')
+      .update({ is_default_for_gap: true })
+      .eq('id', id);
+    if (setErr) {
+      console.error('setNoteTemplateAsDefault set error:', setErr);
+      throw setErr;
+    }
+    await get().fetchNoteTemplates({ force: true });
+  },
+
+  // Soft-delete: reuse the existing `status` column. Historical
+  // `clinical_notes.form_id` rows stay pointed at the archived template
+  // (payload is already a snapshot), so preview keeps working.
+  archiveNoteTemplate: async (id) => {
+    if (!id) return false;
+    const { error } = await supabase
+      .from('forms')
+      .update({ status: 'archived', is_default_for_gap: false })
+      .eq('id', id);
+    if (error) {
+      console.error('archiveNoteTemplate error:', error);
+      throw error;
+    }
+    await get().fetchNoteTemplates({ force: true });
+    return true;
+  },
+
+  // Hard-delete the template. Historical clinical_notes rows keep their
+  // payload snapshot; `clinical_notes.form_id → ON DELETE SET NULL`, so
+  // the pointer just clears. Use archive when in doubt.
+  deleteNoteTemplate: async (id) => {
+    if (!id) return false;
+    const { error } = await supabase
+      .from('forms')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      console.error('deleteNoteTemplate error:', error);
+      throw error;
+    }
+    await get().fetchNoteTemplates({ force: true });
+    return true;
   },
 
   fetchClinicalNotesForMember: async (hedisMemberId) => {
@@ -6699,6 +6910,10 @@ export const useAppStore = create((set, get) => ({
     patientId,
     gapCodes,
     formType = 'cbp_visit_note',
+    // Pointer to the `forms` row this note was authored from (Note
+    // Templates). Optional; older callers that pre-date the template
+    // work write with `formId=null` and stay backwards-compatible.
+    formId,
     status,
     payload,
     pdf,
@@ -6724,6 +6939,7 @@ export const useAppStore = create((set, get) => ({
       hedis_member_id: hedisMemberId,
       gap_codes: gapCodes || [],
       form_type: formType,
+      form_id: formId || null,
       status,
       payload: payload || {},
       pdf_filename: pdf?.filename || null,
@@ -6747,9 +6963,9 @@ export const useAppStore = create((set, get) => ({
     // Legacy fallback: clinical_notes_origin_migration.sql may not have
     // landed yet. If the DB rejects because origin_kind/origin_ref
     // don't exist, drop them and retry.
-    if (error && /column .* does not exist|origin_kind|origin_ref/i.test(error.message || '')) {
+    if (error && /column .* does not exist|origin_kind|origin_ref|form_id/i.test(error.message || '')) {
       // eslint-disable-next-line no-unused-vars
-      const { origin_kind, origin_ref, ...legacyRow } = row;
+      const { origin_kind, origin_ref, form_id, ...legacyRow } = row;
       ({ data, error } = await supabase
         .from('clinical_notes')
         .upsert(legacyRow, { onConflict: 'id' })

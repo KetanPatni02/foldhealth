@@ -1,0 +1,47 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.fieldLabel {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.required {
+  color: var(--primary-300);
+}
+.help {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.error {
+  font-size: var(--font-sm);
+  color: var(--status-error);
+}
+
+.radioStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1) 0;
+}
+
+.checkboxRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  cursor: pointer;
+}
+.checkboxRow input { accent-color: var(--primary-300); }
