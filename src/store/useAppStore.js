@@ -318,6 +318,12 @@ function mapPatientCarePlanRow(row) {
     conditions: (row.conditions || []).map(label => ({ label })),
     conditionTotal: row.condition_total ?? (row.conditions || []).length,
     appliedTemplateIds: row.applied_template_ids || [],
+    // { [templateId]: 'low' | 'medium' | 'high' } — categorizes the applied
+    // templates on the sticky-top strip. Empty until Alok Kumar runs the
+    // care_plan_applied_template_priorities migration.
+    appliedTemplatePriorities: row.applied_template_priorities && typeof row.applied_template_priorities === 'object'
+      ? row.applied_template_priorities
+      : {},
     createdDate: row.created_at,
     updatedAt: row.updated_at || null,
     signedBy: row.signed_by || null,
@@ -3122,34 +3128,56 @@ export const useAppStore = create((set, get) => ({
     return get().saveCarePlanTemplate({ name: name.trim(), conditions, goals, interventions });
   },
 
-  setPatientCarePlanAppliedTemplates: async (patientId, program, templateIds) => {
+  setPatientCarePlanAppliedTemplates: async (patientId, program, templateIds, priorityUpdates) => {
     const key = carePlanKey(patientId, program.id);
     const planId = await get().ensurePatientCarePlan(patientId, program);
     if (!planId) return false;
     const ids = [...new Set(templateIds)];
-    const { error } = await supabase
+    const cur = get().patientCarePlans[key];
+    // Merge the current priorities with any updates the caller passed in,
+    // then prune anything no longer applied so the map never leaks stale ids.
+    const nextPriorities = { ...(cur?.plan?.appliedTemplatePriorities || {}) };
+    if (priorityUpdates && typeof priorityUpdates === 'object') {
+      for (const [tid, p] of Object.entries(priorityUpdates)) {
+        if (p == null) delete nextPriorities[tid];
+        else nextPriorities[tid] = p;
+      }
+    }
+    for (const k of Object.keys(nextPriorities)) if (!ids.includes(k)) delete nextPriorities[k];
+
+    const now = new Date().toISOString();
+    let { error } = await supabase
       .from('patient_care_plans')
-      .update({ applied_template_ids: ids, updated_at: new Date().toISOString() })
+      .update({ applied_template_ids: ids, applied_template_priorities: nextPriorities, updated_at: now })
       .eq('id', planId);
+    // Schema-tolerant fallback: the priorities column arrives with the
+    // care_plan_applied_template_priorities migration; before that lands,
+    // retry with just the ids so applying / removing keeps working.
+    if (error && /applied_template_priorities/.test(error.message || '')) {
+      ({ error } = await supabase
+        .from('patient_care_plans')
+        .update({ applied_template_ids: ids, updated_at: now })
+        .eq('id', planId));
+    }
     if (error) {
       console.warn('setPatientCarePlanAppliedTemplates:', error.message);
       get().showToast('Could not save applied templates');
       return false;
     }
     set(s => {
-      const cur = s.patientCarePlans[key];
-      if (!cur?.plan) return {};
+      const c = s.patientCarePlans[key];
+      if (!c?.plan) return {};
       return {
         patientCarePlans: {
           ...s.patientCarePlans,
-          [key]: { ...cur, plan: { ...cur.plan, appliedTemplateIds: ids } },
+          [key]: { ...c, plan: { ...c.plan, appliedTemplateIds: ids, appliedTemplatePriorities: nextPriorities } },
         },
       };
     });
     return true;
   },
 
-  applyPatientCarePlanTemplates: async (patientId, program, nextTemplateIds) => {
+  applyPatientCarePlanTemplates: async (patientId, program, nextTemplateIds, priorityUpdates) => {
     const key = carePlanKey(patientId, program.id);
     const cur = get().patientCarePlans[key];
     const prevIds = cur?.plan?.appliedTemplateIds || [];
@@ -3181,7 +3209,7 @@ export const useAppStore = create((set, get) => ({
       }
     }
 
-    const ok = await get().setPatientCarePlanAppliedTemplates(patientId, program, nextIds);
+    const ok = await get().setPatientCarePlanAppliedTemplates(patientId, program, nextIds, priorityUpdates);
     if (!ok) return false;
     const added = toAdd.length;
     const removed = prevIds.filter(id => !nextIds.includes(id)).length;

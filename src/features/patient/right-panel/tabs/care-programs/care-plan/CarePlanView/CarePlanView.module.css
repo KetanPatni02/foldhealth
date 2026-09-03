@@ -24,6 +24,76 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 
+/* Applied-template priority strip — Figma 2562:59690.
+   Each priority (High → Medium → Low) gets its own row with a 32px left
+   rail carrying the shared PriorityIcon, a flex-wrapping chip lane, and an
+   optional "View More / View Less" affordance when the row overflows. */
+.templatePriorityBar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.priorityRow {
+  display: flex;
+  align-items: stretch;
+  min-height: 38px;
+  padding-right: var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+}
+.priorityRail {
+  width: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 0.5px solid var(--neutral-150);
+  padding: 0 var(--space-1);
+}
+.priorityChips {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+.viewMoreLink {
+  border: none;
+  background: none;
+  padding: 0 0 0 var(--space-2);
+  align-self: center;
+  flex-shrink: 0;
+  color: var(--primary-300);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.viewMoreLink:hover { text-decoration: underline; }
+.templateFilterBar {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.appliedTemplateTrail {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.appliedTemplateRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--space-1);
+  cursor: pointer;
+}
+.appliedTemplateRemove:hover { background: var(--neutral-50); }
+
 .contentBody {
   display: flex;
   flex-direction: column;
@@ -360,7 +430,7 @@
 .goalRow,
 .intvRow {
   padding: 12px 4px;
-  border-bottom: 0.5px solid var(--neutral-100);
+  border-bottom: 0.5px solid var(--neutral-150);
 }
 .goalRowClickable {
   cursor: pointer;

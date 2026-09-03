@@ -1,9 +1,14 @@
+/* Figma 2349:336796 — Add Care Plan Templates drawer. Search sits above a
+   two-column table (Problems Name / Priority) whose rows carry a checkbox,
+   a title + template subtitle, and a three-button priority picker rendered
+   with the shared PriorityIcon primitive. */
+
 .headerDivider {
   display: inline-block;
   width: 1px;
   height: 16px;
   background: var(--neutral-150);
-  margin: 0 var(--space-1);
+  flex-shrink: 0;
 }
 
 .body {
@@ -15,37 +20,38 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
-.sectionLabel {
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-300);
-  padding: var(--space-2) var(--space-2) var(--space-1);
-}
-.sectionLabel:not(:first-child) {
-  margin-top: var(--space-2);
-  border-top: 0.5px solid var(--neutral-150);
-}
-
-.rowWrap {
+.tableHead {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
+  color: var(--neutral-200);
+  font-size: var(--font-base);
+  font-weight: 500;
+}
+.tableHeadName {
+  flex: 1;
+  min-width: 0;
+}
+.tableHeadPriority {
+  width: 104px;
+  flex-shrink: 0;
+  padding-left: var(--space-3);
 }
 
 .row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  min-height: 40px;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--space-1);
-  cursor: pointer;
 }
-
 .row:hover {
-  background: var(--neutral-50);
+  background: var(--neutral-25);
 }
 
 .rowText {
@@ -53,9 +59,9 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  justify-content: center;
+  gap: calc(var(--space-1) / 2);
 }
-
 .rowTitle {
   font-size: var(--font-base);
   color: var(--neutral-400);
@@ -63,9 +69,79 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.rowSubtitle {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
-.rowConditions {
-  min-width: 0;
+.priorityGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+/* Priority button — Figma 2562:60655 / 60665 / 60675.
+   Three states per priority variant:
+   • Default: 0.5px grey-150 border, glyph greyed out (grayscale filter so
+     the shared PriorityIcon SVG mutes its colour without touching the
+     primitive).
+   • Hover: coloured tint background, glyph goes full colour.
+   • Selected: coloured tint background + 0.5px accent border.
+   Each priority carries its own tint / accent so Low reads blue, Medium
+   amber, High coral. */
+.priorityBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-1);
+  background: var(--neutral-0);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, filter 0.12s;
+}
+.priorityBtn > svg { filter: grayscale(1); opacity: 0.7; transition: filter 0.12s, opacity 0.12s; }
+.priorityBtn:hover > svg,
+.priorityBtnActive > svg { filter: none; opacity: 1; }
+
+/* Low — status-info palette */
+.priorityBtn[data-priority="low"]:hover {
+  background: var(--status-info-light);
+  border-color: var(--status-info-light);
+}
+.priorityBtn[data-priority="low"].priorityBtnActive {
+  background: var(--status-info-light);
+  border-color: var(--status-info);
+}
+
+/* Medium — status-warning palette */
+.priorityBtn[data-priority="medium"]:hover {
+  background: var(--status-warning-light);
+  border-color: var(--status-warning-light);
+}
+.priorityBtn[data-priority="medium"].priorityBtnActive {
+  background: var(--status-warning-light);
+  border-color: var(--status-warning-dark);
+}
+
+/* High — secondary (coral) palette */
+.priorityBtn[data-priority="high"]:hover {
+  background: var(--secondary-100);
+  border-color: var(--secondary-100);
+}
+.priorityBtn[data-priority="high"].priorityBtnActive {
+  background: var(--secondary-100);
+  border-color: var(--secondary-300);
+}
+
+.priorityBtn:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 1px;
 }
 
 .empty {
