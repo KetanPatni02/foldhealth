@@ -10,10 +10,7 @@ import { Input } from '../../../../../components/Input/Input';
 import { DatePicker } from '../../../../../components/DatePicker/DatePicker';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { Tooltip } from '../../../../../components/Tooltip/Tooltip';
-import { AddTaskDrawer } from '../../../../tasks/AddTaskDrawer';
-import { SendFormDrawer } from '../../interventions/SendFormDrawer/SendFormDrawer';
-import { SendContentDrawer } from '../../interventions/SendContentDrawer/SendContentDrawer';
-import { MeasureVitalDrawer } from '../../interventions/MeasureVitalDrawer/MeasureVitalDrawer';
+import { INTERVENTION_EDITORS } from '../../interventions';
 import { Link } from '../../../../../components/Link/Link';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
@@ -22,24 +19,8 @@ import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIco
 import { VITAL_OPTIONS } from '../../lib/vitalOptions';
 import { ChronicConditionSelect } from '../../shared';
 import { MEASURE_CONFIG } from '../../lib/goalFormat';
+import { GOAL_CATEGORIES, normalizeCategory } from '../../lib/goalCategories';
 import styles from './CreateGoalDrawer.module.css';
-
-// Categories per the goal-creation screens. Order: physical
-// measurements first, lifestyle, then Assessment (structured
-// instruments), then the free-form Others catch-all bucket.
-const GOAL_CATEGORIES = ['Vitals', 'Labs', 'Diet', 'Exercise', 'Assessment', 'Others'];
-
-// Older seeded rows carry the previous labels ('Vital' / 'Activity' /
-// 'Lab result' / 'Other'). Map them to the new enum on read so the
-// drawer's category Toggle lands on the correct tab even before
-// `bun run seed` re-runs. Assessment kept its name across the rename.
-const LEGACY_CATEGORY_MAP = {
-  Vital: 'Vitals',
-  Activity: 'Exercise',
-  'Lab result': 'Labs',
-  Other: 'Others',
-};
-const normalizeCategory = (c) => LEGACY_CATEGORY_MAP[c] || c || GOAL_CATEGORIES[0];
 
 // Per-measure target-value shape:
 //   unit        single trailing unit segment
@@ -89,10 +70,6 @@ const MEASURES = {
     options: [
       'Annual Wellness Visit', 'Preventive Screening', 'Fall Risk Assessment',
       'Immunization Review', 'Advance Care Planning',
-      'CCM Initial Assessment', 'SNP - Health Risk Assessment', 'COPD Initial Assessment',
-      'Patient Assessment', 'BRSCI - Benjamin Rose Institute Caregiver Strain Instrument',
-      'Patient Assessment (ECM)', 'Health Risk Assessment Questionnaire',
-      'Medication Management', 'CHF Initial Assessment', 'ACM Nursing Assessment',
     ],
   },
   // No Others entry — the measure row is hidden for Others so a free-
@@ -142,14 +119,6 @@ function dueBadgeLabel(config) {
   if (!config?.dueOffset) return '';
   return `${config.dueOffset}${(config.dueUnit || 'day')[0]}`;
 }
-
-// Which drawer edits which intervention kind. Patient/Internal tasks go
-// through the shared Add Task drawer instead.
-const INTERVENTION_EDITORS = {
-  'send-form': SendFormDrawer,
-  'patient-education': SendContentDrawer,
-  'measure-vital': MeasureVitalDrawer,
-};
 
 // Titles across the library share one ceiling.
 const TITLE_MAX = 150;
@@ -217,7 +186,6 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const [priorityMenuFor, setPriorityMenuFor] = useState(null);
   const [interventionEditing, setInterventionEditing] = useState(null);
   const [interventionDraft, setInterventionDraft] = useState('');
-  const [taskDrawerOpen, setTaskDrawerOpen] = useState(null);
   // { kind, index } — index null while adding, a row index while editing.
   const [interventionDrawer, setInterventionDrawer] = useState(null);
   const durationUnitRef = useRef(null);
@@ -573,8 +541,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                       items={INTERVENTION_ITEMS}
                       onSelect={(key) => {
                         setInterventionMenuOpen(false);
-                        if (key === 'patient-task' || key === 'internal-task') setTaskDrawerOpen(key);
-                        else setInterventionDrawer({ kind: key, index: null });
+                        setInterventionDrawer({ kind: key, index: null });
                       }}
                       onClose={() => setInterventionMenuOpen(false)}
                     />
@@ -752,6 +719,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         const editing = interventionDrawer.index !== null;
         return (
           <Editor
+            kind={interventionDrawer.kind}
             intervention={editing ? interventions[interventionDrawer.index]?.config : undefined}
             onClose={() => setInterventionDrawer(null)}
             onSave={(config) => {
@@ -765,12 +733,6 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
           />
         );
       })()}
-      {taskDrawerOpen && (
-        <AddTaskDrawer
-          onClose={() => setTaskDrawerOpen(false)}
-          onTaskCreated={(t) => { addIntervention(taskDrawerOpen, t?.name || '', { taskId: t?.id }); setTaskDrawerOpen(false); }}
-        />
-      )}
     </Drawer>
   );
 }

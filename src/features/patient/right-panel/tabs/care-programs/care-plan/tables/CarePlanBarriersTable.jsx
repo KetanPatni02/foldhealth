@@ -20,7 +20,6 @@ function BarrierRow({
   selectedIds,
   canEdit,
   onToggleSelect,
-  onLinkOwner,
   onStatusMenu,
   onRowMenu,
   onOpenBarrier,
@@ -49,7 +48,6 @@ function BarrierRow({
           meta={b.description || null}
           linked={linked(b)}
           canEdit={canEdit}
-          onLinkClick={() => onLinkOwner({ kind: 'barrier', item: b })}
         />
       </td>
       {!template && (
@@ -85,7 +83,6 @@ export function CarePlanBarriersTable({
   selectedIds,
   onSelectAll,
   onToggleSelect,
-  onLinkOwner,
   onStatusMenu,
   onRowMenu,
   onOpenBarrier,
@@ -132,7 +129,6 @@ export function CarePlanBarriersTable({
             selectedIds={selectedIds}
             canEdit={canEdit}
             onToggleSelect={onToggleSelect}
-            onLinkOwner={onLinkOwner}
             onStatusMenu={onStatusMenu}
             onRowMenu={onRowMenu}
             onOpenBarrier={onOpenBarrier}
@@ -173,8 +169,7 @@ export function CarePlanBarriersTable({
                     selectedIds={selectedIds}
                     canEdit={canEdit}
                     onToggleSelect={onToggleSelect}
-                    onLinkOwner={onLinkOwner}
-                    onStatusMenu={onStatusMenu}
+                            onStatusMenu={onStatusMenu}
                     onRowMenu={onRowMenu}
                     onOpenBarrier={onOpenBarrier}
                     linked={linked}
