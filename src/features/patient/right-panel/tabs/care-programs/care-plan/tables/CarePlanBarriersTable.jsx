@@ -23,11 +23,16 @@ function BarrierRow({
   onLinkOwner,
   onStatusMenu,
   onRowMenu,
+  onOpenBarrier,
   linked,
   template,
 }) {
   return (
-    <tr key={b.id} className={`${styles.row} ${styles.gbiRow}`}>
+    <tr
+      key={b.id}
+      className={`${styles.row} ${styles.gbiRow} ${onOpenBarrier ? styles.rowClickable : ''}`}
+      onClick={() => onOpenBarrier?.(b)}
+    >
       {bulkMode && (
         <GbiCheckboxCell
           checked={selectedIds.includes(b.id)}
@@ -83,6 +88,7 @@ export function CarePlanBarriersTable({
   onLinkOwner,
   onStatusMenu,
   onRowMenu,
+  onOpenBarrier,
   linked,
   template = false,
   emptyState,
@@ -129,6 +135,7 @@ export function CarePlanBarriersTable({
             onLinkOwner={onLinkOwner}
             onStatusMenu={onStatusMenu}
             onRowMenu={onRowMenu}
+            onOpenBarrier={onOpenBarrier}
             linked={linked}
             template={template}
           />
@@ -169,6 +176,7 @@ export function CarePlanBarriersTable({
                     onLinkOwner={onLinkOwner}
                     onStatusMenu={onStatusMenu}
                     onRowMenu={onRowMenu}
+                    onOpenBarrier={onOpenBarrier}
                     linked={linked}
                     template={template}
                   />
