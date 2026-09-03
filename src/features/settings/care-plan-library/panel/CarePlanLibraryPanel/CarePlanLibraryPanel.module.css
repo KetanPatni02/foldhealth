@@ -254,3 +254,58 @@
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
+
+.bulkOff :global(th:first-child),
+.bulkOff :global(td:first-child) {
+  padding-left: 0;
+  padding-right: 0;
+  overflow: hidden;
+}
+.bulkOff :global(td:first-child) > *,
+.bulkOff :global(th:first-child) > * {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.bulkOn :global(td:first-child) > *,
+.bulkOn :global(th:first-child) > * {
+  opacity: 1;
+  transition: opacity 180ms ease 60ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bulkOn :global(th),
+  .bulkOff :global(th),
+  .bulkOn :global(td),
+  .bulkOff :global(td),
+  .bulkOn :global(td:first-child) > *,
+  .bulkOff :global(td:first-child) > * {
+    transition: none;
+  }
+}
+
+/* Bulk select slides the checkbox column open rather than inserting it: the
+   cell stays mounted at width 0 and animates to 44px, so the table shifts
+   once, smoothly, instead of reflowing in a single frame. */
+.tdCheck {
+  transition: width 180ms ease, padding 180ms ease;
+}
+.tdCheck > * {
+  transition: opacity 180ms ease 60ms;
+}
+.tdCheckCollapsed {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  overflow: hidden;
+}
+.tdCheckCollapsed > * {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tdCheck,
+  .tdCheck > * {
+    transition: none;
+  }
+}

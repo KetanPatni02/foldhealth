@@ -67,15 +67,18 @@ export function CarePlanGoalsTable({
               />
             )}
             <td className={styles.priorityTd} onClick={e => e.stopPropagation()}>
-              <button
-                type="button"
-                className={styles.priorityBtn}
-                onClick={(e) => canEdit && onPriorityMenu({ kind: 'goal', item: g, rect: e.currentTarget.getBoundingClientRect() })}
-                disabled={!canEdit}
-                aria-label="Change priority"
-              >
+              {canEdit ? (
+                <button
+                  type="button"
+                  className={styles.priorityBtn}
+                  onClick={(e) => onPriorityMenu({ kind: 'goal', item: g, rect: e.currentTarget.getBoundingClientRect() })}
+                  aria-label="Change priority"
+                >
+                  <PriorityIcon priority={g.priority} size={16} />
+                </button>
+              ) : (
                 <PriorityIcon priority={g.priority} size={16} />
-              </button>
+              )}
             </td>
             <td className={styles.titleTd}>
               <GbiNameCell

@@ -159,43 +159,6 @@
   gap: var(--space-2);
 }
 
-/* Picked goals — one card per goal, stacked above the Add New action. */
-.goalList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.goalCard {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
-}
-.goalText {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-.goalTitle {
-  font-size: var(--font-base);
-  color: var(--neutral-400);
-}
-.goalDetail {
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-}
-.goalMeta {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  width: 90px;
-  flex-shrink: 0;
-}
 .goalListActions {
   display: flex;
   justify-content: center;

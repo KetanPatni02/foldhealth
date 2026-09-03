@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Input } from '../../../../../components/Input/Input';
 import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { Button } from '../../../../../components/Button/Button';
@@ -7,9 +7,9 @@ import { CloseButton } from '../../../../../components/CloseButton/CloseButton';
 import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
 import { AIIcon } from '../../../../../components/Icon/AIIcon';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
-import { Badge } from '../../../../../components/Badge/Badge';
-import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
 import { AddGoalsDrawer } from '../../goals/AddGoalsDrawer/AddGoalsDrawer';
+import { CarePlanSections, ChronicConditionSelect } from '../../shared';
+import { goalPayloadFromTemplateEntry } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import styles from './CarePlanCreateView.module.css';
 
 const NAME_MAX = 25;
@@ -29,8 +29,49 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [templateType, setTemplateType] = useState('general');
+  const [conditions, setConditions] = useState([]);
   const [goals, setGoals] = useState([]);
   const [addGoalsOpen, setAddGoalsOpen] = useState(false);
+
+  const goalRows = useMemo(() => goals.map(g => ({
+    ...goalPayloadFromTemplateEntry({ id: g.id }, goals),
+    id: g.id,
+    title: g.title,
+    subtitle: g.description || g.detail || '',
+    priority: g.priority || 'medium',
+    icon: 'solar:flag-linear',
+    status: 'Not Started',
+    currentValue: 'No Data',
+    trend: '—',
+    progress: '0%',
+  })), [goals]);
+
+  // A goal's links carry both kinds; the tables want them apart.
+  const linked = useMemo(() => {
+    const seen = new Set();
+    const interventions = [];
+    const barriers = [];
+    for (const g of goals) {
+      for (const link of g.interventions || []) {
+        if (seen.has(link.id)) continue;
+        seen.add(link.id);
+        if (link.kind === 'barrier') {
+          barriers.push({ id: link.id, title: link.title, status: 'Not Started' });
+        } else {
+          interventions.push({
+            id: link.id,
+            kind: link.kind,
+            title: link.title,
+            icon: 'solar:clipboard-list-linear',
+            priority: 'medium',
+            status: 'Not Started',
+            assignee: { name: 'Unassigned', initials: '' },
+          });
+        }
+      }
+    }
+    return { interventions, barriers };
+  }, [goals]);
 
   // Picked goals merge in by id, so re-opening the picker can't duplicate rows.
   const addGoals = (picked) => {
@@ -94,6 +135,12 @@ export function CarePlanCreateView({ onClose, onSave }) {
               />
             ))}
           </div>
+
+          {/* A chronic-conditions template needs to say which conditions —
+              same picker the goal drawer and the template editor use. */}
+          {templateType === 'chronic' && (
+            <ChronicConditionSelect value={conditions} onChange={setConditions} />
+          )}
         </div>
       </div>
 
@@ -129,30 +176,23 @@ export function CarePlanCreateView({ onClose, onSave }) {
               </div>
             </div>
           ) : (
-            <div className={styles.goalList}>
-              {goals.map(g => (
-                <div key={g.id} className={styles.goalCard}>
-                  <span className={styles.goalText}>
-                    <span className={styles.goalTitle}>{g.title}</span>
-                    {g.detail && <span className={styles.goalDetail}>{g.detail}</span>}
-                  </span>
-                  <span className={styles.goalMeta}>
-                    <Badge tone="grey" size="S" label={g.category} />
-                    <PriorityIcon priority={g.priority} size={16} />
-                  </span>
+            <CarePlanSections
+              goalRows={goalRows}
+              interventionRows={linked.interventions}
+              barrierRows={linked.barriers}
+              footer={(
+                <div className={styles.goalListActions}>
+                  <Button
+                    variant="tertiary"
+                    size="L"
+                    leadingIconElement={<AddIconMinimalist size={16} />}
+                    onClick={() => setAddGoalsOpen(true)}
+                  >
+                    Add New
+                  </Button>
                 </div>
-              ))}
-              <div className={styles.goalListActions}>
-                <Button
-                  variant="tertiary"
-                  size="L"
-                  leadingIconElement={<AddIconMinimalist size={16} />}
-                  onClick={() => setAddGoalsOpen(true)}
-                >
-                  Add New
-                </Button>
-              </div>
-            </div>
+              )}
+            />
           )}
         </div>
       </div>

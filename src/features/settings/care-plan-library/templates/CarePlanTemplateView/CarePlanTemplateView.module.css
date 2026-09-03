@@ -76,6 +76,8 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  /* Matches .formHeader so the two panes' rules line up. */
+  min-height: 48px;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-3);
   background: var(--neutral-0);
