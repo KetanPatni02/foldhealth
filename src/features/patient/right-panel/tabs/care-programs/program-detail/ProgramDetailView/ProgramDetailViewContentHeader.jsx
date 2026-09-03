@@ -101,22 +101,12 @@ export function ProgramDetailViewContentHeader({
 
   const carePlanMoreItems = useMemo(() => {
     const items = [
-      { key: 'bulk', icon: 'solar:checklist-minimalistic-linear', label: carePlanBulkMode ? 'Exit bulk select' : 'Select multiple' },
-      { key: 'versions', icon: 'solar:layers-minimalistic-linear', label: 'Versions' },
+      { key: 'template', icon: 'solar:bookmark-linear', label: 'Save as Template' },
+      { key: 'note', icon: 'solar:notes-linear', label: 'Add Note' },
       { key: 'history', iconElement: <Icon name="custom:history" size={16} color="var(--neutral-400)" />, label: 'History' },
-      { key: 'preview', icon: 'solar:eye-linear', label: 'Preview' },
-      { key: 'scan-duplicates', icon: 'solar:copy-linear', label: 'Scan for Duplicates' },
     ];
-    if (!carePlanMeta.usingMock) {
-      items.push({ key: 'template', icon: 'solar:bookmark-linear', label: 'Save as Template' });
-    }
-    if (!carePlanMeta.usingMock && carePlanMeta.signedBy) {
-      items.push({ key: 'note', icon: 'solar:notes-linear', label: 'Add Note' });
-    } else if (!carePlanMeta.usingMock) {
-      items.push({ key: 'sign', icon: 'solar:pen-2-linear', label: 'Sign' });
-    }
     return items;
-  }, [carePlanMeta, carePlanBulkMode]);
+  }, []);
 
   const handleCarePlanMoreSelect = (key) => {
     setCarePlanMoreMenu(null);
@@ -251,28 +241,23 @@ export function ProgramDetailViewContentHeader({
         <div className={isCarePlanStep ? styles.carePlanActionBar : styles.contentActions}>
           {isCarePlanStep ? (
             <>
-              <div className={styles.carePlanIconGroup}>
-                <ActionButton icon="solar:magnifer-linear" size="L" tooltip="Search & filter" onClick={() => requestCarePlanPanel('filter')} />
-                <ActionButton icon="solar:eye-linear" size="L" tooltip="Preview" onClick={() => requestCarePlanShare('preview')} />
-                <ActionButton icon="solar:download-minimalistic-linear" size="L" tooltip="Download" onClick={() => requestCarePlanShare('preview')} />
-                <ActionButton icon="solar:history-linear" size="L" tooltip="History" onClick={() => requestCarePlanPanel('history')} />
-              </div>
-              <span className={styles.carePlanActionSecondaryGroup}>
-                <BulkSelectToggle size="S" active={carePlanBulkMode} onToggle={toggleCarePlanBulkMode} />
-              </span>
+              <BulkSelectToggle size="S" active={carePlanBulkMode} onToggle={toggleCarePlanBulkMode} />
+              <span className={styles.headerDivider} aria-hidden="true" />
+              <ActionButton icon="solar:download-minimalistic-linear" size="L" tooltip="Download" onClick={() => requestCarePlanShare('preview')} />
+              <span className={styles.headerDivider} aria-hidden="true" />
               <Button
-                className={styles.carePlanBtnSaveTemplate}
-                variant="secondary"
+                variant="ghost"
                 size="L"
-                leadingIcon="solar:bookmark-linear"
-                disabled={carePlanMeta.usingMock}
-                onClick={() => requestCarePlanPanel('template')}
+                leadingIcon="solar:add-circle-linear"
+                onClick={() => requestCarePlanPanel('templates')}
               >
-                Save as Template
+                Care Plan
               </Button>
+              <span className={styles.headerDivider} aria-hidden="true" />
               <Button variant="alt" size="L" leadingIcon="solar:pen-2-linear" disabled={!signShareEnabled} onClick={() => requestCarePlanShare('share')}>
                 Sign &amp; Share
               </Button>
+              <span className={styles.headerDivider} aria-hidden="true" />
               <ActionButton
                 icon="solar:menu-dots-linear"
                 size="L"
