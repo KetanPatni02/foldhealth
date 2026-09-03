@@ -5,6 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  height: 40px;
   border-bottom: 0.5px solid var(--neutral-150);
   background: linear-gradient(to right, #fff8fd, white 71%);
   flex-shrink: 0;
@@ -13,13 +14,15 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 12px;
+  padding: 0 var(--space-3);
+  height: 100%;
 }
 .headerRight {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 0 var(--space-3);
+  height: 100%;
 }
 .programTitle {
   font-size: var(--font-base);
@@ -307,8 +310,10 @@
 }
 .contentHeaderCarePlan {
   container-type: inline-size;
-  padding: var(--space-3) var(--space-4);
+  height: 48px;
+  padding: 0 var(--space-4);
   gap: var(--space-3);
+  justify-content: center;
 }
 /* Top row: title on the left, actions on the right. The header becomes a
    column so the tasks filter chips can sit on a second row inside the same
@@ -323,7 +328,7 @@
 /* Care Plan header — stack title + actions on narrow columns. */
 .contentHeaderRowCarePlan {
   flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
   row-gap: var(--space-3);
 }
 .contentHeaderRowCarePlan .assessmentHeader {

@@ -133,6 +133,7 @@ export function CarePlanView({ patientId, program }) {
   const carePlanPanelRequest = useAppStore(s => s.carePlanPanelRequest);
   const clearCarePlanPanelRequest = useAppStore(s => s.clearCarePlanPanelRequest);
   const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
+  const carePlanGoals = useAppStore(s => s.carePlanGoals);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
   const applyPatientCarePlanTemplates = useAppStore(s => s.applyPatientCarePlanTemplates);
   const savePatientCarePlanConditions = useAppStore(s => s.savePatientCarePlanConditions);
@@ -175,6 +176,7 @@ export function CarePlanView({ patientId, program }) {
     if (!carePlanPanelRequest) return;
     if (carePlanPanelRequest === 'versions') setVersionsOpen(true);
     else if (carePlanPanelRequest === 'template') { setTemplateName(''); setTemplateOpen(true); }
+    else if (carePlanPanelRequest === 'templates') setTemplatesDrawerOpen(true);
     else if (carePlanPanelRequest === 'history') setHistoryOpen(true);
     else if (carePlanPanelRequest === 'filter') setFiltersOpen(true);
     else if (carePlanPanelRequest === 'note') { setNoteText(''); setNoteOpen(true); }
@@ -240,6 +242,11 @@ export function CarePlanView({ patientId, program }) {
   // in the current plan version, with delink + add-goal affordances.
   const [previewBarrier, setPreviewBarrier] = useState(null);
   const [templatesDrawerOpen, setTemplatesDrawerOpen] = useState(false);
+  // Applied-template filter: clicking a template badge in the sticky bar
+  // scopes goals / interventions / barriers to items that came from that
+  // template. Click again (or another badge) to swap; the "+N more" chip
+  // clears it. Null means show everything.
+  const [templateFilterId, setTemplateFilterId] = useState(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind, id, name }
@@ -272,11 +279,52 @@ export function CarePlanView({ patientId, program }) {
   const matchesSP = (item) =>
     (!filters.status.length || filters.status.includes(item.status)) &&
     (!filters.priority.length || filters.priority.map(p => p.toLowerCase()).includes((item.priority || '').toLowerCase()));
-  const filteredGoals = useMemo(() => data.goals.filter(matchesSP), [data.goals, filters]); // eslint-disable-line react-hooks/exhaustive-deps
-  const filteredBarriers = useMemo(() => (data.barriers || []).filter(matchesSP), [data.barriers, filters]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A goal/intervention/barrier "belongs" to a template when its title
+  // matches one the template seeded — the apply flow dedupes by title, so
+  // the same key is a reliable link back (no persistent template_id
+  // column on the row). Barriers are cloned per-goal, so a barrier
+  // belongs to the template when its goalId points at one of the
+  // template's goals — this covers barriers added later against those
+  // goals too, not just the ones the template itself seeded.
+  const norm = (s) => (s || '').trim().toLowerCase();
+  const templateScope = useMemo(() => {
+    if (!templateFilterId) return null;
+    const t = carePlanTemplates.find(x => x.id === templateFilterId);
+    if (!t) return null;
+    const titlesOf = (list, kind) => new Set((list || []).map(e => {
+      if (kind === 'goals') {
+        const lib = e?.id ? carePlanGoals.find(g => g.id === e.id) : null;
+        return norm(lib?.title || e?.title || '');
+      }
+      return norm(e?.title || '');
+    }).filter(Boolean));
+    const goalTitles = titlesOf(t.goals, 'goals');
+    const goalIdSet = new Set(
+      data.goals.filter(g => goalTitles.has(norm(g.title))).map(g => g.id)
+    );
+    return {
+      goalTitles,
+      interventionTitles: titlesOf(t.interventions),
+      barrierTitles: titlesOf(t.barriers),
+      goalIdSet,
+    };
+  }, [templateFilterId, carePlanTemplates, carePlanGoals, data.goals]);
+  const matchesTemplate = (item, kind) => {
+    if (!templateScope) return true;
+    if (kind === 'barriers') {
+      return templateScope.goalIdSet.has(item.goalId)
+        || templateScope.barrierTitles.has(norm(item.title));
+    }
+    const set = kind === 'goals' ? templateScope.goalTitles : templateScope.interventionTitles;
+    return set.size > 0 && set.has(norm(item.title));
+  };
+
+  const filteredGoals = useMemo(() => data.goals.filter(g => matchesSP(g) && matchesTemplate(g, 'goals')), [data.goals, filters, templateScope]); // eslint-disable-line react-hooks/exhaustive-deps
+  const filteredBarriers = useMemo(() => (data.barriers || []).filter(b => matchesSP(b) && matchesTemplate(b, 'barriers')), [data.barriers, filters, templateScope]); // eslint-disable-line react-hooks/exhaustive-deps
   const filteredInterventions = useMemo(
-    () => data.interventions.filter(i => matchesSP(i) && (!filters.assignee.length || filters.assignee.includes(i.assignee?.name))),
-    [data.interventions, filters], // eslint-disable-line react-hooks/exhaustive-deps
+    () => data.interventions.filter(i => matchesSP(i) && matchesTemplate(i, 'interventions') && (!filters.assignee.length || filters.assignee.includes(i.assignee?.name))),
+    [data.interventions, filters, templateScope], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const conditionCounts = useMemo(() => {
@@ -659,23 +707,27 @@ export function CarePlanView({ patientId, program }) {
         <div className={styles.problemsBar}>
           <div className={styles.conditionRow}>
             <div className={styles.chips}>
-              {visibleTemplates.map(t => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={styles.appliedTemplateBadge}
-                  onClick={() => setTemplatesDrawerOpen(true)}
-                  aria-label={`${t.name}, ${templateGoalCount(t)} goals`}
-                >
-                  <Badge
-                    tone="grey"
-                    size="S"
-                    icon="solar:bookmark-linear"
-                    label={t.name}
-                    trailingIconElement={<span className={styles.appliedTemplateCount}>{templateGoalCount(t)}</span>}
-                  />
-                </button>
-              ))}
+              {visibleTemplates.map(t => {
+                const isActive = templateFilterId === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`${styles.appliedTemplateBadge} ${isActive ? styles.appliedTemplateBadgeActive : ''}`}
+                    aria-pressed={isActive}
+                    onClick={() => setTemplateFilterId(prev => (prev === t.id ? null : t.id))}
+                    aria-label={`${t.name}, ${templateGoalCount(t)} goals${isActive ? ', filter active' : ''}`}
+                  >
+                    <Badge
+                      tone={isActive ? 'primary' : 'grey'}
+                      size="S"
+                      icon="solar:bookmark-linear"
+                      label={t.name}
+                      trailingIconElement={<span className={styles.appliedTemplateCount}>{templateGoalCount(t)}</span>}
+                    />
+                  </button>
+                );
+              })}
               {hiddenTemplateCount > 0 ? (
                 <button
                   type="button"
@@ -684,6 +736,16 @@ export function CarePlanView({ patientId, program }) {
                   aria-label={`Show ${hiddenTemplateCount} more applied templates`}
                 >
                   <Badge tone="grey" size="S" label={`+${hiddenTemplateCount}`} />
+                </button>
+              ) : null}
+              {templateFilterId ? (
+                <button
+                  type="button"
+                  className={styles.appliedTemplateBadge}
+                  onClick={() => setTemplateFilterId(null)}
+                  aria-label="Clear template filter"
+                >
+                  <Badge tone="grey" size="S" icon="solar:close-circle-linear" label="Clear" />
                 </button>
               ) : null}
               {visibleConditions.map(c => {
@@ -717,15 +779,7 @@ export function CarePlanView({ patientId, program }) {
               ) : null}
             </div>
             <div className={styles.conditionActions}>
-              <button type="button" className={styles.problemsBtn} onClick={handleNewProblems} aria-label="Add problem">
-                <Icon name="solar:add-linear" size={16} color="var(--primary-300)" />
-                <span className={styles.problemsBtnLabel}>Problems</span>
-              </button>
-              <button type="button" className={styles.templatesBtn} onClick={handleTemplates} aria-label="Apply templates">
-                <Icon name="solar:bookmark-linear" size={16} color="var(--neutral-300)" />
-                <span className={styles.templatesBtnLabel}>Templates</span>
-                {appliedTemplateCount > 0 ? <span className={styles.templateCount}>{appliedTemplateCount}</span> : null}
-              </button>
+              {/* Templates moved to header before Sign & Share */}
             </div>
           </div>
         </div>
