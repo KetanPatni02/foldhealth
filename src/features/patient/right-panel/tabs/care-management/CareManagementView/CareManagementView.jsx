@@ -11,10 +11,11 @@ import { buildCarePlanSnapshot, filterCarePlanSnapshot, downloadCarePlanCsv } fr
 import { programUrlKey } from '../../care-programs/CareProgramsTab/CareProgramsTab.utils';
 import { stepsFor, flatSteps } from '../../care-programs/program-detail/ProgramDetailView/ProgramDetailView.utils';
 import { CareManagementToolbar } from '../CareManagementToolbar/CareManagementToolbar';
-import { ProgramActivityCard } from '../ProgramActivityCard/ProgramActivityCard.jsx';
+import { ProgramActivityDay } from '../ProgramActivityCard/ProgramActivityCard.jsx';
 import { groupProgramActivity } from '../programActivity';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
+import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { CM_FILTERS } from '../../../../data/programActivityMock';
 import styles from './CareManagementView.module.css';
 
@@ -101,6 +102,7 @@ function ProgramActivityLog({ header }) {
   const [searchMode, setSearchMode] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [collapsedMonths, setCollapsedMonths] = useState({});
 
   useEffect(() => {
     if (patientId) fetchPatientProgramActivity(patientId);
@@ -149,18 +151,29 @@ function ProgramActivityLog({ header }) {
         ) : months.length === 0 ? (
           <RingEmptyState icon="solar:clipboard-list-linear" label={searchText ? 'No matching activity' : 'No program activity yet'} />
         ) : (
-          months.map(month => (
-            <div key={month.key} className={styles.monthSection}>
-              <div className={styles.monthHeader}>
-                <span className={styles.monthLine} />
-                <span className={styles.monthTitle}>{month.label}</span>
-                <span className={styles.monthLine} />
+          months.map(month => {
+            const collapsed = !!collapsedMonths[month.key];
+            return (
+              <div key={month.key} className={styles.monthSection}>
+                <button
+                  type="button"
+                  className={styles.monthToggle}
+                  onClick={() => setCollapsedMonths(s => ({ ...s, [month.key]: !s[month.key] }))}
+                  aria-expanded={!collapsed}
+                >
+                  <span className={styles.monthTitle}>{month.label}</span>
+                  <DownChevronIcon
+                    size={13}
+                    color="var(--neutral-500)"
+                    className={`${styles.monthChevron} ${collapsed ? styles.monthChevronClosed : ''}`}
+                  />
+                </button>
+                {!collapsed && month.days.map(day => (
+                  <ProgramActivityDay key={day.key} day={day} />
+                ))}
               </div>
-              {month.cards.map(card => (
-                <ProgramActivityCard key={card.key} card={card} />
-              ))}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

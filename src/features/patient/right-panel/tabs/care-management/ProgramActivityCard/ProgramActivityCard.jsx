@@ -5,58 +5,142 @@ import { Avatar } from '../../../../../../components/Avatar/Avatar';
 import { TimelineItem } from '../TimelineItem/TimelineItem.jsx';
 import styles from './ProgramActivityCard.module.css';
 
-/**
- * One (date × program) group in the Program Activity Log: the program's changes
- * on a single day, collapsed to a summary with a "See all activities" toggle.
- */
-export function ProgramActivityCard({ card }) {
+/** Count badge on the timeline spine for a multi-activity program group. */
+function SpineCount({ count, isLast, isFirst }) {
+  return (
+    <div className={styles.spineCol}>
+      {isFirst ? <span className={styles.spineLine} /> : null}
+      <Avatar variant="others" initials={String(count)} size="XS" className={styles.spineAvatar} />
+      <span className={isLast ? styles.spineLineEnd : styles.spineLineGrow} />
+    </div>
+  );
+}
+
+/** Collapsed stacked cards — summary on top, two activity peeks beneath. */
+function ActivityStack({ entry, isLast, isFirst }) {
   const [expanded, setExpanded] = useState(false);
-  const extra = Math.max(0, card.users.length - 2);
+  const peekItems = entry.items.slice(0, 2);
+
+  if (expanded) {
+    return (
+      <div className={styles.entry}>
+        <SpineCount count={entry.count} isLast={isLast} isFirst={isFirst} />
+        <div className={styles.entryBody}>
+          <div className={styles.expandedList}>
+            {entry.items.map((item, idx) => (
+              <TimelineItem
+                key={item.id}
+                item={item}
+                programCode={entry.programCode}
+                spine
+                isFirst={idx === 0}
+                isLast={idx === entry.items.length - 1}
+              />
+            ))}
+          </div>
+          <button type="button" className={`${styles.seeAll} ${styles.seeAllButton}`} onClick={() => setExpanded(false)} aria-expanded>
+            <Icon name="solar:alt-arrow-down-linear" size={14} color="var(--primary-300)" />
+            Hide activities
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={styles.card}>
-      <div className={styles.dateCol}>
-        <span className={styles.date}>{card.date}</span>
-        <span className={styles.dayBadge}>{card.day}</span>
-        <div className={styles.dotLine}><span className={styles.dot} /></div>
-      </div>
-      <div className={styles.body}>
-        <div className={styles.header}>
-          <span className={styles.program}>{card.programName}</span>
-          <div className={styles.headerRight}>
-            {card.users.length > 0 && (
-              <div className={styles.avatarStack}>
-                {card.users.slice(0, 2).map((initials, i) => (
-                  <div key={initials} className={styles.avatarWrap} style={{ marginLeft: i > 0 ? -8 : 0, zIndex: 3 - i }}>
-                    <Avatar variant="assignee" initials={initials} />
-                  </div>
-                ))}
-                {extra > 0 && (
-                  <div className={styles.avatarWrap} style={{ marginLeft: -8 }}>
-                    <span className={styles.avatarCount}>+{extra}</span>
-                  </div>
-                )}
+    <div className={styles.entry}>
+      <SpineCount count={entry.count} isLast={isLast} isFirst={isFirst} />
+      <div className={styles.entryBody}>
+        <button type="button" className={styles.stackButton} onClick={() => setExpanded(true)} aria-expanded={false}>
+          <div className={styles.stack}>
+            <div className={styles.summaryCard}>
+              <div className={styles.summaryText}>
+                <span className={styles.programTitle}>{entry.programName}</span>
+                <span className={styles.summaryMeta}>
+                  {entry.count} {entry.count === 1 ? 'Activity' : 'Activities'} • {entry.userCount} {entry.userCount === 1 ? 'User' : 'Users'}
+                </span>
               </div>
-            )}
-            <Badge tone="grey" size="S" label={card.programCode} />
+              <Badge tone="primary" size="XS" label={entry.programCode} />
+            </div>
+            {peekItems.map((item, i) => (
+              <div
+                key={item.id}
+                className={styles.peekLayer}
+                style={{ zIndex: 2 - i, '--peek-inset': `${(i + 1) * 8}px` }}
+              >
+                <div className={styles.peekCard}>
+                  <TimelineItem
+                    item={item}
+                    programCode={entry.programCode}
+                    showDate
+                    peek
+                    isLast={i === peekItems.length - 1}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
-
-        <div className={styles.activities}>
-          {card.count} {card.count === 1 ? 'Activity' : 'Activities'} • {card.userCount} {card.userCount === 1 ? 'User' : 'Users'}
-        </div>
-
-        <button type="button" className={styles.seeAll} onClick={() => setExpanded(v => !v)} aria-expanded={expanded}>
-          <Icon name={expanded ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={14} color="var(--primary-300)" />
-          {expanded ? 'Hide activities' : 'See all activities'}
+          <span className={styles.seeAll}>
+            <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--primary-300)" />
+            See all activities
+          </span>
         </button>
-
-        {expanded && (
-          <div className={styles.timeline}>
-            {card.items.map(item => <TimelineItem key={item.id} item={item} />)}
-          </div>
-        )}
       </div>
     </div>
   );
+}
+
+/** Single activity on a day — full row with icon spine (no stack). */
+function ActivitySingle({ entry, isLast, isFirst }) {
+  return (
+    <div className={styles.entry}>
+      <TimelineItem
+        item={entry.items[0]}
+        programCode={entry.programCode}
+        spine
+        isFirst={isFirst}
+        isLast={isLast}
+      />
+    </div>
+  );
+}
+
+/**
+ * One calendar day in the Program Activity Log — date column on the left,
+ * program stacks / single rows on the right (Figma 108:119415).
+ */
+export function ProgramActivityDay({ day }) {
+  return (
+    <div className={styles.day}>
+      <div className={styles.dateCol}>
+        <span className={styles.date}>{day.date}</span>
+        <Badge tone="grey" size="XS" label={day.day} />
+      </div>
+      <div className={styles.dayEntries}>
+        {day.entries.map((entry, i) => {
+          const isLast = i === day.entries.length - 1;
+          const isFirst = i === 0;
+          if (entry.type === 'group') {
+            return <ActivityStack key={entry.key} entry={entry} isLast={isLast} isFirst={isFirst} />;
+          }
+          return <ActivitySingle key={entry.key} entry={entry} isLast={isLast} isFirst={isFirst} />;
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** @deprecated Use ProgramActivityDay */
+export function ProgramActivityCard({ card }) {
+  const day = {
+    date: card.date,
+    day: card.day,
+    entries: [{
+      ...card,
+      type: card.count > 1 ? 'group' : 'single',
+      key: card.key,
+      items: card.items,
+    }],
+  };
+  return <ProgramActivityDay day={day} />;
 }

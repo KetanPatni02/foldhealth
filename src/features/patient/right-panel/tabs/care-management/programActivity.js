@@ -1,5 +1,5 @@
 // Program Activity Log helpers — icon/token mapping + grouping of raw activity
-// entries into month → (date × program) cards.
+// entries into month → day → (date × program) stacks or single rows.
 
 /** Per activity-kind icon + token-based colors (no raw hex). */
 export const ACTIVITY_ICON = {
@@ -16,7 +16,7 @@ export const activityIcon = (kind) => ACTIVITY_ICON[kind] || ACTIVITY_ICON.docum
 /** Inline status-label color by status type. */
 export const STATUS_COLOR = {
   success: 'var(--status-success)',
-  warning: 'var(--status-warning-dark)',
+  warning: 'var(--status-warning)',
   error: 'var(--status-error)',
 };
 
@@ -26,47 +26,90 @@ const monthLabel = (d) => `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
 const dateShort = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
 const timeLabel = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
+function mapEntryItem(e, d) {
+  return {
+    id: e.id,
+    occurredAt: d.getTime(),
+    dateLabel: dateShort(d),
+    time: timeLabel(d),
+    actorName: e.actorName,
+    title: e.title,
+    statusLabel: e.statusLabel,
+    statusType: e.statusType,
+    activityKind: e.activityKind,
+    programCode: e.programCode,
+  };
+}
+
 /**
- * Group entries (pre-sorted newest-first) into months, and within each month
- * into one card per (date × program). Same date across programs → separate
- * cards, so each program's changes read on their own.
+ * Group entries (pre-sorted newest-first) into months → days → per-program
+ * stacks. Same calendar day + same program → one stacked group; same day +
+ * different programs → separate entries so each program reads on its own.
  */
 export function groupProgramActivity(entries) {
   const months = [];
   const monthByKey = new Map();
-  const cardByKey = new Map();
+  const dayByKey = new Map();
 
   for (const e of entries) {
     const d = new Date(e.occurredAt);
     if (Number.isNaN(d.getTime())) continue;
     const mKey = monthLabel(d);
     let month = monthByKey.get(mKey);
-    if (!month) { month = { key: mKey, label: mKey, cards: [] }; monthByKey.set(mKey, month); months.push(month); }
-
-    const cKey = `${mKey}|${d.getFullYear()}-${d.getMonth()}-${d.getDate()}|${e.programCode}`;
-    let card = cardByKey.get(cKey);
-    if (!card) {
-      card = {
-        key: cKey, date: dateShort(d), day: DAYS[d.getDay()],
-        programName: e.programName, programCode: e.programCode,
-        items: [], userSet: new Set(),
-      };
-      cardByKey.set(cKey, card);
-      month.cards.push(card);
+    if (!month) {
+      month = { key: mKey, label: mKey, days: [] };
+      monthByKey.set(mKey, month);
+      months.push(month);
     }
-    card.items.push({
-      id: e.id, time: timeLabel(d), actorName: e.actorName, title: e.title,
-      statusLabel: e.statusLabel, statusType: e.statusType, activityKind: e.activityKind,
-    });
-    if (e.actorInitials) card.userSet.add(e.actorInitials);
+
+    const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    const dayKey = `${mKey}|${dateKey}`;
+    let day = dayByKey.get(dayKey);
+    if (!day) {
+      day = {
+        key: dayKey,
+        date: dateShort(d),
+        day: DAYS[d.getDay()],
+        sortKey: d.getTime(),
+        entries: [],
+      };
+      dayByKey.set(dayKey, day);
+      month.days.push(day);
+    }
+
+    const cKey = `${dayKey}|${e.programCode}`;
+    let entry = day.entries.find(x => x.key === cKey);
+    if (!entry) {
+      entry = {
+        key: cKey,
+        programCode: e.programCode,
+        programName: e.programName,
+        items: [],
+        userSet: new Set(),
+        sortKey: d.getTime(),
+      };
+      day.entries.push(entry);
+    }
+    entry.items.push(mapEntryItem(e, d));
+    if (e.actorInitials) entry.userSet.add(e.actorInitials);
+    if (d.getTime() > entry.sortKey) entry.sortKey = d.getTime();
+    if (d.getTime() > day.sortKey) day.sortKey = d.getTime();
   }
 
   for (const m of months) {
-    for (const c of m.cards) {
-      c.users = [...c.userSet];
-      c.userCount = c.users.length;
-      c.count = c.items.length;
-      delete c.userSet;
+    m.days.sort((a, b) => b.sortKey - a.sortKey);
+    for (const day of m.days) {
+      day.entries.sort((a, b) => b.sortKey - a.sortKey);
+      for (const entry of day.entries) {
+        entry.users = [...entry.userSet];
+        entry.userCount = entry.users.length;
+        entry.count = entry.items.length;
+        entry.type = entry.count > 1 ? 'group' : 'single';
+        entry.items.sort((a, b) => b.occurredAt - a.occurredAt);
+        delete entry.userSet;
+        delete entry.sortKey;
+      }
+      delete day.sortKey;
     }
   }
   return months;
