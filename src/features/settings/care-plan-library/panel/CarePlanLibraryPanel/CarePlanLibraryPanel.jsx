@@ -10,6 +10,7 @@ import { Select } from '../../../../../components/Select/Select';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { SectionTitleBar } from '../../../../../components/SectionTitleBar/SectionTitleBar';
+import { BulkSelectToggle } from '../../../../../components/BulkSelect/BulkSelectToggle';
 import { WorklistShell } from '../../../../../components/WorklistShell/WorklistShell';
 import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../../../../components/ConfirmDialog/ConfirmDialog';
@@ -89,9 +90,18 @@ function formatDateTime(iso) {
 // Figma 14106:280383 — checkbox, Template Name, Chronic Conditions,
 // Created On, Last Update, Actions. Sortable columns get a `sortKey`/
 // `sortType` so WorklistShell's HeaderCell renders the sort arrows.
+const SELECT_COLUMN = { key: 'select', label: '', showCheckbox: true, width: 44, sticky: 'left', left: 0 };
+const SELECT_COLUMN_COLLAPSED_TH = {
+  width: 0,
+  paddingLeft: 0,
+  paddingRight: 0,
+  overflow: 'hidden',
+  transition: 'width 180ms ease, padding 180ms ease',
+};
+const SELECT_COLUMN_TH = { transition: 'width 180ms ease, padding 180ms ease' };
+
 const TEMPLATE_COLUMNS = [
-  { key: 'select', label: '', showCheckbox: true, width: 44, sticky: 'left', left: 0 },
-  { key: 'name', label: 'Template Name', sortKey: 'name', sortType: 'alpha', sticky: 'left', left: 44, width: 280 },
+  { key: 'name', label: 'Template Name', sortKey: 'name', sortType: 'alpha', sticky: 'left', left: 0, width: 280 },
   { key: 'conditions', label: 'Chronic Conditions', sortKey: 'conditions', sortType: 'alpha', width: 280 },
   { key: 'createdOn', label: 'Created On', sortKey: 'createdAt', sortType: 'date', width: 200 },
   { key: 'updated', label: 'Last Update', sortKey: 'updatedAt', sortType: 'date', width: 200 },
@@ -102,13 +112,25 @@ const TEMPLATE_COLUMNS = [
 // Value, Duration, Chronic Conditions, Created On, Actions. Widths are the
 // design's min/max column bounds.
 const GOAL_COLUMNS = [
-  { key: 'select', label: '', showCheckbox: true, width: 44, sticky: 'left', left: 0 },
-  { key: 'title', label: 'Goals Title', sortKey: 'title', sortType: 'alpha', sticky: 'left', left: 44, width: 300 },
+  { key: 'title', label: 'Goals Title', sortKey: 'title', sortType: 'alpha', sticky: 'left', left: 0, width: 300 },
   { key: 'type', label: 'Type', sortKey: 'type', sortType: 'alpha', width: 104 },
   { key: 'duration', label: 'Duration', width: 100 },
   { key: 'conditions', label: 'Chronic Conditions', sortKey: 'conditions', sortType: 'alpha', width: 190 },
   { key: 'createdOn', label: 'Created On', sortKey: 'createdAt', sortType: 'date', width: 150 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 132 },
+];
+
+/* Bulk mode puts the checkbox column in front and pushes the sticky name
+   column clear of it. */
+const withSelect = (columns, bulkMode) => [
+  {
+    ...SELECT_COLUMN,
+    width: bulkMode ? 44 : 0,
+    thStyle: bulkMode ? SELECT_COLUMN_TH : SELECT_COLUMN_COLLAPSED_TH,
+  },
+  ...columns.map(c => (c.sticky === 'left' && c.left === 0
+    ? { ...c, left: bulkMode ? 44 : 0 }
+    : c)),
 ];
 
 // Linked Items is a single total — the per-kind breakdown isn't surfaced here.
@@ -191,7 +213,7 @@ export function CarePlanLibraryPanel() {
   // Search is per-tab in intent (searching goals shouldn't leave stale text
   // filtering templates when you switch back) — clear it on tab switch
   // itself rather than via an effect.
-  const handleTabChange = (key) => { setActiveTab(key); setSearchValue(''); };
+  const handleTabChange = (key) => { setActiveTab(key); setSearchValue(''); exitBulkMode(); };
 
   // All three tabs are served from Supabase (care_plan_* tables).
   const templates = useAppStore(s => s.carePlanTemplates);
@@ -265,6 +287,20 @@ export function CarePlanLibraryPanel() {
 
   const [goalSort, setGoalSort] = useState({ key: 'title', dir: 'asc' });
   const [selectedGoalIds, setSelectedGoalIds] = useState([]);
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState([]);
+  const [selectedBarrierIds, setSelectedBarrierIds] = useState([]);
+  // Bulk mode is per-tab in intent: leaving a tab drops both the mode and
+  // whatever was ticked, so a stale selection can't act on another list.
+  const [bulkMode, setBulkMode] = useState(false);
+  const exitBulkMode = () => {
+    setBulkMode(false);
+    setSelectedGoalIds([]);
+    setSelectedTemplateIds([]);
+    setSelectedBarrierIds([]);
+  };
+  const toggleIn = (setList) => (id) => setList(prev => (
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+  const checkTdClass = `${styles.tdCheck} ${bulkMode ? '' : styles.tdCheckCollapsed}`;
   const [goalPage, setGoalPage] = useState(1);
   const [goalPerPage, setGoalPerPage] = useState(10);
 
@@ -388,10 +424,14 @@ export function CarePlanLibraryPanel() {
 
   const renderTemplateRow = (t) => (
     <tr key={t.id} className={styles.row}>
-      <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
-        <Checkbox aria-label={`Select ${t.name}`} />
+      <td className={checkTdClass} onClick={e => e.stopPropagation()}>
+        <Checkbox
+          checked={selectedTemplateIds.includes(t.id)}
+          onCheckedChange={() => toggleIn(setSelectedTemplateIds)(t.id)}
+          aria-label={`Select ${t.name}`}
+        />
       </td>
-      <td className={`${styles.tdName} ${styles.tdNameOffset}`}>
+      <td className={`${styles.tdName} ${bulkMode ? styles.tdNameOffset : ''}`}>
         <button type="button" className={styles.nameLink} onClick={() => openViewTemplate(t)}>{t.name}</button>
       </td>
       <td className={styles.tdConditions}>
@@ -427,14 +467,14 @@ export function CarePlanLibraryPanel() {
 
   const renderGoalRow = (g) => (
     <tr key={g.id} className={styles.row}>
-      <td className={styles.tdCheck} onClick={e => e.stopPropagation()}>
+      <td className={checkTdClass} onClick={e => e.stopPropagation()}>
         <Checkbox
           checked={selectedGoalIds.includes(g.id)}
           onCheckedChange={() => toggleGoal(g.id)}
           aria-label={`Select ${g.title}`}
         />
       </td>
-      <td className={`${styles.tdName} ${styles.tdNameOffset}`}>
+      <td className={`${styles.tdName} ${bulkMode ? styles.tdNameOffset : ''}`}>
         <span className={styles.nameCell}>
           <button type="button" className={styles.nameLink} onClick={() => openEditSimple('goal', g)}>{g.title}</button>
           {formatGoalTarget(g) ? <span className={styles.nameSub}>{formatGoalTarget(g)}</span> : null}
@@ -464,6 +504,13 @@ export function CarePlanLibraryPanel() {
 
   const renderSimpleRow = (kind) => (item) => (
     <tr key={item.id} className={styles.row}>
+      <td className={checkTdClass} onClick={e => e.stopPropagation()}>
+        <Checkbox
+          checked={selectedBarrierIds.includes(item.id)}
+          onCheckedChange={() => toggleIn(setSelectedBarrierIds)(item.id)}
+          aria-label={`Select ${item.title}`}
+        />
+      </td>
       <td className={styles.tdName}>
         <button type="button" className={styles.nameLink} onClick={() => openEditSimple(kind, item)}>{item.title}</button>
       </td>
@@ -531,6 +578,12 @@ export function CarePlanLibraryPanel() {
         onSearchChange={setSearchValue}
         primaryActionLabel={primaryActionLabel}
         onPrimaryAction={openCreate}
+        rightExtras={(
+          <BulkSelectToggle
+            active={bulkMode}
+            onToggle={() => (bulkMode ? exitBulkMode() : setBulkMode(true))}
+          />
+        )}
       />
 
       <div className={styles.content}>
@@ -540,9 +593,13 @@ export function CarePlanLibraryPanel() {
           templates.length === 0 ? emptyPane('No Care Plan Templates Added') : (
           <WorklistShell
             header={null}
-            columns={TEMPLATE_COLUMNS}
+            columns={withSelect(TEMPLATE_COLUMNS, bulkMode)}
             rows={filteredTemplates}
             renderRow={renderTemplateRow}
+            selectedIds={bulkMode ? selectedTemplateIds : undefined}
+            onSelectAll={bulkMode ? () => setSelectedTemplateIds(
+              selectedTemplateIds.length === filteredTemplates.length ? [] : filteredTemplates.map(t => t.id),
+            ) : undefined}
             sortKey={templateSort.key}
             sortDir={templateSort.dir}
             onSort={handleTemplateSort}
@@ -560,13 +617,13 @@ export function CarePlanLibraryPanel() {
           goals.length === 0 ? emptyPane('No Goals Added') : (
           <WorklistShell
             header={null}
-            columns={GOAL_COLUMNS}
+            columns={withSelect(GOAL_COLUMNS, bulkMode)}
             rows={pagedGoals}
             renderRow={renderGoalRow}
             sortKey={goalSort.key}
             sortDir={goalSort.dir}
             onSort={handleGoalSort}
-            selectedIds={selectedGoalIds}
+            selectedIds={bulkMode ? selectedGoalIds : undefined}
             onSelectAll={() => setSelectedGoalIds(
               selectedGoalIds.length === pagedGoals.length ? [] : pagedGoals.map(g => g.id),
             )}
@@ -607,8 +664,12 @@ export function CarePlanLibraryPanel() {
           barriers.length === 0 ? emptyPane('No Barriers Added') : (
           <WorklistShell
             header={null}
-            columns={SIMPLE_COLUMNS}
+            columns={withSelect(SIMPLE_COLUMNS, bulkMode)}
             rows={filteredBarriers}
+            selectedIds={bulkMode ? selectedBarrierIds : undefined}
+            onSelectAll={bulkMode ? () => setSelectedBarrierIds(
+              selectedBarrierIds.length === filteredBarriers.length ? [] : filteredBarriers.map(b => b.id),
+            ) : undefined}
             renderRow={renderSimpleRow('barrier')}
             emptyState={
               <div className={styles.emptyState}>

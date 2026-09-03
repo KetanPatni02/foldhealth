@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { Button } from '../../../../../components/Button/Button';
 import { Toggle } from '../../../../../components/Toggle/Toggle';
@@ -20,6 +20,7 @@ import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimal
 import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
 import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
 import { VITAL_OPTIONS } from '../../lib/vitalOptions';
+import { ChronicConditionSelect } from '../../shared';
 import { MEASURE_CONFIG } from '../../lib/goalFormat';
 import styles from './CreateGoalDrawer.module.css';
 
@@ -87,8 +88,6 @@ const MEASURES = {
 // Chronic conditions come from the NLM Clinical Table Search Service — a
 // public terminology lookup. Only the typed search term leaves the app; no
 // patient data is sent.
-const CONDITIONS_API = 'https://clinicaltables.nlm.nih.gov/api/conditions/v3/search';
-
 // Select takes { value, label } pairs — plain strings render blank rows.
 const asOptions = (list) => (list || []).map(v => ({ value: v, label: v }));
 
@@ -209,36 +208,6 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const priorityRef = useRef(null);
   const interventionAddRef = useRef(null);
 
-  // Remote condition lookup. Debounced, and each request aborts the one before
-  // it so a slow early response can't overwrite a newer one.
-  const [conditionQuery, setConditionQuery] = useState('');
-  const [conditionOptions, setConditionOptions] = useState([]);
-  const [conditionLoading, setConditionLoading] = useState(false);
-
-  useEffect(() => {
-    const term = conditionQuery.trim();
-    const controller = new AbortController();
-    // Every state write happens inside the timer — setting state synchronously
-    // in an effect body cascades renders.
-    const timer = setTimeout(async () => {
-      if (term.length < 2) { setConditionOptions([]); setConditionLoading(false); return; }
-      setConditionLoading(true);
-      try {
-        const url = `${CONDITIONS_API}?terms=${encodeURIComponent(term)}&maxList=10`;
-        const res = await fetch(url, { signal: controller.signal });
-        const data = await res.json();
-        // [total, codes[], extraData, displayStrings[][]]
-        const names = (data?.[3] || []).map(row => row?.[0]).filter(Boolean);
-        setConditionOptions(asOptions([...new Set(names)]));
-      } catch (err) {
-        if (err.name !== 'AbortError') setConditionOptions([]);
-      } finally {
-        if (!controller.signal.aborted) setConditionLoading(false);
-      }
-    }, 300);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [conditionQuery]);
-
   const measureCfg = MEASURES[category] || MEASURES[GOAL_CATEGORIES[0]];
   const isOther = category === 'Other';
   const cfg = MEASURE_CONFIG[measure] || {};
@@ -347,24 +316,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         )}
 
         <div className={styles.field}>
-          <Select
-            label="Chronic condition"
-            options={conditionOptions}
-            value={conditions}
-            onChange={setConditions}
-            multiple
-            checkboxes
-            badges
-            placeholder="Select chronic conditions"
-            searchable
-            searchPlaceholder="Search conditions…"
-            query={conditionQuery}
-            onQueryChange={setConditionQuery}
-            searchLoading={conditionLoading}
-            emptyText={conditionQuery.trim().length < 2
-              ? 'Type at least 2 characters to search'
-              : 'No matching conditions'}
-          />
+          <ChronicConditionSelect value={conditions} onChange={setConditions} />
         </div>
 
         <div className={styles.field}>

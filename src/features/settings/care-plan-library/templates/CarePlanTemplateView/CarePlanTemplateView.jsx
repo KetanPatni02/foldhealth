@@ -4,9 +4,7 @@ import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { Button } from '../../../../../components/Button/Button';
 import { Badge } from '../../../../../components/Badge/Badge';
 import { CloseButton } from '../../../../../components/CloseButton/CloseButton';
-import { CarePlanGoalsTable } from '../../../../patient/right-panel/tabs/care-programs/care-plan/tables/CarePlanGoalsTable';
-import { CarePlanInterventionsTable } from '../../../../patient/right-panel/tabs/care-programs/care-plan/tables/CarePlanInterventionsTable';
-import { CarePlanBarriersTable } from '../../../../patient/right-panel/tabs/care-programs/care-plan/tables/CarePlanBarriersTable';
+import { CarePlanSections, ChronicConditionSelect } from '../../shared';
 import {
   goalPayloadFromTemplateEntry,
   interventionPayloadFromTemplateEntry,
@@ -30,7 +28,7 @@ export function CarePlanTemplateView({ template, mode = 'view', onClose, onSave 
 
   const [name, setName] = useState(template.name || '');
   const [description, setDescription] = useState(template.description || '');
-  const [conditionsText, setConditionsText] = useState((template.conditions || []).join(', '));
+  const [conditions, setConditions] = useState(template.conditions || []);
 
   const goalRows = useMemo(() => (template.goals || []).map((entry, i) => ({
     ...goalPayloadFromTemplateEntry(entry, libraryGoals),
@@ -51,16 +49,6 @@ export function CarePlanTemplateView({ template, mode = 'view', onClose, onSave 
     subtitle: entry.description || '',
     status: 'Not Started',
   })), [template.barriers]);
-
-  const section = (label, count, table) => (
-    <div className={styles.section}>
-      <div className={styles.sectionHead}>
-        <span className={styles.sectionTitle}>{label}</span>
-        <Badge tone="grey" size="S" label={String(count)} />
-      </div>
-      {table}
-    </div>
-  );
 
   return (
     <div className={styles.view}>
@@ -99,19 +87,21 @@ export function CarePlanTemplateView({ template, mode = 'view', onClose, onSave 
           </div>
 
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Conditions</span>
             {isEdit ? (
-              <Input
-                value={conditionsText}
-                onChange={e => setConditionsText(e.target.value)}
-                placeholder="Comma-separated, e.g. Type 2 Diabetes, Hypertension"
+              <ChronicConditionSelect
+                label="Conditions"
+                value={conditions}
+                onChange={setConditions}
               />
             ) : (
-              <div className={styles.conditions}>
-                {(template.conditions || []).length
-                  ? template.conditions.map(c => <Badge key={c} tone="grey" size="S" label={c} />)
-                  : <span className={styles.fieldValue}>—</span>}
-              </div>
+              <>
+                <span className={styles.fieldLabel}>Conditions</span>
+                <div className={styles.conditions}>
+                  {(template.conditions || []).length
+                    ? template.conditions.map(c => <Badge key={c} tone="grey" size="S" label={c} />)
+                    : <span className={styles.fieldValue}>—</span>}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -128,7 +118,7 @@ export function CarePlanTemplateView({ template, mode = 'view', onClose, onSave 
                 onClick={() => onSave?.({
                   name: name.trim(),
                   description,
-                  conditions: conditionsText.split(',').map(c => c.trim()).filter(Boolean),
+                  conditions,
                   goals: template.goals || [],
                   interventions: template.interventions || [],
                   barriers: template.barriers || [],
@@ -143,12 +133,11 @@ export function CarePlanTemplateView({ template, mode = 'view', onClose, onSave 
         </div>
 
         <div className={styles.planBody}>
-          {section('Goals', goalRows.length,
-            <CarePlanGoalsTable rows={goalRows} canEdit={false} linked={() => null} template />)}
-          {section('Interventions', interventionRows.length,
-            <CarePlanInterventionsTable rows={interventionRows} canEdit={false} linked={() => null} template />)}
-          {section('Barriers', barrierRows.length,
-            <CarePlanBarriersTable rows={barrierRows} canEdit={false} linked={() => null} template />)}
+          <CarePlanSections
+            goalRows={goalRows}
+            interventionRows={interventionRows}
+            barrierRows={barrierRows}
+          />
         </div>
       </div>
     </div>
