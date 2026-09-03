@@ -23,8 +23,23 @@ import { VITAL_OPTIONS } from '../../lib/vitalOptions';
 import { MEASURE_CONFIG } from '../../lib/goalFormat';
 import styles from './CreateGoalDrawer.module.css';
 
-// Categories per the goal-creation screens.
-const GOAL_CATEGORIES = ['Vital', 'Activity', 'Lab result', 'Assessment', 'Other'];
+// Categories per the goal-creation screens. Order matches the picker's
+// natural read order: physical measurements first, lifestyle, then a
+// catch-all bucket.
+const GOAL_CATEGORIES = ['Vitals', 'Labs', 'Diet', 'Exercise', 'Others'];
+
+// Older seeded rows carry the previous labels ('Vital' / 'Activity' /
+// 'Lab result' / 'Assessment' / 'Other'). Map them to the new enum on
+// read so the drawer's category Toggle lands on the correct tab even
+// before `bun run seed` re-runs.
+const LEGACY_CATEGORY_MAP = {
+  Vital: 'Vitals',
+  Activity: 'Exercise',
+  'Lab result': 'Labs',
+  Assessment: 'Others',
+  Other: 'Others',
+};
+const normalizeCategory = (c) => LEGACY_CATEGORY_MAP[c] || c || GOAL_CATEGORIES[0];
 
 // Per-measure target-value shape:
 //   unit        single trailing unit segment
@@ -35,39 +50,38 @@ const GOAL_CATEGORIES = ['Vital', 'Activity', 'Lab result', 'Assessment', 'Other
 
 // The measure picker's label and options follow the chosen category.
 const MEASURES = {
-  Vital: {
+  Vitals: {
     label: 'Select Vital',
     options: VITAL_OPTIONS,
   },
-  Activity: {
-    label: 'Select Activity',
-    options: ['Steps', 'Calories', 'Duration', 'Aerobics', 'Archery', 'Badminton',
-      'Baseball', 'Basketball', 'Biking', 'Spinning'],
+  Exercise: {
+    label: 'Select Exercise',
+    options: ['Steps', 'Calories', 'Duration', 'Aerobics', 'Strength Training', 'Cycling',
+      'Swimming', 'Yoga', 'Walking', 'Running'],
   },
-  'Lab result': {
-    label: 'Select Lab result',
+  Labs: {
+    label: 'Select Lab',
     options: [
       'LDL Cholesterol', 'HDL Cholesterol', 'Total Cholesterol', 'Triglycerides',
-      'Immunoglobulin A, Quant, CSF', 'Immunoglobulin M, Quant, CSF', 'aPTT 1:1 Mix Saline',
-      'LD, Body Fluid', 'IgM P23 Ab.', 'Creatine Kinase (CK), MB', 'Creatinine',
-      'Hemoglobin A1c', 'Estim. Avg Glu (eAG)', 'Cortisol - AM', 'Cortisol - PM',
-      'Crystals, Bile (Cholesterol)', 'D-Dimer', 'HSV-2 DNA', 'Gestational Diabetes Screen',
-      'eGFR', 'Fructosamine', 'Fetal Fibronectin', 'Free Kappa Lt Chains,S',
-      'Glucose, Fasting', 'Glucose, 1 hour', 'Glucose, 2 hour', 'Glucose, 3 hour',
+      'Hemoglobin A1c', 'Estim. Avg Glu (eAG)', 'Glucose, Fasting', 'Glucose, 1 hour',
+      'Glucose, 2 hour', 'Glucose, 3 hour', 'eGFR', 'Creatinine', 'Fructosamine',
+      'Microalbumin (urine)', 'Urine Protein', 'TSH', 'T3', 'T4', 'Vitamin D',
+      'Vitamin B12', 'Ferritin', 'Iron, Serum', 'CBC', 'Basic Metabolic Panel',
+      'Comprehensive Metabolic Panel', 'PT/INR',
     ],
   },
-  Assessment: {
-    label: 'Select Assessment',
+  Diet: {
+    label: 'Select Diet Measure',
     options: [
-      'Annual Wellness Visit', 'Preventive Screening', 'Fall Risk Assessment',
-      'Immunization Review', 'Advance Care Planning',
-      'CCM Initial Assessment', 'SNP - Health Risk Assessment', 'COPD Initial Assessment',
-      'Patient Assessment', 'BRSCI - Benjamin Rose Institute Caregiver Strain Instrument',
-      'Patient Assessment (ECM)', 'Health Risk Assessment Questionnaire',
-      'Medication Management', 'CHF Initial Assessment', 'ACM Nursing Assessment',
+      'Calorie Intake', 'Sodium Intake', 'Carbohydrate Intake', 'Protein Intake',
+      'Fiber Intake', 'Water Intake', 'Fruit & Vegetable Servings', 'Sugar Intake',
+      'Saturated Fat Intake', 'DASH Adherence', 'Mediterranean Adherence',
     ],
   },
-  Other: { label: 'Select Measure', options: ['Medication Adherence', 'Appointment Attendance'] },
+  Others: {
+    label: 'Select Measure',
+    options: ['Medication Adherence', 'Appointment Attendance', 'Care Coordination'],
+  },
 };
 
 // Chronic conditions come from the NLM Clinical Table Search Service — a
@@ -78,8 +92,8 @@ const CONDITIONS_API = 'https://clinicaltables.nlm.nih.gov/api/conditions/v3/sea
 // Select takes { value, label } pairs — plain strings render blank rows.
 const asOptions = (list) => (list || []).map(v => ({ value: v, label: v }));
 
-/* Lab and assessment names are far longer than vitals — they need a wider field. */
-const WIDE_MEASURE_CATEGORIES = ['Lab result', 'Assessment'];
+/* Lab names run long — they need a wider field. */
+const WIDE_MEASURE_CATEGORIES = ['Labs'];
 
 const COMPARATORS = ['=', '<', '<=', '>', '>=', 'between'];
 const DURATION_UNITS = ['Day', 'Week', 'Month', 'Year'];
@@ -154,7 +168,7 @@ const PRIORITIES = [
  * picked from a segment inside the title field.
  */
 export function CreateGoalDrawer({ onClose, onSave, goal }) {
-  const [category, setCategory] = useState(goal?.category || GOAL_CATEGORIES[0]);
+  const [category, setCategory] = useState(normalizeCategory(goal?.category));
   const [measure, setMeasure] = useState(goal?.measure || '');
   const [conditions, setConditions] = useState(goal?.conditions || []);
   const [title, setTitle] = useState(goal?.title || '');

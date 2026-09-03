@@ -4607,21 +4607,474 @@ export const CARE_PLAN_GOAL_LIBRARY = [
         "title": "Frequent acute needs"
       }
     ]
+  },
+  // ── Expanded coverage: specific Vitals (Height, SPO2, Respiratory Rate,
+  //    Temperature, Waist Circumference) + Exercise + Diet goals. Each row
+  //    carries the same {interventions | barriers | conditions} shape the
+  //    seeder writes; the classifier maps `title` → new category enum.
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13401",
+    "title": "Maintain healthy body height record",
+    "description": "Record annual measured height for longitudinal growth tracking and BMI calculation.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Preventive care"],
+    "comparator": "=",
+    "target_value": "Recorded",
+    "target_value_2": "",
+    "custom_unit": "",
+    "set_target": true,
+    "duration": "12",
+    "duration_unit": "Month",
+    "frequency": "Yearly",
+    "target_date": "",
+    "priority": "low",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13402", "kind": "measure-vital", "title": "Measure standing height" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13403", "kind": "patient-education", "title": "Why height matters for BMI" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13404", "kind": "internal-task", "title": "Add height to intake worklist" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13405", "kind": "barrier", "title": "Missed annual visit" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13406", "kind": "barrier", "title": "Mobility limits standing measurement" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13411",
+    "title": "Maintain resting oxygen saturation",
+    "description": "Keep resting SpO2 at or above the individualized target so hypoxemia is caught early.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Chronic obstructive pulmonary disease"],
+    "comparator": ">=",
+    "target_value": "94",
+    "target_value_2": "",
+    "custom_unit": "%",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13412", "kind": "measure-vital", "title": "Home pulse-oximeter reading" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13413", "kind": "patient-education", "title": "How to use a pulse oximeter" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13414", "kind": "internal-task", "title": "Weekly SpO2 review" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13415", "kind": "barrier", "title": "No home pulse oximeter" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13416", "kind": "barrier", "title": "Inconsistent self-monitoring" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13421",
+    "title": "Monitor oxygen saturation for COPD",
+    "description": "Track daily home SpO2 for members with moderate-to-severe COPD to trigger early follow-up.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Chronic obstructive pulmonary disease"],
+    "comparator": ">=",
+    "target_value": "92",
+    "target_value_2": "",
+    "custom_unit": "%",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "high",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13422", "kind": "measure-vital", "title": "Daily SpO2 log" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13423", "kind": "patient-education", "title": "COPD action plan" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13424", "kind": "internal-task", "title": "Escalate low-SpO2 alerts" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13425", "kind": "barrier", "title": "Difficulty controlling condition" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13426", "kind": "barrier", "title": "Limited access to device" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13431",
+    "title": "Maintain resting respiratory rate",
+    "description": "Keep resting respiratory rate within the normal range for the member's age and comorbidities.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Chronic obstructive pulmonary disease", "Heart failure"],
+    "comparator": "between",
+    "target_value": "12",
+    "target_value_2": "20",
+    "custom_unit": "",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Weekly",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13432", "kind": "measure-vital", "title": "Weekly respiratory-rate check" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13433", "kind": "patient-education", "title": "Breathing-technique guidance" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13434", "kind": "internal-task", "title": "Trend review for respiratory rate" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13435", "kind": "barrier", "title": "Difficulty controlling condition" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13436", "kind": "barrier", "title": "Missed self-monitoring" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13441",
+    "title": "Maintain body temperature within normal range",
+    "description": "Detect and log temperature outside the normal range so infections are surfaced early.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Recent hospitalization"],
+    "comparator": "between",
+    "target_value": "97",
+    "target_value_2": "99",
+    "custom_unit": "°F",
+    "set_target": true,
+    "duration": "1",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13442", "kind": "measure-vital", "title": "Daily temperature reading" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13443", "kind": "patient-education", "title": "When to call for a fever" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13444", "kind": "internal-task", "title": "Escalate abnormal-temperature alerts" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13445", "kind": "barrier", "title": "No home thermometer" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13446", "kind": "barrier", "title": "Inconsistent self-monitoring" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13451",
+    "title": "Reduce waist circumference",
+    "description": "Reduce waist circumference toward a healthy target to improve metabolic risk.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Type 2 diabetes mellitus", "Obesity"],
+    "comparator": "<=",
+    "target_value": "35",
+    "target_value_2": "",
+    "custom_unit": "in",
+    "set_target": true,
+    "duration": "6",
+    "duration_unit": "Month",
+    "frequency": "Monthly",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13452", "kind": "measure-vital", "title": "Monthly waist measurement" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13453", "kind": "patient-education", "title": "Why waist size matters" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13454", "kind": "internal-task", "title": "Coach check-in on waist trend" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13455", "kind": "barrier", "title": "Difficulty controlling condition" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13456", "kind": "barrier", "title": "Sedentary lifestyle" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13461",
+    "title": "Build muscular strength",
+    "description": "Complete strength-training sessions per week to preserve muscle mass and metabolic health.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Frailty risk"],
+    "comparator": ">=",
+    "target_value": "2",
+    "target_value_2": "",
+    "custom_unit": "sessions/wk",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Weekly",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13462", "kind": "patient-education", "title": "Home strength-training basics" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13463", "kind": "patient-task", "title": "Log strength sessions" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13464", "kind": "internal-task", "title": "Weekly session check-in" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13465", "kind": "barrier", "title": "No safe space to exercise" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13466", "kind": "barrier", "title": "Joint pain limits activity" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13471",
+    "title": "Adopt low-impact aerobic routine",
+    "description": "Complete daily low-impact aerobic activity (cycling / swimming / walking) tuned to member ability.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Cardiovascular disease"],
+    "comparator": ">=",
+    "target_value": "30",
+    "target_value_2": "",
+    "custom_unit": "min/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472", "kind": "patient-education", "title": "Choosing low-impact activities" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473", "kind": "patient-task", "title": "Log daily activity minutes" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474", "kind": "internal-task", "title": "Follow-up on activity plan" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475", "kind": "barrier", "title": "Weather limits outdoor activity" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476", "kind": "barrier", "title": "Fatigue reduces activity tolerance" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13481",
+    "title": "Follow DASH eating pattern",
+    "description": "Adhere to the DASH eating pattern for blood-pressure control.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Hypertension"],
+    "comparator": ">=",
+    "target_value": "80",
+    "target_value_2": "",
+    "custom_unit": "%",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13482", "kind": "patient-education", "title": "DASH eating plan overview" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13483", "kind": "patient-task", "title": "Weekly diet self-assessment" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13484", "kind": "internal-task", "title": "Nutrition coaching call" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13485", "kind": "barrier", "title": "Food insecurity" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13486", "kind": "barrier", "title": "Cost of fresh produce" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13491",
+    "title": "Follow Mediterranean eating pattern",
+    "description": "Adhere to Mediterranean eating pattern to reduce cardiometabolic risk.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Cardiovascular disease", "Type 2 diabetes mellitus"],
+    "comparator": ">=",
+    "target_value": "80",
+    "target_value_2": "",
+    "custom_unit": "%",
+    "set_target": true,
+    "duration": "6",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13492", "kind": "patient-education", "title": "Mediterranean eating plan" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13493", "kind": "patient-task", "title": "Log Mediterranean adherence weekly" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13494", "kind": "internal-task", "title": "Nutrition follow-up" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13495", "kind": "barrier", "title": "Limited cooking skills" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13496", "kind": "barrier", "title": "Cost of key ingredients" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13501",
+    "title": "Reduce daily sodium intake",
+    "description": "Reduce daily sodium intake to lower blood pressure.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Hypertension", "Heart failure"],
+    "comparator": "<=",
+    "target_value": "2300",
+    "target_value_2": "",
+    "custom_unit": "mg/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13502", "kind": "patient-education", "title": "Low-sodium shopping guide" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13503", "kind": "patient-task", "title": "Log sodium intake" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13504", "kind": "internal-task", "title": "Nutrition coach follow-up" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13505", "kind": "barrier", "title": "Reliance on processed foods" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13506", "kind": "barrier", "title": "Cost of fresh alternatives" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13511",
+    "title": "Increase daily fiber intake",
+    "description": "Meet daily fiber-intake target to improve glycemic control and digestive health.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Type 2 diabetes mellitus", "Constipation"],
+    "comparator": ">=",
+    "target_value": "25",
+    "target_value_2": "",
+    "custom_unit": "g/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13512", "kind": "patient-education", "title": "High-fiber foods list" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13513", "kind": "patient-task", "title": "Log fiber intake" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13514", "kind": "internal-task", "title": "Nutrition check-in" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13515", "kind": "barrier", "title": "Limited access to whole foods" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13516", "kind": "barrier", "title": "GI intolerance to fiber increase" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13521",
+    "title": "Meet daily water intake target",
+    "description": "Meet daily hydration target to support renal, cardiovascular, and cognitive health.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Chronic kidney disease"],
+    "comparator": ">=",
+    "target_value": "64",
+    "target_value_2": "",
+    "custom_unit": "oz/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "low",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13522", "kind": "patient-education", "title": "Hydration best practices" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13523", "kind": "patient-task", "title": "Log daily water intake" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13524", "kind": "internal-task", "title": "Hydration coaching call" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13525", "kind": "barrier", "title": "Fluid restriction (medical)" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13526", "kind": "barrier", "title": "Limited access to safe water" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13531",
+    "title": "Meet daily fruit and vegetable target",
+    "description": "Consume the recommended servings of fruits and vegetables daily.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Preventive care"],
+    "comparator": ">=",
+    "target_value": "5",
+    "target_value_2": "",
+    "custom_unit": "servings/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "low",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13532", "kind": "patient-education", "title": "MyPlate produce guide" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13533", "kind": "patient-task", "title": "Log fruit and vegetable servings" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13534", "kind": "internal-task", "title": "Nutrition coach follow-up" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13535", "kind": "barrier", "title": "Food insecurity" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13536", "kind": "barrier", "title": "Cost of fresh produce" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13541",
+    "title": "Reduce added sugar intake",
+    "description": "Reduce added sugar intake to support glycemic and weight goals.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Type 2 diabetes mellitus", "Obesity"],
+    "comparator": "<=",
+    "target_value": "25",
+    "target_value_2": "",
+    "custom_unit": "g/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13542", "kind": "patient-education", "title": "Hidden sources of added sugar" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13543", "kind": "patient-task", "title": "Log added-sugar grams" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13544", "kind": "internal-task", "title": "Nutrition follow-up" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13545", "kind": "barrier", "title": "Craving management difficulty" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13546", "kind": "barrier", "title": "Household food environment" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13551",
+    "title": "Manage carbohydrate intake for diabetes",
+    "description": "Keep daily carbohydrate intake within the individualized target to improve glycemic control.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Type 2 diabetes mellitus"],
+    "comparator": "<=",
+    "target_value": "180",
+    "target_value_2": "",
+    "custom_unit": "g/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "high",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13552", "kind": "patient-education", "title": "Carb counting basics" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13553", "kind": "patient-task", "title": "Log daily carbohydrate intake" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13554", "kind": "internal-task", "title": "Diabetes educator follow-up" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13555", "kind": "barrier", "title": "Difficulty controlling condition" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13556", "kind": "barrier", "title": "Household food environment" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13561",
+    "title": "Maintain adequate protein intake",
+    "description": "Meet daily protein target for muscle preservation and recovery.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Frailty risk"],
+    "comparator": ">=",
+    "target_value": "60",
+    "target_value_2": "",
+    "custom_unit": "g/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13562", "kind": "patient-education", "title": "Protein-rich food guide" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13563", "kind": "patient-task", "title": "Log daily protein" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13564", "kind": "internal-task", "title": "Nutrition coach check-in" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13565", "kind": "barrier", "title": "Chewing / swallowing difficulty" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13566", "kind": "barrier", "title": "Cost of protein sources" }
+    ]
+  },
+  {
+    "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13571",
+    "title": "Reduce saturated fat intake",
+    "description": "Keep daily saturated fat within recommended limits to improve lipid profile.",
+    "category": "Other",
+    "measure": "",
+    "conditions": ["Hyperlipidemia"],
+    "comparator": "<=",
+    "target_value": "20",
+    "target_value_2": "",
+    "custom_unit": "g/day",
+    "set_target": true,
+    "duration": "3",
+    "duration_unit": "Month",
+    "frequency": "Daily",
+    "target_date": "",
+    "priority": "medium",
+    "links": [
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13572", "kind": "patient-education", "title": "Saturated vs unsaturated fats" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13573", "kind": "patient-task", "title": "Log saturated-fat grams" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13574", "kind": "internal-task", "title": "Nutrition follow-up" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13575", "kind": "barrier", "title": "Reliance on convenience foods" },
+      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13576", "kind": "barrier", "title": "Family food preferences" }
+    ]
   }
 ];
 
 // The seed authored every goal as "Other"; derive the real category from the
 // goal's title + description against the five library types the Create Goal
-// drawer offers (Vital / Activity / Lab result / Assessment / Other). Domain
-// keywords (a measured vital, a lab, an activity) win over the generic
-// "education/review" bucket, so "Maintain blood pressure" → Vital while
-// "Hypertension education" → Assessment. Heuristic and easy to override per
-// goal in the Edit Goal drawer.
+// drawer offers (Vitals / Labs / Diet / Exercise / Others). Domain keywords
+// (a measured vital, a lab, an exercise) win over the generic bucket, so
+// "Maintain blood pressure" → Vitals while "Reduce sodium intake" → Diet.
+// Heuristic and easy to override per goal in the Edit Goal drawer.
 const GOAL_CATEGORY_RULES = [
-  ['Lab result', /\b(a1c|hba1c|ldl|hdl|cholesterol|lipid|triglyceride|kidney|renal|egfr|creatinine|urine|microalbumin|labs?)\b/i],
-  ['Vital', /\b(blood pressure|heart[ -]?rate|resting heart|pulse|spo2|oxygen satur|daily weight|weight monitoring|weight for|body weight|glucose|glycemic|hypoglycem|hyperglycem|temperature|respiratory rate|vital sign)\b/i],
-  ['Activity', /\b(activity|exercise|walk|physical activit|steps|strength|aerobic|mobility|balance)\b/i],
-  ['Assessment', /\b(education|counsel|screening|screen for|assessment|assess |review|teach|wellness visit|preventive|immuniz|vaccin|depression screen|phq|gad|action plan)\b/i],
+  ['Labs', /\b(a1c|hba1c|ldl|hdl|cholesterol|lipid|triglyceride|kidney|renal|egfr|creatinine|urine|microalbumin|labs?|panel|ferritin|tsh|thyroid|vitamin d|inr)\b/i],
+  ['Vitals', /\b(blood pressure|heart[ -]?rate|resting heart|pulse|spo2|oxygen satur|daily weight|weight monitoring|weight for|body weight|height|glucose|glycemic|hypoglycem|hyperglycem|temperature|respiratory rate|respiration|vital sign)\b/i],
+  ['Diet', /\b(diet|nutrition|sodium|calorie|carb(?:ohydrate)?|fiber|fluid intake|water intake|fruits?|vegetables?|dash|mediterranean|hydration|meal plan)\b/i],
+  ['Exercise', /\b(activity|exercise|walk|physical activit|steps|strength training|aerobic|cardio|mobility|balance|yoga|cycling|swim)\b/i],
 ];
 
 export function goalLibraryCategory(g) {
@@ -4629,17 +5082,16 @@ export function goalLibraryCategory(g) {
   // that would misclassify a coordination goal as a lab goal.
   const hay = g.title || '';
   for (const [cat, re] of GOAL_CATEGORY_RULES) if (re.test(hay)) return cat;
-  return 'Other';
+  return 'Others';
 }
 
 // The seed left every goal's `measure` empty and many targets as free text, so
-// the goals couldn't auto-track patient data. Bind the trackable goals (Vital /
-// Lab result / Activity / Assessment, plus medication/appointment goals) to the
-// right measure with a structured target the drawer's MEASURE_CONFIG can render
-// and the platform can track. Non-trackable process goals (housing, mood,
-// caregiver, etc.) keep their qualitative targets and no measure.
+// the goals couldn't auto-track patient data. Bind the trackable goals to
+// their canonical measure so the drawer's MEASURE_CONFIG renders the right
+// controls and the platform can track. Non-trackable process goals (housing,
+// mood, caregiver, etc.) keep their qualitative targets and no measure.
 export const GOAL_MEASURE_OVERRIDES = {
-  // ── Vital ──
+  // ── Vitals ──
   'Maintain blood pressure within target': { measure: 'Blood Pressure', comparator: '<=', target_value: '130', target_value_2: '80', custom_unit: '' },
   'Improve blood pressure control': { measure: 'Blood Pressure', comparator: '<=', target_value: '130', target_value_2: '80', custom_unit: '' },
   'Monitor blood pressure consistently': { measure: 'Blood Pressure', comparator: '<=', target_value: '130', target_value_2: '80', custom_unit: '' },
@@ -4647,25 +5099,37 @@ export const GOAL_MEASURE_OVERRIDES = {
   'Monitor daily weight for heart failure': { measure: 'Weight', comparator: '<=', target_value: '3', target_value_2: '', custom_unit: '' },
   'Maintain glucose within target range': { measure: 'Blood Glucose', comparator: 'between', target_value: '80', target_value_2: '180', custom_unit: '' },
   'Monitor blood glucose consistently': { measure: 'Blood Glucose', comparator: 'between', target_value: '80', target_value_2: '180', custom_unit: '' },
-  // ── Activity ──
+  'Maintain healthy body height record': { measure: 'Height', comparator: '=', target_value: 'Recorded', target_value_2: '', custom_unit: '' },
+  'Maintain resting oxygen saturation': { measure: 'Oxygen Saturation', comparator: '>=', target_value: '94', target_value_2: '', custom_unit: '%' },
+  'Monitor oxygen saturation for COPD': { measure: 'Oxygen Saturation', comparator: '>=', target_value: '92', target_value_2: '', custom_unit: '%' },
+  'Maintain resting respiratory rate': { measure: 'Respiration Rate', comparator: 'between', target_value: '12', target_value_2: '20', custom_unit: '' },
+  'Maintain body temperature within normal range': { measure: 'Body Temperature', comparator: 'between', target_value: '97', target_value_2: '99', custom_unit: '°F' },
+  'Reduce waist circumference': { measure: 'Waist Circumference', comparator: '<=', target_value: '35', target_value_2: '', custom_unit: 'in' },
+  // ── Exercise ──
   'Reduce cardiovascular risk through activity': { measure: 'Duration', comparator: '>=', target_value: '150', target_value_2: '', custom_unit: '' },
   'Increase physical activity for metabolic health': { measure: 'Steps', comparator: '>=', target_value: '7000', target_value_2: '', custom_unit: '' },
   'Improve mobility': { measure: 'Steps', comparator: '>=', target_value: '5000', target_value_2: '', custom_unit: '' },
   'Improve balance': { measure: 'Aerobics', comparator: '>=', target_value: '20', target_value_2: '', custom_unit: '' },
-  // ── Lab result ──
+  'Build muscular strength': { measure: 'Strength Training', comparator: '>=', target_value: '2', target_value_2: '', custom_unit: 'sessions/wk' },
+  'Adopt low-impact aerobic routine': { measure: 'Cycling', comparator: '>=', target_value: '30', target_value_2: '', custom_unit: 'min/day' },
+  // ── Diet ──
+  'Follow DASH eating pattern': { measure: 'DASH Adherence', comparator: '>=', target_value: '80', target_value_2: '', custom_unit: '%' },
+  'Follow Mediterranean eating pattern': { measure: 'Mediterranean Adherence', comparator: '>=', target_value: '80', target_value_2: '', custom_unit: '%' },
+  'Reduce daily sodium intake': { measure: 'Sodium Intake', comparator: '<=', target_value: '2300', target_value_2: '', custom_unit: 'mg/day' },
+  'Increase daily fiber intake': { measure: 'Fiber Intake', comparator: '>=', target_value: '25', target_value_2: '', custom_unit: 'g/day' },
+  'Meet daily water intake target': { measure: 'Water Intake', comparator: '>=', target_value: '64', target_value_2: '', custom_unit: 'oz/day' },
+  'Meet daily fruit and vegetable target': { measure: 'Fruit & Vegetable Servings', comparator: '>=', target_value: '5', target_value_2: '', custom_unit: 'servings/day' },
+  'Reduce added sugar intake': { measure: 'Sugar Intake', comparator: '<=', target_value: '25', target_value_2: '', custom_unit: 'g/day' },
+  'Manage carbohydrate intake for diabetes': { measure: 'Carbohydrate Intake', comparator: '<=', target_value: '180', target_value_2: '', custom_unit: 'g/day' },
+  'Maintain adequate protein intake': { measure: 'Protein Intake', comparator: '>=', target_value: '60', target_value_2: '', custom_unit: 'g/day' },
+  'Reduce saturated fat intake': { measure: 'Saturated Fat Intake', comparator: '<=', target_value: '20', target_value_2: '', custom_unit: 'g/day' },
+  // ── Labs ──
   'Improve lipid management': { measure: 'LDL Cholesterol', comparator: '<', target_value: '100', target_value_2: '', custom_unit: '' },
   'Improve A1C control': { measure: 'Hemoglobin A1c', comparator: '<', target_value: '7', target_value_2: '', custom_unit: '' },
   'Improve renal risk monitoring': { measure: 'eGFR', comparator: '>=', target_value: '60', target_value_2: '', custom_unit: '' },
   'Maintain kidney function monitoring': { measure: 'eGFR', comparator: '>=', target_value: '60', target_value_2: '', custom_unit: '' },
   'Maintain individualized renal-protection plan': { measure: 'eGFR', comparator: '>=', target_value: '60', target_value_2: '', custom_unit: '' },
-  // ── Assessment (completion tracked against the named instrument) ──
-  'Complete annual wellness visit': { measure: 'Annual Wellness Visit', comparator: '=', target_value: 'Completed', target_value_2: '', custom_unit: '' },
-  'Complete preventive screening plan': { measure: 'Preventive Screening', comparator: '=', target_value: 'Completed', target_value_2: '', custom_unit: '' },
-  'Complete immunization review': { measure: 'Immunization Review', comparator: '=', target_value: 'Completed', target_value_2: '', custom_unit: '' },
-  'Complete fall-risk assessment': { measure: 'Fall Risk Assessment', comparator: '=', target_value: 'Completed', target_value_2: '', custom_unit: '' },
-  'Complete advance care planning review': { measure: 'Advance Care Planning', comparator: '=', target_value: 'Completed', target_value_2: '', custom_unit: '' },
-  'Improve completion of recommended preventive services': { measure: 'Preventive Screening', comparator: '>=', target_value: '90', target_value_2: '', custom_unit: '%' },
-  // ── Other: medication adherence ──
+  // ── Others (medication adherence) ──
   'Improve medication adherence for hypertension': { measure: '', comparator: '>=', target_value: '90', target_value_2: '', custom_unit: '%' },
   'Improve diabetes medication adherence': { measure: '', comparator: '>=', target_value: '90', target_value_2: '', custom_unit: '%' },
   'Improve overall medication adherence': { measure: '', comparator: '>=', target_value: '90', target_value_2: '', custom_unit: '%' },
