@@ -15,6 +15,7 @@ import { FilterChip } from '../../../../../../../components/FilterChip/FilterChi
 import { useAppStore } from '../../../../../../../store/useAppStore';
 import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
 import { AddBarriersDrawer } from '../../../../../../settings/care-plan-library/barriers/AddBarriersDrawer/AddBarriersDrawer';
+import { BarrierDetailDrawer } from '../drawers/BarrierDetailDrawer/BarrierDetailDrawer';
 import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
 import { SendFormDrawer } from '../../../../../../settings/care-plan-library/interventions/SendFormDrawer/SendFormDrawer';
 import { SendContentDrawer } from '../../../../../../settings/care-plan-library/interventions/SendContentDrawer/SendContentDrawer';
@@ -235,6 +236,9 @@ export function CarePlanView({ patientId, program }) {
   const [taskDrawerOpen, setTaskDrawerOpen] = useState(null); // null | 'patient-task' | 'internal-task'
   const intvAddRef = useRef(null);
   const [barrierDrawer, setBarrierDrawer] = useState(null); // null | { barrier }
+  // Barrier preview drawer: shows goals/template linked to this barrier
+  // in the current plan version, with delink + add-goal affordances.
+  const [previewBarrier, setPreviewBarrier] = useState(null);
   const [templatesDrawerOpen, setTemplatesDrawerOpen] = useState(false);
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
@@ -937,6 +941,7 @@ export function CarePlanView({ patientId, program }) {
             onLinkOwner={setLinkOwner}
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
+            onOpenBarrier={setPreviewBarrier}
             linked={linkedForChild}
             emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the filters.</div> : null}
           />
@@ -1031,6 +1036,15 @@ export function CarePlanView({ patientId, program }) {
           program={program}
           onClose={() => setPreviewGoal(null)}
           onOpenIntervention={setPreviewIntervention}
+        />
+      )}
+
+      {previewBarrier && (
+        <BarrierDetailDrawer
+          barrier={previewBarrier}
+          patientId={patientId}
+          program={program}
+          onClose={() => setPreviewBarrier(null)}
         />
       )}
 
