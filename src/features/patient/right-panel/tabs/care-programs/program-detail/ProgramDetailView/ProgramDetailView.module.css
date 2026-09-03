@@ -310,10 +310,8 @@
 }
 .contentHeaderCarePlan {
   container-type: inline-size;
-  height: 48px;
-  padding: 0 var(--space-4);
+  padding: calc(var(--space-1) + var(--space-1) / 2) var(--space-4);
   gap: var(--space-3);
-  justify-content: center;
 }
 /* Top row: title on the left, actions on the right. The header becomes a
    column so the tasks filter chips can sit on a second row inside the same
