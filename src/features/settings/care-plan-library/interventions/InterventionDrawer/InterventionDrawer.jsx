@@ -8,11 +8,19 @@ import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
 import { Switch } from '../../../../../components/Switch/Switch';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
+import { Badge } from '../../../../../components/Badge/Badge';
 import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
 import { VITAL_OPTIONS } from '../../lib/vitalOptions';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { InterventionKindToggle } from '../shared/InterventionKindToggle';
 import { KIND_LABELS } from '../shared/interventionKinds';
+import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
+import { Icon } from '../../../../../components/Icon/Icon';
+import { ActivityLog } from '../../../../../components/ActivityLog/ActivityLog';
+import { AssigneeChange } from '../../../../../components/AssigneeChange/AssigneeChange';
+
+const initialsOf = (name) => (name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+import { LinkGoalToBarrierDrawer } from '../../../../patient/right-panel/tabs/care-programs/care-plan/drawers/BarrierDetailDrawer/LinkGoalToBarrierDrawer';
 import styles from '../shared/InterventionDrawer.module.css';
 
 const CREATION_TIMINGS = ['day', 'week', 'immediate'];
@@ -34,7 +42,50 @@ const isTask = (kind) => kind === 'patient-task' || kind === 'internal-task';
  * block are common to all. Keeping it as a single component means switching
  * kind swaps the fields in place instead of tearing the drawer down.
  */
-export function InterventionDrawer({ onClose, onSave, intervention, kind = 'internal-task', onKindChange, title: titleOverride }) {
+export function InterventionDrawer({
+  onClose,
+  onSave,
+  intervention,
+  kind = 'internal-task',
+  onKindChange,
+  title: titleOverride,
+  // Optional Care Plan bindings — mirror the Barrier Detail Drawer:
+  //   • linkToGoalsAllowed: show a Linked Goals section with a picker
+  //     modelled on LinkGoalToBarrierDrawer. Hide entirely when the
+  //     drawer is opened from a goal-scoped surface (that goal is the
+  //     link).
+  //   • availableGoals / linkedGoalIds: the plan's full goal list and
+  //     the ids currently linked to this intervention.
+  //   • activityEntries: pre-mapped audit rows in the shared
+  //     ActivityLog entry shape. Rendered below the form when provided.
+  linkToGoalsAllowed = false,
+  availableGoals = [],
+  linkedGoalIds: linkedGoalIdsProp,
+  activityEntries,
+  // Patient name — surfaces as the read-only "Member" row. Interventions
+  // authored on a plan always target that plan's patient, so it can't be
+  // edited here; the Assigned To row is the mutable owner instead.
+  memberName,
+}) {
+  const [linkedGoalIds, setLinkedGoalIds] = useState(() => (
+    Array.isArray(linkedGoalIdsProp) && linkedGoalIdsProp.length > 0
+      ? [...linkedGoalIdsProp]
+      : (Array.isArray(intervention?.goalIds) ? [...intervention.goalIds] : [])
+  ));
+  const [linkGoalPickerOpen, setLinkGoalPickerOpen] = useState(false);
+  const linkedGoals = useMemo(
+    () => linkedGoalIds
+      .map(id => availableGoals.find(g => g.id === id))
+      .filter(Boolean),
+    [linkedGoalIds, availableGoals],
+  );
+  const goalsForPicker = useMemo(
+    () => availableGoals.filter(g => !linkedGoalIds.includes(g.id)),
+    [availableGoals, linkedGoalIds],
+  );
+  const handleLinkGoals = (ids) => setLinkedGoalIds(prev => Array.from(new Set([...prev, ...ids])));
+  const handleUnlinkGoal = (id) => setLinkedGoalIds(prev => prev.filter(x => x !== id));
+
   const [title, setTitle] = useState(intervention?.title ?? '');
   const [priority, setPriority] = useState(intervention?.priority ?? 'Medium');
   const [form, setForm] = useState(intervention?.form ?? '');
@@ -42,8 +93,10 @@ export function InterventionDrawer({ onClose, onSave, intervention, kind = 'inte
   const [vital, setVital] = useState(intervention?.vital ?? '');
   const [note, setNote] = useState(intervention?.note ?? '');
   const [description, setDescription] = useState(intervention?.description ?? '');
-  const [memberTaskTitle, setMemberTaskTitle] = useState(intervention?.memberTaskTitle ?? '');
+  const [assignedTo, setAssignedTo] = useState(intervention?.assignedTo ?? '');
+  const [member, setMember] = useState(intervention?.member ?? '');
   const [creationTiming, setCreationTiming] = useState(intervention?.creationTiming ?? 'immediate');
+  const [creationCount, setCreationCount] = useState(intervention?.creationCount ?? '1');
   const [creationTrigger, setCreationTrigger] = useState(intervention?.creationTrigger ?? 'Care Plan Signed');
   const [dueOffset, setDueOffset] = useState(intervention?.dueOffset ?? '7');
   const [dueUnit, setDueUnit] = useState(intervention?.dueUnit ?? 'day');
@@ -62,7 +115,34 @@ export function InterventionDrawer({ onClose, onSave, intervention, kind = 'inte
   const dueUnitRef = useRef(null);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const priorityRef = useRef(null);
+  const [creationTimingOpen, setCreationTimingOpen] = useState(false);
+  const creationTimingRef = useRef(null);
+  const [creationTriggerOpen, setCreationTriggerOpen] = useState(false);
+  const creationTriggerRef = useRef(null);
 
+  // Assignee + member options mirror the AddTaskDrawer's dropdowns so the
+  // Send Form / Send Content / etc. drawer stays consistent with task
+  // inline editing.
+  const platformUsers = useAppStore(s => s.platformUsers) || [];
+  const patients = useAppStore(s => s.patients) || [];
+  // AssigneeChange's picker takes `{id, name, initials, role?}` rows. Combine
+  // platform users + patients so an intervention can be assigned to either
+  // an internal user or the member themselves (Figma 8521:289961).
+  const assigneeUsers = useMemo(() => ([
+    ...platformUsers.map(u => ({
+      id: u.id || `user:${u.name}`,
+      name: u.name,
+      initials: u.initials || initialsOf(u.name),
+      role: u.role || 'User',
+    })),
+    ...patients.map(p => ({
+      id: p.id || `member:${p.name}`,
+      name: p.name,
+      initials: p.initials || initialsOf(p.name),
+      role: 'Member',
+      avatarVariant: 'patient',
+    })),
+  ]), [platformUsers, patients]);
   // Forms and education content both come from Settings → Content. Search is
   // remote so a picker isn't limited to the first page.
   const contentForms = useAppStore(s => s.contentForms);
@@ -123,8 +203,8 @@ export function InterventionDrawer({ onClose, onSave, intervention, kind = 'inte
           vital,
           note: note.trim(),
           description: description.trim(),
-          memberTaskTitle: memberTaskTitle.trim(),
           creationTiming,
+          creationCount,
           creationTrigger,
           dueOffset,
           dueUnit,
@@ -135,9 +215,12 @@ export function InterventionDrawer({ onClose, onSave, intervention, kind = 'inte
           repeatEveryUnit,
           repeatEnds,
           repeatEndsUnit,
+          goalIds: linkedGoalIds,
+          assignedTo,
+          member,
         })}
       >
-        Save
+        Add
       </Button>
       <span className={styles.headerDivider} />
     </>
@@ -150,19 +233,40 @@ export function InterventionDrawer({ onClose, onSave, intervention, kind = 'inte
         onChange={e => onValueChange(e.target.value.replace(/\D/g, ''))}
         inputMode="numeric"
         aria-label={label}
+        wrapperClassName={styles.offsetInput}
         trailingTextSegment
         trailingText={(
-          <button
-            ref={ref}
-            type="button"
-            className={styles.unitTrigger}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            onClick={() => setOpen(v => !v)}
-          >
-            {unit}
-            <DownChevronIcon size={14} color="var(--neutral-300)" />
-          </button>
+          <span className={styles.offsetTrailing}>
+            <span className={styles.spinner}>
+              <button
+                type="button"
+                className={styles.spinnerBtn}
+                aria-label={`Increment ${label.toLowerCase()}`}
+                onClick={() => onValueChange(String((Number(value) || 0) + 1))}
+              >
+                <Icon name="solar:alt-arrow-up-linear" size={10} color="var(--neutral-300)" />
+              </button>
+              <button
+                type="button"
+                className={styles.spinnerBtn}
+                aria-label={`Decrement ${label.toLowerCase()}`}
+                onClick={() => onValueChange(String(Math.max(1, (Number(value) || 0) - 1)))}
+              >
+                <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+              </button>
+            </span>
+            <button
+              ref={ref}
+              type="button"
+              className={styles.unitTrigger}
+              aria-haspopup="menu"
+              aria-expanded={open}
+              onClick={() => setOpen(v => !v)}
+            >
+              {unit}
+              <DownChevronIcon size={14} color="var(--neutral-300)" />
+            </button>
+          </span>
         )}
       />
       {open && (
@@ -235,7 +339,7 @@ export function InterventionDrawer({ onClose, onSave, intervention, kind = 'inte
         {needsForms && (
           <div className={styles.field}>
             <Select
-              label="Forms"
+              label="Select Form"
               required
               options={formOptions}
               value={form}
@@ -307,124 +411,328 @@ export function InterventionDrawer({ onClose, onSave, intervention, kind = 'inte
           </div>
         )}
 
-        <div className={styles.field}>
-          <Input
-            label="Member Task Title"
-            value={memberTaskTitle}
-            onChange={e => setMemberTaskTitle(e.target.value)}
-            placeholder="Enter Task Title"
-            maxLength={TITLE_MAX}
-            characterLimit={TITLE_MAX}
+
+        {/* Assignee / Member — mirrors the AddTaskDrawer inline detail
+            rows so the fields read the same wherever an intervention
+            surfaces as a task. Borderless DetailDropdown values keep
+            the row visually calm — no double borders / boxes. */}
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>
+            Assigned To<span className={styles.mandatoryDot} aria-hidden="true" />
+          </span>
+          <AssigneeChange
+            name={assignedTo}
+            initials={initialsOf(assignedTo)}
+            unassigned={!assignedTo}
+            unassignedLabel="Select assignee"
+            size="S"
+            showRole={false}
+            users={assigneeUsers}
+            onSelect={(u) => setAssignedTo(u?.name || '')}
+            pickerTitle="Assign to"
+          />
+        </div>
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>
+            Member<span className={styles.mandatoryDot} aria-hidden="true" />
+          </span>
+          <AssigneeChange
+            name={memberName}
+            initials={initialsOf(memberName)}
+            unassigned={!memberName}
+            unassignedLabel="—"
+            size="S"
+            showRole={false}
+            avatarVariant="patient"
+            disabled
           />
         </div>
 
-        <div className={styles.dateSection}>
-          <span className={styles.sectionTitle}>
-            Set Task Dates<span className={styles.mandatoryDot} aria-hidden="true" />
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>
+            Creation Date<span className={styles.mandatoryDot} aria-hidden="true" />
           </span>
-          <div className={styles.dateGroup}>
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>Creation Date</span>
-              <div className={styles.inlineRow}>
-                <Select
-                  options={asOptions(CREATION_TIMINGS)}
-                  value={creationTiming}
-                  onChange={setCreationTiming}
-                  className={styles.timingSelect}
-                />
-                <span className={styles.inlineText}>After</span>
-                <Select
-                  options={asOptions(CREATION_TRIGGERS)}
-                  value={creationTrigger}
-                  onChange={setCreationTrigger}
-                  className={styles.triggerSelect}
-                />
-              </div>
-            </div>
-
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>Due Date</span>
-              <div className={styles.inlineRow}>
-                <Input
-                  value={dueOffset}
-                  onChange={e => setDueOffset(e.target.value.replace(/\D/g, ''))}
-                  inputMode="numeric"
-                  aria-label="Due date offset"
-                  wrapperClassName={styles.offsetInput}
-                  trailingTextSegment
-                  trailingText={(
+          <div className={styles.inlineRow}>
+            {creationTiming === 'immediate' ? (
+              <button
+                ref={creationTimingRef}
+                type="button"
+                className={styles.badgeTrigger}
+                aria-haspopup="menu"
+                aria-expanded={creationTimingOpen}
+                onClick={() => setCreationTimingOpen(v => !v)}
+              >
+                <Badge tone="white" size="M" label="immediate" chevron />
+              </button>
+            ) : (
+              <Input
+                value={creationCount}
+                onChange={e => setCreationCount(e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric"
+                aria-label="Creation count"
+                wrapperClassName={styles.offsetInput}
+                trailingTextSegment
+                trailingText={(
+                  <span className={styles.offsetTrailing}>
+                    <span className={styles.spinner}>
+                      <button
+                        type="button"
+                        className={styles.spinnerBtn}
+                        aria-label="Increment"
+                        onClick={() => setCreationCount(String((Number(creationCount) || 0) + 1))}
+                      >
+                        <Icon name="solar:alt-arrow-up-linear" size={10} color="var(--neutral-300)" />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.spinnerBtn}
+                        aria-label="Decrement"
+                        onClick={() => setCreationCount(String(Math.max(1, (Number(creationCount) || 0) - 1)))}
+                      >
+                        <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                      </button>
+                    </span>
                     <button
-                      ref={dueUnitRef}
+                      ref={creationTimingRef}
                       type="button"
                       className={styles.unitTrigger}
                       aria-haspopup="menu"
-                      aria-expanded={dueUnitOpen}
-                      onClick={() => setDueUnitOpen(v => !v)}
+                      aria-expanded={creationTimingOpen}
+                      onClick={() => setCreationTimingOpen(v => !v)}
                     >
-                      {dueUnit}
+                      {creationTiming}
                       <DownChevronIcon size={14} color="var(--neutral-300)" />
                     </button>
-                  )}
-                />
-                {dueUnitOpen && (
-                  <MenuPopover
-                    anchorRef={dueUnitRef}
-                    align="right"
-                    width={140}
-                    ariaLabel="Due date unit"
-                    items={DUE_UNITS.map(u => ({ key: u, label: u }))}
-                    onSelect={setDueUnit}
-                    onClose={() => setDueUnitOpen(false)}
-                  />
+                  </span>
                 )}
-                <span className={styles.inlineText}>After Task Creation Date</span>
-              </div>
-            </div>
-
-            <div className={styles.field}>
-              <span className={styles.fieldLabel}>Duration Type</span>
-              <div className={styles.radioRow} role="radiogroup" aria-label="Duration Type">
-                <RadioButton
-                  checked={durationType === 'business'}
-                  onChange={() => setDurationType('business')}
-                  label="Business Days"
-                />
-                <RadioButton
-                  checked={durationType === 'calendar'}
-                  onChange={() => setDurationType('calendar')}
-                  label="Calendar Days"
-                />
-              </div>
-            </div>
-
-            {/* Repeat schedule — Figma 12211:293048. */}
-            <div className={styles.field}>
-              <Switch checked={repeat} onChange={setRepeat} label="Repeat" size="S" />
-              {repeat && (
-                <div className={styles.repeatRow}>
-                  <Input
-                    value={repeatCount}
-                    onChange={e => setRepeatCount(e.target.value.replace(/\D/g, ''))}
-                    inputMode="numeric"
-                    aria-label="Repeat count"
-                    className={styles.repeatCount}
-                  />
-                  <span className={styles.inlineText}>time after</span>
-                  {unitField(
-                    repeatEvery, setRepeatEvery, repeatEveryUnit, setRepeatEveryUnit,
-                    repeatEveryUnitOpen, setRepeatEveryUnitOpen, repeatEveryUnitRef, 'Repeat every',
-                  )}
-                  <span className={styles.inlineText}>Ends in</span>
-                  {unitField(
-                    repeatEnds, setRepeatEnds, repeatEndsUnit, setRepeatEndsUnit,
-                    repeatEndsUnitOpen, setRepeatEndsUnitOpen, repeatEndsUnitRef, 'Ends in',
-                  )}
-                </div>
-              )}
-            </div>
+              />
+            )}
+            {creationTimingOpen && (
+              <MenuPopover
+                anchorRef={creationTimingRef}
+                align="left"
+                width={160}
+                ariaLabel="Creation timing"
+                items={CREATION_TIMINGS.map(t => ({ key: t, label: t }))}
+                onSelect={(t) => {
+                  setCreationTiming(t);
+                  if (t !== 'immediate' && !creationCount) setCreationCount('1');
+                }}
+                onClose={() => setCreationTimingOpen(false)}
+              />
+            )}
+            <span className={styles.inlineText}>After</span>
+            <button
+              ref={creationTriggerRef}
+              type="button"
+              className={styles.badgeTrigger}
+              aria-haspopup="menu"
+              aria-expanded={creationTriggerOpen}
+              onClick={() => setCreationTriggerOpen(v => !v)}
+            >
+              <Badge tone="white" size="M" label={creationTrigger} chevron />
+            </button>
+            {creationTriggerOpen && (
+              <MenuPopover
+                anchorRef={creationTriggerRef}
+                align="left"
+                width={220}
+                ariaLabel="Creation trigger"
+                items={CREATION_TRIGGERS.map(t => ({ key: t, label: t }))}
+                onSelect={setCreationTrigger}
+                onClose={() => setCreationTriggerOpen(false)}
+              />
+            )}
           </div>
         </div>
+
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>
+            Due Date<span className={styles.mandatoryDot} aria-hidden="true" />
+          </span>
+          <div className={styles.inlineRow}>
+            <Input
+              value={dueOffset}
+              onChange={e => setDueOffset(e.target.value.replace(/\D/g, ''))}
+              inputMode="numeric"
+              aria-label="Due date offset"
+              wrapperClassName={styles.offsetInput}
+              trailingTextSegment
+              trailingText={(
+                <span className={styles.offsetTrailing}>
+                  <span className={styles.spinner}>
+                    <button
+                      type="button"
+                      className={styles.spinnerBtn}
+                      aria-label="Increment"
+                      onClick={() => setDueOffset(String((Number(dueOffset) || 0) + 1))}
+                    >
+                      <Icon name="solar:alt-arrow-up-linear" size={10} color="var(--neutral-300)" />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.spinnerBtn}
+                      aria-label="Decrement"
+                      onClick={() => setDueOffset(String(Math.max(0, (Number(dueOffset) || 0) - 1)))}
+                    >
+                      <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                    </button>
+                  </span>
+                  <button
+                    ref={dueUnitRef}
+                    type="button"
+                    className={styles.unitTrigger}
+                    aria-haspopup="menu"
+                    aria-expanded={dueUnitOpen}
+                    onClick={() => setDueUnitOpen(v => !v)}
+                  >
+                    {dueUnit}
+                    <DownChevronIcon size={14} color="var(--neutral-300)" />
+                  </button>
+                </span>
+              )}
+            />
+            {dueUnitOpen && (
+              <MenuPopover
+                anchorRef={dueUnitRef}
+                align="right"
+                width={140}
+                ariaLabel="Due date unit"
+                items={DUE_UNITS.map(u => ({ key: u, label: u }))}
+                onSelect={setDueUnit}
+                onClose={() => setDueUnitOpen(false)}
+              />
+            )}
+            <span className={styles.inlineText}>After Task Creation Date</span>
+          </div>
+        </div>
+
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>
+            Duration Type<span className={styles.mandatoryDot} aria-hidden="true" />
+          </span>
+          <div className={styles.radioRow} role="radiogroup" aria-label="Duration Type">
+            <RadioButton
+              checked={durationType === 'business'}
+              onChange={() => setDurationType('business')}
+              label="Business Days"
+            />
+            <RadioButton
+              checked={durationType === 'calendar'}
+              onChange={() => setDurationType('calendar')}
+              label="Calendar Days"
+            />
+          </div>
+        </div>
+
+        {/* Repeat toggle — simple Switch with "Repeat" label, positioned
+            directly under Duration Type (Figma 8521:289961). When on, the
+            count / every / ends fields expand inline below. */}
+        <div className={styles.repeatBlock}>
+          <Switch checked={repeat} onChange={setRepeat} label="Repeat" size="S" />
+          {repeat && (
+            <div className={styles.repeatRow}>
+              <Input
+                value={repeatCount}
+                onChange={e => setRepeatCount(e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric"
+                aria-label="Repeat count"
+                wrapperClassName={styles.offsetInput}
+                trailingTextSegment
+                trailingText={(
+                  <span className={styles.offsetTrailing}>
+                    <span className={styles.spinner}>
+                      <button
+                        type="button"
+                        className={styles.spinnerBtn}
+                        aria-label="Increment repeat count"
+                        onClick={() => setRepeatCount(String((Number(repeatCount) || 0) + 1))}
+                      >
+                        <Icon name="solar:alt-arrow-up-linear" size={10} color="var(--neutral-300)" />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.spinnerBtn}
+                        aria-label="Decrement repeat count"
+                        onClick={() => setRepeatCount(String(Math.max(1, (Number(repeatCount) || 0) - 1)))}
+                      >
+                        <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
+                      </button>
+                    </span>
+                    <span className={styles.unitStatic}>
+                      {Number(repeatCount) === 1 ? 'time' : 'times'}
+                    </span>
+                  </span>
+                )}
+              />
+              <span className={styles.inlineText}>after</span>
+              {unitField(
+                repeatEvery, setRepeatEvery, repeatEveryUnit, setRepeatEveryUnit,
+                repeatEveryUnitOpen, setRepeatEveryUnitOpen, repeatEveryUnitRef, 'Repeat every',
+              )}
+              <span className={styles.inlineText}>Ends in</span>
+              {unitField(
+                repeatEnds, setRepeatEnds, repeatEndsUnit, setRepeatEndsUnit,
+                repeatEndsUnitOpen, setRepeatEndsUnitOpen, repeatEndsUnitRef, 'Ends in',
+              )}
+            </div>
+          )}
+        </div>
+
+            {/* Linked Goals — only when the drawer is opened from the
+                Care Plan add flow (Figma 2632:94480). Uses the same
+                picker as the Barrier Detail Drawer. */}
+            {linkToGoalsAllowed && (
+              <div className={styles.field}>
+                <div className={styles.linkedHead}>
+                  <span className={styles.fieldLabel}>Linked Goals</span>
+                  <ActionButton
+                    icon="solar:add-linear"
+                    size="S"
+                    tooltip="Link goal"
+                    onClick={() => setLinkGoalPickerOpen(true)}
+                    disabled={goalsForPicker.length === 0}
+                  />
+                </div>
+                {linkedGoals.length === 0 ? (
+                  <div className={styles.linkedEmpty}>Not linked to any goals in this plan version yet.</div>
+                ) : (
+                  <ul className={styles.linkedList}>
+                    {linkedGoals.map(g => (
+                      <li key={g.id} className={styles.linkedRow}>
+                        <Icon name="solar:flag-linear" size={16} color="var(--neutral-400)" />
+                        <span className={styles.linkedTitle}>{g.title}</span>
+                        <ActionButton
+                          icon="solar:link-broken-minimalistic-linear"
+                          size="S"
+                          tooltip="Unlink"
+                          onClick={() => handleUnlinkGoal(g.id)}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* Activity Log — pre-mapped audit rows in the shared
+                ActivityLog primitive, same shape the Barrier Detail
+                Drawer uses. Silent when no history yet. */}
+            {Array.isArray(activityEntries) && activityEntries.length > 0 && (
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>Activity Log</span>
+                <ActivityLog entries={activityEntries} />
+              </div>
+            )}
       </div>
+      {linkGoalPickerOpen && (
+        <LinkGoalToBarrierDrawer
+          goals={goalsForPicker}
+          title="Link Goal to Intervention"
+          onClose={() => setLinkGoalPickerOpen(false)}
+          onLink={handleLinkGoals}
+        />
+      )}
     </Drawer>
   );
 }

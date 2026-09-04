@@ -27,6 +27,81 @@
   font-size: var(--font-base);
   color: var(--neutral-200);
 }
+/* Inline detail rows — same label-left / control-right pattern the
+   AddTaskDrawer uses, so intervention-as-task fields (Assigned To,
+   Member, etc.) read identically wherever they surface. */
+.detailRow {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 0;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.detailRow:last-child { border-bottom: 0; }
+/* Neutralise the parent .body flex gap between adjacent detail rows so they
+   read as one continuous list separated only by the row divider. */
+.detailRow + .detailRow { margin-top: calc(-1 * var(--space-4)); }
+
+/* Repeat block — plain toggle row (no label column) that sits below the
+   Duration Type detail row (Figma 8521:289961). */
+.repeatBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+.detailLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.detailReadOnly {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+
+/* Linked Goals section (Figma 2632:94480) — mirrors the Barrier Detail
+   Drawer's row treatment so add / unlink read the same everywhere. */
+.linkedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.linkedEmpty {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  padding: var(--space-1) 0;
+}
+.linkedList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.linkedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-1);
+}
+.linkedTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 /* Same marker Input/Select render for `required` — these labels head a row of
    controls, so no single component can own them. */
 .mandatoryDot {
@@ -76,6 +151,80 @@
 }
 .offsetInput {
   width: 160px;
+}
+/* The Input's shell owns its own 32px height; override to 28px for this
+   compact field. `.offsetInput > div` targets the shell without needing a
+   :global escape past CSS Modules. */
+.offsetInput > div {
+  height: 28px;
+}
+/* Neutralise the Input's own trailingTextSegment (grey pill + border) for
+   this compound trailing area — we render the stepper on the input's white
+   background and reapply the pill styling only around the day trigger. */
+.offsetInput > div > span:last-child {
+  background: transparent;
+  border-left: 0;
+  padding: 0;
+}
+.offsetTrailing {
+  display: inline-flex;
+  align-items: stretch;
+  height: 100%;
+}
+/* Stepper — stacked up/down buttons that bump the numeric offset. Sits on
+   the input's white background, hairline divider from the value on the
+   left and from the day pill on the right. */
+.spinner {
+  display: flex;
+  flex-direction: column;
+  border-left: 0.5px solid var(--neutral-150);
+  border-right: 0.5px solid var(--neutral-150);
+}
+.spinnerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  flex: 1;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.spinnerBtn:hover {
+  background: var(--neutral-50);
+}
+.spinnerBtn + .spinnerBtn {
+  border-top: 0.5px solid var(--neutral-150);
+}
+/* Reapply the grey unit-pill background to the day trigger only, since we
+   stripped it from the whole trailing segment above. */
+.offsetTrailing .unitTrigger {
+  padding: 0 var(--space-2);
+  background: var(--neutral-50);
+  border-radius: 0 4px 4px 0;
+}
+/* Same pill shape as `.unitTrigger`, but static (repeat count: "time" /
+   "times"). No chevron, not focusable, just the grey pill for balance. */
+.unitStatic {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  background: var(--neutral-50);
+  border-radius: 0 4px 4px 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+
+/* Plain button wrapper that carries popover semantics; the Badge inside
+   supplies the visual pill so all triggers read the same across the app. */
+.badgeTrigger {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
 }
 
 /* The unit sits inside the field as a picker, matching Create New Goals. */
@@ -161,8 +310,7 @@
 }
 .repeatField {
   position: relative;
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 auto;
 }
 .repeatRow .inlineText {
   flex-shrink: 0;

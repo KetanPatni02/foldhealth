@@ -61,6 +61,26 @@
   margin: 0 var(--space-2);
 }
 
+/* Read-only summary card shown when the barrier is Met / Not Met — the
+   affordances to rename / link / unlink / note are all gated in JSX, so
+   this replaces the editable Input with a static row that still surfaces
+   the title, meta line, and linked-goals chip. */
+.terminalCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.terminalHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.terminalTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
 /* Note editor — plain Textarea sits above a Discard / Save row. */
 .noteEditor {
   display: flex;

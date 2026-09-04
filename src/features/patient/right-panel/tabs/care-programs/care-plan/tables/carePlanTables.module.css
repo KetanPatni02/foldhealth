@@ -122,10 +122,15 @@
   min-width: 36px;
   max-width: 36px;
   box-sizing: border-box;
-  padding: calc(var(--space-1) + var(--space-1) / 2) var(--space-1);
-  text-align: center;
   vertical-align: middle;
   border-left: none;
+}
+/* The composed WorklistShell `.td` ships `padding: 8px 12px`, which
+   pushes the 24px kebab against the right edge of a 36px column. Doubled
+   selector wins the specificity race without leaning on !important. */
+.actionsTd.actionsTd {
+  padding: calc(var(--space-1) + var(--space-1) / 2);
+  text-align: center;
 }
 
 /* Barriers table — shares GBI row + name cell patterns */

@@ -651,7 +651,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 <div className={styles.linkedList}>
                   {barriers.map(b => (
                     <div key={b.id} className={styles.linkedRow}>
-                      <span className={styles.linkedIcon}><Icon name="solar:shield-warning-linear" size={16} color="var(--neutral-400)" /></span>
+                      <span className={styles.linkedIcon}><Icon name="custom:barrier" size={16} color="var(--neutral-400)" /></span>
                       <span className={styles.linkedText}>
                         <span className={styles.linkedTitle}>{b.title}</span>
                         {b.status && <span className={styles.linkedMeta}>{b.status}</span>}

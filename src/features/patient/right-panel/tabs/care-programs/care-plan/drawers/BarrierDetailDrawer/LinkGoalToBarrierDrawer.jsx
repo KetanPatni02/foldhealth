@@ -22,7 +22,7 @@ import styles from './LinkGoalToBarrierDrawer.module.css';
  * least one goal is selected. On Link the caller receives the full set
  * of chosen goal ids and clones the barrier onto each.
  */
-export function LinkGoalToBarrierDrawer({ goals, onClose, onLink }) {
+export function LinkGoalToBarrierDrawer({ goals, onClose, onLink, title }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(() => new Set());
 
@@ -68,7 +68,7 @@ export function LinkGoalToBarrierDrawer({ goals, onClose, onLink }) {
 
   return (
     <Drawer
-      title="Link Goal to Barrier"
+      title={title || 'Link Goal to Barrier'}
       onClose={onClose}
       width={700}
       noCloseDivider
