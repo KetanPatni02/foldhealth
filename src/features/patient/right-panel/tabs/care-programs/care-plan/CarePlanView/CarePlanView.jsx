@@ -458,10 +458,6 @@ export function CarePlanView({ patientId, program }) {
     return g;
   }, [appliedTemplates, appliedTemplatePriorities]);
   const [templateStripExpanded, setTemplateStripExpanded] = useState(false);
-  // Inline "N possible duplicates" pills in the section headers open the
-  // full comparison stack below on click. Per-kind so goals / interventions
-  // / barriers can be inspected independently.
-  const [duplicatesOpen, setDuplicatesOpen] = useState({ goal: false, intervention: false, barrier: false });
   // Removing an applied template is allowed until the plan is signed. It
   // strips the template's own conditions from the plan header and drops
   // the row from `applied_template_ids` (priority key is pruned server-side
@@ -817,6 +813,7 @@ export function CarePlanView({ patientId, program }) {
   return (
     <div className={styles.container}>
       <div className={styles.stickyTop}>
+        {/* pinned templates + problems bar */}
         {appliedTemplateCount > 0 && (() => {
           // Figma 2562:60230 — collapsed shows just the highest non-empty
           // priority row with a "View All (N)" link; expanded stacks all
@@ -932,6 +929,7 @@ export function CarePlanView({ patientId, program }) {
         )}
       </div>
 
+      <div className={styles.scrollArea}>
       <div className={styles.contentBody}>
       {!carePlanLoading && planStats.total > 0 && (
         <div className={styles.summaryStrip}>
@@ -1173,24 +1171,7 @@ export function CarePlanView({ patientId, program }) {
               <AddIconMinimalist size={16} color="var(--neutral-300)" />
             </ActionButton>
           )}
-          trailingEnd={(() => {
-            const barrierDupCount = duplicateFlags.filter(f => f.kind === 'barrier').length;
-            if (barrierDupCount === 0) return null;
-            return (
-              <button
-                type="button"
-                className={styles.duplicatePill}
-                onClick={() => setDuplicatesOpen(v => ({ ...v, barrier: !v.barrier }))}
-                aria-expanded={!!duplicatesOpen.barrier}
-                aria-label={`${barrierDupCount} possible duplicates`}
-              >
-                <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-warning)" />
-                <span>{barrierDupCount} possible {barrierDupCount === 1 ? 'duplicate' : 'duplicates'}</span>
-              </button>
-            );
-          })()}
         />
-        {duplicatesOpen.barrier && renderDuplicateFlags('barrier')}
         {openSections.barriers && (carePlanLoading ? (
           <SimpleTableSkeleton rows={3} cols={3} />
         ) : filteredBarriers.length === 0 && (data.barriers || []).length === 0 ? (
@@ -1214,6 +1195,7 @@ export function CarePlanView({ patientId, program }) {
             emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the filters.</div> : null}
           />
         ))}
+      </div>
       </div>
       </div>
 

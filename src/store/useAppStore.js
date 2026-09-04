@@ -2882,10 +2882,14 @@ export const useAppStore = create((set, get) => ({
     if (!currentPlan) { setFlags([]); return 0; }
     const planIds = plans.map(p => p.id);
 
+    // Duplicate detection only runs for goals + interventions. Barriers
+    // are legitimately shared across patients/goals (many hit the same
+    // barrier text) and the M:N join table already collapses same-title
+    // rows into a single canonical barrier — so a "possible duplicate"
+    // banner on the Barriers section reads as noise, not signal.
     const KINDS = [
       { kind: 'goal', table: 'patient_care_plan_goals', map: mapPatientCarePlanGoalRow },
       { kind: 'intervention', table: 'patient_care_plan_interventions', map: mapPatientCarePlanInterventionRow },
-      { kind: 'barrier', table: 'patient_care_plan_barriers', map: mapPatientCarePlanBarrierRow },
     ];
     const meta = (planRow) => ({
       programId: planRow.program_id,

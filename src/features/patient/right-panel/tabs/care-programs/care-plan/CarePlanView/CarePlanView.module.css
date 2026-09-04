@@ -1,19 +1,30 @@
 .container {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   container-type: inline-size;
+  overflow: hidden;
 }
 
-/* Sticky problems / templates bar */
+/* Templates + problems bar — sits above the scroll area so it stays
+   pinned without needing position: sticky and without stealing scroll
+   from the content column. */
 .stickyTop {
-  position: sticky;
-  top: 0;
-  z-index: 30;
   flex-shrink: 0;
   background: var(--neutral-0);
+  z-index: 30;
+}
+
+/* The actual scroll container. Everything below the templates bar
+   scrolls inside this element, so the browser scrollbar starts under
+   the pinned bar rather than running the full pane height. */
+.scrollArea {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 .problemsBar {
   flex-shrink: 0;
@@ -455,22 +466,6 @@
 .gbiSectionHeadEnd {
   margin-left: auto;
 }
-/* Inline duplicate-flag pill — clickable summary that expands the full
-   comparison card below the section head. */
-.duplicatePill {
-  display: inline-flex;
-  align-items: center;
-  gap: calc(var(--space-1) / 2);
-  padding: calc(var(--space-1) / 2) var(--space-2);
-  border: 0.5px solid var(--status-warning);
-  border-radius: var(--space-2);
-  background: var(--status-warning-light);
-  color: var(--status-warning-dark);
-  font-size: var(--font-sm);
-  font-weight: 500;
-  cursor: pointer;
-}
-.duplicatePill:hover { filter: brightness(0.97); }
 .barriersSectionHead {
   justify-content: flex-start;
   gap: var(--space-1);
