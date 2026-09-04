@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { AddIconMinimalist } from '../../../../../../../components/Icon/AddIconMinimalist';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
+import { ActivityLog } from '../../../../../../../components/ActivityLog/ActivityLog';
 import { Button } from '../../../../../../../components/Button/Button';
 import { Input } from '../../../../../../../components/Input/Input';
 import { Textarea } from '../../../../../../../components/Textarea/Textarea';
@@ -112,6 +113,8 @@ export function CarePlanView({ patientId, program }) {
   const savePatientCarePlanAsTemplate = useAppStore(s => s.savePatientCarePlanAsTemplate);
   const signCarePlan = useAppStore(s => s.signCarePlan);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
+  const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
+  const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
   const showToast = useAppStore(s => s.showToast);
   const patientName = useAppStore(s => s.patients.find(p => p.id === patientId)?.name);
   const platformUsers = useAppStore(s => s.platformUsers);
@@ -132,6 +135,48 @@ export function CarePlanView({ patientId, program }) {
 
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const live = useAppStore(s => (key ? s.patientCarePlans[key] : null));
+  const auditAll = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
+  useEffect(() => {
+    if (patientId && program?.id) fetchCarePlanAudit?.(patientId, program.id);
+  }, [patientId, program?.id, fetchCarePlanAudit]);
+  // Latest plan-level note (Figma 2562:60104): sorted by createdAt desc, we
+  // show only the newest one on the plan surface; every prior note stays in
+  // the audit log as the change history.
+  const planNoteHistory = useMemo(() => (
+    auditAll
+      .filter(a => a.action === 'note' && (a.entityType === 'plan' || !a.entityType))
+      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))
+  ), [auditAll]);
+  // If the most-recent plan-note lifecycle event is a "clear", we suppress
+  // the card until the user adds a new note. The full history — including
+  // every past note and every clear — stays in the audit log.
+  const latestClearAt = useMemo(() => {
+    const clears = auditAll
+      .filter(a => a.action === 'note_cleared' && (a.entityType === 'plan' || !a.entityType))
+      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
+    return clears[0]?.createdAt || null;
+  }, [auditAll]);
+  const rawLatestNote = planNoteHistory[0] || null;
+  const latestPlanNote = (rawLatestNote && latestClearAt && new Date(latestClearAt) > new Date(rawLatestNote.createdAt))
+    ? null
+    : rawLatestNote;
+  // Shape care-plan notes for the shared ActivityLog primitive — the
+  // "comment" variant renders the author + timestamp meta line and a
+  // pre-wrap body, which matches the Figma note-timeline treatment.
+  const noteTimelineEntries = useMemo(() => (
+    planNoteHistory.map(a => {
+      const created = a.createdAt ? new Date(a.createdAt) : null;
+      return {
+        id: a.id,
+        t: 'comment',
+        date: created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+        time: created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
+        by: a.actor || 'Unknown',
+        title: 'Added a Note',
+        commentBody: a.detail || '',
+      };
+    })
+  ), [planNoteHistory]);
   const duplicateFlags = useAppStore(s => (key ? s.carePlanDuplicateFlags[key] : null)) || EMPTY_ARR;
   // First-load skeleton: true while the initial fetch is in flight (before the
   // plan resolves), false once loaded.
@@ -142,16 +187,33 @@ export function CarePlanView({ patientId, program }) {
   // Linked-items preview data (Figma SNP-Story 2632:112808). A goal links its
   // interventions/barriers/automations (by goalId); a child row links its goal.
   const programBadge = program?.name ? [program.name] : (program?.code ? [program.code] : []);
+  // A barrier is many-to-many with goals via `goalIds` (join table); fall
+  // back to the legacy `goalId` column when the array is empty so
+  // pre-migration data still resolves. Interventions and automations are
+  // still 1:1 with a goal.
+  const barrierGoalIds = (b) => {
+    if (Array.isArray(b.goalIds) && b.goalIds.length > 0) return b.goalIds;
+    return b.goalId ? [b.goalId] : [];
+  };
   const linkedForGoal = (g) => ({
     programs: programBadge,
     interventions: (live?.interventions || []).filter(i => i.goalId === g.id).map(i => ({ id: i.id, icon: i.icon, title: i.title })),
-    barriers: (live?.barriers || []).filter(b => b.goalId === g.id).map(b => ({ id: b.id, title: b.title })),
+    barriers: (live?.barriers || []).filter(b => barrierGoalIds(b).includes(g.id)).map(b => ({ id: b.id, title: b.title })),
     automations: (live?.automations || []).filter(a => a.goalId === g.id).map(a => ({ id: a.id, title: a.title })),
   });
-  const linkedForChild = (item) => ({
-    programs: programBadge,
-    goals: (live?.goals || []).filter(g => g.id === item.goalId).map(g => ({ id: g.id, title: g.title, icon: g.icon })),
-  });
+  const linkedForChild = (item) => {
+    // A barrier can be linked to several goals; interventions /
+    // automations remain single-goal.
+    const parentGoalIds = Array.isArray(item.goalIds) && item.goalIds.length > 0
+      ? item.goalIds
+      : (item.goalId ? [item.goalId] : []);
+    return {
+      programs: programBadge,
+      goals: (live?.goals || [])
+        .filter(g => parentGoalIds.includes(g.id))
+        .map(g => ({ id: g.id, title: g.title, icon: g.icon })),
+    };
+  };
 
   useEffect(() => {
     if (patientId && program?.id) {
@@ -171,7 +233,7 @@ export function CarePlanView({ patientId, program }) {
     else if (carePlanPanelRequest === 'templates') setTemplatesDrawerOpen(true);
     else if (carePlanPanelRequest === 'history') setHistoryOpen(true);
     else if (carePlanPanelRequest === 'filter') setFiltersOpen(true);
-    else if (carePlanPanelRequest === 'note') { setNoteText(''); setNoteOpen(true); }
+    else if (carePlanPanelRequest === 'note') { openNoteDrawer(); }
     else if (carePlanPanelRequest === 'sign') { setSignNote(''); setSignOpen(true); }
     else if (carePlanPanelRequest === 'scan-duplicates') { scanForDuplicates(); }
     clearCarePlanPanelRequest();
@@ -208,7 +270,7 @@ export function CarePlanView({ patientId, program }) {
   // Collapsible GBI sections (chevron in each section header).
   // Remember which GBI sections are collapsed across visits (per-device UI pref).
   const [openSections, setOpenSections] = useState(() => {
-    const fallback = { goals: true, interventions: true, barriers: true };
+    const fallback = { goals: true, interventions: true, barriers: true, careNote: true };
     try {
       const saved = JSON.parse(localStorage.getItem('carePlanOpenSections') || 'null');
       return saved && typeof saved === 'object' ? { ...fallback, ...saved } : fallback;
@@ -248,6 +310,24 @@ export function CarePlanView({ patientId, program }) {
   const [signNote, setSignNote] = useState('');
   const [noteOpen, setNoteOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
+  // Baseline the textarea against when the drawer opened so we can tell if
+  // the user actually edited before offering the discard confirmation.
+  const [noteBaseline, setNoteBaseline] = useState('');
+  const [noteDiscardOpen, setNoteDiscardOpen] = useState(false);
+  const [noteDeleteOpen, setNoteDeleteOpen] = useState(false);
+  const noteDirty = noteText.trim() !== (noteBaseline || '').trim();
+  const openNoteDrawer = () => {
+    const seed = latestPlanNote?.detail || '';
+    setNoteText(seed);
+    setNoteBaseline(seed);
+    setNoteOpen(true);
+  };
+  const closeNoteDrawer = ({ force = false } = {}) => {
+    if (!force && noteDirty) { setNoteDiscardOpen(true); return; }
+    setNoteOpen(false);
+    setNoteText('');
+    setNoteBaseline('');
+  };
   // Role/status/priority filter (#39). Goals & barriers have no assignee, so the
   // assignee filter narrows only interventions; status/priority apply to all.
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -378,6 +458,10 @@ export function CarePlanView({ patientId, program }) {
     return g;
   }, [appliedTemplates, appliedTemplatePriorities]);
   const [templateStripExpanded, setTemplateStripExpanded] = useState(false);
+  // Inline "N possible duplicates" pills in the section headers open the
+  // full comparison stack below on click. Per-kind so goals / interventions
+  // / barriers can be inspected independently.
+  const [duplicatesOpen, setDuplicatesOpen] = useState({ goal: false, intervention: false, barrier: false });
   // Removing an applied template is allowed until the plan is signed. It
   // strips the template's own conditions from the plan header and drops
   // the row from `applied_template_ids` (priority key is pruned server-side
@@ -489,10 +573,27 @@ export function CarePlanView({ patientId, program }) {
     setSignNote('');
     if (v) showToast('Care plan signed');
   };
+  const doClearCareNote = async () => {
+    setNoteDeleteOpen(false);
+    if (!canEdit || !latestPlanNote) return;
+    // Log a "cleared" event instead of deleting the row so every past note
+    // stays in the audit log; the card derivation just skips when the most
+    // recent lifecycle event is a clear.
+    await logCarePlanAudit(patientId, program, {
+      entityType: 'plan',
+      action: 'note_cleared',
+      summary: 'Care note removed',
+      detail: latestPlanNote.detail || '',
+    });
+    showToast?.('Care note removed');
+  };
   const doAddNote = async () => {
+    const body = noteText.trim();
+    if (!body) return;
     setNoteOpen(false);
-    await addCarePlanNote(patientId, program, noteText);
     setNoteText('');
+    setNoteBaseline('');
+    await addCarePlanNote(patientId, program, body);
   };
   // The drawer is driven entirely by the store flag — the toolbar button and
   // the step header (a separate component) both set it, and closing clears it.
@@ -850,6 +951,60 @@ export function CarePlanView({ patientId, program }) {
           )}
         </div>
       )}
+      {!carePlanLoading && latestPlanNote && (
+        <section className={styles.careNoteSection}>
+          <div className={styles.careNoteHead}>
+            <button
+              type="button"
+              className={styles.careNoteToggle}
+              onClick={() => toggleSection('careNote')}
+              aria-expanded={openSections.careNote}
+            >
+              <DownChevronIcon
+                size={16}
+                color="var(--neutral-400)"
+                className={`${styles.sectionChevron} ${openSections.careNote ? '' : styles.sectionChevronClosed}`}
+              />
+              <span className={styles.careNoteHeadTitle}>Care Note</span>
+            </button>
+          </div>
+          {openSections.careNote && latestPlanNote && (
+            <div className={styles.careNoteCardWrap}>
+              <button
+                type="button"
+                className={styles.careNoteCard}
+                onClick={openNoteDrawer}
+                disabled={!canEdit}
+                aria-label="Edit care note"
+              >
+                <p className={styles.careNoteBody}>{latestPlanNote.detail}</p>
+                <div className={styles.careNoteMeta}>
+                  <span className={styles.careNoteAuthor}>{latestPlanNote.actor || 'Unknown'}</span>
+                  <span className={styles.careNoteDot} aria-hidden="true">•</span>
+                  <span className={styles.careNoteTimestamp}>
+                    {latestPlanNote.createdAt
+                      ? new Date(latestPlanNote.createdAt).toLocaleString('en-US', {
+                          month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit',
+                        })
+                      : ''}
+                  </span>
+                </div>
+              </button>
+              {canEdit && (
+                <span className={styles.careNoteDelete}>
+                  <ActionButton
+                    icon="solar:trash-bin-trash-linear"
+                    size="S"
+                    tooltip="Delete note"
+                    onClick={() => setNoteDeleteOpen(true)}
+                    aria-label="Delete care note"
+                  />
+                </span>
+              )}
+            </div>
+          )}
+        </section>
+      )}
       {filtersOpen && (
         <div className={styles.filterBar}>
           <FilterChip label="Status" options={GBI_STATUSES} selected={filters.status} onChange={v => setFilter('status', v)} />
@@ -1018,8 +1173,24 @@ export function CarePlanView({ patientId, program }) {
               <AddIconMinimalist size={16} color="var(--neutral-300)" />
             </ActionButton>
           )}
+          trailingEnd={(() => {
+            const barrierDupCount = duplicateFlags.filter(f => f.kind === 'barrier').length;
+            if (barrierDupCount === 0) return null;
+            return (
+              <button
+                type="button"
+                className={styles.duplicatePill}
+                onClick={() => setDuplicatesOpen(v => ({ ...v, barrier: !v.barrier }))}
+                aria-expanded={!!duplicatesOpen.barrier}
+                aria-label={`${barrierDupCount} possible duplicates`}
+              >
+                <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-warning)" />
+                <span>{barrierDupCount} possible {barrierDupCount === 1 ? 'duplicate' : 'duplicates'}</span>
+              </button>
+            );
+          })()}
         />
-        {renderDuplicateFlags('barrier')}
+        {duplicatesOpen.barrier && renderDuplicateFlags('barrier')}
         {openSections.barriers && (carePlanLoading ? (
           <SimpleTableSkeleton rows={3} cols={3} />
         ) : filteredBarriers.length === 0 && (data.barriers || []).length === 0 ? (
@@ -1290,10 +1461,18 @@ export function CarePlanView({ patientId, program }) {
 
       {noteOpen && (
         <Drawer
-          title="Add Note"
-          onClose={() => setNoteOpen(false)}
-          secondaryAction={<Button variant="secondary" size="L" onClick={() => setNoteOpen(false)}>Cancel</Button>}
-          primaryAction={<Button variant="primary" size="L" onClick={doAddNote} disabled={!noteText.trim()}>Add Note</Button>}
+          title={latestPlanNote ? 'Update Note' : 'Add Note'}
+          onClose={() => closeNoteDrawer()}
+          primaryAction={
+            <Button
+              variant="primary"
+              size="L"
+              onClick={doAddNote}
+              disabled={!noteText.trim() || !noteDirty}
+            >
+              {latestPlanNote ? 'Update Note' : 'Add Note'}
+            </Button>
+          }
         >
           <div className={styles.drawerBody}>
             <p className={styles.drawerHint}>Records a maintenance note on the signed plan without editing it — it appears in the plan's History.</p>
@@ -1301,8 +1480,36 @@ export function CarePlanView({ patientId, program }) {
               <span className={styles.drawerLabel}>Note <span className={styles.required}>*</span></span>
               <Textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="e.g. Reviewed with patient; no changes needed." rows={3} />
             </div>
+            {noteTimelineEntries.length > 0 && (
+              <div className={styles.noteTimeline}>
+                <span className={styles.noteTimelineLabel}>Change log</span>
+                <ActivityLog entries={noteTimelineEntries} hideCommentTitle />
+              </div>
+            )}
           </div>
         </Drawer>
+      )}
+      {noteDiscardOpen && (
+        <ConfirmDialog
+          variant="destructive"
+          title="Discard unsaved changes?"
+          description="You'll lose the edits you just made to this note."
+          confirmLabel="Discard"
+          cancelLabel="Keep editing"
+          onCancel={() => setNoteDiscardOpen(false)}
+          onConfirm={() => { setNoteDiscardOpen(false); closeNoteDrawer({ force: true }); }}
+        />
+      )}
+      {noteDeleteOpen && (
+        <ConfirmDialog
+          variant="destructive"
+          title="Delete this care note?"
+          description="The note is removed from the plan surface, but every past note stays in the plan's history."
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onCancel={() => setNoteDeleteOpen(false)}
+          onConfirm={doClearCareNote}
+        />
       )}
 
       {problemOpen && (
