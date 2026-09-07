@@ -172,12 +172,12 @@
 }
 .progressWrap {
   position: relative;
-  padding-top: var(--space-6);
 }
 .progressBubble {
   position: absolute;
-  top: 0;
+  bottom: calc(100% + var(--space-1));
   transform: translateX(-50%);
+  z-index: 5;
   padding: var(--space-1) var(--space-2);
   border-radius: var(--space-1);
   background: var(--neutral-0);
@@ -205,13 +205,13 @@
   border-radius: 100px;
 }
 .progressSlider > span:first-child > span {
-  background: var(--status-warning);
+  background: var(--slider-tone, var(--status-warning));
   border-radius: 100px;
 }
 .progressSlider [role='slider'] {
   width: 14px;
   height: 14px;
-  border: 2px solid var(--status-warning);
+  border: 2px solid var(--slider-tone, var(--status-warning));
   background: var(--neutral-0);
   box-shadow: none;
 }

@@ -17,6 +17,7 @@ import { ActivityLog } from '../../../../../../../../components/ActivityLog/Acti
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { LinkGoalToBarrierDrawer } from '../BarrierDetailDrawer/LinkGoalToBarrierDrawer';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
+import { adherenceBand, adherenceTone } from '../../lib/goalMetrics';
 import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 
@@ -45,20 +46,22 @@ function adherenceNum(value) {
   return Number.isFinite(n) && value !== '-' ? n : 0;
 }
 
-function progressBand(pct) {
-  const n = Number(pct) || 0;
-  if (n <= 0) return 'Poor';
-  if (n < 40) return 'Low';
-  if (n < 80) return 'Moderate';
-  if (n < 100) return 'High';
-  return 'Complete';
-}
+// Adherence uses the 3-band scheme (Poor / Moderate / Good) from the
+// shared lib — intervention adherence is a distinct metric from goal
+// progress, which stays on 5 bands. Local aliases keep the render calls
+// short without re-declaring the logic.
+const progressBand = adherenceBand;
+const progressTone = adherenceTone;
 
-function progressTone(label) {
-  if (/Poor|Low/.test(label)) return 'error';
-  if (/Moderate/.test(label)) return 'warning';
-  if (/High|Complete/.test(label)) return 'success';
-  return 'grey';
+// Progress slider fill / thumb color per band. Fed into the slider via
+// the `--slider-tone` CSS variable so the CSS module can flip the fill
+// and border colors without changing markup. Figma 2632:110774.
+function progressSliderColor(pct) {
+  const tone = progressTone(progressBand(pct));
+  if (tone === 'error') return 'var(--status-error)';
+  if (tone === 'warning') return 'var(--status-warning)';
+  if (tone === 'success') return 'var(--status-success)';
+  return 'var(--neutral-300)';
 }
 
 function fmtDate(iso) {
@@ -193,6 +196,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   );
 
   const [pct, setPct] = useState(adherenceNum(live?.adherence));
+  const [pctDragging, setPctDragging] = useState(false);
   const [open, setOpen] = useState({ goals: true, automations: true });
   const [linkGoalOpen, setLinkGoalOpen] = useState(false);
   const [addingAutomation, setAddingAutomation] = useState(false);
@@ -386,11 +390,16 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
 
         <section className={styles.section}>
           <span className={styles.progressLabel}>Adherence</span>
-          <div className={styles.progressCard}>
-            <div className={styles.progressWrap}>
-              <div className={styles.progressBubble} style={{ left: `${pct}%` }}>
-                {pct}% • {progressBand(pct)}
-              </div>
+          <div className={styles.progressCard} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <div
+              className={styles.progressWrap}
+              style={{ '--slider-tone': progressSliderColor(pct), flex: 1, minWidth: 0 }}
+            >
+              {pctDragging && (
+                <div className={styles.progressBubble} style={{ left: `${pct}%` }}>
+                  {pct}% • {progressBand(pct)}
+                </div>
+              )}
               <Slider
                 className={styles.progressSlider}
                 value={[pct]}
@@ -398,11 +407,19 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 max={100}
                 step={1}
                 disabled={!canEdit}
+                onPointerDown={() => setPctDragging(true)}
+                onPointerUp={() => setPctDragging(false)}
+                onPointerCancel={() => setPctDragging(false)}
                 onValueChange={v => setPct(v[0])}
-                onValueCommit={commitAdherence}
+                onValueCommit={(v) => { commitAdherence(v); setPctDragging(false); }}
                 aria-label="Intervention adherence"
               />
             </div>
+            <Badge
+              size="S"
+              tone={progressTone(progressBand(pct))}
+              label={`${pct}% • ${progressBand(pct)}`}
+            />
           </div>
         </section>
 
@@ -586,17 +603,21 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
               </section>
             ) : (
               <>
-                <Textarea
-                  title={latestInterventionNote ? 'Update Note' : 'Add Note'}
-                  placeholder="Add a note"
-                  value={note}
-                  onChange={(value) => {
-                    const v = typeof value === 'string' ? value : '';
-                    setNote(v);
-                    setNotePlain(v);
-                  }}
-                  rows={3}
-                />
+                <section className={barrierStyles.section}>
+                  <div className={barrierStyles.sectionHead}>
+                    <span className={barrierStyles.sectionTitle}>Note</span>
+                  </div>
+                  <Textarea
+                    placeholder="Add a note"
+                    value={note}
+                    onChange={(value) => {
+                      const v = typeof value === 'string' ? value : '';
+                      setNote(v);
+                      setNotePlain(v);
+                    }}
+                    rows={3}
+                  />
+                </section>
                 {(() => {
                   const baseline = (latestInterventionNote?.detail || '').trim();
                   const current = note.trim();
@@ -614,7 +635,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                           if (latestInterventionNote) setNoteEditing(false);
                         }}
                       >
-                        Discard
+                        Cancel
                       </Button>
                       <Button
                         variant="primary"

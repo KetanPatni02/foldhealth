@@ -669,15 +669,35 @@ export function CarePlanView({ patientId, program }) {
   };
 
   const saveInterventionFromConfig = async (kind, config, editingId = null) => {
+    // Promote the taskId nested inside `config` (written by the care-plan
+    // AddTaskDrawer flow for patient-task / internal-task kinds) to the
+    // top-level `taskId` so `patientCarePlanInterventionToRow` writes it
+    // into the `task_id` FK column added by the
+    // care_plan_intervention_task_link migration. The mapper still falls
+    // back to `config.taskId` for legacy rows that pre-date the column.
+    //
+    // Assignee resolution — the InterventionDrawer library form now
+    // captures `assignedTo` (staff or member name); previously it was
+    // dropped and every intervention landed as "Unassigned". Fall back
+    // to the current patient for kinds that default to a member task.
+    const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const assigneeName = (typeof config?.assignedTo === 'string' && config.assignedTo.trim())
+      || (typeof config?.member === 'string' && config.member.trim())
+      || 'Unassigned';
     const saved = await savePatientCarePlanIntervention(patientId, program, {
       kind,
       title: config.title,
+      taskId: config?.taskId || null,
+      goalId: config?.goalId || null,
       icon: CARE_PLAN_INTERVENTION_ICONS[kind] || 'solar:clipboard-list-linear',
       duration: interventionDurationFromConfig(config),
       priority: interventionPriorityFromConfig(config),
       config,
       status: 'Not Started',
-      assignee: { name: 'Unassigned', initials: '' },
+      assignee: {
+        name: assigneeName,
+        initials: assigneeName === 'Unassigned' ? '' : initialsOf(assigneeName),
+      },
     }, editingId);
     if (saved) {
       showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
@@ -1186,6 +1206,11 @@ export function CarePlanView({ patientId, program }) {
             onAssigneeChange={handleAssigneeChange}
             linked={linkedForChild}
             platformUsers={platformUsers}
+            patients={patientName ? [{
+              id: patientId,
+              name: patientName,
+              initials: (patientName || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+            }] : []}
             emptyState={filteredInterventions.length === 0 ? <div className={styles.emptyRow}>No interventions match the filters.</div> : null}
           />
         ))}
