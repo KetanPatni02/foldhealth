@@ -41,18 +41,6 @@ function goalIconFor(goal) {
   return 'solar:target-linear';
 }
 
-// Mirrors the barrier drawer's goal-type icon resolver so linked goal rows
-// read identically across barrier + intervention surfaces.
-function goalIconFor(goal) {
-  const c = (goal?.category || goal?.type || '').toLowerCase();
-  if (c.startsWith('vital')) return 'solar:heart-pulse-linear';
-  if (c.startsWith('exercise') || c.startsWith('activity')) return 'solar:running-linear';
-  if (c.startsWith('diet')) return 'solar:donut-linear';
-  if (c.startsWith('lab')) return 'solar:test-tube-linear';
-  if (c.startsWith('assessment')) return 'solar:clipboard-list-linear';
-  return 'solar:target-linear';
-}
-
 const CREATION_TIMINGS = ['day', 'week', 'immediate'];
 const CREATION_TRIGGERS = ['Program Start Date', 'Discharge Date', 'Care Plan Signed'];
 const DUE_UNITS = ['day', 'week'];
