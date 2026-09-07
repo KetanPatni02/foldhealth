@@ -168,7 +168,7 @@
 .progressCard {
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-2) var(--space-3);
 }
 .progressWrap {
   position: relative;
@@ -620,4 +620,115 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-2);
+}
+
+/* Intervention hero — Figma 8533-295507. Title is inline-editable on
+   hover (soft neutral background) and clicks straight into an input.
+   Linked content + duration render as adjacent chips below the meta. */
+.priorityTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  margin: calc(var(--space-1) * -1);
+  border: none;
+  background: transparent;
+  border-radius: var(--space-2);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease;
+}
+.priorityTrigger:hover:not(:disabled),
+.priorityTrigger:focus-visible:not(:disabled) {
+  background: var(--neutral-50);
+  outline: none;
+}
+.priorityTrigger:disabled { cursor: default; }
+.titleEditable,
+.titleInlineInput {
+  /* Shared box so the edit input drops into the exact spot the display
+     button occupied — no font-size / padding shift on click. */
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1);
+  margin: calc(var(--space-1) * -1);
+  border: none;
+  background: transparent;
+  border-radius: var(--space-1);
+  font-size: var(--font-lg);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--neutral-500);
+  min-width: 0;
+  text-align: left;
+  transition: background 0.12s ease;
+}
+.titleEditable { cursor: text; }
+.titleEditable:hover:not(:disabled),
+.titleEditable:focus-visible:not(:disabled) {
+  background: var(--neutral-50);
+  outline: none;
+}
+.titleEditable:disabled { cursor: default; }
+.titleInlineInput {
+  width: 100%;
+  outline: none;
+  background: var(--neutral-0);
+  /* Match the shared Input primitive: 0.5px placeholder-text stroke,
+     4px radius, primary focus ring. */
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: 4px;
+  transition: border-color .15s, box-shadow .15s;
+  cursor: text;
+}
+.titleInlineInput:focus {
+  outline: none;
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 2px var(--primary-100);
+}
+.titleLarge {
+  /* Retained for callers that render a static title outside the button. */
+  font-size: var(--font-lg);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--neutral-500);
+}
+.heroBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-top: var(--space-1);
+}
+.linkedContentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 24px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+  color: var(--neutral-500);
+  font-size: var(--font-sm);
+  font-weight: 400;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.linkedContentBadge:hover:not(:disabled) { background: var(--neutral-50); }
+.linkedContentBadge:disabled { cursor: default; }
+.durationBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 24px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+  color: var(--neutral-500);
+  font-size: var(--font-sm);
+  font-weight: 400;
+  line-height: 1.2;
 }

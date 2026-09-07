@@ -1403,10 +1403,26 @@ export function CarePlanView({ patientId, program }) {
         const currentLinked = Array.isArray(intv?.goalIds) && intv.goalIds.length > 0
           ? intv.goalIds
           : (intv?.goalId ? [intv.goalId] : []);
+        // Merge the intervention row's top-level columns into the config
+        // blob before handing it to the editor. Legacy rows either only
+        // stored `title` / `priority` / `assignee` at the top level, or
+        // stored empty strings inside config; without this, opening the
+        // edit drawer showed empty fields. Uses `||` (not `??`) so an
+        // empty-string in the config falls through to the top-level
+        // column.
+        const editorIntervention = intv ? {
+          ...(intv.config || {}),
+          id: intv.id,
+          title: (intv.config && intv.config.title) || intv.title || '',
+          priority: (intv.config && intv.config.priority) || intv.priority || 'Medium',
+          assignedTo: (intv.config && intv.config.assignedTo)
+            || (intv.assignee && intv.assignee.name && intv.assignee.name !== 'Unassigned' ? intv.assignee.name : '')
+            || '',
+        } : null;
         return (
           <Editor
             kind={intvSpecialDrawer.kind}
-            intervention={intv?.config}
+            intervention={editorIntervention}
             linkToGoalsAllowed
             availableGoals={data.goals}
             linkedGoalIds={currentLinked}
