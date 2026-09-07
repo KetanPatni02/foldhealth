@@ -404,6 +404,23 @@
   white-space: nowrap;
 }
 
+/* Priority row trigger — icon + capitalized label + chevron, sits in the
+   Priority detail row so the value styling reads the same as the other
+   inline detail dropdowns. */
+.priorityRowTrigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  text-transform: capitalize;
+  position: relative;
+}
+
 /* Plain button wrapper that carries popover semantics; the Badge inside
    supplies the visual pill so all triggers read the same across the app. */
 .badgeTrigger {

@@ -106,12 +106,23 @@ export function InterventionDrawer({
 
   const [title, setTitle] = useState(intervention?.title ?? '');
   const [priority, setPriority] = useState(intervention?.priority ?? 'Medium');
+  // Default the assignee to the current member, matching the Patient Task
+  // drawer. The parent may resolve `memberName` async (worklist slice
+  // hydrates after mount), so sync on arrival while leaving explicit
+  // user picks alone.
+  useEffect(() => {
+    if (memberName && !assignedToInitialized.current) {
+      setAssignedTo(prev => prev || memberName);
+      assignedToInitialized.current = true;
+    }
+  }, [memberName]); // eslint-disable-line react-hooks/exhaustive-deps
   const [form, setForm] = useState(intervention?.form ?? '');
   const [content, setContent] = useState(intervention?.content ?? '');
   const [vital, setVital] = useState(intervention?.vital ?? '');
   const [note, setNote] = useState(intervention?.note ?? '');
   const [description, setDescription] = useState(intervention?.description ?? '');
   const [assignedTo, setAssignedTo] = useState(intervention?.assignedTo ?? '');
+  const assignedToInitialized = useRef(!!intervention?.assignedTo);
   const [member, setMember] = useState(intervention?.member ?? '');
   const [creationTiming, setCreationTiming] = useState(intervention?.creationTiming ?? 'immediate');
   const [creationCount, setCreationCount] = useState(intervention?.creationCount ?? '1');
@@ -309,49 +320,21 @@ export function InterventionDrawer({
       <div className={styles.body}>
         <InterventionKindToggle kind={kind} onKindChange={onKindChange} />
 
+        {/* Task Title — plain Input, matches the care-plan Add Task
+            drawer's title section. Priority moved out of this field
+            into its own detail row below. */}
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
-            Title<span className={styles.mandatoryDot} aria-hidden="true" />
+            Task Title<span className={styles.mandatoryDot} aria-hidden="true" />
           </span>
-          <div className={styles.titleField}>
-            <button
-              ref={priorityRef}
-              type="button"
-              className={styles.priorityTrigger}
-              aria-label={`Priority: ${priority}`}
-              aria-haspopup="menu"
-              aria-expanded={priorityOpen}
-              onClick={() => setPriorityOpen(v => !v)}
-            >
-              <PriorityIcon priority={priority.toLowerCase()} size={16} />
-              <DownChevronIcon size={10} color="var(--neutral-300)" />
-            </button>
-            <Input
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Enter The Task Title"
-              aria-label="Title"
-              maxLength={TITLE_MAX}
-              characterLimit={TITLE_MAX}
-              className={styles.titleInput}
-              wrapperClassName={styles.titleInputWrap}
-            />
-          </div>
-          {priorityOpen && (
-            <MenuPopover
-              anchorRef={priorityRef}
-              align="left"
-              width={140}
-              ariaLabel="Intervention priority"
-              items={PRIORITIES.map(p => ({
-                key: p,
-                label: p,
-                iconElement: <PriorityIcon priority={p.toLowerCase()} size={16} />,
-              }))}
-              onSelect={setPriority}
-              onClose={() => setPriorityOpen(false)}
-            />
-          )}
+          <Input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Enter The Task Title"
+            aria-label="Task Title"
+            maxLength={TITLE_MAX}
+            characterLimit={TITLE_MAX}
+          />
         </div>
 
         {needsForms && (
@@ -446,9 +429,45 @@ export function InterventionDrawer({
             size="S"
             showRole={false}
             users={assigneeUsers}
+            // If the current assignee is the member, render the trigger
+            // with the patient avatar variant to match the picker row.
+            avatarVariant={assignedTo && assignedTo === memberName ? 'patient' : 'staff'}
             onSelect={(u) => setAssignedTo(u?.name || '')}
             pickerTitle="Assign to"
           />
+        </div>
+        {/* Priority — was inline in the Title field, now its own row so
+            the layout matches the care-plan Add Task drawer. */}
+        <div className={styles.detailRow}>
+          <span className={styles.detailLabel}>Priority</span>
+          <button
+            ref={priorityRef}
+            type="button"
+            className={styles.priorityRowTrigger}
+            aria-label={`Priority: ${priority}`}
+            aria-haspopup="menu"
+            aria-expanded={priorityOpen}
+            onClick={() => setPriorityOpen(v => !v)}
+          >
+            <PriorityIcon priority={priority.toLowerCase()} size={16} />
+            <span>{priority}</span>
+            <DownChevronIcon size={12} color="var(--neutral-300)" />
+          </button>
+          {priorityOpen && (
+            <MenuPopover
+              anchorRef={priorityRef}
+              align="left"
+              width={140}
+              ariaLabel="Intervention priority"
+              items={PRIORITIES.map(p => ({
+                key: p,
+                label: p,
+                iconElement: <PriorityIcon priority={p.toLowerCase()} size={16} />,
+              }))}
+              onSelect={setPriority}
+              onClose={() => setPriorityOpen(false)}
+            />
+          )}
         </div>
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>
