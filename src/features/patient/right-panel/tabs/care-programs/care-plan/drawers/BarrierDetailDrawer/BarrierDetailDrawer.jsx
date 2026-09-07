@@ -100,7 +100,7 @@ function mapBarrierAuditEntry(e) {
   }
 }
 
-export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
+export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOpenGoal }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const auditAll = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
@@ -108,6 +108,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
   const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
   const showToast = useAppStore(s => s.showToast);
+  const libraryBarriers = useAppStore(s => s.carePlanBarriers) || [];
 
   const goalsInPlan = slice?.goals || [];
   const barriersInPlan = slice?.barriers || [];
@@ -162,6 +163,33 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
   // in the header; the rest is preserved as-is.
   const [title, setTitle] = useState(barrier.title || '');
   const [status, setStatus] = useState(barrier.status || 'Not Started');
+  // Typeahead — surface library barriers matching the current input so
+  // the user can pick an existing entry instead of re-typing / creating
+  // a near-duplicate. Guarded by focus so the list only shows while the
+  // input is active.
+  const [titleFocused, setTitleFocused] = useState(false);
+  const titleSuggestions = useMemo(() => {
+    const q = (title || '').trim().toLowerCase();
+    if (!q) return [];
+    const seen = new Set();
+    const rows = [];
+    for (const b of libraryBarriers) {
+      const name = (b?.title || '').trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (key === q) continue; // exact match — nothing to switch to
+      if (!key.includes(q)) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ id: b.id, title: name });
+      if (rows.length >= 8) break;
+    }
+    return rows;
+  }, [title, libraryBarriers]);
+  // Terminal state: once a barrier is Met or Not Met the record locks —
+  // no rename, no link / unlink, no note edits. Users flip status back to
+  // In Progress / On Hold to reopen the drawer for editing.
+  const isTerminal = status === 'Met' || status === 'Not Met';
   const [linkDrawerOpen, setLinkDrawerOpen] = useState(false);
   const [unlinkConfirm, setUnlinkConfirm] = useState(null);
   const [confirmDeleteBarrier, setConfirmDeleteBarrier] = useState(false);
@@ -227,12 +255,10 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
     return rows;
   }, [auditAll, barrierIdSet, legacyClones, goalIndex]);
 
-  // Title + status auto-save. Title waits ~500ms after the last keystroke
-  // so quick edits don't spam Supabase, then persists onto every legacy
-  // clone that still exists (pre-migration data) plus the canonical row.
-  // Post-migration `legacyClones` collapses to `[barrier]` and this loop
-  // becomes a single write. First mount is skipped so simply opening the
-  // drawer doesn't fire a save.
+  // Title + status changes are staged locally and committed via the
+  // header "Update" button — auto-save was rolling too many tiny writes
+  // to Supabase for each keystroke / dropdown click. Note edits still
+  // save via their own "Add Note" / "Update Note" button.
   const persistedTitle = (barrier.title || '').trim();
   const persistedStatus = barrier.status || 'Not Started';
   const persistBarrier = async (nextTitle, nextStatus, doneVerb) => {
@@ -247,14 +273,11 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
     }
     if (doneVerb) showToast?.(doneVerb);
   };
-  const skipAutoSave = useMemo(() => ({ current: true }), []);
-  useEffect(() => {
-    if (skipAutoSave.current) { skipAutoSave.current = false; return; }
-    const t = title.trim();
-    if (t === persistedTitle && status === persistedStatus) return;
-    const id = setTimeout(() => { persistBarrier(t, status, 'Barrier updated'); }, t === persistedTitle ? 0 : 500);
-    return () => clearTimeout(id);
-  }, [title, status]); // eslint-disable-line react-hooks/exhaustive-deps -- persistBarrier stable via closure
+  const barrierDirty = title.trim() !== persistedTitle || status !== persistedStatus;
+  const handleUpdateBarrier = async () => {
+    if (!barrierDirty) return;
+    await persistBarrier(title.trim(), status, 'Barrier updated');
+  };
 
   const handleAddGoalClick = () => {
     if (availableGoals.length === 0) {
@@ -332,8 +355,17 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
         title="Barriers"
         onClose={onClose}
         width={640}
-        noCloseDivider
-        headerRight={null}
+        noCloseDivider={isTerminal}
+        headerRight={isTerminal ? null : (
+          <Button
+            variant="primary"
+            size="M"
+            disabled={!barrierDirty}
+            onClick={handleUpdateBarrier}
+          >
+            Update
+          </Button>
+        )}
       >
         <div className={styles.body}>
           {/* Status bar — Select on the left, delete-barrier on the right.
@@ -356,23 +388,64 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
             />
           </div>
 
-          {/* Editable barrier title. */}
-          <div className={styles.field}>
-            <span className={styles.label}>
-              Edit Barrier <span className={styles.required} aria-hidden>•</span>
-            </span>
-            <Input
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Barrier name"
-              aria-label="Barrier name"
-            />
-            <div className={styles.metaLine}>
-              {startDate && <>Start Date : {startDate}</>}
-              {startDate && updatedDate && <span className={styles.metaDot}>&bull;</span>}
-              {updatedDate && <>Last Update : {updatedDate} by {updatedByName}</>}
+          {/* Barrier title — editable Input while active, or a read-only
+              summary card once the barrier is Met / Not Met. The card
+              carries the barrier glyph, the plan-scoped meta line, and a
+              small linked-goals chip so users still see the link count
+              without the affordances that let them mutate it. */}
+          {isTerminal ? (
+            <div className={styles.field}>
+              <div className={styles.terminalCard}>
+                <div className={styles.terminalHead}>
+                  <span className={styles.terminalTitle}>{title || barrier.title}</span>
+                </div>
+                <div className={styles.metaLine}>
+                  {startDate && <>Start Date : {startDate}</>}
+                  {startDate && updatedDate && <span className={styles.metaDot}>&bull;</span>}
+                  {updatedDate && <>Last Update : {updatedDate} by {updatedByName}</>}
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className={styles.field}>
+              <span className={styles.label}>
+                Edit Barrier <span className={styles.required} aria-hidden>•</span>
+              </span>
+              <div className={styles.titleFieldWrap}>
+                <Input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  onFocus={() => setTitleFocused(true)}
+                  onBlur={() => { setTimeout(() => setTitleFocused(false), 120); }}
+                  placeholder="Barrier name"
+                  aria-label="Barrier name"
+                />
+                {titleFocused && titleSuggestions.length > 0 && (
+                  <ul className={styles.titleSuggestions} role="listbox" aria-label="Existing barriers">
+                    {titleSuggestions.map(s => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          className={styles.titleSuggestionRow}
+                          role="option"
+                          aria-selected="false"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => { setTitle(s.title); setTitleFocused(false); }}
+                        >
+                          {s.title}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <div className={styles.metaLine}>
+                {startDate && <>Start Date : {startDate}</>}
+                {startDate && updatedDate && <span className={styles.metaDot}>&bull;</span>}
+                {updatedDate && <>Last Update : {updatedDate} by {updatedByName}</>}
+              </div>
+            </div>
+          )}
 
           {/* Linked Goals. */}
           <section className={styles.section}>
@@ -390,14 +463,16 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
                   className={`${styles.sectionChevron} ${open.goals ? styles.sectionChevronOpen : ''}`}
                 />
               </button>
-              <ActionButton
-                icon="solar:add-linear"
-                size="S"
-                tooltip="Link goal"
-                aria-haspopup="dialog"
-                aria-expanded={linkDrawerOpen}
-                onClick={handleAddGoalClick}
-              />
+              {!isTerminal && (
+                <ActionButton
+                  icon="solar:add-linear"
+                  size="S"
+                  tooltip="Link goal"
+                  aria-haspopup="dialog"
+                  aria-expanded={linkDrawerOpen}
+                  onClick={handleAddGoalClick}
+                />
+              )}
             </div>
             {open.goals && (
               linkedGoals.length === 0 ? (
@@ -422,15 +497,19 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
                             icon="solar:arrow-right-up-linear"
                             size="S"
                             tooltip="Open goal"
-                            onClick={() => { /* room to hoist onOpenGoal in a follow-up */ }}
+                            onClick={() => onOpenGoal?.(goal)}
                           />
-                          <span className={styles.linkActionsDivider} aria-hidden />
-                          <ActionButton
-                            icon="solar:link-broken-minimalistic-linear"
-                            size="S"
-                            tooltip="Unlink"
-                            onClick={() => setUnlinkConfirm({ goal })}
-                          />
+                          {!isTerminal && (
+                            <>
+                              <span className={styles.linkActionsDivider} aria-hidden />
+                              <ActionButton
+                                icon="solar:link-broken-minimalistic-linear"
+                                size="S"
+                                tooltip="Unlink"
+                                onClick={() => setUnlinkConfirm({ goal })}
+                              />
+                            </>
+                          )}
                         </div>
                       </li>
                     );
@@ -475,21 +554,23 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
                       <div className={styles.linkStack}>
                         <span className={styles.linkTitle}>{t.label}</span>
                       </div>
-                      <div className={styles.linkActions}>
-                        <ActionButton
-                          icon="solar:arrow-right-up-linear"
-                          size="S"
-                          tooltip="Open template"
-                          onClick={() => { /* template detail route pending */ }}
-                        />
-                        <span className={styles.linkActionsDivider} aria-hidden />
-                        <ActionButton
-                          icon="solar:link-broken-minimalistic-linear"
-                          size="S"
-                          tooltip="Unlink"
-                          onClick={() => showToast?.('Unlink the associated goal to remove this template link')}
-                        />
-                      </div>
+                      {!isTerminal && (
+                        <div className={styles.linkActions}>
+                          <ActionButton
+                            icon="solar:arrow-right-up-linear"
+                            size="S"
+                            tooltip="Open template"
+                            onClick={() => { /* template detail route pending */ }}
+                          />
+                          <span className={styles.linkActionsDivider} aria-hidden />
+                          <ActionButton
+                            icon="solar:link-broken-minimalistic-linear"
+                            size="S"
+                            tooltip="Unlink"
+                            onClick={() => showToast?.('Unlink the associated goal to remove this template link')}
+                          />
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -502,7 +583,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
           <div className={styles.noteEditor}>
             <Textarea
               title={latestBarrierNote ? 'Update Note' : 'Add Note'}
-              placeholder="Add a note"
+              placeholder={isTerminal ? 'Notes are locked on Met / Not Met barriers.' : 'Add a note'}
               value={note}
               onChange={(value) => {
                 const v = typeof value === 'string' ? value : '';
@@ -510,12 +591,13 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose }) {
                 setNotePlain(v);
               }}
               rows={3}
+              disabled={isTerminal}
             />
             {(() => {
               const baseline = (latestBarrierNote?.detail || '').trim();
               const current = note.trim();
-              const canSave = current.length > 0 && current !== baseline;
-              const canDiscard = current !== baseline;
+              const canSave = !isTerminal && current.length > 0 && current !== baseline;
+              const canDiscard = !isTerminal && current !== baseline;
               return (
                 <div className={styles.noteActions}>
                   <Button

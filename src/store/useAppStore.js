@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { addedChartToRow, rowToAddedChart } from '../lib/hccAddedChartsMapper';
+import { goalProgressAuditDetail, computeGoalProgress } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
 import { enrichCallRecord } from '../data/callDetailsEnrich';
@@ -244,9 +245,18 @@ function mapCarePlanAutomationRow(row) {
 }
 
 function mapPatientCarePlanInterventionRow(row) {
+  // `taskId` is the FK to the paired tasks row that owns assignee, due
+  // date, recurrence, and completion state (care_plan_intervention_task_link
+  // migration). Falls back to the legacy `config.taskId` for pre-migration
+  // rows so the UI can still find the paired task while the column is
+  // rolling out.
+  const taskId = row.task_id
+    || (row.config && typeof row.config === 'object' ? row.config.taskId : null)
+    || null;
   return {
     id: row.id,
     goalId: row.goal_id || null,
+    taskId,
     kind: row.kind || '',
     title: row.title || '',
     icon: row.icon || 'solar:clipboard-list-linear',
@@ -268,6 +278,7 @@ function patientCarePlanInterventionToRow(i, planId) {
   return {
     plan_id: planId,
     goal_id: i.goalId || null,
+    task_id: i.taskId || null,
     kind: i.kind || '',
     title: (i.title || '').trim(),
     icon: i.icon || 'solar:clipboard-list-linear',
@@ -346,18 +357,10 @@ function carePlanKey(patientId, programId) {
   return `${patientId}::${programId}`;
 }
 
-// Goal Details progress readout (Figma 2632:81504) — "70% - Moderate".
-function progressBandLabel(pct) {
-  const n = Number(pct) || 0;
-  if (n <= 0) return 'Poor';
-  if (n < 40) return 'Low';
-  if (n < 80) return 'Moderate';
-  if (n < 100) return 'High';
-  return 'Complete';
-}
-function progressAuditDetail(pct) {
-  return `${Number(pct) || 0}% - ${progressBandLabel(pct)}`;
-}
+// `progressBandLabel` / `goalProgressAuditDetail` moved to
+// `features/.../care-plan/lib/goalMetrics.js` as `goalProgressBand` /
+// `goalProgressAuditDetail` so the audit-log detail string and the drawer
+// readout share one source of truth.
 
 // Derive an audit entry from a goal/intervention save by diffing against its
 // previous state — a create, a status change, a progress change, a rename,
@@ -369,12 +372,12 @@ function auditForSave(entityType, next, prev) {
     return { entityType, entityId: next.id, action: 'status_changed', summary: next.title, detail: `${prev.status} → ${next.status}` };
   }
   if ((prev.progress ?? 0) !== (next.progress ?? 0)) {
-    return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${progressAuditDetail(prev.progress)} → ${progressAuditDetail(next.progress)}` };
+    return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${goalProgressAuditDetail(prev.progress)} → ${goalProgressAuditDetail(next.progress)}` };
   }
   if (entityType === 'intervention' && String(prev.adherence ?? '-') !== String(next.adherence ?? '-')) {
     const from = Number(prev.adherence) || 0;
     const to = Number(next.adherence) || 0;
-    return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${progressAuditDetail(from)} → ${progressAuditDetail(to)}` };
+    return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${goalProgressAuditDetail(from)} → ${goalProgressAuditDetail(to)}` };
   }
   if (prev.title !== next.title) {
     return { entityType, entityId: next.id, action: 'updated', summary: next.title, detail: `Renamed from "${prev.title}"` };
@@ -2784,6 +2787,9 @@ export const useAppStore = create((set, get) => ({
         },
       };
     });
+    // Roll up goal progress since an active barrier caps the linked
+    // goals' derived progress at 80% (see lib/goalMetrics.js).
+    await get().recomputeGoalProgressForPlan?.(patientId, program.id);
     return barrier;
   },
 
@@ -3118,10 +3124,18 @@ export const useAppStore = create((set, get) => ({
     const row = patientCarePlanInterventionToRow(values, planId);
     // Stamp the last editor so the Intervention Details "Last Updated … by <name>" line has an actor.
     row.updated_by = get().currentUserProfile?.name || row.updated_by || null;
-    const q = id
-      ? supabase.from('patient_care_plan_interventions').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
-      : supabase.from('patient_care_plan_interventions').insert(row);
-    const { data, error } = await q.select().single();
+    // Schema-tolerant write for `task_id` — if the column hasn't been
+    // added yet (care_plan_intervention_task_link migration not run),
+    // strip it and retry. The legacy `config.taskId` fallback keeps the
+    // paired-task link visible in the meantime.
+    const runInsertOrUpdate = (writeRow) => (id
+      ? supabase.from('patient_care_plan_interventions').update({ ...writeRow, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('patient_care_plan_interventions').insert(writeRow)).select().single();
+    let { data, error } = await runInsertOrUpdate(row);
+    if (error && /column .*task_id.* does not exist/i.test(error.message || '')) {
+      const { task_id: _dropped, ...rowWithoutTaskId } = row;
+      ({ data, error } = await runInsertOrUpdate(rowWithoutTaskId));
+    }
     if (error) { console.warn('savePatientCarePlanIntervention:', error.message); get().showToast('Could not save intervention'); return null; }
     const intervention = mapPatientCarePlanInterventionRow(data);
     get().logCarePlanAudit(patientId, program, auditForSave('intervention', intervention, prevIntv));
@@ -3139,7 +3153,53 @@ export const useAppStore = create((set, get) => ({
         },
       };
     });
+    // Roll up progress for every goal linked to this intervention. Barrier
+    // saves call the same helper so the goal's ring reflects both signal
+    // streams. Runs after the intervention's local slice update so
+    // `computeGoalProgress` sees the fresh adherence value.
+    await get().recomputeGoalProgressForPlan?.(patientId, program.id);
     return intervention;
+  },
+
+  // Roll up `goal.progress` from linked intervention adherence and any
+  // active barrier on the goal (see lib/goalMetrics.js#computeGoalProgress).
+  // Writes only the goals whose derived progress actually changed so we
+  // don't churn the audit log. Safe no-op when the plan slice hasn't
+  // loaded yet.
+  recomputeGoalProgressForPlan: async (patientId, programId) => {
+    const key = carePlanKey(patientId, programId);
+    const slice = get().patientCarePlans[key];
+    if (!slice) return;
+    const { goals = [], interventions = [], barriers = [] } = slice;
+    const updates = [];
+    for (const goal of goals) {
+      const next = computeGoalProgress(goal, interventions, barriers);
+      if (next === null) continue;
+      if (Number.isFinite(goal.progress) && next === goal.progress) continue;
+      updates.push({ id: goal.id, progress: next });
+    }
+    if (updates.length === 0) return;
+    // Optimistic local patch first, then persist.
+    set(s => {
+      const cur = s.patientCarePlans[key];
+      if (!cur) return s;
+      const byId = new Map(updates.map(u => [u.id, u.progress]));
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: {
+            ...cur,
+            goals: (cur.goals || []).map(g => (byId.has(g.id) ? { ...g, progress: byId.get(g.id) } : g)),
+          },
+        },
+      };
+    });
+    for (const { id, progress } of updates) {
+      const { error } = await supabase.from('patient_care_plan_goals')
+        .update({ progress, updated_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) console.warn('recomputeGoalProgressForPlan:', error.message);
+    }
   },
 
   deletePatientCarePlanIntervention: async (patientId, programId, id) => {
@@ -3151,6 +3211,14 @@ export const useAppStore = create((set, get) => ({
     }));
     const { error } = await supabase.from('patient_care_plan_interventions').delete().eq('id', id);
     if (error) { console.warn('deletePatientCarePlanIntervention:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete intervention'); return; }
+    // Cascade delete the paired task so the collapsed intervention↔task
+    // record is removed atomically (the FK uses ON DELETE SET NULL from
+    // the intervention side, which would leave the task orphaned; the
+    // client mirrors the delete for the reverse direction).
+    if (removed?.taskId) {
+      try { await get().deleteTask?.(removed.taskId); }
+      catch (e) { console.warn('deletePatientCarePlanIntervention: paired task delete failed', e); }
+    }
     if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'intervention', entityId: id, action: 'deleted', summary: removed.title });
     get().touchCarePlanModified(patientId, programId);
   },
@@ -13946,10 +14014,80 @@ export const useAppStore = create((set, get) => ({
       // and reaches their other devices over realtime.
     }
 
+    // Care-plan intervention reconciliation: if this task is paired with
+    // an intervention (via patient_care_plan_interventions.task_id), mirror
+    // relevant field changes onto the intervention so the plan surface
+    // stays in sync. Handles status and title today; a future revision
+    // will add adherence rollup once recurring-task instances exist.
+    if (prev && dbOk) {
+      const statusChanged = 'status' in updates && updates.status !== prev.status;
+      const titleChanged = 'name' in updates && updates.name !== prev.name;
+      if (statusChanged || titleChanged) {
+        try { await get().reconcileInterventionFromTask?.(id, final); }
+        catch (e) { console.warn('reconcileInterventionFromTask failed', e); }
+      }
+    }
+
     // Report DB success to the caller so it can differentiate a mirrored
     // optimistic update from a persisted one. Prior contract always returned
     // `true`, which meant `handleTaskMove` toasted success on failed writes.
     return dbOk;
+  },
+
+  // Task → intervention mirror. Called by `updateTask` after a task write
+  // when status or title changed. Locates any patient_care_plan_interventions
+  // row keyed by task_id (or the legacy config.taskId fallback) and patches
+  // its status / title in place across every plan slice that has it.
+  //
+  // Task status → intervention status:
+  //   completed → 'Met', missed → 'Not Met', in_progress → 'In Progress',
+  //   pending → 'Not Started', cancelled → 'Not Met'. Anything else is a
+  //   no-op so unknown statuses don't corrupt the plan.
+  reconcileInterventionFromTask: async (taskId, changes) => {
+    if (!taskId) return;
+    const TASK_TO_INTV_STATUS = {
+      completed: 'Met',
+      missed: 'Not Met',
+      in_progress: 'In Progress',
+      pending: 'Not Started',
+      cancelled: 'Not Met',
+    };
+    const patch = {};
+    if ('status' in changes) {
+      const mapped = TASK_TO_INTV_STATUS[changes.status];
+      if (mapped) patch.status = mapped;
+    }
+    if ('name' in changes && typeof changes.name === 'string') patch.title = changes.name;
+    if (Object.keys(patch).length === 0) return;
+
+    // Fan out across every loaded plan slice; a task can only pair with
+    // one intervention, but slices are keyed by (patient, program) so
+    // scanning is O(loaded plans) not O(all tasks).
+    const state = get();
+    const slices = state.patientCarePlans || {};
+    for (const [key, slice] of Object.entries(slices)) {
+      const match = (slice.interventions || []).find(i =>
+        String(i.taskId) === String(taskId)
+        || String(i?.config?.taskId) === String(taskId)
+      );
+      if (!match) continue;
+      // Optimistic local patch so the UI reflects the change immediately.
+      set(s => ({
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: {
+            ...s.patientCarePlans[key],
+            interventions: (s.patientCarePlans[key].interventions || [])
+              .map(i => (i.id === match.id ? { ...i, ...patch } : i)),
+          },
+        },
+      }));
+      const { error } = await supabase.from('patient_care_plan_interventions')
+        .update({ ...patch, updated_at: new Date().toISOString() })
+        .eq('id', match.id);
+      if (error) console.warn('reconcileInterventionFromTask:', error.message);
+      break; // A task pairs with at most one intervention.
+    }
   },
 
   deleteTask: async (id) => {

@@ -2,6 +2,7 @@ import { Icon } from '../../../../../../../components/Icon/Icon';
 import { Input } from '../../../../../../../components/Input/Input';
 import { Badge } from '../../../../../../../components/Badge/Badge';
 import { Checkbox } from '../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Tooltip } from '../../../../../../../components/Tooltip/Tooltip';
 import { CarePlanProgressRing } from '../../../../../../../components/CarePlanProgressRing/CarePlanProgressRing';
 import { useState } from 'react';
 import { GbiLinkButton } from './CarePlanLinkedPreview';
@@ -127,6 +128,7 @@ export function LinkChip({ count }) {
 /** Shared name cell — primary title + optional secondary meta (inline or stacked). */
 export function GbiNameCell({
   icon,
+  iconTitle,
   title,
   meta,
   layout = 'inline',
@@ -137,9 +139,17 @@ export function GbiNameCell({
   return (
     <div className={`${styles.nameCell} ${stacked ? styles.nameCellStacked : ''}`}>
       {icon ? (
-        <span className={styles.rowIcon}>
-          <Icon name={icon} size={16} color="var(--neutral-400)" />
-        </span>
+        iconTitle ? (
+          <Tooltip label={iconTitle}>
+            <span className={styles.rowIcon} aria-label={iconTitle}>
+              <Icon name={icon} size={16} color="var(--neutral-400)" />
+            </span>
+          </Tooltip>
+        ) : (
+          <span className={styles.rowIcon}>
+            <Icon name={icon} size={16} color="var(--neutral-400)" />
+          </span>
+        )
       ) : null}
       <span className={stacked ? styles.nameTextStacked : styles.nameText}>
         <span className={styles.namePrimary}>{title}</span>

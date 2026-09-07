@@ -22,7 +22,7 @@ function Row({ icon, iconColor = 'var(--neutral-400)', label }) {
 }
 
 /** Portal-rendered hover card previewing a goal's linked items (Figma SNP-Story 2632:112808). */
-function LinkedItemsPopover({ anchorRect, data }) {
+function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave }) {
   const total = linkedTotal(data);
   const width = 320;
   // Right-aligned to the trigger and clamped to the viewport. A trigger in the
@@ -35,7 +35,13 @@ function LinkedItemsPopover({ anchorRect, data }) {
   const left = Math.max(12, Math.min(anchorRect.right - width, window.innerWidth - width - 12));
   const programs = data.programs || [];
   return createPortal(
-    <div className={styles.card} style={{ ...vertical, left, width }} role="tooltip">
+    <div
+      className={styles.card}
+      style={{ ...vertical, left, width }}
+      role="tooltip"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <div className={styles.head}>
         <Badge tone="grey" size="S" label={String(total)} />
         <span className={styles.headText}>Linked Items</span>
@@ -94,25 +100,38 @@ export function GbiLinkButton({ data, size = 'S' }) {
   const total = linkedTotal(data);
   const [rect, setRect] = useState(null);
   const wrapRef = useRef(null);
-  const timerRef = useRef(null);
+  const openTimerRef = useRef(null);
+  const closeTimerRef = useRef(null);
 
-  useEffect(() => () => clearTimeout(timerRef.current), []);
+  useEffect(() => () => {
+    clearTimeout(openTimerRef.current);
+    clearTimeout(closeTimerRef.current);
+  }, []);
 
   const open = () => {
     if (total === 0) return;
-    clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
+    clearTimeout(closeTimerRef.current);
+    clearTimeout(openTimerRef.current);
+    openTimerRef.current = setTimeout(() => {
       if (wrapRef.current) setRect(wrapRef.current.getBoundingClientRect());
     }, 120);
   };
-  const close = () => { clearTimeout(timerRef.current); setRect(null); };
+  // Delayed close lets the cursor bridge the small gap between trigger
+  // and card, and lets users park inside the card to scroll a long list.
+  // Any mouseenter on the wrap or the card cancels the pending close.
+  const scheduleClose = () => {
+    clearTimeout(openTimerRef.current);
+    clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = setTimeout(() => setRect(null), 150);
+  };
+  const cancelClose = () => clearTimeout(closeTimerRef.current);
 
   return (
     <span
       ref={wrapRef}
       className={styles.wrap}
       onMouseEnter={open}
-      onMouseLeave={close}
+      onMouseLeave={scheduleClose}
       onClick={e => e.stopPropagation()}
     >
       <ActionButton
@@ -123,7 +142,14 @@ export function GbiLinkButton({ data, size = 'S' }) {
         tooltip={total === 0 ? 'No linked items' : undefined}
         aria-label={`${total} linked items`}
       />
-      {rect && <LinkedItemsPopover anchorRect={rect} data={data} />}
+      {rect && (
+        <LinkedItemsPopover
+          anchorRect={rect}
+          data={data}
+          onMouseEnter={cancelClose}
+          onMouseLeave={scheduleClose}
+        />
+      )}
     </span>
   );
 }

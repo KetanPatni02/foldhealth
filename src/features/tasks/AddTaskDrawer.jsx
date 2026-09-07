@@ -4,13 +4,16 @@ import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { useAddTaskDrawer } from './useAddTaskDrawer';
 import { AddTaskDrawerBody } from './AddTaskDrawerBody';
 
-export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCreated, extraFields, className }) {
-  const drawer = useAddTaskDrawer({ defaultStatus, initialMember, onTaskCreated, extraFields });
+export function AddTaskDrawer({ onClose, defaultStatus, initialMember, initialAssignedTo, onTaskCreated, extraFields, className, availableGoals, onOpenGoal, initialLinkedGoalIds, showScheduleFields = false, taskKind }) {
+  const drawer = useAddTaskDrawer({ defaultStatus, initialMember, initialAssignedTo, onTaskCreated, extraFields, initialLinkedGoalIds, includeScheduleFields: showScheduleFields });
+  const title = taskKind === 'internal-task' ? 'Add Internal Task'
+    : taskKind === 'patient-task' ? 'Add Patient Task'
+    : 'Add Task';
 
   return (
     <>
       <Drawer
-        title="Add Task"
+        title={title}
         onClose={onClose}
         beforeClose={drawer.guardClose}
         className={className}
@@ -20,12 +23,18 @@ export function AddTaskDrawer({ onClose, defaultStatus, initialMember, onTaskCre
           </Button>
         }
       >
-        <AddTaskDrawerBody {...drawer} />
+        <AddTaskDrawerBody
+          {...drawer}
+          showScheduleFields={showScheduleFields}
+          taskKind={taskKind}
+          availableGoals={availableGoals}
+          onOpenGoal={onOpenGoal}
+        />
       </Drawer>
       {drawer.showCloseConfirm && (
         <ConfirmDialog
           icon="solar:danger-triangle-linear"
-          iconColor="var(--status-warning)"
+          iconColor="var(--status-error)"
           title="Discard unsaved task?"
           description="You have unsaved changes. Closing now will discard them."
           confirmLabel="Discard"

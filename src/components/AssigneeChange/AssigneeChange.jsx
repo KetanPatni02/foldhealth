@@ -276,7 +276,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
                 className={[styles.userRow, u.name === name ? styles.userRowActive : ''].filter(Boolean).join(' ')}
                 onClick={() => { onSelect?.(u); close(); }}
               >
-                <Avatar variant="staff" initials={u.initials} size={24} />
+                <Avatar variant={u.avatarVariant || 'staff'} initials={u.initials} size={24} />
                 <span className={styles.userText}>
                   <span className={styles.userName}>{u.name}</span>
                   {u.role && <span className={styles.userRole}>{u.role}</span>}

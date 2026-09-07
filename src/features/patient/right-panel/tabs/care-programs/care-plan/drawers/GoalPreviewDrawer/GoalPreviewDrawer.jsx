@@ -19,6 +19,7 @@ import { CreateGoalDrawer } from '../../../../../../../settings/care-plan-librar
 import { CarePlanLinkDrawer } from '../CarePlanLinkDrawer/CarePlanLinkDrawer';
 import { GoalLinkedInterventionsList } from './GoalLinkedInterventionsList';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../../settings/care-plan-library/lib';
+import { goalProgressBand, goalProgressTone } from '../../lib/goalMetrics';
 import styles from './GoalPreviewDrawer.module.css';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
@@ -42,21 +43,11 @@ const STATUS_TONE = {
   'Not Met': 'error',
 };
 
-function progressBand(pct) {
-  const n = Number(pct) || 0;
-  if (n <= 0) return 'Poor';
-  if (n < 40) return 'Low';
-  if (n < 80) return 'Moderate';
-  if (n < 100) return 'High';
-  return 'Complete';
-}
-
-function progressTone(label) {
-  if (/Poor|Low/.test(label)) return 'error';
-  if (/Moderate/.test(label)) return 'warning';
-  if (/High|Complete/.test(label)) return 'success';
-  return 'grey';
-}
+// `progressBand` / `progressTone` moved to `../../lib/goalMetrics.js` as
+// `goalProgressBand` / `goalProgressTone` so the audit-log detail and the
+// drawer label read from one source of truth.
+const progressBand = goalProgressBand;
+const progressTone = goalProgressTone;
 
 function relativeLabel(iso) {
   if (!iso) return '';
@@ -651,7 +642,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 <div className={styles.linkedList}>
                   {barriers.map(b => (
                     <div key={b.id} className={styles.linkedRow}>
-                      <span className={styles.linkedIcon}><Icon name="solar:shield-warning-linear" size={16} color="var(--neutral-400)" /></span>
+                      <span className={styles.linkedIcon}><Icon name="custom:barrier" size={16} color="var(--neutral-400)" /></span>
                       <span className={styles.linkedText}>
                         <span className={styles.linkedTitle}>{b.title}</span>
                         {b.status && <span className={styles.linkedMeta}>{b.status}</span>}

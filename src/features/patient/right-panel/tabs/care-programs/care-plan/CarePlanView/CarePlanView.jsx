@@ -116,7 +116,20 @@ export function CarePlanView({ patientId, program }) {
   const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
   const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
   const showToast = useAppStore(s => s.showToast);
-  const patientName = useAppStore(s => s.patients.find(p => p.id === patientId)?.name);
+  // A patient loaded via a worklist deep link may live in a member slice
+  // (hcc / awv / ccm / snp / hedis) rather than in the plain patients array,
+  // so fall through every slice the outer PatientDetailView also checks.
+  const patientName = useAppStore(s => {
+    const match = m => m && (m.id === patientId || String(m.memberId) === String(patientId));
+    const src = (s.patients || []).find(match)
+      || (s.hccMembers || []).find(match)
+      || (s.awvMembers || []).find(match)
+      || (s.ccmWorklistMembers || []).find(match)
+      || (s.snpWorklistMembers || []).find(match)
+      || (s.hedisMembers || []).find(match)
+      || (s.allPatients || []).find(match);
+    return src?.name;
+  });
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
@@ -656,15 +669,35 @@ export function CarePlanView({ patientId, program }) {
   };
 
   const saveInterventionFromConfig = async (kind, config, editingId = null) => {
+    // Promote the taskId nested inside `config` (written by the care-plan
+    // AddTaskDrawer flow for patient-task / internal-task kinds) to the
+    // top-level `taskId` so `patientCarePlanInterventionToRow` writes it
+    // into the `task_id` FK column added by the
+    // care_plan_intervention_task_link migration. The mapper still falls
+    // back to `config.taskId` for legacy rows that pre-date the column.
+    //
+    // Assignee resolution — the InterventionDrawer library form now
+    // captures `assignedTo` (staff or member name); previously it was
+    // dropped and every intervention landed as "Unassigned". Fall back
+    // to the current patient for kinds that default to a member task.
+    const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    const assigneeName = (typeof config?.assignedTo === 'string' && config.assignedTo.trim())
+      || (typeof config?.member === 'string' && config.member.trim())
+      || 'Unassigned';
     const saved = await savePatientCarePlanIntervention(patientId, program, {
       kind,
       title: config.title,
+      taskId: config?.taskId || null,
+      goalId: config?.goalId || null,
       icon: CARE_PLAN_INTERVENTION_ICONS[kind] || 'solar:clipboard-list-linear',
       duration: interventionDurationFromConfig(config),
       priority: interventionPriorityFromConfig(config),
       config,
       status: 'Not Started',
-      assignee: { name: 'Unassigned', initials: '' },
+      assignee: {
+        name: assigneeName,
+        initials: assigneeName === 'Unassigned' ? '' : initialsOf(assigneeName),
+      },
     }, editingId);
     if (saved) {
       showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
@@ -679,27 +712,46 @@ export function CarePlanView({ patientId, program }) {
     else setIntvSpecialDrawer({ kind: key });
   };
 
-  const handleAddBarriersFromPicker = async (picked) => {
+  const handleAddBarriersFromPicker = async (picked, opts = {}) => {
     setAddBarriersDrawerOpen(false);
     if (!picked?.length) return;
+    // Broad-scope targets need cross-plan / all-goal fan-out we haven't
+    // shipped yet — the picker fires them, we acknowledge and fall back to
+    // adding to this plan so nothing is lost. Real routing lands with the
+    // follow-up backend work.
+    const target = opts.target || 'thisPlan';
     const existingTitles = new Set((data.barriers || []).map(b => b.title.trim().toLowerCase()));
     let added = 0;
     for (const b of picked) {
       const titleKey = b.title.trim().toLowerCase();
       if (existingTitles.has(titleKey)) continue;
+      const goalIdsForBarrier = target === 'thisPlanAllGoals'
+        ? (data.goals || []).map(g => g.id)
+        : [];
       const saved = await savePatientCarePlanBarrier(patientId, program, {
         title: b.title,
         description: b.description || '',
         status: 'Not Started',
         priority: 'medium',
+        goalIds: goalIdsForBarrier,
       });
       if (saved) {
         added += 1;
         existingTitles.add(titleKey);
       }
     }
-    if (added) { showToast(`Added ${added} barrier${added === 1 ? '' : 's'}`); refreshCarePlanDuplicates(patientId, program); }
-    else showToast('Selected barriers are already on this plan');
+    if (added) {
+      const scopeCopy = {
+        thisPlan: `Added ${added} barrier${added === 1 ? '' : 's'} to this plan`,
+        thisPlanAllGoals: `Added ${added} barrier${added === 1 ? '' : 's'} to every goal on this plan`,
+        allPlans: `Added ${added} barrier${added === 1 ? '' : 's'} — cross-plan fan-out is pending, saved to this plan for now`,
+        allPlansAllGoals: `Added ${added} barrier${added === 1 ? '' : 's'} — cross-plan fan-out is pending, saved to every goal on this plan`,
+      };
+      showToast(scopeCopy[target] || scopeCopy.thisPlan);
+      refreshCarePlanDuplicates(patientId, program);
+    } else {
+      showToast('Selected barriers are already on this plan');
+    }
   };
 
   const handleAddBarrier = async (values) => {
@@ -806,8 +858,8 @@ export function CarePlanView({ patientId, program }) {
   };
 
   const rowMenuItems = () => [
-    { key: 'rename', icon: 'solar:pen-linear', label: 'Rename', disabled: !canEdit },
-    { key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Remove', danger: true, disabled: !canEdit },
+    { key: 'rename', icon: 'solar:pen-linear', label: 'Edit', disabled: !canEdit },
+    { key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Delete', danger: true, disabled: !canEdit },
   ];
 
   return (
@@ -1154,6 +1206,11 @@ export function CarePlanView({ patientId, program }) {
             onAssigneeChange={handleAssigneeChange}
             linked={linkedForChild}
             platformUsers={platformUsers}
+            patients={patientName ? [{
+              id: patientId,
+              name: patientName,
+              initials: (patientName || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+            }] : []}
             emptyState={filteredInterventions.length === 0 ? <div className={styles.emptyRow}>No interventions match the filters.</div> : null}
           />
         ))}
@@ -1295,6 +1352,7 @@ export function CarePlanView({ patientId, program }) {
           patientId={patientId}
           program={program}
           onClose={() => setPreviewBarrier(null)}
+          onOpenGoal={(g) => { setPreviewBarrier(null); setPreviewGoal(g); }}
         />
       )}
 
@@ -1304,6 +1362,15 @@ export function CarePlanView({ patientId, program }) {
           patientId={patientId}
           program={program}
           onClose={() => setPreviewIntervention(null)}
+          onEdit={(intv) => {
+            // Open the full intervention edit drawer for this kind so the
+            // user can edit fields beyond just the title (Send Form,
+            // Patient Education, Patient Task, Measure Vital, Internal
+            // Task). Close preview first, then open the special editor.
+            setPreviewIntervention(null);
+            setIntvSpecialDrawer({ kind: intv.kind, intervention: intv });
+          }}
+          onOpenGoal={(g) => { setPreviewIntervention(null); setPreviewGoal(g); }}
         />
       )}
 
@@ -1318,16 +1385,40 @@ export function CarePlanView({ patientId, program }) {
       {intvSpecialDrawer && (() => {
         const Editor = INTERVENTION_EDITORS[intvSpecialDrawer.kind];
         if (!Editor) return null;
+        const intv = intvSpecialDrawer.intervention;
+        const activityEntries = intv?.id ? auditAll
+          .filter(a => a.entityType === 'intervention' && String(a.entityId) === String(intv.id))
+          .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))
+          .map(a => {
+            const created = a.createdAt ? new Date(a.createdAt) : null;
+            return {
+              id: a.id,
+              t: 'status_change',
+              date: created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+              time: created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
+              by: a.actor || null,
+              title: a.summary || 'Intervention updated',
+            };
+          }) : [];
+        const currentLinked = Array.isArray(intv?.goalIds) && intv.goalIds.length > 0
+          ? intv.goalIds
+          : (intv?.goalId ? [intv.goalId] : []);
         return (
           <Editor
             kind={intvSpecialDrawer.kind}
-            intervention={intvSpecialDrawer.intervention?.config}
+            intervention={intv?.config}
+            linkToGoalsAllowed
+            availableGoals={data.goals}
+            linkedGoalIds={currentLinked}
+            activityEntries={activityEntries}
+            memberName={patientName}
+            onOpenGoal={(g) => { setIntvSpecialDrawer(null); setPreviewGoal(g); }}
             onClose={() => setIntvSpecialDrawer(null)}
             onSave={async (config) => {
               await saveInterventionFromConfig(
                 intvSpecialDrawer.kind,
                 config,
-                intvSpecialDrawer.intervention?.id || null,
+                intv?.id || null,
               );
               setIntvSpecialDrawer(null);
             }}
@@ -1337,6 +1428,12 @@ export function CarePlanView({ patientId, program }) {
 
       {taskDrawerOpen && (
         <AddTaskDrawer
+          taskKind={taskDrawerOpen}
+          initialMember={patientName}
+          initialAssignedTo={taskDrawerOpen === 'internal-task' ? '' : patientName}
+          showScheduleFields
+          availableGoals={data.goals}
+          onOpenGoal={(g) => { setTaskDrawerOpen(null); setPreviewGoal(g); }}
           onClose={() => setTaskDrawerOpen(null)}
           onTaskCreated={async (t) => {
             await saveInterventionFromConfig(taskDrawerOpen, { title: t?.name || '', taskId: t?.id });

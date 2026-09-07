@@ -149,7 +149,7 @@ export function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
   );
 }
 
-export function DetailDropdown({ value, options, onSelect, renderOption, children, searchable = true, multiSelect, selected }) {
+export function DetailDropdown({ value, options, onSelect, renderOption, children, searchable = true, multiSelect, selected, align = 'left' }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
@@ -171,7 +171,23 @@ export function DetailDropdown({ value, options, onSelect, renderOption, childre
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }}>
           <div
             className={styles.simpleDropdown}
-            style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
+            style={{
+              position: 'fixed',
+              // When placement flips to 'top', anchor via the bottom edge so
+              // the popover grows upward. usePopoverPosition returns `top`
+              // set to the trigger's top when flipping.
+              ...(pos.placement === 'top'
+                ? { bottom: Math.max(8, window.innerHeight - pos.top) }
+                : { top: pos.top }),
+              // 'right' aligns the popover's right edge to the trigger's right
+              // edge so it opens leftward — used when the trigger sits near
+              // the right rail of a drawer and a left-anchored popover would
+              // overflow the viewport (Figma 4523:*).
+              ...(align === 'right'
+                ? { right: Math.max(8, window.innerWidth - (pos.left + pos.width)) }
+                : { left: pos.left }),
+              zIndex: 9999,
+            }}
             onClick={e => e.stopPropagation()}
           >
             {searchable && options.length > 3 && (

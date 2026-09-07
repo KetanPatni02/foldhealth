@@ -13,6 +13,8 @@ import {
   GbiStatusButton,
 } from './carePlanTableShared';
 import { enrichInterventionRows } from './carePlanTableSort';
+import { CARE_PLAN_INTERVENTION_ICONS } from '../lib/carePlanInterventionMenu';
+import { KIND_LABELS } from '../../../../../../settings/care-plan-library/interventions/shared/interventionKinds';
 import styles from './carePlanTables.module.css';
 
 export function CarePlanInterventionsTable({
@@ -29,6 +31,10 @@ export function CarePlanInterventionsTable({
   onAssigneeChange,
   linked,
   platformUsers,
+  // Merged into the inline picker so a member (patient) can be assigned
+  // to an intervention from the row as well — matches the picker in the
+  // Intervention drawer (Figma 8629:178).
+  patients,
   template = false,
   emptyState,
 }) {
@@ -41,6 +47,26 @@ export function CarePlanInterventionsTable({
     }
     return withSelectColumn(INTERVENTION_COLUMNS, bulkMode);
   }, [bulkMode, template]);
+
+  const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  // Merge platform users + patients so members can be assigned inline.
+  // Each row picker mirrors the drawer's shape: staff avatar for users,
+  // patient avatar (rounded, purple) for members.
+  const assigneeUsers = useMemo(() => ([
+    ...(platformUsers || []).map(u => ({
+      id: u.id || `user:${u.name}`,
+      name: u.name,
+      initials: u.initials || initialsOf(u.name),
+      role: u.role || 'User',
+    })),
+    ...(patients || []).map(p => ({
+      id: p.id || `member:${p.name}`,
+      name: p.name,
+      initials: p.initials || initialsOf(p.name),
+      role: 'Member',
+      avatarVariant: 'patient',
+    })),
+  ]), [platformUsers, patients]);
 
   const sortableRows = useMemo(() => enrichInterventionRows(rows), [rows]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortableRows, 'title', 'asc');
@@ -91,7 +117,12 @@ export function CarePlanInterventionsTable({
               </td>
               <td className={styles.titleTd}>
                 <GbiNameCell
-                  icon={i.icon}
+                  // Look up the kind-based icon so rows stay in sync with
+                  // the Add Intervention menu (single source of truth) —
+                  // legacy rows saved with a stale `icon` still show the
+                  // right glyph as long as `kind` is set.
+                  icon={CARE_PLAN_INTERVENTION_ICONS[i.kind] || i.icon || 'solar:clipboard-list-linear'}
+                  iconTitle={KIND_LABELS[i.kind] || 'Intervention'}
                   title={i.title}
                   meta={i.duration || null}
                   linked={linked(i)}
@@ -110,7 +141,11 @@ export function CarePlanInterventionsTable({
                       showRole={false}
                       unassigned={i.assignee.name === 'Unassigned'}
                       unassignedLabel="Unassigned"
-                      users={platformUsers}
+                      users={assigneeUsers}
+                      // Match the drawer: if the current assignee is a
+                      // patient, render the trigger with the patient
+                      // avatar variant.
+                      avatarVariant={(patients || []).some(p => p.name === i.assignee.name) ? 'patient' : 'staff'}
                       pickerTitle="Change assignee"
                       onSelect={(u) => onAssigneeChange(i, u)}
                       disabled={!canEdit}

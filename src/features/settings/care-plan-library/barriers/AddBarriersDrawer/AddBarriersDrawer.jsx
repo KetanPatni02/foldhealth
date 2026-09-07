@@ -74,15 +74,17 @@ export function AddBarriersDrawer({ onClose, onAdd, existingBarriers = [] }) {
     onAdd?.([...picks, { id: `custom-${normTitle(trimmed).replace(/\s+/g, '-')}`, title: trimmed, description: '' }]);
   };
 
+  const picks = () => libraryBarriers.filter(b => selected.has(b.id));
+  const handleAddThisPlan = () => onAdd?.(picks(), { target: 'thisPlan' });
   const headerRight = (
     <>
       <Button
         variant="primary"
         size="L"
         disabled={selected.size === 0}
-        onClick={() => onAdd?.(libraryBarriers.filter(b => selected.has(b.id)))}
+        onClick={handleAddThisPlan}
       >
-        Add
+        Add to Plan
       </Button>
       <span className={styles.headerDivider} />
     </>
