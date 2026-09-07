@@ -13,6 +13,8 @@ import {
   GbiStatusButton,
 } from './carePlanTableShared';
 import { enrichInterventionRows } from './carePlanTableSort';
+import { CARE_PLAN_INTERVENTION_ICONS } from '../lib/carePlanInterventionMenu';
+import { KIND_LABELS } from '../../../../../../settings/care-plan-library/interventions/shared/interventionKinds';
 import styles from './carePlanTables.module.css';
 
 export function CarePlanInterventionsTable({
@@ -91,7 +93,12 @@ export function CarePlanInterventionsTable({
               </td>
               <td className={styles.titleTd}>
                 <GbiNameCell
-                  icon={i.icon}
+                  // Look up the kind-based icon so rows stay in sync with
+                  // the Add Intervention menu (single source of truth) —
+                  // legacy rows saved with a stale `icon` still show the
+                  // right glyph as long as `kind` is set.
+                  icon={CARE_PLAN_INTERVENTION_ICONS[i.kind] || i.icon || 'solar:clipboard-list-linear'}
+                  iconTitle={KIND_LABELS[i.kind] || 'Intervention'}
                   title={i.title}
                   meta={i.duration || null}
                   linked={linked(i)}

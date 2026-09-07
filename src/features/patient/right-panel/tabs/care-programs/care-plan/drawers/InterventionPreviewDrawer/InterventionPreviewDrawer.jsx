@@ -13,8 +13,12 @@ import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/Pr
 import { TabStrip } from '../../../../../../../../components/TabStrip/TabStrip';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
+import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
+import { LinkGoalToBarrierDrawer } from '../BarrierDetailDrawer/LinkGoalToBarrierDrawer';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
+import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 const ACTIVITY_TABS = [
@@ -88,13 +92,54 @@ function splitArrow(detail) {
 
 function mapAuditEntry(e) {
   const [from, to] = splitArrow(e.detail);
-  const base = { id: e.id, actor: e.actor || '', at: e.createdAt, createdAt: e.createdAt, action: e.action };
-  if (e.action === 'note') return { ...base, verb: 'added a', field: 'Note', comment: e.detail };
-  if (e.action === 'created') return { ...base, verb: 'added an', field: 'Intervention' };
-  if (e.action === 'deleted') return { ...base, verb: 'removed an', field: 'Intervention' };
-  if (e.action === 'status_changed') return { ...base, verb: 'changed the', field: 'Status', from, to, fromTone: STATUS_TONE[from] || 'grey', toTone: STATUS_TONE[to] || 'grey' };
-  if (e.action === 'progress_changed') return { ...base, verb: 'changed the', field: 'Adherence', from, to, fromTone: progressTone(from), toTone: progressTone(to) };
-  return { ...base, verb: 'updated', field: e.summary || 'Intervention' };
+  const created = e.createdAt ? new Date(e.createdAt) : null;
+  const date = created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+  const time = created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+  const base = {
+    id: e.id,
+    actor: e.actor || '',
+    at: e.createdAt,
+    createdAt: e.createdAt,
+    action: e.action,
+    date,
+    time,
+    by: e.actor || null,
+  };
+  if (e.action === 'note') {
+    return {
+      ...base,
+      t: 'comment',
+      title: 'Added a Note',
+      commentBody: `Note: ${e.detail || ''}`,
+      comment: e.detail,
+      verb: 'added a',
+      field: 'Note',
+    };
+  }
+  if (e.action === 'note_deleted') {
+    return {
+      ...base,
+      t: 'comment',
+      title: 'Deleted a Note',
+      commentBody: e.detail ? `Note: ${e.detail}` : '',
+      comment: e.detail,
+      verb: 'deleted a',
+      field: 'Note',
+    };
+  }
+  if (e.action === 'created') {
+    return { ...base, t: 'default', title: 'added an Intervention', verb: 'added an', field: 'Intervention' };
+  }
+  if (e.action === 'deleted') {
+    return { ...base, t: 'default', title: 'removed an Intervention', verb: 'removed an', field: 'Intervention' };
+  }
+  if (e.action === 'status_changed') {
+    return { ...base, t: 'status_change', title: 'Status', from, to, verb: 'changed the', field: 'Status', fromTone: STATUS_TONE[from] || 'grey', toTone: STATUS_TONE[to] || 'grey' };
+  }
+  if (e.action === 'progress_changed') {
+    return { ...base, t: 'status_change', title: 'Adherence', from, to, verb: 'changed the', field: 'Adherence', fromTone: progressTone(from), toTone: progressTone(to) };
+  }
+  return { ...base, t: 'default', title: e.summary || 'updated', verb: 'updated', field: e.summary || 'Intervention' };
 }
 
 function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit }) {
@@ -117,7 +162,7 @@ function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit }) {
  * Intervention details — Paper 35-0. Mirrors Goal Details layout with
  * adherence, linked goals, automations, notes, and activity feed.
  */
-export function InterventionPreviewDrawer({ intervention, patientId, program, onClose }) {
+export function InterventionPreviewDrawer({ intervention, patientId, program, onClose, onEdit, onOpenGoal }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
@@ -133,6 +178,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
   const updateCarePlanNote = useAppStore(s => s.updateCarePlanNote);
   const deleteCarePlanNote = useAppStore(s => s.deleteCarePlanNote);
+  const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
   const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
   const currentUserName = useAppStore(s => s.currentUserProfile?.name);
 
@@ -147,11 +193,13 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   );
 
   const [pct, setPct] = useState(adherenceNum(live?.adherence));
-  const [open, setOpen] = useState({ goals: false, automations: false });
+  const [open, setOpen] = useState({ goals: true, automations: true });
+  const [linkGoalOpen, setLinkGoalOpen] = useState(false);
   const [addingAutomation, setAddingAutomation] = useState(false);
   const [automationTitle, setAutomationTitle] = useState('');
   const [note, setNote] = useState('');
   const [notePlain, setNotePlain] = useState('');
+  const [noteEditing, setNoteEditing] = useState(false);
   const [activityTab, setActivityTab] = useState('all');
   const [activityFilter, setActivityFilter] = useState('all');
   const [filterMenu, setFilterMenu] = useState(null);
@@ -166,6 +214,34 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
 
   useEffect(() => { setPct(adherenceNum(live?.adherence)); }, [live?.id, live?.adherence]);
   useEffect(() => { if (patientId && program) fetchCarePlanAudit(patientId, program.id); }, [patientId, program, fetchCarePlanAudit]);
+
+  // Latest saved note on this intervention — seeds the note editor and
+  // drives the "Update Note" vs "Add Note" label. A subsequent
+  // `note_deleted` entry on the same intervention hides the note card
+  // (but the delete + original add still appear in the Activity Log).
+  const latestInterventionNote = useMemo(() => {
+    const forThis = audit.filter(a => String(a.entityId) === String(live?.id));
+    const notes = forThis
+      .filter(a => a.action === 'note' && (a.entityType === 'intervention' || a.entityType === 'note'))
+      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
+    const latestNote = notes[0];
+    if (!latestNote) return null;
+    const latestClear = forThis
+      .filter(a => a.action === 'note_deleted')
+      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))[0];
+    if (latestClear && new Date(latestClear.createdAt) >= new Date(latestNote.createdAt)) return null;
+    return latestNote;
+  }, [audit, live?.id]);
+
+  // Seed the note textarea from the latest saved note whenever it changes
+  // (drawer opens on a new intervention OR a new note was just saved). Exit
+  // edit mode after a fresh save so the read-only display re-appears.
+  useEffect(() => {
+    const seed = latestInterventionNote?.detail || '';
+    setNote(seed);
+    setNotePlain(seed);
+    setNoteEditing(false);
+  }, [latestInterventionNote?.id]);
 
   const activity = useMemo(() => {
     const rows = audit
@@ -222,8 +298,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
     const body = (notePlain || note).replace(/<[^>]+>/g, '').trim();
     if (!body) return;
     await addCarePlanNote(patientId, program, body, { entityType: 'intervention', entityId: live.id, summary: `Note on ${live.title}` });
-    setNote('');
-    setNotePlain('');
+    setNoteEditing(false);
   };
 
   const programBadges = [program?.code].filter(Boolean);
@@ -257,7 +332,13 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
               size="L"
               tooltip="Edit Intervention"
               disabled={!canEdit}
-              onClick={() => { setTitleDraft(live.title); setEditingTitle(true); }}
+              onClick={() => {
+                // Prefer the full edit drawer when the caller wires one
+                // (opens the kind-specific InterventionDrawer with every
+                // field). Fall back to inline title-edit otherwise.
+                if (onEdit) onEdit(live);
+                else { setTitleDraft(live.title); setEditingTitle(true); }
+              }}
             />
             <span className={styles.headerDivider} />
             <ActionButton
@@ -325,42 +406,94 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           </div>
         </section>
 
-        <section className={`${styles.accSection} ${open.goals ? styles.accSectionOpen : ''}`}>
-          <AccordionHead
-            title="Goals"
-            open={open.goals}
-            onToggle={() => toggle('goals')}
-            canEdit={false}
-          />
+        <section className={barrierStyles.section}>
+          <div className={barrierStyles.sectionHead}>
+            <button
+              type="button"
+              className={barrierStyles.sectionToggle}
+              onClick={() => toggle('goals')}
+              aria-expanded={open.goals}
+            >
+              <span className={barrierStyles.sectionTitle}>Linked Goals</span>
+              <DownChevronIcon
+                size={12}
+                color="var(--neutral-400)"
+                className={`${barrierStyles.sectionChevron} ${open.goals ? barrierStyles.sectionChevronOpen : ''}`}
+              />
+            </button>
+            {canEdit && (
+              <ActionButton
+                icon="solar:add-linear"
+                size="S"
+                tooltip="Link goal"
+                onClick={() => setLinkGoalOpen(true)}
+              />
+            )}
+          </div>
           {open.goals && (
             linkedGoals.length === 0 ? (
-              <div className={styles.emptyCard}>No goals linked yet.</div>
+              <div className={barrierStyles.empty}>Not linked to any goals in this plan version yet.</div>
             ) : (
-              <div className={styles.linkedList}>
+              <ul className={barrierStyles.linkList}>
                 {linkedGoals.map(g => (
-                  <div key={g.id} className={styles.linkedRow}>
-                    <span className={styles.linkedIcon}><Icon name={g.icon || 'solar:flag-linear'} size={16} color="var(--neutral-400)" /></span>
-                    <span className={styles.linkedText}>
-                      <span className={styles.linkedTitle}>{g.title}</span>
-                      {g.subtitle && <span className={styles.linkedMeta}>{g.subtitle}</span>}
+                  <li key={g.id} className={barrierStyles.linkRow}>
+                    <span className={barrierStyles.linkIcon}>
+                      <Icon name={g.icon || 'solar:flag-linear'} size={16} color="var(--neutral-400)" />
                     </span>
-                    {g.status && <Badge tone={STATUS_TONE[g.status] || 'grey'} size="S" label={g.status} />}
-                  </div>
+                    <div className={barrierStyles.linkStack}>
+                      <span className={barrierStyles.linkTitle}>{g.title}</span>
+                      {g.subtitle && <span className={barrierStyles.linkSubtitle}>{g.subtitle}</span>}
+                    </div>
+                    <div className={barrierStyles.linkActions}>
+                      <ActionButton
+                        icon="solar:arrow-right-up-linear"
+                        size="S"
+                        tooltip="Open goal"
+                        onClick={() => onOpenGoal?.(g)}
+                      />
+                      {canEdit && (
+                        <>
+                          <span className={barrierStyles.linkActionsDivider} aria-hidden />
+                          <ActionButton
+                            icon="solar:link-broken-minimalistic-linear"
+                            size="S"
+                            tooltip="Unlink"
+                            onClick={() => savePatientCarePlanIntervention(patientId, program, { ...live, goalId: null }, live.id)}
+                          />
+                        </>
+                      )}
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )
           )}
         </section>
 
-        <section className={`${styles.accSection} ${open.automations ? styles.accSectionOpen : ''}`}>
-          <AccordionHead
-            title="Automations"
-            open={open.automations}
-            onToggle={() => toggle('automations')}
-            canEdit={canEdit && !!live.goalId}
-            addTooltip="Add Automations"
-            onAdd={() => expandAnd('automations', () => setAddingAutomation(v => !v))}
-          />
+        <section className={barrierStyles.section}>
+          <div className={barrierStyles.sectionHead}>
+            <button
+              type="button"
+              className={barrierStyles.sectionToggle}
+              onClick={() => toggle('automations')}
+              aria-expanded={open.automations}
+            >
+              <span className={barrierStyles.sectionTitle}>Automations</span>
+              <DownChevronIcon
+                size={12}
+                color="var(--neutral-400)"
+                className={`${barrierStyles.sectionChevron} ${open.automations ? barrierStyles.sectionChevronOpen : ''}`}
+              />
+            </button>
+            {canEdit && !!live.goalId && (
+              <ActionButton
+                icon="solar:add-linear"
+                size="S"
+                tooltip="Add automation"
+                onClick={() => expandAnd('automations', () => setAddingAutomation(v => !v))}
+              />
+            )}
+          </div>
           {open.automations && (
             <>
               {addingAutomation && (
@@ -376,130 +509,139 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 </div>
               )}
               {automations.length === 0 ? (
-                <div className={styles.emptyCard}>No automations set up.</div>
+                <div className={barrierStyles.empty}>No automations set up yet.</div>
               ) : (
-                <div className={styles.linkedList}>
+                <ul className={barrierStyles.linkList}>
                   {automations.map(a => (
-                    <div key={a.id} className={styles.linkedRow}>
-                      <span className={styles.linkedIcon}><Icon name={a.icon || 'solar:bolt-linear'} size={16} color="var(--neutral-400)" /></span>
-                      <span className={styles.linkedText}><span className={styles.linkedTitle}>{a.title}</span></span>
+                    <li key={a.id} className={barrierStyles.linkRow}>
+                      <span className={barrierStyles.linkIcon}>
+                        <Icon name={a.icon || 'solar:bolt-linear'} size={16} color="var(--neutral-400)" />
+                      </span>
+                      <div className={barrierStyles.linkStack}>
+                        <span className={barrierStyles.linkTitle}>{a.title}</span>
+                      </div>
                       {canEdit && (
-                        <button type="button" className={styles.valueRemove} onClick={() => deleteCarePlanAutomation(patientId, program.id, a.id)} aria-label="Remove automation">
-                          <Icon name="solar:trash-bin-minimalistic-linear" size={14} color="var(--neutral-300)" />
-                        </button>
+                        <div className={barrierStyles.linkActions}>
+                          <ActionButton
+                            icon="solar:link-broken-minimalistic-linear"
+                            size="S"
+                            tooltip="Remove automation"
+                            onClick={() => deleteCarePlanAutomation(patientId, program.id, a.id)}
+                          />
+                        </div>
                       )}
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               )}
             </>
           )}
         </section>
 
         {canEdit && (
-          <Textarea
-            title="Add Note"
-            placeholder="Add a note"
-            value={note}
-            onChange={(html, extra) => {
-              setNote(typeof html === 'string' ? html : '');
-              setNotePlain(typeof extra === 'string' ? extra : (typeof html === 'string' ? html : ''));
-            }}
-            richText
-            attachment
-            rows={3}
-            bottomButton={{ label: 'Add Note', onClick: submitNote, disabled: !(notePlain || note).replace(/<[^>]+>/g, '').trim() }}
-          />
+          <div className={barrierStyles.noteEditor}>
+            {latestInterventionNote && !noteEditing ? (
+              <section className={barrierStyles.section}>
+                <div className={barrierStyles.sectionHead}>
+                  <span className={barrierStyles.sectionTitle}>Note</span>
+                </div>
+                <div className={styles.careNoteCardWrap}>
+                  <button
+                    type="button"
+                    className={styles.careNoteCard}
+                    onClick={() => setNoteEditing(true)}
+                    aria-label="Edit note"
+                  >
+                    <p className={styles.careNoteBody}>{latestInterventionNote.detail}</p>
+                    <div className={styles.careNoteMeta}>
+                      <span className={styles.careNoteAuthor}>{latestInterventionNote.actor || 'You'}</span>
+                      <span className={styles.careNoteDot} aria-hidden="true">•</span>
+                      <span className={styles.careNoteTimestamp}>{fmtStamp(latestInterventionNote.createdAt)}</span>
+                    </div>
+                  </button>
+                  <span className={styles.careNoteDelete}>
+                    <ActionButton
+                      icon="solar:trash-bin-trash-linear"
+                      size="S"
+                      tooltip="Delete note"
+                      onClick={() => {
+                        // Log a new "Deleted a Note" audit entry — the
+                        // original "Added a Note" row stays in place so
+                        // both events remain visible in the Activity Log.
+                        logCarePlanAudit?.(patientId, program, {
+                          entityType: 'intervention',
+                          entityId: live.id,
+                          action: 'note_deleted',
+                          summary: `Note on ${live.title || 'intervention'} deleted`,
+                          detail: latestInterventionNote.detail || '',
+                        });
+                        // Drop the seeded text so the editor reopens empty.
+                        setNote('');
+                        setNotePlain('');
+                        setNoteEditing(true);
+                      }}
+                    />
+                  </span>
+                </div>
+              </section>
+            ) : (
+              <>
+                <Textarea
+                  title={latestInterventionNote ? 'Update Note' : 'Add Note'}
+                  placeholder="Add a note"
+                  value={note}
+                  onChange={(value) => {
+                    const v = typeof value === 'string' ? value : '';
+                    setNote(v);
+                    setNotePlain(v);
+                  }}
+                  rows={3}
+                />
+                {(() => {
+                  const baseline = (latestInterventionNote?.detail || '').trim();
+                  const current = note.trim();
+                  const canSave = current.length > 0 && current !== baseline;
+                  const canDiscard = current !== baseline || noteEditing;
+                  return (
+                    <div className={barrierStyles.noteActions}>
+                      <Button
+                        variant="secondary"
+                        size="M"
+                        disabled={!canDiscard}
+                        onClick={() => {
+                          setNote(baseline);
+                          setNotePlain(baseline);
+                          if (latestInterventionNote) setNoteEditing(false);
+                        }}
+                      >
+                        Discard
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="M"
+                        disabled={!canSave}
+                        onClick={submitNote}
+                      >
+                        {latestInterventionNote ? 'Update Note' : 'Add Note'}
+                      </Button>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+          </div>
         )}
       </div>
 
-      <div className={styles.activityBlock}>
-        <TabStrip
-          items={ACTIVITY_TABS}
-          activeKey={activityTab}
-          onChange={setActivityTab}
-          fullWidth={false}
-          size="S"
-          trailing={(
-            <ActionButton
-              ref={filterBtnRef}
-              icon="custom:filter"
-              size="S"
-              tooltip="Filter activity"
-              active={activityFilter !== 'all'}
-              onClick={(e) => setFilterMenu(e.currentTarget.getBoundingClientRect())}
-            />
-          )}
-        />
-        <div className={styles.activityList}>
-          {activity.length === 0 ? (
-            <div className={styles.emptyCard}>No activity yet.</div>
-          ) : activity.map((e, i) => (
-            <div key={e.id} className={styles.logRow}>
-              <div className={styles.logRail}>
-                <Avatar type="initial" variant="staff" size="S" initials={initialsOf(e.actor) || '—'} />
-                {i < activity.length - 1 && <span className={styles.logLine} />}
-              </div>
-              <div className={styles.logBody}>
-                <span className={styles.logStamp}>{fmtStamp(e.at)}</span>
-                <p className={styles.logLineText}>
-                  <span className={styles.logActor}>{e.actor || 'Someone'}</span>
-                  <span>{e.verb}</span>
-                  <span className={styles.logField}>{e.field}</span>
-                </p>
-                {e.from && e.to && (
-                  <div className={styles.logChange}>
-                    <Badge tone={e.fromTone || 'grey'} size="S" label={e.from} />
-                    <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-300)" />
-                    <Badge tone={e.toTone || 'grey'} size="S" label={e.to} />
-                  </div>
-                )}
-                {e.comment && editingNoteId !== e.id && (
-                  <p className={styles.logComment}>{e.comment}</p>
-                )}
-                {e.action === 'note' && canEdit && editingNoteId === e.id && (
-                  <div className={styles.noteEdit}>
-                    <Textarea value={noteDraft} onChange={ev => setNoteDraft(ev.target.value)} rows={3} />
-                    <div className={styles.noteEditActions}>
-                      <Button variant="ghost" size="S" onClick={() => setEditingNoteId(null)}>Cancel</Button>
-                      <Button
-                        variant="primary"
-                        size="S"
-                        disabled={!noteDraft.trim()}
-                        onClick={async () => {
-                          await updateCarePlanNote(patientId, program.id, e.id, noteDraft);
-                          setEditingNoteId(null);
-                        }}
-                      >
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {e.action === 'note' && canEdit && editingNoteId !== e.id && (
-                  <div className={styles.logNoteActions}>
-                    <Button
-                      variant="ghost"
-                      size="S"
-                      onClick={() => { setEditingNoteId(e.id); setNoteDraft(e.comment || ''); }}
-                    >
-                      Edit
-                    </Button>
-                    <span className={styles.logDot}>•</span>
-                    <Button
-                      variant="ghost"
-                      size="S"
-                      onClick={() => setConfirm({ kind: 'note', id: e.id })}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+      <section className={barrierStyles.section} style={{ marginTop: 'var(--space-4)' }}>
+        <div className={barrierStyles.sectionHead}>
+          <span className={barrierStyles.sectionTitle}>Activity Log</span>
         </div>
-      </div>
+        <ActivityLog
+          entries={activity}
+          emptyLabel="No activity for this intervention yet."
+        />
+      </section>
 
       {moreMenu && (
         <MenuPopover
@@ -527,6 +669,20 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           items={ACTIVITY_FILTERS.map(f => ({ key: f.key, label: f.label }))}
           onSelect={(k) => { setActivityFilter(k); setFilterMenu(null); }}
           onClose={() => setFilterMenu(null)}
+        />
+      )}
+
+      {linkGoalOpen && (
+        <LinkGoalToBarrierDrawer
+          title="Link Goal to Intervention"
+          goals={(slice?.goals || []).filter(g => g.id !== live.goalId)}
+          onClose={() => setLinkGoalOpen(false)}
+          onLink={async (ids) => {
+            const first = ids?.[0];
+            if (!first) return;
+            await savePatientCarePlanIntervention(patientId, program, { ...live, goalId: first }, live.id);
+            setLinkGoalOpen(false);
+          }}
         />
       )}
 

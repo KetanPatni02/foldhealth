@@ -1337,6 +1337,15 @@ export function CarePlanView({ patientId, program }) {
           patientId={patientId}
           program={program}
           onClose={() => setPreviewIntervention(null)}
+          onEdit={(intv) => {
+            // Open the full intervention edit drawer for this kind so the
+            // user can edit fields beyond just the title (Send Form,
+            // Patient Education, Patient Task, Measure Vital, Internal
+            // Task). Close preview first, then open the special editor.
+            setPreviewIntervention(null);
+            setIntvSpecialDrawer({ kind: intv.kind, intervention: intv });
+          }}
+          onOpenGoal={(g) => { setPreviewIntervention(null); setPreviewGoal(g); }}
         />
       )}
 
