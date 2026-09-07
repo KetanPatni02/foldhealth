@@ -5,19 +5,8 @@ import { Input } from '../../../../../components/Input/Input';
 import { Badge } from '../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../components/Icon/Icon';
 import { Checkbox } from '../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../store/useAppStore';
 import styles from './AddBarriersDrawer.module.css';
-
-// Add targets — the primary action adds to the currently-open plan, the
-// popover extends the same picks to broader scopes (all goals of this plan,
-// every plan for this patient, every goal of every plan). Figma
-// 3051:47975 (button) + 4137:31482 (popover).
-const ADD_TARGETS = [
-  { key: 'thisPlanAllGoals',   label: 'All Goals of This Care Plan' },
-  { key: 'allPlans',           label: 'All Care Plans' },
-  { key: 'allPlansAllGoals',   label: 'All Goals of All Care Plans' },
-];
 
 function normTitle(value) {
   return (value || '').trim().toLowerCase();
@@ -28,7 +17,6 @@ function normTitle(value) {
  * Figma SNP-Story 7550:489275.
  */
 export function AddBarriersDrawer({ onClose, onAdd, existingBarriers = [] }) {
-  const [addMenu, setAddMenu] = useState(null);
   const libraryBarriers = useAppStore(s => s.carePlanBarriers);
   const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
@@ -88,45 +76,17 @@ export function AddBarriersDrawer({ onClose, onAdd, existingBarriers = [] }) {
 
   const picks = () => libraryBarriers.filter(b => selected.has(b.id));
   const handleAddThisPlan = () => onAdd?.(picks(), { target: 'thisPlan' });
-  const handleMenuSelect = (key) => {
-    setAddMenu(null);
-    onAdd?.(picks(), { target: key });
-  };
   const headerRight = (
     <>
-      <div className={styles.splitBtn}>
-        <Button
-          variant="primary"
-          size="L"
-          disabled={selected.size === 0}
-          onClick={handleAddThisPlan}
-        >
-          Add to This Plan
-        </Button>
-        <button
-          type="button"
-          className={styles.splitBtnChevron}
-          disabled={selected.size === 0}
-          aria-label="Add to other scopes"
-          aria-haspopup="menu"
-          aria-expanded={!!addMenu}
-          onClick={e => setAddMenu({ rect: e.currentTarget.getBoundingClientRect() })}
-        >
-          <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-0)" />
-        </button>
-      </div>
+      <Button
+        variant="primary"
+        size="L"
+        disabled={selected.size === 0}
+        onClick={handleAddThisPlan}
+      >
+        Add to Plan
+      </Button>
       <span className={styles.headerDivider} />
-      {addMenu && (
-        <MenuPopover
-          anchorRect={addMenu.rect}
-          align="right"
-          width={220}
-          ariaLabel="Add barriers to"
-          items={ADD_TARGETS}
-          onSelect={handleMenuSelect}
-          onClose={() => setAddMenu(null)}
-        />
-      )}
     </>
   );
 
