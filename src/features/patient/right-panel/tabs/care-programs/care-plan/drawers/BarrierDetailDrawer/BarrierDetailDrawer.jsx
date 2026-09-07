@@ -108,6 +108,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
   const showToast = useAppStore(s => s.showToast);
+  const libraryBarriers = useAppStore(s => s.carePlanBarriers) || [];
 
   const goalsInPlan = slice?.goals || [];
   const barriersInPlan = slice?.barriers || [];
@@ -162,6 +163,29 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   // in the header; the rest is preserved as-is.
   const [title, setTitle] = useState(barrier.title || '');
   const [status, setStatus] = useState(barrier.status || 'Not Started');
+  // Typeahead — surface library barriers matching the current input so
+  // the user can pick an existing entry instead of re-typing / creating
+  // a near-duplicate. Guarded by focus so the list only shows while the
+  // input is active.
+  const [titleFocused, setTitleFocused] = useState(false);
+  const titleSuggestions = useMemo(() => {
+    const q = (title || '').trim().toLowerCase();
+    if (!q) return [];
+    const seen = new Set();
+    const rows = [];
+    for (const b of libraryBarriers) {
+      const name = (b?.title || '').trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (key === q) continue; // exact match — nothing to switch to
+      if (!key.includes(q)) continue;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({ id: b.id, title: name });
+      if (rows.length >= 8) break;
+    }
+    return rows;
+  }, [title, libraryBarriers]);
   // Terminal state: once a barrier is Met or Not Met the record locks —
   // no rename, no link / unlink, no note edits. Users flip status back to
   // In Progress / On Hold to reopen the drawer for editing.
@@ -231,12 +255,10 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
     return rows;
   }, [auditAll, barrierIdSet, legacyClones, goalIndex]);
 
-  // Title + status auto-save. Title waits ~500ms after the last keystroke
-  // so quick edits don't spam Supabase, then persists onto every legacy
-  // clone that still exists (pre-migration data) plus the canonical row.
-  // Post-migration `legacyClones` collapses to `[barrier]` and this loop
-  // becomes a single write. First mount is skipped so simply opening the
-  // drawer doesn't fire a save.
+  // Title + status changes are staged locally and committed via the
+  // header "Update" button — auto-save was rolling too many tiny writes
+  // to Supabase for each keystroke / dropdown click. Note edits still
+  // save via their own "Add Note" / "Update Note" button.
   const persistedTitle = (barrier.title || '').trim();
   const persistedStatus = barrier.status || 'Not Started';
   const persistBarrier = async (nextTitle, nextStatus, doneVerb) => {
@@ -251,14 +273,11 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
     }
     if (doneVerb) showToast?.(doneVerb);
   };
-  const skipAutoSave = useMemo(() => ({ current: true }), []);
-  useEffect(() => {
-    if (skipAutoSave.current) { skipAutoSave.current = false; return; }
-    const t = title.trim();
-    if (t === persistedTitle && status === persistedStatus) return;
-    const id = setTimeout(() => { persistBarrier(t, status, 'Barrier updated'); }, t === persistedTitle ? 0 : 500);
-    return () => clearTimeout(id);
-  }, [title, status]); // eslint-disable-line react-hooks/exhaustive-deps -- persistBarrier stable via closure
+  const barrierDirty = title.trim() !== persistedTitle || status !== persistedStatus;
+  const handleUpdateBarrier = async () => {
+    if (!barrierDirty) return;
+    await persistBarrier(title.trim(), status, 'Barrier updated');
+  };
 
   const handleAddGoalClick = () => {
     if (availableGoals.length === 0) {
@@ -336,8 +355,17 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
         title="Barriers"
         onClose={onClose}
         width={640}
-        noCloseDivider
-        headerRight={null}
+        noCloseDivider={isTerminal}
+        headerRight={isTerminal ? null : (
+          <Button
+            variant="primary"
+            size="M"
+            disabled={!barrierDirty}
+            onClick={handleUpdateBarrier}
+          >
+            Update
+          </Button>
+        )}
       >
         <div className={styles.body}>
           {/* Status bar — Select on the left, delete-barrier on the right.
@@ -383,12 +411,34 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
               <span className={styles.label}>
                 Edit Barrier <span className={styles.required} aria-hidden>•</span>
               </span>
-              <Input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Barrier name"
-                aria-label="Barrier name"
-              />
+              <div className={styles.titleFieldWrap}>
+                <Input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  onFocus={() => setTitleFocused(true)}
+                  onBlur={() => { setTimeout(() => setTitleFocused(false), 120); }}
+                  placeholder="Barrier name"
+                  aria-label="Barrier name"
+                />
+                {titleFocused && titleSuggestions.length > 0 && (
+                  <ul className={styles.titleSuggestions} role="listbox" aria-label="Existing barriers">
+                    {titleSuggestions.map(s => (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          className={styles.titleSuggestionRow}
+                          role="option"
+                          aria-selected="false"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => { setTitle(s.title); setTitleFocused(false); }}
+                        >
+                          {s.title}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               <div className={styles.metaLine}>
                 {startDate && <>Start Date : {startDate}</>}
                 {startDate && updatedDate && <span className={styles.metaDot}>&bull;</span>}
