@@ -385,9 +385,6 @@ export function Select({
                   />
                 )}
                 {opt.label}
-                {isActive && !(multiple && checkboxes) && (
-                  <Icon name="solar:check-read-linear" size={14} color="var(--primary-300)" />
-                )}
               </li>
             );
           })}

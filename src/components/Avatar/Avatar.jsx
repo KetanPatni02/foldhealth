@@ -123,9 +123,18 @@ export function Avatar({ type = 'initial', variant = 'patient', initials, iconNa
   if (variant === 'callCard') {
     return <div className={[styles.callCard, className || ''].filter(Boolean).join(' ')}>{initials}</div>;
   }
-  return (
-    <LockedWrapper locked={locked}>
-      <div className={[styles.patient, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')}>{iconEl || initials}</div>
-    </LockedWrapper>
-  );
+  {
+    // Mirror the staff/provider numeric-size override so a caller passing
+    // `size={24}` gets a compact patient chip that lines up with the
+    // matching staff avatar in the same list (e.g. the AssigneeChange
+    // picker mixing user + member rows).
+    const style = typeof size === 'number'
+      ? { width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.44)) }
+      : undefined;
+    return (
+      <LockedWrapper locked={locked}>
+        <div className={[styles.patient, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')} style={style}>{iconEl || initials}</div>
+      </LockedWrapper>
+    );
+  }
 }

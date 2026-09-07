@@ -21,7 +21,20 @@ import { AssigneeChange } from '../../../../../components/AssigneeChange/Assigne
 
 const initialsOf = (name) => (name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 import { LinkGoalToBarrierDrawer } from '../../../../patient/right-panel/tabs/care-programs/care-plan/drawers/BarrierDetailDrawer/LinkGoalToBarrierDrawer';
+import { formatGoalTarget, formatGoalDuration } from '../../lib';
 import styles from '../shared/InterventionDrawer.module.css';
+
+// Mirrors the barrier drawer's goal-type icon resolver so linked goal rows
+// read identically across barrier + intervention surfaces.
+function goalIconFor(goal) {
+  const c = (goal?.category || goal?.type || '').toLowerCase();
+  if (c.startsWith('vital')) return 'solar:heart-pulse-linear';
+  if (c.startsWith('exercise') || c.startsWith('activity')) return 'solar:running-linear';
+  if (c.startsWith('diet')) return 'solar:donut-linear';
+  if (c.startsWith('lab')) return 'solar:test-tube-linear';
+  if (c.startsWith('assessment')) return 'solar:clipboard-list-linear';
+  return 'solar:target-linear';
+}
 
 const CREATION_TIMINGS = ['day', 'week', 'immediate'];
 const CREATION_TRIGGERS = ['Program Start Date', 'Discharge Date', 'Care Plan Signed'];
@@ -66,6 +79,10 @@ export function InterventionDrawer({
   // authored on a plan always target that plan's patient, so it can't be
   // edited here; the Assigned To row is the mutable owner instead.
   memberName,
+  // Opens a linked goal in its detail drawer — mirrors the barrier drawer's
+  // Open Goal action so the intervention's linked goals surface the same
+  // interaction. Optional; the arrow just no-ops when the caller omits it.
+  onOpenGoal,
 }) {
   const [linkedGoalIds, setLinkedGoalIds] = useState(() => (
     Array.isArray(linkedGoalIdsProp) && linkedGoalIdsProp.length > 0
@@ -73,6 +90,7 @@ export function InterventionDrawer({
       : (Array.isArray(intervention?.goalIds) ? [...intervention.goalIds] : [])
   ));
   const [linkGoalPickerOpen, setLinkGoalPickerOpen] = useState(false);
+  const [linkedGoalsOpen, setLinkedGoalsOpen] = useState(true);
   const linkedGoals = useMemo(
     () => linkedGoalIds
       .map(id => availableGoals.find(g => g.id === id))
@@ -418,7 +436,7 @@ export function InterventionDrawer({
             the row visually calm — no double borders / boxes. */}
         <div className={styles.detailRow}>
           <span className={styles.detailLabel}>
-            Assigned To<span className={styles.mandatoryDot} aria-hidden="true" />
+            Assigned To
           </span>
           <AssigneeChange
             name={assignedTo}
@@ -679,13 +697,26 @@ export function InterventionDrawer({
           )}
         </div>
 
-            {/* Linked Goals — only when the drawer is opened from the
-                Care Plan add flow (Figma 2632:94480). Uses the same
-                picker as the Barrier Detail Drawer. */}
+            {/* Linked Goals — same collapsible section + row treatment
+                the Barrier Detail Drawer uses (icon + title/subtitle +
+                open/unlink cluster), so linked-goal rows read identically
+                across barrier and intervention surfaces. */}
             {linkToGoalsAllowed && (
-              <div className={styles.field}>
-                <div className={styles.linkedHead}>
-                  <span className={styles.fieldLabel}>Linked Goals</span>
+              <section className={styles.linkedSection}>
+                <div className={styles.linkedSectionHead}>
+                  <button
+                    type="button"
+                    className={styles.linkedSectionToggle}
+                    onClick={() => setLinkedGoalsOpen(v => !v)}
+                    aria-expanded={linkedGoalsOpen}
+                  >
+                    <span className={styles.linkedSectionTitle}>Linked Goals</span>
+                    <DownChevronIcon
+                      size={12}
+                      color="var(--neutral-400)"
+                      className={`${styles.linkedSectionChevron} ${linkedGoalsOpen ? styles.linkedSectionChevronOpen : ''}`}
+                    />
+                  </button>
                   <ActionButton
                     icon="solar:add-linear"
                     size="S"
@@ -694,25 +725,59 @@ export function InterventionDrawer({
                     disabled={goalsForPicker.length === 0}
                   />
                 </div>
-                {linkedGoals.length === 0 ? (
-                  <div className={styles.linkedEmpty}>Not linked to any goals in this plan version yet.</div>
-                ) : (
-                  <ul className={styles.linkedList}>
-                    {linkedGoals.map(g => (
-                      <li key={g.id} className={styles.linkedRow}>
-                        <Icon name="solar:flag-linear" size={16} color="var(--neutral-400)" />
-                        <span className={styles.linkedTitle}>{g.title}</span>
-                        <ActionButton
-                          icon="solar:link-broken-minimalistic-linear"
-                          size="S"
-                          tooltip="Unlink"
-                          onClick={() => handleUnlinkGoal(g.id)}
-                        />
-                      </li>
-                    ))}
-                  </ul>
+                {linkedGoalsOpen && (
+                  linkedGoals.length === 0 ? (
+                    <div className={styles.linkedEmptyCard}>
+                      <span className={styles.linkedEmptyIcon}>
+                        <Icon name="solar:target-linear" size={16} color="var(--neutral-300)" />
+                      </span>
+                      <span className={styles.linkedEmptyText}>No Goals linked</span>
+                      <button
+                        type="button"
+                        className={styles.linkedEmptyLink}
+                        onClick={() => setLinkGoalPickerOpen(true)}
+                        disabled={goalsForPicker.length === 0}
+                      >
+                        Link Goals
+                      </button>
+                    </div>
+                  ) : (
+                    <ul className={styles.linkList}>
+                      {linkedGoals.map(g => {
+                        const target = formatGoalTarget(g);
+                        const duration = formatGoalDuration(g);
+                        const subtitle = [target, duration].filter(Boolean).join(' for ');
+                        return (
+                          <li key={g.id} className={styles.linkRow}>
+                            <span className={styles.linkIcon}>
+                              <Icon name={goalIconFor(g)} size={16} color="var(--neutral-400)" />
+                            </span>
+                            <div className={styles.linkStack}>
+                              <span className={styles.linkTitle}>{g.title}</span>
+                              {subtitle && <span className={styles.linkSubtitle}>{subtitle}</span>}
+                            </div>
+                            <div className={styles.linkActions}>
+                              <ActionButton
+                                icon="solar:arrow-right-up-linear"
+                                size="S"
+                                tooltip="Open goal"
+                                onClick={() => onOpenGoal?.(g)}
+                              />
+                              <span className={styles.linkActionsDivider} aria-hidden />
+                              <ActionButton
+                                icon="solar:link-broken-minimalistic-linear"
+                                size="S"
+                                tooltip="Unlink"
+                                onClick={() => handleUnlinkGoal(g.id)}
+                              />
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )
                 )}
-              </div>
+              </section>
             )}
 
             {/* Activity Log — pre-mapped audit rows in the shared

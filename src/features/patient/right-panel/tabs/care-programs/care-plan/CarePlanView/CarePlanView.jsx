@@ -1378,6 +1378,7 @@ export function CarePlanView({ patientId, program }) {
             linkedGoalIds={currentLinked}
             activityEntries={activityEntries}
             memberName={patientName}
+            onOpenGoal={(g) => { setIntvSpecialDrawer(null); setPreviewGoal(g); }}
             onClose={() => setIntvSpecialDrawer(null)}
             onSave={async (config) => {
               await saveInterventionFromConfig(
@@ -1393,6 +1394,12 @@ export function CarePlanView({ patientId, program }) {
 
       {taskDrawerOpen && (
         <AddTaskDrawer
+          taskKind={taskDrawerOpen}
+          initialMember={patientName}
+          initialAssignedTo={taskDrawerOpen === 'internal-task' ? '' : patientName}
+          showScheduleFields
+          availableGoals={data.goals}
+          onOpenGoal={(g) => { setTaskDrawerOpen(null); setPreviewGoal(g); }}
           onClose={() => setTaskDrawerOpen(null)}
           onTaskCreated={async (t) => {
             await saveInterventionFromConfig(taskDrawerOpen, { title: t?.name || '', taskId: t?.id });

@@ -13,10 +13,11 @@ import { useLayoutEffect, useState } from 'react';
  * renders in place on the first frame) and re-measures on `scroll` +
  * `resize`. Pass `open` so the effect noops when the popover is closed.
  *
- * Returns `{ top, left, width }` in fixed-coordinate pixels, or null when
- * the anchor isn't mounted / measured yet.
+ * Returns `{ top, left, width, placement }` where placement is 'bottom'
+ * (opens below) or 'top' (opens above). Flips to 'top' when there isn't
+ * enough space below the anchor.
  */
-export function usePopoverPosition(anchorRef, open, { offset = 4 } = {}) {
+export function usePopoverPosition(anchorRef, open, { offset = 4, estimatedHeight = 240 } = {}) {
   const [pos, setPos] = useState(null);
 
   /* eslint-disable react-hooks/set-state-in-effect --
@@ -31,7 +32,13 @@ export function usePopoverPosition(anchorRef, open, { offset = 4 } = {}) {
       const el = anchorRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      setPos({ top: r.bottom + offset, left: r.left, width: r.width });
+      const spaceBelow = window.innerHeight - r.bottom;
+      const spaceAbove = r.top;
+      // Flip to top when there's not enough room below AND above has more.
+      const flip = spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+      setPos(flip
+        ? { top: r.top - offset, left: r.left, width: r.width, placement: 'top' }
+        : { top: r.bottom + offset, left: r.left, width: r.width, placement: 'bottom' });
     };
     measure();
     window.addEventListener('resize', measure);
@@ -41,7 +48,7 @@ export function usePopoverPosition(anchorRef, open, { offset = 4 } = {}) {
       window.removeEventListener('resize', measure);
       window.removeEventListener('scroll', measure, true);
     };
-  }, [anchorRef, open, offset]);
+  }, [anchorRef, open, offset, estimatedHeight]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   return pos;

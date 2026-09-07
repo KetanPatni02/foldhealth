@@ -65,42 +65,217 @@
   color: var(--neutral-400);
 }
 
-/* Linked Goals section (Figma 2632:94480) — mirrors the Barrier Detail
-   Drawer's row treatment so add / unlink read the same everywhere. */
-.linkedHead {
+/* Linked Goals section — mirrors the Barrier Detail Drawer's collapsible
+   section + row treatment (Figma 2632:94480 / 8629:*) so linked-goal rows
+   read identically across barrier and intervention surfaces. */
+.linkedSection {
+  display: flex;
+  flex-direction: column;
+}
+.linkedSectionHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-2);
+  height: var(--space-6);
 }
+.linkedSectionToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+.linkedSectionTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.linkedSectionChevron {
+  transform: rotate(-90deg);
+  transition: transform 120ms ease;
+}
+.linkedSectionChevronOpen { transform: rotate(0deg); }
+
 .linkedEmpty {
   font-size: var(--font-sm);
   color: var(--neutral-300);
-  padding: var(--space-1) 0;
+  padding: var(--space-2) 0;
 }
-.linkedList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+/* Dashed empty-state card (Figma 8526:291369) — vertical stack: circular
+   icon chip, message, primary "Link Goals" text link. */
+.linkedEmptyCard {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-}
-.linkedRow {
-  display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-1);
+  padding: var(--space-4);
+  border: 0.5px dashed var(--neutral-200);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
 }
-.linkedTitle {
-  flex: 1;
-  min-width: 0;
+.linkedEmptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--neutral-50);
+}
+.linkedEmptyText {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.linkedEmptyLink {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--primary-300);
+}
+.linkedEmptyLink:hover:not(:disabled) { text-decoration: underline; }
+.linkedEmptyLink:disabled {
+  color: var(--neutral-200);
+  cursor: not-allowed;
+}
+
+/* Compact Subtasks affordance for the care-plan-scoped Add Task drawer —
+   sits under Repeat as a single text link that expands into the shared
+   input + staged-cards flow when clicked. */
+.subtaskInline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
+/* Left-align + icon-first row for the "+ Add Subtask" link. Overrides the
+   linkedEmptyLink 500-weight default with regular 400 for a lighter feel. */
+.subtaskAddLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 400;
+  text-align: left;
+}
+
+/* Inline-editable subtask title — plain-text button by default, promotes
+   to an input on click. Both share the neutral-500 body-copy treatment
+   used by `.linkTitle` so the row height stays stable. */
+.subtaskEditTrigger {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: text;
+  text-align: left;
   font-size: var(--font-base);
   color: var(--neutral-500);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.subtaskEditInput {
+  width: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: none;
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+}
+/* Add-row variant — no border-bottom, hugs the section end. */
+.subtaskAddRow {
+  border-bottom: 0;
+}
+
+/* Task Title header row — label on the left, char counter aligned right
+   so it reads on the same line as the label instead of below the input. */
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+/* Char counter in this row reads as a subtle meta value — 12px in
+   neutral-200 — instead of the over-limit red the plain helper row uses. */
+.titleRow > :last-child {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+
+/* Task Title as an auto-growing textarea so long titles wrap to a
+   second line instead of scrolling horizontally in a single-line input.
+   `field-sizing: content` is the modern one-liner; the JS auto-grow
+   effect in the body covers older engines. */
+.titleTextarea {
+  width: 100%;
+  display: block;
+  margin: 0;
+  resize: none;
+  overflow: hidden;
+  min-height: 36px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  field-sizing: content;
+}
+.linkList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.linkRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.linkIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+.linkStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.linkTitle {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.linkSubtitle {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.linkActions {
+  display: inline-flex;
+  align-items: center;
+  padding-left: var(--space-2);
+}
+.linkActionsDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  margin: 0 var(--space-1);
+  background: var(--neutral-150);
 }
 /* Same marker Input/Select render for `required` — these labels head a row of
    controls, so no single component can own them. */
@@ -110,6 +285,18 @@
   border-radius: 50%;
   background: var(--status-error);
   flex-shrink: 0;
+}
+/* Standalone variant — for label contexts that are NOT flex (e.g. the
+   Tasks-drawer detail rows and section labels). Renders as an inline-
+   block dot with a small leading gap so it reads as a proper marker. */
+.mandatoryDotInline {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  margin-left: var(--space-1);
+  vertical-align: middle;
 }
 .sectionTitle {
   font-size: var(--font-base);
