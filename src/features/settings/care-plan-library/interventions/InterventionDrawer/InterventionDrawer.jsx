@@ -23,6 +23,11 @@ const initialsOf = (name) => (name || '').split(' ').map(w => w[0]).join('').sli
 import { LinkGoalToBarrierDrawer } from '../../../../patient/right-panel/tabs/care-programs/care-plan/drawers/BarrierDetailDrawer/LinkGoalToBarrierDrawer';
 import { formatGoalTarget, formatGoalDuration } from '../../lib';
 import styles from '../shared/InterventionDrawer.module.css';
+// Reuse the tasks-view title styles so the Task Title in this drawer
+// matches the care-plan Add Task drawer exactly (big 2xl label + input,
+// char counter + red mandatory dot on the same header line, auto-grow
+// textarea that wraps onto a second line).
+import tasksViewStyles from '../../../../tasks/TasksView.module.css';
 
 // Mirrors the barrier drawer's goal-type icon resolver so linked goal rows
 // read identically across barrier + intervention surfaces.
@@ -105,6 +110,16 @@ export function InterventionDrawer({
   const handleUnlinkGoal = (id) => setLinkedGoalIds(prev => prev.filter(x => x !== id));
 
   const [title, setTitle] = useState(intervention?.title ?? '');
+  // Auto-grow the Task Title textarea to match the care-plan Add Task
+  // drawer — long titles wrap onto a second line instead of scrolling
+  // horizontally in a single-line input.
+  const titleTextareaRef = useRef(null);
+  useEffect(() => {
+    const el = titleTextareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [title]);
   const [priority, setPriority] = useState(intervention?.priority ?? 'Medium');
   // Default the assignee to the current member, matching the Patient Task
   // drawer. The parent may resolve `memberName` async (worklist slice
@@ -320,20 +335,28 @@ export function InterventionDrawer({
       <div className={styles.body}>
         <InterventionKindToggle kind={kind} onKindChange={onKindChange} />
 
-        {/* Task Title — plain Input, matches the care-plan Add Task
-            drawer's title section. Priority moved out of this field
-            into its own detail row below. */}
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Task Title<span className={styles.mandatoryDot} aria-hidden="true" />
-          </span>
-          <Input
+        {/* Task Title — reuses the care-plan Add Task drawer's title
+            treatment: big 2xl label + auto-growing textarea, char
+            counter + red mandatory dot on the same header line. Priority
+            lives in its own detail row below. */}
+        <div className={tasksViewStyles.drawerSection}>
+          <div className={styles.titleRow}>
+            <span className={tasksViewStyles.drawerSectionLabel}>
+              Task Title
+              <span className={styles.mandatoryDotInline} aria-hidden="true" />
+            </span>
+            <span className={`${tasksViewStyles.charCount} ${title.length > TITLE_MAX ? tasksViewStyles.charCountOver : ''}`}>
+              {title.length}/{TITLE_MAX}
+            </span>
+          </div>
+          <textarea
+            ref={titleTextareaRef}
+            aria-label="Task Title"
+            className={`${tasksViewStyles.drawerTaskTitleInput} ${styles.titleTextarea} ${title.length > TITLE_MAX ? tasksViewStyles.inputInvalid : ''}`}
+            placeholder="Enter task title..."
+            rows={1}
             value={title}
             onChange={e => setTitle(e.target.value)}
-            placeholder="Enter The Task Title"
-            aria-label="Task Title"
-            maxLength={TITLE_MAX}
-            characterLimit={TITLE_MAX}
           />
         </div>
 

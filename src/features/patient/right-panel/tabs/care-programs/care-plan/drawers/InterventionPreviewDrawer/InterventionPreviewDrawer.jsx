@@ -15,7 +15,10 @@ import { MenuPopover } from '../../../../../../../../components/MenuPopover/Menu
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
-import { LinkGoalToBarrierDrawer } from '../BarrierDetailDrawer/LinkGoalToBarrierDrawer';
+import { DetailDropdown } from '../../../../../../../tasks/TasksViewDropdowns';
+import { PRIORITY_OPTIONS } from '../../../../../../../tasks/TasksView.utils';
+import { GbiProgressCell } from '../../tables/carePlanTableShared';
+import { KIND_LABELS } from '../../../../../../../settings/care-plan-library/interventions/shared/interventionKinds';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { adherenceBand, adherenceTone } from '../../lib/goalMetrics';
 import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
@@ -78,11 +81,6 @@ function fmtStamp(iso) {
   const date = d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
   const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   return `${date} ${time}`;
-}
-
-function formatKind(kind) {
-  if (!kind) return '';
-  return kind.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 }
 
 const initialsOf = (name) => (name || '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -184,12 +182,27 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
   const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
   const currentUserName = useAppStore(s => s.currentUserProfile?.name);
+  // Content lookup — a Patient Education intervention stores the linked
+  // material id as `config.content` (prefixed `email:<id>` / `form:<id>`);
+  // Send Form stores it as `config.form`. Resolve to a name so the
+  // reader can see which content was shared without opening the editor.
+  const contentEmails = useAppStore(s => s.contentEmails);
+  const contentForms = useAppStore(s => s.contentForms);
+  const fetchContentEmails = useAppStore(s => s.fetchContentEmails);
+  const fetchContentForms = useAppStore(s => s.fetchContentForms);
 
   const live = (slice?.interventions || []).find(i => i.id === intervention?.id) || intervention;
   const linkedGoals = useMemo(
     () => (slice?.goals || []).filter(g => g.id === live?.goalId),
     [slice, live],
   );
+  // Read the paired task once so the hero can show a real "Due Date" and
+  // the recurrence marker on the duration chip. Falls back to the intervention
+  // config when the task hasn't been paired yet (pre-migration rows).
+  const pairedTask = useAppStore(s => {
+    if (!live?.taskId) return null;
+    return (s.tasks || []).find(t => String(t.id) === String(live.taskId)) || null;
+  });
   const automations = useMemo(
     () => (slice?.automations || []).filter(a => !live?.goalId || a.goalId === live.goalId),
     [slice, live],
@@ -198,7 +211,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   const [pct, setPct] = useState(adherenceNum(live?.adherence));
   const [pctDragging, setPctDragging] = useState(false);
   const [open, setOpen] = useState({ goals: true, automations: true });
-  const [linkGoalOpen, setLinkGoalOpen] = useState(false);
   const [addingAutomation, setAddingAutomation] = useState(false);
   const [automationTitle, setAutomationTitle] = useState('');
   const [note, setNote] = useState('');
@@ -218,6 +230,50 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
 
   useEffect(() => { setPct(adherenceNum(live?.adherence)); }, [live?.id, live?.adherence]);
   useEffect(() => { if (patientId && program) fetchCarePlanAudit(patientId, program.id); }, [patientId, program, fetchCarePlanAudit]);
+
+  // Lazy-load the content library only for the kinds that need it — so the
+  // Linked Education / Linked Form row can render a name instead of the raw
+  // id when the drawer is opened cold (e.g. no library visit yet this
+  // session).
+  useEffect(() => {
+    if (live?.kind === 'patient-education') {
+      fetchContentEmails?.({ page: 1, perPage: 50, search: '' });
+      fetchContentForms?.({ page: 1, perPage: 50, search: '' });
+    } else if (live?.kind === 'send-form') {
+      fetchContentForms?.({ page: 1, perPage: 50, search: '' });
+    }
+  }, [live?.kind, fetchContentEmails, fetchContentForms]);
+
+  // Resolve the linked content chip: shape `{ kind: 'Email'|'Form', label, id, missing? }`
+  // for the row renderer. `missing: true` marks a saved id that no longer
+  // exists in the library (or hasn't been loaded yet) so the row can still
+  // surface the raw handle.
+  const linkedContent = useMemo(() => {
+    if (!live) return null;
+    if (live.kind === 'patient-education') {
+      const raw = live.config?.content || '';
+      if (!raw) return null;
+      if (raw.startsWith('email:')) {
+        const id = raw.slice('email:'.length);
+        const hit = (contentEmails || []).find(e => String(e.id) === String(id));
+        return { kind: 'Email', label: hit?.name || `Email #${id}`, id, missing: !hit };
+      }
+      if (raw.startsWith('form:')) {
+        const id = raw.slice('form:'.length);
+        const hit = (contentForms || []).find(f => String(f.id) === String(id));
+        return { kind: 'Form', label: hit?.name || `Form #${id}`, id, missing: !hit };
+      }
+      return { kind: 'Content', label: raw, id: raw, missing: true };
+    }
+    if (live.kind === 'send-form') {
+      const raw = live.config?.form || '';
+      if (!raw) return null;
+      const hit = (contentForms || []).find(f => String(f.id) === String(raw));
+      return { kind: 'Form', label: hit?.name || `Form #${raw}`, id: raw, missing: !hit };
+    }
+    return null;
+  }, [live, contentEmails, contentForms]);
+  const linkedContentTitle = live?.kind === 'send-form' ? 'Linked Form' : 'Linked Education';
 
   // Latest saved note on this intervention — seeds the note editor and
   // drives the "Update Note" vs "Add Note" label. A subsequent
@@ -268,7 +324,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   if (!live) return null;
 
   const canEdit = !!(patientId && program);
-  const kindLabel = formatKind(live.kind);
   const youSuffix = (name) => (name && currentUserName && name === currentUserName ? ` by ${name} (You)` : name ? ` by ${name}` : '');
   const toggle = (k) => setOpen(s => ({ ...s, [k]: !s[k] }));
   const expandAnd = (k, fn) => { setOpen(s => ({ ...s, [k]: true })); fn(); };
@@ -305,20 +360,21 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
     setNoteEditing(false);
   };
 
-  const programBadges = [program?.code].filter(Boolean);
-  const linkedGoal = linkedGoals[0];
-  const conditionBadges = (linkedGoal?.conditions?.length
-    ? linkedGoal.conditions
-    : (slice?.plan?.conditions || []).map(c => (typeof c === 'string' ? c : c.label)).filter(Boolean)
-  ).slice(0, 4);
+  const dueDate = pairedTask?.dueDate || pairedTask?.due_date || live.config?.dueDate || null;
+  const hasRepeat = !!(pairedTask?.repeat || live.config?.repeat);
 
   const metaParts = [
     live.createdAt ? `Start Date : ${fmtDate(live.createdAt)}` : null,
-    live.updatedAt ? `Last Updated : ${fmtDate(live.updatedAt)}${youSuffix(live.updatedBy)}` : null,
+    dueDate ? `Due Date : ${fmtDate(dueDate)}` : null,
+    live.updatedAt ? `Last Update : ${fmtDate(live.updatedAt)}${youSuffix(live.updatedBy)}` : null,
   ].filter(Boolean);
 
   return (
-    <Drawer title="Intervention" onClose={onClose} bodyClassName={styles.drawerPad}>
+    <Drawer
+      title={KIND_LABELS[live.kind] ? `Intervention - ${KIND_LABELS[live.kind]}` : 'Intervention'}
+      onClose={onClose}
+      bodyClassName={styles.drawerPad}
+    >
       <div className={styles.body}>
         <div className={styles.statusBar}>
           <Select
@@ -357,12 +413,31 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
         </div>
 
         <div className={`${styles.hero} ${styles.heroWithKind}`}>
-          {kindLabel && <span className={styles.subtitle}>{kindLabel}</span>}
           <div className={styles.titleRow}>
-            <PriorityIcon priority={live.priority} size={16} />
+            <span className={styles.priorityTrigger} aria-hidden="false">
+              <DetailDropdown
+                value={live.priority}
+                options={PRIORITY_OPTIONS}
+                onSelect={(v) => {
+                  if (!canEdit || v === live.priority) return;
+                  savePatientCarePlanIntervention(patientId, program, { ...live, priority: v }, live.id);
+                }}
+                searchable={false}
+                renderOption={(opt) => (
+                  <>
+                    <PriorityIcon priority={opt} size={16} />
+                    <span style={{ textTransform: 'capitalize' }}>{opt}</span>
+                  </>
+                )}
+              >
+                <PriorityIcon priority={live.priority} size={20} />
+              </DetailDropdown>
+            </span>
             {editingTitle ? (
-              <Input
+              <input
                 autoFocus
+                type="text"
+                className={styles.titleInlineInput}
                 value={titleDraft}
                 onChange={e => setTitleDraft(e.target.value)}
                 onBlur={commitTitle}
@@ -370,20 +445,50 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 aria-label="Intervention title"
               />
             ) : (
-              <span className={styles.title}>{live.title}</span>
+              <button
+                type="button"
+                className={styles.titleEditable}
+                onClick={() => {
+                  if (!canEdit) return;
+                  setTitleDraft(live.title || '');
+                  setEditingTitle(true);
+                }}
+                disabled={!canEdit}
+                aria-label="Edit intervention title"
+              >
+                {live.title}
+              </button>
             )}
           </div>
           {metaParts.length > 0 && <span className={styles.meta}>{metaParts.join(' • ')}</span>}
-          {(programBadges.length > 0 || conditionBadges.length > 0) && (
-            <div className={styles.badges}>
-              {programBadges.map(b => <Badge key={b} tone="grey" label={b} />)}
-              {programBadges.length > 0 && conditionBadges.length > 0 && <span className={styles.badgeDivider} />}
-              {conditionBadges.map(b => <Badge key={b} tone="grey" label={b} />)}
-            </div>
-          )}
-          {live.duration && (
-            <div className={styles.badges}>
-              <Badge tone="grey" label={live.duration} icon="solar:clock-circle-linear" />
+          {(linkedContent || live.duration) && (
+            <div className={styles.heroBadgeRow}>
+              {linkedContent && (
+                <button
+                  type="button"
+                  className={styles.linkedContentBadge}
+                  onClick={() => { if (canEdit) onEdit?.(live); }}
+                  disabled={!canEdit}
+                  aria-label={`Open ${linkedContentTitle.toLowerCase()}`}
+                >
+                  <Icon
+                    name={linkedContent.kind === 'Form' ? 'solar:document-text-linear' : 'solar:letter-linear'}
+                    size={14}
+                    color="var(--neutral-400)"
+                  />
+                  <span>{linkedContent.label}</span>
+                  <Icon name="solar:arrow-right-up-linear" size={12} color="var(--neutral-400)" />
+                </button>
+              )}
+              {live.duration && (
+                <span className={styles.durationBadge}>
+                  <Icon name="solar:clock-circle-linear" size={14} color="var(--neutral-400)" />
+                  <span>{live.duration}</span>
+                  {hasRepeat && (
+                    <Icon name="solar:refresh-linear" size={12} color="var(--neutral-400)" />
+                  )}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -438,14 +543,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 className={`${barrierStyles.sectionChevron} ${open.goals ? barrierStyles.sectionChevronOpen : ''}`}
               />
             </button>
-            {canEdit && (
-              <ActionButton
-                icon="solar:add-linear"
-                size="S"
-                tooltip="Link goal"
-                onClick={() => setLinkGoalOpen(true)}
-              />
-            )}
           </div>
           {open.goals && (
             linkedGoals.length === 0 ? (
@@ -461,24 +558,17 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                       <span className={barrierStyles.linkTitle}>{g.title}</span>
                       {g.subtitle && <span className={barrierStyles.linkSubtitle}>{g.subtitle}</span>}
                     </div>
-                    <div className={barrierStyles.linkActions}>
+                    <div className={barrierStyles.linkActions} style={{ gap: 'var(--space-2)' }}>
+                      <PriorityIcon priority={g.priority} size={16} />
+                      <span className={barrierStyles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
+                      <GbiProgressCell progress={g.progress} />
+                      <span className={barrierStyles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                       <ActionButton
                         icon="solar:arrow-right-up-linear"
                         size="S"
                         tooltip="Open goal"
                         onClick={() => onOpenGoal?.(g)}
                       />
-                      {canEdit && (
-                        <>
-                          <span className={barrierStyles.linkActionsDivider} aria-hidden />
-                          <ActionButton
-                            icon="solar:link-broken-minimalistic-linear"
-                            size="S"
-                            tooltip="Unlink"
-                            onClick={() => savePatientCarePlanIntervention(patientId, program, { ...live, goalId: null }, live.id)}
-                          />
-                        </>
-                      )}
                     </div>
                   </li>
                 ))}
@@ -690,20 +780,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           items={ACTIVITY_FILTERS.map(f => ({ key: f.key, label: f.label }))}
           onSelect={(k) => { setActivityFilter(k); setFilterMenu(null); }}
           onClose={() => setFilterMenu(null)}
-        />
-      )}
-
-      {linkGoalOpen && (
-        <LinkGoalToBarrierDrawer
-          title="Link Goal to Intervention"
-          goals={(slice?.goals || []).filter(g => g.id !== live.goalId)}
-          onClose={() => setLinkGoalOpen(false)}
-          onLink={async (ids) => {
-            const first = ids?.[0];
-            if (!first) return;
-            await savePatientCarePlanIntervention(patientId, program, { ...live, goalId: first }, live.id);
-            setLinkGoalOpen(false);
-          }}
         />
       )}
 
