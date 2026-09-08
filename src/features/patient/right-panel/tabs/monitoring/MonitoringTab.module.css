@@ -1,10 +1,26 @@
-.scroll {
+.root {
   height: 100%;
-  overflow-y: auto;
-  padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  overflow: hidden;
+}
+
+.bodyRow {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.alertSlot {
+  flex-shrink: 0;
+  padding: var(--space-3);
+  padding-bottom: 0;
+}
+
+.bannerAlert {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
 }
 
 /* Shared card chrome — one surface treatment across the tab */
@@ -26,57 +42,92 @@
 .stateTitle { margin: var(--space-2) 0 0; font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
 .stateBody { margin: 0; font-size: var(--font-sm); color: var(--neutral-400); }
 
-/* ── Identity band ──────────────────────────────────────────── */
-.idBand {
-  composes: surfaceCard;
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-6);
-  padding: var(--space-3);
+.adhDot {
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: 50%;
+  background: var(--neutral-300);
+  flex-shrink: 0;
 }
-.idMain { display: flex; align-items: center; gap: var(--space-3); min-width: 200px; }
-.idText { display: flex; flex-direction: column; gap: var(--space-1); }
-.idNameRow { display: flex; align-items: baseline; gap: var(--space-2); }
-.idName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
-.idMeta { font-size: var(--font-sm); color: var(--neutral-400); }
-.idSub { font-size: var(--font-sm); color: var(--neutral-400); }
-
-.idCol { display: flex; flex-direction: column; gap: var(--space-1); justify-content: center; }
-.idColRight { margin-left: auto; text-align: right; align-items: flex-end; }
-.idColLabel {
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-300);
-}
-.idColValue {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: var(--neutral-400);
-}
-.idColSub { font-size: var(--font-sm); color: var(--neutral-400); }
-.riskVal { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); font-variant-numeric: tabular-nums; }
-.riskTrend { font-size: var(--font-sm); color: var(--status-warning); font-weight: 500; }
-.flag { color: var(--status-error); }
-
-/* ── Header chips ───────────────────────────────────────────── */
-.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.adhDot { width: var(--space-2); height: var(--space-2); border-radius: 50%; background: var(--neutral-300); }
 .adh_good { background: var(--status-success); }
 .adh_watch { background: var(--status-warning); }
 .adh_risk { background: var(--status-error); }
 
 /* ── Two-column body ────────────────────────────────────────── */
-.columns { display: flex; gap: var(--space-4); align-items: flex-start; }
-.mainCol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
-.rail {
-  width: 280px;
-  flex-shrink: 0;
+.mainCol {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  background: var(--neutral-50);
+  overflow: hidden;
+  container-type: inline-size;
+  container-name: monitoring-main;
+}
+
+.mainScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.resizeHandle {
+  flex: 0 0 1px;
+  align-self: stretch;
+  background: var(--neutral-150);
+  cursor: col-resize;
+  position: relative;
+  z-index: 1;
+  transition: background 120ms ease;
+}
+
+.resizeHandle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--space-1) * -1);
+  right: calc(var(--space-1) * -1);
+}
+
+.resizeHandle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: var(--space-1);
+  height: var(--space-8);
+  border-radius: var(--radius-sm);
+  background: var(--neutral-300);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.resizeHandle:hover {
+  background: var(--primary-300);
+}
+
+.resizeHandle:hover::after {
+  opacity: 1;
+  background: var(--primary-300);
+}
+
+.rail {
+  flex-shrink: 0;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--neutral-0);
+  overflow-y: auto;
+  align-self: stretch;
 }
 .rail > button { width: 100%; justify-content: center; }
 
@@ -88,18 +139,24 @@
 }
 
 /* Snapshot */
-.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); }
 .tile {
   composes: surfaceCard;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
+  min-height: calc(var(--space-16) + var(--space-5));
 }
 .tileLabel {
   font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
+}
+.tileValueRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .tileValue {
   font-size: var(--font-lg);
@@ -112,22 +169,6 @@
 .tileSub { font-size: var(--font-sm); color: var(--neutral-400); }
 .tileSubBad { color: var(--status-error); }
 
-.adherenceCard {
-  composes: tile;
-}
-.adherenceValueRow {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.adherenceValue {
-  font-size: var(--font-lg);
-  font-weight: 500;
-  color: var(--neutral-400);
-  font-variant-numeric: tabular-nums;
-  line-height: var(--leading-tight);
-}
-
 /* Programs */
 .programs { display: flex; flex-direction: column; gap: var(--space-3); }
 .program {
@@ -138,8 +179,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  border: none;
   border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  cursor: pointer;
+  text-align: left;
 }
 .programName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
 .programProgress { font-size: var(--font-sm); color: var(--neutral-400); }
@@ -151,6 +197,12 @@
   font-size: var(--font-sm);
   color: var(--status-warning-dark);
 }
+.programChevron {
+  flex-shrink: 0;
+  color: var(--neutral-300);
+  transition: transform 0.15s ease;
+}
+.programChevronOpen { transform: rotate(180deg); }
 
 .steps { display: flex; flex-direction: column; }
 .step {
@@ -161,15 +213,40 @@
   border-bottom: 0.5px solid var(--neutral-100);
 }
 .step:last-child { border-bottom: none; }
-.dotDone { color: var(--status-success); flex-shrink: 0; }
-.dot { width: var(--space-4); height: var(--space-4); border-radius: 50%; flex-shrink: 0; box-sizing: border-box; }
+
+.dotDone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--status-success-light);
+  border: 1px solid var(--status-success);
+  color: var(--status-success);
+}
+
+.dot {
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
 .dotCurrent { border: 2px solid var(--primary-300); }
-.dotUpcoming { border: 1.5px solid var(--neutral-200); }
+.dotUpcoming { border: 1px solid var(--placeholder-text); }
+
 .stepBody { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.stepLabel { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
-.step_current .stepLabel { color: var(--primary-300); }
-.step_upcoming .stepLabel { color: var(--neutral-400); opacity: 0.72; }
-.stepSub { font-size: var(--font-sm); color: var(--neutral-400); }
+.stepLabel {
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-400);
+  text-transform: capitalize;
+}
+.step_current .stepLabel { color: var(--primary-300); font-weight: 400; }
+.step_upcoming .stepLabel { opacity: 0.72; }
+.stepSub { font-size: var(--font-sm); color: var(--neutral-400); text-transform: capitalize; }
 .stepMeta { margin-left: auto; font-size: var(--font-sm); color: var(--neutral-400); }
 .step_done .stepMeta { color: var(--status-success); }
 .step .stepMeta + button, .step > button:last-child { margin-left: auto; }
@@ -192,8 +269,21 @@
   font-weight: 500;
   color: var(--primary-300);
 }
-.timelineItem { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
-.timelineText { font-size: var(--font-base); color: var(--neutral-400); line-height: var(--leading-normal); }
+.timelineItem {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.timelineText {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  line-height: var(--leading-normal);
+}
+.timelineSource {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
 
 /* ── Story feed ─────────────────────────────────────────────── */
 .story { composes: section; }
@@ -296,7 +386,6 @@
   font-size: var(--font-base);
 }
 .railGroup {
-  margin-top: var(--space-2);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -311,11 +400,9 @@
   padding: var(--space-2) var(--space-3);
 }
 .railCardStack { display: flex; flex-direction: column; gap: var(--space-1); }
-.rt_error { box-shadow: inset 3px 0 0 var(--status-error); }
-.rt_warning { box-shadow: inset 3px 0 0 var(--status-warning); }
+.railSubError .railCardSub { color: var(--status-error); }
 .railCardTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
 .railCardSub { font-size: var(--font-sm); color: var(--neutral-400); }
-.rt_error .railCardSub { color: var(--status-error); }
 .railCardBody { font-size: var(--font-base); color: var(--neutral-400); font-style: italic; line-height: var(--leading-normal); }
 .railCardMeta { font-size: var(--font-sm); color: var(--neutral-400); }
 .railGapRow {
@@ -327,17 +414,9 @@
 }
 .railGapMeta { margin-left: auto; font-size: var(--font-sm); color: var(--neutral-400); }
 
-/* ── Responsive ─────────────────────────────────────────────── */
-@media (max-width: 1100px) {
-  .columns { flex-direction: column; }
-  .rail { width: 100%; }
-}
-@media (max-width: 860px) {
-  .idBand { flex-wrap: wrap; gap: var(--space-4); }
-  .idColRight { margin-left: 0; text-align: left; align-items: flex-start; }
-  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
-@media (max-width: 520px) {
+/* ── Responsive snapshot tiles ────────────────────────────────
+   Keep the 3-panel layout (main col + rail). Only reflow snapshot
+   cards when the main column is too narrow for a horizontal row. */
+@container monitoring-main (max-width: 560px) {
   .tiles { grid-template-columns: 1fr; }
-  .banner { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
 }
