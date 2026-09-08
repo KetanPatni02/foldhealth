@@ -1,0 +1,29 @@
+/* InfoBar — pinned informational banner. Matches the pattern first
+   shipped in the HEDIS Clinical Note workspace (CBP evidence banner)
+   so every "signed → EHR" / "read-only" nudge across the app shares
+   the same surface, radius, icon size, and tone. */
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--space-1);
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-400);
+  flex-shrink: 0;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+.body {
+  min-width: 0;
+  color: var(--neutral-400);
+}
+
+/* Tones — surface tint + icon color follow the shared status palette. */
+.tone-info    { background: var(--status-info-light);    color: var(--status-info); }
+.tone-success { background: var(--status-success-light); color: var(--status-success); }
+.tone-warning { background: var(--status-warning-light); color: var(--status-warning); }
+.tone-error   { background: var(--status-error-light);   color: var(--status-error); }
