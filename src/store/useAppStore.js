@@ -11,6 +11,7 @@ import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogD
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
 import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch } from '../lib/worklistDefaults';
+import { MONITORING_SEED, mapMonitoringRow } from '../features/patient/right-panel/tabs/monitoring/monitoringData';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
@@ -1732,6 +1733,36 @@ export const useAppStore = create((set, get) => ({
     const now = new Date().toISOString();
     try { localStorage.setItem('changelogSeenAt', now); } catch { /* private mode */ }
     set({ changelogSeenAt: now });
+  },
+
+  // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
+  // keyed by member id. Falls back to the bundled MONITORING_SEED until
+  // patient_monitoring is migrated + seeded. A cached value of `null` means
+  // "fetched, no monitoring episode" (distinct from `undefined` = not fetched).
+  patientMonitoring: {},
+  patientMonitoringLoading: {},
+  fetchPatientMonitoring: async (memberId) => {
+    if (!memberId) return;
+    const key = String(memberId);
+    const s = get();
+    if (s.patientMonitoring[key] !== undefined || s.patientMonitoringLoading[key]) return;
+    set((st) => ({ patientMonitoringLoading: { ...st.patientMonitoringLoading, [key]: true } }));
+    const { data, error } = await supabase
+      .from('patient_monitoring')
+      .select('*')
+      .eq('member_id', key)
+      .maybeSingle();
+    let obj;
+    if (error) {
+      console.warn('[store] patient_monitoring fetch failed (run migration?):', error.message);
+      obj = MONITORING_SEED[key] || null;
+    } else {
+      obj = data ? mapMonitoringRow(data) : (MONITORING_SEED[key] || null);
+    }
+    set((st) => ({
+      patientMonitoring: { ...st.patientMonitoring, [key]: obj },
+      patientMonitoringLoading: { ...st.patientMonitoringLoading, [key]: false },
+    }));
   },
 
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"

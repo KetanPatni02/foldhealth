@@ -26,6 +26,7 @@ import { CARE_PLAN_GOAL_LIBRARY, carePlanGoalLibraryToRow, carePlanGoalLibraryLi
 import { CARE_PLAN_INTERVENTION_LIBRARY } from '../src/features/settings/care-plan-library/data/carePlanInterventionLibrarySeed.js';
 import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY } from '../src/features/settings/care-plan-library/data/carePlanBarrierStructuredSeed.js';
 import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src/features/settings/care-plan-library/data/carePlanTemplateLibrarySeed.js';
+import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -716,6 +717,13 @@ async function main() {
     .from('ccm_billing_reports')
     .upsert(reportRows, { onConflict: 'id' });
   if (cre) { console.error('  ✗', cre.message); } else { console.log(`  ✓ ${reportRows.length} reports`); }
+
+  console.log('Seeding patient_monitoring...');
+  const monitoringRows = Object.values(MONITORING_SEED).map(monitoringToRow);
+  const { error: pme } = await supabase
+    .from('patient_monitoring')
+    .upsert(monitoringRows, { onConflict: 'member_id' });
+  if (pme) { console.error('  ✗', pme.message); } else { console.log(`  ✓ ${monitoringRows.length} monitoring snapshots`); }
 
   console.log('Seeding ccm_worklist_members...');
   const worklistRows = CCM_WORKLIST_MEMBERS.map((m) => ccmWorklistToRow(m, foldIdMap));
