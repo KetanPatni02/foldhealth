@@ -8,21 +8,30 @@ import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/Pr
 import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
 import { TableSkeleton } from '../../../../../../../../components/TableSkeleton/TableSkeleton';
 import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
+import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
+import { AssigneeChange } from '../../../../../../../../components/AssigneeChange/AssigneeChange';
 import { useTableSort } from '../../../../../../../../components/HeaderCell/useTableSort';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { buildCarePlanSnapshot, filterCarePlanSnapshot } from '../carePlanSnapshot';
 import {
   GbiNameCell,
   GbiProgressCell,
-  GBI_COL_WIDTH,
-  GBI_STATUS_TONE,
+  GbiStatusButton,
   GOAL_COLUMNS,
   INTERVENTION_COLUMNS,
   BARRIER_COLUMNS,
 } from '../../tables/carePlanTableShared';
 import { enrichGoalRows, enrichInterventionRows } from '../../tables/carePlanTableSort';
+import { CARE_PLAN_INTERVENTION_ICONS } from '../../lib/carePlanInterventionMenu';
+import { KIND_LABELS } from '../../../../../../../settings/care-plan-library/interventions/shared/interventionKinds';
+import { GoalPreviewDrawer } from '../../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
+import { InterventionPreviewDrawer } from '../../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
+import { BarrierDetailDrawer } from '../../drawers/BarrierDetailDrawer/BarrierDetailDrawer';
 import sharedRow from '../../tables/carePlanTables.module.css';
 import styles from './CarePlanSummaryView.module.css';
+
+const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+const PRIORITIES = ['high', 'medium', 'low'];
 
 // Read-only Goals/Interventions/Barriers section head — matches the
 // CarePlanView's GBI treatment (chevron + title + count pill), minus
@@ -62,23 +71,11 @@ const insertBefore = (cols, key, col) => {
 
 const stripActions = (cols) => cols.filter(c => c.key !== 'actions');
 
-// Column sets — reuse the shared GBI columns so the header labels,
-// widths, and sort types match the per-plan tables exactly. Drop the
-// `actions` column (nothing to edit on this read-only surface) and
-// inject the Care Plan column right before Status.
 const SUMMARY_GOAL_COLUMNS = insertBefore(stripActions(GOAL_COLUMNS), 'status', CARE_PLAN_COLUMN);
 const SUMMARY_INTERVENTION_COLUMNS = insertBefore(stripActions(INTERVENTION_COLUMNS), 'status', CARE_PLAN_COLUMN);
 const SUMMARY_BARRIER_COLUMNS = insertBefore(stripActions(BARRIER_COLUMNS), 'status', CARE_PLAN_COLUMN);
 
-// Read-only status pill — the per-plan tables use GbiStatusButton so the
-// user can flip status inline; here we render a static Badge instead so
-// the row keeps the same visual weight without an editable affordance.
-function ReadOnlyStatusBadge({ value }) {
-  if (!value) return <span className={styles.statusMuted}>—</span>;
-  return <Badge tone={GBI_STATUS_TONE[value] || 'grey'} size="S" label={value} />;
-}
-
-function GoalsTable({ rows, onOpen }) {
+function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu }) {
   const sortable = useMemo(() => enrichGoalRows(rows), [rows]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortable, 'title', 'asc');
   return (
@@ -102,7 +99,14 @@ function GoalsTable({ rows, onOpen }) {
             onClick={() => onOpen(g)}
           >
             <td className={sharedRow.priorityTd} onClick={e => e.stopPropagation()}>
-              <PriorityIcon priority={g.priority} size={16} />
+              <button
+                type="button"
+                className={sharedRow.priorityBtn}
+                aria-label="Change priority"
+                onClick={(e) => onPriorityMenu({ kind: 'goal', item: g, rect: e.currentTarget.getBoundingClientRect() })}
+              >
+                <PriorityIcon priority={g.priority} size={16} />
+              </button>
             </td>
             <td className={sharedRow.titleTd}>
               <GbiNameCell
@@ -124,7 +128,10 @@ function GoalsTable({ rows, onOpen }) {
               <Badge tone="grey" size="S" label={g.programCode} />
             </td>
             <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
-              <ReadOnlyStatusBadge value={g.status} />
+              <GbiStatusButton
+                value={g.status}
+                onOpen={rect => onStatusMenu({ kind: 'goal', item: g, rect })}
+              />
             </td>
           </tr>
         )}
@@ -133,9 +140,28 @@ function GoalsTable({ rows, onOpen }) {
   );
 }
 
-function InterventionsTable({ rows, onOpen, patients }) {
+function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssigneeChange, patients, platformUsers }) {
   const sortable = useMemo(() => enrichInterventionRows(rows), [rows]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortable, 'title', 'asc');
+  const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  // Merge platform users + patients so members can be assigned inline.
+  // Each row picker mirrors the per-plan InterventionsTable shape: staff
+  // avatar for users, patient avatar (rounded, purple) for members.
+  const assigneeUsers = useMemo(() => ([
+    ...(platformUsers || []).map(u => ({
+      id: u.id || `user:${u.name}`,
+      name: u.name,
+      initials: u.initials || initialsOf(u.name),
+      role: u.role || 'User',
+    })),
+    ...(patients || []).map(p => ({
+      id: p.id || `member:${p.name}`,
+      name: p.name,
+      initials: p.initials || initialsOf(p.name),
+      role: 'Member',
+      avatarVariant: 'patient',
+    })),
+  ]), [platformUsers, patients]);
   return (
     <div className={sharedRow.tableWrap}>
       <WorklistShell
@@ -151,8 +177,21 @@ function InterventionsTable({ rows, onOpen, patients }) {
         minTableWidth={0}
         emptyState={<div className={styles.emptyRow}>No interventions match.</div>}
         renderRow={(i) => {
-          const isMember = (patients || []).some(p => p.name === i.assignee?.name);
-          const variant = isMember ? 'patient' : 'staff';
+          // Only Internal Task lets the user reassign — every other
+          // intervention kind runs on the member and the assignee stays
+          // locked to them. Fall back to the plan's patient when a
+          // legacy row is still 'Unassigned' so the column reads
+          // correctly without a data backfill (matches the per-plan
+          // InterventionsTable behavior).
+          const isMemberTask = i.kind !== 'internal-task';
+          const memberRow = (patients || [])[0] || null;
+          const effectiveName = isMemberTask
+            ? (memberRow?.name || i.assignee?.name)
+            : (i.assignee?.name || '');
+          const effectiveInitials = isMemberTask
+            ? (memberRow?.initials || i.assignee?.initials)
+            : (i.assignee?.initials || '');
+          const isPatientAssignee = (patients || []).some(p => p.name === effectiveName);
           return (
             <tr
               key={`${i.programCode}-${i.id}`}
@@ -160,20 +199,39 @@ function InterventionsTable({ rows, onOpen, patients }) {
               onClick={() => onOpen(i)}
             >
               <td className={sharedRow.priorityTd} onClick={e => e.stopPropagation()}>
-                <PriorityIcon priority={i.priority} size={16} />
+                <button
+                  type="button"
+                  className={sharedRow.priorityBtn}
+                  aria-label="Change priority"
+                  onClick={(e) => onPriorityMenu({ kind: 'intv', item: i, rect: e.currentTarget.getBoundingClientRect() })}
+                >
+                  <PriorityIcon priority={i.priority} size={16} />
+                </button>
               </td>
               <td className={sharedRow.titleTd}>
                 <GbiNameCell
-                  icon={i.icon}
+                  icon={CARE_PLAN_INTERVENTION_ICONS[i.kind] || i.icon || 'solar:clipboard-list-linear'}
+                  iconTitle={KIND_LABELS[i.kind] || 'Intervention'}
                   title={i.title}
-                  layout="inline"
+                  meta={i.duration || null}
                 />
               </td>
               <td className={sharedRow.assigneeTd} onClick={e => e.stopPropagation()}>
-                <span className={styles.assigneeInline}>
-                  <Avatar variant={variant} size="S" initials={i.assignee?.initials || ''} />
-                  <span className={styles.assigneeName}>{i.assignee?.name || 'Unassigned'}</span>
-                </span>
+                <AssigneeChange
+                  size="S"
+                  fillContainer
+                  nameMuted
+                  name={effectiveName}
+                  initials={effectiveInitials}
+                  showRole={false}
+                  unassigned={!effectiveName || effectiveName === 'Unassigned'}
+                  unassignedLabel="Unassigned"
+                  users={assigneeUsers}
+                  avatarVariant={isPatientAssignee ? 'patient' : 'staff'}
+                  pickerTitle="Change assignee"
+                  onSelect={(u) => onAssigneeChange(i, u)}
+                  disabled={isMemberTask}
+                />
               </td>
               <td className={sharedRow.adherenceTd} onClick={e => e.stopPropagation()}>
                 <GbiProgressCell progress={i.adherence} />
@@ -182,7 +240,10 @@ function InterventionsTable({ rows, onOpen, patients }) {
                 <Badge tone="grey" size="S" label={i.programCode} />
               </td>
               <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
-                <ReadOnlyStatusBadge value={i.status} />
+                <GbiStatusButton
+                  value={i.status}
+                  onOpen={rect => onStatusMenu({ kind: 'intv', item: i, rect })}
+                />
               </td>
             </tr>
           );
@@ -192,7 +253,7 @@ function InterventionsTable({ rows, onOpen, patients }) {
   );
 }
 
-function BarriersTable({ rows, onOpen }) {
+function BarriersTable({ rows, onOpen, onPriorityMenu, onStatusMenu }) {
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(rows, 'title', 'asc');
   return (
     <div className={sharedRow.tableWrap}>
@@ -215,7 +276,14 @@ function BarriersTable({ rows, onOpen }) {
             onClick={() => onOpen(b)}
           >
             <td className={sharedRow.priorityTd} onClick={e => e.stopPropagation()}>
-              <PriorityIcon priority={b.priority} size={16} />
+              <button
+                type="button"
+                className={sharedRow.priorityBtn}
+                aria-label="Change priority"
+                onClick={(e) => onPriorityMenu({ kind: 'barrier', item: b, rect: e.currentTarget.getBoundingClientRect() })}
+              >
+                <PriorityIcon priority={b.priority} size={16} />
+              </button>
             </td>
             <td className={sharedRow.titleTd}>
               <GbiNameCell
@@ -229,7 +297,10 @@ function BarriersTable({ rows, onOpen }) {
               <Badge tone="grey" size="S" label={b.programCode} />
             </td>
             <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
-              <ReadOnlyStatusBadge value={b.status} />
+              <GbiStatusButton
+                value={b.status}
+                onOpen={rect => onStatusMenu({ kind: 'barrier', item: b, rect })}
+              />
             </td>
           </tr>
         )}
@@ -238,15 +309,46 @@ function BarriersTable({ rows, onOpen }) {
   );
 }
 
-// Read-only, patient-level snapshot of every care plan across all of a
-// patient's programs (roadmap #1 / E2). Clicking a row hands off to the owning
-// program's Care Plan step for edits.
+// Patient-level snapshot of every care plan across all of a patient's
+// programs (roadmap #1 / E2). Rows are editable in place for priority +
+// status; clicking a row opens the full preview drawer where the user
+// can change status, adherence/progress, and add notes. Every write
+// goes through the same store actions the per-plan tab uses, so the
+// activity log, DB persistence, and cross-view sync work identically.
 export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgramStep, searchText = '', programFilter = [], embedded = false }) {
   const fetchAllPatientCarePlans = useAppStore(s => s.fetchAllPatientCarePlans);
   const loading = useAppStore(s => s.patientCarePlanAllLoading[patientId]);
   const loadedFor = useAppStore(s => s.patientCarePlanAllLoadedFor[patientId]);
   const patientCarePlans = useAppStore(s => s.patientCarePlans);
-  const patients = useAppStore(s => s.patients) || [];
+  // Resolve THIS patient only — `s.patients` holds the current worklist
+  // slice (many patients), so indexing [0] there landed on whoever's at
+  // the top of the list (e.g. "Ralph Halvorson") instead of the patient
+  // we're viewing. Look up by `patientId` across every worklist slice,
+  // then hand the row picker a single-element array — mirrors what the
+  // per-plan CarePlanView passes into `CarePlanInterventionsTable`.
+  const currentPatient = useAppStore(s => {
+    const buckets = [s.patients, s.allPatients, s.snpMembers, s.ccmMembers, s.hccMembers, s.awvMembers, s.jsaMembers];
+    for (const list of buckets) {
+      if (!Array.isArray(list)) continue;
+      const hit = list.find(p => p && (p.id === patientId || String(p.memberId) === String(patientId)));
+      if (hit) return hit;
+    }
+    return null;
+  });
+  const patients = useMemo(() => {
+    if (!currentPatient) return [];
+    const name = currentPatient.name || '';
+    const initials = currentPatient.initials
+      || name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    return [{ id: currentPatient.id || patientId, name, initials }];
+  }, [currentPatient, patientId]);
+  const platformUsers = useAppStore(s => s.platformUsers) || [];
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  const savePatientCarePlanGoal = useAppStore(s => s.savePatientCarePlanGoal);
+  const savePatientCarePlanIntervention = useAppStore(s => s.savePatientCarePlanIntervention);
+  const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
+
+  useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
 
   useEffect(() => {
     if (patientId) fetchAllPatientCarePlans(patientId);
@@ -268,12 +370,64 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
 
   const isEmpty = loadedFor && goals.length === 0 && interventions.length === 0 && barriers.length === 0;
 
-  // Collapsible sections — each defaults to open, matching the per-plan
-  // CarePlanView GBI section behavior.
   const [openSections, setOpenSections] = useState({ goals: true, interventions: true, barriers: true });
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: !s[k] }));
 
-  const handleOpen = (row) => onOpenProgramStep(row.program);
+  // Preview drawer state — reuses the exact per-plan drawer so every
+  // edit (status, adherence, progress, notes) lands in the same store
+  // slice and shows up here on the next render.
+  const [previewGoal, setPreviewGoal] = useState(null);
+  const [previewIntervention, setPreviewIntervention] = useState(null);
+  const [previewBarrier, setPreviewBarrier] = useState(null);
+
+  // Inline priority / status menus — dispatch to the plan the row
+  // belongs to via its own tagged `program` field.
+  const [priorityMenu, setPriorityMenu] = useState(null);
+  const [statusMenu, setStatusMenu] = useState(null);
+
+  const changePriority = (priority) => {
+    if (!priorityMenu) return;
+    const { kind, item } = priorityMenu;
+    setPriorityMenu(null);
+    const program = item.program;
+    if (!program) return;
+    if (kind === 'goal') savePatientCarePlanGoal(patientId, program, { ...item, priority }, item.id);
+    else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, { ...item, priority }, item.id);
+    else savePatientCarePlanIntervention(patientId, program, { ...item, priority }, item.id);
+  };
+
+  const changeStatus = (status) => {
+    if (!statusMenu) return;
+    const { kind, item } = statusMenu;
+    setStatusMenu(null);
+    const program = item.program;
+    if (!program) return;
+    if (kind === 'goal') savePatientCarePlanGoal(patientId, program, { ...item, status }, item.id);
+    else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, { ...item, status }, item.id);
+    else savePatientCarePlanIntervention(patientId, program, { ...item, status }, item.id);
+  };
+
+  const openGoal = (g) => setPreviewGoal({ goal: g, program: g.program });
+  const openIntervention = (i) => setPreviewIntervention({ intervention: i, program: i.program });
+  const openBarrier = (b) => setPreviewBarrier({ barrier: b, program: b.program });
+
+  // Only Internal Task's assignee is editable — Patient Task and other
+  // intervention kinds keep the member as the assignee. Write via the
+  // shared intervention save so the per-plan tab, activity log, and
+  // this consolidated view all pick up the new owner on the next render.
+  const handleInterventionAssignee = (intv, user) => {
+    if (!intv?.program || intv.kind !== 'internal-task') return;
+    const name = user?.name || 'Unassigned';
+    const initials = name === 'Unassigned'
+      ? ''
+      : name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+    savePatientCarePlanIntervention(
+      patientId,
+      intv.program,
+      { ...intv, assignee: { name, initials } },
+      intv.id,
+    );
+  };
 
   return (
     <div className={`${styles.container} ${embedded ? styles.embedded : ''}`}>
@@ -311,7 +465,14 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
               open={openSections.goals}
               onToggle={() => toggleSection('goals')}
             />
-            {openSections.goals && <GoalsTable rows={filteredGoals} onOpen={handleOpen} />}
+            {openSections.goals && (
+              <GoalsTable
+                rows={filteredGoals}
+                onOpen={openGoal}
+                onPriorityMenu={setPriorityMenu}
+                onStatusMenu={setStatusMenu}
+              />
+            )}
           </div>
 
           <div className={styles.section}>
@@ -321,7 +482,17 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
               open={openSections.interventions}
               onToggle={() => toggleSection('interventions')}
             />
-            {openSections.interventions && <InterventionsTable rows={filteredInterventions} onOpen={handleOpen} patients={patients} />}
+            {openSections.interventions && (
+              <InterventionsTable
+                rows={filteredInterventions}
+                onOpen={openIntervention}
+                onPriorityMenu={setPriorityMenu}
+                onStatusMenu={setStatusMenu}
+                onAssigneeChange={handleInterventionAssignee}
+                patients={patients}
+                platformUsers={platformUsers}
+              />
+            )}
           </div>
 
           <div className={styles.section}>
@@ -331,9 +502,69 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
               open={openSections.barriers}
               onToggle={() => toggleSection('barriers')}
             />
-            {openSections.barriers && <BarriersTable rows={filteredBarriers} onOpen={handleOpen} />}
+            {openSections.barriers && (
+              <BarriersTable
+                rows={filteredBarriers}
+                onOpen={openBarrier}
+                onPriorityMenu={setPriorityMenu}
+                onStatusMenu={setStatusMenu}
+              />
+            )}
           </div>
         </div>
+      )}
+
+      {priorityMenu && (
+        <MenuPopover
+          anchorRect={priorityMenu.rect}
+          align="left"
+          width={160}
+          ariaLabel="Change priority"
+          items={PRIORITIES.map(p => ({
+            key: p,
+            label: p.charAt(0).toUpperCase() + p.slice(1),
+            iconElement: <PriorityIcon priority={p} size={16} />,
+          }))}
+          onSelect={changePriority}
+          onClose={() => setPriorityMenu(null)}
+        />
+      )}
+
+      {statusMenu && (
+        <MenuPopover
+          anchorRect={statusMenu.rect}
+          align="left"
+          width={160}
+          ariaLabel="Change status"
+          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
+          onSelect={changeStatus}
+          onClose={() => setStatusMenu(null)}
+        />
+      )}
+
+      {previewGoal && (
+        <GoalPreviewDrawer
+          goal={previewGoal.goal}
+          patientId={patientId}
+          program={previewGoal.program}
+          onClose={() => setPreviewGoal(null)}
+        />
+      )}
+      {previewIntervention && (
+        <InterventionPreviewDrawer
+          intervention={previewIntervention.intervention}
+          patientId={patientId}
+          program={previewIntervention.program}
+          onClose={() => setPreviewIntervention(null)}
+        />
+      )}
+      {previewBarrier && (
+        <BarrierDetailDrawer
+          barrier={previewBarrier.barrier}
+          patientId={patientId}
+          program={previewBarrier.program}
+          onClose={() => setPreviewBarrier(null)}
+        />
       )}
     </div>
   );
