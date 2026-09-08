@@ -13,6 +13,7 @@ export function buildCarePlanSnapshot(programs, patientCarePlans, patientId) {
   const conditionSet = new Map();
   const goals = [];
   const interventions = [];
+  const barriers = [];
   const goalTitleCounts = new Map();
 
   for (const program of programs) {
@@ -26,10 +27,11 @@ export function buildCarePlanSnapshot(programs, patientCarePlans, patientId) {
       goals.push({ ...g, program, programCode: program.code });
     }
     for (const i of plan.interventions) interventions.push({ ...i, program, programCode: program.code });
+    for (const b of (plan.barriers || [])) barriers.push({ ...b, program, programCode: program.code });
   }
   for (const g of goals) g.duplicate = goalTitleCounts.get(norm(g.title)) > 1;
 
-  return { conditions: [...conditionSet.values()], goals, interventions };
+  return { conditions: [...conditionSet.values()], goals, interventions, barriers };
 }
 
 /** Apply the toolbar's search + program filter to a snapshot's rows. */
@@ -41,6 +43,7 @@ export function filterCarePlanSnapshot(snapshot, { searchText = '', programFilte
     conditions: snapshot.conditions,
     goals: snapshot.goals.filter(match),
     interventions: snapshot.interventions.filter(match),
+    barriers: (snapshot.barriers || []).filter(match),
   };
 }
 

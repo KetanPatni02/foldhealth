@@ -17,6 +17,7 @@ import { SummaryTab } from '../tabs/summary/SummaryTab/SummaryTab.jsx';
 import { TasksTab } from '../tabs/tasks/TasksTab/TasksTab.jsx';
 import { ProfileTab } from '../tabs/profile/ProfileTab/ProfileTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS, CARE_GAP_TABS_DRAWER } from '../../data/careGapsMock';
+import { CareGapDetailDrawer } from '../../../hedis-worklist/CareGapDetailDrawer';
 import styles from './PatientProfileTabs.module.css';
 
 // In the P360 (full-page) surface the right panel already hosts Tasks and
@@ -33,7 +34,10 @@ export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
   const [searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAuditDrawer, setShowAuditDrawer] = useState(false);
+  // Care Gap detail drawer target: `{ member, gapCode, year }` when set.
+  const [careGapDrawer, setCareGapDrawer] = useState(null);
   const searchRef = useRef(null);
+  const hedisMembers = useAppStore(s => s.hedisMembers) || [];
 
   const stickyNotes = useAppStore(s => s.stickyNotes);
   const fetchStickyNotes = useAppStore(s => s.fetchStickyNotes);
@@ -51,6 +55,23 @@ export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
 
   const toggleGap = (id) => {
     setSelectedGaps(prev => prev.includes(id) ? prev.filter(g => g !== id) : [...prev, id]);
+  };
+
+  // Open the Care Gap detail drawer for the picked item. Gap codes read
+  // as the leading token before " - " in the title (e.g. "EED - Eye Exam"
+  // → "EED"). We resolve the patient's HEDIS member by id or name so the
+  // drawer opens with the right measure set. When no HEDIS row exists
+  // the toggle-select fallback runs so the click never dead-ends.
+  const openGap = (item) => {
+    const code = String(item.title || '').split(' - ')[0].trim();
+    const member = (hedisMembers || []).find(m => m
+      && (m.id === patientId || m.patientId === patientId
+        || (patient?.name && (m.name === patient.name))));
+    if (!code || !member) {
+      toggleGap(item.id);
+      return;
+    }
+    setCareGapDrawer({ member, gapCode: code, year: new Date().getFullYear() });
   };
 
   const careGapSections = CARE_GAP_SECTIONS_EXTENDED.map(section => ({
@@ -152,7 +173,13 @@ export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
               <div className={styles.collapseInner}>
                 <div className={styles.sections}>
                   {careGapSections.map(section => (
-                    <CareGapSection key={section.title} section={section} selectedGaps={selectedGaps} onToggleGap={toggleGap} />
+                    <CareGapSection
+                      key={section.title}
+                      section={section}
+                      selectedGaps={selectedGaps}
+                      onToggleGap={toggleGap}
+                      onOpenGap={openGap}
+                    />
                   ))}
                 </div>
               </div>
@@ -252,6 +279,15 @@ export function PatientProfileTabs({ patientId, patient, variant = 'full' }) {
           <ProfileTab patient={patient || { id: patientId }} />
         )}
       </div>
+
+      {careGapDrawer && (
+        <CareGapDetailDrawer
+          member={careGapDrawer.member}
+          gapCode={careGapDrawer.gapCode}
+          year={careGapDrawer.year}
+          onClose={() => setCareGapDrawer(null)}
+        />
+      )}
     </div>
   );
 }

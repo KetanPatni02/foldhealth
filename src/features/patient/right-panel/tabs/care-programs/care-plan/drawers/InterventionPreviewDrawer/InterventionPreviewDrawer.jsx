@@ -186,7 +186,7 @@ function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit }) {
  * Intervention details — Paper 35-0. Mirrors Goal Details layout with
  * adherence, linked goals, automations, notes, and activity feed.
  */
-export function InterventionPreviewDrawer({ intervention, patientId, program, onClose, onEdit, onOpenGoal }) {
+export function InterventionPreviewDrawer({ intervention, patientId, program, onClose, onEdit, onOpenGoal, consolidated = false }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
@@ -429,28 +429,32 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             style={{ width: 'fit-content' }}
           />
           <div className={styles.statusActions}>
-            <ActionButton
-              icon="solar:pen-linear"
-              size="L"
-              tooltip="Edit Intervention"
-              disabled={!canEdit}
-              onClick={() => {
-                // Prefer the full edit drawer when the caller wires one
-                // (opens the kind-specific InterventionDrawer with every
-                // field). Fall back to inline title-edit otherwise.
-                if (onEdit) onEdit(live);
-                else { setTitleDraft(live.title); setEditingTitle(true); }
-              }}
-            />
-            <span className={styles.headerDivider} />
-            <ActionButton
-              ref={moreBtnRef}
-              icon="solar:menu-dots-linear"
-              size="L"
-              tooltip="More"
-              disabled={!canEdit}
-              onClick={(e) => setMoreMenu(e.currentTarget.getBoundingClientRect())}
-            />
+            {!consolidated && (
+              <>
+                <ActionButton
+                  icon="solar:pen-linear"
+                  size="L"
+                  tooltip="Edit Intervention"
+                  disabled={!canEdit}
+                  onClick={() => {
+                    // Prefer the full edit drawer when the caller wires one
+                    // (opens the kind-specific InterventionDrawer with every
+                    // field). Fall back to inline title-edit otherwise.
+                    if (onEdit) onEdit(live);
+                    else { setTitleDraft(live.title); setEditingTitle(true); }
+                  }}
+                />
+                <span className={styles.headerDivider} />
+                <ActionButton
+                  ref={moreBtnRef}
+                  icon="solar:menu-dots-linear"
+                  size="L"
+                  tooltip="More"
+                  disabled={!canEdit}
+                  onClick={(e) => setMoreMenu(e.currentTarget.getBoundingClientRect())}
+                />
+              </>
+            )}
           </div>
         </div>
 
@@ -570,6 +574,10 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           </div>
         </section>
 
+        {/* Linked Goals section — hidden entirely in the Comprehensive
+            Care Plan view when nothing is linked (user can't link new
+            goals here); otherwise shown read-only (Link/Unlink hidden). */}
+        {(!consolidated || linkedGoals.length > 0) && (
         <section className={barrierStyles.section}>
           <div className={barrierStyles.sectionHead}>
             <button
@@ -585,7 +593,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 className={`${barrierStyles.sectionChevron} ${open.goals ? barrierStyles.sectionChevronOpen : ''}`}
               />
             </button>
-            {canEdit && (
+            {canEdit && !consolidated && (
               <ActionButton
                 icon="solar:add-linear"
                 size="S"
@@ -619,7 +627,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                         tooltip="Open goal"
                         onClick={() => onOpenGoal?.(g)}
                       />
-                      {canEdit && (
+                      {canEdit && !consolidated && (
                         <>
                           <span className={barrierStyles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                           <ActionButton
@@ -637,7 +645,12 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             )
           )}
         </section>
+        )}
 
+        {/* Automations section — hidden entirely in the Comprehensive
+            Care Plan view when nothing is set up (user can't add new
+            automations from that surface); otherwise shown read-only. */}
+        {(!consolidated || automations.length > 0) && (
         <section className={barrierStyles.section}>
           <div className={barrierStyles.sectionHead}>
             <button
@@ -653,7 +666,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 className={`${barrierStyles.sectionChevron} ${open.automations ? barrierStyles.sectionChevronOpen : ''}`}
               />
             </button>
-            {canEdit && !!live.goalId && (
+            {canEdit && !!live.goalId && !consolidated && (
               <ActionButton
                 icon="solar:add-linear"
                 size="S"
@@ -705,6 +718,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             </>
           )}
         </section>
+        )}
 
         {canEdit && (
           <div className={barrierStyles.noteEditor}>
