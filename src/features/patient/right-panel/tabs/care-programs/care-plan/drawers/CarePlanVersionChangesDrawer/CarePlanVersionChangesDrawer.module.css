@@ -1,7 +1,8 @@
 .titleWrap {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  /* 2px — below the --space-1 (4px) floor of the spacing scale. */
+  gap: 0.125rem;
 }
 .subtitle {
   font-size: var(--font-sm);
@@ -20,6 +21,14 @@
   align-items: stretch;
   gap: var(--space-2);
 }
+/* Arrived-here flash: the node a count badge pointed at, held briefly after
+   the scroll settles so the eye can find it. */
+.highlight {
+  background: var(--primary-25);
+  border-radius: var(--space-1);
+  box-shadow: 0 0 0 1px var(--primary-300);
+}
+
 .gutter {
   display: flex;
   flex-direction: column;
@@ -30,13 +39,6 @@
 .railTop {
   width: 1px;
   flex: 0 0 16px;
-  background: var(--neutral-150);
-}
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
   background: var(--neutral-150);
 }
 .railRest {
@@ -83,9 +85,15 @@
   color: var(--neutral-500);
   line-height: 1.2;
 }
+/* Dashed hairline, 5px dash / 5px gap per the design. A gradient rather than
+   a dashed border, which gives no control over the dash pattern. */
 .groupRule {
   height: 0.5px;
-  background: var(--neutral-150);
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--neutral-150) 0 5px,
+    transparent 5px 10px
+  );
 }
 
 .change {

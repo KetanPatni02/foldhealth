@@ -127,6 +127,14 @@
   line-height: 1.2;
   color: var(--neutral-400);
 }
+/* WebKit paints its own blue cross for type="search"; the field supplies its
+   own clear affordance in the design system's close glyph instead. */
+.input::-webkit-search-cancel-button,
+.inputBorderless::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 .inputBorderless::placeholder {
   color: var(--placeholder-text);
   font-weight: 400;

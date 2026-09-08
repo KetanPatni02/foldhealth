@@ -26,9 +26,9 @@
   border: none;
   cursor: pointer;
   color: var(--neutral-300);
-  font-size: var(--font-lg);
   padding: 0;
   display: flex;
+  align-items: center;
   line-height: 1;
 }
 .searchClose:hover { color: var(--neutral-400); }

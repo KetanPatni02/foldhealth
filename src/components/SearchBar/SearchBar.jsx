@@ -1,4 +1,5 @@
 import { Icon } from '../Icon/Icon';
+import { CloseIcon } from '../Icon/CloseIcon';
 import styles from './SearchBar.module.css';
 
 /**
@@ -36,7 +37,9 @@ export function SearchBar({
         onChange={onChange}
       />
       {onClose && (
-        <button className={styles.searchClose} onClick={onClose} aria-label="Close search">✕</button>
+        <button type="button" className={styles.searchClose} onClick={onClose} aria-label="Close search">
+          <CloseIcon size={16} color="currentColor" />
+        </button>
       )}
     </div>
   );
