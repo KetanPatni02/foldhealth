@@ -66,8 +66,8 @@ const HEADER_COMPACT = { paddingLeft: 6, paddingRight: 6 };
 export const GBI_COL_WIDTH = {
   priority: 28,
   /** Shared by Goals "Current Value" and Interventions "Assigned To". */
-  value: 120,
-  assignee: 120,
+  value: 132,
+  assignee: 132,
   progress: 90,
   status: 124,
   actions: 36,

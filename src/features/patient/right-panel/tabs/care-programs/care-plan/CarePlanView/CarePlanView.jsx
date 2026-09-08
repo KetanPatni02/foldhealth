@@ -1317,7 +1317,11 @@ export function CarePlanView({ patientId, program }) {
             setStatusMenu(null);
             if (k === 'delete') setDeleteTarget({ kind: isGoal ? 'goal' : isBarrier ? 'barrier' : 'intv', id: item.id, name: item.title, item });
             else if (k === 'rename' && isBarrier) setBarrierDrawer({ barrier: item });
-            else if (k === 'rename' && !isGoal) setPreviewIntervention(item);
+            // Intervention "Edit" goes straight to the kind-specific
+            // editor, skipping the Preview drawer. No `previewOnClose`
+            // is set here — closing the editor returns to the plan
+            // screen, matching what the user picked from the menu.
+            else if (k === 'rename' && !isGoal) setIntvSpecialDrawer({ kind: item.kind, intervention: item });
             // Goal rename happens inline via EditableTitle; nudge the user there.
             else if (k === 'rename' && isGoal) showToast('Open the goal to review details — use Remove to delete it.');
           }}

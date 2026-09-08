@@ -95,17 +95,16 @@
   background: var(--neutral-75);
 }
 
-/* Disabled — non-interactive, muted, no chevron reveal. */
+/* Disabled — non-interactive: no hover halo, no chevron slot, and the
+   name renders at full opacity so a member-locked assignee stays legible. */
 .disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+  cursor: default;
 }
 .disabled:hover,
 .disabled:focus-visible {
   background: transparent;
 }
-.disabled:hover .chevron,
-.disabled:focus-visible .chevron { opacity: 0; }
+.disabled .chevron { display: none; }
 
 /* Assigned — text column between the avatar and the chevron. min-width:0 lets
    the name and role shrink so `text-overflow: ellipsis` actually engages. */
