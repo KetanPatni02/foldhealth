@@ -129,26 +129,41 @@ export function CarePlanInterventionsTable({
                   canEdit={canEdit}
                   />
               </td>
-              {!template && (
+              {!template && (() => {
+                // Only Internal Task lets the user reassign — every other
+                // intervention kind runs on the member and the assignee
+                // stays locked to them. Fall back to the plan's patient
+                // when a legacy row is still 'Unassigned' so the column
+                // reads correctly without a data backfill.
+                const isMemberTask = i.kind !== 'internal-task';
+                const memberRow = (patients || [])[0] || null;
+                const effectiveName = isMemberTask
+                  ? (memberRow?.name || i.assignee.name)
+                  : i.assignee.name;
+                const effectiveInitials = isMemberTask
+                  ? (memberRow?.initials || i.assignee.initials)
+                  : i.assignee.initials;
+                const isPatientAssignee = (patients || []).some(p => p.name === effectiveName);
+                return (
                 <>
                   <td className={styles.assigneeTd} onClick={e => e.stopPropagation()}>
                     <AssigneeChange
                       size="S"
                       fillContainer
                       nameMuted
-                      name={i.assignee.name}
-                      initials={i.assignee.initials}
+                      name={effectiveName}
+                      initials={effectiveInitials}
                       showRole={false}
-                      unassigned={i.assignee.name === 'Unassigned'}
+                      unassigned={effectiveName === 'Unassigned'}
                       unassignedLabel="Unassigned"
                       users={assigneeUsers}
                       // Match the drawer: if the current assignee is a
                       // patient, render the trigger with the patient
                       // avatar variant.
-                      avatarVariant={(patients || []).some(p => p.name === i.assignee.name) ? 'patient' : 'staff'}
+                      avatarVariant={isPatientAssignee ? 'patient' : 'staff'}
                       pickerTitle="Change assignee"
                       onSelect={(u) => onAssigneeChange(i, u)}
-                      disabled={!canEdit}
+                      disabled={!canEdit || isMemberTask}
                     />
                   </td>
                   <td className={styles.adherenceTd} onClick={e => e.stopPropagation()}>
@@ -173,7 +188,8 @@ export function CarePlanInterventionsTable({
                     />
                   </td>
                 </>
-              )}
+                );
+              })()}
             </tr>
         )}
       />
