@@ -1,4 +1,6 @@
 import styles from './CarePlanProgressRing.module.css';
+import { Tooltip } from '../Tooltip/Tooltip';
+import { goalProgressBand } from '../../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 
 /** Small in-pill radial: ring outlining a pie whose sweep matches the
  *  percentage. Stroke / fill inherit the pill's `color`, so the pill can
@@ -11,15 +13,32 @@ function PillProgressRing({ pct }) {
   const x = c + r * Math.sin(theta);
   const y = c - r * Math.cos(theta);
   const largeArc = theta > Math.PI ? 1 : 0;
-  const pie = pct >= 100
-    ? `M${c} ${c} L${c} ${c - r} A${r} ${r} 0 1 1 ${c - 0.001} ${c - r} Z`
-    : pct > 0
-      ? `M${c} ${c} L${c} ${c - r} A${r} ${r} 0 ${largeArc} 1 ${x} ${y} Z`
-      : '';
+  const pie = pct > 0 && pct < 100
+    ? `M${c} ${c} L${c} ${c - r} A${r} ${r} 0 ${largeArc} 1 ${x} ${y} Z`
+    : '';
+  // 100% state: swap the filled pie for a white disc with a green check
+  // inside, matching the "goal complete" affordance in the Figma spec.
+  const isComplete = pct >= 100;
   return (
     <svg width={14} height={14} viewBox="0 0 16 16" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <circle cx={c} cy={c} r={r} fill="none" stroke="currentColor" strokeWidth="1" />
-      {pie && <path d={pie} fill="currentColor" />}
+      {isComplete ? (
+        <>
+          <circle cx={c} cy={c} r={r} fill="currentColor" />
+          <path
+            d="M5 8.2 L7.2 10.4 L11 6"
+            fill="none"
+            stroke="var(--status-success)"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </>
+      ) : (
+        <>
+          <circle cx={c} cy={c} r={r} fill="none" stroke="currentColor" strokeWidth="1" />
+          {pie && <path d={pie} fill="currentColor" />}
+        </>
+      )}
     </svg>
   );
 }
@@ -61,19 +80,22 @@ function progressPillTone(pct) {
 
 function ProgressBarCompact({ pct, label, className }) {
   const tone = progressPillTone(pct);
+  const band = goalProgressBand(pct);
   return (
-    <div
-      className={[styles.pill, className].filter(Boolean).join(' ')}
-      role="progressbar"
-      aria-valuenow={pct}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label={label}
-      style={{ background: tone.bg, color: tone.ink }}
-    >
-      <PillProgressRing pct={pct} />
-      <span className={styles.pillLabel}>{pct}%</span>
-    </div>
+    <Tooltip label={`${pct}% - ${band}`}>
+      <div
+        className={[styles.pill, className].filter(Boolean).join(' ')}
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-label={label}
+        style={{ background: tone.bg, color: tone.ink }}
+      >
+        <PillProgressRing pct={pct} />
+        <span className={styles.pillLabel}>{pct}%</span>
+      </div>
+    </Tooltip>
   );
 }
 

@@ -9,7 +9,7 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-5);
   width: 100%;
   min-width: 0;
 }
@@ -108,10 +108,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding-bottom: var(--space-2);
-  border-bottom: 0.5px solid var(--neutral-150);
 }
-.accSectionOpen { border-bottom-color: var(--neutral-150); }
+.accSectionOpen {}
 .accHead {
   display: flex;
   align-items: center;
@@ -531,15 +529,29 @@
 
 /* ── Activity ── */
 .activityBlock {
-  width: 100%;
-  margin-top: var(--space-4);
-  border-top: 0.5px solid var(--neutral-150);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  /* Full-bleed to the drawer's edges — the Drawer body itself has 16px
+     padding, so a matching negative side margin brings the tab bar and
+     timeline flush with the panel. No inner padding: the tabs and log
+     rows sit at x=0/x=maxWidth. */
+  margin: var(--space-4) calc(var(--space-4) * -1) 0;
+  padding: 0;
 }
 .activityList {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding-top: var(--space-4);
+}
+.activityLogPad {
+  padding: 0 var(--space-4);
+}
+.activityFilterBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
 }
 .logRow {
   display: flex;

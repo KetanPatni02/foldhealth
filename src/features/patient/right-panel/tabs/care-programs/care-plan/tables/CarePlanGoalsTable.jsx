@@ -12,6 +12,7 @@ import {
   GbiStatusButton,
 } from './carePlanTableShared';
 import { enrichGoalRows } from './carePlanTableSort';
+import { normalizeCategory } from '../../../../../../settings/care-plan-library/lib';
 import styles from './carePlanTables.module.css';
 
 export function CarePlanGoalsTable({
@@ -82,6 +83,7 @@ export function CarePlanGoalsTable({
             <td className={styles.titleTd}>
               <GbiNameCell
                 icon={g.icon}
+                iconTitle={g.category ? normalizeCategory(g.category) : 'Goal'}
                 title={g.title}
                 meta={g.subtitle || null}
                 layout="stacked"

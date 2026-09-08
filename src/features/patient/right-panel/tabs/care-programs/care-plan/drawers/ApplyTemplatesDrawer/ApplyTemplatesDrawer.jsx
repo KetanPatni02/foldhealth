@@ -113,7 +113,7 @@ export function ApplyTemplatesDrawer({ onClose, appliedTemplateIds = [], applied
 
         <div className={styles.list}>
           <div className={styles.tableHead} role="row">
-            <span className={styles.tableHeadName}>Problems Name</span>
+            <span className={styles.tableHeadName}>Template</span>
             <span className={styles.tableHeadPriority}>Priority</span>
           </div>
           {libraryLoading && templates.length === 0 ? (
