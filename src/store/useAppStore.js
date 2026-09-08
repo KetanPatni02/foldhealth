@@ -3139,6 +3139,32 @@ export const useAppStore = create((set, get) => ({
     if (error) { console.warn('savePatientCarePlanIntervention:', error.message); get().showToast('Could not save intervention'); return null; }
     const intervention = mapPatientCarePlanInterventionRow(data);
     get().logCarePlanAudit(patientId, program, auditForSave('intervention', intervention, prevIntv));
+    // Emit a dedicated goal_linked / goal_unlinked audit entry whenever
+    // the intervention's goalId changes. The Preview / Edit drawer's
+    // Activity Log renders these as their own row with the goal name so
+    // the reviewer can see when and to what a goal was linked.
+    if (prevIntv && (prevIntv.goalId || null) !== (intervention.goalId || null)) {
+      const goals = (get().patientCarePlans[key]?.goals || []);
+      const titleOf = (gid) => goals.find(g => String(g.id) === String(gid))?.title || '';
+      if (prevIntv.goalId) {
+        get().logCarePlanAudit(patientId, program, {
+          entityType: 'intervention',
+          entityId: intervention.id,
+          action: 'goal_unlinked',
+          summary: intervention.title,
+          detail: titleOf(prevIntv.goalId),
+        });
+      }
+      if (intervention.goalId) {
+        get().logCarePlanAudit(patientId, program, {
+          entityType: 'intervention',
+          entityId: intervention.id,
+          action: 'goal_linked',
+          summary: intervention.title,
+          detail: titleOf(intervention.goalId),
+        });
+      }
+    }
     set(s => {
       const cur = s.patientCarePlans[key] || { goals: [], interventions: [], barriers: [] };
       return {

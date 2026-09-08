@@ -684,11 +684,20 @@ export function CarePlanView({ patientId, program }) {
     const assigneeName = (typeof config?.assignedTo === 'string' && config.assignedTo.trim())
       || (typeof config?.member === 'string' && config.member.trim())
       || 'Unassigned';
+    // The library editor writes multi-goal links to `config.goalIds`
+    // (parallels the barrier M:N shape), but the intervention row still
+    // has a single `goal_id` FK. Promote the first linked goal to the
+    // top-level `goalId` so the Preview drawer's Linked Goals list
+    // (which reads `intervention.goalId`) doesn't show empty right after
+    // a save.
+    const firstGoalId = Array.isArray(config?.goalIds) && config.goalIds.length > 0
+      ? config.goalIds[0]
+      : null;
     const saved = await savePatientCarePlanIntervention(patientId, program, {
       kind,
       title: config.title,
       taskId: config?.taskId || null,
-      goalId: config?.goalId || null,
+      goalId: config?.goalId || firstGoalId || null,
       icon: CARE_PLAN_INTERVENTION_ICONS[kind] || 'solar:clipboard-list-linear',
       duration: interventionDurationFromConfig(config),
       priority: interventionPriorityFromConfig(config),
@@ -1308,7 +1317,11 @@ export function CarePlanView({ patientId, program }) {
             setStatusMenu(null);
             if (k === 'delete') setDeleteTarget({ kind: isGoal ? 'goal' : isBarrier ? 'barrier' : 'intv', id: item.id, name: item.title, item });
             else if (k === 'rename' && isBarrier) setBarrierDrawer({ barrier: item });
-            else if (k === 'rename' && !isGoal) setPreviewIntervention(item);
+            // Intervention "Edit" goes straight to the kind-specific
+            // editor, skipping the Preview drawer. No `previewOnClose`
+            // is set here — closing the editor returns to the plan
+            // screen, matching what the user picked from the menu.
+            else if (k === 'rename' && !isGoal) setIntvSpecialDrawer({ kind: item.kind, intervention: item });
             // Goal rename happens inline via EditableTitle; nudge the user there.
             else if (k === 'rename' && isGoal) showToast('Open the goal to review details — use Remove to delete it.');
           }}
@@ -1367,8 +1380,11 @@ export function CarePlanView({ patientId, program }) {
             // user can edit fields beyond just the title (Send Form,
             // Patient Education, Patient Task, Measure Vital, Internal
             // Task). Close preview first, then open the special editor.
+            // `previewOnClose` tells the editor to reopen the preview
+            // when the user closes or updates it, so they land back on
+            // the intervention detail instead of the plan screen.
             setPreviewIntervention(null);
-            setIntvSpecialDrawer({ kind: intv.kind, intervention: intv });
+            setIntvSpecialDrawer({ kind: intv.kind, intervention: intv, previewOnClose: intv });
           }}
           onOpenGoal={(g) => { setPreviewIntervention(null); setPreviewGoal(g); }}
         />
@@ -1429,14 +1445,24 @@ export function CarePlanView({ patientId, program }) {
             activityEntries={activityEntries}
             memberName={patientName}
             onOpenGoal={(g) => { setIntvSpecialDrawer(null); setPreviewGoal(g); }}
-            onClose={() => setIntvSpecialDrawer(null)}
+            onClose={() => {
+              // Reopen the preview drawer the editor was launched from so
+              // the user lands back on the intervention detail instead of
+              // the plan screen. `previewOnClose` is only set when the
+              // editor was opened via the preview's edit affordance.
+              const restore = intvSpecialDrawer.previewOnClose;
+              setIntvSpecialDrawer(null);
+              if (restore) setPreviewIntervention(restore);
+            }}
             onSave={async (config) => {
               await saveInterventionFromConfig(
                 intvSpecialDrawer.kind,
                 config,
                 intv?.id || null,
               );
+              const restore = intvSpecialDrawer.previewOnClose;
               setIntvSpecialDrawer(null);
+              if (restore) setPreviewIntervention(restore);
             }}
           />
         );

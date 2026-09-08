@@ -334,7 +334,7 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
   };
 
   const menuItems = buildPatientRowMenuItems([
-    { key: 'View Program', icon: 'solar:clipboard-list-linear', label: 'View Program' },
+    { key: 'View Program', icon: 'solar:eye-linear', label: 'View Program' },
   ]);
 
   const handleMenuSelect = (key) => {
@@ -410,7 +410,7 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
       <td className={`${styles.td} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
           <ActionButton
-            icon="solar:clipboard-list-linear"
+            icon="solar:eye-linear"
             size="L"
             tooltip="View Program"
             onClick={openInCareProgram}

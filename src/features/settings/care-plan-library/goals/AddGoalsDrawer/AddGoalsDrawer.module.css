@@ -47,7 +47,7 @@
   align-items: center;
   gap: var(--space-2);
   min-height: 32px;
-  padding: 0 var(--space-2);
+  padding: var(--space-1) var(--space-2);
   border-radius: var(--space-1);
   cursor: pointer;
 }
@@ -77,6 +77,49 @@
   width: 90px;
   flex-shrink: 0;
 }
+
+/* Hover-only action cluster — sits between the row text and the type
+   badge + priority. Kept `visibility: hidden` (not display:none) so the
+   space stays reserved and the badge/priority never shift on hover. */
+.rowActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  visibility: hidden;
+  flex-shrink: 0;
+}
+.row:hover .rowActions,
+.row:focus-within .rowActions { visibility: visible; }
+.rowAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  height: 24px;
+  padding: 0 var(--space-1);
+  background: transparent;
+  border: none;
+  border-radius: var(--space-1);
+  cursor: pointer;
+}
+.rowAction:hover { background: var(--neutral-100); }
+.linkCount {
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  color: var(--neutral-400);
+  line-height: 1;
+}
+.rowActionsDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-3);
+  visibility: hidden;
+  flex-shrink: 0;
+}
+.row:hover .rowActionsDivider,
+.row:focus-within .rowActionsDivider { visibility: visible; }
 
 .groupDivider {
   height: 0.5px;

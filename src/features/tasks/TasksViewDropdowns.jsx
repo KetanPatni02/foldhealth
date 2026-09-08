@@ -149,7 +149,7 @@ export function CreatableLabelDropdown({ selectedLabels, onToggle, children }) {
   );
 }
 
-export function DetailDropdown({ value, options, onSelect, renderOption, children, searchable = true, multiSelect, selected, align = 'left' }) {
+export function DetailDropdown({ value, options, onSelect, renderOption, children, searchable = true, multiSelect, selected, align = 'left', disabled = false }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const btnRef = useRef(null);
@@ -164,10 +164,21 @@ export function DetailDropdown({ value, options, onSelect, renderOption, childre
 
   return (
     <div style={{ position: 'relative' }}>
-      <button ref={btnRef} className={styles.detailValue} onClick={e => { e.stopPropagation(); setOpen(v => !v); }}>
+      <button
+        ref={btnRef}
+        className={styles.detailValue}
+        disabled={disabled}
+        aria-disabled={disabled || undefined}
+        style={disabled ? { cursor: 'default' } : undefined}
+        onClick={e => {
+          if (disabled) return;
+          e.stopPropagation();
+          setOpen(v => !v);
+        }}
+      >
         {children || value || '—'}
       </button>
-      {open && pos && createPortal(
+      {open && !disabled && pos && createPortal(
         <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => { setOpen(false); setSearch(''); }}>
           <div
             className={styles.simpleDropdown}

@@ -6,6 +6,8 @@ import { Input } from '../../../../../../../../components/Input/Input';
 import { Select } from '../../../../../../../../components/Select/Select';
 import { Textarea } from '../../../../../../../../components/Textarea/Textarea';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
+import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
+import { GbiProgressCell } from '../../tables/carePlanTableShared';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { LinkGoalToBarrierDrawer } from './LinkGoalToBarrierDrawer';
@@ -14,6 +16,7 @@ import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../../settings/care-plan-library/lib';
 import styles from './BarrierDetailDrawer.module.css';
+import goalStyles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 
 // Match the plan-level Barriers table exactly — same option list and
 // same tone map, so status pills read identically in the drawer and
@@ -27,6 +30,15 @@ function fmtDate(iso) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${mm}/${dd}/${String(d.getFullYear()).slice(-2)}`;
+}
+
+function fmtStamp(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const date = d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+  return `${date} ${time}`;
 }
 
 /**
@@ -71,6 +83,8 @@ function mapBarrierAuditEntry(e) {
   switch (e.action) {
     case 'note':
       return { ...base, t: 'comment', title: 'Added a Note', commentBody: e.detail || '' };
+    case 'note_deleted':
+      return { ...base, t: 'comment', title: 'Deleted a Note', commentBody: e.detail ? `Note: ${e.detail}` : '' };
     case 'status_changed':
       return { ...base, t: 'status_change', title: 'Status changed', from, to };
     case 'created':
@@ -107,6 +121,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
   const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
+  const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
   const showToast = useAppStore(s => s.showToast);
   const libraryBarriers = useAppStore(s => s.carePlanBarriers) || [];
 
@@ -202,16 +217,26 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
     () => new Set(legacyClones.map(b => String(b.id))),
     [legacyClones],
   );
+  // Latest saved note on this barrier — mirrors the intervention drawer.
+  // A subsequent `note_deleted` entry hides the note card but the original
+  // "Added a Note" + the delete row stay visible in the Activity Log.
   const latestBarrierNote = useMemo(() => {
-    const notes = auditAll
-      .filter(a => a.action === 'note'
-        && (a.entityType === 'barrier' || a.entityType === 'note')
-        && barrierIdSet.has(String(a.entityId)))
+    const forThis = auditAll.filter(a => (a.entityType === 'barrier' || a.entityType === 'note')
+      && barrierIdSet.has(String(a.entityId)));
+    const notes = forThis
+      .filter(a => a.action === 'note')
       .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
-    return notes[0] || null;
+    const latestNote = notes[0];
+    if (!latestNote) return null;
+    const latestClear = forThis
+      .filter(a => a.action === 'note_deleted')
+      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))[0];
+    if (latestClear && new Date(latestClear.createdAt) >= new Date(latestNote.createdAt)) return null;
+    return latestNote;
   }, [auditAll, barrierIdSet]);
   const [note, setNote] = useState(latestBarrierNote?.detail || '');
   const [notePlain, setNotePlain] = useState(latestBarrierNote?.detail || '');
+  const [noteEditing, setNoteEditing] = useState(false);
   // Whenever a new note lands (either the drawer just opened on a
   // different barrier or the user just submitted), re-seed the textarea
   // to the current latest so the editor keeps reading "Update Note".
@@ -219,6 +244,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
     const seed = latestBarrierNote?.detail || '';
     setNote(seed);
     setNotePlain(seed);
+    setNoteEditing(false);
   }, [latestBarrierNote?.id]);
   const submitNote = async () => {
     const body = note.trim();
@@ -228,6 +254,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
       entityId: barrier.id,
       summary: `Note on ${barrier.title || 'barrier'}`,
     });
+    setNoteEditing(false);
     showToast?.(latestBarrierNote ? 'Note updated' : 'Note added');
   };
 
@@ -492,7 +519,11 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                           <span className={styles.linkTitle}>{goal.title}</span>
                           {subtitle && <span className={styles.linkSubtitle}>{subtitle}</span>}
                         </div>
-                        <div className={styles.linkActions}>
+                        <div className={styles.linkActions} style={{ gap: 'var(--space-2)' }}>
+                          <PriorityIcon priority={goal.priority} size={16} />
+                          <span className={styles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
+                          <GbiProgressCell progress={goal.progress} />
+                          <span className={styles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                           <ActionButton
                             icon="solar:arrow-right-up-linear"
                             size="S"
@@ -501,7 +532,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                           />
                           {!isTerminal && (
                             <>
-                              <span className={styles.linkActionsDivider} aria-hidden />
+                              <span className={styles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                               <ActionButton
                                 icon="solar:link-broken-minimalistic-linear"
                                 size="S"
@@ -578,47 +609,106 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
             )}
           </section>
 
-          {/* Add Note — mirrors the GoalPreviewDrawer note surface so
-              writes land in the same care-plan audit stream. */}
+          {/* Note surface — matches the InterventionPreviewDrawer so the
+              read-only card, hover-delete, and Cancel / Update Note flow
+              read identically across both drawers. */}
           <div className={styles.noteEditor}>
-            <Textarea
-              title={latestBarrierNote ? 'Update Note' : 'Add Note'}
-              placeholder={isTerminal ? 'Notes are locked on Met / Not Met barriers.' : 'Add a note'}
-              value={note}
-              onChange={(value) => {
-                const v = typeof value === 'string' ? value : '';
-                setNote(v);
-                setNotePlain(v);
-              }}
-              rows={3}
-              disabled={isTerminal}
-            />
-            {(() => {
-              const baseline = (latestBarrierNote?.detail || '').trim();
-              const current = note.trim();
-              const canSave = !isTerminal && current.length > 0 && current !== baseline;
-              const canDiscard = !isTerminal && current !== baseline;
-              return (
-                <div className={styles.noteActions}>
-                  <Button
-                    variant="secondary"
-                    size="M"
-                    disabled={!canDiscard}
-                    onClick={() => { setNote(baseline); setNotePlain(baseline); }}
-                  >
-                    Discard
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="M"
-                    disabled={!canSave}
-                    onClick={submitNote}
-                  >
-                    {latestBarrierNote ? 'Update Note' : 'Add Note'}
-                  </Button>
+            {latestBarrierNote && !noteEditing ? (
+              <section className={styles.section}>
+                <div className={styles.sectionHead}>
+                  <span className={styles.sectionTitle}>Note</span>
                 </div>
-              );
-            })()}
+                <div className={goalStyles.careNoteCardWrap}>
+                  <button
+                    type="button"
+                    className={goalStyles.careNoteCard}
+                    onClick={() => !isTerminal && setNoteEditing(true)}
+                    aria-label="Edit note"
+                    disabled={isTerminal}
+                  >
+                    <p className={goalStyles.careNoteBody}>{latestBarrierNote.detail}</p>
+                    <div className={goalStyles.careNoteMeta}>
+                      <span className={goalStyles.careNoteAuthor}>{latestBarrierNote.actor || 'You'}</span>
+                      <span className={goalStyles.careNoteDot} aria-hidden="true">•</span>
+                      <span className={goalStyles.careNoteTimestamp}>{fmtStamp(latestBarrierNote.createdAt)}</span>
+                    </div>
+                  </button>
+                  {!isTerminal && (
+                    <span className={goalStyles.careNoteDelete}>
+                      <ActionButton
+                        icon="solar:trash-bin-trash-linear"
+                        size="S"
+                        tooltip="Delete note"
+                        onClick={() => {
+                          // Log a new "Deleted a Note" audit entry — the
+                          // original "Added a Note" row stays in place so
+                          // both events remain visible in the Activity Log.
+                          logCarePlanAudit?.(patientId, program, {
+                            entityType: 'barrier',
+                            entityId: barrier.id,
+                            action: 'note_deleted',
+                            summary: `Note on ${barrier.title || 'barrier'} deleted`,
+                            detail: latestBarrierNote.detail || '',
+                          });
+                          setNote('');
+                          setNotePlain('');
+                          setNoteEditing(true);
+                        }}
+                      />
+                    </span>
+                  )}
+                </div>
+              </section>
+            ) : (
+              <>
+                <section className={styles.section}>
+                  <div className={styles.sectionHead}>
+                    <span className={styles.sectionTitle}>Note</span>
+                  </div>
+                  <Textarea
+                    placeholder={isTerminal ? 'Notes are locked on Met / Not Met barriers.' : 'Add a note'}
+                    value={note}
+                    onChange={(value) => {
+                      const v = typeof value === 'string' ? value : '';
+                      setNote(v);
+                      setNotePlain(v);
+                    }}
+                    rows={3}
+                    disabled={isTerminal}
+                  />
+                </section>
+                {(() => {
+                  const baseline = (latestBarrierNote?.detail || '').trim();
+                  const current = note.trim();
+                  const canSave = !isTerminal && current.length > 0 && current !== baseline;
+                  const canDiscard = !isTerminal && (current !== baseline || noteEditing);
+                  return (
+                    <div className={styles.noteActions}>
+                      <Button
+                        variant="secondary"
+                        size="M"
+                        disabled={!canDiscard}
+                        onClick={() => {
+                          setNote(baseline);
+                          setNotePlain(baseline);
+                          if (latestBarrierNote) setNoteEditing(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="M"
+                        disabled={!canSave}
+                        onClick={submitNote}
+                      >
+                        {latestBarrierNote ? 'Update Note' : 'Add Note'}
+                      </Button>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
           </div>
 
           {/* Activity Log for this barrier — status changes, edits, goal

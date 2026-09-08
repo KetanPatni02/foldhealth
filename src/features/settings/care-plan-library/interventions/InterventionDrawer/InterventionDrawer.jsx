@@ -11,6 +11,7 @@ import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon'
 import { Badge } from '../../../../../components/Badge/Badge';
 import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
 import { VITAL_OPTIONS } from '../../lib/vitalOptions';
+import { MEASURE_CONFIG } from '../../lib/goalFormat';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { InterventionKindToggle } from '../shared/InterventionKindToggle';
 import { KIND_LABELS } from '../shared/interventionKinds';
@@ -50,6 +51,21 @@ const PRIORITIES = ['High', 'Medium', 'Low'];
 const TITLE_MAX = 150;
 
 const asOptions = (list) => list.map(v => ({ value: v, label: v }));
+
+// Suffix each vital option with its unit (from MEASURE_CONFIG) so the
+// picker reads e.g. "Blood Pressure (mmHg)". `value` stays the raw vital
+// name so downstream lookups keep working.
+const vitalOptionsWithUnits = (list) => list.map(v => {
+  const cfg = MEASURE_CONFIG[v];
+  let unit = '';
+  if (cfg?.dual && Array.isArray(cfg.units) && cfg.units.length) {
+    // Blood Pressure / Height use dual entries — collapse duplicates.
+    unit = [...new Set(cfg.units.filter(Boolean))].join('/');
+  } else if (cfg?.unit) {
+    unit = cfg.unit;
+  }
+  return { value: v, label: unit ? `${v} (${unit})` : v };
+});
 
 const isTask = (kind) => kind === 'patient-task' || kind === 'internal-task';
 
@@ -121,16 +137,17 @@ export function InterventionDrawer({
     el.style.height = `${el.scrollHeight}px`;
   }, [title]);
   const [priority, setPriority] = useState(intervention?.priority ?? 'Medium');
-  // Default the assignee to the current member, matching the Patient Task
-  // drawer. The parent may resolve `memberName` async (worklist slice
-  // hydrates after mount), so sync on arrival while leaving explicit
-  // user picks alone.
+  // Default the assignee to the current member for every kind EXCEPT
+  // Internal Task, where the user picks a staff member instead. The
+  // parent may resolve `memberName` async (worklist slice hydrates after
+  // mount), so sync on arrival while leaving explicit user picks alone.
   useEffect(() => {
+    if (kind === 'internal-task') return;
     if (memberName && !assignedToInitialized.current) {
       setAssignedTo(prev => prev || memberName);
       assignedToInitialized.current = true;
     }
-  }, [memberName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [memberName, kind]); // eslint-disable-line react-hooks/exhaustive-deps
   const [form, setForm] = useState(intervention?.form ?? '');
   const [content, setContent] = useState(intervention?.content ?? '');
   const [vital, setVital] = useState(intervention?.vital ?? '');
@@ -264,7 +281,7 @@ export function InterventionDrawer({
           member,
         })}
       >
-        Add
+        {intervention ? 'Update' : 'Add'}
       </Button>
       <span className={styles.headerDivider} />
     </>
@@ -399,40 +416,33 @@ export function InterventionDrawer({
         )}
 
         {kind === 'measure-vital' && (
-          <>
-            <div className={styles.field}>
-              <Select
-                label="Vital"
-                required
-                options={asOptions(VITAL_OPTIONS)}
-                value={vital}
-                onChange={setVital}
-                placeholder="Search Vital"
-                searchable
-                searchPlaceholder="Search Vital"
-              />
-            </div>
-            <div className={styles.field}>
-              <Input
-                label="Note"
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                placeholder="Enter the note"
-              />
-            </div>
-          </>
-        )}
-
-        {isTask(kind) && (
           <div className={styles.field}>
-            <span className={styles.fieldLabel}>Description</span>
-            <Textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="What should the task cover?"
-              rows={3}
+            <Select
+              label="Vital"
+              required
+              options={vitalOptionsWithUnits(VITAL_OPTIONS)}
+              value={vital}
+              onChange={setVital}
+              placeholder="Search Vital"
+              searchable
+              searchPlaceholder="Search Vital"
             />
           </div>
+        )}
+
+        {/* Description — same Textarea treatment as the care-plan Patient
+            Task drawer (rich-text + attachment) so every intervention
+            kind's long-form field reads and behaves the same. */}
+        {(isTask(kind) || kind === 'measure-vital') && (
+          <Textarea
+            title="Description"
+            richText
+            attachment
+            placeholder="Add a description..."
+            value={description}
+            rows={3}
+            onChange={(html) => setDescription(typeof html === 'string' ? html : (html?.target?.value ?? ''))}
+          />
         )}
 
 
@@ -457,6 +467,10 @@ export function InterventionDrawer({
             avatarVariant={assignedTo && assignedTo === memberName ? 'patient' : 'staff'}
             onSelect={(u) => setAssignedTo(u?.name || '')}
             pickerTitle="Assign to"
+            // Only Internal Task lets the user reassign — every other
+            // intervention kind runs on the member and the assignee
+            // stays locked to them.
+            disabled={kind !== 'internal-task'}
           />
         </div>
         {/* Priority — was inline in the Title field, now its own row so

@@ -15,6 +15,7 @@ import { MenuPopover } from '../../../../../../../../components/MenuPopover/Menu
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
+import { LinkGoalToBarrierDrawer } from '../BarrierDetailDrawer/LinkGoalToBarrierDrawer';
 import { DetailDropdown } from '../../../../../../../tasks/TasksViewDropdowns';
 import { PRIORITY_OPTIONS } from '../../../../../../../tasks/TasksView.utils';
 import { GbiProgressCell } from '../../tables/carePlanTableShared';
@@ -134,6 +135,28 @@ function mapAuditEntry(e) {
   if (e.action === 'deleted') {
     return { ...base, t: 'default', title: 'removed an Intervention', verb: 'removed an', field: 'Intervention' };
   }
+  if (e.action === 'goal_linked') {
+    return {
+      ...base,
+      t: 'comment',
+      title: 'Linked Goal',
+      commentBody: e.detail ? `Goal: ${e.detail}` : '',
+      comment: e.detail,
+      verb: 'linked a',
+      field: 'Goal',
+    };
+  }
+  if (e.action === 'goal_unlinked') {
+    return {
+      ...base,
+      t: 'comment',
+      title: 'Unlinked Goal',
+      commentBody: e.detail ? `Goal: ${e.detail}` : '',
+      comment: e.detail,
+      verb: 'unlinked a',
+      field: 'Goal',
+    };
+  }
   if (e.action === 'status_changed') {
     return { ...base, t: 'status_change', title: 'Status', from, to, verb: 'changed the', field: 'Status', fromTone: STATUS_TONE[from] || 'grey', toTone: STATUS_TONE[to] || 'grey' };
   }
@@ -220,6 +243,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   const [activityFilter, setActivityFilter] = useState('all');
   const [filterMenu, setFilterMenu] = useState(null);
   const [moreMenu, setMoreMenu] = useState(null);
+  const [linkGoalOpen, setLinkGoalOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
   const [editingNoteId, setEditingNoteId] = useState(null);
@@ -360,7 +384,25 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
     setNoteEditing(false);
   };
 
-  const dueDate = pairedTask?.dueDate || pairedTask?.due_date || live.config?.dueDate || null;
+  // Prefer the paired task's due date (kinds that spawn a Task); fall
+  // back to an explicit `config.dueDate`; finally derive from
+  // `config.dueOffset` + `config.dueUnit` relative to `createdAt` so
+  // library-form kinds (patient-education, send-form) that only carry
+  // an offset still surface a Due Date.
+  const derivedDueFromConfig = (() => {
+    const off = Number(live?.config?.dueOffset);
+    if (!Number.isFinite(off) || off <= 0) return null;
+    const start = live?.createdAt ? new Date(live.createdAt) : null;
+    if (!start || Number.isNaN(start.getTime())) return null;
+    const unit = String(live?.config?.dueUnit || '').toLowerCase();
+    const d = new Date(start);
+    if (unit.startsWith('week')) d.setDate(d.getDate() + off * 7);
+    else if (unit.startsWith('month')) d.setMonth(d.getMonth() + off);
+    else d.setDate(d.getDate() + off);
+    return d.toISOString();
+  })();
+  const dueDate = pairedTask?.dueDate || pairedTask?.due_date
+    || live.config?.dueDate || derivedDueFromConfig || null;
   const hasRepeat = !!(pairedTask?.repeat || live.config?.repeat);
 
   const metaParts = [
@@ -543,6 +585,14 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 className={`${barrierStyles.sectionChevron} ${open.goals ? barrierStyles.sectionChevronOpen : ''}`}
               />
             </button>
+            {canEdit && (
+              <ActionButton
+                icon="solar:add-linear"
+                size="S"
+                tooltip="Link goal"
+                onClick={() => setLinkGoalOpen(true)}
+              />
+            )}
           </div>
           {open.goals && (
             linkedGoals.length === 0 ? (
@@ -569,6 +619,17 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                         tooltip="Open goal"
                         onClick={() => onOpenGoal?.(g)}
                       />
+                      {canEdit && (
+                        <>
+                          <span className={barrierStyles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
+                          <ActionButton
+                            icon="solar:link-broken-minimalistic-linear"
+                            size="S"
+                            tooltip="Unlink"
+                            onClick={() => savePatientCarePlanIntervention(patientId, program, { ...live, goalId: null }, live.id)}
+                          />
+                        </>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -780,6 +841,20 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           items={ACTIVITY_FILTERS.map(f => ({ key: f.key, label: f.label }))}
           onSelect={(k) => { setActivityFilter(k); setFilterMenu(null); }}
           onClose={() => setFilterMenu(null)}
+        />
+      )}
+
+      {linkGoalOpen && (
+        <LinkGoalToBarrierDrawer
+          title="Link Goal to Intervention"
+          goals={(slice?.goals || []).filter(g => g.id !== live.goalId)}
+          onClose={() => setLinkGoalOpen(false)}
+          onLink={async (ids) => {
+            const first = Array.isArray(ids) ? ids[0] : ids;
+            if (!first) { setLinkGoalOpen(false); return; }
+            await savePatientCarePlanIntervention(patientId, program, { ...live, goalId: first }, live.id);
+            setLinkGoalOpen(false);
+          }}
         />
       )}
 
