@@ -17,6 +17,8 @@ import {
   GbiNameCell,
   GbiProgressCell,
   GbiStatusButton,
+  isClosedBarrier,
+  GBI_COL_WIDTH,
   GOAL_COLUMNS,
   INTERVENTION_COLUMNS,
   BARRIER_COLUMNS,
@@ -253,8 +255,48 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
   );
 }
 
-function BarriersTable({ rows, onOpen, onPriorityMenu, onStatusMenu }) {
+// Row body — mirrors the per-plan CarePlanBarriersTable's BarrierRow
+// (empty priority cell, custom:barrier icon, barrierStatusTd width),
+// with the Care Plan column injected before Status.
+function BarrierRow({ b, onOpen, onStatusMenu }) {
+  return (
+    <tr
+      className={`${sharedRow.row} ${sharedRow.gbiRow} ${sharedRow.rowClickable}`}
+      onClick={() => onOpen(b)}
+    >
+      <td className={sharedRow.priorityTd} aria-hidden="true" />
+      <td className={sharedRow.titleTd}>
+        <GbiNameCell
+          icon="custom:barrier"
+          title={b.title}
+          meta={b.description || null}
+        />
+      </td>
+      <td className={sharedRow.assigneeTd} style={{ width: CARE_PLAN_COLUMN.width, minWidth: CARE_PLAN_COLUMN.width, maxWidth: CARE_PLAN_COLUMN.width }} onClick={e => e.stopPropagation()}>
+        <Badge tone="grey" size="S" label={b.programCode} />
+      </td>
+      <td className={sharedRow.barrierStatusTd} onClick={e => e.stopPropagation()}>
+        <GbiStatusButton
+          value={b.status}
+          onOpen={rect => onStatusMenu({ kind: 'barrier', item: b, rect })}
+        />
+      </td>
+    </tr>
+  );
+}
+
+function BarriersTable({ rows, onOpen, onStatusMenu }) {
+  const [closedOpen, setClosedOpen] = useState(false);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(rows, 'title', 'asc');
+  const { openRows, closedRows } = useMemo(() => {
+    const open = [];
+    const closed = [];
+    for (const row of sorted) {
+      if (isClosedBarrier(row.status)) closed.push(row);
+      else open.push(row);
+    }
+    return { openRows: open, closedRows: closed };
+  }, [sorted]);
   return (
     <div className={sharedRow.tableWrap}>
       <WorklistShell
@@ -263,48 +305,60 @@ function BarriersTable({ rows, onOpen, onPriorityMenu, onStatusMenu }) {
         header={null}
         hideBulkBar
         columns={SUMMARY_BARRIER_COLUMNS}
-        rows={sorted}
+        rows={openRows}
         sortKey={sortKey}
         sortDir={sortDir}
         onSort={requestSort}
         minTableWidth={0}
-        emptyState={<div className={styles.emptyRow}>No barriers match.</div>}
+        emptyState={openRows.length === 0 && closedRows.length === 0 ? (
+          <div className={styles.emptyRow}>No barriers match.</div>
+        ) : null}
         renderRow={(b) => (
-          <tr
+          <BarrierRow
             key={`${b.programCode}-${b.id}`}
-            className={`${sharedRow.row} ${sharedRow.rowClickable} ${sharedRow.gbiRow}`}
-            onClick={() => onOpen(b)}
-          >
-            <td className={sharedRow.priorityTd} onClick={e => e.stopPropagation()}>
-              <button
-                type="button"
-                className={sharedRow.priorityBtn}
-                aria-label="Change priority"
-                onClick={(e) => onPriorityMenu({ kind: 'barrier', item: b, rect: e.currentTarget.getBoundingClientRect() })}
-              >
-                <PriorityIcon priority={b.priority} size={16} />
-              </button>
-            </td>
-            <td className={sharedRow.titleTd}>
-              <GbiNameCell
-                icon={b.icon || 'solar:shield-warning-linear'}
-                title={b.title}
-                meta={b.description || null}
-                layout="stacked"
-              />
-            </td>
-            <td className={sharedRow.assigneeTd} style={{ width: CARE_PLAN_COLUMN.width, minWidth: CARE_PLAN_COLUMN.width, maxWidth: CARE_PLAN_COLUMN.width }} onClick={e => e.stopPropagation()}>
-              <Badge tone="grey" size="S" label={b.programCode} />
-            </td>
-            <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
-              <GbiStatusButton
-                value={b.status}
-                onOpen={rect => onStatusMenu({ kind: 'barrier', item: b, rect })}
-              />
-            </td>
-          </tr>
+            b={b}
+            onOpen={onOpen}
+            onStatusMenu={onStatusMenu}
+          />
         )}
       />
+      {closedRows.length > 0 && (
+        <div className={sharedRow.closedBarriers}>
+          <button
+            type="button"
+            className={sharedRow.closedBarriersToggle}
+            onClick={() => setClosedOpen(v => !v)}
+            aria-expanded={closedOpen}
+          >
+            <DownChevronIcon
+              size={6}
+              color="var(--neutral-300)"
+              className={`${sharedRow.closedBarriersChevron} ${closedOpen ? '' : sharedRow.closedBarriersChevronClosed}`}
+            />
+            <span className={sharedRow.closedBarriersLabel}>Closed Barriers</span>
+          </button>
+          {closedOpen && (
+            <table className={sharedRow.closedBarriersTable}>
+              <colgroup>
+                <col style={{ width: GBI_COL_WIDTH.priority }} />
+                <col />
+                <col style={{ width: CARE_PLAN_COLUMN.width }} />
+                <col style={{ width: GBI_COL_WIDTH.status }} />
+              </colgroup>
+              <tbody>
+                {closedRows.map(b => (
+                  <BarrierRow
+                    key={`${b.programCode}-${b.id}`}
+                    b={b}
+                    onOpen={onOpen}
+                    onStatusMenu={onStatusMenu}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -506,7 +560,6 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
               <BarriersTable
                 rows={filteredBarriers}
                 onOpen={openBarrier}
-                onPriorityMenu={setPriorityMenu}
                 onStatusMenu={setStatusMenu}
               />
             )}
@@ -556,6 +609,7 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
           patientId={patientId}
           program={previewIntervention.program}
           onClose={() => setPreviewIntervention(null)}
+          consolidated
         />
       )}
       {previewBarrier && (
@@ -564,6 +618,7 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
           patientId={patientId}
           program={previewBarrier.program}
           onClose={() => setPreviewBarrier(null)}
+          consolidated
         />
       )}
     </div>

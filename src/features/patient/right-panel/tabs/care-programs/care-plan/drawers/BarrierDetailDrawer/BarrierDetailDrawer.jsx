@@ -114,7 +114,7 @@ function mapBarrierAuditEntry(e) {
   }
 }
 
-export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOpenGoal }) {
+export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOpenGoal, consolidated = false }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const auditAll = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
@@ -383,7 +383,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
         onClose={onClose}
         width={640}
         noCloseDivider={isTerminal}
-        headerRight={isTerminal ? null : (
+        headerRight={isTerminal || consolidated ? null : (
           <Button
             variant="primary"
             size="M"
@@ -407,20 +407,25 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
               className={styles.statusSelect}
               style={{ width: 'fit-content' }}
             />
-            <ActionButton
-              icon="solar:trash-bin-trash-linear"
-              size="S"
-              tooltip="Delete barrier"
-              onClick={() => setConfirmDeleteBarrier(true)}
-            />
+            {!consolidated && (
+              <ActionButton
+                icon="solar:trash-bin-trash-linear"
+                size="S"
+                tooltip="Delete barrier"
+                onClick={() => setConfirmDeleteBarrier(true)}
+              />
+            )}
           </div>
 
           {/* Barrier title — editable Input while active, or a read-only
               summary card once the barrier is Met / Not Met. The card
               carries the barrier glyph, the plan-scoped meta line, and a
               small linked-goals chip so users still see the link count
-              without the affordances that let them mutate it. */}
-          {isTerminal ? (
+              without the affordances that let them mutate it. The
+              consolidated (Comprehensive Care Plan) tab forces this
+              read-only branch too so nothing about the barrier's title
+              can be mutated from that surface. */}
+          {isTerminal || consolidated ? (
             <div className={styles.field}>
               <div className={styles.terminalCard}>
                 <div className={styles.terminalHead}>
@@ -490,7 +495,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                   className={`${styles.sectionChevron} ${open.goals ? styles.sectionChevronOpen : ''}`}
                 />
               </button>
-              {!isTerminal && (
+              {!isTerminal && !consolidated && (
                 <ActionButton
                   icon="solar:add-linear"
                   size="S"
@@ -530,7 +535,7 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                             tooltip="Open goal"
                             onClick={() => onOpenGoal?.(goal)}
                           />
-                          {!isTerminal && (
+                          {!isTerminal && !consolidated && (
                             <>
                               <span className={styles.linkActionsDivider} aria-hidden style={{ margin: 0 }} />
                               <ActionButton
@@ -593,13 +598,17 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                             tooltip="Open template"
                             onClick={() => { /* template detail route pending */ }}
                           />
-                          <span className={styles.linkActionsDivider} aria-hidden />
-                          <ActionButton
-                            icon="solar:link-broken-minimalistic-linear"
-                            size="S"
-                            tooltip="Unlink"
-                            onClick={() => showToast?.('Unlink the associated goal to remove this template link')}
-                          />
+                          {!consolidated && (
+                            <>
+                              <span className={styles.linkActionsDivider} aria-hidden />
+                              <ActionButton
+                                icon="solar:link-broken-minimalistic-linear"
+                                size="S"
+                                tooltip="Unlink"
+                                onClick={() => showToast?.('Unlink the associated goal to remove this template link')}
+                              />
+                            </>
+                          )}
                         </div>
                       )}
                     </li>
