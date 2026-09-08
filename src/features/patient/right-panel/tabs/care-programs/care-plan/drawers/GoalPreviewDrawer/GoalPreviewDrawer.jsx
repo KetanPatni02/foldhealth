@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { Button } from '../../../../../../../../components/Button/Button';
 import { Select } from '../../../../../../../../components/Select/Select';
@@ -10,7 +11,10 @@ import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { Slider } from '../../../../../../../../components/ShadcnSlider/ShadcnSlider';
 import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
+import { DetailDropdown } from '../../../../../../../tasks/TasksViewDropdowns';
+import { PRIORITY_OPTIONS } from '../../../../../../../tasks/TasksView.utils';
 import { TabStrip } from '../../../../../../../../components/TabStrip/TabStrip';
+import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
@@ -21,6 +25,8 @@ import { GoalLinkedInterventionsList } from './GoalLinkedInterventionsList';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../../settings/care-plan-library/lib';
 import { goalProgressBand, goalProgressTone } from '../../lib/goalMetrics';
 import styles from './GoalPreviewDrawer.module.css';
+import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
+import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 const ACTIVITY_TABS = [
@@ -48,6 +54,17 @@ const STATUS_TONE = {
 // drawer label read from one source of truth.
 const progressBand = goalProgressBand;
 const progressTone = goalProgressTone;
+
+// Progress slider fill / thumb color per band — fed to the slider via
+// the `--slider-tone` CSS variable so the CSS module can flip the fill
+// without changing markup. Mirrors the InterventionPreviewDrawer.
+function progressSliderColor(pct) {
+  const tone = progressTone(progressBand(pct));
+  if (tone === 'error') return 'var(--status-error)';
+  if (tone === 'warning') return 'var(--status-warning)';
+  if (tone === 'success') return 'var(--status-success)';
+  return 'var(--neutral-300)';
+}
 
 function relativeLabel(iso) {
   if (!iso) return '';
@@ -100,17 +117,38 @@ function splitArrow(detail) {
 
 function mapAuditEntry(e) {
   const [from, to] = splitArrow(e.detail);
-  const base = { id: e.id, actor: e.actor || '', at: e.createdAt, createdAt: e.createdAt, action: e.action };
-  if (e.action === 'note') return { ...base, verb: 'added a', field: 'Note', comment: e.detail };
-  if (e.action === 'created') return { ...base, verb: 'added a', field: 'Goal' };
-  if (e.action === 'deleted') return { ...base, verb: 'removed a', field: 'Goal' };
-  if (e.action === 'status_changed') return { ...base, verb: 'changed the', field: 'Status', from, to, fromTone: STATUS_TONE[from] || 'grey', toTone: STATUS_TONE[to] || 'grey' };
-  if (e.action === 'progress_changed') return { ...base, verb: 'changed the', field: 'Progress', from, to, fromTone: progressTone(from), toTone: progressTone(to) };
-  if (e.action === 'value_changed') {
-    if (from && to) return { ...base, verb: 'changed the', field: 'Value', from, to, fromTone: 'grey', toTone: 'grey' };
-    return { ...base, verb: 'added a', field: 'Value', comment: e.detail };
+  const created = e.createdAt ? new Date(e.createdAt) : null;
+  const date = created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+  const time = created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
+  const base = {
+    id: e.id,
+    actor: e.actor || '',
+    at: e.createdAt,
+    createdAt: e.createdAt,
+    action: e.action,
+    date,
+    time,
+    by: e.actor || null,
+  };
+  if (e.action === 'note') {
+    return { ...base, t: 'comment', title: 'Added a Note', commentBody: `Note: ${e.detail || ''}`, comment: e.detail, verb: 'added a', field: 'Note' };
   }
-  return { ...base, verb: 'updated', field: e.summary || 'Goal' };
+  if (e.action === 'note_deleted') {
+    return { ...base, t: 'comment', title: 'Deleted a Note', commentBody: e.detail ? `Note: ${e.detail}` : '', comment: e.detail, verb: 'deleted a', field: 'Note' };
+  }
+  if (e.action === 'created') return { ...base, t: 'default', title: 'added a Goal', verb: 'added a', field: 'Goal' };
+  if (e.action === 'deleted') return { ...base, t: 'default', title: 'removed a Goal', verb: 'removed a', field: 'Goal' };
+  if (e.action === 'status_changed') {
+    return { ...base, t: 'status_change', title: 'Status', from, to, verb: 'changed the', field: 'Status', fromTone: STATUS_TONE[from] || 'grey', toTone: STATUS_TONE[to] || 'grey' };
+  }
+  if (e.action === 'progress_changed') {
+    return { ...base, t: 'status_change', title: 'Progress', from, to, verb: 'changed the', field: 'Progress', fromTone: progressTone(from), toTone: progressTone(to) };
+  }
+  if (e.action === 'value_changed') {
+    if (from && to) return { ...base, t: 'status_change', title: 'Value', from, to, verb: 'changed the', field: 'Value', fromTone: 'grey', toTone: 'grey' };
+    return { ...base, t: 'comment', title: 'Added a Value', commentBody: e.detail || '', comment: e.detail, verb: 'added a', field: 'Value' };
+  }
+  return { ...base, t: 'default', title: e.summary || 'updated', verb: 'updated', field: e.summary || 'Goal' };
 }
 
 function sparkNum(v) {
@@ -149,21 +187,27 @@ function Sparkline({ values }) {
   );
 }
 
-const AccordionHead = function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit, muted, addRef, addAriaHasPopup, addAriaExpanded }) {
+// Section head — matches the InterventionPreviewDrawer's Linked Goals
+// treatment (barrierStyles.sectionHead / sectionToggle / sectionTitle /
+// sectionChevron), so every collapsible section in the goal drawer
+// reads with the same title weight, chevron placement, and hover
+// affordance. `muted` is preserved as a flag but the styling no longer
+// diverges — the visual language is now unified.
+const AccordionHead = function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit, addRef, addAriaHasPopup, addAriaExpanded }) {
   return (
-    <div className={styles.accHead}>
-      <button type="button" className={styles.accToggle} onClick={onToggle} aria-expanded={open}>
-        {!muted && (
-          <span className={`${styles.accChevron} ${open ? styles.accChevronOpen : ''}`}>
-            <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-          </span>
-        )}
-        <span className={muted ? styles.accTitleMuted : styles.accTitle}>{title}</span>
-        {muted && (
-          <span className={`${styles.accChevronAfter} ${open ? styles.accChevronOpen : ''}`}>
-            <Icon name="solar:alt-arrow-down-linear" size={16} color="var(--neutral-300)" />
-          </span>
-        )}
+    <div className={barrierStyles.sectionHead}>
+      <button
+        type="button"
+        className={barrierStyles.sectionToggle}
+        onClick={onToggle}
+        aria-expanded={open}
+      >
+        <span className={barrierStyles.sectionTitle}>{title}</span>
+        <DownChevronIcon
+          size={12}
+          color="var(--neutral-400)"
+          className={`${barrierStyles.sectionChevron} ${open ? barrierStyles.sectionChevronOpen : ''}`}
+        />
       </button>
       {canEdit && (
         <ActionButton
@@ -220,6 +264,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const deletePatientCarePlanIntervention = useAppStore(s => s.deletePatientCarePlanIntervention);
   const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
+  const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
   const showToast = useAppStore(s => s.showToast);
   const updateCarePlanNote = useAppStore(s => s.updateCarePlanNote);
   const deleteCarePlanNote = useAppStore(s => s.deleteCarePlanNote);
@@ -248,6 +293,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const automations = useMemo(() => (slice?.automations || []).filter(a => !a.goalId || a.goalId === live?.id), [slice, live]);
 
   const [pct, setPct] = useState(Number(live?.progress) || 0);
+  const [pctDragging, setPctDragging] = useState(false);
   const [open, setOpen] = useState({ trends: true, interventions: false, barriers: false, automations: false });
   const [addingReading, setAddingReading] = useState(false);
   const [readingValue, setReadingValue] = useState('');
@@ -266,9 +312,10 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const intvAddRef = useRef(null);
   const [note, setNote] = useState('');
   const [notePlain, setNotePlain] = useState('');
+  const [noteEditing, setNoteEditing] = useState(false);
   const [activityTab, setActivityTab] = useState('all');
   const [activityFilter, setActivityFilter] = useState('all');
-  const [filterMenu, setFilterMenu] = useState(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [moreMenu, setMoreMenu] = useState(null);
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState('');
@@ -284,6 +331,34 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
 
   useEffect(() => { setPct(Number(live?.progress) || 0); }, [live?.id, live?.progress]);
   useEffect(() => { if (patientId && program) fetchCarePlanAudit(patientId, program.id); }, [patientId, program, fetchCarePlanAudit]);
+
+  // Latest saved note on this goal — mirrors intervention / barrier
+  // drawers. A subsequent `note_deleted` entry hides the note card but
+  // the original "Added a Note" + the delete row stay in the Activity
+  // Log.
+  const latestGoalNote = useMemo(() => {
+    const forThis = audit.filter(a => String(a.entityId) === String(live?.id));
+    const notes = forThis
+      .filter(a => a.action === 'note' && (a.entityType === 'goal' || a.entityType === 'note'))
+      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
+    const latestNote = notes[0];
+    if (!latestNote) return null;
+    const latestClear = forThis
+      .filter(a => a.action === 'note_deleted')
+      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))[0];
+    if (latestClear && new Date(latestClear.createdAt) >= new Date(latestNote.createdAt)) return null;
+    return latestNote;
+  }, [audit, live?.id]);
+
+  // Re-seed the editor whenever a new note lands (drawer opens on a
+  // different goal or a fresh note was just saved). Exit edit mode after
+  // a save so the read-only card reappears.
+  useEffect(() => {
+    const seed = latestGoalNote?.detail || '';
+    setNote(seed);
+    setNotePlain(seed);
+    setNoteEditing(false);
+  }, [latestGoalNote?.id]);
   useEffect(() => {
     if (patientId && program?.id) fetchCarePlanLinks(patientId, program.id);
   }, [patientId, program?.id, fetchCarePlanLinks]);
@@ -303,11 +378,32 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       }
       return Date.now() - 30 * 86400000;
     })();
-    return rows.filter(e => {
+    const filtered = rows.filter(e => {
       if (activityTab === 'since' && e.createdAt && new Date(e.createdAt).getTime() < sinceCutoff) return false;
       if (activityFilter !== 'all' && e.action !== activityFilter) return false;
       return true;
     });
+    // Group by "MMM YYYY" and inject `{ t: 'group', label }` markers
+    // between entries so the shared ActivityLog renders collapsible
+    // month separators (e.g. "Sep 2026") with the built-in chevron.
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const bucketLabel = (iso) => {
+      if (!iso) return 'Undated';
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return 'Undated';
+      return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    };
+    const out = [];
+    let currentBucket = null;
+    for (const entry of filtered) {
+      const bucket = bucketLabel(entry.createdAt);
+      if (bucket !== currentBucket) {
+        out.push({ t: 'group', label: bucket });
+        currentBucket = bucket;
+      }
+      out.push(entry);
+    }
+    return out;
   }, [audit, live, activityTab, activityFilter, lastVisit]);
 
   if (!live) return null;
@@ -375,8 +471,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
     const body = (notePlain || note).replace(/<[^>]+>/g, '').trim();
     if (!body) return;
     await addCarePlanNote(patientId, program, body, { entityType: 'goal', entityId: live.id, summary: `Note on ${live.title}` });
-    setNote('');
-    setNotePlain('');
+    setNoteEditing(false);
   };
 
   const handleAssigneeChange = (intervention, user) => {
@@ -457,10 +552,30 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
 
         <div className={styles.hero}>
           <div className={styles.titleRow}>
-            <PriorityIcon priority={live.priority} size={16} />
+            <span className={styles.priorityTrigger}>
+              <DetailDropdown
+                value={live.priority}
+                options={PRIORITY_OPTIONS}
+                onSelect={(v) => {
+                  if (!canEdit || v === live.priority) return;
+                  savePatientCarePlanGoal(patientId, program, { ...live, priority: v }, live.id);
+                }}
+                searchable={false}
+                renderOption={(opt) => (
+                  <>
+                    <PriorityIcon priority={opt} size={16} />
+                    <span style={{ textTransform: 'capitalize' }}>{opt}</span>
+                  </>
+                )}
+              >
+                <PriorityIcon priority={live.priority} size={20} />
+              </DetailDropdown>
+            </span>
             {editingTitle ? (
-              <Input
+              <input
                 autoFocus
+                type="text"
+                className={styles.titleInlineInput}
                 value={titleDraft}
                 onChange={e => setTitleDraft(e.target.value)}
                 onBlur={commitTitle}
@@ -468,7 +583,19 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 aria-label="Goal title"
               />
             ) : (
-              <span className={styles.title}>{live.title}</span>
+              <button
+                type="button"
+                className={styles.titleEditable}
+                onClick={() => {
+                  if (!canEdit) return;
+                  setTitleDraft(live.title || '');
+                  setEditingTitle(true);
+                }}
+                disabled={!canEdit}
+                aria-label="Edit goal title"
+              >
+                {live.title}
+              </button>
             )}
           </div>
           {live.subtitle && <span className={styles.subtitle}>{live.subtitle}</span>}
@@ -484,11 +611,16 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
 
         <section className={styles.section}>
           <span className={styles.progressLabel}>Progress</span>
-          <div className={styles.progressCard}>
-            <div className={styles.progressWrap}>
-              <div className={styles.progressBubble} style={{ left: `${pct}%` }}>
-                {pct}% • {progressBand(pct)}
-              </div>
+          <div className={styles.progressCard} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+            <div
+              className={styles.progressWrap}
+              style={{ '--slider-tone': progressSliderColor(pct), flex: 1, minWidth: 0 }}
+            >
+              {pctDragging && (
+                <div className={styles.progressBubble} style={{ left: `${pct}%` }}>
+                  {pct}% • {progressBand(pct)}
+                </div>
+              )}
               <Slider
                 className={styles.progressSlider}
                 value={[pct]}
@@ -496,11 +628,19 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 max={100}
                 step={1}
                 disabled={!canEdit}
+                onPointerDown={() => setPctDragging(true)}
+                onPointerUp={() => setPctDragging(false)}
+                onPointerCancel={() => setPctDragging(false)}
                 onValueChange={v => setPct(v[0])}
-                onValueCommit={commitProgress}
+                onValueCommit={(v) => { commitProgress(v); setPctDragging(false); }}
                 aria-label="Goal progress"
               />
             </div>
+            <Badge
+              size="S"
+              tone={progressTone(progressBand(pct))}
+              label={`${pct}% • ${progressBand(pct)}`}
+            />
           </div>
         </section>
 
@@ -700,19 +840,101 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         </section>
 
         {canEdit && (
-          <Textarea
-            title="Add Note"
-            placeholder="Add a note"
-            value={note}
-            onChange={(html, extra) => {
-              setNote(typeof html === 'string' ? html : '');
-              setNotePlain(typeof extra === 'string' ? extra : (typeof html === 'string' ? html : ''));
-            }}
-            richText
-            attachment
-            rows={3}
-            bottomButton={{ label: 'Add Note', onClick: submitNote, disabled: !(notePlain || note).replace(/<[^>]+>/g, '').trim() }}
-          />
+          <div className={barrierStyles.noteEditor}>
+            {latestGoalNote && !noteEditing ? (
+              <section className={barrierStyles.section}>
+                <div className={barrierStyles.sectionHead}>
+                  <span className={barrierStyles.sectionTitle}>Note</span>
+                </div>
+                <div className={styles.careNoteCardWrap}>
+                  <button
+                    type="button"
+                    className={styles.careNoteCard}
+                    onClick={() => setNoteEditing(true)}
+                    aria-label="Edit note"
+                  >
+                    <p className={styles.careNoteBody}>{latestGoalNote.detail}</p>
+                    <div className={styles.careNoteMeta}>
+                      <span className={styles.careNoteAuthor}>{latestGoalNote.actor || 'You'}</span>
+                      <span className={styles.careNoteDot} aria-hidden="true">•</span>
+                      <span className={styles.careNoteTimestamp}>{fmtStamp(latestGoalNote.createdAt)}</span>
+                    </div>
+                  </button>
+                  <span className={styles.careNoteDelete}>
+                    <ActionButton
+                      icon="solar:trash-bin-trash-linear"
+                      size="S"
+                      tooltip="Delete note"
+                      onClick={() => {
+                        // Log a new "Deleted a Note" audit entry — the
+                        // original "Added a Note" row stays in place so
+                        // both events remain visible in the Activity Log.
+                        logCarePlanAudit?.(patientId, program, {
+                          entityType: 'goal',
+                          entityId: live.id,
+                          action: 'note_deleted',
+                          summary: `Note on ${live.title || 'goal'} deleted`,
+                          detail: latestGoalNote.detail || '',
+                        });
+                        setNote('');
+                        setNotePlain('');
+                        setNoteEditing(true);
+                      }}
+                    />
+                  </span>
+                </div>
+              </section>
+            ) : (
+              <>
+                <section className={barrierStyles.section}>
+                  <div className={barrierStyles.sectionHead}>
+                    <span className={barrierStyles.sectionTitle}>Note</span>
+                  </div>
+                  <Textarea
+                    placeholder="Add a note"
+                    value={note}
+                    onChange={(html, extra) => {
+                      setNote(typeof html === 'string' ? html : '');
+                      setNotePlain(typeof extra === 'string' ? extra : (typeof html === 'string' ? html : ''));
+                    }}
+                    richText
+                    attachment
+                    rows={3}
+                  />
+                </section>
+                {(() => {
+                  const baseline = (latestGoalNote?.detail || '').trim();
+                  const current = (notePlain || note).replace(/<[^>]+>/g, '').trim();
+                  const canSave = current.length > 0 && current !== baseline;
+                  const canDiscard = current !== baseline || noteEditing;
+                  return (
+                    <div className={barrierStyles.noteActions}>
+                      <Button
+                        variant="secondary"
+                        size="M"
+                        disabled={!canDiscard}
+                        onClick={() => {
+                          setNote(baseline);
+                          setNotePlain(baseline);
+                          if (latestGoalNote) setNoteEditing(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="M"
+                        disabled={!canSave}
+                        onClick={submitNote}
+                      >
+                        {latestGoalNote ? 'Update Note' : 'Add Note'}
+                      </Button>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+          </div>
         )}
       </div>
 
@@ -729,78 +951,41 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               icon="custom:filter"
               size="S"
               tooltip="Filter activity"
-              active={activityFilter !== 'all'}
-              onClick={(e) => setFilterMenu(e.currentTarget.getBoundingClientRect())}
+              active={filtersOpen || activityFilter !== 'all'}
+              onClick={() => setFiltersOpen(v => !v)}
             />
           )}
         />
-        <div className={styles.activityList}>
-          {activity.length === 0 ? (
-            <div className={styles.emptyCard}>No activity yet.</div>
-          ) : activity.map((e, i) => (
-            <div key={e.id} className={styles.logRow}>
-              <div className={styles.logRail}>
-                <Avatar type="initial" variant="staff" size="S" initials={initialsOf(e.actor) || '—'} />
-                {i < activity.length - 1 && <span className={styles.logLine} />}
-              </div>
-              <div className={styles.logBody}>
-                <span className={styles.logStamp}>{fmtStamp(e.at)}</span>
-                <p className={styles.logLineText}>
-                  <span className={styles.logActor}>{e.actor || 'Someone'}</span>
-                  <span>{e.verb}</span>
-                  <span className={styles.logField}>{e.field}</span>
-                </p>
-                {e.from && e.to && (
-                  <div className={styles.logChange}>
-                    <Badge tone={e.fromTone || 'grey'} size="S" label={e.from} />
-                    <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-300)" />
-                    <Badge tone={e.toTone || 'grey'} size="S" label={e.to} />
-                  </div>
-                )}
-                {e.comment && editingNoteId !== e.id && (
-                  <p className={styles.logComment}>{e.comment}</p>
-                )}
-                {e.action === 'note' && canEdit && editingNoteId === e.id && (
-                  <div className={styles.noteEdit}>
-                    <Textarea value={noteDraft} onChange={ev => setNoteDraft(ev.target.value)} rows={3} />
-                    <div className={styles.noteEditActions}>
-                      <Button variant="ghost" size="S" onClick={() => setEditingNoteId(null)}>Cancel</Button>
-                      <Button
-                        variant="primary"
-                        size="S"
-                        disabled={!noteDraft.trim()}
-                        onClick={async () => {
-                          await updateCarePlanNote(patientId, program.id, e.id, noteDraft);
-                          setEditingNoteId(null);
-                        }}
-                      >
-                        Save
-                      </Button>
-                    </div>
-                  </div>
-                )}
-                {e.action === 'note' && canEdit && editingNoteId !== e.id && (
-                  <div className={styles.logNoteActions}>
-                    <Button
-                      variant="ghost"
-                      size="S"
-                      onClick={() => { setEditingNoteId(e.id); setNoteDraft(e.comment || ''); }}
-                    >
-                      Edit
-                    </Button>
-                    <span className={styles.logDot}>•</span>
-                    <Button
-                      variant="ghost"
-                      size="S"
-                      onClick={() => setConfirm({ kind: 'note', id: e.id })}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                )}
-              </div>
+        {filtersOpen && (() => {
+          // Toggle the filter chip below the tab strip. Single-select
+          // radio popover; picking a filter narrows the timeline, and
+          // the chip's ✕ clears back to "all activity".
+          const OPTIONS = ACTIVITY_FILTERS.filter(f => f.key !== 'all').map(f => f.label);
+          const keyByLabel = Object.fromEntries(ACTIVITY_FILTERS.map(f => [f.label, f.key]));
+          const activeLabel = ACTIVITY_FILTERS.find(f => f.key === activityFilter)?.label;
+          const selected = activityFilter === 'all' ? [] : (activeLabel ? [activeLabel] : []);
+          return (
+            <div className={styles.activityFilterBar}>
+              <FilterChip
+                label="Activity"
+                popoverLabel="Filter activity"
+                options={OPTIONS}
+                selected={selected}
+                singleSelect
+                size="S"
+                onChange={(next) => {
+                  const pick = Array.isArray(next) ? next[0] : null;
+                  setActivityFilter(pick ? (keyByLabel[pick] || 'all') : 'all');
+                }}
+              />
             </div>
-          ))}
+          );
+        })()}
+        <div className={styles.activityLogPad}>
+          <ActivityLog
+            entries={activity}
+            emptyLabel="No activity yet."
+          />
         </div>
       </div>
 
@@ -822,16 +1007,6 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         />
       )}
 
-      {filterMenu && (
-        <MenuPopover
-          anchorRect={filterMenu}
-          width={180}
-          ariaLabel="Filter activity"
-          items={ACTIVITY_FILTERS.map(f => ({ key: f.key, label: f.label }))}
-          onSelect={(k) => { setActivityFilter(k); setFilterMenu(null); }}
-          onClose={() => setFilterMenu(null)}
-        />
-      )}
 
       {intvOpen && (
         <AddInterventionDrawer

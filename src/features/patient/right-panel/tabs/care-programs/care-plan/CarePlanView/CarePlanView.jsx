@@ -940,7 +940,7 @@ export function CarePlanView({ patientId, program }) {
                         className={styles.viewMoreLink}
                         onClick={() => setTemplateStripExpanded(v => !v)}
                       >
-                        {templateStripExpanded ? 'View Less' : `View All (${appliedTemplateCount})`}
+                        {templateStripExpanded ? 'View Less' : `View More ${Math.max(0, appliedTemplateCount - 1)}`}
                       </button>
                     )}
                   </div>
