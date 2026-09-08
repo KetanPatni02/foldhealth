@@ -31,6 +31,7 @@ function SectionSelectAll({ label, ids, off, setOff }) {
 // a template-based document or share it to the EHR / patient / POA (#8, #13, #40).
 export function CarePlanShareDrawer({ patientId, program, data, patientName, canShare = true, onClose }) {
   const sharePatientCarePlan = useAppStore(s => s.sharePatientCarePlan);
+  const signCarePlan = useAppStore(s => s.signCarePlan);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const showToast = useAppStore(s => s.showToast);
 
@@ -92,11 +93,16 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
       goalIds: selectedGoalIds,
       interventionIds: selectedIntvIds,
     });
+    if (!rec) { setSharing(false); return; }
+    // Sharing is the Sign & Share flow's commit step, so it signs the plan in
+    // the sharer's name. Signing after the share keeps that share inside the
+    // version the signature closes.
+    const version = await signCarePlan(patientId, program, note.trim());
     setSharing(false);
-    if (rec) {
-      showToast(`Care plan shared to ${target}`);
-      onClose();
-    }
+    showToast(version
+      ? `Care plan signed and shared to ${target}`
+      : `Care plan shared to ${target}`);
+    onClose();
   };
 
   const headerRight = (

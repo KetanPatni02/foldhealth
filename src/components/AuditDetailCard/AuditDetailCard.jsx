@@ -13,7 +13,7 @@ import styles from './AuditDetailCard.module.css';
  * @param {Array<string>} [props.header]  Attribution lines, joined with dots.
  * @param {Array} props.sections
  *   { id, title, titleAction: {label, onClick}, caption,
- *     badges: [{label, tone, icon}], change: {from, to}, body }
+ *     badges: [{label, tone, icon, onClick}], change: {from, to}, body }
  * @param {() => void} [props.onOpen]  Renders the corner action when supplied.
  * @param {string} [props.openTooltip]
  */
@@ -47,8 +47,13 @@ export function AuditDetailCard({ header, sections, onOpen, openTooltip = 'Open'
             {(s.caption || s.badges?.length || s.change) && (
               <div className={styles.caption}>
                 {s.caption && <span>{s.caption}</span>}
-                {s.badges?.map((b, bi) => (
-                  <Badge key={bi} tone={b.tone || 'grey'} size="S" icon={b.icon} label={b.label} />
+                {s.badges?.map((b, bi) => (b.onClick
+                  ? (
+                    <button key={bi} type="button" className={styles.badgeButton} onClick={b.onClick}>
+                      <Badge tone={b.tone || 'grey'} size="S" icon={b.icon} label={b.label} />
+                    </button>
+                  )
+                  : <Badge key={bi} tone={b.tone || 'grey'} size="S" icon={b.icon} label={b.label} />
                 ))}
                 {s.change && (
                   <>

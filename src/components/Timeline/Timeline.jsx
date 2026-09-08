@@ -24,22 +24,28 @@ export function Timeline({ entries, currentUserName, renderExtra, emptyLabel = '
     return <div style={{ padding: 16, fontSize: 'var(--font-md)', color: 'var(--neutral-300)' }}>{emptyLabel}</div>;
   }
 
+  const lastGroup = groups.length - 1;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {groups.map(group => (
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {groups.map((group, gi) => (
         <div key={group.label}>
-          <div style={{
-            fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)',
-            marginBottom: 8, paddingLeft: 4,
-          }}>
-            {group.label}
+          {/* The month heading carries its own rail segment so the timeline
+              reads as one line instead of restarting each month. */}
+          <div style={{ display: 'flex', gap: 4, alignItems: 'stretch' }}>
+            <div style={{ width: 24, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: 0.5, flex: 1, background: gi === 0 ? 'transparent' : 'var(--neutral-150)' }} />
+            </div>
+            <div style={{ padding: gi === 0 ? '0 0 8px' : '8px 0' }}>
+              <Badge tone="grey" size="S" label={group.label} />
+            </div>
           </div>
           {group.entries.map((entry, i) => (
             <TimelineEntry
               key={entry.id ?? i}
               entry={entry}
-              isFirst={i === 0}
-              isLast={i === group.entries.length - 1}
+              isFirst={gi === 0 && i === 0}
+              isLast={gi === lastGroup && i === group.entries.length - 1}
               currentUserName={currentUserName}
               renderExtra={renderExtra}
             />
@@ -110,6 +116,7 @@ export function ChangeDisplay({ change }) {
  *   - action      (string)  — key into ACTION_CONFIG (created/updated/etc.).
  *   - icon, iconBg, iconBorder, iconColor   — per-entry overrides
  *   - avatar      (node)    — rail node rendered in place of the icon tile
+ *   - railBelow   (bool)    — keep the rail running below a last entry
  *   - details     (string)  — primary description line
  *   - category    (string)  — muted subtitle line
  *   - changes     (array)   — structured field diffs (Domain Registry)
@@ -135,7 +142,14 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
             <Icon name={icon} size={14} color={iconColor} />
           </div>
         )}
-        <div style={{ width: 0.5, flex: 1, minHeight: 12, background: isLast ? 'transparent' : 'var(--neutral-150)' }} />
+        <div style={{
+          width: 0.5,
+          flex: 1,
+          minHeight: 12,
+          // The tail is dropped after the last entry so nothing dangles, unless
+          // the entry opted in — an expanded card needs the rail beside it.
+          background: isLast && !entry.railBelow ? 'transparent' : 'var(--neutral-150)',
+        }} />
       </div>
 
       <div style={{ flex: 1, background: 'var(--neutral-0)', borderRadius: 8, padding: '6px 4px 12px 4px' }}>

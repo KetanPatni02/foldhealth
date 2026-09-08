@@ -2,6 +2,7 @@ import { forwardRef, isValidElement, useCallback, useEffect, useId, useRef, useS
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { CalendarIcon } from '../Icon/CalendarIcon';
+import { CloseIcon } from '../Icon/CloseIcon';
 import { Button } from '../Button/Button';
 import { DatePickerPopover } from '../DatePicker/DatePickerPopover';
 import styles from './Input.module.css';
@@ -258,9 +259,14 @@ export const Input = forwardRef(function Input(
   const chevronDir = chevron === 'up' ? 'up' : (chevron ? 'down' : null);
   const trailingActionActive = Boolean(trailingAction);
   const showTrailingButton = Boolean(trailingButton);
+  // Search fields clear through our own close glyph; the native WebKit cross
+  // is hidden in CSS because it ignores the design system entirely.
+  const showSearchClear = type === 'search' && !props.disabled && !props.readOnly
+    && String(value ?? '').length > 0;
   const hasTrailing = Boolean(trailingText) || chevronDir || trailingActionActive
     || showTrailingButton || characterLimit != null
     || (type === 'password' && showPasswordToggle)
+    || showSearchClear
     || showPickerIcon;
   const usesShell = hasLeading || hasTrailing;
 
@@ -371,6 +377,21 @@ export const Input = forwardRef(function Input(
 
   const trailing = hasTrailing ? (
     <>
+      {showSearchClear && (
+        <button
+          type="button"
+          className={styles.trailingAction}
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            onChange?.({ target: { value: '' }, currentTarget: { value: '' } });
+            localInputRef.current?.focus();
+          }}
+          tabIndex={-1}
+          aria-label="Clear search"
+        >
+          <CloseIcon size={16} color="var(--neutral-300)" />
+        </button>
+      )}
       {type === 'password' && showPasswordToggle && (
         <button
           type="button"
