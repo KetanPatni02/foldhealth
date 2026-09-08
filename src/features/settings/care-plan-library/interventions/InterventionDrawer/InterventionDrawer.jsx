@@ -13,7 +13,6 @@ import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIco
 import { VITAL_OPTIONS } from '../../lib/vitalOptions';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { InterventionKindToggle } from '../shared/InterventionKindToggle';
-import { KIND_LABELS } from '../shared/interventionKinds';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../../components/Icon/Icon';
 import { ActivityLog } from '../../../../../components/ActivityLog/ActivityLog';
@@ -327,8 +326,9 @@ export function InterventionDrawer({
     </div>
   );
 
-  const heading = titleOverride
-    || (intervention ? `Edit Intervention - ${KIND_LABELS[kind]}` : KIND_LABELS[kind]);
+  // The type toggle lives inside the drawer, so the heading stays put while
+  // you switch kinds rather than renaming itself on every click.
+  const heading = titleOverride || (intervention ? 'Edit Intervention' : 'Add Intervention');
 
   return (
     <Drawer title={heading} onClose={onClose} headerRight={headerRight} noCloseDivider>

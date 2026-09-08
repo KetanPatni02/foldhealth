@@ -16,6 +16,7 @@ import { FilterChip } from '../../../../../../../components/FilterChip/FilterChi
 import { useAppStore } from '../../../../../../../store/useAppStore';
 import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
 import { AddBarriersDrawer } from '../../../../../../settings/care-plan-library/barriers/AddBarriersDrawer/AddBarriersDrawer';
+import { BarrierDrawer } from '../../../../../../settings/care-plan-library/barriers/BarrierDrawer/BarrierDrawer';
 import { BarrierDetailDrawer } from '../drawers/BarrierDetailDrawer/BarrierDetailDrawer';
 import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
 import { INTERVENTION_EDITORS } from '../../../../../../settings/care-plan-library/interventions';
@@ -1467,33 +1468,16 @@ export function CarePlanView({ patientId, program }) {
       )}
 
       {barrierDrawer?.barrier && (
-        <Drawer
-          title="Edit Barrier"
+        <BarrierDrawer
+          barrier={barrierDrawer.barrier}
           onClose={() => setBarrierDrawer(null)}
-          noCloseDivider
-          headerRight={<span className={styles.headerDivider} />}
-          primaryAction={<Button variant="primary" size="L" onClick={() => {
-            const titleEl = document.getElementById('barrier-title-input');
-            const descEl = document.getElementById('barrier-desc-input');
-            const title = titleEl ? titleEl.value.trim() : '';
-            const description = descEl ? descEl.value.trim() : '';
-            if (!title) { showToast('Barrier title is required'); return; }
-            handleAddBarrier({ title, description, status: barrierDrawer.barrier?.status || 'Not Started', priority: barrierDrawer.barrier?.priority || 'medium' });
-          }}>Save</Button>}
-          secondaryAction={<Button variant="secondary" size="L" onClick={() => setBarrierDrawer(null)}>Cancel</Button>}
-        >
-          <div className={styles.drawerBody}>
-            <p className={styles.drawerHint}>Capture what blocks this patient — it will be tracked per plan and appear in the audit history.</p>
-            <div className={styles.drawerField}>
-              <span className={styles.drawerLabel}>Title <span className={styles.required}>*</span></span>
-              <Input id="barrier-title-input" defaultValue={barrierDrawer.barrier?.title || ''} placeholder="e.g. Transportation — no ride to clinic" aria-label="Barrier title" />
-            </div>
-            <div className={styles.drawerField}>
-              <span className={styles.drawerLabel}>Description</span>
-              <Textarea id="barrier-desc-input" defaultValue={barrierDrawer.barrier?.description || ''} placeholder="Add details about this barrier" rows={3} />
-            </div>
-          </div>
-        </Drawer>
+          onSave={({ title, description }) => handleAddBarrier({
+            title,
+            description,
+            status: barrierDrawer.barrier?.status || 'Not Started',
+            priority: barrierDrawer.barrier?.priority || 'medium',
+          })}
+        />
       )}
 
       {conditionsViewOpen && (

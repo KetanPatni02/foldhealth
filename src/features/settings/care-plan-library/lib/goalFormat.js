@@ -1,3 +1,5 @@
+import { normalizeCategory } from './goalCategories.js';
+
 /* Measure shapes + the formatters the library table renders them with. */
 export const MEASURE_CONFIG = {
   'Blood Pressure': { dual: true, units: ['mmHg', 'mmHg'], placeholders: ['Systolic BP', 'Diastolic BP'], separator: '/' },
@@ -24,6 +26,14 @@ export const MEASURE_CONFIG = {
   Basketball: { unit: 'minutes' },
   Biking: { unit: 'minutes' },
   Spinning: { unit: 'minutes' },
+  // The Exercise picker's remaining activities have no unit of their own, so
+  // they take minutes, except Walking which is counted in steps.
+  'Strength Training': { unit: 'minutes' },
+  Cycling: { unit: 'minutes' },
+  Swimming: { unit: 'minutes' },
+  Yoga: { unit: 'minutes' },
+  Walking: { unit: 'steps' },
+  Running: { unit: 'minutes' },
 
   // Lab results — units so a saved lab target renders as "< 7 %".
   'Hemoglobin A1c': { unit: '%' },
@@ -41,11 +51,28 @@ export const MEASURE_CONFIG = {
  * Renders a saved goal's target as "< 140 mg/dl" (or "120 / 80 mmHg" for the
  * dual-part measures). Exported so the library table shows what was entered.
  */
+// Stored dates are ISO (YYYY-MM-DD); the app shows MM/DD/YYYY everywhere.
+function formatDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+}
+
 export function formatGoalTarget(g) {
-  if (!g || g.setTarget === false || !g.targetValue) return '';
+  if (!g) return '';
+  // An assessment has no target value — the date the instrument should be
+  // completed by is the target, so it reads as a sentence.
+  if (normalizeCategory(g.category) === 'Assessment') {
+    return g.targetDate ? `Complete assessment by ${formatDate(g.targetDate)}` : '';
+  }
+  if (g.setTarget === false || !g.targetValue) return '';
   const cfg = MEASURE_CONFIG[g.measure] || {};
   const isRange = g.comparator === 'between';
-  const unit = g.category === 'Other' ? g.customUnit : (cfg.dual ? cfg.units?.[1] : cfg.unit);
+  // The category enum was renamed ('Other' → 'Others') — normalise so a
+  // free-form goal still picks up its typed unit instead of dropping it.
+  const isOther = normalizeCategory(g.category) === 'Others';
+  const unit = isOther ? g.customUnit : (cfg.dual ? cfg.units?.[1] : cfg.unit);
   const parts = [];
   if (!isRange && g.comparator && g.comparator !== '=') parts.push(g.comparator);
   if (cfg.dual || isRange) {

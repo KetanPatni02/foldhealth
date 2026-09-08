@@ -21,11 +21,9 @@
 .tdCheck,
 .tdName,
 .tdConditions,
-.tdDescription,
 .tdCount,
 .tdUpdated,
 .tdType,
-.tdLinked,
 .tdMuted,
 .tdActions {
   /* Horizontal padding matches WorklistShell's <th> (--space-3, and
@@ -92,11 +90,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.chipRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
 }
 .tdMuted {
   white-space: nowrap;
@@ -308,4 +301,19 @@
   .tdCheck > * {
     transition: none;
   }
+}
+
+/* Measured, not assumed: the table's left edge sits 20px left of the "Plan
+   Template" label (tab strip pads 16px, the tab item another 4px). The first
+   cell takes that 20px so its text — or its checkbox — starts on the same
+   vertical line as the tab. */
+.firstCol {
+  padding-left: var(--space-5);
+}
+
+/* WorklistShell renders the select-all header through its own branch, which
+   ignores a column's thStyle — so the header checkbox needs the 20px inset
+   applied here to land on the same line as the row checkboxes. */
+.bulkOn :global(thead th:first-child) {
+  padding-left: var(--space-5);
 }

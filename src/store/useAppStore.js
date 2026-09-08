@@ -366,23 +366,142 @@ function carePlanKey(patientId, programId) {
 // previous state — a create, a status change, a progress change, a rename,
 // or a generic edit. Progress is its own action so the Goal Details activity
 // feed can render the "changed the Progress" row with from → to badges.
+// A template's contents as they sit on the plan. There is no template_id on
+// goal / intervention / barrier rows, so the link back is the title, exactly
+// as the applied-templates strip resolves it.
+function templateContents(template, slice, libraryGoals) {
+  const norm = v => (v || '').trim().toLowerCase();
+  const titlesOf = (list, isGoal) => new Set((list || []).map(e => {
+    if (isGoal && e?.id) {
+      const lib = (libraryGoals || []).find(g => g.id === e.id);
+      if (lib?.title) return norm(lib.title);
+    }
+    return norm(e?.title || '');
+  }).filter(Boolean));
+  const goalTitles = titlesOf(template.goals, true);
+  const goals = (slice?.goals || []).filter(g => goalTitles.has(norm(g.title)));
+  const goalIds = new Set(goals.map(g => g.id));
+  const intvTitles = titlesOf(template.interventions);
+  const barrierTitles = titlesOf(template.barriers);
+  return {
+    goals: goals.map(g => g.title),
+    // Interventions match on title only, as the strip does; a later
+    // intervention hung off a template goal is not the template's.
+    interventions: (slice?.interventions || [])
+      .filter(i => intvTitles.has(norm(i.title)))
+      .map(i => i.title),
+    barriers: (slice?.barriers || [])
+      .filter(b => barrierTitles.has(norm(b.title))
+        || (b.goalIds || []).some(id => goalIds.has(id))
+        || goalIds.has(b.goalId))
+      .map(b => b.title),
+  };
+}
+
+// Templates recorded by earlier signatures, replayed oldest-first so the set
+// reflects what the previous version carried.
+function templatesAtLastSignature(auditEntries) {
+  const ids = new Set();
+  for (const e of [...(auditEntries || [])].reverse()) {
+    if (e.entityType !== 'template') continue;
+    if (e.action === 'created') ids.add(String(e.entityId));
+    else if (e.action === 'deleted') ids.delete(String(e.entityId));
+  }
+  return ids;
+}
+
+// Fields that earn their own history line, beyond the status / progress /
+// title cases handled below. Each one records a `from → to` detail so the
+// History drawer can render the change instead of a bare "Edited".
+const capitalize = v => (v ? String(v).charAt(0).toUpperCase() + String(v).slice(1) : '');
+const AUDIT_FIELDS = {
+  common: [
+    { action: 'priority_changed', read: e => e.priority, format: capitalize },
+  ],
+  goal: [
+    { action: 'category_changed', read: g => g.category },
+    { action: 'measure_changed', read: g => g.measure },
+    { action: 'target_changed', read: g => [g.comparator, g.targetValue, g.targetValue2].filter(Boolean).join(' ') },
+    { action: 'target_date_changed', read: g => g.targetDate },
+    { action: 'duration_changed', read: g => [g.duration, g.durationUnit].filter(Boolean).join(' ') },
+    { action: 'frequency_changed', read: g => g.frequency },
+    { action: 'conditions_changed', read: g => (g.conditions || []).join(', ') },
+  ],
+  intervention: [
+    { action: 'type_changed', read: i => i.kind },
+    { action: 'duration_changed', read: i => i.duration },
+    { action: 'assignee_changed', read: i => i.assignee?.name },
+    { action: 'goal_link_changed', read: i => i.goalId },
+  ],
+  barrier: [
+    { action: 'description_changed', read: b => b.description },
+    { action: 'goal_link_changed', read: b => (b.goalIds || []).join(', ') },
+  ],
+};
+
+// An intervention's kind-specific settings live in a free-form `config` blob,
+// so it is diffed key by key. The detail is written as "Label: from → to";
+// History reads that label as the caption.
+const CONFIG_LABEL = {
+  form: 'Form', content: 'Content', vital: 'Vital', note: 'Note',
+  description: 'Description', creationTiming: 'Task Creation',
+  creationCount: 'Creation Count', creationTrigger: 'Creation Trigger',
+  dueOffset: 'Due Offset', dueUnit: 'Due Unit', durationType: 'Duration Type',
+  repeat: 'Repeat', repeatCount: 'Repeat Count', repeatEvery: 'Repeats Every',
+  repeatEveryUnit: 'Repeat Unit', repeatEnds: 'Repeat Ends',
+  repeatEndsUnit: 'Repeat Ends Unit', memberTaskTitle: 'Member Task Title',
+  startDate: 'Start Date', endDate: 'End Date',
+};
+function configValue(v) {
+  if (v == null || v === '') return '';
+  if (Array.isArray(v)) return v.join(', ');
+  if (typeof v === 'object') return JSON.stringify(v);
+  if (typeof v === 'boolean') return v ? 'On' : 'Off';
+  return String(v);
+}
+function configChanges(base, prevConfig, nextConfig) {
+  const a = prevConfig || {};
+  const b = nextConfig || {};
+  return [...new Set([...Object.keys(a), ...Object.keys(b)])]
+    .filter(k => CONFIG_LABEL[k] && configValue(a[k]) !== configValue(b[k]))
+    .map(k => ({
+      ...base,
+      action: 'updated',
+      detail: `${CONFIG_LABEL[k]}: ${configValue(a[k]) || '—'} → ${configValue(b[k]) || '—'}`,
+    }));
+}
+
+// Returns every change a save made, so editing two fields writes two rows
+// rather than collapsing to whichever the cascade checked first.
 function auditForSave(entityType, next, prev) {
   if (!prev) return { entityType, entityId: next.id, action: 'created', summary: next.title };
+  const base = { entityType, entityId: next.id, summary: next.title };
+  const changes = [];
   if (prev.status !== next.status) {
-    return { entityType, entityId: next.id, action: 'status_changed', summary: next.title, detail: `${prev.status} → ${next.status}` };
+    changes.push({ ...base, action: 'status_changed', detail: `${prev.status} → ${next.status}` });
   }
   if ((prev.progress ?? 0) !== (next.progress ?? 0)) {
-    return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${goalProgressAuditDetail(prev.progress)} → ${goalProgressAuditDetail(next.progress)}` };
+    changes.push({ ...base, action: 'progress_changed', detail: `${goalProgressAuditDetail(prev.progress)} → ${goalProgressAuditDetail(next.progress)}` });
   }
   if (entityType === 'intervention' && String(prev.adherence ?? '-') !== String(next.adherence ?? '-')) {
     const from = Number(prev.adherence) || 0;
     const to = Number(next.adherence) || 0;
-    return { entityType, entityId: next.id, action: 'progress_changed', summary: next.title, detail: `${goalProgressAuditDetail(from)} → ${goalProgressAuditDetail(to)}` };
+    changes.push({ ...base, action: 'progress_changed', detail: `${goalProgressAuditDetail(from)} → ${goalProgressAuditDetail(to)}` });
   }
   if (prev.title !== next.title) {
-    return { entityType, entityId: next.id, action: 'updated', summary: next.title, detail: `Renamed from "${prev.title}"` };
+    changes.push({ ...base, action: 'updated', detail: `Renamed from "${prev.title}"` });
   }
-  return { entityType, entityId: next.id, action: 'updated', summary: next.title };
+  for (const field of [...AUDIT_FIELDS.common, ...(AUDIT_FIELDS[entityType] || [])]) {
+    const from = field.read(prev) ?? '';
+    const to = field.read(next) ?? '';
+    if (String(from) === String(to)) continue;
+    const fmt = field.format || (v => String(v ?? ''));
+    changes.push({ ...base, action: field.action, detail: `${fmt(from) || '—'} → ${fmt(to) || '—'}` });
+  }
+  changes.push(...configChanges(base, prev.config, next.config));
+  // A save that changed nothing we can name leaves no history line: an
+  // "Edited" row with no detail tells the reader nothing.
+  return changes;
 }
 
 function mapCarePlanAuditRow(row) {
@@ -3433,28 +3552,36 @@ export const useAppStore = create((set, get) => ({
   patientCarePlanAudit: {},        // { [key]: entries[] }
   patientCarePlanAuditLoading: {}, // { [key]: bool }
 
-  logCarePlanAudit: (patientId, program, entry) => {
-    if (!patientId || !program?.id) return;
-    supabase.from('care_plan_audit').insert({
+  // Accepts one entry or a list — a save that touched several fields logs a
+  // row per field so History can show each change on its own line. Awaitable,
+  // so a caller that needs its rows ordered (sign-off) can sequence them;
+  // callers that don't care stay fire-and-forget.
+  logCarePlanAudit: async (patientId, program, entry) => {
+    if (!patientId || !program?.id || !entry) return false;
+    const list = (Array.isArray(entry) ? entry : [entry]).filter(Boolean);
+    if (list.length === 0) return false;
+    const actor = get().currentUserProfile?.name || null;
+    return supabase.from('care_plan_audit').insert(list.map(e => ({
       patient_id: patientId,
       program_id: program.id,
       program_code: program.code || null,
-      entity_type: entry.entityType,
-      entity_id: entry.entityId != null ? String(entry.entityId) : null,
-      action: entry.action,
-      summary: entry.summary || '',
-      detail: entry.detail || '',
-      actor: get().currentUserProfile?.name || null,
-    }).select().single().then(({ data, error }) => {
-      if (error) { console.warn('logCarePlanAudit:', error.message); return; }
+      entity_type: e.entityType,
+      entity_id: e.entityId != null ? String(e.entityId) : null,
+      action: e.action,
+      summary: e.summary || '',
+      detail: e.detail || '',
+      actor,
+    }))).select().then(({ data, error }) => {
+      if (error) { console.warn('logCarePlanAudit:', error.message); return false; }
       const key = carePlanKey(patientId, program.id);
-      const mapped = mapCarePlanAuditRow(data);
+      const mapped = (data || []).map(mapCarePlanAuditRow).reverse();
       set(s => ({
         patientCarePlanAudit: {
           ...s.patientCarePlanAudit,
-          [key]: [mapped, ...(s.patientCarePlanAudit[key] || [])],
+          [key]: [...mapped, ...(s.patientCarePlanAudit[key] || [])],
         },
       }));
+      return true;
     });
   },
 
@@ -3542,10 +3669,43 @@ export const useAppStore = create((set, get) => ({
       const c = s.patientCarePlans[key];
       return c ? { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, plan: { ...c.plan, signedBy: name, signedAt, updatedAt: signedAt } } } } : {};
     });
-    get().logCarePlanAudit(patientId, program, {
+    // Signing is what cuts a version, so the templates this version carries are
+    // recorded here — added ones with the goals / interventions / barriers
+    // sitting under them, removed ones by name. Logged before the signature so
+    // History reads them as part of the version that signature closes.
+    const slice = get().patientCarePlans[key];
+    const appliedIds = (slice?.plan?.appliedTemplateIds || []).map(String);
+    const previousIds = templatesAtLastSignature(get().patientCarePlanAudit[key]);
+    const templates = get().carePlanTemplates || [];
+    const libraryGoals = get().carePlanGoals || [];
+    const templateRows = [];
+    for (const id of appliedIds) {
+      if (previousIds.has(id)) continue;
+      const template = templates.find(t => String(t.id) === id);
+      if (!template) continue;
+      templateRows.push({
+        entityType: 'template', entityId: id, action: 'created',
+        summary: template.name,
+        detail: JSON.stringify(templateContents(template, slice, libraryGoals)),
+      });
+    }
+    for (const id of previousIds) {
+      if (appliedIds.includes(id)) continue;
+      const template = templates.find(t => String(t.id) === id);
+      templateRows.push({
+        entityType: 'template', entityId: id, action: 'deleted',
+        summary: template?.name || 'Template', detail: '',
+      });
+    }
+    if (templateRows.length) await get().logCarePlanAudit(patientId, program, templateRows);
+
+    const logged = await get().logCarePlanAudit(patientId, program, {
       entityType: 'plan', action: 'signed',
       summary: `Signed${versionNumber ? ` (v${versionNumber})` : ''}`, detail: note,
     });
+    // The plan is signed either way, but History is built from this row, so a
+    // failure here would silently lose the version.
+    if (!logged) get().showToast('Signed, but the history entry could not be recorded');
     return versionNumber;
   },
 
