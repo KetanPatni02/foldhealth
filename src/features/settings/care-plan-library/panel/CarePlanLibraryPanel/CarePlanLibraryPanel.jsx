@@ -20,6 +20,8 @@ import { INTERVENTION_EDITORS } from '../../interventions';
 import { toast } from '../../../../../components/Toast/sonnerToast';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
+import { AddBarriersDrawer } from '../../barriers/AddBarriersDrawer/AddBarriersDrawer';
+import { BarrierDrawer } from '../../barriers/BarrierDrawer/BarrierDrawer';
 import { CreateGoalDrawer } from '../../goals/CreateGoalDrawer/CreateGoalDrawer';
 import { formatGoalTarget, formatGoalDuration } from '../../lib/goalFormat';
 import styles from './CarePlanLibraryPanel.module.css';
@@ -61,7 +63,7 @@ function formatRelative(iso) {
   if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(iso).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 }
 
 // Matches Figma's "MM/DD/YYYY | hh:mm AM/PM" cell format for Created On /
@@ -78,7 +80,6 @@ function StampCell({ name, children }) {
 }
 
 // Titles across the library share one ceiling.
-const TITLE_MAX = 150;
 
 function formatDateTime(iso) {
   if (!iso) return '—';
@@ -92,6 +93,9 @@ function formatDateTime(iso) {
 // Created On, Last Update, Actions. Sortable columns get a `sortKey`/
 // `sortType` so WorklistShell's HeaderCell renders the sort arrows.
 const SELECT_COLUMN = { key: 'select', label: '', showCheckbox: true, width: 44, sticky: 'left', left: 0 };
+// Matches the tab strip's 16px inset so the first column starts under
+// "Plan Template" — the checkbox takes it in bulk mode, the name otherwise.
+const FIRST_COL_TH = { paddingLeft: 'var(--space-5)' };
 const SELECT_COLUMN_COLLAPSED_TH = {
   width: 0,
   paddingLeft: 0,
@@ -125,30 +129,25 @@ const GOAL_COLUMNS = [
    column clear of it. */
 const withSelect = (columns, bulkMode) => [
   (bulkMode
-    ? { ...SELECT_COLUMN, thStyle: SELECT_COLUMN_TH }
+    ? { ...SELECT_COLUMN, thStyle: { ...SELECT_COLUMN_TH, ...FIRST_COL_TH } }
     : { key: SELECT_COLUMN.key, label: '', width: 0, sticky: 'left', left: 0, thStyle: SELECT_COLUMN_COLLAPSED_TH }),
-  ...columns.map(c => (c.sticky === 'left' && c.left === 0
-    ? { ...c, left: bulkMode ? 44 : 0 }
-    : c)),
+  ...columns.map((c, i) => {
+    const next = c.sticky === 'left' && c.left === 0 ? { ...c, left: bulkMode ? 44 : 0 } : { ...c };
+    if (i === 0 && !bulkMode) next.thStyle = { ...(c.thStyle || {}), ...FIRST_COL_TH };
+    return next;
+  }),
 ];
-
-// Linked Items is a single total — the per-kind breakdown isn't surfaced here.
-const linkedCount = (item) => (item.interventions || []).length
-  + Object.values(item.linked || {}).reduce((n, v) => n + (v || 0), 0);
 
 const SIMPLE_COLUMNS = [
   { key: 'title', label: 'Title', sticky: 'left', left: 0, width: 260 },
-  { key: 'description', label: 'Description', width: 360 },
-  { key: 'linked', label: 'Linked Items', width: 140 },
   { key: 'createdOn', label: 'Created On', width: 220 },
-  { key: 'updated', label: 'Last Updated', width: 130 },
+  { key: 'updated', label: 'Last Updated', width: 220 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 100 },
 ];
 
 const INTERVENTION_COLUMNS = [
   { key: 'title', label: 'Intervention Title', sticky: 'left', left: 0, width: 280 },
   { key: 'type', label: 'Type', width: 160 },
-  { key: 'description', label: 'Description', width: 340 },
   { key: 'createdOn', label: 'Created On', width: 220 },
   { key: 'updated', label: 'Last Updated', width: 130 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 100 },
@@ -288,6 +287,7 @@ export function CarePlanLibraryPanel() {
   const [selectedGoalIds, setSelectedGoalIds] = useState([]);
   const [selectedTemplateIds, setSelectedTemplateIds] = useState([]);
   const [selectedBarrierIds, setSelectedBarrierIds] = useState([]);
+  const [selectedInterventionIds, setSelectedInterventionIds] = useState([]);
   // Bulk mode is per-tab in intent: leaving a tab drops both the mode and
   // whatever was ticked, so a stale selection can't act on another list.
   const [bulkMode, setBulkMode] = useState(false);
@@ -296,10 +296,12 @@ export function CarePlanLibraryPanel() {
     setSelectedGoalIds([]);
     setSelectedTemplateIds([]);
     setSelectedBarrierIds([]);
+    setSelectedInterventionIds([]);
   };
   const toggleIn = (setList) => (id) => setList(prev => (
     prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
-  const checkTdClass = `${styles.tdCheck} ${bulkMode ? '' : styles.tdCheckCollapsed}`;
+  const checkTdClass = `${styles.tdCheck} ${bulkMode ? styles.firstCol : styles.tdCheckCollapsed}`;
+  const nameTdClass = `${styles.tdName} ${bulkMode ? '' : styles.firstCol}`;
   const [goalPage, setGoalPage] = useState(1);
   const [goalPerPage, setGoalPerPage] = useState(10);
 
@@ -353,44 +355,6 @@ export function CarePlanLibraryPanel() {
     description: item.description, interventionKind: item.kind,
   });
 
-  const canSave = draft && (draft.kind === 'template'
-    ? draft.name.trim().length > 0
-    : (draft.title || '').trim().length > 0);
-
-  const saveDraft = async () => {
-    if (!canSave) return;
-    if (draft.kind === 'template') {
-      const conditions = draft.conditionsText.split(',').map(c => c.trim()).filter(Boolean);
-      const saved = await saveCarePlanTemplate(
-        {
-          name: draft.name.trim(),
-          conditions,
-          goals: draft.goals,
-          interventions: draft.interventions,
-          barriers: draft.barriers,
-        },
-        draft.id,
-      );
-      if (!saved) return;
-      toast.success(`"${draft.name.trim()}" ${draft.id ? 'updated' : 'created'}`);
-    } else if (draft.kind === 'intervention') {
-      const saved = await saveCarePlanInterventionTemplate(
-        { title: draft.title.trim(), description: draft.description.trim(), kind: draft.interventionKind },
-        draft.id,
-      );
-      if (!saved) return;
-      toast.success(`"${draft.title.trim()}" ${draft.id ? 'updated' : 'created'}`);
-    } else {
-      const saved = await saveCarePlanBarrier(
-        { title: draft.title.trim(), description: draft.description.trim() },
-        draft.id,
-      );
-      if (!saved) return;
-      toast.success(`"${draft.title.trim()}" ${draft.id ? 'updated' : 'created'}`);
-    }
-    closeDrawer();
-  };
-
   const confirmDelete = () => {
     const { kind, id, name } = deleteTarget;
     if (kind === 'template') deleteCarePlanTemplate(id);
@@ -422,19 +386,21 @@ export function CarePlanLibraryPanel() {
   const renderTemplateRow = (t) => (
     <tr key={t.id} className={styles.row}>
       <td className={checkTdClass} onClick={e => e.stopPropagation()}>
-        <Checkbox
+        {bulkMode && (
+          <Checkbox
           checked={selectedTemplateIds.includes(t.id)}
           onCheckedChange={() => toggleIn(setSelectedTemplateIds)(t.id)}
           aria-label={`Select ${t.name}`}
-        />
+          />
+        )}
       </td>
-      <td className={`${styles.tdName} ${bulkMode ? styles.tdNameOffset : ''}`}>
+      <td className={`${nameTdClass} ${bulkMode ? styles.tdNameOffset : ''}`}>
         <button type="button" className={styles.nameLink} onClick={() => openEditTemplate(t)}>{t.name}</button>
       </td>
       <td className={styles.tdConditions}>
-        <div className={styles.chipRow}>
-          {t.conditions.map(c => <Badge key={c} tone="grey" size="S" label={c} />)}
-        </div>
+        {(t.conditions || []).length
+          ? <BadgeRow items={t.conditions} maxLines={2} />
+          : '—'}
       </td>
       <td className={styles.tdUpdated}><StampCell name={t.createdBy}>{formatDateTime(t.createdAt)}</StampCell></td>
       <td className={styles.tdUpdated}><StampCell name={t.updatedBy}>{formatDateTime(t.updatedAt)}</StampCell></td>
@@ -465,16 +431,18 @@ export function CarePlanLibraryPanel() {
   const renderGoalRow = (g) => (
     <tr key={g.id} className={styles.row}>
       <td className={checkTdClass} onClick={e => e.stopPropagation()}>
-        <Checkbox
+        {bulkMode && (
+          <Checkbox
           checked={selectedGoalIds.includes(g.id)}
           onCheckedChange={() => toggleGoal(g.id)}
           aria-label={`Select ${g.title}`}
-        />
+          />
+        )}
       </td>
-      <td className={`${styles.tdName} ${bulkMode ? styles.tdNameOffset : ''}`}>
+      <td className={`${nameTdClass} ${bulkMode ? styles.tdNameOffset : ''}`}>
         <span className={styles.nameCell}>
           <button type="button" className={styles.nameLink} onClick={() => openEditSimple('goal', g)}>{g.title}</button>
-          {formatGoalTarget(g) ? <span className={styles.nameSub}>{formatGoalTarget(g)}</span> : null}
+          <span className={styles.nameSub}>{formatGoalTarget(g) || 'No target value'}</span>
         </span>
       </td>
       <td className={styles.tdType}>
@@ -502,18 +470,16 @@ export function CarePlanLibraryPanel() {
   const renderSimpleRow = (kind) => (item) => (
     <tr key={item.id} className={styles.row}>
       <td className={checkTdClass} onClick={e => e.stopPropagation()}>
-        <Checkbox
+        {bulkMode && (
+          <Checkbox
           checked={selectedBarrierIds.includes(item.id)}
           onCheckedChange={() => toggleIn(setSelectedBarrierIds)(item.id)}
           aria-label={`Select ${item.title}`}
-        />
+          />
+        )}
       </td>
-      <td className={styles.tdName}>
+      <td className={nameTdClass}>
         <button type="button" className={styles.nameLink} onClick={() => openEditSimple(kind, item)}>{item.title}</button>
-      </td>
-      <td className={styles.tdDescription}>{item.description || '—'}</td>
-      <td className={styles.tdLinked}>
-        <Badge tone="grey" size="S" label={String(linkedCount(item))} />
       </td>
       <td className={styles.tdMuted}><StampCell name={item.createdBy}>{formatDateTime(item.createdAt)}</StampCell></td>
       <td className={styles.tdUpdated}><StampCell name={item.updatedBy}>{formatRelative(item.updatedAt)}</StampCell></td>
@@ -529,13 +495,21 @@ export function CarePlanLibraryPanel() {
 
   const renderInterventionRow = (item) => (
     <tr key={item.id} className={styles.row}>
-      <td className={styles.tdName}>
+      <td className={checkTdClass} onClick={e => e.stopPropagation()}>
+        {bulkMode && (
+          <Checkbox
+          checked={selectedInterventionIds.includes(item.id)}
+          onCheckedChange={() => toggleIn(setSelectedInterventionIds)(item.id)}
+          aria-label={`Select ${item.title}`}
+          />
+        )}
+      </td>
+      <td className={nameTdClass}>
         <button type="button" className={styles.nameLink} onClick={() => openEditIntervention(item)}>{item.title}</button>
       </td>
       <td className={styles.tdType}>
         <Badge tone="grey" size="S" label={kindLabel(item.kind)} />
       </td>
-      <td className={styles.tdDescription}>{item.description || '—'}</td>
       <td className={styles.tdMuted}><StampCell name={item.createdBy}>{formatDateTime(item.createdAt)}</StampCell></td>
       <td className={styles.tdUpdated}><StampCell name={item.updatedBy}>{formatRelative(item.updatedAt)}</StampCell></td>
       <td className={styles.tdActions} onClick={e => e.stopPropagation()}>
@@ -583,7 +557,7 @@ export function CarePlanLibraryPanel() {
         )}
       />
 
-      <div className={styles.content}>
+      <div className={`${styles.content} ${bulkMode ? styles.bulkOn : ''}`}>
         {libraryLoading && !libraryDidFetch && <TableSkeleton rows={6} />}
 
         {!(libraryLoading && !libraryDidFetch) && activeTab === 'template' && (
@@ -644,16 +618,21 @@ export function CarePlanLibraryPanel() {
           interventionTemplates.length === 0 ? emptyPane('No Interventions Added') : (
           <WorklistShell
             header={null}
-            columns={INTERVENTION_COLUMNS}
+            columns={withSelect(INTERVENTION_COLUMNS, bulkMode)}
             rows={filteredInterventions}
             renderRow={renderInterventionRow}
+            selectedIds={bulkMode ? selectedInterventionIds : undefined}
+            onSelectAll={bulkMode ? () => setSelectedInterventionIds(
+              selectedInterventionIds.length === filteredInterventions.length
+                ? [] : filteredInterventions.map(i => i.id),
+            ) : undefined}
             emptyState={
               <div className={styles.emptyState}>
                 <Icon name={meta.emptyIcon} size={32} color="var(--neutral-150)" />
                 <p>No interventions match "<strong>{searchValue.trim()}</strong>".</p>
               </div>
             }
-            minTableWidth={1130}
+            minTableWidth={790}
           />
           )
         )}
@@ -674,7 +653,7 @@ export function CarePlanLibraryPanel() {
                 <p>No barriers match "<strong>{searchValue.trim()}</strong>".</p>
               </div>
             }
-            minTableWidth={1210}
+            minTableWidth={800}
           />
           )
         )}
@@ -693,32 +672,37 @@ export function CarePlanLibraryPanel() {
         />
       )}
 
-      {draft && draft.kind === 'barrier' && (
-        <Drawer
-          title={draft.id ? `Edit ${draft.kind === 'goal' ? 'Goal' : 'Barrier'}` : `New ${draft.kind === 'goal' ? 'Goal' : 'Barrier'}`}
+      {/* Editing one barrier is a form; adding is the shared picker, which
+          searches the library first so a new barrier is only created when
+          nothing already covers it. */}
+      {draft && draft.kind === 'barrier' && draft.id && (
+        <BarrierDrawer
+          barrier={draft}
           onClose={closeDrawer}
-          secondaryAction={<Button variant="secondary" size="L" onClick={closeDrawer}>Cancel</Button>}
-          primaryAction={<Button variant="primary" size="L" onClick={saveDraft} disabled={!canSave}>Save</Button>}
-        >
-          <div className={styles.formField}>
-            <span className={styles.formLabel}>Title <span className={styles.required}>•</span></span>
-            <Input
-              value={draft.title}
-              onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
-              placeholder={draft.kind === 'goal' ? 'e.g. A1C below 7%' : 'e.g. Transportation'}
-              maxLength={TITLE_MAX}
-              characterLimit={TITLE_MAX}
-            />
-          </div>
-          <div className={styles.formField}>
-            <span className={styles.formLabel}>Description</span>
-            <Textarea
-              value={draft.description}
-              onChange={e => setDraft(d => ({ ...d, description: e.target.value }))}
-              placeholder="Short description"
-            />
-          </div>
-        </Drawer>
+          onSave={async ({ title, description }) => {
+            const saved = await saveCarePlanBarrier({ title, description }, draft.id);
+            if (!saved) return;
+            toast.success(`"${title}" updated`);
+            closeDrawer();
+          }}
+        />
+      )}
+
+      {draft && draft.kind === 'barrier' && !draft.id && (
+        <AddBarriersDrawer
+          selectable={false}
+          primaryLabel="Save"
+          onClose={closeDrawer}
+          onAdd={async (picked) => {
+            const known = new Set(barriers.map(b => (b.title || '').trim().toLowerCase()));
+            const fresh = (picked || []).filter(b => !known.has((b.title || '').trim().toLowerCase()));
+            for (const b of fresh) {
+              await saveCarePlanBarrier({ title: b.title, description: b.description || '' });
+            }
+            if (fresh.length) toast.success(`${fresh.length} barrier${fresh.length === 1 ? '' : 's'} created`);
+            closeDrawer();
+          }}
+        />
       )}
 
       {draft && draft.kind === 'intervention' && (() => {

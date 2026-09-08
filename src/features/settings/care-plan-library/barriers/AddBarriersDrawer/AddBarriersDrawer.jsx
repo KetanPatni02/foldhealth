@@ -16,7 +16,19 @@ function normTitle(value) {
  * Add Barriers — barrier picker for the Care Plan GBI table.
  * Figma SNP-Story 7550:489275.
  */
-export function AddBarriersDrawer({ onClose, onAdd, existingBarriers = [] }) {
+/**
+ * @param {boolean} [props.selectable=true]  Plan picker: rows are checkboxes
+ *   and already-added ones are grouped and disabled. Set false for the
+ *   library, where the list is reference only and the action is authoring a
+ *   barrier that does not exist yet.
+ */
+export function AddBarriersDrawer({
+  onClose,
+  onAdd,
+  existingBarriers = [],
+  primaryLabel = 'Add to Plan',
+  selectable = true,
+}) {
   const libraryBarriers = useAppStore(s => s.carePlanBarriers);
   const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
@@ -81,10 +93,10 @@ export function AddBarriersDrawer({ onClose, onAdd, existingBarriers = [] }) {
       <Button
         variant="primary"
         size="L"
-        disabled={selected.size === 0}
-        onClick={handleAddThisPlan}
+        disabled={selectable ? selected.size === 0 : !canCreate}
+        onClick={selectable ? handleAddThisPlan : handleCreate}
       >
-        Add to Plan
+        {primaryLabel}
       </Button>
       <span className={styles.headerDivider} />
     </>
@@ -93,14 +105,16 @@ export function AddBarriersDrawer({ onClose, onAdd, existingBarriers = [] }) {
   const renderRow = (barrier, { disabled = false } = {}) => (
     <div key={barrier.id} className={styles.rowWrap}>
       <label className={`${styles.row} ${disabled ? styles.rowDisabled : ''}`}>
-        <Checkbox
-          checked={disabled || selected.has(barrier.id)}
-          disabled={disabled}
-          onCheckedChange={() => !disabled && toggle(barrier.id)}
-          aria-label={`Select ${barrier.title}`}
-        />
+        {selectable && (
+          <Checkbox
+            checked={disabled || selected.has(barrier.id)}
+            disabled={disabled}
+            onCheckedChange={() => !disabled && toggle(barrier.id)}
+            aria-label={`Select ${barrier.title}`}
+          />
+        )}
         <span className={styles.rowText}>{barrier.title}</span>
-        {disabled ? <Badge tone="grey" size="M" label="Added" /> : null}
+        {selectable && disabled ? <Badge tone="grey" size="M" label="Added" /> : null}
       </label>
     </div>
   );
@@ -135,16 +149,16 @@ export function AddBarriersDrawer({ onClose, onAdd, existingBarriers = [] }) {
             )
           ) : (
             <>
-              {addedRows.length > 0 && (
+              {selectable && addedRows.length > 0 && (
                 <>
                   <span className={styles.groupLabel}>Already Added</span>
                   {addedRows.map(b => renderRow(b, { disabled: true }))}
                 </>
               )}
-              {addedRows.length > 0 && availableRows.length > 0 && (
+              {selectable && addedRows.length > 0 && availableRows.length > 0 && (
                 <span className={styles.groupDivider} />
               )}
-              {availableRows.map(b => renderRow(b))}
+              {(selectable ? availableRows : rows).map(b => renderRow(b))}
             </>
           )}
         </div>
