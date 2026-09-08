@@ -1,14 +1,25 @@
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import styles from './CareGapItem.module.css';
 
-export function CareGapItem({ item, selected, onSelect }) {
+export function CareGapItem({ item, selected, onSelect, onOpen }) {
   return (
     <div
       className={`${styles.row} ${selected ? styles.rowSelected : ''}`}
       onClick={() => onSelect?.(item.id)}
     >
       <div className={styles.content}>
-        <span className={styles.title}>{item.title}</span>
+        {onOpen ? (
+          <button
+            type="button"
+            className={styles.titleButton}
+            onClick={(e) => { e.stopPropagation(); onOpen(item); }}
+            aria-label={`Open ${item.title}`}
+          >
+            {item.title}
+          </button>
+        ) : (
+          <span className={styles.title}>{item.title}</span>
+        )}
         {item.diagnosis && <span className={styles.meta}>{item.diagnosis}</span>}
       </div>
       <span className={styles.status}>{item.status}</span>

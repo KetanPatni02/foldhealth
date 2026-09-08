@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { CareGapItem } from '../CareGapItem/CareGapItem.jsx';
 import styles from './CareGapSection.module.css';
 
-export function CareGapSection({ section, selectedGaps, onToggleGap }) {
+export function CareGapSection({ section, selectedGaps, onToggleGap, onOpenGap }) {
   const selectedSet = useMemo(() => new Set(selectedGaps), [selectedGaps]);
   if (!section.items.length) return null;
 
@@ -23,6 +23,7 @@ export function CareGapSection({ section, selectedGaps, onToggleGap }) {
             item={item}
             selected={selectedSet.has(item.id)}
             onSelect={onToggleGap}
+            onOpen={onOpenGap}
           />
         ))}
       </div>
