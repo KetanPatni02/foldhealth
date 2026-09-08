@@ -13,7 +13,8 @@ import styles from './AuditDetailCard.module.css';
  * @param {Array<string>} [props.header]  Attribution lines, joined with dots.
  * @param {Array} props.sections
  *   { id, title, titleAction: {label, onClick}, caption,
- *     badges: [{label, tone, icon, onClick}], change: {from, to}, body }
+ *     badges: [{label, tone, icon, onClick}], change: {from, to}, body,
+ *     onClick }
  * @param {() => void} [props.onOpen]  Renders the corner action when supplied.
  * @param {string} [props.openTooltip]
  */
@@ -34,7 +35,16 @@ export function AuditDetailCard({ header, sections, onOpen, openTooltip = 'Open'
         )}
 
         {sections.map((s, i) => (
-          <div key={s.id ?? i} className={styles.section}>
+          <div
+            key={s.id ?? i}
+            className={`${styles.section} ${s.onClick ? styles.sectionClickable : ''}`}
+            role={s.onClick ? 'button' : undefined}
+            tabIndex={s.onClick ? 0 : undefined}
+            onClick={s.onClick}
+            onKeyDown={s.onClick
+              ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); s.onClick(); } }
+              : undefined}
+          >
             {s.title && (
               <div className={styles.titleRow}>
                 <span className={styles.sectionTitle}>{s.title}</span>
@@ -49,7 +59,12 @@ export function AuditDetailCard({ header, sections, onOpen, openTooltip = 'Open'
                 {s.caption && <span>{s.caption}</span>}
                 {s.badges?.map((b, bi) => (b.onClick
                   ? (
-                    <button key={bi} type="button" className={styles.badgeButton} onClick={b.onClick}>
+                    <button
+                      key={bi}
+                      type="button"
+                      className={styles.badgeButton}
+                      onClick={(e) => { e.stopPropagation(); b.onClick(); }}
+                    >
                       <Badge tone={b.tone || 'grey'} size="S" icon={b.icon} label={b.label} />
                     </button>
                   )
