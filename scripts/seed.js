@@ -26,6 +26,7 @@ import { CARE_PLAN_GOAL_LIBRARY, carePlanGoalLibraryToRow, carePlanGoalLibraryLi
 import { CARE_PLAN_INTERVENTION_LIBRARY } from '../src/features/settings/care-plan-library/data/carePlanInterventionLibrarySeed.js';
 import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY } from '../src/features/settings/care-plan-library/data/carePlanBarrierStructuredSeed.js';
 import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src/features/settings/care-plan-library/data/carePlanTemplateLibrarySeed.js';
+import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -717,6 +718,13 @@ async function main() {
     .upsert(reportRows, { onConflict: 'id' });
   if (cre) { console.error('  ✗', cre.message); } else { console.log(`  ✓ ${reportRows.length} reports`); }
 
+  console.log('Seeding patient_monitoring...');
+  const monitoringRows = Object.values(MONITORING_SEED).map(monitoringToRow);
+  const { error: pme } = await supabase
+    .from('patient_monitoring')
+    .upsert(monitoringRows, { onConflict: 'member_id' });
+  if (pme) { console.error('  ✗', pme.message); } else { console.log(`  ✓ ${monitoringRows.length} monitoring snapshots`); }
+
   console.log('Seeding ccm_worklist_members...');
   const worklistRows = CCM_WORKLIST_MEMBERS.map((m) => ccmWorklistToRow(m, foldIdMap));
   const { error: cwe } = await supabase
@@ -1307,7 +1315,6 @@ async function main() {
         await supabase.from('patient_care_plan_interventions').delete().eq('plan_id', planRow.id);
         await supabase.from('patient_care_plan_barriers').delete().eq('plan_id', planRow.id);
         await supabase.from('patient_care_plan_automations').delete().eq('plan_id', planRow.id);
-        await supabase.from('care_plan_audit').delete().eq('patient_id', patientId).eq('program_id', programId);
 
         const bpTitle = 'Target an average blood pressure';
         const goalRows = CARE_PLAN_MOCK.goals.map((g, idx) => ({
@@ -1348,7 +1355,6 @@ async function main() {
 
         let mErr = null;
         let aErr = null;
-        let auditErr = null;
         if (bpGoal) {
           const now = Date.now();
           const DAY = 86400000;
@@ -1372,19 +1378,10 @@ async function main() {
             icon: 'solar:bolt-linear', enabled: true, sort_order: 0,
           });
           aErr = auto.error;
-          const actor = 'Ivy Ralph';
-          const audit = await supabase.from('care_plan_audit').insert([
-            { patient_id: patientId, program_id: programId, program_code: 'CCM', entity_type: 'goal', entity_id: bpGoal.id, action: 'created', summary: bpTitle, detail: '', actor, created_at: new Date(now - 8 * DAY).toISOString() },
-            { patient_id: patientId, program_id: programId, program_code: 'CCM', entity_type: 'goal', entity_id: bpGoal.id, action: 'status_changed', summary: bpTitle, detail: 'Not Started → In Progress', actor, created_at: new Date(now - 6 * DAY).toISOString() },
-            { patient_id: patientId, program_id: programId, program_code: 'CCM', entity_type: 'goal', entity_id: bpGoal.id, action: 'note', summary: `Note on ${bpTitle}`, detail: "Patient's BP at the start of goal tracking was 145/90. Initial focus to be on lifestyle adjustments before considering medication changes.", actor, created_at: new Date(now - 5 * DAY).toISOString() },
-            { patient_id: patientId, program_id: programId, program_code: 'CCM', entity_type: 'goal', entity_id: bpGoal.id, action: 'progress_changed', summary: bpTitle, detail: '0% - Poor → 70% - Moderate', actor, created_at: new Date(now - 2 * DAY).toISOString() },
-            { patient_id: patientId, program_id: programId, program_code: 'CCM', entity_type: 'goal', entity_id: bpGoal.id, action: 'value_changed', summary: bpTitle, detail: '160/110 → 140/90', actor, created_at: new Date(now - DAY).toISOString() },
-          ]);
-          auditErr = audit.error;
         }
 
         const skipMissing = (err) => err && err.code !== '42P01' && err.code !== 'PGRST205' ? err : null;
-        const childErr = gErr || iErr || skipMissing(bErr) || skipMissing(mErr) || skipMissing(aErr) || skipMissing(auditErr);
+        const childErr = gErr || iErr || skipMissing(bErr) || skipMissing(mErr) || skipMissing(aErr);
         console.log(childErr
           ? `  ✗ care plan children: ${childErr.message}`
           : `  ✓ patient care plan for "${firstPatient.name}" (${goalRows.length} goals, ${intvRows.length} interventions${bpGoal ? ', BP readings + activity' : ''})`);
@@ -1432,15 +1429,6 @@ async function main() {
           title: 'Notify my care team if systolic BP has 5% deviation',
           icon: 'solar:bolt-linear', enabled: true, sort_order: 0,
         });
-        await supabase.from('care_plan_audit').delete().eq('patient_id', prog.patient_id).eq('program_id', prog.id).eq('entity_id', snpBp.id);
-        const actor = 'Ivy Ralph';
-        await supabase.from('care_plan_audit').insert([
-          { patient_id: prog.patient_id, program_id: prog.id, program_code: 'SNP', entity_type: 'goal', entity_id: snpBp.id, action: 'created', summary: snpBpTitle, detail: '', actor, created_at: new Date(snpNow - 8 * DAY).toISOString() },
-          { patient_id: prog.patient_id, program_id: prog.id, program_code: 'SNP', entity_type: 'goal', entity_id: snpBp.id, action: 'status_changed', summary: snpBpTitle, detail: 'Not Started → In Progress', actor, created_at: new Date(snpNow - 6 * DAY).toISOString() },
-          { patient_id: prog.patient_id, program_id: prog.id, program_code: 'SNP', entity_type: 'goal', entity_id: snpBp.id, action: 'note', summary: `Note on ${snpBpTitle}`, detail: "Patient's BP at the start of goal tracking was 145/90. Initial focus to be on lifestyle adjustments before considering medication changes.", actor, created_at: new Date(snpNow - 5 * DAY).toISOString() },
-          { patient_id: prog.patient_id, program_id: prog.id, program_code: 'SNP', entity_type: 'goal', entity_id: snpBp.id, action: 'progress_changed', summary: snpBpTitle, detail: '0% - Poor → 70% - Moderate', actor, created_at: new Date(snpNow - 2 * DAY).toISOString() },
-          { patient_id: prog.patient_id, program_id: prog.id, program_code: 'SNP', entity_type: 'goal', entity_id: snpBp.id, action: 'value_changed', summary: snpBpTitle, detail: '160/110 → 140/90', actor, created_at: new Date(snpNow - DAY).toISOString() },
-        ]);
         snpEnriched += 1;
       }
       if (snpEnriched) console.log(`  ✓ SNP Goal Details demo data (${snpEnriched} BP goal${snpEnriched === 1 ? '' : 's'})`);

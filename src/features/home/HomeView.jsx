@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import GridLayout from 'react-grid-layout/legacy';
 import { Icon } from '../../components/Icon/Icon';
+import { Select } from '../../components/Select/Select';
 import { TopBar } from '../../components/TopBar/TopBar';
+import { TodayView } from './today/TodayView';
 import { WelcomeCard } from './WelcomeCard';
 import { AlertsMonitoringCard } from './AlertsMonitoringCard';
 import { AssignedToMeCard } from './AssignedToMeCard';
@@ -38,6 +40,13 @@ function loadLayout() {
   }
 }
 
+// Home has two views: the draggable card Dashboard and the Today NBA feed.
+const VIEW_KEY = 'home-view-mode';
+const VIEW_OPTIONS = [
+  { value: 'dashboard', label: 'Dashboard' },
+  { value: 'today', label: 'Today' },
+];
+
 const CARD_RENDERERS = {
   welcome:  WelcomeCard,
   alerts:   AlertsMonitoringCard,
@@ -50,6 +59,9 @@ const CARD_RENDERERS = {
 export function HomeView() {
   const [layout, setLayout] = useState(loadLayout);
   const [editing, setEditing] = useState(false);
+  const [view, setView] = useState(() => {
+    try { return localStorage.getItem(VIEW_KEY) || 'dashboard'; } catch { return 'dashboard'; }
+  });
   const containerRef = useRef(null);
   const [width, setWidth] = useState(1200);
 
@@ -73,6 +85,12 @@ export function HomeView() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_LAYOUT));
   }, []);
 
+  const changeView = useCallback((next) => {
+    setView(next);
+    if (next !== 'dashboard') setEditing(false);
+    try { localStorage.setItem(VIEW_KEY, next); } catch { /* private mode */ }
+  }, []);
+
   const items = useMemo(() => layout.map(l => {
     const Card = CARD_RENDERERS[l.i];
     return (
@@ -86,26 +104,34 @@ export function HomeView() {
     <div className={styles.page}>
       <TopBar />
       <div className={styles.toolbar}>
-        <button className={styles.toolbarBtn}>
-          <Icon name="solar:chart-linear" size={14} />
-          View Business Insights
-        </button>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {editing && (
-            <button className={styles.toolbarBtn} onClick={resetLayout}>
-              <Icon name="solar:refresh-linear" size={14} />
-              Reset
+        <Select
+          options={VIEW_OPTIONS}
+          value={view}
+          onChange={changeView}
+          leadingIcon={view === 'today' ? 'solar:sun-linear' : 'solar:chart-linear'}
+          style={{ width: 148 }}
+        />
+        {view === 'dashboard' && (
+          <div style={{ display: 'flex', gap: 4 }}>
+            {editing && (
+              <button className={styles.toolbarBtn} onClick={resetLayout}>
+                <Icon name="solar:refresh-linear" size={14} />
+                Reset
+              </button>
+            )}
+            <button
+              className={[styles.toolbarBtn, editing ? styles.editing : ''].filter(Boolean).join(' ')}
+              onClick={() => setEditing(v => !v)}
+            >
+              <Icon name={editing ? 'solar:check-circle-linear' : 'solar:pen-linear'} size={14} />
+              {editing ? 'Done' : 'Edit Dashboard'}
             </button>
-          )}
-          <button
-            className={[styles.toolbarBtn, editing ? styles.editing : ''].filter(Boolean).join(' ')}
-            onClick={() => setEditing(v => !v)}
-          >
-            <Icon name={editing ? 'solar:check-circle-linear' : 'solar:pen-linear'} size={14} />
-            {editing ? 'Done' : 'Edit Dashboard'}
-          </button>
-        </div>
+          </div>
+        )}
       </div>
+      {view === 'today' ? (
+        <TodayView />
+      ) : (
       <div
         ref={containerRef}
         className={[styles.gridContainer, editing ? styles.editing : ''].filter(Boolean).join(' ')}
@@ -128,6 +154,7 @@ export function HomeView() {
           {items}
         </GridLayout>
       </div>
+      )}
     </div>
   );
 }

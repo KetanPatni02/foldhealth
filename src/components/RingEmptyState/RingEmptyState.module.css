@@ -38,6 +38,13 @@
   justify-content: center;
   background: linear-gradient(142deg, var(--neutral-50) 13%, var(--neutral-100) 91%);
 }
+/* Caption and its optional action read as one block, per the Figma spec. */
+.emptyTextGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
 .emptyText {
   font-size: var(--font-sm);
   color: var(--neutral-200);

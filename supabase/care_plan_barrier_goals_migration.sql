@@ -52,11 +52,18 @@ end $$;
 
 -- 3. Backfill from legacy goal_id, then consolidate title duplicates.
 --    Step A: mirror every existing (barrier.id, barrier.goal_id) into the
---    join table.
+--    join table. Guarded on `care_plan_goals` existence so orphaned legacy
+--    goal_ids (rows whose goal was deleted in a later seed reshuffle) are
+--    skipped rather than tripping the new FK. Their barrier rows still keep
+--    the stale legacy goal_id for step 4's backwards-compat window; they
+--    just do not carry a bogus join entry into the new schema.
 insert into public.patient_care_plan_barrier_goals (barrier_id, goal_id)
 select b.id, b.goal_id
   from public.patient_care_plan_barriers b
  where b.goal_id is not null
+   and exists (
+     select 1 from public.care_plan_goals g where g.id = b.goal_id
+   )
    and not exists (
      select 1
        from public.patient_care_plan_barrier_goals j

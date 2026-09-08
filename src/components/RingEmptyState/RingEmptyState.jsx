@@ -9,8 +9,9 @@ import styles from './RingEmptyState.module.css';
  * @param {string} props.icon   – Solar linear icon name shown in the centre
  * @param {string} props.label  – caption beneath the disc
  * @param {number} [props.iconSize=46]
+ * @param {React.ReactNode} [props.children] – optional action under the caption
  */
-export function RingEmptyState({ icon = 'solar:inbox-linear', label, iconSize = 46 }) {
+export function RingEmptyState({ icon = 'solar:inbox-linear', label, iconSize = 46, children }) {
   return (
     <div className={styles.emptyWrap}>
       <div className={styles.emptyCard}>
@@ -19,7 +20,10 @@ export function RingEmptyState({ icon = 'solar:inbox-linear', label, iconSize = 
             <Icon name={icon} size={iconSize} color="var(--neutral-200)" />
           </span>
         </div>
-        <p className={styles.emptyText}>{label}</p>
+        <div className={styles.emptyTextGroup}>
+          <p className={styles.emptyText}>{label}</p>
+          {children}
+        </div>
       </div>
     </div>
   );

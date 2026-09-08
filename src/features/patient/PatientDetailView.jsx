@@ -6,6 +6,7 @@ import { PatientProfileTabs } from './left-panel/PatientProfileTabs/PatientProfi
 import { ProfileTabBar } from './shell/ProfileTabBar/ProfileTabBar';
 import { CareManagementView } from './right-panel/tabs/care-management/CareManagementView/CareManagementView';
 import { OverviewTab } from './right-panel/tabs/overview/OverviewTab/OverviewTab';
+import { MonitoringTab } from './right-panel/tabs/monitoring/MonitoringTab';
 import { PatientNotesTab } from './right-panel/tabs/notes/PatientNotesTab';
 import { ClinicalNotePreviewDrawer } from '../tasks/ClinicalNotePreviewDrawer';
 import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
@@ -205,6 +206,8 @@ export function PatientDetailView() {
           <div className={styles.tabContent}>
             {activeTab === 'Overview' ? (
               <OverviewTab />
+            ) : activeTab === 'Monitoring' ? (
+              <MonitoringTab patient={patient} />
             ) : activeTab === 'Notes' ? (
               <PatientNotesTab patient={patient} />
             ) : activeTab === 'Care Management' ? (

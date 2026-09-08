@@ -11,6 +11,7 @@ import { DatePicker } from '../../../../../components/DatePicker/DatePicker';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { Tooltip } from '../../../../../components/Tooltip/Tooltip';
 import { INTERVENTION_EDITORS } from '../../interventions';
+import { AddInterventionsDrawer } from '../../interventions/AddInterventionsDrawer';
 import { Link } from '../../../../../components/Link/Link';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
@@ -180,7 +181,9 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   );
   const [barrierDraft, setBarrierDraft] = useState('');
   const [barrierEditing, setBarrierEditing] = useState(null);
-  const [interventionMenuOpen, setInterventionMenuOpen] = useState(false);
+  // The "+" opens the library picker; the kind menu it used to open now
+  // lives inside that picker's New Intervention.
+  const [addInterventionsOpen, setAddInterventionsOpen] = useState(false);
   // Row-level editing: which row's priority menu is open, and which row's
   // title is in its text-field state.
   const [priorityMenuFor, setPriorityMenuFor] = useState(null);
@@ -190,7 +193,6 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const [interventionDrawer, setInterventionDrawer] = useState(null);
   const durationUnitRef = useRef(null);
   const priorityRef = useRef(null);
-  const interventionAddRef = useRef(null);
 
   const measureCfg = MEASURES[category] || MEASURES[GOAL_CATEGORIES[0]];
   // Others (formerly 'Other') is the catch-all bucket — it hides the
@@ -207,7 +209,10 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   // the measure's own second part (e.g. Height's Ft / in).
   const isRange = comparator === 'between';
   const twoValues = Boolean(cfg.dual) || isRange;
-  const units = cfg.dual ? cfg.units : [cfg.unit || '', cfg.unit || ''];
+  // Others types the unit by hand, and a goal saved under Others can still
+  // carry a measure from an earlier category, so that measure's config must
+  // not supply a unit of its own on top of the typed one.
+  const units = isOther ? ['', ''] : cfg.dual ? cfg.units : [cfg.unit || '', cfg.unit || ''];
   const placeholders = cfg.dual
     ? cfg.placeholders
     : isRange ? ['From', 'To'] : ['Enter Value', 'Enter Value'];
@@ -359,13 +364,11 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
           )}
         </div>
 
-        {/* Others is a free-form catch-all — no measure, no target value,
-            so the Set Target toggle and the target block are hidden. Only
-            Duration + Frequency stay so the goal still has a timebox.
-            Assessment goes further — it hides Set Target, Current Value,
-            Target Value, Duration and Frequency. Only the Target Date the
-            instrument should be completed by is authored. */}
-        {!isOther && !isAssessment && (
+        {/* Others has no predefined measure but still authors a target — the
+            value is free text with a typed unit. Assessment goes the other
+            way: no target value at all, only the date the instrument should
+            be completed by. */}
+        {!isAssessment && (
           <Switch checked={setTarget} onChange={setSetTarget} label="Set Target" />
         )}
 
@@ -375,7 +378,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         </div>
         )}
 
-        {!isOther && !isAssessment && setTarget && (
+        {!isAssessment && setTarget && (
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
             Target Value<span className={styles.mandatoryDot} aria-hidden="true" />
@@ -437,7 +440,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         {/* Duration + Frequency stays visible for Others too — those are
             the only structured fields that category exposes. Assessment
             hides them entirely (only Target Date is authored). */}
-        {(isOther || setTarget) && !isAssessment && (
+        {setTarget && !isAssessment && (
         <div className={styles.twoUp}>
           <div className={styles.field}>
             {/* One field — the unit is the trailing segment, same treatment as
@@ -519,33 +522,16 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                       && <Badge tone="grey" size="S" label={String(barriers.length)} />}
                   </span>
                   <ActionButton
-                    ref={sec.key === 'interventions' ? interventionAddRef : undefined}
                     size="S"
                     tooltip={sec.addTooltip}
-                    aria-haspopup={sec.key === 'interventions' ? 'menu' : undefined}
-                    aria-expanded={sec.key === 'interventions' ? interventionMenuOpen : undefined}
                     onClick={sec.key === 'interventions'
-                      ? () => setInterventionMenuOpen(v => !v)
+                      ? () => setAddInterventionsOpen(true)
                       : sec.key === 'barriers'
                         ? () => editBarrier('new')
                         : undefined}
                   >
                     <AddIconMinimalist size={16} color="var(--neutral-300)" />
                   </ActionButton>
-                  {sec.key === 'interventions' && interventionMenuOpen && (
-                    <MenuPopover
-                      anchorRef={interventionAddRef}
-                      align="right"
-                      width={200}
-                      ariaLabel="Add intervention"
-                      items={INTERVENTION_ITEMS}
-                      onSelect={(key) => {
-                        setInterventionMenuOpen(false);
-                        setInterventionDrawer({ kind: key, index: null });
-                      }}
-                      onClose={() => setInterventionMenuOpen(false)}
-                    />
-                  )}
                 </div>
                 {sec.key === 'interventions' && interventions.length > 0 && (
                   <div className={styles.interventionList}>
@@ -713,6 +699,16 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
           </div>
         </div>
       </div>
+      {addInterventionsOpen && (
+        <AddInterventionsDrawer
+          onClose={() => setAddInterventionsOpen(false)}
+          onAdd={(picked) => {
+            picked.forEach(i => addIntervention(i.kind, i.title, { description: i.description || '' }));
+            setAddInterventionsOpen(false);
+          }}
+        />
+      )}
+
       {interventionDrawer && (() => {
         const Editor = INTERVENTION_EDITORS[interventionDrawer.kind];
         if (!Editor) return null;

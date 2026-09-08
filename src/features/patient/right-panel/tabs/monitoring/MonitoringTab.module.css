@@ -1,0 +1,288 @@
+.scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--neutral-50);
+}
+
+/* empty / loading */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+  padding: var(--space-16) var(--space-4);
+  color: var(--neutral-400);
+}
+.stateTitle { margin: calc(var(--space-1) + var(--space-1) / 2) 0 0; font-size: var(--font-md); font-weight: 600; color: var(--neutral-500); }
+.stateBody { margin: 0; font-size: var(--font-sm); color: var(--neutral-400); }
+
+/* ── Banner ─────────────────────────────────────────────────── */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) calc(var(--space-3) + var(--space-1) / 2);
+  border-radius: 10px;
+  background: var(--status-error-light);
+  border: 0.5px solid var(--status-error);
+}
+.bannerLeft {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--status-error-dark);
+}
+.bannerDue { font-size: var(--font-sm); font-weight: 600; color: var(--status-error); }
+
+/* ── Identity band ──────────────────────────────────────────── */
+.idBand {
+  display: flex;
+  align-items: stretch;
+  gap: calc(var(--space-6) + var(--space-1));
+  padding: calc(var(--space-3) + var(--space-1) / 2) var(--space-4);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+}
+.idMain { display: flex; align-items: center; gap: var(--space-3); min-width: 200px; }
+.idText { display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); }
+.idNameRow { display: flex; align-items: baseline; gap: var(--space-2); }
+.idName { font-size: var(--font-lg); font-weight: 600; color: var(--neutral-500); }
+.idMeta { font-size: var(--font-sm); color: var(--neutral-400); }
+.idSub { font-size: var(--font-sm); color: var(--neutral-400); }
+
+.idCol { display: flex; flex-direction: column; gap: calc(var(--space-1) * 0.75); justify-content: center; }
+.idColRight { margin-left: auto; text-align: right; align-items: flex-end; }
+.idColLabel {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--neutral-300);
+}
+.idColValue {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.idColSub { font-size: var(--font-xs); color: var(--neutral-400); }
+.riskVal { font-size: var(--font-md); font-weight: 700; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
+.riskTrend { font-size: var(--font-xs); color: var(--status-warning); font-weight: 600; }
+.flag { color: var(--status-error); }
+
+/* ── Header chips + adherence ───────────────────────────────── */
+.chipRow { display: flex; align-items: center; gap: var(--space-3); }
+.chips { display: flex; flex-wrap: wrap; gap: calc(var(--space-1) + var(--space-1) / 2); }
+.adherence {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+.adherence b { color: var(--neutral-500); font-variant-numeric: tabular-nums; }
+.adhDot { width: 9px; height: 9px; border-radius: 50%; background: var(--neutral-300); }
+.adh_good { background: var(--status-success); }
+.adh_watch { background: var(--status-warning); }
+.adh_risk { background: var(--status-error); }
+
+/* ── Two-column body ────────────────────────────────────────── */
+.columns { display: flex; gap: var(--space-4); align-items: flex-start; }
+.mainCol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: calc(var(--space-3) - var(--space-1) / 2); }
+.rail {
+  width: 296px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.rail > button { width: 100%; justify-content: center; }
+
+.sectionLabel {
+  margin-top: var(--space-1);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--neutral-300);
+}
+
+/* Snapshot tiles */
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: calc(var(--space-3) + var(--space-1) / 2);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+}
+.tileLabel {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--neutral-300);
+}
+.tileValue { font-size: var(--font-2xl); font-weight: 700; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
+.tileValueBad { color: var(--status-error); font-size: var(--font-xl); }
+.tileSub { font-size: var(--font-xs); color: var(--neutral-400); }
+.tileSubBad { color: var(--status-error); }
+
+/* Programs */
+.programs { display: flex; flex-direction: column; gap: var(--space-3); }
+.program { background: var(--neutral-0); border: 0.5px solid var(--neutral-150); border-radius: 12px; overflow: hidden; }
+.programHead {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-3) - var(--space-1) / 2);
+  padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.programName { font-size: var(--font-md); font-weight: 600; color: var(--neutral-500); }
+.programProgress { font-size: var(--font-sm); color: var(--neutral-400); }
+.programNext {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 4);
+  font-size: var(--font-sm);
+  color: var(--status-warning-dark);
+}
+
+.steps { display: flex; flex-direction: column; }
+.step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: calc(var(--space-3) - var(--space-1) / 2) calc(var(--space-3) + var(--space-1) / 2);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.step:last-child { border-bottom: none; }
+.dotDone { color: var(--status-success); flex-shrink: 0; }
+.dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; box-sizing: border-box; }
+.dotCurrent { border: 2px solid var(--primary-300); }
+.dotUpcoming { border: 1.5px solid var(--neutral-200); }
+.stepBody { display: flex; flex-direction: column; gap: calc(var(--space-1) / 4); min-width: 0; }
+.stepLabel { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-500); }
+.step_current .stepLabel { color: var(--primary-300); }
+.step_upcoming .stepLabel { color: var(--neutral-400); }
+.stepSub { font-size: var(--font-xs); color: var(--neutral-400); }
+.stepMeta { margin-left: auto; font-size: var(--font-sm); color: var(--neutral-400); }
+.step_done .stepMeta { color: var(--status-success); }
+.step .stepMeta + button, .step > button:last-child { margin-left: auto; }
+.step > button { margin-left: auto; flex-shrink: 0; }
+
+/* Since you last spoke */
+.timeline {
+  padding: calc(var(--space-3) + var(--space-1) / 2) var(--space-4);
+  background: var(--primary-25);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.timelineHead {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--primary-300);
+  margin-bottom: calc(var(--space-1) / 2);
+}
+.timelineItem { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.timelineText { font-size: var(--font-sm); color: var(--neutral-500); }
+
+/* ── Right rail ─────────────────────────────────────────────── */
+.railLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+  padding: calc(var(--space-1) + var(--space-1) / 2) 0;
+  font-size: var(--font-sm);
+}
+.railGroup {
+  margin-top: calc(var(--space-1) + var(--space-1) / 2);
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+}
+.railGroupLabel {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--neutral-300);
+}
+.railTask {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  padding: calc(var(--space-3) - var(--space-1) / 2) var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+}
+/* Urgency accent as an inset bar (keeps the full hairline, no thick side border). */
+.rt_error { box-shadow: inset 3px 0 0 var(--status-error); }
+.rt_warning { box-shadow: inset 3px 0 0 var(--status-warning); }
+.railTaskTitle { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-500); }
+.railTaskSub { font-size: var(--font-xs); color: var(--neutral-400); }
+.rt_error .railTaskSub { color: var(--status-error); }
+
+.railGoal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: calc(var(--space-3) - var(--space-1) / 2) var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+}
+.railGoalText { font-size: var(--font-sm); color: var(--neutral-500); font-style: italic; }
+.railGoalConf { font-size: var(--font-xs); color: var(--neutral-400); }
+
+.railGap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 10px;
+  color: var(--neutral-300);
+}
+.railGapLabel { font-size: var(--font-sm); color: var(--neutral-500); }
+.railGapMeta { margin-left: auto; font-size: var(--font-xs); color: var(--neutral-400); }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .columns { flex-direction: column; }
+  .rail { width: 100%; }
+}
+@media (max-width: 860px) {
+  .idBand { flex-wrap: wrap; gap: var(--space-4) var(--space-6); }
+  .idColRight { margin-left: 0; text-align: left; align-items: flex-start; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .tiles { grid-template-columns: 1fr; }
+  .banner { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+}

@@ -109,6 +109,7 @@ export function ChangeDisplay({ change }) {
  *   - user        (string)  — actor name
  *   - action      (string)  — key into ACTION_CONFIG (created/updated/etc.).
  *   - icon, iconBg, iconBorder, iconColor   — per-entry overrides
+ *   - avatar      (node)    — rail node rendered in place of the icon tile
  *   - details     (string)  — primary description line
  *   - category    (string)  — muted subtitle line
  *   - changes     (array)   — structured field diffs (Domain Registry)
@@ -125,13 +126,15 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
     <div style={{ display: 'flex', gap: 4 }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
         <div style={{ width: 0.5, flex: '0 0 14px', background: isFirst ? 'transparent' : 'var(--neutral-150)' }} />
-        <div style={{
-          width: 24, height: 24, borderRadius: 6, flexShrink: 0,
-          border: `0.5px solid ${iconBorder}`, background: iconBg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon name={icon} size={14} color={iconColor} />
-        </div>
+        {entry.avatar || (
+          <div style={{
+            width: 24, height: 24, borderRadius: 6, flexShrink: 0,
+            border: `0.5px solid ${iconBorder}`, background: iconBg,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Icon name={icon} size={14} color={iconColor} />
+          </div>
+        )}
         <div style={{ width: 0.5, flex: 1, minHeight: 12, background: isLast ? 'transparent' : 'var(--neutral-150)' }} />
       </div>
 

@@ -1,0 +1,373 @@
+.today {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5) var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* ── Header strip ───────────────────────────────────────────── */
+.header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+}
+
+.greetBlock {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  flex-shrink: 0;
+}
+
+.date {
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+.greet {
+  margin: 0;
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.headStats {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-6);
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--neutral-150);
+}
+
+.hStat {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) * 0.75);
+}
+
+.hLabel {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--neutral-300);
+}
+
+.hValue {
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+.hValue b {
+  font-size: var(--font-md);
+  font-weight: 700;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.hValue b.good { color: var(--status-success); }
+.hValue b.bad { color: var(--status-error); }
+
+.header > button { margin-left: auto; flex-shrink: 0; }
+
+/* ── Panel Pulse + adherence ────────────────────────────────── */
+.pulse {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 2fr);
+  gap: var(--space-3);
+}
+
+.pulseCard {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2);
+  text-align: left;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.pulseCard:hover { background: var(--neutral-50); }
+.pulseActive { border-color: var(--primary-200); box-shadow: 0 0 0 1px var(--primary-200) inset; }
+
+.pulseNum {
+  font-size: var(--font-xl);
+  font-weight: 700;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.num_overdue { color: var(--status-error); }
+.num_escalated { color: var(--accent-purple); }
+.num_threshold { color: var(--status-warning); }
+
+.pulseTitleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 4);
+  color: var(--neutral-500);
+}
+
+.pulse_escalated .pulseTitleRow { color: var(--accent-purple); }
+
+.pulseTitle {
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.pulseCaption {
+  font-size: var(--font-xs);
+  color: var(--neutral-400);
+}
+
+/* Adherence card */
+.adherence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+}
+
+.adherenceHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.adherenceTitle {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.adherenceTotal {
+  font-size: var(--font-xs);
+  color: var(--neutral-400);
+}
+
+.stack {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  gap: calc(var(--space-1) / 2);
+}
+
+.stack > span { display: block; height: 100%; }
+.segOnTrack { background: var(--status-success); border-radius: 4px 0 0 4px; }
+.segSlipping { background: var(--status-warning); }
+.segOffPlan { background: var(--status-error); border-radius: 0 4px 4px 0; }
+
+.adherenceLegend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 4);
+  font-size: var(--font-xs);
+  color: var(--neutral-400);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.legendDot { width: 7px; height: 7px; border-radius: 50%; }
+.dotOnTrack { background: var(--status-success); }
+.dotSlipping { background: var(--status-warning); }
+.dotOffPlan { background: var(--status-error); }
+
+/* Panel Health link — layout only; <Link> owns the color + weight. */
+.panelHealthLink {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-xs);
+}
+
+/* ── Feed ───────────────────────────────────────────────────── */
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: calc(var(--space-3) + var(--space-1) / 2) var(--space-4);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 12px;
+}
+
+/* Urgency accent: a colored inset bar on the left edge. Uses inset shadow, not
+   a thick left border, so the card keeps its hairline on all four sides and
+   rows stay aligned whether or not they carry an accent. */
+.accOverdue { box-shadow: inset 3px 0 0 var(--status-error); }
+.accWatch { box-shadow: inset 3px 0 0 var(--status-warning); }
+
+/* identity zone */
+.identity {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 232px;
+  flex-shrink: 0;
+}
+
+.idText { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+
+.nameRow { display: flex; align-items: baseline; gap: calc(var(--space-1) + var(--space-1) / 2); }
+
+.name {
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+
+.name:hover { color: var(--primary-300); text-decoration: underline; }
+
+.age { font-size: var(--font-sm); color: var(--neutral-400); }
+
+.subline {
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.programs { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-top: calc(var(--space-1) / 4); }
+
+/* center zone */
+.center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+}
+
+.agentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 4);
+  align-self: flex-start;
+  padding: calc(var(--space-1) * 0.75) calc(var(--space-2) + var(--space-1) / 4);
+  border-radius: 6px;
+  background: var(--accent-light-purple);
+  color: var(--accent-purple);
+  font-size: var(--font-xs);
+}
+
+.agentName { font-weight: 600; }
+.agentStatus { font-weight: 500; opacity: 0.85; }
+
+.reasonLine { display: flex; align-items: flex-start; gap: var(--space-2); }
+
+.reasonIcon { color: var(--neutral-400); flex-shrink: 0; margin-top: calc(var(--space-1) / 4); }
+
+.reason {
+  font-size: var(--font-sm);
+  color: var(--neutral-500);
+  line-height: 1.45;
+}
+
+/* Suggested-action link — layout only; <Link> owns the color + weight. */
+.suggestedLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+  font-size: var(--font-sm);
+  text-align: left;
+}
+
+/* right zone */
+.right {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-3) + var(--space-1) / 2);
+}
+
+.actionBtns { display: flex; align-items: center; gap: calc(var(--space-1) / 2); }
+
+/* empty */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
+  padding: var(--space-12) var(--space-4);
+  color: var(--neutral-400);
+}
+
+.emptyTitle { margin: var(--space-1) 0 0; font-size: var(--font-md); font-weight: 600; color: var(--neutral-500); }
+.emptyBody { margin: 0; font-size: var(--font-sm); color: var(--neutral-400); }
+
+/* ── Responsive ─────────────────────────────────────────────── */
+
+/* Tablet: the 5-across Panel Pulse can't hold its width. Drop to a 2×2 grid
+   of stat cards with the adherence card spanning the full row beneath them. */
+@media (max-width: 1024px) {
+  .pulse { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adherence { grid-column: 1 / -1; }
+}
+
+/* Phone / narrow: stack the header, and stack each NBA row into a single
+   column so nothing is pushed off-screen behind a horizontal scroll. */
+@media (max-width: 700px) {
+  .today { padding: var(--space-3); gap: var(--space-3); }
+
+  .header { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+  .headStats {
+    border-left: none;
+    border-top: 1px solid var(--neutral-150);
+    padding-left: 0;
+    padding-top: var(--space-3);
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+  }
+  .header > button { width: 100%; justify-content: center; }
+
+  .pulse { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  /* The adherence legend rides on one line at desktop; let it wrap once the
+     card is only half (or full) the narrow viewport so it can't force the
+     grid column wider than the screen. */
+  .adherenceLegend { flex-wrap: wrap; row-gap: calc(var(--space-1) + var(--space-1) / 2); }
+  .panelHealthLink { margin-left: 0; }
+
+  /* NBA row → vertical card. Identity, story, and the risk/actions cluster
+     stack; the cluster spreads risk-left / actions-right on its own line. */
+  .row { flex-direction: column; align-items: stretch; gap: var(--space-3); }
+  .identity { width: auto; }
+  .right { justify-content: space-between; }
+}
+
+/* Very narrow: one stat card per row keeps the numbers legible. minmax(0,1fr)
+   (not a bare 1fr) so the column can shrink below its content's min width. */
+@media (max-width: 420px) {
+  .pulse { grid-template-columns: minmax(0, 1fr); }
+}
