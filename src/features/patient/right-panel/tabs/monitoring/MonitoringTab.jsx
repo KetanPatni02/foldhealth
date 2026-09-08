@@ -1,15 +1,43 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { Avatar } from '../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../components/Badge/Badge';
 import { Button } from '../../../../../components/Button/Button';
 import { Icon } from '../../../../../components/Icon/Icon';
 import { Link } from '../../../../../components/Link/Link';
+import { Toggle } from '../../../../../components/Toggle/Toggle';
+import { Alert } from '../../../../../components/Alert/Alert';
 import { toast } from '../../../../../components/Toast/sonnerToast';
 import styles from './MonitoringTab.module.css';
 
 const RISK_TONE = { High: 'error', Rising: 'warning', Moderate: 'info' };
 const CHIP_TONE = { success: 'success', warning: 'warning', error: 'error' };
+
+const STORY_FILTERS = [
+  { key: 'all', label: 'All' },
+  { key: 'clinical', label: 'Clinical' },
+  { key: 'outreach', label: 'Outreach' },
+  { key: 'agent', label: 'Agent' },
+  { key: 'plan', label: 'Plan changes' },
+  { key: 'billing', label: 'Billing' },
+];
+
+const STORY_CATEGORY = {
+  clinical: { label: 'Clinical', tone: 'info', icon: 'solar:heart-pulse-linear', iconTone: 'info' },
+  outreach: { label: 'Outreach', tone: 'secondary', icon: 'solar:letter-linear', iconTone: 'secondary' },
+  agent: { label: 'Agent', tone: 'primary', icon: 'solar:phone-calling-linear', iconTone: 'primary' },
+  plan: { label: 'Plan', tone: 'warning', icon: 'solar:clipboard-list-linear', iconTone: 'warning' },
+  billing: { label: 'Billing', tone: 'grey', icon: 'solar:dollar-minimalistic-linear', iconTone: 'grey' },
+};
+
+const STORY_ICON_TONE = {
+  primary: { bg: 'var(--primary-50)', border: 'color-mix(in srgb, var(--primary-300) 20%, transparent)', color: 'var(--primary-300)' },
+  info: { bg: 'var(--status-info-light)', border: 'color-mix(in srgb, var(--status-info) 20%, transparent)', color: 'var(--status-info)' },
+  secondary: { bg: 'var(--secondary-50)', border: 'color-mix(in srgb, var(--secondary-300) 20%, transparent)', color: 'var(--secondary-300)' },
+  warning: { bg: 'var(--status-warning-light)', border: 'color-mix(in srgb, var(--status-warning) 20%, transparent)', color: 'var(--status-warning)' },
+  error: { bg: 'var(--status-error-light)', border: 'color-mix(in srgb, var(--status-error) 20%, transparent)', color: 'var(--status-error)' },
+  grey: { bg: 'var(--neutral-50)', border: 'var(--neutral-150)', color: 'var(--neutral-300)' },
+};
 
 function initials(name) {
   return (name || '?').split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
@@ -90,15 +118,8 @@ export function MonitoringTab({ patient }) {
 
   return (
     <div className={styles.scroll}>
-      {/* Alert banner */}
       {data.bannerText && (
-        <div className={styles.banner}>
-          <span className={styles.bannerLeft}>
-            <Icon name="solar:danger-triangle-linear" size={15} />
-            {data.bannerText}
-          </span>
-          {data.bannerDue && <span className={styles.bannerDue}>{data.bannerDue}</span>}
-        </div>
+        <Alert tone="error" message={data.bannerText} meta={data.bannerDue} />
       )}
 
       {/* Identity band */}
@@ -123,53 +144,64 @@ export function MonitoringTab({ patient }) {
         <IdCol label="Continuity" align="right" lines={[data.continuityLast && `Last: ${data.continuityLast}`, data.continuityNext && `Next: ${data.continuityNext}`]} />
       </div>
 
-      {/* Header chips + adherence */}
-      <div className={styles.chipRow}>
+      {/* Header chips */}
+      {data.headerChips.length > 0 && (
         <div className={styles.chips}>
           {data.headerChips.map((c, i) => (
             <Badge key={i} tone={CHIP_TONE[c.tone] || 'grey'} size="M" label={c.label} />
           ))}
         </div>
-        {data.adherence != null && (
-          <span className={styles.adherence}>
-            <span className={[styles.adhDot, styles[`adh_${band}`]].join(' ')} />
-            Adherence <b>{data.adherence}</b>
-          </span>
-        )}
-      </div>
+      )}
 
       <div className={styles.columns}>
         <div className={styles.mainCol}>
-          {/* Snapshot tiles */}
-          <SectionLabel>Snapshot</SectionLabel>
-          <div className={styles.tiles}>
-            <Tile label="Days since discharge" value={data.daysSinceDischarge} sub={data.dischargeLabel} />
-            <Tile label="Risk" value={data.riskTier} valueTone="error" sub={`RAF ${data.riskRaf}`} />
-            <Tile label="Program minutes" value={`${data.programMinutes} / ${data.programMinutesThreshold}`} sub={data.thresholdLabel} />
-            <Tile label="Open tasks" value={data.openTasks} sub="Overdue risk · 4h left" subTone="error" />
-          </div>
-
-          {/* Programs */}
-          <SectionLabel>Programs</SectionLabel>
-          <div className={styles.programs}>
-            {data.programs.map((p) => <ProgramCard key={p.code} program={p} onAction={soon} />)}
-          </div>
-
-          {/* Since you last spoke */}
-          {data.timeline.length > 0 && (
-            <div className={styles.timeline}>
-              <div className={styles.timelineHead}>
-                <Icon name="solar:magic-stick-3-linear" size={13} />
-                Since you last spoke · last touch 12 days ago
-              </div>
-              {data.timeline.map((t, i) => (
-                <div key={i} className={styles.timelineItem}>
-                  <span className={styles.timelineText}>{t.text}</span>
-                  {t.source && <Badge tone="ghost" size="S" label={t.source} />}
+          <div className={styles.section}>
+            <SectionLabel>Snapshot</SectionLabel>
+            <div className={styles.tiles}>
+              <Tile label="Days since discharge" value={data.daysSinceDischarge} sub={data.dischargeLabel} />
+              <Tile label="Risk" value={data.riskTier} valueTone="error" sub={`RAF ${data.riskRaf}`} />
+              <Tile label="Program minutes" value={`${data.programMinutes} / ${data.programMinutesThreshold}`} sub={data.thresholdLabel} />
+              <Tile label="Open tasks" value={data.openTasks} sub="Overdue risk · 4h left" subTone="error" />
+            </div>
+            {data.adherence != null && (
+              <div className={styles.adherenceCard}>
+                <span className={styles.tileLabel}>Adherence</span>
+                <div className={styles.adherenceValueRow}>
+                  <span className={[styles.adhDot, styles[`adh_${band}`]].join(' ')} />
+                  <span className={styles.adherenceValue}>{data.adherence}</span>
                 </div>
-              ))}
+                <span className={[styles.tileSub, band === 'risk' ? styles.tileSubBad : ''].filter(Boolean).join(' ')}>
+                  {band === 'good' ? 'On track' : band === 'watch' ? 'Slipping' : 'Off plan'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.section}>
+            <SectionLabel>Programs</SectionLabel>
+            <div className={styles.programs}>
+              {data.programs.map((p) => <ProgramCard key={p.code} program={p} onAction={soon} />)}
+            </div>
+          </div>
+
+          {data.timeline.length > 0 && (
+            <div className={styles.section}>
+              <div className={styles.timeline}>
+                <div className={styles.timelineHead}>
+                  <Icon name="solar:magic-stick-3-linear" size={13} />
+                  Since you last spoke · last touch 12 days ago
+                </div>
+                {data.timeline.map((t, i) => (
+                  <div key={i} className={styles.timelineItem}>
+                    <span className={styles.timelineText}>{t.text}</span>
+                    {t.source && <Badge tone="ghost" size="S" label={t.source} />}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+
+          {data.story?.length > 0 && <StorySection events={data.story} />}
         </div>
 
         {/* Right rail */}
@@ -189,27 +221,27 @@ export function MonitoringTab({ patient }) {
 
           <RailGroup label="Open tasks">
             {data.tasks.map((t, i) => (
-              <div key={i} className={[styles.railTask, styles[`rt_${t.tone}`]].filter(Boolean).join(' ')}>
-                <span className={styles.railTaskTitle}>{t.title}</span>
-                {t.sub && <span className={styles.railTaskSub}>{t.sub}</span>}
-              </div>
+              <RailCard key={i} accent={t.tone}>
+                <span className={styles.railCardTitle}>{t.title}</span>
+                {t.sub && <span className={styles.railCardSub}>{t.sub}</span>}
+              </RailCard>
             ))}
           </RailGroup>
 
           <RailGroup label="Active goals">
             {data.goals.map((g, i) => (
-              <div key={i} className={styles.railGoal}>
-                <span className={styles.railGoalText}>“{g.text}”</span>
-                {g.conf && <span className={styles.railGoalConf}>conf {g.conf}</span>}
-              </div>
+              <RailCard key={i}>
+                <span className={styles.railCardBody}>“{g.text}”</span>
+                {g.conf && <span className={styles.railCardMeta}>conf {g.conf}</span>}
+              </RailCard>
             ))}
           </RailGroup>
 
           <RailGroup label="Care gaps">
             {data.gaps.map((g, i) => (
-              <div key={i} className={styles.railGap}>
+              <div key={i} className={styles.railGapRow}>
                 <Icon name="solar:checklist-minimalistic-linear" size={14} />
-                <span className={styles.railGapLabel}>{g.label}</span>
+                <span className={styles.railCardTitle}>{g.label}</span>
                 <span className={styles.railGapMeta}>{g.meta}</span>
               </div>
             ))}
@@ -257,6 +289,96 @@ function RailGroup({ label, children }) {
     <div className={styles.railGroup}>
       <div className={styles.railGroupLabel}>{label}</div>
       {children}
+    </div>
+  );
+}
+
+function RailCard({ children, accent }) {
+  return (
+    <div className={[styles.railCard, styles.railCardStack, accent ? styles[`rt_${accent}`] : ''].filter(Boolean).join(' ')}>
+      {children}
+    </div>
+  );
+}
+
+function storyIconStyle(event) {
+  const toneKey = event.iconTone || STORY_CATEGORY[event.category]?.iconTone || 'grey';
+  return STORY_ICON_TONE[toneKey] || STORY_ICON_TONE.grey;
+}
+
+function StorySection({ events }) {
+  const [filter, setFilter] = useState('all');
+  const [collapsed, setCollapsed] = useState({});
+
+  const visible = useMemo(
+    () => (filter === 'all' ? events : events.filter((e) => e.category === filter)),
+    [events, filter],
+  );
+
+  return (
+    <div className={styles.story}>
+      <div className={styles.storyHead}>
+        <SectionLabel>Story</SectionLabel>
+        <Toggle
+          className={styles.storyFilters}
+          size="S"
+          items={STORY_FILTERS}
+          active={filter}
+          onChange={setFilter}
+        />
+      </div>
+
+      {visible.length === 0 ? (
+        <p className={styles.storyEmpty}>No story events in this category.</p>
+      ) : (
+        <div className={styles.storyList}>
+          {visible.map((event, rowIndex) => {
+            const cat = STORY_CATEGORY[event.category] || STORY_CATEGORY.clinical;
+            const iconCfg = storyIconStyle(event);
+            const iconName = event.icon || cat.icon;
+            const rowKey = `${event.at}-${event.title}`;
+            const isCollapsed = collapsed[rowKey] === true;
+
+            return (
+              <div key={rowKey} className={styles.storyRow}>
+                <time className={styles.storyTime}>{event.at}</time>
+                <div className={styles.storySpineCol}>
+                  <span className={rowIndex === 0 ? styles.storySpineStart : styles.storySpineLine} />
+                  <span
+                    className={styles.storyIcon}
+                    style={{ background: iconCfg.bg, borderColor: iconCfg.border, color: iconCfg.color }}
+                  >
+                    <Icon name={iconName} size={14} />
+                  </span>
+                  <span className={rowIndex === visible.length - 1 ? styles.storySpineEnd : styles.storySpineLineGrow} />
+                </div>
+                <div className={styles.storyCard}>
+                  <div className={styles.storyCardHead}>
+                    <span className={styles.storyCardTitle}>{event.title}</span>
+                    <Badge tone={cat.tone} size="S" label={cat.label} />
+                    <button
+                      type="button"
+                      className={styles.storyToggle}
+                      aria-expanded={!isCollapsed}
+                      aria-label={isCollapsed ? 'Expand story event' : 'Collapse story event'}
+                      onClick={() => setCollapsed((prev) => ({ ...prev, [rowKey]: !prev[rowKey] }))}
+                    >
+                      <Icon
+                        name="solar:alt-arrow-down-linear"
+                        size={14}
+                        className={isCollapsed ? styles.storyChevronCollapsed : styles.storyChevron}
+                      />
+                    </button>
+                  </div>
+                  {!isCollapsed && event.body && (
+                    <p className={styles.storyCardBody}>{event.body}</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

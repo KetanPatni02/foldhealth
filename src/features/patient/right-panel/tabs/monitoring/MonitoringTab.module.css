@@ -4,7 +4,14 @@
   padding: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
+}
+
+/* Shared card chrome — one surface treatment across the tab */
+.surfaceCard {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
 }
 
 /* empty / loading */
@@ -16,44 +23,21 @@
   padding: var(--space-12) var(--space-4);
   color: var(--neutral-400);
 }
-.stateTitle { margin: var(--space-2) 0 0; font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); }
+.stateTitle { margin: var(--space-2) 0 0; font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
 .stateBody { margin: 0; font-size: var(--font-sm); color: var(--neutral-400); }
-
-/* ── Banner ─────────────────────────────────────────────────── */
-.banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--space-2);
-  background: var(--status-error-light);
-  border: 0.5px solid var(--status-error);
-}
-.bannerLeft {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--status-error-dark);
-}
-.bannerDue { font-size: var(--font-sm); font-weight: 600; color: var(--status-error); }
 
 /* ── Identity band ──────────────────────────────────────────── */
 .idBand {
+  composes: surfaceCard;
   display: flex;
   align-items: stretch;
   gap: var(--space-6);
   padding: var(--space-3);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
 }
 .idMain { display: flex; align-items: center; gap: var(--space-3); min-width: 200px; }
 .idText { display: flex; flex-direction: column; gap: var(--space-1); }
 .idNameRow { display: flex; align-items: baseline; gap: var(--space-2); }
-.idName { font-size: var(--font-base); font-weight: 600; color: var(--neutral-500); }
+.idName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
 .idMeta { font-size: var(--font-sm); color: var(--neutral-400); }
 .idSub { font-size: var(--font-sm); color: var(--neutral-400); }
 
@@ -70,25 +54,15 @@
   gap: var(--space-2);
   font-size: var(--font-base);
   font-weight: 500;
-  color: var(--neutral-500);
+  color: var(--neutral-400);
 }
 .idColSub { font-size: var(--font-sm); color: var(--neutral-400); }
-.riskVal { font-size: var(--font-base); font-weight: 600; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
+.riskVal { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); font-variant-numeric: tabular-nums; }
 .riskTrend { font-size: var(--font-sm); color: var(--status-warning); font-weight: 500; }
 .flag { color: var(--status-error); }
 
-/* ── Header chips + adherence ───────────────────────────────── */
-.chipRow { display: flex; align-items: center; gap: var(--space-3); }
+/* ── Header chips ───────────────────────────────────────────── */
 .chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.adherence {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--font-sm);
-  color: var(--neutral-400);
-}
-.adherence b { color: var(--neutral-500); font-variant-numeric: tabular-nums; }
 .adhDot { width: var(--space-2); height: var(--space-2); border-radius: 50%; background: var(--neutral-300); }
 .adh_good { background: var(--status-success); }
 .adh_watch { background: var(--status-warning); }
@@ -96,7 +70,7 @@
 
 /* ── Two-column body ────────────────────────────────────────── */
 .columns { display: flex; gap: var(--space-4); align-items: flex-start; }
-.mainCol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.mainCol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
 .rail {
   width: 280px;
   flex-shrink: 0;
@@ -106,22 +80,21 @@
 }
 .rail > button { width: 100%; justify-content: center; }
 
+.section { display: flex; flex-direction: column; gap: var(--space-2); }
 .sectionLabel {
   font-size: var(--font-base);
   font-weight: 500;
-  color: var(--neutral-500);
+  color: var(--neutral-400);
 }
 
-/* Snapshot tiles */
+/* Snapshot */
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-3); }
 .tile {
+  composes: surfaceCard;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
 }
 .tileLabel {
   font-size: var(--font-sm);
@@ -129,9 +102,9 @@
   color: var(--neutral-300);
 }
 .tileValue {
-  font-size: var(--font-xl);
-  font-weight: 600;
-  color: var(--neutral-500);
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-400);
   font-variant-numeric: tabular-nums;
   line-height: var(--leading-tight);
 }
@@ -139,12 +112,26 @@
 .tileSub { font-size: var(--font-sm); color: var(--neutral-400); }
 .tileSubBad { color: var(--status-error); }
 
+.adherenceCard {
+  composes: tile;
+}
+.adherenceValueRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.adherenceValue {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-400);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
+}
+
 /* Programs */
 .programs { display: flex; flex-direction: column; gap: var(--space-3); }
 .program {
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
+  composes: surfaceCard;
   overflow: hidden;
 }
 .programHead {
@@ -154,7 +141,7 @@
   padding: var(--space-2) var(--space-3);
   border-bottom: 0.5px solid var(--neutral-150);
 }
-.programName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.programName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
 .programProgress { font-size: var(--font-sm); color: var(--neutral-400); }
 .programNext {
   margin-left: auto;
@@ -179,9 +166,9 @@
 .dotCurrent { border: 2px solid var(--primary-300); }
 .dotUpcoming { border: 1.5px solid var(--neutral-200); }
 .stepBody { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.stepLabel { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.stepLabel { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
 .step_current .stepLabel { color: var(--primary-300); }
-.step_upcoming .stepLabel { color: var(--neutral-400); }
+.step_upcoming .stepLabel { color: var(--neutral-400); opacity: 0.72; }
 .stepSub { font-size: var(--font-sm); color: var(--neutral-400); }
 .stepMeta { margin-left: auto; font-size: var(--font-sm); color: var(--neutral-400); }
 .step_done .stepMeta { color: var(--status-success); }
@@ -190,10 +177,9 @@
 
 /* Since you last spoke */
 .timeline {
+  composes: surfaceCard;
   padding: var(--space-3);
   background: var(--primary-25);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -207,7 +193,98 @@
   color: var(--primary-300);
 }
 .timelineItem { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
-.timelineText { font-size: var(--font-base); color: var(--neutral-500); line-height: var(--leading-normal); }
+.timelineText { font-size: var(--font-base); color: var(--neutral-400); line-height: var(--leading-normal); }
+
+/* ── Story feed ─────────────────────────────────────────────── */
+.story { composes: section; }
+.storyHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.storyFilters { min-width: 0; max-width: 100%; }
+.storyEmpty { margin: 0; font-size: var(--font-sm); color: var(--neutral-400); }
+.storyList { display: flex; flex-direction: column; gap: var(--space-2); }
+.storyRow { display: flex; align-items: stretch; gap: var(--space-3); min-width: 0; }
+.storyTime {
+  width: 72px;
+  flex-shrink: 0;
+  padding-top: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  text-align: right;
+  line-height: var(--leading-normal);
+}
+.storySpineCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: var(--space-5);
+  flex-shrink: 0;
+}
+.storySpineStart,
+.storySpineLine,
+.storySpineLineGrow,
+.storySpineEnd {
+  width: 1px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+.storySpineStart { height: var(--space-2); }
+.storySpineLine { height: var(--space-2); margin-bottom: calc(var(--space-1) / -4); }
+.storySpineLineGrow,
+.storySpineEnd { flex: 1; min-height: var(--space-2); margin-top: calc(var(--space-1) / -4); }
+.storyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  border-radius: 50%;
+  border: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.storyCard {
+  composes: surfaceCard;
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+}
+.storyCardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.storyCardTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.storyToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--neutral-300);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.storyToggle:hover { color: var(--neutral-400); }
+.storyChevron { transition: transform 0.15s ease; }
+.storyChevronCollapsed { transform: rotate(-90deg); transition: transform 0.15s ease; }
+.storyCardBody {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  line-height: var(--leading-normal);
+}
 
 /* ── Right rail ─────────────────────────────────────────────── */
 .railLink {
@@ -227,47 +304,27 @@
 .railGroupLabel {
   font-size: var(--font-base);
   font-weight: 500;
-  color: var(--neutral-500);
+  color: var(--neutral-400);
 }
-.railTask {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+.railCard {
+  composes: surfaceCard;
   padding: var(--space-2) var(--space-3);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
 }
-/* Urgency accent as an inset bar (keeps the full hairline, no thick side border). */
+.railCardStack { display: flex; flex-direction: column; gap: var(--space-1); }
 .rt_error { box-shadow: inset 3px 0 0 var(--status-error); }
 .rt_warning { box-shadow: inset 3px 0 0 var(--status-warning); }
-.railTaskTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
-.railTaskSub { font-size: var(--font-sm); color: var(--neutral-400); }
-.rt_error .railTaskSub { color: var(--status-error); }
-
-.railGoal {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
-}
-.railGoalText { font-size: var(--font-base); color: var(--neutral-500); font-style: italic; line-height: var(--leading-normal); }
-.railGoalConf { font-size: var(--font-sm); color: var(--neutral-400); }
-
-.railGap {
+.railCardTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); }
+.railCardSub { font-size: var(--font-sm); color: var(--neutral-400); }
+.rt_error .railCardSub { color: var(--status-error); }
+.railCardBody { font-size: var(--font-base); color: var(--neutral-400); font-style: italic; line-height: var(--leading-normal); }
+.railCardMeta { font-size: var(--font-sm); color: var(--neutral-400); }
+.railGapRow {
+  composes: railCard;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
   color: var(--neutral-300);
 }
-.railGapLabel { font-size: var(--font-base); color: var(--neutral-500); }
 .railGapMeta { margin-left: auto; font-size: var(--font-sm); color: var(--neutral-400); }
 
 /* ── Responsive ─────────────────────────────────────────────── */
