@@ -122,6 +122,12 @@ const statusTone = (label) => STATUS_TONE[label] || 'grey';
  * uploads render the HCC attachment file card; assignee changes render a
  * from → to avatar transition.
  */
+/**
+ * Entries are `{ t, … }` objects; `{ t: 'group', label, badge? }` starts a
+ * collapsible section. An entry may override its rail with `avatar` (node) or
+ * `icon` / `iconBg` / `iconBorder` / `iconColor`, and may replace its body
+ * entirely with `render(entry)`.
+ */
 export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggleGroup = (label) => setCollapsed(prev => {
@@ -200,19 +206,22 @@ function Rail({ entry, isFirst, isLast }) {
   return (
     <div className={htStyles.rail}>
       <span className={[htStyles.connectorTop, isFirst ? htStyles.connectorTopFirst : ''].filter(Boolean).join(' ')} />
-      <span
-        className={htStyles.icon}
-        style={{ background: cfg.bg, borderColor: cfg.border }}
-      >
-        <Icon name={cfg.icon} size={14} color={cfg.color} />
-      </span>
+      {/* `avatar` swaps the tile wholesale; the icon fields tune it in place. */}
+      {entry.avatar || (
+        <span
+          className={htStyles.icon}
+          style={{ background: entry.iconBg || cfg.bg, borderColor: entry.iconBorder || cfg.border }}
+        >
+          <Icon name={entry.icon || cfg.icon} size={14} color={entry.iconColor || cfg.color} />
+        </span>
+      )}
       <span className={[htStyles.connectorBottom, isLast ? htStyles.connectorBottomLast : ''].filter(Boolean).join(' ')} />
     </div>
   );
 }
 
 /* ── Meta line (shared across variants) ──────────────────────────────── */
-function MetaLine({ entry }) {
+export function MetaLine({ entry }) {
   const parts = [
     entry.date,
     entry.time,
@@ -222,6 +231,25 @@ function MetaLine({ entry }) {
   return <div className={htStyles.meta}>{parts.join(' • ')}</div>;
 }
 
+/**
+ * ViewMoreButton — the shared expand trigger. Hidden until the row is
+ * hovered or focused, pinned once open. Exported so a `render` body uses the
+ * same affordance as the built-in variants.
+ */
+export function ViewMoreButton({ expanded, onToggle, label = 'View more', leadingDot = false }) {
+  return (
+    <button
+      type="button"
+      className={`${styles.viewMoreBtn} ${expanded ? styles.viewMoreBtnOpen : ''}`}
+      onClick={onToggle}
+    >
+      {leadingDot && <span className={styles.viewNoteDot} aria-hidden="true">•</span>}
+      {label}
+      <DownChevronIcon size={11} color="currentColor" className={expanded ? styles.viewMoreChevronOpen : undefined} />
+    </button>
+  );
+}
+
 /* ── Type-branched entry ─────────────────────────────────────────────── */
 function ActivityLogEntry({ entry, isFirst, isLast, hideCommentTitle = false, onOpenTask, onOpenNote }) {
   return (
@@ -229,6 +257,9 @@ function ActivityLogEntry({ entry, isFirst, isLast, hideCommentTitle = false, on
       <Rail entry={entry} isFirst={isFirst} isLast={isLast} />
       <div className={[htStyles.body, isFirst ? htStyles.bodyFirst : '', isLast ? htStyles.bodyLast : ''].join(' ')}>
         {(() => {
+          // Escape hatch for surfaces whose entry shape none of the built-in
+          // variants covers (e.g. Care Plan History's version cards).
+          if (typeof entry.render === 'function') return entry.render(entry);
           switch (entry.t) {
             case 'outreach':
             case 'call':

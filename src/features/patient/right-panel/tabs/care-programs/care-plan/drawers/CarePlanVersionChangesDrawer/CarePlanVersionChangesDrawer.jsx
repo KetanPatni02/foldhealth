@@ -1,9 +1,17 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
-import { templateContents, templateOwnedTitles } from '../../lib/carePlanAuditTemplates';
+import { ActivityLog, ViewMoreButton } from '../../../../../../../../components/ActivityLog/ActivityLog';
+import { historyTimelineStyles as htStyles } from '../../../../../../../../components/HistoryTimeline/HistoryTimeline';
+import {
+  templateContents,
+  templateOwnedTitles,
+  templateTitles,
+  withLiveLinks,
+} from '../../lib/carePlanAuditTemplates';
+import { NOTE_ACTIONS, netVersionRows } from '../../lib/carePlanVersions';
 import styles from './CarePlanVersionChangesDrawer.module.css';
 
 const ENTITY_NOUN = {
@@ -45,11 +53,12 @@ const HIGHLIGHT_MS = 2000;
 // glance. Entity buckets carry the same icons the plan's own rows use.
 const ENTITY_ICON = {
   goal: 'solar:flag-linear',
-  intervention: 'solar:clipboard-list-linear',
+  // ActivityLog's own task glyph — an intervention is a task on the plan.
+  intervention: 'solar:clipboard-check-linear',
   barrier: 'custom:barrier',
   plan: 'custom:care-plan',
 };
-const TEMPLATE_ICON = 'solar:bookmark-linear';
+const TEMPLATE_ICON = 'custom:care-plan';
 const NOTE_ICON = 'solar:notes-linear';
 const CHANGE_ICON = 'solar:refresh-linear';
 
@@ -61,8 +70,10 @@ function countLabel(type, n) {
 // One node per kind of change: additions and removals collapse into a counted
 // heading listing what moved, and everything else keeps its own node so the
 // before → after stays readable.
-function buildNodes(allRows) {
+function buildNodes(rawRows, plan) {
   const nodes = [];
+  // Only the net difference between this signature and the previous one.
+  const allRows = netVersionRows(rawRows);
   const templates = allRows.filter(r => r.entityType === 'template');
   // What a template brought in is listed under that template, not again as a
   // loose addition.
@@ -75,19 +86,42 @@ function buildNodes(allRows) {
       && owned.has((r.summary || '').trim().toLowerCase())));
 
   for (const t of templates) {
-    const c = templateContents(t);
+    const c = withLiveLinks(templateContents(t), plan);
+    const counts = templateTitles(t);
+    const groups = [];
+    if (c.goals.length) {
+      groups.push({
+        anchor: `${t.id}-goal`,
+        heading: countLabel('goal', c.goals.length),
+        // Each goal carries what the template linked to it, so the tree shows
+        // the linkage instead of three unrelated lists.
+        tree: c.goals.map(g => ({
+          title: g.title,
+          icon: ENTITY_ICON.goal,
+          children: [
+            ...g.interventions.map(title => ({ title, icon: ENTITY_ICON.intervention })),
+            ...g.barriers.map(title => ({ title, icon: ENTITY_ICON.barrier })),
+          ],
+        })),
+      });
+    }
+    // Anything the template brought that hangs off no goal of its own.
+    for (const type of ['intervention', 'barrier']) {
+      const loose = c[`${type}s`];
+      if (!loose.length) continue;
+      groups.push({
+        anchor: `${t.id}-${type}`,
+        heading: countLabel(type, loose.length),
+        tree: loose.map(title => ({ title, icon: ENTITY_ICON[type] })),
+      });
+    }
     nodes.push({
       id: t.id,
+      anchor: t.id,
       icon: TEMPLATE_ICON,
       heading: `${t.summary} Template ${t.action === 'created' ? 'Added' : 'Removed'}`,
-      groups: Object.keys(ENTITY_NOUN)
-        .map(type => ({ type, items: c[`${type}s`] || [] }))
-        .filter(g => g.items.length > 0)
-        .map(g => ({
-          anchor: `${t.id}-${g.type}`,
-          heading: countLabel(g.type, g.items.length),
-          items: g.items,
-        })),
+      counts,
+      groups,
     });
   }
 
@@ -110,12 +144,14 @@ function buildNodes(allRows) {
 
   for (const r of rows) {
     if (r.action === 'created' || r.action === 'deleted') continue;
-    if (r.action === 'note' || r.action === 'note_deleted') {
+    if (NOTE_ACTIONS.has(r.action)) {
+      const removed = r.action !== 'note';
       nodes.push({
         id: r.id,
+        anchor: r.id,
         icon: NOTE_ICON,
-        heading: r.action === 'note' ? 'Care Plan Note Updated' : 'Care Plan Note Removed',
-        items: r.detail ? [r.detail] : [],
+        heading: removed ? 'Care Plan Note Removed' : 'Care Plan Note Updated',
+        items: removed || !r.detail ? [] : [r.detail],
       });
       continue;
     }
@@ -135,6 +171,7 @@ function buildNodes(allRows) {
       const toned = TONED_ACTIONS.has(r.action);
       nodes.push({
         id: r.id,
+        anchor: r.id,
         icon: CHANGE_ICON,
         heading,
         change: {
@@ -149,6 +186,7 @@ function buildNodes(allRows) {
     }
     nodes.push({
       id: r.id,
+      anchor: r.id,
       icon: ENTITY_ICON[r.entityType] || CHANGE_ICON,
       heading,
       items: r.detail ? [r.detail] : [ACTION_LABEL[r.action] || r.action],
@@ -165,19 +203,28 @@ function buildNodes(allRows) {
  * @param {string} props.signedAt  ISO timestamp of that version's signature.
  * @param {string} [props.anchor]  Block to scroll to on open, set when the
  *   caller arrives from a count badge.
+ * @param {object} [props.plan]    Current plan slice, used to infer template
+ *   linkage for rows signed before it was recorded.
  */
-export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, onClose }) {
-  const nodes = useMemo(() => buildNodes(rows || []), [rows]);
+export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, plan, onClose }) {
+  const nodes = useMemo(() => buildNodes(rows || [], plan), [rows, plan]);
   const bodyRef = useRef(null);
+  // Entries open by default; the toggle is there to fold long ones away.
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const toggle = (id) => setCollapsed(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
 
   useEffect(() => {
     if (!anchor) return undefined;
     const el = bodyRef.current?.querySelector(`[data-anchor="${anchor}"]`);
     if (!el) return undefined;
     el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-    // The badge names a block, but the design flashes the whole entry it sits
-    // in, so the highlight climbs to the node.
-    const target = el.closest(`.${styles.node}`) || el;
+    // The anchor names a block, but the design flashes the whole entry it sits
+    // in, so the highlight climbs to the row.
+    const target = el.closest(`.${htStyles.row}`) || el;
     target.classList.add(styles.highlight);
     const timer = setTimeout(() => target.classList.remove(styles.highlight), HIGHLIGHT_MS);
     return () => {
@@ -185,6 +232,7 @@ export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, onClose }
       target.classList.remove(styles.highlight);
     };
   }, [anchor, nodes]);
+
   const at = signedAt ? new Date(signedAt) : null;
   const stamp = at && !Number.isNaN(at.getTime())
     ? `${at.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })} ${at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
@@ -197,53 +245,69 @@ export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, onClose }
     </span>
   );
 
+  // The version is one moment in time, so entries carry no timestamps of their
+  // own — the drawer's subtitle already dates them.
+  const logEntries = nodes.map(node => ({
+    t: 'care_plan_change',
+    id: node.id,
+    avatar: <Avatar type="icon" variant="others" size="XS" iconName={node.icon || ENTITY_ICON.plan} />,
+    render: () => {
+      const open = !collapsed.has(node.id);
+      return (
+        <div data-anchor={node.anchor}>
+          <div className={htStyles.headlineRow}>
+            <span className={htStyles.headline}>{node.heading}</span>
+            <ViewMoreButton expanded={open} onToggle={() => toggle(node.id)} />
+          </div>
+          {open && (
+            <>
+              {node.items?.length > 0 && (
+                <ul className={styles.items}>
+                  {node.items.map((item, k) => <li key={k}>{item}</li>)}
+                </ul>
+              )}
+              {node.groups?.map((group, gi) => (
+                <div key={gi} className={styles.group} data-anchor={group.anchor}>
+                  <span className={styles.groupHeading}>{group.heading}</span>
+                  <span className={styles.groupRule} />
+                  {group.tree.map((item, k) => (
+                    <div key={k}>
+                      <div className={styles.treeRow}>
+                        <Avatar type="icon" variant="others" size="XS" iconName={item.icon} />
+                        <span className={styles.treeTitle}>{item.title}</span>
+                      </div>
+                      {item.children?.map((child, ci) => (
+                        <div key={ci} className={styles.treeChild}>
+                          <div className={styles.treeRow}>
+                            <Avatar type="icon" variant="others" size="XS" iconName={child.icon} />
+                            <span className={styles.treeTitle}>{child.title}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ))}
+              {node.change && (
+                <div className={styles.change}>
+                  <span>{node.change.label}:</span>
+                  <Badge tone={node.change.fromTone} size="S" label={node.change.from} />
+                  <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
+                  <Badge tone={node.change.toTone} size="S" label={node.change.to} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      );
+    },
+  }));
+
   return (
     <Drawer title={title} onClose={onClose}>
-      {nodes.length === 0 ? (
-        <p className={styles.empty}>No changes recorded in this version.</p>
-      ) : (
-        <div className={styles.list} ref={bodyRef}>
-          {nodes.map((node, i) => (
-            <div key={node.id} className={styles.node} data-anchor={node.anchor}>
-              <div className={styles.gutter}>
-                <div className={`${styles.railTop} ${i === 0 ? styles.railHidden : ''}`} />
-                <Avatar
-                  type="icon"
-                  variant="others"
-                  size="XS"
-                  iconName={node.icon || ENTITY_ICON.plan}
-                />
-                <div className={`${styles.railRest} ${i === nodes.length - 1 ? styles.railHidden : ''}`} />
-              </div>
-              <div className={styles.body}>
-                <span className={styles.heading}>{node.heading}</span>
-                {node.items?.length > 0 && (
-                  <ul className={styles.items}>
-                    {node.items.map((item, k) => <li key={k}>{item}</li>)}
-                  </ul>
-                )}
-                {node.groups?.map((group, gi) => (
-                  <div key={gi} className={styles.group} data-anchor={group.anchor}>
-                    <span className={styles.groupHeading}>{group.heading}</span>
-                    <span className={styles.groupRule} />
-                    <ul className={styles.items}>
-                      {group.items.map((item, k) => <li key={k}>{item}</li>)}
-                    </ul>
-                  </div>
-                ))}
-                {node.change && (
-                  <div className={styles.change}>
-                    <span>{node.change.label}:</span>
-                    <Badge tone={node.change.fromTone} size="S" label={node.change.from} />
-                    <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-200)" />
-                    <Badge tone={node.change.toTone} size="S" label={node.change.to} />
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <div ref={bodyRef}>
+        <ActivityLog entries={logEntries} emptyLabel="No changes recorded in this version." />
+      </div>
     </Drawer>
   );
 }

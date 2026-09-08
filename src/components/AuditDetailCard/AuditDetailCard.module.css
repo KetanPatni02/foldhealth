@@ -34,6 +34,9 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .section:last-child { border-bottom: none; }
+/* A section that navigates to its detail. */
+.sectionClickable { cursor: pointer; }
+.sectionClickable:hover { background: var(--primary-25); }
 
 /* Title and its optional inline link, 12px apart per the design. */
 .titleRow {

@@ -1,17 +1,29 @@
+/* Drawer's own body already pads 16px; this only stacks the cards. */
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-2);
 }
 
+/* The card is a row so its actions sit centred against the whole card, not
+   pinned to the heading line. */
 .card {
   border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-3);
-  padding: var(--space-4);
+  border-radius: var(--space-2);
+  padding: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  text-align: left;
+}
+.card:hover { background: var(--primary-25); }
+.cardMain {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
 .cardHead {
   display: flex;
@@ -23,7 +35,21 @@
   font-weight: 600;
   color: var(--neutral-500);
 }
-.restoreBtn { margin-left: auto; }
+/* Row actions, matching the library tables: icon, divider, icon. */
+.actionCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.vDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+
 .meta {
   font-size: var(--font-md);
   color: var(--neutral-300);

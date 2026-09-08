@@ -1,23 +1,10 @@
-/* Entry heading and its "View Details" toggle share one line, per the design. */
-.titleRow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-}
-.title {
+/* Spacing between the entry headline and its expanded version card. */
+.detailsWrap { padding-top: var(--space-2); }
+
+/* A standalone note's text, under its heading. */
+.noteBody {
+  margin-top: var(--space-1);
   font-size: var(--font-base);
-  color: var(--neutral-400);
+  color: var(--neutral-300);
   line-height: 1.2;
 }
-.dot { color: var(--neutral-300); }
-
-.detailsLink {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-base);
-}
-.chevronOpen { transform: rotate(180deg); }
-
-.detailsWrap { padding-top: var(--space-2); }

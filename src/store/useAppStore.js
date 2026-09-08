@@ -384,18 +384,26 @@ function templateContents(template, slice, libraryGoals) {
   const goalIds = new Set(goals.map(g => g.id));
   const intvTitles = titlesOf(template.interventions);
   const barrierTitles = titlesOf(template.barriers);
+  // Interventions match on title only, as the applied-templates strip does; a
+  // later intervention hung off a template goal is not the template's.
+  const interventions = (slice?.interventions || [])
+    .filter(i => intvTitles.has(norm(i.title)));
+  const barriers = (slice?.barriers || [])
+    .filter(b => barrierTitles.has(norm(b.title))
+      || (b.goalIds || []).some(id => goalIds.has(id))
+      || goalIds.has(b.goalId));
+  const barrierGoals = b => (b.goalIds?.length ? b.goalIds : [b.goalId]).filter(Boolean);
+  // Goals carry what hangs off them, so History can show the linkage rather
+  // than three unrelated lists.
   return {
-    goals: goals.map(g => g.title),
-    // Interventions match on title only, as the strip does; a later
-    // intervention hung off a template goal is not the template's.
-    interventions: (slice?.interventions || [])
-      .filter(i => intvTitles.has(norm(i.title)))
-      .map(i => i.title),
-    barriers: (slice?.barriers || [])
-      .filter(b => barrierTitles.has(norm(b.title))
-        || (b.goalIds || []).some(id => goalIds.has(id))
-        || goalIds.has(b.goalId))
-      .map(b => b.title),
+    goals: goals.map(g => ({
+      title: g.title,
+      interventions: interventions.filter(i => i.goalId === g.id).map(i => i.title),
+      barriers: barriers.filter(b => barrierGoals(b).includes(g.id)).map(b => b.title),
+    })),
+    // Whatever the template brought that hangs off no goal of its own.
+    interventions: interventions.filter(i => !goalIds.has(i.goalId)).map(i => i.title),
+    barriers: barriers.filter(b => !barrierGoals(b).some(id => goalIds.has(id))).map(b => b.title),
   };
 }
 

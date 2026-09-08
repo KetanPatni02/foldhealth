@@ -1,13 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
-import { Timeline } from '../../../../../../../../components/Timeline/Timeline';
+import { ActivityLog, MetaLine, ViewMoreButton } from '../../../../../../../../components/ActivityLog/ActivityLog';
+import { historyTimelineStyles as htStyles } from '../../../../../../../../components/HistoryTimeline/HistoryTimeline';
+import { groupByMonth } from '../../../../../../../../components/Timeline/Timeline.utils';
 import { AuditDetailCard } from '../../../../../../../../components/AuditDetailCard/AuditDetailCard';
 import { CarePlanVersionChangesDrawer } from '../CarePlanVersionChangesDrawer/CarePlanVersionChangesDrawer';
-import { Link } from '../../../../../../../../components/Link/Link';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
-import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { templateContents, templateOwnedTitles } from '../../lib/carePlanAuditTemplates';
+import { templateContents, templateOwnedTitles, templateTitles } from '../../lib/carePlanAuditTemplates';
+import {
+  NOTE_ACTIONS,
+  groupByVersion,
+  netVersionRows,
+  standaloneEvents,
+  versionLabel,
+} from '../../lib/carePlanVersions';
 import styles from './CarePlanHistoryDrawer.module.css';
 
 const TYPE_LABEL = { goal: 'Goal', intervention: 'Intervention', barrier: 'Barrier', share: 'Share', plan: 'Plan' };
@@ -15,7 +22,8 @@ const ACTION_LABEL = {
   created: 'Added to Care Plan', updated: 'Edited', status_changed: 'Status Updated',
   progress_changed: 'Progress Updated', value_changed: 'Value Updated',
   deleted: 'Removed from Care Plan', shared: 'Shared', signed: 'Signed',
-  note: 'Note', note_deleted: 'Note Removed', restored: 'Restored',
+  note: 'Note', note_deleted: 'Note Removed', note_cleared: 'Note Removed',
+  restored: 'Restored',
   priority_changed: 'Priority Updated', category_changed: 'Category Updated',
   measure_changed: 'Measure Updated', target_changed: 'Target Updated',
   target_date_changed: 'Target Date Updated', duration_changed: 'Duration Updated',
@@ -45,31 +53,6 @@ function toneFor(value) {
 
 const MM_DD_YYYY = { month: '2-digit', day: '2-digit', year: 'numeric' };
 const HH_MM = { hour: 'numeric', minute: '2-digit' };
-
-// One timeline node per signed version. Signing is what cuts a version, so
-// every audit row written since the previous signature belongs to the version
-// that signature closes. Rows after the newest signature belong to no version
-// yet and are deliberately dropped — history records signed plans only.
-function groupByVersion(entries) {
-  const oldestFirst = [...entries].reverse();
-  const groups = [];
-  let rows = [];
-  for (const e of oldestFirst) {
-    if (e.action === 'signed') {
-      groups.push({ id: e.id, signed: e, createdAt: e.createdAt, actor: e.actor, rows });
-      rows = [];
-    } else {
-      rows.push(e);
-    }
-  }
-  return groups.reverse();
-}
-
-// signCarePlan writes its summary as "Signed (v3)".
-function versionLabel(signed) {
-  const match = /\(v(\d+)\)/.exec(signed?.summary || '');
-  return match ? `v${match[1]}` : null;
-}
 
 // Additions and removals are summarised by count, matching the design's
 // "Added to Care Plan: 2 Goals · 3 Interventions · 1 Barrier" row, so a
@@ -105,11 +88,13 @@ function sectionFor(e) {
   const title = e.entityType === 'plan' ? e.summary : `${type} : ${e.summary}`;
   // A note reads as a care plan note whatever it hangs off, so the section is
   // titled by the event and the note itself is the body.
-  if (e.action === 'note' || e.action === 'note_deleted') {
+  if (NOTE_ACTIONS.has(e.action)) {
+    const removed = e.action !== 'note';
     return {
       id: e.id,
-      title: e.action === 'note' ? 'Care Plan Note Updated' : 'Care Plan Note Removed',
-      body: e.detail,
+      title: removed ? 'Care Plan Note Removed' : 'Care Plan Note Updated',
+      // A removal names the note that went; its text is no longer the plan's.
+      body: removed ? undefined : e.detail,
     };
   }
   // "90% - High → 85% - High" and friends become a from → to pill pair; any
@@ -144,15 +129,20 @@ function sectionFor(e) {
 }
 
 function templateBadges(row, anchorFor) {
-  const c = templateContents(row);
+  const titles = templateTitles(row);
+  // Interventions and barriers linked to a template goal are shown under that
+  // goal, so their own group only exists for the unlinked ones; the badge
+  // falls back to the template itself when there is no such group.
+  const loose = templateContents(row);
   return Object.keys(ENTITY_NOUN).map(type => {
-    const n = (c[`${type}s`] || []).length;
+    const n = titles[type].length;
     if (!n) return null;
     const [one, many] = ENTITY_NOUN[type];
+    const hasGroup = type === 'goal' || loose[`${type}s`].length > 0;
     return {
       label: `${n} ${n === 1 ? one : many}`,
       icon: ENTITY_ICON[type],
-      onClick: anchorFor ? () => anchorFor(type) : undefined,
+      onClick: anchorFor ? () => anchorFor(hasGroup ? type : null) : undefined,
     };
   }).filter(Boolean);
 }
@@ -165,13 +155,22 @@ function latestShare(rows) {
   return last?.summary || null;
 }
 
+// A counted section covers several entity types; clicking it lands on the
+// first one the version actually touched.
+function firstEntityType(rows) {
+  return Object.keys(ENTITY_NOUN).find(type => rows.some(r => r.entityType === type))
+    || 'goal';
+}
+
 function sectionsFor(group, openAt) {
-  const templates = group.rows.filter(r => r.entityType === 'template');
+  // Only the net difference between this signature and the previous one.
+  const rows = netVersionRows(group.rows);
+  const templates = rows.filter(r => r.entityType === 'template');
   // Items a template brought in are reported under that template, so they do
   // not also swell the loose "Added to Care Plan" count.
   const owned = templateOwnedTitles(templates);
   const isOwned = r => owned.has((r.summary || '').trim().toLowerCase());
-  const plain = group.rows.filter(r => r.entityType !== 'template');
+  const plain = rows.filter(r => r.entityType !== 'template');
   const added = plain.filter(r => r.action === 'created' && !isOwned(r));
   const removed = plain.filter(r => r.action === 'deleted' && !isOwned(r));
   // Sharing only happens as part of signing, so it is not its own activity —
@@ -185,8 +184,9 @@ function sectionsFor(group, openAt) {
       title: `${t.summary} Template ${t.action === 'created' ? 'Added' : 'Removed'}`,
       caption: t.action === 'created' ? 'Added to Care Plan:' : 'Removed from Care Plan:',
       badges: t.action === 'created'
-        ? templateBadges(t, type => openAt?.(`${t.id}-${type}`))
+        ? templateBadges(t, type => openAt?.(type ? `${t.id}-${type}` : t.id))
         : [],
+      onClick: () => openAt?.(t.id),
     });
   }
   if (added.length) {
@@ -194,6 +194,7 @@ function sectionsFor(group, openAt) {
       id: `${group.id}-added`,
       title: 'Added to Care Plan',
       badges: countBadges(added, type => openAt?.(`created-${type}`)),
+      onClick: () => openAt?.(`created-${firstEntityType(added)}`),
     });
   }
   if (removed.length) {
@@ -201,9 +202,10 @@ function sectionsFor(group, openAt) {
       id: `${group.id}-removed`,
       title: 'Removed from Care Plan',
       badges: countBadges(removed, type => openAt?.(`deleted-${type}`)),
+      onClick: () => openAt?.(`deleted-${firstEntityType(removed)}`),
     });
   }
-  sections.push(...rest.map(sectionFor));
+  sections.push(...rest.map(r => ({ ...sectionFor(r), onClick: () => openAt?.(r.id) })));
   if (group.signed.detail) {
     sections.push({ id: `${group.signed.id}-note`, title: 'Sign-off Note', body: group.signed.detail });
   }
@@ -221,6 +223,7 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
   const entries = useAppStore(s => s.patientCarePlanAudit[key]);
   const loading = useAppStore(s => s.patientCarePlanAuditLoading[key]);
   const currentUserName = useAppStore(s => s.currentUserProfile?.name);
+  const plan = useAppStore(s => s.patientCarePlans[key]);
   const [expanded, setExpanded] = useState(() => new Set());
   const [openVersion, setOpenVersion] = useState(null);
 
@@ -228,64 +231,118 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
     if (entries === undefined) fetchCarePlanAudit(patientId, program.id);
   }, [entries, patientId, program.id, fetchCarePlanAudit]);
 
+  const isCurrentUser = useCallback(
+    (name) => Boolean(currentUserName && name && name.toLowerCase() === currentUserName.toLowerCase()),
+    [currentUserName],
+  );
+
   const toggle = (id) => setExpanded(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
 
-  const timelineEntries = useMemo(() => groupByVersion(entries || []).map(g => {
-    const at = g.createdAt ? new Date(g.createdAt) : null;
-    const isOpen = expanded.has(g.id);
-    const version = versionLabel(g.signed);
-    return {
-      id: g.id,
-      createdAt: g.createdAt,
-      date: at ? at.toLocaleDateString('en-US', MM_DD_YYYY) : '',
-      time: at ? at.toLocaleTimeString('en-US', HH_MM) : '',
-      user: g.actor,
-      avatar: <Avatar type="icon" variant="others" size="XS" iconName={CARE_PLAN_ICON} />,
-      // An open card is tall; without the rail beside it the entry reads as
-      // floating away from the timeline.
-      railBelow: isOpen,
-      details: (
-        <span className={styles.titleRow}>
-          <span className={styles.title}>Care Plan Updated</span>
-          <span className={styles.dot}>•</span>
-          <Link className={styles.detailsLink} onClick={() => toggle(g.id)}>
-            View Details
-            <DownChevronIcon size={14} className={isOpen ? styles.chevronOpen : undefined} />
-          </Link>
-        </span>
-      ),
-      // The open arrow hands the whole version to the itemised view.
-      version: g,
-      header: [
-        `Signed by: ${g.actor || 'Unknown'}`,
-        version,
-        latestShare(g.rows),
-      ].filter(Boolean),
-      sections: isOpen ? sectionsFor(g, anchor => setOpenVersion({ ...g, anchor })) : null,
-    };
-  }), [entries, expanded]);
+  // ActivityLog takes a flat list: a `group` row opens each month, then one
+  // entry per signed version rendering its own body.
+  // A note or a restore can happen with no signature in sight, so each is its
+  // own entry rather than part of a version's difference.
+  const renderStandalone = (e) => {
+    const at = e.createdAt ? new Date(e.createdAt) : null;
+    const isNote = NOTE_ACTIONS.has(e.action);
+    const removed = isNote && e.action !== 'note';
+    const heading = isNote
+      ? (removed ? 'Care Plan Note Removed' : 'Care Plan Note Updated')
+      : e.summary;
+    return (
+      <>
+        <MetaLine entry={{
+          date: at ? at.toLocaleDateString('en-US', MM_DD_YYYY) : null,
+          time: at ? at.toLocaleTimeString('en-US', HH_MM) : null,
+          by: e.actor,
+          role: isCurrentUser(e.actor) ? 'Current User' : null,
+        }} />
+        <div className={htStyles.headlineRow}>
+          <span className={htStyles.headline}>{heading}</span>
+        </div>
+        {isNote && !removed && e.detail && (
+          <div className={styles.noteBody}>{e.detail}</div>
+        )}
+      </>
+    );
+  };
+
+  const logEntries = useMemo(() => {
+    const versions = groupByVersion(entries || []);
+    const events = standaloneEvents(entries || []).map(e => ({
+      ...e,
+      standalone: true,
+      // groupByMonth reads createdAt, which both shapes already carry.
+    }));
+    const timeline = [...versions, ...events]
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    return groupByMonth(timeline).flatMap(month => [
+      { t: 'group', label: month.label },
+      ...month.entries.map(g => {
+        if (g.standalone) {
+          return {
+            t: 'care_plan_event',
+            id: g.id,
+            avatar: (
+              <Avatar
+                type="icon"
+                variant="others"
+                size="XS"
+                iconName={NOTE_ACTIONS.has(g.action) ? 'solar:notes-linear' : 'custom:history'}
+              />
+            ),
+            render: () => renderStandalone(g),
+          };
+        }
+        const at = g.createdAt ? new Date(g.createdAt) : null;
+        const isOpen = expanded.has(g.id);
+        const version = versionLabel(g.signed);
+        const header = [
+          `Signed by: ${g.actor || 'Unknown'}`,
+          version,
+          latestShare(g.rows),
+        ].filter(Boolean);
+        return {
+          t: 'care_plan_version',
+          id: g.id,
+          avatar: <Avatar type="icon" variant="others" size="XS" iconName={CARE_PLAN_ICON} />,
+          render: () => (
+            <>
+              <MetaLine entry={{
+                date: at ? at.toLocaleDateString('en-US', MM_DD_YYYY) : null,
+                time: at ? at.toLocaleTimeString('en-US', HH_MM) : null,
+                by: g.actor,
+                role: isCurrentUser(g.actor) ? 'Current User' : null,
+              }} />
+              <div className={htStyles.headlineRow}>
+                <span className={htStyles.headline}>Care Plan Updated</span>
+                <ViewMoreButton expanded={isOpen} onToggle={() => toggle(g.id)} />
+              </div>
+              {isOpen && (
+                <div className={styles.detailsWrap}>
+                  <AuditDetailCard
+                    header={header}
+                    sections={sectionsFor(g, anchor => setOpenVersion({ ...g, anchor }))}
+                    onOpen={() => setOpenVersion(g)}
+                    openTooltip="View changes"
+                  />
+                </div>
+              )}
+            </>
+          ),
+        };
+      }),
+    ]);
+  }, [entries, expanded, isCurrentUser]); // eslint-disable-line react-hooks/exhaustive-deps -- renderStandalone is derived from isCurrentUser
 
   return (
     <Drawer title="Care Plan History" onClose={onClose}>
-      <Timeline
-        entries={timelineEntries}
-        currentUserName={currentUserName}
-        renderExtra={entry => (entry.sections
-          ? (
-            <div className={styles.detailsWrap}>
-              <AuditDetailCard
-                header={entry.header}
-                sections={entry.sections}
-                onOpen={() => setOpenVersion(entry.version)}
-                openTooltip="View changes"
-              />
-            </div>
-          )
-          : null)}
+      <ActivityLog
+        entries={logEntries}
         emptyLabel={loading ? 'Loading history…' : 'No signed care plan versions yet.'}
       />
       {openVersion && (
@@ -293,6 +350,7 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
           rows={openVersion.rows}
           signedAt={openVersion.createdAt}
           anchor={openVersion.anchor}
+          plan={plan}
           onClose={() => setOpenVersion(null)}
         />
       )}

@@ -10,17 +10,7 @@
   color: var(--neutral-200);
 }
 
-.list {
-  display: flex;
-  flex-direction: column;
-}
 
-/* Dot-and-rail node: a 24px gutter holds the rail, the body carries the copy. */
-.node {
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-2);
-}
 /* Arrived-here flash: the node a count badge pointed at, held briefly after
    the scroll settles so the eye can find it. */
 .highlight {
@@ -29,42 +19,11 @@
   box-shadow: 0 0 0 1px var(--primary-300);
 }
 
-.gutter {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 24px;
-  flex-shrink: 0;
-}
-.railTop {
-  width: 1px;
-  flex: 0 0 16px;
-  background: var(--neutral-150);
-}
-.railRest {
-  width: 1px;
-  flex: 1;
-  background: var(--neutral-150);
-}
-.railHidden { background: transparent; }
 
-.body {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) 0;
-}
-.heading {
-  font-size: var(--font-base);
-  color: var(--neutral-500);
-  line-height: 1.2;
-}
 
 /* Bulleted detail lines; the design hangs them at 21px, --space-5 is 20px. */
 .items {
-  margin: 0;
+  margin: var(--space-1) 0 0;
   padding-left: var(--space-5);
   list-style: disc;
   font-size: var(--font-base);
@@ -106,8 +65,43 @@
   line-height: 1.2;
 }
 
-.empty {
-  padding: var(--space-4) 0;
+
+/* Linked tree: a goal row, then what the template hung off it, joined by an
+   elbow. Borders rather than the design's SVG so the connector stretches to
+   whatever height a wrapped title needs. */
+.treeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+}
+.treeTitle {
+  flex: 1;
+  min-width: 0;
   font-size: var(--font-base);
-  color: var(--neutral-300);
+  color: var(--neutral-400);
+  line-height: 1.2;
+}
+.treeChild {
+  position: relative;
+  padding-left: var(--space-6);
+}
+.treeChild::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  height: 50%;
+  width: 14px;
+  border-left: 0.5px solid var(--neutral-150);
+  border-bottom: 0.5px solid var(--neutral-150);
+  border-bottom-left-radius: var(--space-2);
+}
+.treeChild:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  bottom: 0;
+  border-left: 0.5px solid var(--neutral-150);
 }
