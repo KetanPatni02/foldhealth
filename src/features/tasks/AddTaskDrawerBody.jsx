@@ -340,6 +340,9 @@ export function AddTaskDrawerBody({
             value={assignedTo}
             options={assigneeChoices}
             onSelect={setAssignedTo}
+            // Only Internal Task lets the user reassign — Patient Task
+            // runs on the member and the assignee stays locked to them.
+            disabled={!isInternalTask}
             renderOption={opt => {
               const label = typeof opt === 'string' ? opt : opt.label;
               const val = typeof opt === 'string' ? opt : opt.value;

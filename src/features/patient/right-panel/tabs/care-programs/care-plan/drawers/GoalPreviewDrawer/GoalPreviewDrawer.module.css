@@ -100,7 +100,7 @@
   font-size: var(--font-base);
   font-weight: 500;
   line-height: 1.2;
-  color: var(--neutral-300);
+  color: var(--neutral-500);
 }
 
 /* ── Accordion rows (Interventions / Barriers / Automations) ── */

@@ -6,6 +6,8 @@ import { Input } from '../../../../../components/Input/Input';
 import { Checkbox } from '../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Badge } from '../../../../../components/Badge/Badge';
 import { Link } from '../../../../../components/Link/Link';
+import { Icon } from '../../../../../components/Icon/Icon';
+import { LinkIcon } from '../../../../../components/Icon/LinkIcon';
 import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIcon';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
 import { CreateGoalDrawer } from '../CreateGoalDrawer/CreateGoalDrawer';
@@ -25,6 +27,13 @@ function goalDetail(g) {
   return [[g.measure, target].filter(Boolean).join(' '), formatGoalDuration(g)]
     .filter(Boolean)
     .join(' • ');
+}
+
+// Total items pointing at this goal — mirrors CarePlanLibraryPanel's rollup
+// so the number in the hover action badge matches the library table.
+function linkedCount(g) {
+  const linked = Object.values(g?.linked || {}).reduce((n, v) => n + (v || 0), 0);
+  return (g?.interventions || []).length + linked;
 }
 
 /**
@@ -138,6 +147,34 @@ export function AddGoalsDrawer({ onClose, onAdd }) {
                   <span className={styles.rowTitle}>{g.title}</span>
                   {g.detail && <span className={styles.rowDetail}>{g.detail}</span>}
                 </span>
+                <span className={styles.rowActions} onClick={e => e.preventDefault()}>
+                  <button
+                    type="button"
+                    className={styles.rowAction}
+                    aria-label="Linked items"
+                    onClick={e => e.preventDefault()}
+                  >
+                    <LinkIcon size={16} color="var(--neutral-300)" />
+                    <span className={styles.linkCount}>{linkedCount(g)}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.rowAction}
+                    aria-label="Edit goal"
+                    onClick={e => e.preventDefault()}
+                  >
+                    <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.rowAction}
+                    aria-label="Goal details"
+                    onClick={e => e.preventDefault()}
+                  >
+                    <Icon name="solar:info-circle-linear" size={16} color="var(--neutral-300)" />
+                  </button>
+                </span>
+                <span className={styles.rowActionsDivider} aria-hidden />
                 <span className={styles.rowMeta}>
                   {g.category && <Badge tone="grey" size="S" label={normalizeCategory(g.category)} />}
                   <PriorityIcon priority={g.priority} size={16} />

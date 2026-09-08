@@ -121,16 +121,17 @@ export function InterventionDrawer({
     el.style.height = `${el.scrollHeight}px`;
   }, [title]);
   const [priority, setPriority] = useState(intervention?.priority ?? 'Medium');
-  // Default the assignee to the current member, matching the Patient Task
-  // drawer. The parent may resolve `memberName` async (worklist slice
-  // hydrates after mount), so sync on arrival while leaving explicit
-  // user picks alone.
+  // Default the assignee to the current member for every kind EXCEPT
+  // Internal Task, where the user picks a staff member instead. The
+  // parent may resolve `memberName` async (worklist slice hydrates after
+  // mount), so sync on arrival while leaving explicit user picks alone.
   useEffect(() => {
+    if (kind === 'internal-task') return;
     if (memberName && !assignedToInitialized.current) {
       setAssignedTo(prev => prev || memberName);
       assignedToInitialized.current = true;
     }
-  }, [memberName]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [memberName, kind]); // eslint-disable-line react-hooks/exhaustive-deps
   const [form, setForm] = useState(intervention?.form ?? '');
   const [content, setContent] = useState(intervention?.content ?? '');
   const [vital, setVital] = useState(intervention?.vital ?? '');
@@ -264,7 +265,7 @@ export function InterventionDrawer({
           member,
         })}
       >
-        Add
+        {intervention ? 'Update' : 'Add'}
       </Button>
       <span className={styles.headerDivider} />
     </>
@@ -457,6 +458,10 @@ export function InterventionDrawer({
             avatarVariant={assignedTo && assignedTo === memberName ? 'patient' : 'staff'}
             onSelect={(u) => setAssignedTo(u?.name || '')}
             pickerTitle="Assign to"
+            // Only Internal Task lets the user reassign — every other
+            // intervention kind runs on the member and the assignee
+            // stays locked to them.
+            disabled={kind !== 'internal-task'}
           />
         </div>
         {/* Priority — was inline in the Title field, now its own row so
