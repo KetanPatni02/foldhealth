@@ -77,7 +77,7 @@
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1);
-  border-radius: var(--space-2);
+  border-radius: var(--space-1);
   width: fit-content;
   max-width: 100%;
 }

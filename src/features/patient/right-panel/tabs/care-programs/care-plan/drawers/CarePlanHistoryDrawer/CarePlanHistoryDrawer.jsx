@@ -80,16 +80,22 @@ const ENTITY_NOUN = {
   barrier: ['Barrier', 'Barriers'],
 };
 const ENTITY_ICON = {
-  goal: 'solar:heart-pulse-linear',
+  // The goal glyph the plan itself uses — mapPatientCarePlanGoalRow's default
+  // and the icon on every goal row.
+  goal: 'solar:flag-linear',
   intervention: 'solar:checklist-minimalistic-linear',
   barrier: 'custom:barrier',
 };
-function countBadges(rows) {
+function countBadges(rows, anchorFor) {
   return Object.keys(ENTITY_NOUN).map(type => {
     const n = rows.filter(r => r.entityType === type).length;
     if (!n) return null;
     const [one, many] = ENTITY_NOUN[type];
-    return { label: `${n} ${n === 1 ? one : many}`, icon: ENTITY_ICON[type] };
+    return {
+      label: `${n} ${n === 1 ? one : many}`,
+      icon: ENTITY_ICON[type],
+      onClick: anchorFor ? () => anchorFor(type) : undefined,
+    };
   }).filter(Boolean);
 }
 
@@ -137,17 +143,29 @@ function sectionFor(e) {
   return { id: e.id, title, caption: e.detail ? `${action}: ${e.detail}` : action };
 }
 
-function templateBadges(row) {
+function templateBadges(row, anchorFor) {
   const c = templateContents(row);
   return Object.keys(ENTITY_NOUN).map(type => {
     const n = (c[`${type}s`] || []).length;
     if (!n) return null;
     const [one, many] = ENTITY_NOUN[type];
-    return { label: `${n} ${n === 1 ? one : many}`, icon: ENTITY_ICON[type] };
+    return {
+      label: `${n} ${n === 1 ? one : many}`,
+      icon: ENTITY_ICON[type],
+      onClick: anchorFor ? () => anchorFor(type) : undefined,
+    };
   }).filter(Boolean);
 }
 
-function sectionsFor(group) {
+// A version can hold several share events; only the most recent one describes
+// where the plan actually stands, so the attribution names that one. `rows` is
+// oldest-first, so the last match is the latest share.
+function latestShare(rows) {
+  const last = [...rows].reverse().find(r => r.action === 'shared');
+  return last?.summary || null;
+}
+
+function sectionsFor(group, openAt) {
   const templates = group.rows.filter(r => r.entityType === 'template');
   // Items a template brought in are reported under that template, so they do
   // not also swell the loose "Added to Care Plan" count.
@@ -156,21 +174,34 @@ function sectionsFor(group) {
   const plain = group.rows.filter(r => r.entityType !== 'template');
   const added = plain.filter(r => r.action === 'created' && !isOwned(r));
   const removed = plain.filter(r => r.action === 'deleted' && !isOwned(r));
-  const rest = plain.filter(r => r.action !== 'created' && r.action !== 'deleted');
+  // Sharing only happens as part of signing, so it is not its own activity —
+  // the attribution line above already names where the plan went.
+  const rest = plain.filter(r => r.action !== 'created' && r.action !== 'deleted'
+    && r.action !== 'shared');
   const sections = [];
   for (const t of templates) {
     sections.push({
       id: t.id,
       title: `${t.summary} Template ${t.action === 'created' ? 'Added' : 'Removed'}`,
       caption: t.action === 'created' ? 'Added to Care Plan:' : 'Removed from Care Plan:',
-      badges: t.action === 'created' ? templateBadges(t) : [],
+      badges: t.action === 'created'
+        ? templateBadges(t, type => openAt?.(`${t.id}-${type}`))
+        : [],
     });
   }
   if (added.length) {
-    sections.push({ id: `${group.id}-added`, title: 'Added to Care Plan', badges: countBadges(added) });
+    sections.push({
+      id: `${group.id}-added`,
+      title: 'Added to Care Plan',
+      badges: countBadges(added, type => openAt?.(`created-${type}`)),
+    });
   }
   if (removed.length) {
-    sections.push({ id: `${group.id}-removed`, title: 'Removed from Care Plan', badges: countBadges(removed) });
+    sections.push({
+      id: `${group.id}-removed`,
+      title: 'Removed from Care Plan',
+      badges: countBadges(removed, type => openAt?.(`deleted-${type}`)),
+    });
   }
   sections.push(...rest.map(sectionFor));
   if (group.signed.detail) {
@@ -214,6 +245,9 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
       time: at ? at.toLocaleTimeString('en-US', HH_MM) : '',
       user: g.actor,
       avatar: <Avatar type="icon" variant="others" size="XS" iconName={CARE_PLAN_ICON} />,
+      // An open card is tall; without the rail beside it the entry reads as
+      // floating away from the timeline.
+      railBelow: isOpen,
       details: (
         <span className={styles.titleRow}>
           <span className={styles.title}>Care Plan Updated</span>
@@ -229,9 +263,9 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
       header: [
         `Signed by: ${g.actor || 'Unknown'}`,
         version,
-        ...g.rows.filter(r => r.action === 'shared').map(r => `Shared: ${r.summary}`),
+        latestShare(g.rows),
       ].filter(Boolean),
-      sections: isOpen ? sectionsFor(g) : null,
+      sections: isOpen ? sectionsFor(g, anchor => setOpenVersion({ ...g, anchor })) : null,
     };
   }), [entries, expanded]);
 
@@ -258,6 +292,7 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
         <CarePlanVersionChangesDrawer
           rows={openVersion.rows}
           signedAt={openVersion.createdAt}
+          anchor={openVersion.anchor}
           onClose={() => setOpenVersion(null)}
         />
       )}

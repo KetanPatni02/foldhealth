@@ -248,10 +248,10 @@ export function ProgramDetailViewContentHeader({
               <Button
                 variant="ghost"
                 size="L"
-                leadingIcon="solar:add-circle-linear"
+                leadingIcon="solar:add-linear"
                 onClick={() => requestCarePlanPanel('templates')}
               >
-                Care Plan
+                Template
               </Button>
               <span className={styles.headerDivider} aria-hidden="true" />
               <Button variant="alt" size="L" leadingIcon="solar:pen-2-linear" disabled={!signShareEnabled} onClick={() => requestCarePlanShare('share')}>

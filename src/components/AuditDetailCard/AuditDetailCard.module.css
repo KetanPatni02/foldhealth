@@ -63,6 +63,15 @@
   line-height: 1.2;
 }
 
+/* A badge that navigates somewhere; the Badge keeps its own chrome. */
+.badgeButton {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
 /* The corner action sits top-aligned in its own full-height column. */
 .actionCol {
   display: flex;

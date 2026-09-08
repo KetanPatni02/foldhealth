@@ -523,13 +523,13 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                 </button>
               )}
               {live.duration && (
-                <span className={styles.durationBadge}>
-                  <Icon name="solar:clock-circle-linear" size={14} color="var(--neutral-400)" />
-                  <span>{live.duration}</span>
-                  {hasRepeat && (
-                    <Icon name="solar:refresh-linear" size={12} color="var(--neutral-400)" />
-                  )}
-                </span>
+                <Badge
+                  tone="grey"
+                  size="S"
+                  icon="solar:clock-circle-linear"
+                  label={live.duration}
+                  trailingIcon={hasRepeat ? 'solar:refresh-linear' : undefined}
+                />
               )}
             </div>
           )}
