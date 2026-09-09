@@ -13,6 +13,14 @@
   align-items: center;
   gap: var(--space-2);
 }
+/* Separates the count from the section's own action, matching the care
+   plan's GBI section heads. */
+.headDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
 .sectionTitle {
   font-size: var(--font-base);
   font-weight: 500;

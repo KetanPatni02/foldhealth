@@ -26,8 +26,10 @@ const TAB_TO_KIND = Object.fromEntries(INTERVENTION_KIND_ORDER.map(k => [KIND_LA
  * Add Interventions — the library picker behind a goal's Interventions "+".
  * Same shape as Add Goals: filter by type, search, tick what you want. The
  * tab you are on decides which kind "New Intervention" starts on.
+ *
+ * @param {string} [props.primaryLabel='Add']  Names where the picks land.
  */
-export function AddInterventionsDrawer({ onClose, onAdd }) {
+export function AddInterventionsDrawer({ onClose, onAdd, primaryLabel = 'Add' }) {
   const library = useAppStore(s => s.carePlanInterventionTemplates);
   const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
@@ -88,7 +90,7 @@ export function AddInterventionsDrawer({ onClose, onAdd }) {
         disabled={selected.size === 0}
         onClick={() => onAdd?.(items.filter(i => selected.has(i.id)))}
       >
-        Add
+        {primaryLabel}
       </Button>
       <span className={styles.headerDivider} />
     </>
@@ -99,6 +101,14 @@ export function AddInterventionsDrawer({ onClose, onAdd }) {
       <div className={styles.body}>
         <div className={styles.filterRow}>
           <Toggle size="S" items={tabs} active={tab} onChange={setTab} />
+          <Button
+            variant="tertiary"
+            size="S"
+            leadingIconElement={<AddIconMinimalist size={14} />}
+            onClick={openCreate}
+          >
+            New
+          </Button>
         </div>
 
         <Input

@@ -7,7 +7,11 @@ import { AuditDetailCard } from '../../../../../../../../components/AuditDetailC
 import { CarePlanVersionChangesDrawer } from '../CarePlanVersionChangesDrawer/CarePlanVersionChangesDrawer';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { templateContents, templateOwnedTitles, templateTitles } from '../../lib/carePlanAuditTemplates';
+import {
+  templateContents,
+  templateOwnedTitles,
+  withLiveLinks,
+} from '../../lib/carePlanAuditTemplates';
 import {
   NOTE_ACTIONS,
   groupByVersion,
@@ -128,17 +132,23 @@ function sectionFor(e) {
   return { id: e.id, title, caption: e.detail ? `${action}: ${e.detail}` : action };
 }
 
-function templateBadges(row, anchorFor) {
-  const titles = templateTitles(row);
-  // Interventions and barriers linked to a template goal are shown under that
-  // goal, so their own group only exists for the unlinked ones; the badge
-  // falls back to the template itself when there is no such group.
-  const loose = templateContents(row);
+function templateBadges(row, links, anchorFor) {
+  // Resolved the same way the version drawer resolves it, so the counts match
+  // the tree behind them.
+  const c = withLiveLinks(templateContents(row), links);
+  const totals = {
+    goal: c.goals.length,
+    intervention: c.interventions.length + c.goals.reduce((n, g) => n + g.interventions.length, 0),
+    barrier: c.barriers.length + c.goals.reduce((n, g) => n + g.barriers.length, 0),
+  };
   return Object.keys(ENTITY_NOUN).map(type => {
-    const n = titles[type].length;
+    const n = totals[type];
     if (!n) return null;
     const [one, many] = ENTITY_NOUN[type];
-    const hasGroup = type === 'goal' || loose[`${type}s`].length > 0;
+    // Interventions and barriers linked to a goal are shown under it, so their
+    // own group only exists for the unlinked ones; the badge then falls back
+    // to the template itself.
+    const hasGroup = type === 'goal' || c[`${type}s`].length > 0;
     return {
       label: `${n} ${n === 1 ? one : many}`,
       icon: ENTITY_ICON[type],
@@ -162,7 +172,7 @@ function firstEntityType(rows) {
     || 'goal';
 }
 
-function sectionsFor(group, openAt) {
+function sectionsFor(group, openAt, links) {
   // Only the net difference between this signature and the previous one.
   const rows = netVersionRows(group.rows);
   const templates = rows.filter(r => r.entityType === 'template');
@@ -184,7 +194,7 @@ function sectionsFor(group, openAt) {
       title: `${t.summary} Template ${t.action === 'created' ? 'Added' : 'Removed'}`,
       caption: t.action === 'created' ? 'Added to Care Plan:' : 'Removed from Care Plan:',
       badges: t.action === 'created'
-        ? templateBadges(t, type => openAt?.(type ? `${t.id}-${type}` : t.id))
+        ? templateBadges(t, links, type => openAt?.(type ? `${t.id}-${type}` : t.id))
         : [],
       onClick: () => openAt?.(t.id),
     });
@@ -224,6 +234,8 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
   const loading = useAppStore(s => s.patientCarePlanAuditLoading[key]);
   const currentUserName = useAppStore(s => s.currentUserProfile?.name);
   const plan = useAppStore(s => s.patientCarePlans[key]);
+  const libraryGoals = useAppStore(s => s.carePlanGoals);
+  const links = useMemo(() => ({ plan, libraryGoals }), [plan, libraryGoals]);
   const [expanded, setExpanded] = useState(() => new Set());
   const [openVersion, setOpenVersion] = useState(null);
 
@@ -291,7 +303,7 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
               <Avatar
                 type="icon"
                 variant="others"
-                size="XS"
+                size="S"
                 iconName={NOTE_ACTIONS.has(g.action) ? 'solar:notes-linear' : 'custom:history'}
               />
             ),
@@ -309,7 +321,7 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
         return {
           t: 'care_plan_version',
           id: g.id,
-          avatar: <Avatar type="icon" variant="others" size="XS" iconName={CARE_PLAN_ICON} />,
+          avatar: <Avatar type="icon" variant="others" size="S" iconName={CARE_PLAN_ICON} />,
           render: () => (
             <>
               <MetaLine entry={{
@@ -326,7 +338,7 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
                 <div className={styles.detailsWrap}>
                   <AuditDetailCard
                     header={header}
-                    sections={sectionsFor(g, anchor => setOpenVersion({ ...g, anchor }))}
+                    sections={sectionsFor(g, anchor => setOpenVersion({ ...g, anchor }), links)}
                     onOpen={() => setOpenVersion(g)}
                     openTooltip="View changes"
                   />

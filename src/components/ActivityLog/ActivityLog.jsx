@@ -200,20 +200,47 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
   );
 }
 
+// A Badge tone and an Avatar variant name the same five states; grey is the
+// avatar's neutral "others".
+const TONE_TO_VARIANT = {
+  success: 'success',
+  error: 'error',
+  warning: 'warning',
+  primary: 'primary',
+  grey: 'others',
+};
+
+// An entry that records how something went paints its tile accordingly.
+function railVariantFor(entry) {
+  // A status change wears the colour of the status it moved to, so the tile
+  // and the badge beside it agree.
+  if (entry.to) return TONE_TO_VARIANT[statusTone(entry.to)] || 'others';
+  // Accepting a code is a success; dismissing or deleting one is not.
+  if (entry.t === 'accept') return 'success';
+  if (entry.t === 'dismiss' || entry.t === 'delete') return 'error';
+  // Outreach and friends carry their result in the outcome's own colour, the
+  // same signal the Outreach tab reads.
+  const hint = `${entry.outcomeColor || ''} ${entry.statusTone || ''}`.toLowerCase();
+  if (hint.includes('success')) return 'success';
+  if (hint.includes('error')) return 'error';
+  return 'others';
+}
+
 /* ── Rail (shared) ───────────────────────────────────────────────────── */
 function Rail({ entry, isFirst, isLast }) {
   const cfg = TYPE_ICON[entry.t] || DEFAULT_ICON;
   return (
     <div className={htStyles.rail}>
       <span className={[htStyles.connectorTop, isFirst ? htStyles.connectorTopFirst : ''].filter(Boolean).join(' ')} />
-      {/* `avatar` swaps the tile wholesale; the icon fields tune it in place. */}
+      {/* `avatar` swaps the tile wholesale; otherwise every entry uses the
+          design system's own icon avatar at size S. */}
       {entry.avatar || (
-        <span
-          className={htStyles.icon}
-          style={{ background: entry.iconBg || cfg.bg, borderColor: entry.iconBorder || cfg.border }}
-        >
-          <Icon name={entry.icon || cfg.icon} size={14} color={entry.iconColor || cfg.color} />
-        </span>
+        <Avatar
+          type="icon"
+          variant={entry.avatarVariant || railVariantFor(entry)}
+          size="S"
+          iconName={entry.icon || cfg.icon}
+        />
       )}
       <span className={[htStyles.connectorBottom, isLast ? htStyles.connectorBottomLast : ''].filter(Boolean).join(' ')} />
     </div>

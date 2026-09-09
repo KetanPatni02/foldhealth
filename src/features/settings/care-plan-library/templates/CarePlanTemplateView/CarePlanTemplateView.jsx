@@ -4,9 +4,13 @@ import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
 import { Button } from '../../../../../components/Button/Button';
 import { CloseButton } from '../../../../../components/CloseButton/CloseButton';
+import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { CarePlanSections, ChronicConditionSelect } from '../../shared';
 import { CARE_PLAN_NAME_MAX } from '../../lib/carePlanLimits';
 import { CreateGoalDrawer } from '../../goals/CreateGoalDrawer/CreateGoalDrawer';
+import { AddGoalsDrawer } from '../../goals/AddGoalsDrawer/AddGoalsDrawer';
+import { AddInterventionsDrawer } from '../../interventions/AddInterventionsDrawer';
+import { AddBarriersDrawer } from '../../barriers/AddBarriersDrawer/AddBarriersDrawer';
 import { INTERVENTION_EDITORS } from '../../interventions';
 import {
   goalPayloadFromTemplateEntry,
@@ -53,8 +57,90 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
   const [templateType, setTemplateType] = useState(
     (template.conditions || []).length ? 'chronic' : 'general',
   );
+  // The three lists are edited here and written on Save, so a picked goal
+  // shows in the table before the template is persisted.
+  const [goals, setGoals] = useState(template.goals || []);
+  const [interventions, setInterventions] = useState(template.interventions || []);
+  const [barriers, setBarriers] = useState(template.barriers || []);
+  const [picker, setPicker] = useState(null); // 'goals' | 'interventions' | 'barriers'
+  // { list, item, rect } — which row's menu is open.
+  const [rowMenu, setRowMenu] = useState(null);
 
-  const goalRows = useMemo(() => (template.goals || []).map((entry, i) => {
+  const removeFromList = (list, id) => {
+    const setters = { goals: setGoals, interventions: setInterventions, barriers: setBarriers };
+    const current = { goals, interventions, barriers }[list];
+    setters[list](current.filter(e => e.id !== id));
+  };
+
+  const norm = (v) => (v || '').trim().toLowerCase();
+  // What a template goal brought with it: the library goal's own links, which
+  // carry both interventions and barriers.
+  const linksOfEntry = (entry) => (libraryGoals.find(g => g.id === entry.id)?.interventions) || [];
+
+  // A goal arrives with what hangs off it: the library goal's links, split
+  // back into interventions and barriers by kind.
+  const addGoals = (picked) => {
+    const seenGoals = new Set(goals.map(g => norm(g.title)));
+    const fresh = (picked || []).filter((g) => {
+      const key = norm(g.title);
+      if (!key || seenGoals.has(key)) return false;
+      seenGoals.add(key);
+      return true;
+    });
+    if (!fresh.length) { setPicker(null); return; }
+
+    const links = fresh.flatMap(g => linksOfEntry(g));
+    const append = (list, incoming) => {
+      const seen = new Set(list.map(e => norm(e.title)));
+      const add = [];
+      for (const l of incoming) {
+        const key = norm(l.title);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        add.push({ id: l.id, title: l.title });
+      }
+      return add.length ? [...list, ...add] : list;
+    };
+
+    setGoals([...goals, ...fresh.map(g => ({ id: g.id, title: g.title }))]);
+    setInterventions(prev => append(prev, links.filter(l => l.kind !== 'barrier')));
+    setBarriers(prev => append(prev, links.filter(l => l.kind === 'barrier')));
+    setPicker(null);
+  };
+
+  // Dropping a goal drops what hung off it, unless another goal still on the
+  // template links the same item.
+  const removeGoal = (goalId) => {
+    const remaining = goals.filter(g => g.id !== goalId);
+    const removedLinks = linksOfEntry({ id: goalId });
+    if (!removedLinks.length) { setGoals(remaining); return; }
+    const stillOwned = new Set(remaining.flatMap(e => linksOfEntry(e)
+      .flatMap(l => [String(l.id), norm(l.title)])));
+    const drop = (list) => list.filter((item) => {
+      const wasLinked = removedLinks.some(l => String(l.id) === String(item.id)
+        || norm(l.title) === norm(item.title));
+      if (!wasLinked) return true;
+      return stillOwned.has(String(item.id)) || stillOwned.has(norm(item.title));
+    });
+    setGoals(remaining);
+    setInterventions(prev => drop(prev));
+    setBarriers(prev => drop(prev));
+  };
+
+  // Picked rows join the list unless something with the same title is on it.
+  const appendUnique = (setList, list, picked) => {
+    const seen = new Set(list.map(e => (e.title || '').trim().toLowerCase()));
+    const fresh = (picked || []).filter(p => {
+      const key = (p.title || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (fresh.length) setList([...list, ...fresh.map(p => ({ id: p.id, title: p.title }))]);
+    setPicker(null);
+  };
+
+  const goalRows = useMemo(() => goals.map((entry, i) => {
     const payload = goalPayloadFromTemplateEntry(entry, libraryGoals);
     return {
       ...payload,
@@ -64,27 +150,27 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
       trend: '—',
       progress: '0%',
     };
-  }), [template.goals, libraryGoals]);
+  }), [goals, libraryGoals]);
 
-  const interventionRows = useMemo(() => (template.interventions || []).map((entry, i) => ({
+  const interventionRows = useMemo(() => interventions.map((entry, i) => ({
     ...interventionPayloadFromTemplateEntry(entry),
     id: entry.id || `intv-${i}`,
     // Same per-kind icon the patient plan uses, instead of one clipboard for all.
     icon: CARE_PLAN_INTERVENTION_ICONS[entry.kind] || 'solar:clipboard-list-linear',
-  })), [template.interventions]);
+  })), [interventions]);
 
-  const barrierRows = useMemo(() => (template.barriers || []).map((entry, i) => ({
+  const barrierRows = useMemo(() => barriers.map((entry, i) => ({
     id: entry.id || `barrier-${i}`,
     title: entry.title,
     subtitle: entry.description || '',
     status: 'Not Started',
-  })), [template.barriers]);
+  })), [barriers]);
 
   // Reverse of a goal's links: which goals point at a given intervention or
   // barrier. Mirrors CarePlanView's linkedForChild, which shows owning goals.
   const goalsByLinkId = useMemo(() => {
     const map = new Map();
-    for (const entry of template.goals || []) {
+    for (const entry of goals) {
       const goal = libraryGoals.find(g => g.id === entry.id);
       for (const link of goal?.interventions || []) {
         const list = map.get(link.id) || [];
@@ -107,7 +193,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
       }
     }
     return map;
-  }, [template.goals, libraryGoals]);
+  }, [goals, libraryGoals]);
 
   return (
     <div className={styles.view}>
@@ -175,9 +261,9 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
               name: name.trim(),
               description,
               conditions,
-              goals: template.goals || [],
-              interventions: template.interventions || [],
-              barriers: template.barriers || [],
+              goals,
+              interventions,
+              barriers,
             })}
           >
             Save
@@ -191,6 +277,12 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
             goalRows={goalRows}
             interventionRows={interventionRows}
             barrierRows={barrierRows}
+            onRowMenuGoal={(m) => setRowMenu({ list: 'goals', item: m.item, rect: m.rect })}
+            onRowMenuIntervention={(m) => setRowMenu({ list: 'interventions', item: m.item, rect: m.rect })}
+            onRowMenuBarrier={(m) => setRowMenu({ list: 'barriers', item: m.item, rect: m.rect })}
+            onAddGoal={() => setPicker('goals')}
+            onAddIntervention={() => setPicker('interventions')}
+            onAddBarrier={() => setPicker('barriers')}
             linkedForChild={(row) => {
               const goals = goalsByLinkId.get(row.id)
                 || goalsByLinkId.get((row.title || '').trim().toLowerCase());
@@ -214,7 +306,7 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
               };
             }}
             onOpenIntervention={(row) => {
-              const entry = (template.interventions || []).find(i => i.id === row.id);
+              const entry = interventions.find(i => i.id === row.id);
               if (entry && INTERVENTION_EDITORS[entry.kind]) setEditingIntervention(entry);
             }}
             onOpenGoal={(row) => {
@@ -244,6 +336,64 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
           />
         );
       })()}
+
+      {rowMenu && (
+        <MenuPopover
+          anchorRect={rowMenu.rect}
+          ariaLabel="Row actions"
+          width={160}
+          items={[
+            { key: 'edit', icon: 'solar:pen-linear', label: 'Edit' },
+            { key: 'remove', icon: 'solar:trash-bin-trash-linear', label: 'Remove', danger: true },
+          ]}
+          onClose={() => setRowMenu(null)}
+          onSelect={(key) => {
+            const { list, item } = rowMenu;
+            setRowMenu(null);
+            if (key === 'remove') {
+              if (list === 'goals') removeGoal(item.id);
+              else removeFromList(list, item.id);
+              return;
+            }
+            // Edit opens the same editor a row click does; barriers have none.
+            if (list === 'goals') setEditingGoal(item);
+            else if (list === 'interventions') {
+              const entry = interventions.find(i => i.id === item.id);
+              setEditingIntervention(entry || item);
+            }
+          }}
+        />
+      )}
+
+      {picker === 'goals' && (
+        <AddGoalsDrawer
+          primaryLabel="Add to Template"
+          onClose={() => setPicker(null)}
+          onAdd={(picked) => addGoals(picked)}
+        />
+      )}
+
+      {picker === 'interventions' && (
+        <AddInterventionsDrawer
+          primaryLabel="Add to Template"
+          onClose={() => setPicker(null)}
+          onAdd={(picked) => appendUnique(setInterventions, interventions, picked)}
+        />
+      )}
+
+      {picker === 'barriers' && (
+        <AddBarriersDrawer
+          primaryLabel="Add to Template"
+          existingBarriers={barriers}
+          onClose={() => setPicker(null)}
+          // Already-added rows open ticked here, so the picked set is the
+          // full list the template should keep.
+          onAdd={(picked) => {
+            setBarriers((picked || []).map(p => ({ id: p.id, title: p.title })));
+            setPicker(null);
+          }}
+        />
+      )}
 
       {editingGoal && (
         <CreateGoalDrawer

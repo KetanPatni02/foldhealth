@@ -26,6 +26,9 @@ function BarrierRow({
   linked,
   template,
 }) {
+  // Mirrors the table's own gate: a template row keeps its menu when the
+  // caller can act on one.
+  const showActions = !template || Boolean(onRowMenu);
   return (
     <tr
       key={b.id}
@@ -59,18 +62,20 @@ function BarrierRow({
               onOpen={rect => onStatusMenu({ kind: 'barrier', item: b, rect })}
             />
           </td>
-          <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
-            <ActionButton
-              icon="solar:menu-dots-linear"
-              size="S"
-              tooltip="More"
-              tooltipBelow
-              tooltipLeft
-              disabled={!canEdit}
-              onClick={(e) => onRowMenu({ kind: 'barrier-menu', item: b, rect: e.currentTarget.getBoundingClientRect() })}
-            />
-          </td>
         </>
+      )}
+      {showActions && (
+        <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
+          <ActionButton
+            icon="solar:menu-dots-linear"
+            size="S"
+            tooltip="More"
+            tooltipBelow
+            tooltipLeft
+            disabled={!template && !canEdit}
+            onClick={(e) => onRowMenu({ kind: 'barrier-menu', item: b, rect: e.currentTarget.getBoundingClientRect() })}
+          />
+        </td>
       )}
     </tr>
   );
@@ -118,8 +123,12 @@ export function CarePlanBarriersTable({
     return Array.from(groups.values());
   }, [rows]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(consolidatedRows, 'title', 'asc');
+  // A template row has no status, but it still gets its row menu when the
+  // caller can act on one.
+  const showActions = !template || Boolean(onRowMenu);
   const columns = template
-    ? BARRIER_COLUMNS.filter(c => c.key === 'priority' || c.key === 'title')
+    ? BARRIER_COLUMNS.filter(c => c.key === 'priority' || c.key === 'title'
+      || (showActions && c.key === 'actions'))
     : BARRIER_COLUMNS;
 
   const { openRows, closedRows } = useMemo(() => {

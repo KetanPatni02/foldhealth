@@ -42,6 +42,8 @@ export function SettingsLayout() {
   const carePlanTemplateScreen = useAppStore(s => s.carePlanTemplateScreen);
   const setCarePlanTemplateScreen = useAppStore(s => s.setCarePlanTemplateScreen);
   const saveCarePlanTemplate = useAppStore(s => s.saveCarePlanTemplate);
+  const setCarePlanTab = useAppStore(s => s.setCarePlanTab);
+  const showToast = useAppStore(s => s.showToast);
 
   // Editing a template owns the whole Settings area, same as New Care Plan.
   if (carePlanTemplateScreen) {
@@ -52,7 +54,7 @@ export function SettingsLayout() {
           template={template}
           onClose={() => setCarePlanTemplateScreen(null)}
           onSave={async (values) => {
-            const saved = await saveCarePlanTemplate(values, template.id);
+            const saved = await saveCarePlanTemplate({ status: template.status, ...values }, template.id);
             if (saved) setCarePlanTemplateScreen(null);
           }}
         />
@@ -64,7 +66,17 @@ export function SettingsLayout() {
   if (carePlanCreateOpen) {
     return (
       <div className={styles.layout}>
-        <CarePlanCreateView onClose={() => setCarePlanCreateOpen(false)} />
+        <CarePlanCreateView
+          onClose={() => setCarePlanCreateOpen(false)}
+          onSave={async (values) => {
+            const saved = await saveCarePlanTemplate(values);
+            if (!saved) return;
+            showToast(`"${saved.name}" ${values.status === 'draft' ? 'saved as draft' : 'saved'}`);
+            // Land on the tab the template just went to.
+            setCarePlanTab(values.status === 'draft' ? 'drafts' : 'template');
+            setCarePlanCreateOpen(false);
+          }}
+        />
       </div>
     );
   }

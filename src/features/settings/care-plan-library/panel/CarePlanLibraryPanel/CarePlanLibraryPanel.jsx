@@ -31,6 +31,7 @@ const CARE_PLAN_TABS = [
   { key: 'goals', label: 'Goals Library' },
   { key: 'interventions', label: 'Interventions Library' },
   { key: 'barriers', label: 'Barriers Library' },
+  { key: 'drafts', label: 'Draft Templates' },
 ];
 
 const TAB_META = {
@@ -38,6 +39,7 @@ const TAB_META = {
   goals: { entityLabel: 'Goal', emptyIcon: 'solar:flag-linear' },
   interventions: { entityLabel: 'Intervention', emptyIcon: 'solar:clipboard-check-linear' },
   barriers: { entityLabel: 'Barrier', emptyIcon: 'custom:barrier' },
+  drafts: { entityLabel: 'Draft', emptyIcon: 'solar:clipboard-list-linear' },
 };
 
 // The intervention kinds a template can carry — same vocabulary as the goal
@@ -259,9 +261,20 @@ export function CarePlanLibraryPanel() {
     setTemplateSort(prev => (prev.key === key ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
   };
 
-  const filteredTemplates = useMemo(() => {
+  // The Plan Template tab lists published templates; Draft Templates lists
+  // the ones saved from New Care Plan's "Save as Draft".
+  const publishedTemplates = useMemo(
+    () => templates.filter(t => t.status !== 'draft'),
+    [templates],
+  );
+  const draftTemplates = useMemo(
+    () => templates.filter(t => t.status === 'draft'),
+    [templates],
+  );
+
+  const sortTemplates = (list) => {
     const q = searchValue.trim().toLowerCase();
-    const base = !q ? templates : templates.filter(t =>
+    const base = !q ? list : list.filter(t =>
       t.name.toLowerCase().includes(q) || t.conditions.some(c => c.toLowerCase().includes(q))
     );
     const dir = templateSort.dir === 'asc' ? 1 : -1;
@@ -281,7 +294,16 @@ export function CarePlanLibraryPanel() {
       if (!templateSort.key) return 0;
       return valueOf(a).localeCompare(valueOf(b)) * dir;
     });
-  }, [templates, searchValue, templateSort, favOrder, favorites]);
+  };
+
+  const filteredTemplates = useMemo(
+    () => sortTemplates(publishedTemplates),
+    [publishedTemplates, searchValue, templateSort, favOrder, favorites], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const filteredDrafts = useMemo(
+    () => sortTemplates(draftTemplates),
+    [draftTemplates, searchValue, templateSort, favOrder, favorites], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const [goalSort, setGoalSort] = useState({ key: 'title', dir: 'asc' });
   const [selectedGoalIds, setSelectedGoalIds] = useState([]);
@@ -341,7 +363,7 @@ export function CarePlanLibraryPanel() {
   const openCreate = () => {
     // Templates get the full-pane New Care Plan view; goals/barriers/
     // interventions keep the lightweight drawer.
-    if (activeTab === 'template') { setCarePlanCreateOpen(true); return; }
+    if (activeTab === 'template' || activeTab === 'drafts') { setCarePlanCreateOpen(true); return; }
     if (activeTab === 'goals') { setDraft(blankSimpleDraft('goal')); return; }
     if (activeTab === 'interventions') { setDraft({ kind: 'intervention', id: null, title: '', description: '', interventionKind: 'internal-task' }); return; }
     setDraft(blankSimpleDraft('barrier'));
@@ -578,6 +600,26 @@ export function CarePlanLibraryPanel() {
               <div className={styles.emptyState}>
                 <Icon name={meta.emptyIcon} size={32} color="var(--neutral-150)" />
                 <p>No templates match "<strong>{searchValue.trim()}</strong>".</p>
+              </div>
+            }
+            minTableWidth={1100}
+          />
+          )
+        )}
+        {!(libraryLoading && !libraryDidFetch) && activeTab === 'drafts' && (
+          draftTemplates.length === 0 ? emptyPane('No Draft Templates') : (
+          <WorklistShell
+            header={null}
+            columns={withSelect(TEMPLATE_COLUMNS, bulkMode)}
+            rows={filteredDrafts}
+            renderRow={renderTemplateRow}
+            sortKey={templateSort.key}
+            sortDir={templateSort.dir}
+            onSort={handleTemplateSort}
+            emptyState={
+              <div className={styles.emptyState}>
+                <Icon name={meta.emptyIcon} size={32} color="var(--neutral-150)" />
+                <p>No drafts match "<strong>{searchValue.trim()}</strong>".</p>
               </div>
             }
             minTableWidth={1100}

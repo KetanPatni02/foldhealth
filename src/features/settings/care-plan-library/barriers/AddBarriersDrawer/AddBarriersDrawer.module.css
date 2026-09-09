@@ -23,6 +23,18 @@
   color: var(--neutral-300);
 }
 
+/* Heading over the reference list, matching the templates drawer's list head. */
+.listHead {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
+  color: var(--neutral-200);
+  font-size: var(--font-base);
+  font-weight: 500;
+}
+
 .rowWrap {
   display: flex;
   flex-direction: column;
@@ -39,12 +51,8 @@
   cursor: pointer;
 }
 
-.row:hover:not(.rowDisabled) {
+.row:hover {
   background: var(--neutral-50);
-}
-
-.rowDisabled {
-  cursor: default;
 }
 
 .rowText {
