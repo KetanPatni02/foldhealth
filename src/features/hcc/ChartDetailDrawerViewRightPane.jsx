@@ -217,6 +217,8 @@ export function ChartDetailDrawerViewRightPane(p) {
               moreWrapRef={moreWrapRef}
               actionsLocked={supportActionsLocked}
               actionsLockedTip={supportLockedTip}
+              showUpload={showUpload}
+              onUploadToggle={() => setShowUpload(v => !v)}
             />
             {showReviewBanner && (
               <div className={styles.passBanner}>
@@ -226,67 +228,6 @@ export function ChartDetailDrawerViewRightPane(p) {
             )}
 
             <div className={styles.rightBody}>
-              <div className={styles.assocRow}>
-                <div className={styles.assocLeft}>
-                  <span className={styles.assocLabel}>Document Associated with</span>
-                  <button
-                    type="button"
-                    className={styles.dosBadge}
-                    onClick={() => setDosExpanded(o => !o)}
-                    aria-expanded={dosExpanded}
-                  >
-                    {dosList.length} DOSs
-                    <Icon name={dosExpanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={11} color="var(--primary-300)" />
-                  </button>
-                </div>
-                <div className={styles.assocActions}>
-                  <button
-                    type="button"
-                    className={styles.uploadLink}
-                    onClick={() => setShowUpload(v => !v)}
-                    disabled={supportActionsLocked}
-                    title={supportActionsLocked ? supportLockedTip : undefined}
-                  >
-                    <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
-                    Upload
-                  </button>
-                </div>
-              </div>
-
-              {/* Expandable DOS list with a per-DOS toggle (mirrors the
-                  Diagnosis Gap drawer). */}
-              {dosExpanded && dosList.length > 0 && (
-                <div className={styles.dosPanel}>
-                  {dosList.map(d => {
-                    const provider = d.provider || m?.rp || '—';
-                    const pos = d.pos || d.posDesc || m?.pos || m?.posDesc || '—';
-                    const vt = d.vt || m?.vt || 'HCC';
-                    return (
-                      <div key={d.date} className={styles.dosPanelRow}>
-                        <div className={styles.dosPanelInfo}>
-                          <div className={styles.dosPanelDate}>{d.date}</div>
-                          <div className={styles.dosPanelMeta}>
-                            Rendering Provider: {provider}
-                            <span className={styles.dosPanelSep}>•</span>
-                            POS: {pos}
-                            <span className={styles.dosPanelSep}>•</span>
-                            Visit Type: {vt}
-                          </div>
-                        </div>
-                        {canDeleteDos && (
-                          <ActionButton
-                            size="S"
-                            icon="solar:trash-bin-trash-linear"
-                            tooltip="Delete DOS"
-                            onClick={() => setDosToDelete(d.date)}
-                          />
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
               {showUpload && (
                 <div className={styles.uploadPanel}>
                   <DemoPhiStrip />
@@ -328,6 +269,55 @@ export function ChartDetailDrawerViewRightPane(p) {
                     <Button variant="primary" size="S" disabled={!canSaveUpload} onClick={saveUpload}>Save</Button>
                     <Button variant="secondary" size="S" onClick={resetUpload}>Discard</Button>
                   </div>
+                </div>
+              )}
+
+              <div className={styles.assocRow}>
+                <div className={styles.assocLeft}>
+                  <span className={styles.assocLabel}>Document Associated with</span>
+                  <button
+                    type="button"
+                    className={styles.dosBadge}
+                    onClick={() => setDosExpanded(o => !o)}
+                    aria-expanded={dosExpanded}
+                  >
+                    {dosList.length} DOSs
+                    <Icon name={dosExpanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'} size={11} color="var(--primary-300)" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Expandable DOS list with a per-DOS toggle (mirrors the
+                  Diagnosis Gap drawer). */}
+              {dosExpanded && dosList.length > 0 && (
+                <div className={styles.dosPanel}>
+                  {dosList.map(d => {
+                    const provider = d.provider || m?.rp || '—';
+                    const pos = d.pos || d.posDesc || m?.pos || m?.posDesc || '—';
+                    const vt = d.vt || m?.vt || 'HCC';
+                    return (
+                      <div key={d.date} className={styles.dosPanelRow}>
+                        <div className={styles.dosPanelInfo}>
+                          <div className={styles.dosPanelDate}>{d.date}</div>
+                          <div className={styles.dosPanelMeta}>
+                            Rendering Provider: {provider}
+                            <span className={styles.dosPanelSep}>•</span>
+                            POS: {pos}
+                            <span className={styles.dosPanelSep}>•</span>
+                            Visit Type: {vt}
+                          </div>
+                        </div>
+                        {canDeleteDos && (
+                          <ActionButton
+                            size="S"
+                            icon="solar:trash-bin-trash-linear"
+                            tooltip="Delete DOS"
+                            onClick={() => setDosToDelete(d.date)}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
