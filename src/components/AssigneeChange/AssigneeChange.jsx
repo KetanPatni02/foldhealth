@@ -74,7 +74,12 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   const tipTimer = useRef(null);
   useEffect(() => () => tipTimer.current && clearTimeout(tipTimer.current), []);
   const openTip = () => {
-    if (!canShowTooltip || disabled) return;
+    // Show the informational avatar tooltip even when the pill is
+    // disabled — the tooltip tells the reader who's assigned, and
+    // that context is just as useful (arguably more so) on read-only
+    // rows where the name text is hidden and the affordance is
+    // muted.
+    if (!canShowTooltip) return;
     if (tipTimer.current) clearTimeout(tipTimer.current);
     tipTimer.current = setTimeout(() => {
       const r = btnRef.current?.getBoundingClientRect();
@@ -132,11 +137,12 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   // Figma node 8629:178 spec.
   const avatarSize = size === 'S' ? 'XS' : 'S';
 
-  // Chevron picks up the pill's tone in avatar-only mode: orange when a
-  // staff avatar is shown (matches the DH tile), grey otherwise. Everywhere
-  // else it stays grey until hover reveals it. Figma node 8629:178.
-  const chevronColor = (avatarOnly && !unassigned)
-    ? 'var(--secondary-300)'
+  // Chevron picks up the pill's tone in avatar-only mode: variant
+  // maps 1:1 to the token — patient → primary purple, staff → the
+  // secondary orange. Everywhere else it stays grey until hover
+  // reveals it. Figma node 8629:178.
+  const chevronColor = avatarOnly && !unassigned
+    ? (avatarVariant === 'patient' ? 'var(--primary-300)' : 'var(--secondary-300)')
     : 'var(--neutral-300)';
 
   const q = query.trim().toLowerCase();
@@ -154,6 +160,10 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
     unassigned ? styles.unassigned : styles.assigned,
     size === 'S' ? styles.sizeS : styles.sizeM,
     avatarOnly ? styles.avatarOnly : '',
+    /* Variant modifier — drives the avatar-only hover tint so
+       patient rows fill with a primary halo instead of the default
+       secondary one. */
+    avatarOnly && !unassigned && avatarVariant === 'patient' ? styles.variantPatient : '',
     fillContainer ? styles.fillContainer : '',
     disabled ? styles.disabled : '',
     className || '',
@@ -195,6 +205,11 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
       className={rootClass}
       onClick={handleClick}
       aria-label={label}
+      /* Native browser title as a guaranteed fallback for the hover
+         name — the styled tooltip below is nicer, but on avatar-only
+         cells any missed tooltip would leave the reader without any
+         way to tell who's assigned. */
+      title={avatarOnly && !unassigned && name ? name : undefined}
       aria-disabled={disabled || undefined}
       aria-haspopup={hasPicker ? 'menu' : undefined}
       aria-expanded={hasPicker ? !!pos : undefined}

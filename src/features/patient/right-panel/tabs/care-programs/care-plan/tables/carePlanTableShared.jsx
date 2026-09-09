@@ -133,6 +133,10 @@ export function GbiNameCell({
   meta,
   layout = 'inline',
   linked = null,
+  // `recurring` — when true, renders a small refresh glyph before
+  // the link button so recurring interventions are visible at a
+  // glance. No-op for goals / barriers, which never pass it.
+  recurring = false,
 }) {
   const stacked = layout === 'stacked';
 
@@ -161,6 +165,13 @@ export function GbiNameCell({
         ) : null}
         {meta && stacked ? <span className={styles.nameSecondary}>{meta}</span> : null}
       </span>
+      {recurring && (
+        <Tooltip label="Recurring">
+          <span className={styles.recurringIcon} aria-label="Recurring">
+            <Icon name="solar:refresh-linear" size={14} color="var(--neutral-300)" />
+          </span>
+        </Tooltip>
+      )}
       <GbiLinkButton data={linked} />
     </div>
   );

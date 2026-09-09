@@ -242,7 +242,7 @@ const INTERVENTION_KIND_ITEMS = [
  * Every edit (status, progress, readings, automations, notes, interventions,
  * barriers) writes through the care-plan store into Supabase.
  */
-export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention }) {
+export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention, consolidated = false }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
@@ -528,48 +528,58 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             className={styles.statusSelect}
             style={{ width: 'fit-content' }}
           />
-          <div className={styles.statusActions}>
-            <ActionButton
-              icon="solar:pen-linear"
-              size="L"
-              tooltip="Edit Goal"
-              disabled={!canEdit}
-              onClick={() => setEditGoalOpen(true)}
-            />
-            <span className={styles.headerDivider} />
-            <ActionButton
-              ref={moreBtnRef}
-              icon="solar:menu-dots-linear"
-              size="L"
-              tooltip="More"
-              disabled={!canEdit}
-              onClick={(e) => setMoreMenu(e.currentTarget.getBoundingClientRect())}
-            />
-          </div>
+          {/* Read-only-plus (consolidated view opened from the Comprehensive
+              Care Plan tab): Edit Goal + More live outside the allow-list
+              (status / progress / trends / note only), so drop the whole
+              action cluster in that mode. */}
+          {!consolidated && (
+            <div className={styles.statusActions}>
+              <ActionButton
+                icon="solar:pen-linear"
+                size="L"
+                tooltip="Edit Goal"
+                disabled={!canEdit}
+                onClick={() => setEditGoalOpen(true)}
+              />
+              <span className={styles.headerDivider} />
+              <ActionButton
+                ref={moreBtnRef}
+                icon="solar:menu-dots-linear"
+                size="L"
+                tooltip="More"
+                disabled={!canEdit}
+                onClick={(e) => setMoreMenu(e.currentTarget.getBoundingClientRect())}
+              />
+            </div>
+          )}
         </div>
 
         <div className={styles.hero}>
           <div className={styles.titleRow}>
             <span className={styles.priorityTrigger}>
-              <DetailDropdown
-                value={live.priority}
-                options={PRIORITY_OPTIONS}
-                onSelect={(v) => {
-                  if (!canEdit || v === live.priority) return;
-                  savePatientCarePlanGoal(patientId, program, { ...live, priority: v }, live.id);
-                }}
-                searchable={false}
-                renderOption={(opt) => (
-                  <>
-                    <PriorityIcon priority={opt} size={16} />
-                    <span style={{ textTransform: 'capitalize' }}>{opt}</span>
-                  </>
-                )}
-              >
+              {consolidated ? (
                 <PriorityIcon priority={live.priority} size={20} />
-              </DetailDropdown>
+              ) : (
+                <DetailDropdown
+                  value={live.priority}
+                  options={PRIORITY_OPTIONS}
+                  onSelect={(v) => {
+                    if (!canEdit || v === live.priority) return;
+                    savePatientCarePlanGoal(patientId, program, { ...live, priority: v }, live.id);
+                  }}
+                  searchable={false}
+                  renderOption={(opt) => (
+                    <>
+                      <PriorityIcon priority={opt} size={16} />
+                      <span style={{ textTransform: 'capitalize' }}>{opt}</span>
+                    </>
+                  )}
+                >
+                  <PriorityIcon priority={live.priority} size={20} />
+                </DetailDropdown>
+              )}
             </span>
-            {editingTitle ? (
+            {editingTitle && !consolidated ? (
               <input
                 autoFocus
                 type="text"
@@ -585,11 +595,11 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 type="button"
                 className={styles.titleEditable}
                 onClick={() => {
-                  if (!canEdit) return;
+                  if (!canEdit || consolidated) return;
                   setTitleDraft(live.title || '');
                   setEditingTitle(true);
                 }}
-                disabled={!canEdit}
+                disabled={!canEdit || consolidated}
                 aria-label="Edit goal title"
               >
                 {live.title}
@@ -705,137 +715,148 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           )}
         </section>
 
-        <section className={`${styles.accSection} ${open.interventions ? styles.accSectionOpen : ''}`}>
-          <AccordionHead
-            title="Interventions"
-            open={open.interventions}
-            onToggle={() => toggle('interventions')}
-            canEdit={canEdit}
-            addTooltip="Add Intervention"
-            addRef={intvAddRef}
-            addAriaHasPopup="menu"
-            addAriaExpanded={intvMenuOpen}
-            onAdd={() => expandAnd('interventions', () => setIntvMenuOpen(v => !v))}
-          />
-          {intvMenuOpen && (
-            <MenuPopover
-              anchorRef={intvAddRef}
-              align="right"
-              width={200}
-              ariaLabel="Add intervention"
-              items={INTERVENTION_KIND_ITEMS}
-              onSelect={(kind) => {
-                setIntvMenuOpen(false);
-                setIntvSelectedKind(kind);
-                setIntvOpen(true);
-              }}
-              onClose={() => setIntvMenuOpen(false)}
+        {/* Interventions / Barriers / Automations sections. In the
+            consolidated view (opened from the Comprehensive Care Plan
+            tab) these sections auto-hide when nothing is linked, drop
+            the "+" add affordance on the head, and render their rows
+            read-only. */}
+        {(!consolidated || interventions.length > 0) && (
+          <section className={`${styles.accSection} ${open.interventions ? styles.accSectionOpen : ''}`}>
+            <AccordionHead
+              title="Interventions"
+              open={open.interventions}
+              onToggle={() => toggle('interventions')}
+              canEdit={canEdit && !consolidated}
+              addTooltip="Add Intervention"
+              addRef={intvAddRef}
+              addAriaHasPopup="menu"
+              addAriaExpanded={intvMenuOpen}
+              onAdd={() => expandAnd('interventions', () => setIntvMenuOpen(v => !v))}
             />
-          )}
-          {open.interventions && (
-            interventions.length === 0 ? (
-              <div className={styles.emptyCard}>No interventions linked yet.</div>
-            ) : (
-              <GoalLinkedInterventionsList
-                interventions={interventions}
-                canEdit={canEdit}
-                linkCount={linkCount}
-                platformUsers={platformUsers}
-                onOpen={onOpenIntervention}
-                onPriorityMenu={setPriorityMenu}
-                onLinkOwner={setLinkOwner}
-                onAssigneeChange={handleAssigneeChange}
-                onRowMenu={setRowMenu}
+            {intvMenuOpen && !consolidated && (
+              <MenuPopover
+                anchorRef={intvAddRef}
+                align="right"
+                width={200}
+                ariaLabel="Add intervention"
+                items={INTERVENTION_KIND_ITEMS}
+                onSelect={(kind) => {
+                  setIntvMenuOpen(false);
+                  setIntvSelectedKind(kind);
+                  setIntvOpen(true);
+                }}
+                onClose={() => setIntvMenuOpen(false)}
               />
-            )
-          )}
-        </section>
-
-        <section className={`${styles.accSection} ${open.barriers ? styles.accSectionOpen : ''}`}>
-          <AccordionHead
-            title="Barriers"
-            open={open.barriers}
-            onToggle={() => toggle('barriers')}
-            canEdit={canEdit}
-            addTooltip="Add Barriers"
-            onAdd={() => expandAnd('barriers', () => setAddingBarrier(v => !v))}
-          />
-          {open.barriers && (
-            <>
-              {addingBarrier && (
-                <div className={styles.addRow}>
-                  <Input
-                    placeholder="Barrier title"
-                    value={barrierTitle}
-                    onChange={e => setBarrierTitle(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') submitBarrier(); }}
-                    aria-label="Barrier title"
-                  />
-                  <Button variant="primary" size="S" onClick={submitBarrier} disabled={!barrierTitle.trim()}>Save</Button>
-                </div>
-              )}
-              {barriers.length === 0 ? (
-                <div className={styles.emptyCard}>No barriers linked yet.</div>
+            )}
+            {open.interventions && (
+              interventions.length === 0 ? (
+                <div className={styles.emptyCard}>No interventions linked yet.</div>
               ) : (
-                <div className={styles.linkedList}>
-                  {barriers.map(b => (
-                    <div key={b.id} className={styles.linkedRow}>
-                      <span className={styles.linkedIcon}><Icon name="custom:barrier" size={16} color="var(--neutral-400)" /></span>
-                      <span className={styles.linkedText}>
-                        <span className={styles.linkedTitle}>{b.title}</span>
-                        {b.status && <span className={styles.linkedMeta}>{b.status}</span>}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </section>
+                <GoalLinkedInterventionsList
+                  interventions={interventions}
+                  canEdit={canEdit && !consolidated}
+                  linkCount={linkCount}
+                  platformUsers={platformUsers}
+                  onOpen={onOpenIntervention}
+                  onPriorityMenu={consolidated ? undefined : setPriorityMenu}
+                  onLinkOwner={consolidated ? undefined : setLinkOwner}
+                  onAssigneeChange={consolidated ? undefined : handleAssigneeChange}
+                  onRowMenu={consolidated ? undefined : setRowMenu}
+                />
+              )
+            )}
+          </section>
+        )}
 
-        <section className={`${styles.accSection} ${open.automations ? styles.accSectionOpen : ''}`}>
-          <AccordionHead
-            title="Automations"
-            open={open.automations}
-            onToggle={() => toggle('automations')}
-            canEdit={canEdit}
-            addTooltip="Add Automations"
-            onAdd={() => expandAnd('automations', () => setAddingAutomation(v => !v))}
-          />
-          {open.automations && (
-            <>
-              {addingAutomation && (
-                <div className={styles.addRow}>
-                  <Input
-                    placeholder="Automation (e.g. Notify care team on 5% deviation)"
-                    value={automationTitle}
-                    onChange={e => setAutomationTitle(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') submitAutomation(); }}
-                    aria-label="Automation title"
-                  />
-                  <Button variant="primary" size="S" onClick={submitAutomation} disabled={!automationTitle.trim()}>Save</Button>
-                </div>
-              )}
-              {automations.length === 0 ? (
-                <div className={styles.emptyCard}>No automations set up.</div>
-              ) : (
-                <div className={styles.linkedList}>
-                  {automations.map(a => (
-                    <div key={a.id} className={styles.linkedRow}>
-                      <span className={styles.linkedIcon}><Icon name={a.icon || 'solar:bolt-linear'} size={16} color="var(--neutral-400)" /></span>
-                      <span className={styles.linkedText}><span className={styles.linkedTitle}>{a.title}</span></span>
-                      {canEdit && (
-                        <button type="button" className={styles.valueRemove} onClick={() => deleteCarePlanAutomation(patientId, program.id, a.id)} aria-label="Remove automation">
-                          <Icon name="solar:trash-bin-minimalistic-linear" size={14} color="var(--neutral-300)" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </section>
+        {(!consolidated || barriers.length > 0) && (
+          <section className={`${styles.accSection} ${open.barriers ? styles.accSectionOpen : ''}`}>
+            <AccordionHead
+              title="Barriers"
+              open={open.barriers}
+              onToggle={() => toggle('barriers')}
+              canEdit={canEdit && !consolidated}
+              addTooltip="Add Barriers"
+              onAdd={() => expandAnd('barriers', () => setAddingBarrier(v => !v))}
+            />
+            {open.barriers && (
+              <>
+                {addingBarrier && !consolidated && (
+                  <div className={styles.addRow}>
+                    <Input
+                      placeholder="Barrier title"
+                      value={barrierTitle}
+                      onChange={e => setBarrierTitle(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') submitBarrier(); }}
+                      aria-label="Barrier title"
+                    />
+                    <Button variant="primary" size="S" onClick={submitBarrier} disabled={!barrierTitle.trim()}>Save</Button>
+                  </div>
+                )}
+                {barriers.length === 0 ? (
+                  <div className={styles.emptyCard}>No barriers linked yet.</div>
+                ) : (
+                  <div className={styles.linkedList}>
+                    {barriers.map(b => (
+                      <div key={b.id} className={styles.linkedRow}>
+                        <span className={styles.linkedIcon}><Icon name="custom:barrier" size={16} color="var(--neutral-400)" /></span>
+                        <span className={styles.linkedText}>
+                          <span className={styles.linkedTitle}>{b.title}</span>
+                          {b.status && <span className={styles.linkedMeta}>{b.status}</span>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
+
+        {(!consolidated || automations.length > 0) && (
+          <section className={`${styles.accSection} ${open.automations ? styles.accSectionOpen : ''}`}>
+            <AccordionHead
+              title="Automations"
+              open={open.automations}
+              onToggle={() => toggle('automations')}
+              canEdit={canEdit && !consolidated}
+              addTooltip="Add Automations"
+              onAdd={() => expandAnd('automations', () => setAddingAutomation(v => !v))}
+            />
+            {open.automations && (
+              <>
+                {addingAutomation && !consolidated && (
+                  <div className={styles.addRow}>
+                    <Input
+                      placeholder="Automation (e.g. Notify care team on 5% deviation)"
+                      value={automationTitle}
+                      onChange={e => setAutomationTitle(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') submitAutomation(); }}
+                      aria-label="Automation title"
+                    />
+                    <Button variant="primary" size="S" onClick={submitAutomation} disabled={!automationTitle.trim()}>Save</Button>
+                  </div>
+                )}
+                {automations.length === 0 ? (
+                  <div className={styles.emptyCard}>No automations set up.</div>
+                ) : (
+                  <div className={styles.linkedList}>
+                    {automations.map(a => (
+                      <div key={a.id} className={styles.linkedRow}>
+                        <span className={styles.linkedIcon}><Icon name={a.icon || 'solar:bolt-linear'} size={16} color="var(--neutral-400)" /></span>
+                        <span className={styles.linkedText}><span className={styles.linkedTitle}>{a.title}</span></span>
+                        {canEdit && !consolidated && (
+                          <button type="button" className={styles.valueRemove} onClick={() => deleteCarePlanAutomation(patientId, program.id, a.id)} aria-label="Remove automation">
+                            <Icon name="solar:trash-bin-minimalistic-linear" size={14} color="var(--neutral-300)" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+        )}
 
         {canEdit && (
           <div className={barrierStyles.noteEditor}>

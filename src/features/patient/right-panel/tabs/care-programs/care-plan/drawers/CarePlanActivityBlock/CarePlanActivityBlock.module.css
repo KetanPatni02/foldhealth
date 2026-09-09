@@ -1,0 +1,21 @@
+/* Shared activity block used by Goal, Intervention, and Barrier
+   preview drawers so all three feeds share the same tab + filter
+   chrome (matches Figma). Full-bleed to the drawer's 16px body
+   padding — the Drawer body carries the outer padding, so this
+   block extends into it via negative side margin. */
+.activityBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: var(--space-4) calc(var(--space-4) * -1) 0;
+  padding: 0;
+}
+.activityLogPad {
+  padding: 0 var(--space-4);
+}
+.activityFilterBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+}

@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
+import { Button } from '../../../../../../../../components/Button/Button';
 import { CloseButton } from '../../../../../../../../components/CloseButton/CloseButton';
+import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
+import { HeaderCell } from '../../../../../../../../components/HeaderCell/HeaderCell';
+import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
 import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
@@ -25,6 +29,7 @@ import {
 } from '../../tables/carePlanTableShared';
 import { enrichGoalRows, enrichInterventionRows } from '../../tables/carePlanTableSort';
 import { CARE_PLAN_INTERVENTION_ICONS } from '../../lib/carePlanInterventionMenu';
+import { assigneeAvatarVariant } from '../../tables/CarePlanInterventionsTable';
 import { KIND_LABELS } from '../../../../../../../settings/care-plan-library/interventions/shared/interventionKinds';
 import { GoalPreviewDrawer } from '../../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
 import { InterventionPreviewDrawer } from '../../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
@@ -34,6 +39,238 @@ import styles from './CarePlanSummaryView.module.css';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 const PRIORITIES = ['high', 'medium', 'low'];
+
+// Mock summarizer output — three canned recap variants the Summarize
+// affordance cycles through. Real AI generation slots in here later
+// without touching the render layer.
+function mockProgramSummaries(patientName) {
+  const name = patientName || 'this patient';
+  return [
+    {
+      intro: `Last 2 months activity summary for patient "${name}"`,
+      points: [
+        { title: 'BMI Maintenance', body: 'Moderate exercise adherence leads to a 5% improvement in physical activity, though taste perception challenges slow dietary progress.' },
+        { title: 'Blood Pressure Management', body: 'Daily monitoring shows a 10% improvement in blood pressure stability and early recognition of low blood pressure risks.' },
+        { title: 'Routine Lab Tests', body: 'No delays in hypertension-related lab tests, ensuring consistent health monitoring.' },
+        { title: 'Dietary Adjustments', body: "Despite taste challenges, there's a 15% improvement in hypertension-friendly dietary choices." },
+        { title: 'Mental Health Monitoring', body: 'Regular PHQ-9 tracking helps in early identification of mental health concerns.' },
+      ],
+      actions: [
+        'Collaborate with a dietitian for personalized meal plans to address taste barriers.',
+        'Integrate motivational tools or activity trackers to improve exercise consistency.',
+        'Offer guidance on using blood pressure monitoring devices and schedule follow-ups to review data trends.',
+        'Set automated reminders for upcoming hypertension-related lab tests.',
+        'Provide educational material on hypertension and schedule monthly follow-ups to adjust the care plan and address progress.',
+      ],
+    },
+    {
+      intro: `Recent care plan activity for "${name}"`,
+      points: [
+        { title: 'Goal Progress', body: 'Two out of three active goals are trending upward, with sustained progress on blood pressure and weight targets.' },
+        { title: 'Barrier Resolution', body: 'One transportation barrier closed after connecting the patient to a local ride-share program.' },
+        { title: 'Care Team Handoffs', body: 'Coder handed off two encounters to compliance last week; no outstanding record requests remain.' },
+      ],
+      actions: [
+        'Schedule a 15-minute check-in with the care manager next week to reconfirm dietary plan.',
+        'Send patient education content on managing edema for the CCM program.',
+      ],
+    },
+    {
+      intro: `Program roll-up for "${name}" over the last 30 days`,
+      points: [
+        { title: 'CCM', body: 'Two goal updates and one barrier closed since the last review.' },
+        { title: 'TCM', body: 'One intervention updated; discharge follow-up call was completed on time.' },
+      ],
+      actions: [
+        'Reassess the TCM discharge plan in the next review.',
+        'Confirm CCM consent renewal is still on file.',
+      ],
+    },
+  ];
+}
+
+// Person cell — shared Avatar primitive + name, so PCM / PCP renders
+// the way every other assignee cell in the app does (matches the
+// Fold design system rather than a bespoke user glyph).
+function PersonCell({ name, fallback = 'Unassigned' }) {
+  if (!name) return <span className={styles.programMuted}>{fallback}</span>;
+  const initials = name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  return (
+    <span className={styles.programPerson}>
+      <Avatar variant="assignee" size="XS" initials={initials} />
+      <span className={styles.programPersonName} title={name}>{name}</span>
+    </span>
+  );
+}
+
+// Active Programs Summary table — one row per enrolled program that
+// has a care plan. Plan (first column) and Actions (last column) are
+// sticky so the middle columns can scroll horizontally on narrow
+// panes. Read-only surface; interactions are limited to View Plan +
+// clicking the Activity Since Review cell to open the drawer.
+function ActiveProgramsTable({ rows, onView, onOpenActivity }) {
+  return (
+    <div className={styles.programsTableWrap}>
+      <table className={styles.programsTable}>
+        <thead>
+          <tr>
+            <HeaderCell label="Plan"                 className={`${styles.stickyLeft} ${styles.colPlan}`} />
+            <HeaderCell label="Conditions / Focus"   className={styles.colConditions} />
+            <HeaderCell label="Started-Ends"         className={styles.colDates} />
+            <HeaderCell label="PCM"                  className={styles.colPerson} />
+            <HeaderCell label="PCP"                  className={styles.colPerson} />
+            <HeaderCell label="Last Reviewed"        className={styles.colReview} />
+            <HeaderCell label="Activity Since Review" className={styles.colActivity} />
+            <HeaderCell label="Actions"              className={`${styles.stickyRight} ${styles.colActions}`} />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(p => {
+            const conditionsList = p.conditionsList || [];
+            const firstCondition = conditionsList[0] || null;
+            const extraConditions = Math.max(conditionsList.length - 1, 0);
+            const range = p.startDateFmt === '—' && p.endDateFmt === '—'
+              ? '—'
+              : `${p.startDateFmt} - ${p.endDateFmt}`;
+            const activityCount = (p.sinceReviewEntries || []).length;
+            return (
+              <tr key={p.id}>
+                <td className={`${styles.stickyLeft} ${styles.colPlan}`}>
+                  <Badge tone="grey" size="S" label={p.code} />
+                </td>
+                <td>
+                  {firstCondition ? (
+                    <span className={styles.conditionCell} title={conditionsList.join(', ')}>
+                      <span className={styles.conditionName}>{firstCondition}</span>
+                      {extraConditions > 0 && (
+                        <Badge tone="grey" size="S" label={`+${extraConditions}`} />
+                      )}
+                    </span>
+                  ) : (
+                    <span className={styles.programMuted}>—</span>
+                  )}
+                </td>
+                <td className={styles.programDates}>{range}</td>
+                <td><PersonCell name={p.pcmName} /></td>
+                <td><PersonCell name={p.pcpName} fallback="No PCP on file" /></td>
+                <td>
+                  <div className={styles.programReview}>
+                    <span>{p.lastReviewed}</span>
+                    {p.lastReviewedBy && <span className={styles.programMuted}>by {p.lastReviewedBy}</span>}
+                  </div>
+                </td>
+                <td className={styles.programWrap}>
+                  {activityCount > 0 ? (
+                    <button
+                      type="button"
+                      className={styles.activityLink}
+                      onClick={() => onOpenActivity?.(p)}
+                      aria-label={`Open activity since last review for ${p.name || p.code}`}
+                    >
+                      {p.activitySummary}
+                    </button>
+                  ) : (
+                    <span className={styles.programMuted}>—</span>
+                  )}
+                </td>
+                <td className={`${styles.stickyRight} ${styles.colActions}`}>
+                  <Button
+                    variant="secondary"
+                    size="S"
+                    onClick={() => onView?.(p)}
+                    disabled={!onView}
+                  >
+                    View Plan
+                  </Button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// Summarize output card — mock AI recap that sits under the Active
+// Programs table when Summarize has completed. Footer carries the
+// paginator + copy / regenerate / delete affordances so the reader
+// can cycle between candidate summaries, copy one for a chart note,
+// regenerate, or dismiss the whole card.
+function SummaryCard({ data, index, total, onPrev, onNext, onCopy, onRegenerate, onDelete }) {
+  return (
+    <div className={styles.summaryCard} role="region" aria-label="AI-generated program summary">
+      <p className={styles.summaryIntro}>{data.intro}</p>
+      <ol className={styles.summaryList}>
+        {data.points.map((p, i) => (
+          <li key={i}>
+            <strong>{p.title}:</strong> {p.body}
+          </li>
+        ))}
+      </ol>
+      <div className={styles.summaryActionsHead}>Action Items :</div>
+      <ul className={styles.summaryActions}>
+        {data.actions.map((a, i) => <li key={i}>{a}</li>)}
+      </ul>
+      <div className={styles.summaryFooter}>
+        <div className={styles.summaryPager}>
+          <button type="button" className={styles.summaryPagerBtn} onClick={onPrev} disabled={total <= 1} aria-label="Previous summary">
+            <Icon name="solar:alt-arrow-left-linear" size={14} color="var(--neutral-400)" />
+          </button>
+          <span className={styles.summaryPagerCount}>{index + 1}/{total}</span>
+          <button type="button" className={styles.summaryPagerBtn} onClick={onNext} disabled={total <= 1} aria-label="Next summary">
+            <Icon name="solar:alt-arrow-right-linear" size={14} color="var(--neutral-400)" />
+          </button>
+        </div>
+        <div className={styles.summaryToolbar}>
+          <button type="button" className={styles.summaryToolBtn} onClick={onCopy} aria-label="Copy summary">
+            <Icon name="solar:copy-linear" size={14} color="var(--neutral-400)" />
+          </button>
+          <button type="button" className={styles.summaryToolBtn} onClick={onRegenerate} aria-label="Regenerate summary">
+            <Icon name="solar:refresh-linear" size={14} color="var(--neutral-400)" />
+          </button>
+          <button type="button" className={styles.summaryToolBtn} onClick={onDelete} aria-label="Dismiss summary">
+            <Icon name="solar:trash-bin-trash-linear" size={14} color="var(--neutral-400)" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Drawer that lists every audit event on a plan since its last review
+// stamp (Figma Care-Plan-Creation 12369-276180). Renders through the
+// shared ActivityLog primitive so the entries look identical to the
+// GBI preview drawers' timelines. Read-only; the reader just needs
+// to see what has happened while they were away.
+function ActivityReviewDrawer({ target, onClose }) {
+  const entries = (target?.sinceReviewEntries || []).map(a => {
+    const created = a.createdAt ? new Date(a.createdAt) : null;
+    return {
+      id: a.id,
+      t: 'default',
+      date: created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
+      time: created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
+      by: a.actor || null,
+      title: a.summary || a.action || 'Update',
+      commentBody: a.detail || null,
+      createdAt: a.createdAt,
+    };
+  });
+  return (
+    <Drawer
+      title={`Activity Since Review${target?.code ? ` — ${target.code}` : ''}`}
+      onClose={onClose}
+      headerRight={target?.lastReviewed ? (
+        <span className={styles.drawerMeta}>Last reviewed {target.lastReviewed}{target.lastReviewedBy ? ` · by ${target.lastReviewedBy}` : ''}</span>
+      ) : null}
+    >
+      <div className={styles.activityDrawerBody}>
+        <ActivityLog entries={entries} emptyLabel="No activity since the last review." />
+      </div>
+    </Drawer>
+  );
+}
 
 // Read-only Goals/Interventions/Barriers section head — matches the
 // CarePlanView's GBI treatment (chevron + title + count pill), minus
@@ -58,7 +295,7 @@ function SectionHead({ title, count, open, onToggle }) {
 const HEADER_COMPACT = { paddingLeft: 6, paddingRight: 6 };
 const CARE_PLAN_COLUMN = {
   key: 'carePlan',
-  label: 'Care Plan',
+  label: 'Program',
   width: 100,
   sortKey: 'programCode',
   sortType: 'alpha',
@@ -77,7 +314,37 @@ const SUMMARY_GOAL_COLUMNS = insertBefore(stripActions(GOAL_COLUMNS), 'status', 
 const SUMMARY_INTERVENTION_COLUMNS = insertBefore(stripActions(INTERVENTION_COLUMNS), 'status', CARE_PLAN_COLUMN);
 const SUMMARY_BARRIER_COLUMNS = insertBefore(stripActions(BARRIER_COLUMNS), 'status', CARE_PLAN_COLUMN);
 
-function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu }) {
+// Program cell — first programCode as a badge, plus a `+N` badge
+// when the same title also appears on other programs in the current
+// filtered snapshot. Keeps each row's own program identity intact
+// while surfacing cross-program overlap ("SNP +1") in one glance.
+function ProgramCell({ code, overlap }) {
+  const extra = Math.max((overlap || 1) - 1, 0);
+  return (
+    <span className={styles.programBadgeStack}>
+      <Badge tone="grey" size="S" label={code} />
+      {extra > 0 && <Badge tone="grey" size="S" label={`+${extra}`} />}
+    </span>
+  );
+}
+
+// Build a "title (lowercased) → number of distinct programCodes"
+// map for a filtered row set. Fuels ProgramCell's overlap badge.
+function buildProgramOverlap(rows) {
+  const acc = new Map();
+  for (const r of rows || []) {
+    const key = (r?.title || '').trim().toLowerCase();
+    if (!key || !r?.programCode) continue;
+    if (!acc.has(key)) acc.set(key, new Set());
+    acc.get(key).add(r.programCode);
+  }
+  const out = new Map();
+  for (const [k, v] of acc) out.set(k, v.size);
+  return out;
+}
+const overlapFor = (map, row) => (map?.get((row?.title || '').trim().toLowerCase()) || 1);
+
+function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, programOverlap }) {
   const sortable = useMemo(() => enrichGoalRows(rows), [rows]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortable, 'title', 'asc');
   return (
@@ -127,7 +394,7 @@ function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu }) {
               <GbiProgressCell progress={g.progress} />
             </td>
             <td className={sharedRow.assigneeTd} onClick={e => e.stopPropagation()}>
-              <Badge tone="grey" size="S" label={g.programCode} />
+              <ProgramCell code={g.programCode} overlap={overlapFor(programOverlap, g)} />
             </td>
             <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
               <GbiStatusButton
@@ -142,7 +409,7 @@ function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu }) {
   );
 }
 
-function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssigneeChange, patients, platformUsers }) {
+function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssigneeChange, patients, platformUsers, programOverlap }) {
   const sortable = useMemo(() => enrichInterventionRows(rows), [rows]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortable, 'title', 'asc');
   const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -193,7 +460,7 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
           const effectiveInitials = isMemberTask
             ? (memberRow?.initials || i.assignee?.initials)
             : (i.assignee?.initials || '');
-          const isPatientAssignee = (patients || []).some(p => p.name === effectiveName);
+          const avatarVariant = assigneeAvatarVariant(effectiveName, assigneeUsers, patients);
           return (
             <tr
               key={`${i.programCode}-${i.id}`}
@@ -229,7 +496,7 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
                   unassigned={!effectiveName || effectiveName === 'Unassigned'}
                   unassignedLabel="Unassigned"
                   users={assigneeUsers}
-                  avatarVariant={isPatientAssignee ? 'patient' : 'staff'}
+                  avatarVariant={avatarVariant}
                   pickerTitle="Change assignee"
                   onSelect={(u) => onAssigneeChange(i, u)}
                   disabled={isMemberTask}
@@ -239,7 +506,7 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
                 <GbiProgressCell progress={i.adherence} />
               </td>
               <td className={sharedRow.assigneeTd} style={{ width: CARE_PLAN_COLUMN.width, minWidth: CARE_PLAN_COLUMN.width, maxWidth: CARE_PLAN_COLUMN.width }} onClick={e => e.stopPropagation()}>
-                <Badge tone="grey" size="S" label={i.programCode} />
+                <ProgramCell code={i.programCode} overlap={overlapFor(programOverlap, i)} />
               </td>
               <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
                 <GbiStatusButton
@@ -258,7 +525,7 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
 // Row body — mirrors the per-plan CarePlanBarriersTable's BarrierRow
 // (empty priority cell, custom:barrier icon, barrierStatusTd width),
 // with the Care Plan column injected before Status.
-function BarrierRow({ b, onOpen, onStatusMenu }) {
+function BarrierRow({ b, onOpen, onStatusMenu, overlap }) {
   return (
     <tr
       className={`${sharedRow.row} ${sharedRow.gbiRow} ${sharedRow.rowClickable}`}
@@ -273,7 +540,7 @@ function BarrierRow({ b, onOpen, onStatusMenu }) {
         />
       </td>
       <td className={sharedRow.assigneeTd} style={{ width: CARE_PLAN_COLUMN.width, minWidth: CARE_PLAN_COLUMN.width, maxWidth: CARE_PLAN_COLUMN.width }} onClick={e => e.stopPropagation()}>
-        <Badge tone="grey" size="S" label={b.programCode} />
+        <ProgramCell code={b.programCode} overlap={overlap} />
       </td>
       <td className={sharedRow.barrierStatusTd} onClick={e => e.stopPropagation()}>
         <GbiStatusButton
@@ -285,7 +552,7 @@ function BarrierRow({ b, onOpen, onStatusMenu }) {
   );
 }
 
-function BarriersTable({ rows, onOpen, onStatusMenu }) {
+function BarriersTable({ rows, onOpen, onStatusMenu, programOverlap }) {
   const [closedOpen, setClosedOpen] = useState(false);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(rows, 'title', 'asc');
   const { openRows, closedRows } = useMemo(() => {
@@ -319,6 +586,7 @@ function BarriersTable({ rows, onOpen, onStatusMenu }) {
             b={b}
             onOpen={onOpen}
             onStatusMenu={onStatusMenu}
+            overlap={overlapFor(programOverlap, b)}
           />
         )}
       />
@@ -352,6 +620,7 @@ function BarriersTable({ rows, onOpen, onStatusMenu }) {
                     b={b}
                     onOpen={onOpen}
                     onStatusMenu={onStatusMenu}
+                    overlap={overlapFor(programOverlap, b)}
                   />
                 ))}
               </tbody>
@@ -369,7 +638,17 @@ function BarriersTable({ rows, onOpen, onStatusMenu }) {
 // can change status, adherence/progress, and add notes. Every write
 // goes through the same store actions the per-plan tab uses, so the
 // activity log, DB persistence, and cross-view sync work identically.
-export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgramStep, searchText = '', programFilter = [], embedded = false }) {
+export function CarePlanSummaryView({
+  patientId, programs, onClose, onOpenProgramStep,
+  searchText = '',
+  programFilter = [],
+  templateFilter = [],
+  statusFilter = [],
+  priorityFilter = [],
+  dueDateFilter = [],
+  createdDateFilter = [],
+  embedded = false,
+}) {
   const fetchAllPatientCarePlans = useAppStore(s => s.fetchAllPatientCarePlans);
   const loading = useAppStore(s => s.patientCarePlanAllLoading[patientId]);
   const loadedFor = useAppStore(s => s.patientCarePlanAllLoadedFor[patientId]);
@@ -415,17 +694,172 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
     [programs, patientCarePlans, patientId],
   );
 
-  // Apply the toolbar's search + program filter to the flattened snapshot.
-  const progKey = programFilter.join('|');
+  // Apply the toolbar's search + every FilterChip to the snapshot.
+  // Each filter is an array; concat-key memo dep avoids re-computing on
+  // referential churn when the arrays are logically equal.
+  const filterKey = [
+    programFilter, templateFilter, statusFilter,
+    priorityFilter, dueDateFilter, createdDateFilter,
+  ].map(a => a.join('|')).join('#');
   const { goals: filteredGoals, interventions: filteredInterventions, barriers: filteredBarriers } = useMemo(
-    () => filterCarePlanSnapshot({ conditions, goals, interventions, barriers }, { searchText, programFilter }),
-    [conditions, goals, interventions, barriers, searchText, progKey], // eslint-disable-line react-hooks/exhaustive-deps
+    () => filterCarePlanSnapshot(
+      { conditions, goals, interventions, barriers },
+      { searchText, programFilter, templateFilter, statusFilter, priorityFilter, dueDateFilter, createdDateFilter },
+    ),
+    [conditions, goals, interventions, barriers, searchText, filterKey], // eslint-disable-line react-hooks/exhaustive-deps
   );
+
+  // Per-table cross-program overlap map — powers the ProgramCell's
+  // "+N" badge on rows whose title appears on multiple programs.
+  const goalProgramOverlap         = useMemo(() => buildProgramOverlap(filteredGoals),         [filteredGoals]);
+  const interventionProgramOverlap = useMemo(() => buildProgramOverlap(filteredInterventions), [filteredInterventions]);
+  const barrierProgramOverlap      = useMemo(() => buildProgramOverlap(filteredBarriers),      [filteredBarriers]);
 
   const isEmpty = loadedFor && goals.length === 0 && interventions.length === 0 && barriers.length === 0;
 
-  const [openSections, setOpenSections] = useState({ goals: true, interventions: true, barriers: true });
+  const [openSections, setOpenSections] = useState({ programs: true, goals: true, interventions: true, barriers: true });
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: !s[k] }));
+
+  // Active programs summary row set. Only surfaces programs whose
+  // patient plan actually exists (a plan row in `patientCarePlans` for
+  // this patient + program) — matches the ask that the section shows
+  // "only plans that have been created". Closed / completed enrollments
+  // are still hidden to match CareProgramsTab's PAST_STATUSES rule.
+  const patientCarePlanAudit = useAppStore(s => s.patientCarePlanAudit);
+  const fmtDate = (iso) => {
+    if (!iso || iso === '—') return null;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+  };
+  const activeProgramRows = useMemo(() => {
+    const past = new Set(['Completed', 'Closed']);
+    return (programs || [])
+      .filter(p => !past.has(p.status))
+      .map(p => {
+        const key = `${patientId}::${p.id}`;
+        const plan = patientCarePlans[key];
+        if (!plan) return null;
+        // Conditions on this plan — only the patient-level medical
+        // conditions the plan row carries (e.g. Diabetes,
+        // Hypertension). Goal.conditions holds template category tags
+        // ("Care management", "Comprehensive care management"), which
+        // aren't clinical conditions and shouldn't leak into this
+        // column. Dedup by lowercase.
+        const seen = new Map();
+        for (const c of (plan.plan?.conditions || [])) {
+          const label = c?.label;
+          if (!label) continue;
+          const k = String(label).trim().toLowerCase();
+          if (!k || seen.has(k)) continue;
+          seen.set(k, label);
+        }
+        const planConditions = [...seen.values()];
+
+        // Start = plan signed date (falls back to the plan's created
+        // date if it hasn't been signed and shared yet). End = latest
+        // target date across every goal on the plan (with the
+        // program's own endDate as a last resort).
+        const startISO = plan.plan?.signedAt || plan.plan?.createdDate || null;
+        const goalEndTimes = (plan.goals || [])
+          .map(g => (g.targetDate ? new Date(g.targetDate).getTime() : NaN))
+          .filter(t => !Number.isNaN(t));
+        const endISO = goalEndTimes.length
+          ? new Date(Math.max(...goalEndTimes)).toISOString()
+          : null;
+        const startDate = fmtDate(startISO) || '—';
+        const endDate = fmtDate(endISO) || (p.endDate && p.endDate !== '—' ? p.endDate : '—');
+
+        // Reviewer + last review date come off the plan's most recent
+        // signature; fall back to the program's lastUpdated stamp.
+        const lastReviewedISO = plan.plan?.signedAt || (p.lastUpdated !== '—' ? p.lastUpdated : null);
+        const lastReviewed = fmtDate(lastReviewedISO) || '—';
+        const lastReviewedBy = plan.plan?.signedBy || null;
+        const lastReviewedTs = lastReviewedISO ? new Date(lastReviewedISO).getTime() : 0;
+
+        const audit = patientCarePlanAudit[key] || [];
+        const sinceReview = audit
+          .filter(a => a.createdAt && new Date(a.createdAt).getTime() > lastReviewedTs)
+          .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
+        const buckets = { goal: 0, intervention: 0, barrier: 0 };
+        for (const row of sinceReview) {
+          if (row.entityType && buckets[row.entityType] != null) buckets[row.entityType] += 1;
+        }
+        const activityBits = [];
+        if (buckets.goal) activityBits.push(`${buckets.goal} Goal${buckets.goal === 1 ? '' : 's'} Update`);
+        if (buckets.intervention) activityBits.push(`${buckets.intervention} Intervention${buckets.intervention === 1 ? '' : 's'} Updated`);
+        if (buckets.barrier) activityBits.push(`${buckets.barrier} Barrier${buckets.barrier === 1 ? '' : 's'} Closed`);
+
+        // Patient row's `pcp` is either the provider name or falsy;
+        // treat 'Unassigned' / empty as "no PCP on file" so the cell
+        // reads truthfully.
+        const rawPcp = (currentPatient?.pcp || '').trim();
+        const pcpName = rawPcp && rawPcp.toLowerCase() !== 'unassigned' ? rawPcp : null;
+
+        return {
+          ...p,
+          conditionsList: planConditions,
+          startDateFmt: startDate,
+          endDateFmt: endDate,
+          pcmName: p.assignee && p.assignee !== 'Unassigned' ? p.assignee : null,
+          pcpName,
+          lastReviewed,
+          lastReviewedBy,
+          activitySummary: activityBits.join(', '),
+          sinceReviewEntries: sinceReview,
+        };
+      })
+      .filter(Boolean);
+  }, [programs, patientCarePlans, patientCarePlanAudit, patientId, currentPatient?.pcp]);
+  const showToast = useAppStore(s => s.showToast);
+
+  // Summarize — three-state (idle → loading → ready). Ready renders a
+  // mock AI recap card below the table with pagination + copy /
+  // refresh / delete affordances. Real generation lives behind the
+  // handler so a live model can slot in later without changing the UI.
+  const [summaryState, setSummaryState] = useState('idle');
+  const [summaries, setSummaries] = useState([]);
+  const [summaryIndex, setSummaryIndex] = useState(0);
+  const summarizePrograms = () => {
+    if (summaryState === 'loading') return;
+    setSummaryState('loading');
+    const seed = mockProgramSummaries(currentPatient?.name || 'the patient');
+    setTimeout(() => {
+      setSummaries(seed);
+      setSummaryIndex(0);
+      setSummaryState('ready');
+    }, 1200);
+  };
+  const regenerateSummary = () => {
+    if (summaryState !== 'ready') return;
+    setSummaryIndex(i => (i + 1) % Math.max(summaries.length, 1));
+    showToast?.('Regenerating summary…');
+  };
+  const copySummary = () => {
+    const s = summaries[summaryIndex];
+    if (!s) return;
+    const bits = [
+      `${s.intro}`,
+      ...s.points.map((p, i) => `${i + 1}. ${p.title}: ${p.body}`),
+      '',
+      'Action Items :',
+      ...s.actions.map(a => `• ${a}`),
+    ];
+    navigator.clipboard?.writeText(bits.join('\n')).then(
+      () => showToast?.('Summary copied'),
+      () => showToast?.('Copy failed'),
+    );
+  };
+  const clearSummary = () => {
+    setSummaryState('idle');
+    setSummaries([]);
+    setSummaryIndex(0);
+  };
+
+  // "Activity Since Review" drawer target — the row the user clicked;
+  // null when the drawer is closed.
+  const [activityReviewOpen, setActivityReviewOpen] = useState(null);
 
   // Preview drawer state — reuses the exact per-plan drawer so every
   // edit (status, adherence, progress, notes) lands in the same store
@@ -513,6 +947,82 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
           )}
 
           <div className={styles.section}>
+            {/* Active Programs Summary — one row per enrolled program.
+                Sits above the GBI sections so the reader gets a quick
+                who-owns-what recap (PCM / PCP / last review / activity
+                since review) before diving into the goal / intervention
+                lists. Closed / completed enrollments are hidden. */}
+            <div className={styles.activeProgramsHead}>
+              <button
+                type="button"
+                className={styles.sectionHead}
+                onClick={() => toggleSection('programs')}
+                aria-expanded={openSections.programs}
+              >
+                <DownChevronIcon
+                  size={16}
+                  color="var(--neutral-400)"
+                  className={`${styles.sectionChevron} ${openSections.programs ? '' : styles.sectionChevronClosed}`}
+                />
+                <span className={styles.sectionTitle}>Active Programs Summary</span>
+              </button>
+              {/* State-aware trigger — Summarize (idle) → AI is
+                  writing… (loading) → Generated Summary (ready).
+                  Loading state disables re-triggering; ready state
+                  acts as a passive label. */}
+              <button
+                type="button"
+                className={`${styles.summarizeBtn} ${summaryState === 'loading' ? styles.summarizeBtnBusy : ''}`}
+                onClick={summarizePrograms}
+                disabled={summaryState !== 'idle'}
+                aria-label={
+                  summaryState === 'loading' ? 'Summary is generating'
+                  : summaryState === 'ready' ? 'Summary generated'
+                  : 'Summarize active programs'
+                }
+              >
+                <Icon name="solar:magic-stick-3-linear" size={14} color="var(--primary-300)" />
+                <span>
+                  {summaryState === 'loading' ? 'AI is writing…'
+                  : summaryState === 'ready' ? 'Generated Summary'
+                  : 'Summarize'}
+                </span>
+              </button>
+            </div>
+            {openSections.programs && (
+              activeProgramRows.length === 0 ? (
+                <div className={styles.programsEmpty}>No active programs.</div>
+              ) : (
+                <ActiveProgramsTable
+                  rows={activeProgramRows}
+                  onView={onOpenProgramStep}
+                  onOpenActivity={setActivityReviewOpen}
+                />
+              )
+            )}
+            {openSections.programs && summaryState === 'loading' && (
+              <div className={styles.summarySkeleton} aria-live="polite">
+                <span className={styles.summarySkeletonLine} style={{ width: '70%' }} />
+                <span className={styles.summarySkeletonLine} style={{ width: '90%' }} />
+                <span className={styles.summarySkeletonLine} style={{ width: '55%' }} />
+                <Icon name="solar:refresh-linear" size={16} color="var(--primary-300)" className={styles.summarySpinner} />
+              </div>
+            )}
+            {openSections.programs && summaryState === 'ready' && summaries[summaryIndex] && (
+              <SummaryCard
+                data={summaries[summaryIndex]}
+                index={summaryIndex}
+                total={summaries.length}
+                onPrev={() => setSummaryIndex(i => (i - 1 + summaries.length) % summaries.length)}
+                onNext={() => setSummaryIndex(i => (i + 1) % summaries.length)}
+                onCopy={copySummary}
+                onRegenerate={regenerateSummary}
+                onDelete={clearSummary}
+              />
+            )}
+          </div>
+
+          <div className={styles.section}>
             <SectionHead
               title="Goals"
               count={filteredGoals.length}
@@ -525,6 +1035,7 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
                 onOpen={openGoal}
                 onPriorityMenu={setPriorityMenu}
                 onStatusMenu={setStatusMenu}
+                programOverlap={goalProgramOverlap}
               />
             )}
           </div>
@@ -545,6 +1056,7 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
                 onAssigneeChange={handleInterventionAssignee}
                 patients={patients}
                 platformUsers={platformUsers}
+                programOverlap={interventionProgramOverlap}
               />
             )}
           </div>
@@ -561,6 +1073,7 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
                 rows={filteredBarriers}
                 onOpen={openBarrier}
                 onStatusMenu={setStatusMenu}
+                programOverlap={barrierProgramOverlap}
               />
             )}
           </div>
@@ -601,6 +1114,7 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
           patientId={patientId}
           program={previewGoal.program}
           onClose={() => setPreviewGoal(null)}
+          consolidated
         />
       )}
       {previewIntervention && (
@@ -619,6 +1133,12 @@ export function CarePlanSummaryView({ patientId, programs, onClose, onOpenProgra
           program={previewBarrier.program}
           onClose={() => setPreviewBarrier(null)}
           consolidated
+        />
+      )}
+      {activityReviewOpen && (
+        <ActivityReviewDrawer
+          target={activityReviewOpen}
+          onClose={() => setActivityReviewOpen(null)}
         />
       )}
     </div>

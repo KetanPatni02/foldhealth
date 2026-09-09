@@ -237,6 +237,33 @@
   color: var(--neutral-200);
   font-size: var(--font-sm);
 }
+/* Recurring glyph rendered inside the name cell for interventions
+   with `config.repeat=true`. Sits between the title and the link
+   button, muted so it reads as a badge, not an action. */
+.recurringIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+/* Intervention title's subline — start date + duration. 12px in the
+   grey200 hint color per spec (overrides the shared .nameSecondary
+   default neutral-300 without leaking to Goals/Barriers). */
+.intvSubMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+/* Due Date column — plain read-only text. Aligns to the left with
+   the Due Date header, uses the same 14px / neutral-300 hint tone
+   that every other read-only date cell in the app reads in. */
+.dueDateText {
+  display: inline-block;
+  color: var(--neutral-300);
+  font-size: var(--font-sm);
+  font-variant-numeric: tabular-nums;
+}
 .rowIcon { display: flex; flex-shrink: 0; align-items: center; }
 .title {
   font-size: var(--font-base);
