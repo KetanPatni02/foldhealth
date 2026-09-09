@@ -26,6 +26,7 @@ import { VISIT_TYPES } from './reference/visitTypes';
 import { DemoPhiStrip } from '../../components/DemoPhiStrip/DemoPhiStrip';
 import styles from './ChartDetailDrawer.module.css';
 import { ChartDetailDrawerViewDocList } from './ChartDetailDrawerViewDocList';
+import { ChartReviewToolbar } from './ChartReviewToolbar';
 
 export function ChartDetailDrawerViewRightPane(p) {
   const {
@@ -39,7 +40,28 @@ export function ChartDetailDrawerViewRightPane(p) {
     uploadKey, setUpFile, upCaption, setUpCaption, setUpCaptionTouched, upType, setUpType,
     upVisitType, setUpVisitType,
     canSaveUpload, saveUpload, resetUpload,
+    docs, docActions, searchQuery, setSearchQuery, filterOpen, setFilterOpen,
+    statusFilter, setStatusFilter, moreOpen, setMoreOpen, moreWrapRef,
   } = p;
+
+  // Doc list feed for the toolbar's Search + Filter row. Search matches
+  // the caption / doc name / doc type substring; the filter chip narrows
+  // to a single Pass/Fail/Pending state (or All).
+  const q = (searchQuery || '').trim().toLowerCase();
+  const filteredDocs = (docs || []).filter(d => {
+    if (q) {
+      const hay = `${d.caption || ''} ${d.n || ''} ${d.t || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    if (statusFilter && statusFilter !== 'all') {
+      const a = docActions?.[d.id];
+      if (statusFilter === 'passed' && a !== 'pass') return false;
+      if (statusFilter === 'failed' && a !== 'fail') return false;
+      if (statusFilter === 'pending' && (a === 'pass' || a === 'fail')) return false;
+    }
+    return true;
+  });
+  const docListProps = { ...p, docs: filteredDocs };
 
   return (
     <div className={styles.rightPane}>
@@ -138,6 +160,27 @@ export function ChartDetailDrawerViewRightPane(p) {
                 </button>
               </div>
             </div>
+            {/* Support-scoped review toolbar — same visual pattern as the
+                DiagPanel one, minus Coder-only actions (Bulk select and
+                Add ICD). Search filters the doc list; Comment / Timeline
+                swap the left pane; Filter narrows by Pass/Fail/Pending;
+                the More menu holds responsive overflow. */}
+            <ChartReviewToolbar
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              filterOpen={filterOpen}
+              setFilterOpen={setFilterOpen}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              commentsCount={commentsCountForMember}
+              leftPanel={leftPanel}
+              setLeftPanel={setLeftPanel}
+              moreOpen={moreOpen}
+              setMoreOpen={setMoreOpen}
+              moreWrapRef={moreWrapRef}
+              actionsLocked={supportActionsLocked}
+              actionsLockedTip={supportLockedTip}
+            />
             {showReviewBanner && (
               <div className={styles.passBanner}>
                 <Icon name="solar:info-circle-linear" size={16} color="var(--status-success)" />
@@ -170,19 +213,6 @@ export function ChartDetailDrawerViewRightPane(p) {
                     <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
                     Upload
                   </button>
-                  <span className={styles.assocActionsDivider} aria-hidden="true" />
-                  <ActionButton
-                    icon="solar:chat-round-linear"
-                    size="S"
-                    tooltip={supportActionsLocked ? supportLockedTip : 'Comment'}
-                    tooltipLeft={supportActionsLocked}
-                    tooltipBelow={supportActionsLocked}
-                    count={commentsCountForMember > 0 ? String(commentsCountForMember) : undefined}
-                    className={leftPanel === 'comments' ? styles.commentBtnActive : ''}
-                    onClick={supportActionsLocked ? undefined : () => setLeftPanel(v => v === 'comments' ? 'preview' : 'comments')}
-                    aria-pressed={leftPanel === 'comments'}
-                    state={supportActionsLocked ? 'disabled' : 'active'}
-                  />
                 </div>
               </div>
 
@@ -264,7 +294,14 @@ export function ChartDetailDrawerViewRightPane(p) {
                 </div>
               )}
 
-              <ChartDetailDrawerViewDocList {...p} />
+              {filteredDocs.length === 0 && (docs?.length || 0) > 0 ? (
+                <div className={styles.docsEmptyMatch}>
+                  <Icon name="solar:magnifer-linear" size={18} color="var(--neutral-200)" />
+                  <span>No documents match this search.</span>
+                </div>
+              ) : (
+                <ChartDetailDrawerViewDocList {...docListProps} />
+              )}
             </div>
     </div>
   );

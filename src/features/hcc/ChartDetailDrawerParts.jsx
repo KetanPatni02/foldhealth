@@ -6,9 +6,7 @@ import { Button } from '../../components/Button/Button';
 import { Select } from '../../components/Select/Select';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Textarea } from '../../components/Textarea/Textarea';
-import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../components/ConfirmDialog/AlertDialogPrimitives';
-import { useAppStore } from '../../store/useAppStore';
 import { DOC_TYPES } from './data/chartDocs';
 import { VISIT_TYPES } from './reference/visitTypes';
 import { FAIL_REASONS, INSUFFICIENT_REASONS } from './ChartDetailDrawerParts.constants';
@@ -298,84 +296,6 @@ export function FailedBadgeWithTooltip({ details }) {
         document.body,
       )}
     </>
-  );
-}
-
-/**
- * Comment panel rendered in the left column when the header "Comment" action
- * is toggled on. Composer + timeline read/write the SAME `hccDiagComments`
- * store slice the Diagnosis Gap drawer's Comments tab uses — no separate
- * chart-scoped list, so a comment posted here shows up there and vice-versa.
- * Stamps `dos` from the member's primary DOS (matches DiagPanel's scoping);
- * `icd` is left null because this drawer is chart-level, not ICD-scoped.
- */
-export function ChartCommentsPanel({ member }) {
-  const comments = useAppStore(s => s.hccDiagComments);
-  const addHccDiagComment = useAppStore(s => s.addHccDiagComment);
-  const addActivityEntry = useAppStore(s => s.addActivityEntry);
-  const currentUserProfile = useAppStore(s => s.currentUserProfile);
-  const hccUserRole = useAppStore(s => s.hccUserRole);
-
-  // Show the full comment thread — no per-DOS or per-member filter here.
-  // DiagPanel's Comments tab renders every row too, so the two views agree
-  // 1:1 (per the sync requirement).
-  const visibleComments = comments;
-
-  const addComment = (body) => {
-    if (!body) return;
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
-    const hours = now.getHours();
-    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
-    const author = currentUserProfile?.name || 'You';
-    const role = hccUserRole || 'Support';
-    const dos = member?.dos_list?.[0]?.date || member?.dos || null;
-    const row = { id: `c${Date.now()}`, author, role, date, time, body, icd: null, dos };
-    addHccDiagComment(row);
-    addActivityEntry?.({
-      t: 'comment', by: author, role,
-      headline: 'Added a Comment',
-      details: [{ note: body }],
-    });
-  };
-
-  return (
-    <div className={styles.commentsPanel}>
-      <div className={styles.commentsComposerWrap}>
-        <CommentComposer onSubmit={addComment} placeholder="Add a comment, use @ to mention someone" />
-      </div>
-      <div className={styles.commentsList}>
-        {visibleComments.length === 0 ? (
-          <div className={styles.commentsEmpty}>
-            <Icon name="solar:chat-round-linear" size={20} color="var(--neutral-200)" />
-            <span>No comments yet. Drop the first one above.</span>
-          </div>
-        ) : visibleComments.map((c) => (
-          <div key={c.id} className={styles.commentRow}>
-            <span className={styles.commentAvatar} aria-hidden="true">
-              {(c.author || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?'}
-            </span>
-            <div className={styles.commentBubble}>
-              <div className={styles.commentMeta}>
-                <span className={styles.commentAuthor}>{c.author}</span>
-                <span className={styles.commentRole}>({c.role})</span>
-                <span className={styles.commentDot} aria-hidden="true">•</span>
-                <span className={styles.commentDate}>{c.date} · {c.time}</span>
-                {c.edited && <span className={styles.commentEdited}>Edited</span>}
-              </div>
-              <div className={styles.commentBody}>{c.body}</div>
-              {c.icd && (
-                <div className={styles.commentScope}>ICD {c.icd}{c.dos ? ` · DOS ${c.dos}` : ''}</div>
-              )}
-              {!c.icd && c.dos && (
-                <div className={styles.commentScope}>DOS {c.dos}</div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }
 

@@ -133,11 +133,46 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   const [dosExpanded, setDosExpanded] = useState(false);
   const [dosToDelete, setDosToDelete] = useState(null);
 
-  // Left pane mode. Defaults to the PDF preview; the "Comment" action next to
-  // Upload flips this to a Comment panel that reads/writes the same
-  // hccDiagComments slice the Diagnosis Gap drawer uses (so entries added
-  // here surface in the DiagPanel Comments tab and vice-versa).
-  const [leftPanel, setLeftPanel] = useState('preview');
+  // Left pane mode. Defaults to the PDF preview; the toolbar Comment
+  // action flips this to a Comment panel (shared hccDiagComments slice,
+  // so entries surface in the DiagPanel Comments tab and vice-versa),
+  // and Timeline flips it to an Activity panel that mirrors the review
+  // history the DiagPanel timeline tab shows.
+  const [leftPanel, setLeftPanelRaw] = useState('preview');
+  // Wrap so opening Comments/Timeline drops the doc-card highlight (the
+  // right-hand list acts like a "back to preview" affordance while the
+  // left pane is showing conversation/history). Switching back to
+  // 'preview' with no selection re-selects the first doc so the PDF
+  // pane isn't blank.
+  const setLeftPanel = (nextOrFn) => {
+    setLeftPanelRaw(prev => {
+      const next = typeof nextOrFn === 'function' ? nextOrFn(prev) : nextOrFn;
+      if (next === 'comments' || next === 'activity') {
+        setSelectedId(null);
+      } else if (next === 'preview') {
+        setSelectedId(curr => curr || (docs.find(d => !isAddressed(d))?.id || docs[0]?.id || null));
+      }
+      return next;
+    });
+  };
+
+  // Support-scoped toolbar state — search over the doc list, filter row
+  // toggle, and the responsive More overflow menu. Mirrors DiagPanel's
+  // toolbar so the two review surfaces look and behave identically.
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [moreOpen, setMoreOpen] = useState(false);
+  const moreWrapRef = useRef(null);
+  useEffect(() => {
+    if (!moreOpen) return undefined;
+    const onDoc = (e) => {
+      if (moreWrapRef.current?.contains(e.target)) return;
+      setMoreOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [moreOpen]);
 
   // Header status dropdown anchored on the status button. The status is
   // derived from the documents' pass/fail state; the user can also manually
@@ -232,7 +267,14 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   if (docs.length === 0 && !emptiedViaUnlink) return null;
 
   const isEmpty = docs.length === 0;
-  const selected = docs.find(d => d.id === selectedId) || docs[0] || null;
+  // While the left pane is on Comments/Timeline the doc list has no
+  // "selected" card — clearing `selected` (not just `selectedId`) is
+  // what drops the highlight ring on the right-hand doc rows. The
+  // fallback to docs[0] only kicks in when a doc IS supposed to be
+  // active (PDF preview mode), so the strip doesn't render blank.
+  const selected = selectedId
+    ? (docs.find(d => d.id === selectedId) || null)
+    : (leftPanel === 'preview' ? (docs[0] || null) : null);
 
   // DOS list for the "N/M DOSs" toggle. Prefer member.dos_list; fall back to a
   // single synthetic entry from member.dos. Provider/POS/visit-type read from
@@ -627,6 +669,15 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
     dmRef,
     docActions,
     docs,
+    searchQuery,
+    setSearchQuery,
+    filterOpen,
+    setFilterOpen,
+    statusFilter,
+    setStatusFilter,
+    moreOpen,
+    setMoreOpen,
+    moreWrapRef,
     dosExpanded,
     dosList,
     dosToDelete,

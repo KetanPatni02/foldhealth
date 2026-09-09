@@ -22,3 +22,37 @@ export function interventionPriorityFromConfig(config) {
   const p = String(config?.priority || 'medium').toLowerCase();
   return p === 'high' || p === 'low' ? p : 'medium';
 }
+
+function initialsOf(name) {
+  return (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+// Shared payload builder for care-plan intervention saves. Keeps
+// CarePlanView (plan-level "+ Intervention") and GoalPreviewDrawer
+// (goal-scoped "+ Intervention") producing identical rows so both
+// paths persist and hydrate the same way. `preLinkedGoalId` is used
+// by the goal drawer to seed the link when the drawer opens with no
+// user-picked goal yet.
+export function buildInterventionRecordFromConfig(kind, config, { preLinkedGoalId = null } = {}) {
+  const assigneeName = (typeof config?.assignedTo === 'string' && config.assignedTo.trim())
+    || (typeof config?.member === 'string' && config.member.trim())
+    || 'Unassigned';
+  const firstGoalId = Array.isArray(config?.goalIds) && config.goalIds.length > 0
+    ? config.goalIds[0]
+    : null;
+  return {
+    kind,
+    title: config?.title || '',
+    taskId: config?.taskId || null,
+    goalId: config?.goalId || firstGoalId || preLinkedGoalId || null,
+    icon: CARE_PLAN_INTERVENTION_ICONS[kind] || 'solar:clipboard-list-linear',
+    duration: interventionDurationFromConfig(config),
+    priority: interventionPriorityFromConfig(config),
+    config,
+    status: 'Not Started',
+    assignee: {
+      name: assigneeName,
+      initials: assigneeName === 'Unassigned' ? '' : initialsOf(assigneeName),
+    },
+  };
+}

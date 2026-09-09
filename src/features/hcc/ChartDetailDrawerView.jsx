@@ -22,9 +22,13 @@ import {
   FailReasonInline,
   EditDocInline,
   FailedBadgeWithTooltip,
-  ChartCommentsPanel,
   InsufficientDosDialog,
 } from './ChartDetailDrawerParts';
+import { CommentsTab, ActivityTab } from './DiagPanel/LeftWorkspace';
+import { TabStrip } from '../../components/TabStrip/TabStrip';
+import { useAppStore } from '../../store/useAppStore';
+import { useMemo } from 'react';
+import { ACTIVITY, getActivityFromDb } from './data/activity';
 import { STATUS_OPTIONS, STATUS_BADGE } from './ChartDetailDrawer.utils';
 import { DOC_TYPES } from './data/chartDocs';
 import styles from './ChartDetailDrawer.module.css';
@@ -32,6 +36,22 @@ import { ChartDetailDrawerViewRightPane } from './ChartDetailDrawerViewRightPane
 
 export function ChartDetailDrawerView(props) {
   const { actionPos, actionRef, assignPos, assignSupport, canDeleteDos, canSaveUpload, cancelTeamClose, chooseStatus, commentsCountForMember, confirmDeleteDoc, confirmDeleteDos, confirmFailDoc, confirmInsufficient, currentBadge, currentStatus, dmRef, docActions, docs, dosExpanded, dosList, dosToDelete, editingDocId, effectiveStatus, failDetails, failDoc, failPrompt, gender, handleClose, insufficientPrompt, isEmpty, isSupportAssigned, leftPanel, m, moreMenu, onTeamPillClick, onTeamPillEnter, onTeamPillLeave, openAction, openAssign, overdue, passDoc, requestTeamClose, resetUpload, reviewerName, saveUpload, selected, setConfirmDeleteDoc, setDosExpanded, setDosToDelete, setEditingDocId, setFailPrompt, setInsufficientPrompt, setLeftPanel, setMoreMenu, setSelectedId, setShowUpload, setTeamPillPinned, setTeamPillRect, setUpCaption, setUpCaptionTouched, setUpFile, setUpType, upVisitType, setUpVisitType, showReviewBanner, showToast, showUpload, supportActionsLocked, supportInitials, supportLocked, supportLockedTip, supportName, supportStaff, teamBadgeRef, teamPillRect, teamReviewProgress, teamReviewStages, undoDoc, unlinkDoc, upCaption, upType, updateChartDocMeta, uploadKey, member } = props;
+
+  // Merge live activity (this session's doc-status / comment / assignment
+  // writes via `addActivityEntry`) with the mock / DB-seeded log — same
+  // recipe LeftWorkspace uses so the Timeline pane here reads 1:1 with
+  // the DiagPanel Activity tab.
+  const liveLog = useAppStore(s => s.hccActivityLog[m?.name]);
+  const activityFromDb = useAppStore(s => s.hccGapActivity);
+  const rawActivity = useMemo(() => {
+    const mock = getActivityFromDb(activityFromDb, m?.name) || ACTIVITY[m?.name] || ACTIVITY._default || [];
+    if (!liveLog?.length) return mock;
+    const todayLabel = new Date().toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase();
+    const header = mock[0]?.t === 'group' && mock[0]?.label === todayLabel
+      ? []
+      : [{ t: 'group', label: todayLabel }];
+    return [...header, ...liveLog, ...mock];
+  }, [liveLog, m?.name, activityFromDb]);
 
   return (
     <>
@@ -50,16 +70,55 @@ export function ChartDetailDrawerView(props) {
               "Comment" action is toggled on. Panel writes/reads the same
               hccDiagComments store the Diagnosis Gap drawer uses, so support
               comments dropped here appear in DiagPanel's Comments tab. */}
-          {!isEmpty && leftPanel === 'comments' && (
+          {!isEmpty && (leftPanel === 'comments' || leftPanel === 'activity') && (
             <div className={styles.leftPane}>
-              <div className={styles.paneHeader}>
-                <span>Comments</span>
-                <CloseButton size={18} onClick={() => setLeftPanel('preview')} className={styles.iconBtn} label="Close comments" />
+              {/* Tabbed header — matches the DiagPanel left-workspace tab
+                  strip. Comments count mirrors the toolbar badge; the
+                  close button collapses back to the PDF preview and
+                  re-selects the first doc so the right-hand card
+                  highlight comes back. */}
+              <div className={styles.paneTabsHeader}>
+                <TabStrip
+                  items={[
+                    { key: 'comments', label: commentsCountForMember > 0 ? `Comments(${commentsCountForMember})` : 'Comments' },
+                    { key: 'activity', label: 'Timeline' },
+                  ]}
+                  activeKey={leftPanel}
+                  onChange={(k) => setLeftPanel(k)}
+                  embedded
+                />
+                <CloseButton
+                  size={18}
+                  onClick={() => {
+                    setLeftPanel('preview');
+                    if (!selected && docs?.[0]) setSelectedId(docs[0].id);
+                  }}
+                  className={styles.iconBtn}
+                  label={leftPanel === 'comments' ? 'Close comments' : 'Close timeline'}
+                />
               </div>
-              <ChartCommentsPanel member={m} />
+              {leftPanel === 'comments' ? (
+                /* Same tab component the DiagPanel Comments tab uses, so a
+                   comment posted here shows up there (and vice-versa) with
+                   identical UI. memberOverride scopes the entry to this
+                   drawer's patient when the DiagPanel isn't open. */
+                <CommentsTab
+                  filters={{}}
+                  pendingStatusChange={null}
+                  onConfirmStatusChange={null}
+                  onCancelStatusChange={null}
+                  memberOverride={m}
+                />
+              ) : (
+                /* Same tab component the DiagPanel Timeline tab uses.
+                   Feeds the merged live + seed activity log for THIS
+                   member; entries logged from either drawer surface in
+                   both. */
+                <ActivityTab member={m} rawEntries={rawActivity} filters={{}} />
+              )}
             </div>
           )}
-          {!isEmpty && selected && leftPanel === 'preview' && (
+          {!isEmpty && selected && leftPanel !== 'comments' && leftPanel !== 'activity' && (
             <div className={styles.leftPane}>
               <div className={styles.paneHeader}>{selected.n}</div>
               <div className={styles.pdfWrap}>
