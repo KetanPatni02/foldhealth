@@ -1,5 +1,7 @@
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { DOC_TYPES } from './data/chartDocs';
 import diagStyles from './DiagPanel/DiagPanel.module.css';
 import styles from './ChartDetailDrawer.module.css';
 
@@ -9,20 +11,17 @@ import styles from './ChartDetailDrawer.module.css';
 //   • no Documents toggle (this drawer's whole right pane IS the docs list)
 // Keeps: Search, Filter, Comment, Timeline, More overflow. Toggles map
 // to the same shared state the DOS-level buttons used to drive.
-const STATUS_FILTER_OPTIONS = [
-  { key: 'all', label: 'All' },
-  { key: 'pending', label: 'Pending' },
-  { key: 'passed', label: 'Passed' },
-  { key: 'failed', label: 'Failed' },
-];
+const DOC_STATUS_OPTIONS = ['Pending', 'Passed', 'Failed'];
+const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'This month'];
 
 export function ChartReviewToolbar({
   searchQuery,
   setSearchQuery,
   filterOpen,
   setFilterOpen,
-  statusFilter,
-  setStatusFilter,
+  docFilters,
+  setDocFilter,
+  uploadedByOptions,
   commentsCount,
   leftPanel,
   setLeftPanel,
@@ -32,7 +31,8 @@ export function ChartReviewToolbar({
   actionsLocked,
   actionsLockedTip,
 }) {
-  const filterCount = (statusFilter && statusFilter !== 'all') ? 1 : 0;
+  const activeFilterCount = ['docType', 'status', 'uploadedBy', 'date']
+    .reduce((n, k) => n + (docFilters?.[k]?.length ? 1 : 0), 0);
   const commentsActive = leftPanel === 'comments';
   const activityActive = leftPanel === 'activity';
   const toggleLeftPanel = (target) => setLeftPanel(v => v === target ? 'preview' : target);
@@ -65,8 +65,8 @@ export function ChartReviewToolbar({
             icon="custom:filter"
             size="S"
             tooltip="Filter"
-            notification={filterCount > 0}
-            count={filterCount > 0 ? String(filterCount) : undefined}
+            notification={activeFilterCount > 0}
+            count={activeFilterCount > 0 ? String(activeFilterCount) : undefined}
             className={filterOpen ? diagStyles.activeIcon : ''}
             onClick={() => setFilterOpen(v => !v)}
           />
@@ -141,20 +141,35 @@ export function ChartReviewToolbar({
 
       {filterOpen && (
         <div className={styles.toolbarFilterRow}>
-          <span className={styles.toolbarFilterLabel}>Status</span>
-          <div className={styles.toolbarFilterChips}>
-            {STATUS_FILTER_OPTIONS.map(opt => (
-              <button
-                key={opt.key}
-                type="button"
-                className={`${styles.toolbarFilterChip} ${statusFilter === opt.key ? styles.toolbarFilterChipActive : ''}`}
-                onClick={() => setStatusFilter(opt.key)}
-                aria-pressed={statusFilter === opt.key}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <FilterChip
+            label="Document Type"
+            options={DOC_TYPES}
+            selected={docFilters?.docType || []}
+            onChange={(v) => setDocFilter('docType', v)}
+            size="S"
+          />
+          <FilterChip
+            label="Status"
+            options={DOC_STATUS_OPTIONS}
+            selected={docFilters?.status || []}
+            onChange={(v) => setDocFilter('status', v)}
+            size="S"
+          />
+          <FilterChip
+            label="Uploaded By"
+            options={uploadedByOptions || []}
+            selected={docFilters?.uploadedBy || []}
+            onChange={(v) => setDocFilter('uploadedBy', v)}
+            size="S"
+            searchable
+          />
+          <FilterChip
+            label="Date"
+            options={DATE_PRESETS}
+            selected={docFilters?.date || []}
+            onChange={(v) => setDocFilter('date', v)}
+            size="S"
+          />
         </div>
       )}
     </>

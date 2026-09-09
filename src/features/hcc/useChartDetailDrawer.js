@@ -159,9 +159,13 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   // Support-scoped toolbar state — search over the doc list, filter row
   // toggle, and the responsive More overflow menu. Mirrors DiagPanel's
   // toolbar so the two review surfaces look and behave identically.
+  // `docFilters` matches the shared FilterChip shape (array per key) so
+  // each chip is multi-select and the "active" state is a non-empty
+  // array. Empty array = filter inactive.
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [docFilters, setDocFilters] = useState({ docType: [], status: [], uploadedBy: [], date: [] });
+  const setDocFilter = (key, values) => setDocFilters(prev => ({ ...prev, [key]: values }));
   const [moreOpen, setMoreOpen] = useState(false);
   const moreWrapRef = useRef(null);
   useEffect(() => {
@@ -673,8 +677,8 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
     setSearchQuery,
     filterOpen,
     setFilterOpen,
-    statusFilter,
-    setStatusFilter,
+    docFilters,
+    setDocFilter,
     moreOpen,
     setMoreOpen,
     moreWrapRef,
