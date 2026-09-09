@@ -30,6 +30,8 @@ export function ChartReviewToolbar({
   moreWrapRef,
   actionsLocked,
   actionsLockedTip,
+  showUpload,
+  onUploadToggle,
 }) {
   const activeFilterCount = ['docType', 'status', 'uploadedBy', 'date']
     .reduce((n, k) => n + (docFilters?.[k]?.length ? 1 : 0), 0);
@@ -61,6 +63,21 @@ export function ChartReviewToolbar({
           )}
         </div>
         <div className={diagStyles.toolbarIcons}>
+          {onUploadToggle && (
+            <>
+              <button
+                type="button"
+                className={[styles.uploadLink, showUpload ? styles.uploadLinkActive : ''].filter(Boolean).join(' ')}
+                onClick={actionsLocked ? undefined : onUploadToggle}
+                disabled={actionsLocked}
+                title={actionsLocked ? actionsLockedTip : undefined}
+              >
+                <Icon name="solar:upload-minimalistic-linear" size={16} color="var(--primary-300)" />
+                Upload
+              </button>
+              <span className={diagStyles.divider} />
+            </>
+          )}
           <ActionButton
             icon="custom:filter"
             size="S"

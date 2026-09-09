@@ -314,7 +314,7 @@
 .colPlan     { width: 84px; }
 .colConditions { min-width: 200px; }
 .colDates    { width: 180px; white-space: nowrap; }
-.colPerson   { width: 160px; }
+.colPerson   { width: 120px; }
 .colReview   { width: 170px; }
 .colActivity { min-width: 220px; }
 .colActions  { width: 112px; }
