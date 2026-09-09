@@ -15,7 +15,7 @@
   row-gap: var(--space-3);
 }
 .paneBody { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
-.filterBar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.filterBar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; padding-top: var(--space-2); }
 .clearAll {
   display: inline-flex;
   align-items: center;
@@ -65,4 +65,36 @@
 }
 .monthChevronClosed {
   transform: rotate(-90deg);
+}
+
+/* Icon-only CTA cluster (note + download) that sits in the toolbar's
+   right slot, alongside the filter icon divider. */
+.ctaCluster {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* Hairline between the note and download icons, matching the same
+   1px x 16px divider used elsewhere in the toolbar. */
+.ctaDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-1);
+  flex-shrink: 0;
+}
+
+/* Add Care Note drawer body — small composer with a labelled
+   Textarea. Padding relies on the Drawer's default body inset, so
+   only the internal spacing is set here. */
+.addNoteBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.addNoteLabel {
+  color: var(--neutral-500);
+  font-size: var(--font-sm);
+  font-weight: 500;
 }

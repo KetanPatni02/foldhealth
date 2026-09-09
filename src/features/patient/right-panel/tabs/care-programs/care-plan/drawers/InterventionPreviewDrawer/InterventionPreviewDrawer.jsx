@@ -10,10 +10,9 @@ import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { Slider } from '../../../../../../../../components/ShadcnSlider/ShadcnSlider';
 import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
-import { TabStrip } from '../../../../../../../../components/TabStrip/TabStrip';
+import { CarePlanActivityBlock } from '../CarePlanActivityBlock/CarePlanActivityBlock';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
-import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { LinkGoalToBarrierDrawer } from '../BarrierDetailDrawer/LinkGoalToBarrierDrawer';
 import { DetailDropdown } from '../../../../../../../tasks/TasksViewDropdowns';
@@ -26,17 +25,6 @@ import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
-const ACTIVITY_TABS = [
-  { key: 'all', label: 'All' },
-  { key: 'since', label: 'Since Last Visit' },
-];
-const ACTIVITY_FILTERS = [
-  { key: 'all', label: 'All activity' },
-  { key: 'note', label: 'Notes' },
-  { key: 'status_changed', label: 'Status' },
-  { key: 'progress_changed', label: 'Adherence' },
-  { key: 'updated', label: 'Updates' },
-];
 const STATUS_TONE = {
   'Not Started': 'grey',
   'In Progress': 'warning',
@@ -239,9 +227,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   const [note, setNote] = useState('');
   const [notePlain, setNotePlain] = useState('');
   const [noteEditing, setNoteEditing] = useState(false);
-  const [activityTab, setActivityTab] = useState('all');
-  const [activityFilter, setActivityFilter] = useState('all');
-  const [filterMenu, setFilterMenu] = useState(null);
   const [moreMenu, setMoreMenu] = useState(null);
   const [linkGoalOpen, setLinkGoalOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
@@ -250,7 +235,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   const [noteDraft, setNoteDraft] = useState('');
   const [confirm, setConfirm] = useState(null);
   const moreBtnRef = useRef(null);
-  const filterBtnRef = useRef(null);
 
   useEffect(() => { setPct(adherenceNum(live?.adherence)); }, [live?.id, live?.adherence]);
   useEffect(() => { if (patientId && program) fetchCarePlanAudit(patientId, program.id); }, [patientId, program, fetchCarePlanAudit]);
@@ -327,23 +311,9 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
     setNoteEditing(false);
   }, [latestInterventionNote?.id]);
 
-  const activity = useMemo(() => {
-    const rows = audit
-      .filter(a => String(a.entityId) === String(live?.id))
-      .map(mapAuditEntry);
-    const sinceCutoff = (() => {
-      if (lastVisit) {
-        const t = new Date(lastVisit).getTime();
-        if (!Number.isNaN(t)) return t;
-      }
-      return Date.now() - 30 * 86400000;
-    })();
-    return rows.filter(e => {
-      if (activityTab === 'since' && e.createdAt && new Date(e.createdAt).getTime() < sinceCutoff) return false;
-      if (activityFilter !== 'all' && e.action !== activityFilter) return false;
-      return true;
-    });
-  }, [audit, live, activityTab, activityFilter, lastVisit]);
+  const activity = useMemo(() => audit
+    .filter(a => String(a.entityId) === String(live?.id))
+    .map(mapAuditEntry), [audit, live]);
 
   if (!live) return null;
 
@@ -819,15 +789,11 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
         )}
       </div>
 
-      <section className={barrierStyles.section} style={{ marginTop: 'var(--space-4)' }}>
-        <div className={barrierStyles.sectionHead}>
-          <span className={barrierStyles.sectionTitle}>Activity Log</span>
-        </div>
-        <ActivityLog
-          entries={activity}
-          emptyLabel="No activity for this intervention yet."
-        />
-      </section>
+      <CarePlanActivityBlock
+        entries={activity}
+        lastVisit={lastVisit}
+        emptyLabel="No activity for this intervention yet."
+      />
 
       {moreMenu && (
         <MenuPopover
@@ -844,17 +810,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             if (k === 'delete') setConfirm({ kind: 'intervention' });
           }}
           onClose={() => setMoreMenu(null)}
-        />
-      )}
-
-      {filterMenu && (
-        <MenuPopover
-          anchorRect={filterMenu}
-          width={180}
-          ariaLabel="Filter activity"
-          items={ACTIVITY_FILTERS.map(f => ({ key: f.key, label: f.label }))}
-          onSelect={(k) => { setActivityFilter(k); setFilterMenu(null); }}
-          onClose={() => setFilterMenu(null)}
         />
       )}
 

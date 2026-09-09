@@ -84,6 +84,17 @@
 .avatarOnly.assigned:focus-visible {
   background: var(--secondary-200);
 }
+/* Patient variant — base + hover fills swap the default secondary
+   tokens for their primary counterparts so a member pill reads as
+   one cohesive purple surface (primary-100 idle, primary-200 hover).
+   Overrides both `.avatarOnly.assigned` rules above. */
+.avatarOnly.assigned.variantPatient {
+  background: var(--primary-50);
+}
+.avatarOnly.assigned.variantPatient:hover,
+.avatarOnly.assigned.variantPatient:focus-visible {
+  background: var(--primary-100);
+}
 .avatarOnly.unassigned {
   background: var(--neutral-50);
 }
@@ -295,9 +306,9 @@
   font-weight: 500;
   line-height: 1.2;
   flex-shrink: 0;
-  border: 0.5px solid var(--secondary-200);
-  background: var(--secondary-50);
-  color: var(--secondary-300);
+  /* Color / border / background come from the Avatar variant itself
+     (staff → secondary, patient → primary). No overrides here so the
+     tooltip chip and the trigger pill always match. */
 }
 .tooltipText {
   display: inline-flex;

@@ -11,11 +11,110 @@ import {
   GbiNameCell,
   GbiProgressCell,
   GbiStatusButton,
+  GBI_COL_WIDTH,
 } from './carePlanTableShared';
 import { enrichInterventionRows } from './carePlanTableSort';
 import { CARE_PLAN_INTERVENTION_ICONS } from '../lib/carePlanInterventionMenu';
 import { KIND_LABELS } from '../../../../../../settings/care-plan-library/interventions/shared/interventionKinds';
 import styles from './carePlanTables.module.css';
+
+// "7d" / "1w" / "2m" / "1y" (or config.dueOffset + dueUnit) → "1 week".
+// Falls back to the raw string when it can't be parsed so nothing is
+// lost for legacy rows.
+function formatDurationLabel(intv) {
+  if (!intv) return null;
+  const raw = intv.config?.dueOffset != null && intv.config?.dueUnit
+    ? `${intv.config.dueOffset}${String(intv.config.dueUnit)[0]}`
+    : intv.duration;
+  if (!raw) return null;
+  const m = String(raw).trim().match(/^(\d+)\s*([dwmy])$/i);
+  if (!m) return String(raw);
+  const n = Number(m[1]);
+  const unit = m[2].toLowerCase();
+  const dayCount = unit === 'd' ? n : unit === 'w' ? n * 7 : unit === 'm' ? n * 30 : n * 365;
+  if (dayCount % 365 === 0) { const y = dayCount / 365; return `${y} year${y === 1 ? '' : 's'}`; }
+  if (dayCount % 30  === 0) { const mo = dayCount / 30;  return `${mo} month${mo === 1 ? '' : 's'}`; }
+  if (dayCount % 7   === 0) { const w = dayCount / 7;    return `${w} week${w === 1 ? '' : 's'}`; }
+  return `${dayCount} day${dayCount === 1 ? '' : 's'}`;
+}
+function fmtDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
+}
+// Due date = user-picked override when present, else createdAt +
+// parsed duration. Falls back to null when neither is available so
+// the column reads "—" instead of a nonsense date. Returns { iso,
+// formatted } so the calendar can seed itself and the cell has a
+// display string in one call.
+function computeDueDate(intv) {
+  const override = intv?.config?.dueDateOverride;
+  if (override) {
+    const d = new Date(override);
+    if (!Number.isNaN(d.getTime())) return { iso: d.toISOString(), formatted: fmtDate(d.toISOString()) };
+  }
+  const start = intv?.createdAt ? new Date(intv.createdAt) : null;
+  if (!start || Number.isNaN(start.getTime())) return { iso: null, formatted: null };
+  const raw = intv.config?.dueOffset != null && intv.config?.dueUnit
+    ? `${intv.config.dueOffset}${String(intv.config.dueUnit)[0]}`
+    : intv.duration;
+  const m = raw && String(raw).trim().match(/^(\d+)\s*([dwmy])$/i);
+  if (!m) return { iso: null, formatted: null };
+  const n = Number(m[1]);
+  const unit = m[2].toLowerCase();
+  const end = new Date(start);
+  if (unit === 'd') end.setDate(end.getDate() + n);
+  else if (unit === 'w') end.setDate(end.getDate() + n * 7);
+  else if (unit === 'm') end.setMonth(end.getMonth() + n);
+  else if (unit === 'y') end.setFullYear(end.getFullYear() + n);
+  return { iso: end.toISOString(), formatted: fmtDate(end.toISOString()) };
+}
+
+// Tighter widths for the newly-added Due Date column and the now
+// avatar-only Assigned To column — the shared GBI widths are sized
+// for text-heavy cells and left too much empty space here.
+const DUE_DATE_COL_WIDTH  = 108;
+const ASSIGNEE_COL_WIDTH  = 72;
+
+const DUE_DATE_COLUMN = {
+  key: 'dueDate',
+  label: 'Due Date',
+  width: DUE_DATE_COL_WIDTH,
+  sortKey: '_sortDueDate',
+  sortType: 'date',
+  thStyle: { paddingLeft: 6, paddingRight: 6 },
+};
+// Inject Due Date immediately before the Assigned To column so the
+// row reads: Priority · Name · Due Date · Assigned To · Adherence · Status.
+function insertBefore(cols, key, col) {
+  const i = cols.findIndex(c => c.key === key);
+  if (i < 0) return [...cols, col];
+  return [...cols.slice(0, i), col, ...cols.slice(i)];
+}
+const INTERVENTION_COLUMNS_WITH_DUE = insertBefore(INTERVENTION_COLUMNS, 'assignee', DUE_DATE_COLUMN)
+  // Shrink the assignee column too — the avatar-only pill only needs
+  // ~72px, freeing the whole intervention row from unnecessary padding.
+  .map(c => c.key === 'assignee' ? { ...c, width: ASSIGNEE_COL_WIDTH } : c);
+
+// The one and only rule for the assignee avatar's color:
+//   • Member (patient) → 'patient' variant (primary / purple)
+//   • User   (staff)   → 'staff'   variant (secondary)
+// Look up the assignee in the merged users+patients list (`role`
+// field). Fall back to a `patients` name match so a member whose
+// intervention has an isMemberTask override still lands in the
+// patient bucket. Never guess by intervention kind — the identity
+// is what colors the pill.
+export function isMemberAssignee(name, users, patients) {
+  if (!name || name === 'Unassigned') return false;
+  const hit = (users || []).find(u => u.name === name);
+  if (hit) return hit.role === 'Member';
+  return (patients || []).some(p => p.name === name);
+}
+export function assigneeAvatarVariant(name, users, patients) {
+  return isMemberAssignee(name, users, patients) ? 'patient' : 'staff';
+}
 
 export function CarePlanInterventionsTable({
   rows,
@@ -44,12 +143,12 @@ export function CarePlanInterventionsTable({
   const columns = useMemo(() => {
     if (template) {
       return withSelectColumn(
-        INTERVENTION_COLUMNS.filter(c => c.key === 'priority' || c.key === 'title'
+        INTERVENTION_COLUMNS_WITH_DUE.filter(c => c.key === 'priority' || c.key === 'title'
           || (showActions && c.key === 'actions')),
         bulkMode,
       );
     }
-    return withSelectColumn(INTERVENTION_COLUMNS, bulkMode);
+    return withSelectColumn(INTERVENTION_COLUMNS_WITH_DUE, bulkMode);
   }, [bulkMode, template, showActions]);
 
   const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -127,44 +226,88 @@ export function CarePlanInterventionsTable({
                   // right glyph as long as `kind` is set.
                   icon={CARE_PLAN_INTERVENTION_ICONS[i.kind] || i.icon || 'solar:clipboard-list-linear'}
                   iconTitle={KIND_LABELS[i.kind] || 'Intervention'}
+                  // `config.repeat` is the drawer's Repeat toggle; a
+                  // truthy value renders the small refresh glyph in
+                  // the name cell.
+                  recurring={!!i.config?.repeat}
                   title={i.title}
-                  meta={i.duration || null}
+                  /* Start date + duration read below the title in a
+                     stacked layout: "Started 03/20/2026 · 1 week". Font
+                     size is 12px (--font-sm) from the shared
+                     .nameSecondary rule; the muted class overrides the
+                     default neutral-300 with grey200 per spec. */
+                  meta={(() => {
+                    const start = fmtDate(i.createdAt);
+                    const dur = formatDurationLabel(i);
+                    const bits = [];
+                    if (start) bits.push(`Started ${start}`);
+                    if (dur) bits.push(dur);
+                    if (bits.length === 0) return null;
+                    return <span className={styles.intvSubMeta}>{bits.join(' · ')}</span>;
+                  })()}
+                  layout="stacked"
                   linked={linked(i)}
                   canEdit={canEdit}
                   />
               </td>
+              {!template && (
+                /* Read-only due date — plain text in --neutral-300
+                   aligned with the "Due Date" header. Empty rows
+                   render "—" instead of a call-to-action; changing
+                   the date happens in the Intervention drawer. */
+                <td className={styles.valueTd}>
+                  <span className={styles.dueDateText}>
+                    {computeDueDate(i).formatted || '-'}
+                  </span>
+                </td>
+              )}
               {!template && (() => {
-                // Only Internal Task lets the user reassign — every other
-                // intervention kind runs on the member and the assignee
-                // stays locked to them. Fall back to the plan's patient
-                // when a legacy row is still 'Unassigned' so the column
-                // reads correctly without a data backfill.
+                // Only Internal Task lets the user reassign — every
+                // other intervention kind runs on the member and the
+                // assignee is BY DESIGN the patient, even if the row
+                // hasn't been backfilled yet. In that case we force
+                // the member's identity + patient variant + `unassigned=
+                // false`, so the pill never renders as the generic
+                // outlined-person icon on a member task.
                 const isMemberTask = i.kind !== 'internal-task';
                 const memberRow = (patients || [])[0] || null;
+                const rawName = i.assignee?.name || '';
+                const rawInitials = i.assignee?.initials || '';
                 const effectiveName = isMemberTask
-                  ? (memberRow?.name || i.assignee.name)
-                  : i.assignee.name;
+                  ? (memberRow?.name || rawName)
+                  : rawName;
                 const effectiveInitials = isMemberTask
-                  ? (memberRow?.initials || i.assignee.initials)
-                  : i.assignee.initials;
-                const isPatientAssignee = (patients || []).some(p => p.name === effectiveName);
+                  ? (memberRow?.initials || rawInitials)
+                  : rawInitials;
+                // Member tasks are always the member — force patient
+                // variant even if the row's name field is still
+                // "Unassigned" (legacy data). Internal tasks derive
+                // from actual identity.
+                const avatarVariant = isMemberTask
+                  ? 'patient'
+                  : assigneeAvatarVariant(effectiveName, assigneeUsers, patients);
+                // Same rule: a member task is never truly unassigned —
+                // the patient owns it — so the AssigneeChange pill
+                // must not render the unassigned generic state on
+                // those rows.
+                const showAsUnassigned = !isMemberTask
+                  && (!effectiveName || effectiveName === 'Unassigned');
                 return (
                 <>
                   <td className={styles.assigneeTd} onClick={e => e.stopPropagation()}>
+                    {/* Avatar-only trigger — the row's assignee reads
+                        as a compact chip (no name text), matching the
+                        Figma spec. Full name still surfaces via the
+                        avatar's built-in hover tooltip. */}
                     <AssigneeChange
                       size="S"
-                      fillContainer
-                      nameMuted
-                      name={effectiveName}
+                      avatarOnly
+                      name={effectiveName || (isMemberTask ? 'Member' : undefined)}
                       initials={effectiveInitials}
-                      showRole={false}
-                      unassigned={effectiveName === 'Unassigned'}
-                      unassignedLabel="Unassigned"
+                      ariaLabel={showAsUnassigned ? 'Assign' : effectiveName}
+                      unassigned={showAsUnassigned}
                       users={assigneeUsers}
-                      // Match the drawer: if the current assignee is a
-                      // patient, render the trigger with the patient
-                      // avatar variant.
-                      avatarVariant={isPatientAssignee ? 'patient' : 'staff'}
+                      avatarVariant={avatarVariant}
                       pickerTitle="Change assignee"
                       onSelect={(u) => onAssigneeChange(i, u)}
                       disabled={!canEdit || isMemberTask}

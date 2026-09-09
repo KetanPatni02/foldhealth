@@ -126,6 +126,9 @@ export function GbiLinkButton({ data, size = 'S' }) {
   };
   const cancelClose = () => clearTimeout(closeTimerRef.current);
 
+  // Nothing to link, nothing to render — collapses the slot instead
+   // of showing a disabled link icon with a "No linked items" tooltip.
+  if (total === 0) return null;
   return (
     <span
       ref={wrapRef}
@@ -137,9 +140,8 @@ export function GbiLinkButton({ data, size = 'S' }) {
       <ActionButton
         icon="custom:link"
         size={size}
-        count={total > 0 ? String(total) : undefined}
-        iconColor={total > 0 ? 'var(--neutral-300)' : 'var(--neutral-200)'}
-        tooltip={total === 0 ? 'No linked items' : undefined}
+        count={String(total)}
+        iconColor="var(--neutral-300)"
         aria-label={`${total} linked items`}
       />
       {rect && (

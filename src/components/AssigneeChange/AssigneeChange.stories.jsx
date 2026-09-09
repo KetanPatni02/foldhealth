@@ -23,6 +23,11 @@ export default {
     hideAvatar: { control: 'boolean' },
     unassignedLabel: { control: 'text' },
     disabled: { control: 'boolean' },
+    // Patient / member rows use the primary purple Avatar variant;
+    // staff rows keep the secondary (default) variant. Kept as a
+    // control so consumers can flip the pill (and the hover
+    // tooltip avatar) without touching internal wiring.
+    avatarVariant: { control: 'inline-radio', options: ['staff', 'patient'] },
   },
 };
 
@@ -121,4 +126,42 @@ export const DisabledUnassigned = {
 export const AvatarOnlyUnassignedDisabled = {
   name: 'Avatar only · unassigned · disabled',
   args: { unassigned: true, avatarOnly: true, disabled: true },
+};
+
+// ── Patient (member) variant ────────────────────────────────────────────
+// Every "member task" intervention (Patient Task / Patient Education /
+// Send Form / Measure Vital) is owned by the patient. The pill uses
+// the primary purple Avatar variant instead of the staff/secondary one
+// so a reader can tell at a glance whether a row is owned by a member
+// or by a care-team user. The hover tooltip's avatar picks up the same
+// variant automatically.
+export const PatientAssigned = {
+  name: 'Patient · assigned',
+  args: {
+    name: 'Annette Brave',
+    initials: 'AB',
+    role: 'Member',
+    avatarVariant: 'patient',
+  },
+};
+
+export const PatientAvatarOnly = {
+  name: 'Patient · avatar only',
+  args: {
+    name: 'Annette Brave',
+    initials: 'AB',
+    avatarOnly: true,
+    avatarVariant: 'patient',
+  },
+};
+
+export const PatientAvatarOnlyDisabled = {
+  name: 'Patient · avatar only · disabled',
+  args: {
+    name: 'Annette Brave',
+    initials: 'AB',
+    avatarOnly: true,
+    avatarVariant: 'patient',
+    disabled: true,
+  },
 };

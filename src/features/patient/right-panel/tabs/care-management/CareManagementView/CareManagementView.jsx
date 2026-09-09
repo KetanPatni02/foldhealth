@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { Button } from '../../../../../../components/Button/Button';
+import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { Drawer } from '../../../../../../components/Drawer/Drawer';
+import { Textarea } from '../../../../../../components/Textarea/Textarea';
 import { FilterChip } from '../../../../../../components/FilterChip/FilterChip';
 import { AddIconMinimalist } from '../../../../../../components/Icon/AddIconMinimalist';
 import { SubTabs } from '../../../../../../components/SubTabs/SubTabs';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { CareProgramsTab } from '../../care-programs/CareProgramsTab/CareProgramsTab';
 import { CarePlanSummaryView } from '../../care-programs/care-plan/summary/CarePlanSummaryView/CarePlanSummaryView.jsx';
-import { buildCarePlanSnapshot, filterCarePlanSnapshot, downloadCarePlanCsv } from '../../care-programs/care-plan/summary/carePlanSnapshot';
+import { buildCarePlanSnapshot, filterCarePlanSnapshot, downloadCarePlanCsv, CARE_PLAN_DATE_PRESETS } from '../../care-programs/care-plan/summary/carePlanSnapshot';
 import { programUrlKey } from '../../care-programs/CareProgramsTab/CareProgramsTab.utils';
 import { stepsFor, flatSteps } from '../../care-programs/program-detail/ProgramDetailView/ProgramDetailView.utils';
 import { CareManagementToolbar } from '../CareManagementToolbar/CareManagementToolbar';
@@ -22,27 +25,118 @@ import styles from './CareManagementView.module.css';
 
 const CM_TABS = ['Care Programs', 'Comprehensive Care Plan', 'Program Activity Log'];
 
+/** Shared "Add Care Note" drawer used by both the Comprehensive
+ *  Care Plan and Program Activity Log panes. Composer only for now —
+ *  hands the note body back to the caller, which decides how to
+ *  persist it (toast placeholder until the patient-level notes API
+ *  ships). */
+function AddCareNoteDrawer({ onClose, onSave }) {
+  const [body, setBody] = useState('');
+  const canSave = body.trim().length > 0;
+  return (
+    <Drawer
+      title="Add Care Note"
+      onClose={onClose}
+      primaryAction={(
+        <Button variant="primary" size="L" disabled={!canSave} onClick={() => onSave?.(body.trim())}>
+          Add Note
+        </Button>
+      )}
+      secondaryAction={(
+        <Button variant="secondary" size="L" onClick={onClose}>Cancel</Button>
+      )}
+    >
+      <div className={styles.addNoteBody}>
+        <label className={styles.addNoteLabel} htmlFor="care-note-body">Note</label>
+        <Textarea
+          id="care-note-body"
+          autoFocus
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="e.g. Reviewed care plan with patient; increased dietary check-ins."
+          rows={6}
+        />
+      </div>
+    </Drawer>
+  );
+}
+
 /** Comprehensive Care Plan pane — read-only cross-program snapshot with its own
  *  search + (program) filter and a Download CTA. */
 function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpenProgramStep }) {
   const showToast = useAppStore(s => s.showToast);
   const patientCarePlans = useAppStore(s => s.patientCarePlans);
+  const carePlanTemplates = useAppStore(s => s.carePlanTemplates) || [];
+  const [addNoteOpen, setAddNoteOpen] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [programFilter, setProgramFilter] = useState([]);
+  const [templateFilter, setTemplateFilter] = useState([]);
+  const [statusFilter, setStatusFilter] = useState([]);
+  const [priorityFilter, setPriorityFilter] = useState([]);
+  const [dueDateFilter, setDueDateFilter] = useState([]);
+  const [createdDateFilter, setCreatedDateFilter] = useState([]);
+
   const programCodes = useMemo(() => [...new Set(programs.map(p => p.code))], [programs]);
+  // Option lists — only surface template / status / priority values
+  // that actually appear on this patient's plans, so the popovers
+  // never show empty rows.
+  const snapshot = useMemo(
+    () => buildCarePlanSnapshot(programs, patientCarePlans, patientId),
+    [programs, patientCarePlans, patientId],
+  );
+  const allRows = useMemo(
+    () => [...snapshot.goals, ...snapshot.interventions, ...(snapshot.barriers || [])],
+    [snapshot],
+  );
+  const templateOptions = useMemo(() => {
+    const usedIds = new Set(allRows.flatMap(r => r.templateIds || []));
+    return carePlanTemplates
+      .filter(t => usedIds.has(t.id))
+      .map(t => ({ id: t.id, name: t.name || t.title || t.id }));
+  }, [allRows, carePlanTemplates]);
+  const templateNames = useMemo(() => templateOptions.map(t => t.name), [templateOptions]);
+  const nameToTemplateId = useMemo(
+    () => Object.fromEntries(templateOptions.map(t => [t.name, t.id])),
+    [templateOptions],
+  );
+  const statusOptions   = useMemo(() => [...new Set(allRows.map(r => r.status).filter(Boolean))], [allRows]);
+  const priorityOptions = useMemo(() => [...new Set(allRows.map(r => r.priority).filter(Boolean))], [allRows]);
+
+  const templateIdsSelected = useMemo(
+    () => templateFilter.map(name => nameToTemplateId[name]).filter(Boolean),
+    [templateFilter, nameToTemplateId],
+  );
+
+  const activeCount = [
+    programFilter, templateFilter, statusFilter,
+    priorityFilter, dueDateFilter, createdDateFilter,
+  ].reduce((n, f) => n + (f.length > 0 ? 1 : 0), 0);
+  const clearAll = () => {
+    setProgramFilter([]);
+    setTemplateFilter([]);
+    setStatusFilter([]);
+    setPriorityFilter([]);
+    setDueDateFilter([]);
+    setCreatedDateFilter([]);
+  };
 
   const handleDownload = () => {
-    const snapshot = filterCarePlanSnapshot(
-      buildCarePlanSnapshot(programs, patientCarePlans, patientId),
-      { searchText, programFilter },
-    );
-    if (snapshot.goals.length === 0 && snapshot.interventions.length === 0) {
+    const filtered = filterCarePlanSnapshot(snapshot, {
+      searchText,
+      programFilter,
+      templateFilter: templateIdsSelected,
+      statusFilter,
+      priorityFilter,
+      dueDateFilter,
+      createdDateFilter,
+    });
+    if (filtered.goals.length === 0 && filtered.interventions.length === 0) {
       showToast?.('No care plan data to download');
       return;
     }
-    downloadCarePlanCsv(snapshot, `care-plan-${patientId || 'patient'}`);
+    downloadCarePlanCsv(filtered, `care-plan-${patientId || 'patient'}`);
     showToast?.('Care plan downloaded');
   };
 
@@ -55,20 +149,40 @@ function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpe
         searchPlaceholder="Search goals & interventions"
         showFilters={showFilters} setShowFilters={setShowFilters}
         cta={(
-          <Button
-            variant="tertiary"
-            size="L"
-            leadingIcon="solar:download-minimalistic-linear"
-            onClick={handleDownload}
-          >
-            Download
-          </Button>
+          /* Icon-only cluster: note (opens the Add Care Note drawer)
+             then download (streams the CSV). Grouped so the two CTAs
+             hug the toolbar's right edge like the rest of the app's
+             icon actions. */
+          <div className={styles.ctaCluster}>
+            <ActionButton
+              icon="solar:notes-linear"
+              size="L"
+              tooltip="Add care note"
+              tooltipBelow
+              tooltipLeft
+              onClick={() => setAddNoteOpen(true)}
+            />
+            <span className={styles.ctaDivider} aria-hidden="true" />
+            <ActionButton
+              icon="solar:download-minimalistic-linear"
+              size="L"
+              tooltip="Download"
+              tooltipBelow
+              tooltipLeft
+              onClick={handleDownload}
+            />
+          </div>
         )}
         filterBar={(
           <div className={styles.filterBar}>
             <FilterChip label="Program" options={programCodes} selected={programFilter} onChange={setProgramFilter} />
-            {programFilter.length > 0 && (
-              <button type="button" className={styles.clearAll} onClick={() => setProgramFilter([])}>
+            <FilterChip label="Care Plan Template" options={templateNames} selected={templateFilter} onChange={setTemplateFilter} searchable />
+            <FilterChip label="Status" options={statusOptions} selected={statusFilter} onChange={setStatusFilter} />
+            <FilterChip label="Priority" options={priorityOptions} selected={priorityFilter} onChange={setPriorityFilter} />
+            <FilterChip label="Due Date" options={CARE_PLAN_DATE_PRESETS} selected={dueDateFilter} onChange={setDueDateFilter} />
+            <FilterChip label="Create Date" options={CARE_PLAN_DATE_PRESETS} selected={createdDateFilter} onChange={setCreatedDateFilter} />
+            {activeCount > 0 && (
+              <button type="button" className={styles.clearAll} onClick={clearAll}>
                 <Icon name="solar:backspace-linear" size={16} color="var(--primary-300)" />
                 Clear All
               </button>
@@ -83,10 +197,24 @@ function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpe
           programs={programs}
           searchText={searchText}
           programFilter={programFilter}
+          templateFilter={templateIdsSelected}
+          statusFilter={statusFilter}
+          priorityFilter={priorityFilter}
+          dueDateFilter={dueDateFilter}
+          createdDateFilter={createdDateFilter}
           onClose={onClose}
           onOpenProgramStep={onOpenProgramStep}
         />
       </div>
+      {addNoteOpen && (
+        <AddCareNoteDrawer
+          onClose={() => setAddNoteOpen(false)}
+          onSave={(body) => {
+            setAddNoteOpen(false);
+            showToast?.(`Care note saved${body ? '' : ''}`);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -95,6 +223,7 @@ function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpe
  *  filter and an Add Care Note CTA. */
 function ProgramActivityLog({ header }) {
   const showToast = useAppStore(s => s.showToast);
+  const [addNoteOpen, setAddNoteOpen] = useState(false);
   const patientId = useAppStore(s => resolvePatientStoreId(s, s.selectedPatientId));
   const fetchPatientProgramActivity = useAppStore(s => s.fetchPatientProgramActivity);
   const activityByPatient = useAppStore(s => s.patientProgramActivity);
@@ -133,7 +262,7 @@ function ProgramActivityLog({ header }) {
             variant="tertiary"
             size="L"
             leadingIconElement={<AddIconMinimalist size={16} />}
-            onClick={() => showToast?.('Add a care note')}
+            onClick={() => setAddNoteOpen(true)}
           >
             Add Care Note
           </Button>
@@ -177,6 +306,15 @@ function ProgramActivityLog({ header }) {
           })
         )}
       </div>
+      {addNoteOpen && (
+        <AddCareNoteDrawer
+          onClose={() => setAddNoteOpen(false)}
+          onSave={() => {
+            setAddNoteOpen(false);
+            showToast?.('Care note saved');
+          }}
+        />
+      )}
     </div>
   );
 }

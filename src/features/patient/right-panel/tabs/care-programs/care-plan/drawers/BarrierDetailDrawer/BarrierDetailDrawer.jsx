@@ -9,7 +9,7 @@ import { ActionButton } from '../../../../../../../../components/ActionButton/Ac
 import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
 import { GbiProgressCell } from '../../tables/carePlanTableShared';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
-import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
+import { CarePlanActivityBlock } from '../CarePlanActivityBlock/CarePlanActivityBlock';
 import { LinkGoalToBarrierDrawer } from './LinkGoalToBarrierDrawer';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
@@ -124,6 +124,13 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
   const showToast = useAppStore(s => s.showToast);
   const libraryBarriers = useAppStore(s => s.carePlanBarriers) || [];
+  // Powers the shared activity block's "Since Last Visit" tab, same
+  // selector shape the Goal preview drawer uses.
+  const lastVisit = useAppStore(s => {
+    const p = (s.patients || []).find(x => x.id === patientId)
+      || (s.allPatients || []).find(x => x.id === patientId);
+    return p?.lastVisit || p?.last_visit || null;
+  });
 
   const goalsInPlan = slice?.goals || [];
   const barriersInPlan = slice?.barriers || [];
@@ -720,19 +727,16 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
             )}
           </div>
 
-          {/* Activity Log for this barrier — status changes, edits, goal
-              link / unlink, template link / unlink, and notes. Reuses the
-              shared ActivityLog primitive so entries render identically to
-              GoalPreviewDrawer / TaskDetailDrawer. */}
-          <section className={styles.section}>
-            <div className={styles.sectionHead}>
-              <span className={styles.sectionTitle}>Activity Log</span>
-            </div>
-            <ActivityLog
-              entries={activityEntries}
-              emptyLabel="No activity for this barrier yet."
-            />
-          </section>
+          {/* Activity Log — shared block with TabStrip (All / Since
+              Last Visit) + Filter chip, matches the Goal preview
+              drawer 1:1. Status changes, edits, goal link / unlink,
+              template link / unlink, and notes all render through the
+              same ActivityLog primitive. */}
+          <CarePlanActivityBlock
+            entries={activityEntries}
+            lastVisit={lastVisit}
+            emptyLabel="No activity for this barrier yet."
+          />
         </div>
       </Drawer>
 
