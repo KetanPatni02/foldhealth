@@ -133,6 +133,8 @@ function mapCarePlanTemplateRow(row) {
   return {
     id: row.id,
     name: row.name,
+    // Rows written before the status column existed are published.
+    status: row.status || 'published',
     conditions: row.conditions || [],
     goals: row.goals || [],
     interventions: row.interventions || [],
@@ -434,6 +436,7 @@ const AUDIT_FIELDS = {
     { action: 'target_date_changed', read: g => g.targetDate },
     { action: 'duration_changed', read: g => [g.duration, g.durationUnit].filter(Boolean).join(' ') },
     { action: 'frequency_changed', read: g => g.frequency },
+    { action: 'value_changed', read: g => g.currentValue },
     { action: 'conditions_changed', read: g => (g.conditions || []).join(', ') },
   ],
   intervention: [
@@ -3186,6 +3189,19 @@ export const useAppStore = create((set, get) => ({
       .single();
     if (error) { console.warn('patchGoalDisplayFromMeasurements:', error.message); return; }
     const patched = mapPatientCarePlanGoalRow(data);
+    // This writes the goal row directly rather than through
+    // savePatientCarePlanGoal, so the audit line is written here.
+    const before = goal.currentValue || 'No Data';
+    const after = patched.currentValue || 'No Data';
+    if (before !== after) {
+      get().logCarePlanAudit(patientId, { id: programId, code: cur?.plan?.programCode }, {
+        entityType: 'goal',
+        entityId: goalId,
+        action: 'value_changed',
+        summary: goal.title,
+        detail: `${before} → ${after}`,
+      });
+    }
     set(s => {
       const c = s.patientCarePlans[key];
       if (!c) return {};
@@ -4129,11 +4145,19 @@ export const useAppStore = create((set, get) => ({
       goals: values.goals || [],
       interventions: values.interventions || [],
       barriers: values.barriers || [],
+      status: values.status === 'draft' ? 'draft' : 'published',
     };
-    const q = id
-      ? supabase.from('care_plan_templates').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
-      : supabase.from('care_plan_templates').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
-    const { data, error } = await q.select().single();
+    const run = (writeRow) => (id
+      ? supabase.from('care_plan_templates').update({ ...writeRow, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
+      : supabase.from('care_plan_templates').insert({ ...writeRow, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null })
+    ).select().single();
+    let { data, error } = await run(row);
+    // Schema-tolerant: without the status migration the column is missing, and
+    // a draft simply saves as a normal template rather than failing.
+    if (error && /column .*status.* does not exist/i.test(error.message || '')) {
+      const { status: _dropped, ...rowWithoutStatus } = row;
+      ({ data, error } = await run(rowWithoutStatus));
+    }
     if (error) {
       console.warn('save care plan template failed:', error.message);
       get().showToast('Could not save template');

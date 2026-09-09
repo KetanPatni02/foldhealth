@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
-import { ActivityLog, ViewMoreButton } from '../../../../../../../../components/ActivityLog/ActivityLog';
+import { useAppStore } from '../../../../../../../../store/useAppStore';
+import { ActivityLog, MetaLine, ViewMoreButton } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { historyTimelineStyles as htStyles } from '../../../../../../../../components/HistoryTimeline/HistoryTimeline';
 import {
   templateContents,
   templateOwnedTitles,
-  templateTitles,
   withLiveLinks,
 } from '../../lib/carePlanAuditTemplates';
 import { NOTE_ACTIONS, netVersionRows } from '../../lib/carePlanVersions';
@@ -49,6 +50,21 @@ function toneFor(value) {
 // How long the arrived-here highlight stays up.
 const HIGHLIGHT_MS = 2000;
 
+const MM_DD_YYYY = { month: '2-digit', day: '2-digit', year: 'numeric' };
+const HH_MM = { hour: 'numeric', minute: '2-digit' };
+
+// Every node came from an audit row, so it can say when it happened and who
+// did it, the same way the History timeline does.
+function stampOf(row) {
+  const at = row?.createdAt ? new Date(row.createdAt) : null;
+  const valid = at && !Number.isNaN(at.getTime());
+  return {
+    date: valid ? at.toLocaleDateString('en-US', MM_DD_YYYY) : null,
+    time: valid ? at.toLocaleTimeString('en-US', HH_MM) : null,
+    by: row?.actor || null,
+  };
+}
+
 // Rail glyph per activity, so a node says what kind of change it is at a
 // glance. Entity buckets carry the same icons the plan's own rows use.
 const ENTITY_ICON = {
@@ -70,7 +86,7 @@ function countLabel(type, n) {
 // One node per kind of change: additions and removals collapse into a counted
 // heading listing what moved, and everything else keeps its own node so the
 // before → after stays readable.
-function buildNodes(rawRows, plan) {
+function buildNodes(rawRows, links) {
   const nodes = [];
   // Only the net difference between this signature and the previous one.
   const allRows = netVersionRows(rawRows);
@@ -86,18 +102,31 @@ function buildNodes(rawRows, plan) {
       && owned.has((r.summary || '').trim().toLowerCase())));
 
   for (const t of templates) {
-    const c = withLiveLinks(templateContents(t), plan);
-    const counts = templateTitles(t);
+    const c = withLiveLinks(templateContents(t), links);
+    // One summary line for the whole template — goals, interventions and
+    // barriers together — rather than a heading per block.
+    const totals = {
+      goal: c.goals.length,
+      intervention: c.interventions.length + c.goals.reduce((n, g) => n + g.interventions.length, 0),
+      barrier: c.barriers.length + c.goals.reduce((n, g) => n + g.barriers.length, 0),
+    };
+    const summary = Object.keys(ENTITY_NOUN)
+      .filter(type => totals[type] > 0)
+      .map(type => countLabel(type, totals[type]))
+      .join(' • ');
     const groups = [];
     if (c.goals.length) {
       groups.push({
         anchor: `${t.id}-goal`,
-        heading: countLabel('goal', c.goals.length),
         // Each goal carries what the template linked to it, so the tree shows
         // the linkage instead of three unrelated lists.
         tree: c.goals.map(g => ({
           title: g.title,
           icon: ENTITY_ICON.goal,
+          counts: [
+            g.interventions.length && countLabel('intervention', g.interventions.length),
+            g.barriers.length && countLabel('barrier', g.barriers.length),
+          ].filter(Boolean).join(' • '),
           children: [
             ...g.interventions.map(title => ({ title, icon: ENTITY_ICON.intervention })),
             ...g.barriers.map(title => ({ title, icon: ENTITY_ICON.barrier })),
@@ -111,7 +140,6 @@ function buildNodes(rawRows, plan) {
       if (!loose.length) continue;
       groups.push({
         anchor: `${t.id}-${type}`,
-        heading: countLabel(type, loose.length),
         tree: loose.map(title => ({ title, icon: ENTITY_ICON[type] })),
       });
     }
@@ -120,7 +148,8 @@ function buildNodes(rawRows, plan) {
       anchor: t.id,
       icon: TEMPLATE_ICON,
       heading: `${t.summary} Template ${t.action === 'created' ? 'Added' : 'Removed'}`,
-      counts,
+      stamp: stampOf(t),
+      summary,
       groups,
     });
   }
@@ -134,6 +163,8 @@ function buildNodes(rawRows, plan) {
         id: `${action}-${type}`,
         anchor: `${action}-${type}`,
         icon: ENTITY_ICON[type] || ENTITY_ICON.plan,
+        // A counted bucket spans several rows; the newest one dates it.
+        stamp: stampOf(ofType.at(-1)),
         heading: `${countLabel(type, ofType.length)} ${verb}`,
         items: ofType.map(r => r.summary).filter(Boolean),
       });
@@ -150,6 +181,7 @@ function buildNodes(rawRows, plan) {
         id: r.id,
         anchor: r.id,
         icon: NOTE_ICON,
+        stamp: stampOf(r),
         heading: removed ? 'Care Plan Note Removed' : 'Care Plan Note Updated',
         items: removed || !r.detail ? [] : [r.detail],
       });
@@ -173,6 +205,7 @@ function buildNodes(rawRows, plan) {
         id: r.id,
         anchor: r.id,
         icon: CHANGE_ICON,
+        stamp: stampOf(r),
         heading,
         change: {
           label,
@@ -188,6 +221,7 @@ function buildNodes(rawRows, plan) {
       id: r.id,
       anchor: r.id,
       icon: ENTITY_ICON[r.entityType] || CHANGE_ICON,
+      stamp: stampOf(r),
       heading,
       items: r.detail ? [r.detail] : [ACTION_LABEL[r.action] || r.action],
     });
@@ -207,13 +241,25 @@ function buildNodes(rawRows, plan) {
  *   linkage for rows signed before it was recorded.
  */
 export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, plan, onClose }) {
-  const nodes = useMemo(() => buildNodes(rows || [], plan), [rows, plan]);
+  const libraryGoals = useAppStore(s => s.carePlanGoals);
+  const nodes = useMemo(
+    () => buildNodes(rows || [], { plan, libraryGoals }),
+    [rows, plan, libraryGoals],
+  );
   const bodyRef = useRef(null);
   // Entries open by default; the toggle is there to fold long ones away.
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggle = (id) => setCollapsed(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  // Goals in a template tree fold their linked items away independently of the
+  // entry they sit in, and likewise start open.
+  const [foldedGoals, setFoldedGoals] = useState(() => new Set());
+  const toggleGoal = (key) => setFoldedGoals(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
 
@@ -250,11 +296,12 @@ export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, plan, onC
   const logEntries = nodes.map(node => ({
     t: 'care_plan_change',
     id: node.id,
-    avatar: <Avatar type="icon" variant="others" size="XS" iconName={node.icon || ENTITY_ICON.plan} />,
+    avatar: <Avatar type="icon" variant="others" size="S" iconName={node.icon || ENTITY_ICON.plan} />,
     render: () => {
       const open = !collapsed.has(node.id);
       return (
         <div data-anchor={node.anchor}>
+          {node.stamp && <MetaLine entry={node.stamp} />}
           <div className={htStyles.headlineRow}>
             <span className={htStyles.headline}>{node.heading}</span>
             <ViewMoreButton expanded={open} onToggle={() => toggle(node.id)} />
@@ -266,26 +313,63 @@ export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, plan, onC
                   {node.items.map((item, k) => <li key={k}>{item}</li>)}
                 </ul>
               )}
+              {node.summary && (
+                <div className={styles.summary}>
+                  <span className={styles.groupHeading}>{node.summary}</span>
+                </div>
+              )}
               {node.groups?.map((group, gi) => (
                 <div key={gi} className={styles.group} data-anchor={group.anchor}>
-                  <span className={styles.groupHeading}>{group.heading}</span>
-                  <span className={styles.groupRule} />
-                  {group.tree.map((item, k) => (
-                    <div key={k}>
-                      <div className={styles.treeRow}>
-                        <Avatar type="icon" variant="others" size="XS" iconName={item.icon} />
-                        <span className={styles.treeTitle}>{item.title}</span>
-                      </div>
-                      {item.children?.map((child, ci) => (
-                        <div key={ci} className={styles.treeChild}>
-                          <div className={styles.treeRow}>
-                            <Avatar type="icon" variant="others" size="XS" iconName={child.icon} />
-                            <span className={styles.treeTitle}>{child.title}</span>
-                          </div>
+                  {group.tree.map((item, k) => {
+                    const key = `${node.id}:${gi}:${k}`;
+                    const hasChildren = item.children?.length > 0;
+                    const shown = hasChildren && !foldedGoals.has(key);
+                    return (
+                      <div key={k} className={styles.treeItem}>
+                        <div
+                          className={[styles.treeRow, hasChildren ? styles.treeRowToggle : ''].filter(Boolean).join(' ')}
+                          role={hasChildren ? 'button' : undefined}
+                          tabIndex={hasChildren ? 0 : undefined}
+                          aria-expanded={hasChildren ? shown : undefined}
+                          onClick={hasChildren ? () => toggleGoal(key) : undefined}
+                          onKeyDown={hasChildren ? (e) => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return;
+                            e.preventDefault();
+                            toggleGoal(key);
+                          } : undefined}
+                        >
+                          <Avatar type="icon" variant="others" size="XS" iconName={item.icon} />
+                          <span className={styles.treeText}>
+                            <span className={styles.treeTitle}>{item.title}</span>
+                            {item.counts && (
+                              <span className={styles.treeCounts}>
+                                {item.counts}
+                                <DownChevronIcon
+                                  size={12}
+                                  color="var(--neutral-300)"
+                                  className={shown ? styles.chevronOpen : styles.chevron}
+                                />
+                              </span>
+                            )}
+                          </span>
                         </div>
-                      ))}
-                    </div>
-                  ))}
+                        {hasChildren && (
+                          <div className={[styles.treeChildren, shown ? styles.treeChildrenOpen : ''].filter(Boolean).join(' ')}>
+                            <div className={styles.treeChildrenInner}>
+                              {item.children.map((child, ci) => (
+                                <div key={ci} className={styles.treeChild}>
+                                  <div className={styles.treeRow}>
+                                    <Avatar type="icon" variant="others" size="S" iconName={child.icon} />
+                                    <span className={styles.treeTitle}>{child.title}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               ))}
               {node.change && (

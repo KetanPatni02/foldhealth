@@ -6,6 +6,7 @@ import { Badge } from '../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../components/Icon/Icon';
 import { Checkbox } from '../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../../../../store/useAppStore';
+import { CARE_PLAN_TITLE_MAX } from '../../lib/carePlanLimits';
 import styles from './AddBarriersDrawer.module.css';
 
 function normTitle(value) {
@@ -38,12 +39,19 @@ export function AddBarriersDrawer({
   }, [libraryDidFetch, fetchCarePlanLibrary]);
 
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState(() => new Set());
 
   const addedTitles = useMemo(
     () => new Set(existingBarriers.map(b => normTitle(b.title))),
     [existingBarriers],
   );
+
+  // Rows already on the plan open checked and stay toggleable, so what is
+  // ticked always reads as "what this should end up with".
+  const [selected, setSelected] = useState(() => new Set(
+    (libraryBarriers || [])
+      .filter(b => addedTitles.has(normTitle(b.title)))
+      .map(b => b.id),
+  ));
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -68,7 +76,10 @@ export function AddBarriersDrawer({
     () => new Set([...libraryBarriers.map(b => normTitle(b.title)), ...addedTitles]),
     [libraryBarriers, addedTitles],
   );
-  const canCreate = !!trimmed && !knownTitles.has(normTitle(trimmed));
+  // Typing a name that already exists is a dead end, so it is called out
+  // rather than silently refusing to create.
+  const duplicateName = !!trimmed && knownTitles.has(normTitle(trimmed));
+  const canCreate = !!trimmed && !duplicateName;
 
   const toggle = (id) => setSelected(prev => {
     const next = new Set(prev);
@@ -102,19 +113,18 @@ export function AddBarriersDrawer({
     </>
   );
 
-  const renderRow = (barrier, { disabled = false } = {}) => (
+  const renderRow = (barrier, { added = false } = {}) => (
     <div key={barrier.id} className={styles.rowWrap}>
-      <label className={`${styles.row} ${disabled ? styles.rowDisabled : ''}`}>
+      <label className={styles.row}>
         {selectable && (
           <Checkbox
-            checked={disabled || selected.has(barrier.id)}
-            disabled={disabled}
-            onCheckedChange={() => !disabled && toggle(barrier.id)}
+            checked={selected.has(barrier.id)}
+            onCheckedChange={() => toggle(barrier.id)}
             aria-label={`Select ${barrier.title}`}
           />
         )}
         <span className={styles.rowText}>{barrier.title}</span>
-        {selectable && disabled ? <Badge tone="grey" size="M" label="Added" /> : null}
+        {selectable && added ? <Badge tone="grey" size="M" label="Added" /> : null}
       </label>
     </div>
   );
@@ -122,15 +132,40 @@ export function AddBarriersDrawer({
   return (
     <Drawer title="Add Barriers" onClose={onClose} headerRight={headerRight} noCloseDivider>
       <div className={styles.body}>
-        <Input
-          type="search"
-          aria-label="Search or Enter Barrier"
-          placeholder="Search or Enter Barrier"
-          leadingIcon="solar:magnifer-linear"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && canCreate) { e.preventDefault(); handleCreate(); } }}
-        />
+        {/* Authoring a barrier is the point of the library's copy of this
+            drawer, so the field is the goal drawer's manual-add input; the
+            plan picker keeps a plain search. Either way the list below filters
+            as you type, which is what stops duplicates. */}
+        {selectable ? (
+          <Input
+            type="search"
+            aria-label="Search or Enter Barrier"
+            placeholder="Search or Enter Barrier"
+            leadingIcon="solar:magnifer-linear"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && canCreate) { e.preventDefault(); handleCreate(); } }}
+          />
+        ) : (
+          <Input
+            autoFocus
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') { e.preventDefault(); setQuery(''); }
+              if (e.key === 'Enter' && canCreate) { e.preventDefault(); handleCreate(); }
+            }}
+            placeholder={`Add New Barriers (${CARE_PLAN_TITLE_MAX} characters max)`}
+            aria-label="Add New Barriers"
+            maxLength={CARE_PLAN_TITLE_MAX}
+            errorText={duplicateName
+              ? 'A barrier with this name already exists'
+              : (query.length >= CARE_PLAN_TITLE_MAX
+                ? `Character limit reached - ${CARE_PLAN_TITLE_MAX}/${CARE_PLAN_TITLE_MAX}`
+                : undefined)}
+            trailingText={trimmed ? 'Enter to Save' : 'Esc to Cancel'}
+          />
+        )}
 
         <div className={styles.list}>
           {canCreate && (
@@ -152,11 +187,16 @@ export function AddBarriersDrawer({
               {selectable && addedRows.length > 0 && (
                 <>
                   <span className={styles.groupLabel}>Already Added</span>
-                  {addedRows.map(b => renderRow(b, { disabled: true }))}
+                  {addedRows.map(b => renderRow(b, { added: true }))}
                 </>
               )}
               {selectable && addedRows.length > 0 && availableRows.length > 0 && (
                 <span className={styles.groupDivider} />
+              )}
+              {/* The library drawer's field authors a new barrier, so the list
+                  under it needs to say it is the existing ones, not choices. */}
+              {!selectable && (
+                <div className={styles.listHead}>Existing Barriers</div>
               )}
               {(selectable ? availableRows : rows).map(b => renderRow(b))}
             </>

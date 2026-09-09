@@ -321,7 +321,7 @@ const SETTINGS_NAV_TO_SECTION = Object.fromEntries(
 );
 
 // Sections whose single tab strip lives in the store and rides the URL.
-const CARE_PLAN_TABS = ['template', 'goals', 'interventions', 'barriers'];
+const CARE_PLAN_TABS = ['template', 'goals', 'interventions', 'barriers', 'drafts'];
 
 function tabForListSlug(section, list) {
   if (list === 'TOC IP' || section === 'tcm-queue' || section === 'toc-queue') return 'toc-queue';

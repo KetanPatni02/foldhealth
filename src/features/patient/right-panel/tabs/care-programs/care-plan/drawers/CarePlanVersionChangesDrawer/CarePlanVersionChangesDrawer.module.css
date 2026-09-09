@@ -32,7 +32,15 @@
 }
 .items li + li { margin-top: var(--space-1); }
 
-/* A template's per-entity block: heading, hairline, then its items. */
+/* The template's one-line breakdown, above its tree. */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+}
+
+/* A template's per-entity block of items. */
 .group {
   display: flex;
   flex-direction: column;
@@ -43,16 +51,6 @@
   font-size: var(--font-base);
   color: var(--neutral-500);
   line-height: 1.2;
-}
-/* Dashed hairline, 5px dash / 5px gap per the design. A gradient rather than
-   a dashed border, which gives no control over the dash pattern. */
-.groupRule {
-  height: 0.5px;
-  background-image: repeating-linear-gradient(
-    to right,
-    var(--neutral-150) 0 5px,
-    transparent 5px 10px
-  );
 }
 
 .change {
@@ -66,14 +64,19 @@
 }
 
 
-/* Linked tree: a goal row, then what the template hung off it, joined by an
-   elbow. Borders rather than the design's SVG so the connector stretches to
-   whatever height a wrapped title needs. */
+/* Linked tree (Figma 1894:25522): every item is a bordered card, and a
+   child hangs off its parent behind an elbow. Borders rather than the
+   design's SVG so the connector stretches to whatever height a wrapped
+   title needs. */
 .treeRow {
   display: flex;
   align-items: center;
+  /* The design specs 10px; --space-2 is the nearest step. */
   gap: var(--space-2);
-  padding: var(--space-1) 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
 }
 .treeTitle {
   flex: 1;
@@ -81,17 +84,63 @@
   font-size: var(--font-base);
   color: var(--neutral-400);
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
+
+/* A goal card stacks its title over the count of what hangs off it. */
+.treeText {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.treeCounts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  line-height: 1.2;
+}
+.treeRowToggle { cursor: pointer; }
+.treeRowToggle:hover { background: var(--neutral-50); }
+
+/* The shared down chevron: it points at the branch when folded and turns down
+   when it opens, on the same curve as the reveal. */
+.chevron,
+.chevronOpen { transition: transform 200ms ease; }
+.chevron { transform: rotate(-90deg); }
+
+/* Collapsing by grid row rather than max-height, so the animation fits the
+   children's real height however long the titles wrap. */
+.treeChildren {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 200ms ease;
+}
+.treeChildrenInner { overflow: hidden; }
+.treeChildrenOpen { grid-template-rows: 1fr; }
+
+@media (prefers-reduced-motion: reduce) {
+  .treeChildren,
+  .chevron,
+  .chevronOpen { transition: none; }
+}
+/* A goal starts a new branch, so it gets more air than the children hanging
+   off the one above it. */
+.treeItem + .treeItem { margin-top: var(--space-3); }
 .treeChild {
   position: relative;
   padding-left: var(--space-6);
+  padding-top: var(--space-2);
 }
 .treeChild::before {
   content: '';
   position: absolute;
   left: 10px;
   top: 0;
-  height: 50%;
+  bottom: 50%;
   width: 14px;
   border-left: 0.5px solid var(--neutral-150);
   border-bottom: 0.5px solid var(--neutral-150);

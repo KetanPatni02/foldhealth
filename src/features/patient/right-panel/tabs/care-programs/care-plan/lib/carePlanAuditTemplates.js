@@ -47,37 +47,60 @@ export function templateOwnedTitles(templateRows) {
 const norm = v => (v || '').trim().toLowerCase();
 
 /**
- * Fill in linkage for template rows written before it was recorded. The goals
- * are matched against the plan by title and their current interventions and
- * barriers hung under them — a live read, so it reflects the plan as it stands
- * rather than as it was signed. Only used when the row itself carries none.
+ * Fill in linkage for template rows written before it was recorded.
+ *
+ * The library goal is the real source: a template's goal points at a library
+ * goal whose own links carry the interventions and barriers that belong to it.
+ * Interventions applied from a template land on the plan with no `goal_id`, so
+ * the plan can only be used as a second guess. Either way this is a live read,
+ * reflecting things as they stand rather than as they were signed, and it is
+ * only used when the row itself carries no linkage.
  */
-export function withLiveLinks(contents, plan) {
-  if (!plan) return contents;
+export function withLiveLinks(contents, { plan, libraryGoals } = {}) {
   const hasRecorded = contents.goals.some(g => g.interventions.length || g.barriers.length);
   if (hasRecorded) return contents;
 
-  const planGoals = plan.goals || [];
-  const planIntv = plan.interventions || [];
-  const planBarriers = plan.barriers || [];
-  const barrierGoals = b => (b.goalIds?.length ? b.goalIds : [b.goalId]).filter(Boolean);
   const ownIntv = new Set(contents.interventions.map(norm));
   const ownBarriers = new Set(contents.barriers.map(norm));
-
   const linkedIntv = new Set();
   const linkedBarriers = new Set();
-  const goals = contents.goals.map(g => {
-    const match = planGoals.find(pg => norm(pg.title) === norm(g.title));
-    if (!match) return g;
-    const interventions = planIntv
-      .filter(i => i.goalId === match.id && ownIntv.has(norm(i.title)))
-      .map(i => i.title);
-    const barriers = planBarriers
-      .filter(b => barrierGoals(b).includes(match.id) && ownBarriers.has(norm(b.title)))
-      .map(b => b.title);
-    interventions.forEach(t => linkedIntv.add(norm(t)));
-    barriers.forEach(t => linkedBarriers.add(norm(t)));
-    return { ...g, interventions, barriers };
+
+  // When the row recorded a list, the links are narrowed to it. When it
+  // recorded none — older rows carry no barriers at all — the library goal's
+  // links stand on their own, since those links are what the template applied.
+  const keep = (recorded) => (title) => recorded.size === 0 || recorded.has(norm(title));
+  const keepIntv = keep(ownIntv);
+  const keepBarrier = keep(ownBarriers);
+
+  const fromLibrary = (goalTitle) => {
+    const lib = (libraryGoals || []).find(g => norm(g.title) === norm(goalTitle));
+    const links = lib?.interventions || [];
+    return {
+      interventions: links.filter(l => l.kind !== 'barrier' && keepIntv(l.title)).map(l => l.title),
+      barriers: links.filter(l => l.kind === 'barrier' && keepBarrier(l.title)).map(l => l.title),
+    };
+  };
+
+  const fromPlan = (goalTitle) => {
+    const match = (plan?.goals || []).find(pg => norm(pg.title) === norm(goalTitle));
+    if (!match) return { interventions: [], barriers: [] };
+    const barrierGoals = b => (b.goalIds?.length ? b.goalIds : [b.goalId]).filter(Boolean);
+    return {
+      interventions: (plan?.interventions || [])
+        .filter(i => i.goalId === match.id && ownIntv.has(norm(i.title)))
+        .map(i => i.title),
+      barriers: (plan?.barriers || [])
+        .filter(b => barrierGoals(b).includes(match.id) && ownBarriers.has(norm(b.title)))
+        .map(b => b.title),
+    };
+  };
+
+  const goals = contents.goals.map((g) => {
+    const lib = fromLibrary(g.title);
+    const found = (lib.interventions.length || lib.barriers.length) ? lib : fromPlan(g.title);
+    found.interventions.forEach(t => linkedIntv.add(norm(t)));
+    found.barriers.forEach(t => linkedBarriers.add(norm(t)));
+    return { ...g, interventions: found.interventions, barriers: found.barriers };
   });
 
   return {

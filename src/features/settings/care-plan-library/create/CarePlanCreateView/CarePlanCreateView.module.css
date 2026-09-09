@@ -70,30 +70,7 @@
   flex-shrink: 0;
 }
 
-/* Gradient "Write with AI" affordance — text is painted by the gradient, so
-   the color is deliberately transparent. */
-.aiLink {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-.aiLinkText {
-  font-size: var(--font-base);
-  background: linear-gradient(198deg, var(--ai-gradient-from) 0%, var(--ai-gradient-to) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
 
-.sectionTitle {
-  font-size: var(--font-lg);
-  font-weight: 500;
-  color: var(--neutral-400);
-}
 .radioGroup {
   display: flex;
   flex-direction: column;

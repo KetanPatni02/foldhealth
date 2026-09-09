@@ -32,8 +32,12 @@ export function CarePlanGoalsTable({
 }) {
   const sortableRows = useMemo(() => enrichGoalRows(rows), [rows]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortableRows, 'title', 'asc');
+  // A template row has no value, progress or status, but it still gets its
+  // row menu when the caller can act on one.
+  const showActions = !template || Boolean(onRowMenu);
   const columns = template
-    ? GOAL_COLUMNS.filter(c => c.key === 'priority' || c.key === 'title')
+    ? GOAL_COLUMNS.filter(c => c.key === 'priority' || c.key === 'title'
+      || (showActions && c.key === 'actions'))
     : GOAL_COLUMNS;
 
   return (
@@ -108,18 +112,20 @@ export function CarePlanGoalsTable({
                     onOpen={rect => onStatusMenu({ kind: 'goal', item: g, rect })}
                   />
                 </td>
-                <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
-                  <ActionButton
-                    icon="solar:menu-dots-linear"
-                    size="S"
-                    tooltip="More"
-                    tooltipBelow
-                    tooltipLeft
-                    disabled={!canEdit}
-                    onClick={(e) => onRowMenu({ kind: 'goal-menu', item: g, rect: e.currentTarget.getBoundingClientRect() })}
-                  />
-                </td>
               </>
+            )}
+            {showActions && (
+              <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
+                <ActionButton
+                  icon="solar:menu-dots-linear"
+                  size="S"
+                  tooltip="More"
+                  tooltipBelow
+                  tooltipLeft
+                  disabled={!template && !canEdit}
+                  onClick={(e) => onRowMenu({ kind: 'goal-menu', item: g, rect: e.currentTarget.getBoundingClientRect() })}
+                />
+              </td>
             )}
           </tr>
         )}

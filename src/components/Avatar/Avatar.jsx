@@ -46,6 +46,13 @@ const ICON_COLOR_BY_VARIANT = {
   staff: 'var(--secondary-300)',
   provider: 'var(--secondary-300)',
   others: 'var(--neutral-300)',
+  // Outcome-bearing tiles: an activity that succeeded or failed says so in
+  // the tile itself rather than only in its text. `warning` and `primary`
+  // complete the set so a tile can match the status badge beside it.
+  success: 'var(--status-success)',
+  error: 'var(--status-error)',
+  warning: 'var(--status-warning)',
+  primary: 'var(--primary-300)',
 };
 
 export function Avatar({ type = 'initial', variant = 'patient', initials, iconName, size, agentName, icon, backgroundColor, borderColor, color, className, locked = false }) {
@@ -55,7 +62,8 @@ export function Avatar({ type = 'initial', variant = 'patient', initials, iconNa
   // Only patient / staff / provider / others honor `type="icon"`; the other
   // legacy variants (agent, assignee, callCard, generic) keep their existing
   // contract so callers don't break.
-  const isIcon = type === 'icon' && iconName && ['patient', 'staff', 'provider', 'others'].includes(variant);
+  const isIcon = type === 'icon' && iconName
+    && ['patient', 'staff', 'provider', 'others', 'success', 'error', 'warning', 'primary'].includes(variant);
   const iconEl = isIcon
     ? <Icon name={iconName} size={ICON_SIZE_BY_TOKEN[size] || 18} color={ICON_COLOR_BY_VARIANT[variant]} />
     : null;
@@ -104,10 +112,10 @@ export function Avatar({ type = 'initial', variant = 'patient', initials, iconNa
       </LockedWrapper>
     );
   }
-  if (variant === 'others') {
+  if (['others', 'success', 'error', 'warning', 'primary'].includes(variant)) {
     return (
       <LockedWrapper locked={locked}>
-        <div className={[styles.others, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')}>
+        <div className={[styles[variant], scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')}>
           {iconEl || initials}
         </div>
       </LockedWrapper>

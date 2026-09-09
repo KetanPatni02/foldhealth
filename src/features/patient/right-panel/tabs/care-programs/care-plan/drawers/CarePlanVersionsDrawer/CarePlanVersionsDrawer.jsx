@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
-// Restore is parked — see the commented blocks below.
-// import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { CarePlanVersionChangesDrawer } from '../CarePlanVersionChangesDrawer/CarePlanVersionChangesDrawer';
@@ -22,11 +22,11 @@ const fmt = (iso) => (iso ? new Date(iso).toLocaleString('en-US', { month: 'shor
 // Immutable version history for a program's care plan, with restore (#25).
 export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
   const fetchCarePlanVersions = useAppStore(s => s.fetchCarePlanVersions);
-  // const restoreCarePlanVersion = useAppStore(s => s.restoreCarePlanVersion);
+  const restoreCarePlanVersion = useAppStore(s => s.restoreCarePlanVersion);
   const key = `${patientId}::${program.id}`;
   const versions = useAppStore(s => s.patientCarePlanVersions[key]);
   const loading = useAppStore(s => s.patientCarePlanVersionsLoading[key]);
-  // const [restoreTarget, setRestoreTarget] = useState(null);
+  const [restoreTarget, setRestoreTarget] = useState(null);
   const [openVersion, setOpenVersion] = useState(null);
   const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
   const auditKey = `${patientId}::${program.id}`;
@@ -63,7 +63,7 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
       <div className={styles.body}>
         {list.length === 0 ? (
           <RingEmptyState icon="solar:layers-minimalistic-linear" label={loading ? 'Loading versions…' : 'No saved versions yet'} />
-        ) : list.map(v => (
+        ) : list.map((v, i) => (
           <div
             key={v.id}
             className={styles.card}
@@ -75,6 +75,9 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
             <div className={styles.cardMain}>
             <div className={styles.cardHead}>
               <span className={styles.version}>Version {v.versionNumber}</span>
+              {/* Versions come back newest first, so the head of the list is
+                  the one the plan is on now. */}
+              {i === 0 && <Badge tone="success" size="S" label="Current" />}
             </div>
             <div className={styles.meta}>
               {fmt(v.createdAt)}
@@ -92,7 +95,6 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
                 tooltip="View"
                 onClick={() => openChanges(v)}
               />
-              {/* Restore is parked for now.
               <span className={styles.vDivider} />
               <ActionButton
                 icon="solar:restart-linear"
@@ -100,7 +102,6 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
                 tooltip="Restore"
                 onClick={() => setRestoreTarget(v)}
               />
-              */}
             </div>
           </div>
         ))}
@@ -115,7 +116,6 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
         />
       )}
 
-      {/* Restore is parked for now.
       {restoreTarget && (
         <ConfirmDialog
           icon="solar:danger-triangle-linear"
@@ -126,7 +126,6 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
           onConfirm={() => { restoreCarePlanVersion(patientId, program, restoreTarget); setRestoreTarget(null); onClose(); }}
         />
       )}
-      */}
     </Drawer>
   );
 }

@@ -28,6 +28,43 @@
   flex-shrink: 0;
 }
 
+/* Outcome / status tiles — same box as "others", tinted to match the badge
+   the entry carries. */
+.success,
+.error,
+.warning,
+.primary {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: var(--font-base);
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.success {
+  background: var(--status-success-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-success) 20%, transparent);
+  color: var(--status-success);
+}
+.error {
+  background: var(--status-error-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-error) 30%, transparent);
+  color: var(--status-error);
+}
+.warning {
+  background: var(--status-warning-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-warning) 25%, transparent);
+  color: var(--status-warning);
+}
+.primary {
+  background: var(--primary-50);
+  border: 0.5px solid color-mix(in srgb, var(--primary-300) 20%, transparent);
+  color: var(--primary-300);
+}
+
 .assignee {
   width: 26px;
   height: 26px;

@@ -12,6 +12,7 @@ import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { Tooltip } from '../../../../../components/Tooltip/Tooltip';
 import { INTERVENTION_EDITORS } from '../../interventions';
 import { AddInterventionsDrawer } from '../../interventions/AddInterventionsDrawer';
+import { AddBarriersDrawer } from '../../barriers/AddBarriersDrawer/AddBarriersDrawer';
 import { Link } from '../../../../../components/Link/Link';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
@@ -184,6 +185,9 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   // The "+" opens the library picker; the kind menu it used to open now
   // lives inside that picker's New Intervention.
   const [addInterventionsOpen, setAddInterventionsOpen] = useState(false);
+  // The barriers "+" picks from the library; the inline input stays for
+  // renaming a staged row.
+  const [addBarriersOpen, setAddBarriersOpen] = useState(false);
   // Row-level editing: which row's priority menu is open, and which row's
   // title is in its text-field state.
   const [priorityMenuFor, setPriorityMenuFor] = useState(null);
@@ -252,11 +256,19 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const saveBarrier = () => {
     const text = barrierDraft.trim();
     if (!text) { cancelBarrier(); return; }
+    if (barriers.some((b, i) => i !== barrierEditing
+      && b.title.trim().toLowerCase() === text.toLowerCase())) return;
     setBarriers(prev => (barrierEditing === 'new'
       ? [...prev, { kind: 'barrier', title: text, config: {} }]
       : prev.map((b, i) => (i === barrierEditing ? { ...b, title: text } : b))));
     cancelBarrier();
   };
+
+  // Same name as one already staged on this goal — excluding the row being
+  // edited, which is allowed to keep its own title.
+  const duplicateBarrier = barriers.some((b, i) => i !== barrierEditing
+    && b.title.trim().toLowerCase() === barrierDraft.trim().toLowerCase())
+    && barrierDraft.trim().length > 0;
 
   const barrierInput = (
     <Input
@@ -268,10 +280,14 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         if (e.key === 'Enter') { e.preventDefault(); saveBarrier(); }
       }}
       onBlur={() => (barrierDraft.trim() ? saveBarrier() : cancelBarrier())}
-      placeholder="Add New Barriers"
+      placeholder={`Add New Barriers (${TITLE_MAX} characters max)`}
       aria-label="Add New Barriers"
       maxLength={TITLE_MAX}
-      characterLimit={TITLE_MAX}
+      errorText={duplicateBarrier
+        ? 'A barrier with this name already exists'
+        : (barrierDraft.length >= TITLE_MAX
+          ? `Character limit reached - ${TITLE_MAX}/${TITLE_MAX}`
+          : undefined)}
       trailingText={barrierDraft.trim() ? 'Enter to Save' : 'Esc to Cancel'}
     />
   );
@@ -527,7 +543,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                     onClick={sec.key === 'interventions'
                       ? () => setAddInterventionsOpen(true)
                       : sec.key === 'barriers'
-                        ? () => editBarrier('new')
+                        ? () => setAddBarriersOpen(true)
                         : undefined}
                   >
                     <AddIconMinimalist size={16} color="var(--neutral-300)" />
@@ -699,8 +715,28 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
           </div>
         </div>
       </div>
+      {addBarriersOpen && (
+        <AddBarriersDrawer
+          existingBarriers={barriers}
+          primaryLabel="Add to Goal"
+          onClose={() => setAddBarriersOpen(false)}
+          onAdd={(picked) => {
+            const staged = new Set(barriers.map(b => b.title.trim().toLowerCase()));
+            const fresh = (picked || []).filter(b => !staged.has((b.title || '').trim().toLowerCase()));
+            if (fresh.length) {
+              setBarriers(prev => [
+                ...prev,
+                ...fresh.map(b => ({ kind: 'barrier', title: b.title, config: {} })),
+              ]);
+            }
+            setAddBarriersOpen(false);
+          }}
+        />
+      )}
+
       {addInterventionsOpen && (
         <AddInterventionsDrawer
+          primaryLabel="Add to Goal"
           onClose={() => setAddInterventionsOpen(false)}
           onAdd={(picked) => {
             picked.forEach(i => addIntervention(i.kind, i.title, { description: i.description || '' }));

@@ -38,15 +38,19 @@ export function CarePlanInterventionsTable({
   template = false,
   emptyState,
 }) {
+  // A template row has no assignee, adherence or status, but it still gets
+  // its row menu when the caller can act on one.
+  const showActions = !template || Boolean(onRowMenu);
   const columns = useMemo(() => {
     if (template) {
       return withSelectColumn(
-        INTERVENTION_COLUMNS.filter(c => c.key === 'priority' || c.key === 'title'),
+        INTERVENTION_COLUMNS.filter(c => c.key === 'priority' || c.key === 'title'
+          || (showActions && c.key === 'actions')),
         bulkMode,
       );
     }
     return withSelectColumn(INTERVENTION_COLUMNS, bulkMode);
-  }, [bulkMode, template]);
+  }, [bulkMode, template, showActions]);
 
   const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
   // Merge platform users + patients so members can be assigned inline.
@@ -176,20 +180,22 @@ export function CarePlanInterventionsTable({
                       onOpen={rect => onStatusMenu({ kind: 'intv', item: i, rect })}
                     />
                   </td>
-                  <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
-                    <ActionButton
-                      icon="solar:menu-dots-linear"
-                      size="S"
-                      tooltip="More"
-                      tooltipBelow
-                      tooltipLeft
-                      disabled={!canEdit}
-                      onClick={(e) => onRowMenu({ kind: 'intv-menu', item: i, rect: e.currentTarget.getBoundingClientRect() })}
-                    />
-                  </td>
                 </>
                 );
               })()}
+              {showActions && (
+                <td className={styles.actionsTd} onClick={e => e.stopPropagation()}>
+                  <ActionButton
+                    icon="solar:menu-dots-linear"
+                    size="S"
+                    tooltip="More"
+                    tooltipBelow
+                    tooltipLeft
+                    disabled={!template && !canEdit}
+                    onClick={(e) => onRowMenu({ kind: 'intv-menu', item: i, rect: e.currentTarget.getBoundingClientRect() })}
+                  />
+                </td>
+              )}
             </tr>
         )}
       />

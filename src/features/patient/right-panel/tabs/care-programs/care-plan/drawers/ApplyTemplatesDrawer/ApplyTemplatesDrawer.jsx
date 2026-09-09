@@ -25,7 +25,20 @@ const PRIORITIES = ['low', 'medium', 'high'];
  * shared PriorityIcon component so priority reads the same wherever it
  * appears in the app.
  */
-export function ApplyTemplatesDrawer({ onClose, appliedTemplateIds = [], appliedTemplatePriorities = {}, onApply }) {
+/**
+ * @param {boolean} [props.showPriority=true]  Priority is a property of a
+ *   template applied to a plan; a template being authored has nowhere to
+ *   keep it, so that column and its header row come off.
+ * @param {boolean} [props.showCreateNew=true]
+ */
+export function ApplyTemplatesDrawer({
+  onClose,
+  appliedTemplateIds = [],
+  appliedTemplatePriorities = {},
+  onApply,
+  showPriority = true,
+  showCreateNew = true,
+}) {
   const templates = useAppStore(s => s.carePlanTemplates);
   const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
   const libraryLoading = useAppStore(s => s.carePlanLibraryLoading);
@@ -79,14 +92,18 @@ export function ApplyTemplatesDrawer({ onClose, appliedTemplateIds = [], applied
 
   const headerRight = (
     <>
-      <Link
-        onClick={() => { /* future: open Create New template flow */ }}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}
-      >
-        <Icon name="solar:add-linear" size={14} color="var(--primary-300)" />
-        Create New
-      </Link>
-      <span className={styles.headerDivider} aria-hidden />
+      {showCreateNew && (
+        <>
+          <Link
+            onClick={() => { /* future: open Create New template flow */ }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)' }}
+          >
+            <Icon name="solar:add-linear" size={14} color="var(--primary-300)" />
+            Create New
+          </Link>
+          <span className={styles.headerDivider} aria-hidden />
+        </>
+      )}
       <Button
         variant="primary"
         size="M"
@@ -112,10 +129,12 @@ export function ApplyTemplatesDrawer({ onClose, appliedTemplateIds = [], applied
         />
 
         <div className={styles.list}>
-          <div className={styles.tableHead} role="row">
-            <span className={styles.tableHeadName}>Template</span>
-            <span className={styles.tableHeadPriority}>Priority</span>
-          </div>
+          {showPriority && (
+            <div className={styles.tableHead} role="row">
+              <span className={styles.tableHeadName}>Template</span>
+              <span className={styles.tableHeadPriority}>Priority</span>
+            </div>
+          )}
           {libraryLoading && templates.length === 0 ? (
             <p className={styles.empty}>Loading templates…</p>
           ) : rows.length === 0 ? (
@@ -141,6 +160,7 @@ export function ApplyTemplatesDrawer({ onClose, appliedTemplateIds = [], applied
                       <span className={styles.rowSubtitle}>{problemsLineOf(t)}</span>
                     )}
                   </span>
+                  {showPriority && (
                   <div
                     className={styles.priorityGroup}
                     role="radiogroup"
@@ -164,6 +184,7 @@ export function ApplyTemplatesDrawer({ onClose, appliedTemplateIds = [], applied
                       );
                     })}
                   </div>
+                  )}
                 </div>
               );
             })

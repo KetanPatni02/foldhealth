@@ -40,7 +40,7 @@ function linkedCount(g) {
  * Add Goals — goal picker for the New Care Plan screen.
  * Figma Care-Plan-Creation 14109:296954.
  */
-export function AddGoalsDrawer({ onClose, onAdd }) {
+export function AddGoalsDrawer({ onClose, onAdd, primaryLabel = 'Add' }) {
   const libraryGoals = useAppStore(s => s.carePlanGoals);
   const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
@@ -101,7 +101,7 @@ export function AddGoalsDrawer({ onClose, onAdd }) {
         disabled={selected.size === 0}
         onClick={() => onAdd?.(goals.filter(g => selected.has(g.id)))}
       >
-        Add
+        {primaryLabel}
       </Button>
       <span className={styles.headerDivider} />
     </>
