@@ -561,7 +561,7 @@ function FilterRow({ filters, options, onChange, onClearAll, trailing }) {
 // as a section header. The row itself is rendered by the shared
 // HistoryTimelineEntry primitive.
 
-function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
+export function ActivityTab({ member, rawEntries: rawEntriesProp, filters }) {
   const rawEntries = rawEntriesProp || ACTIVITY[member?.name] || ACTIVITY._default || [];
 
   // Track which month groups are collapsed. Empty set = everything expanded.
@@ -686,7 +686,7 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
 // comment is a row with a chat-icon left rail + connector line, a meta line
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
-function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange }) {
+export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange, memberOverride = null }) {
   // Seed from Supabase (hcc_diag_comments); fall back to the local mock
   // while the DB is empty or unreachable. Local state supports optimistic
   // insert when the composer posts — persistence is a follow-up.
@@ -730,13 +730,20 @@ function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCa
     // read "You(Coder) • DOS 03/08/2026 • ICD I50.23" in the timeline. ICD
     // comes from the right-panel card selection; DOS defaults to the first
     // DOS on the record (mirrors DiagPanel's currentDos derivation).
-    const patient = hccMembers.find(m => m.id === diagPanelMemberId);
+    // `memberOverride` lets callers outside the DiagPanel (e.g. the
+    // Support Document Review drawer) scope the comment to their own
+    // patient. Without it we fall back to the currently-focused DiagPanel
+    // member so in-panel behavior is unchanged.
+    const patient = memberOverride
+      || hccMembers.find(m => m.id === diagPanelMemberId)
+      || null;
     const dos = patient?.dos_list?.[0]?.date || null;
     const icd = activityIcd || null;
     const row = { id: `c${Date.now()}`, author: 'You', role: userRole, date, time, body, icd, dos };
     setItems(prev => [row, ...prev]);
     addHccDiagComment(row);
     addActivityEntry({
+      _memberId: patient?.id,
       t: 'comment', by: 'You', role: userRole,
       icds: activityIcd ? [activityIcd] : undefined,
       headline: activityIcd ? `Added a Comment for ${activityIcd}` : 'Added a Comment',
@@ -744,7 +751,7 @@ function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCa
     });
     logHccActivity?.({
       eventName: 'icd.comment_added',
-      scope:     { patientId: diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
+      scope:     { patientId: patient?.id || diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
       payload:   { actor: 'You', role: userRole, body, patientName: patient?.name },
     });
   };

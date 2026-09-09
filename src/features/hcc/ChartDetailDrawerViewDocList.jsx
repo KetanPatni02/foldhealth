@@ -11,13 +11,17 @@ export function ChartDetailDrawerViewDocList(p) {
     docs, docActions, selected, failPrompt, editingDocId, setSelectedId, setFailPrompt,
     setEditingDocId, passDoc, failDoc, failDetails, moreMenu, setMoreMenu, unlinkDoc,
     undoDoc, isSupportAssigned, supportActionsLocked, supportLockedTip, m, showToast,
-    updateChartDocMeta, reviewerName, confirmFailDoc,
+    updateChartDocMeta, reviewerName, confirmFailDoc, setLeftPanel,
   } = p;
+  // Selecting a card should always return the left pane to the PDF
+  // preview — clicking a doc while Comments/Timeline is open is the
+  // user asking to see that doc again.
+  const openDoc = (id) => { setSelectedId(id); setLeftPanel?.('preview'); };
   return (
     <>
               {docs.map((d) => {
                 const action = docActions[d.id] || null;
-                const isSel = d.id === selected.id;
+                const isSel = !!selected && d.id === selected.id;
                 const isFailing = failPrompt?.id === d.id;
                 const isEditingRow = editingDocId === d.id;
                 return (
@@ -26,13 +30,13 @@ export function ChartDetailDrawerViewDocList(p) {
                     className={`${styles.docCard} ${isSel ? styles.docCardSelected : ''} ${(isFailing || isEditingRow) ? styles.docCardFailing : ''}`}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setSelectedId(d.id)}
+                    onClick={() => openDoc(d.id)}
                     onKeyDown={(e) => {
                       // Only act when the card div itself is focused — otherwise a
                       // space typed into the inline Fail form's textarea (or any
                       // nested input) bubbles up and gets preventDefault'd here.
                       if (e.target !== e.currentTarget) return;
-                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedId(d.id); }
+                      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDoc(d.id); }
                     }}
                   >
                     <div className={styles.docCardHeader}>

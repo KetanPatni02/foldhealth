@@ -22,9 +22,22 @@ import {
   FailReasonInline,
   EditDocInline,
   FailedBadgeWithTooltip,
-  ChartCommentsPanel,
   InsufficientDosDialog,
 } from './ChartDetailDrawerParts';
+import { CommentsTab, ActivityTab } from './DiagPanel/LeftWorkspace';
+import { TabStrip } from '../../components/TabStrip/TabStrip';
+import { useAppStore } from '../../store/useAppStore';
+import { useMemo, useState } from 'react';
+import { ACTIVITY, getActivityFromDb } from './data/activity';
+
+// Status pill palette shared with DocPreviewDrawer so the PDF-pane
+// header reads the same in the coder / QA / compliance preview
+// drawer as it does inside the Support review drawer.
+const PDF_STATUS_STYLE = {
+  Passed:  { color: 'var(--status-success)', bg: 'var(--status-success-light)', border: 'rgba(0, 155, 83, 0.2)',  icon: 'solar:check-read-linear',    label: 'Passed' },
+  Failed:  { color: 'var(--status-error)',   bg: 'var(--status-error-light)',   border: 'rgba(215, 40, 37, 0.2)', icon: 'solar:close-circle-linear',  label: 'Failed' },
+  Pending: { color: 'var(--neutral-300)',    bg: 'var(--neutral-50)',           border: 'var(--neutral-150)',     icon: 'solar:clock-circle-linear',  label: 'Pending' },
+};
 import { STATUS_OPTIONS, STATUS_BADGE } from './ChartDetailDrawer.utils';
 import { DOC_TYPES } from './data/chartDocs';
 import styles from './ChartDetailDrawer.module.css';
@@ -32,6 +45,27 @@ import { ChartDetailDrawerViewRightPane } from './ChartDetailDrawerViewRightPane
 
 export function ChartDetailDrawerView(props) {
   const { actionPos, actionRef, assignPos, assignSupport, canDeleteDos, canSaveUpload, cancelTeamClose, chooseStatus, commentsCountForMember, confirmDeleteDoc, confirmDeleteDos, confirmFailDoc, confirmInsufficient, currentBadge, currentStatus, dmRef, docActions, docs, dosExpanded, dosList, dosToDelete, editingDocId, effectiveStatus, failDetails, failDoc, failPrompt, gender, handleClose, insufficientPrompt, isEmpty, isSupportAssigned, leftPanel, m, moreMenu, onTeamPillClick, onTeamPillEnter, onTeamPillLeave, openAction, openAssign, overdue, passDoc, requestTeamClose, resetUpload, reviewerName, saveUpload, selected, setConfirmDeleteDoc, setDosExpanded, setDosToDelete, setEditingDocId, setFailPrompt, setInsufficientPrompt, setLeftPanel, setMoreMenu, setSelectedId, setShowUpload, setTeamPillPinned, setTeamPillRect, setUpCaption, setUpCaptionTouched, setUpFile, setUpType, upVisitType, setUpVisitType, showReviewBanner, showToast, showUpload, supportActionsLocked, supportInitials, supportLocked, supportLockedTip, supportName, supportStaff, teamBadgeRef, teamPillRect, teamReviewProgress, teamReviewStages, undoDoc, unlinkDoc, upCaption, upType, updateChartDocMeta, uploadKey, member } = props;
+
+  // When true, the PDF preview takes the full drawer width and both
+  // the tabbed Comments/Timeline left column AND the right-hand doc
+  // listing are hidden. Local state — resets when the drawer unmounts.
+  const [pdfExpanded, setPdfExpanded] = useState(false);
+
+  // Merge live activity (this session's doc-status / comment / assignment
+  // writes via `addActivityEntry`) with the mock / DB-seeded log — same
+  // recipe LeftWorkspace uses so the Timeline pane here reads 1:1 with
+  // the DiagPanel Activity tab.
+  const liveLog = useAppStore(s => s.hccActivityLog[m?.name]);
+  const activityFromDb = useAppStore(s => s.hccGapActivity);
+  const rawActivity = useMemo(() => {
+    const mock = getActivityFromDb(activityFromDb, m?.name) || ACTIVITY[m?.name] || ACTIVITY._default || [];
+    if (!liveLog?.length) return mock;
+    const todayLabel = new Date().toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase();
+    const header = mock[0]?.t === 'group' && mock[0]?.label === todayLabel
+      ? []
+      : [{ t: 'group', label: todayLabel }];
+    return [...header, ...liveLog, ...mock];
+  }, [liveLog, m?.name, activityFromDb]);
 
   return (
     <>
@@ -50,29 +84,75 @@ export function ChartDetailDrawerView(props) {
               "Comment" action is toggled on. Panel writes/reads the same
               hccDiagComments store the Diagnosis Gap drawer uses, so support
               comments dropped here appear in DiagPanel's Comments tab. */}
-          {!isEmpty && leftPanel === 'comments' && (
+          {!isEmpty && !pdfExpanded && (leftPanel === 'comments' || leftPanel === 'activity') && (
             <div className={styles.leftPane}>
-              <div className={styles.paneHeader}>
-                <span>Comments</span>
-                <CloseButton size={18} onClick={() => setLeftPanel('preview')} className={styles.iconBtn} label="Close comments" />
+              {/* Tabbed header — matches the DiagPanel left-workspace tab
+                  strip. Comments count mirrors the toolbar badge; the
+                  close button collapses back to the PDF preview and
+                  re-selects the first doc so the right-hand card
+                  highlight comes back. */}
+              <div className={styles.paneTabsHeader}>
+                <TabStrip
+                  items={[
+                    { key: 'comments', label: commentsCountForMember > 0 ? `Comments(${commentsCountForMember})` : 'Comments' },
+                    { key: 'activity', label: 'Timeline' },
+                  ]}
+                  activeKey={leftPanel}
+                  onChange={(k) => setLeftPanel(k)}
+                  embedded
+                />
+                <CloseButton
+                  size={18}
+                  onClick={() => {
+                    setLeftPanel('preview');
+                    if (!selected && docs?.[0]) setSelectedId(docs[0].id);
+                  }}
+                  className={styles.iconBtn}
+                  label={leftPanel === 'comments' ? 'Close comments' : 'Close timeline'}
+                />
               </div>
-              <ChartCommentsPanel member={m} />
+              {leftPanel === 'comments' ? (
+                /* Same tab component the DiagPanel Comments tab uses, so a
+                   comment posted here shows up there (and vice-versa) with
+                   identical UI. memberOverride scopes the entry to this
+                   drawer's patient when the DiagPanel isn't open. */
+                <CommentsTab
+                  filters={{}}
+                  pendingStatusChange={null}
+                  onConfirmStatusChange={null}
+                  onCancelStatusChange={null}
+                  memberOverride={m}
+                />
+              ) : (
+                /* Same tab component the DiagPanel Timeline tab uses.
+                   Feeds the merged live + seed activity log for THIS
+                   member; entries logged from either drawer surface in
+                   both. */
+                <ActivityTab member={m} rawEntries={rawActivity} filters={{}} />
+              )}
             </div>
           )}
-          {!isEmpty && selected && leftPanel === 'preview' && (
-            <div className={styles.leftPane}>
-              <div className={styles.paneHeader}>{selected.n}</div>
-              <div className={styles.pdfWrap}>
-                {(selected.pdf || selected.file) ? (
-                  <FilePreview src={selected.pdf} file={selected.file} name={selected.n} ext={selected.ext} />
-                ) : (
-                  <DocEvidenceViewer member={member} />
-                )}
-              </div>
-            </div>
-          )}
+          {!isEmpty && (pdfExpanded || (leftPanel !== 'comments' && leftPanel !== 'activity')) && (() => {
+            // When the user hits Expand from the Comments/Timeline pane
+            // (where `selected` is null so the doc list has no active
+            // card), fall back to the first doc so the PDF pane isn't
+            // blank on toggle.
+            const doc = selected || (pdfExpanded ? docs[0] : null);
+            if (!doc) return null;
+            return (
+              <PdfPreviewPane
+                selected={doc}
+                member={member}
+                docStatus={docActions?.[doc.id] === 'pass'
+                  ? 'Passed'
+                  : docActions?.[doc.id] === 'fail' ? 'Failed' : 'Pending'}
+                expanded={pdfExpanded}
+                onToggleExpand={() => setPdfExpanded(v => !v)}
+              />
+            );
+          })()}
 
-          <ChartDetailDrawerViewRightPane {...props} />
+          {!pdfExpanded && <ChartDetailDrawerViewRightPane {...props} />}
         </>
       </Drawer>
 
@@ -201,5 +281,64 @@ export function ChartDetailDrawerView(props) {
         </div>
       )}
     </>
+  );
+}
+
+// PDF preview pane — file name on the left of the header, review
+// status pill + Expand + Open-in-new-tab actions on the right.
+// Expand toggles an in-app full-drawer mode (right-hand doc list and
+// Comments/Timeline pane hide, PDF pane takes the full width). Open
+// in new tab pops the underlying PDF URL (or a fresh object URL for
+// local uploads) so support can view it in their own window.
+function PdfPreviewPane({ selected, member, docStatus, expanded, onToggleExpand }) {
+  const status = PDF_STATUS_STYLE[docStatus] || PDF_STATUS_STYLE.Pending;
+
+  const openInNewTab = () => {
+    const url = selected?.pdf
+      || (selected?.file ? URL.createObjectURL(selected.file) : null);
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div className={`${styles.leftPane} ${expanded ? styles.leftPaneExpanded : ''}`}>
+      <div className={`${styles.paneHeader} ${styles.pdfPaneHeader}`}>
+        <span className={styles.pdfPaneTitle} title={selected.n}>{selected.n}</span>
+        <div className={styles.pdfPaneActions}>
+          <span
+            className={styles.pdfStatusPill}
+            style={{ color: status.color, background: status.bg, borderColor: status.border }}
+          >
+            <Icon name={status.icon} size={12} color={status.color} />
+            {status.label}
+          </span>
+          <span className={styles.pdfPaneActionsDivider} aria-hidden="true" />
+          <ActionButton
+            icon={expanded ? 'solar:quit-full-screen-linear' : 'solar:full-screen-linear'}
+            size="S"
+            tooltip={expanded ? 'Collapse' : 'Expand'}
+            tooltipBelow
+            onClick={onToggleExpand}
+            aria-pressed={expanded}
+          />
+          <ActionButton
+            icon="solar:external-link-linear"
+            size="S"
+            tooltip="Open in new tab"
+            tooltipBelow
+            tooltipLeft
+            onClick={openInNewTab}
+            disabled={!selected?.pdf && !selected?.file}
+          />
+        </div>
+      </div>
+      <div className={styles.pdfWrap}>
+        {(selected.pdf || selected.file) ? (
+          <FilePreview src={selected.pdf} file={selected.file} name={selected.n} ext={selected.ext} />
+        ) : (
+          <DocEvidenceViewer member={member} />
+        )}
+      </div>
+    </div>
   );
 }

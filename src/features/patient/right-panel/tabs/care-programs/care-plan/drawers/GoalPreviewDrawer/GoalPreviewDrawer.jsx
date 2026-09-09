@@ -18,7 +18,9 @@ import { ActivityLog } from '../../../../../../../../components/ActivityLog/Acti
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { AddInterventionDrawer } from '../AddInterventionDrawer/AddInterventionDrawer';
+import { INTERVENTION_EDITORS } from '../../../../../../../settings/care-plan-library/interventions';
+import { AddTaskDrawer } from '../../../../../../../tasks/AddTaskDrawer';
+import { buildInterventionRecordFromConfig } from '../../lib/carePlanInterventionMenu';
 import { CreateGoalDrawer } from '../../../../../../../settings/care-plan-library/goals/CreateGoalDrawer/CreateGoalDrawer';
 import { CarePlanLinkDrawer } from '../CarePlanLinkDrawer/CarePlanLinkDrawer';
 import { GoalLinkedInterventionsList } from './GoalLinkedInterventionsList';
@@ -235,10 +237,6 @@ const INTERVENTION_KIND_ITEMS = [
   { divider: true },
   { key: 'internal-task', label: 'Internal Task', icon: 'solar:clipboard-check-linear' },
 ];
-const INTERVENTION_KIND_LABELS = Object.fromEntries(
-  INTERVENTION_KIND_ITEMS.filter(i => i.key).map(i => [i.key, i.label]),
-);
-
 /**
  * Goal Details — Figma SNP-Story 2632:81504.
  * Every edit (status, progress, readings, automations, notes, interventions,
@@ -1008,23 +1006,59 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       )}
 
 
-      {intvOpen && (
-        <AddInterventionDrawer
-          intervention={intvSelectedKind
-            ? { kind: intvSelectedKind, title: '', kindLabel: INTERVENTION_KIND_LABELS[intvSelectedKind] }
-            : undefined}
-          onClose={() => { setIntvOpen(false); setIntvSelectedKind(null); }}
-          onSave={async (values) => {
-            await savePatientCarePlanIntervention(patientId, program, {
-              ...values,
-              kind: intvSelectedKind || values.kind || null,
-              goalId: live.id,
-            });
-            setIntvOpen(false);
-            setIntvSelectedKind(null);
-          }}
-        />
-      )}
+      {intvOpen && intvSelectedKind && (() => {
+        // Same routing as the plan-level "+ Intervention" flow so the
+        // user gets the full kind-specific editor (Send Form, Patient
+        // Education, Measure Vital) or the shared task drawer for
+        // Patient / Internal Task. The new intervention is pre-linked
+        // to this goal.
+        const isTaskKind = intvSelectedKind === 'patient-task' || intvSelectedKind === 'internal-task';
+        const closeAll = () => { setIntvOpen(false); setIntvSelectedKind(null); };
+        if (isTaskKind) {
+          return (
+            <AddTaskDrawer
+              taskKind={intvSelectedKind}
+              initialMember={patientName}
+              initialAssignedTo={intvSelectedKind === 'internal-task' ? '' : patientName}
+              showScheduleFields
+              availableGoals={slice?.goals || []}
+              initialLinkedGoalIds={[live.id]}
+              onClose={closeAll}
+              onTaskCreated={async (t) => {
+                const record = buildInterventionRecordFromConfig(
+                  intvSelectedKind,
+                  { title: t?.name || '', taskId: t?.id, goalIds: [live.id] },
+                  { preLinkedGoalId: live.id },
+                );
+                await savePatientCarePlanIntervention(patientId, program, record);
+                closeAll();
+              }}
+            />
+          );
+        }
+        const Editor = INTERVENTION_EDITORS[intvSelectedKind];
+        if (!Editor) return null;
+        return (
+          <Editor
+            kind={intvSelectedKind}
+            intervention={null}
+            linkToGoalsAllowed
+            availableGoals={slice?.goals || []}
+            linkedGoalIds={[live.id]}
+            memberName={patientName}
+            onClose={closeAll}
+            onSave={async (config) => {
+              const record = buildInterventionRecordFromConfig(
+                intvSelectedKind,
+                { ...config, goalIds: config?.goalIds?.length ? config.goalIds : [live.id] },
+                { preLinkedGoalId: live.id },
+              );
+              await savePatientCarePlanIntervention(patientId, program, record);
+              closeAll();
+            }}
+          />
+        );
+      })()}
 
       {linkOwner && (
         <CarePlanLinkDrawer

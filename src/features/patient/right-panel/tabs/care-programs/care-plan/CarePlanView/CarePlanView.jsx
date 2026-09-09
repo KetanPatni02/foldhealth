@@ -23,9 +23,7 @@ import { INTERVENTION_EDITORS } from '../../../../../../settings/care-plan-libra
 import { AddTaskDrawer } from '../../../../../../tasks/AddTaskDrawer';
 import {
   CARE_PLAN_INTERVENTION_MENU,
-  CARE_PLAN_INTERVENTION_ICONS,
-  interventionDurationFromConfig,
-  interventionPriorityFromConfig,
+  buildInterventionRecordFromConfig,
 } from '../lib/carePlanInterventionMenu';
 import { CarePlanShareDrawer } from '../drawers/CarePlanShareDrawer/CarePlanShareDrawer';
 import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlanHistoryDrawer';
@@ -670,45 +668,8 @@ export function CarePlanView({ patientId, program }) {
   };
 
   const saveInterventionFromConfig = async (kind, config, editingId = null) => {
-    // Promote the taskId nested inside `config` (written by the care-plan
-    // AddTaskDrawer flow for patient-task / internal-task kinds) to the
-    // top-level `taskId` so `patientCarePlanInterventionToRow` writes it
-    // into the `task_id` FK column added by the
-    // care_plan_intervention_task_link migration. The mapper still falls
-    // back to `config.taskId` for legacy rows that pre-date the column.
-    //
-    // Assignee resolution — the InterventionDrawer library form now
-    // captures `assignedTo` (staff or member name); previously it was
-    // dropped and every intervention landed as "Unassigned". Fall back
-    // to the current patient for kinds that default to a member task.
-    const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    const assigneeName = (typeof config?.assignedTo === 'string' && config.assignedTo.trim())
-      || (typeof config?.member === 'string' && config.member.trim())
-      || 'Unassigned';
-    // The library editor writes multi-goal links to `config.goalIds`
-    // (parallels the barrier M:N shape), but the intervention row still
-    // has a single `goal_id` FK. Promote the first linked goal to the
-    // top-level `goalId` so the Preview drawer's Linked Goals list
-    // (which reads `intervention.goalId`) doesn't show empty right after
-    // a save.
-    const firstGoalId = Array.isArray(config?.goalIds) && config.goalIds.length > 0
-      ? config.goalIds[0]
-      : null;
-    const saved = await savePatientCarePlanIntervention(patientId, program, {
-      kind,
-      title: config.title,
-      taskId: config?.taskId || null,
-      goalId: config?.goalId || firstGoalId || null,
-      icon: CARE_PLAN_INTERVENTION_ICONS[kind] || 'solar:clipboard-list-linear',
-      duration: interventionDurationFromConfig(config),
-      priority: interventionPriorityFromConfig(config),
-      config,
-      status: 'Not Started',
-      assignee: {
-        name: assigneeName,
-        initials: assigneeName === 'Unassigned' ? '' : initialsOf(assigneeName),
-      },
-    }, editingId);
+    const record = buildInterventionRecordFromConfig(kind, config);
+    const saved = await savePatientCarePlanIntervention(patientId, program, record, editingId);
     if (saved) {
       showToast(`"${saved.title}" ${editingId ? 'updated' : 'added'}`);
       if (!editingId) refreshCarePlanDuplicates(patientId, program);
