@@ -153,7 +153,7 @@ function ActiveProgramsTable({ rows, onView, onOpenActivity }) {
                 </td>
                 <td className={styles.programDates}>{range}</td>
                 <td><PersonCell name={p.pcmName} /></td>
-                <td><PersonCell name={p.pcpName} fallback="No PCP on file" /></td>
+                <td><PersonCell name={p.pcpName} fallback="-" /></td>
                 <td>
                   <div className={styles.programReview}>
                     <span>{p.lastReviewed}</span>
@@ -311,8 +311,25 @@ const insertBefore = (cols, key, col) => {
 
 const stripActions = (cols) => cols.filter(c => c.key !== 'actions');
 
+// Due Date column — matches the per-plan CarePlanInterventionsTable
+// injection (inserted immediately before Assigned To), so the
+// Comprehensive interventions grid reads: P · Name · Due Date ·
+// Assigned To · Adherence · Program · Status.
+const SUMMARY_DUE_DATE_COLUMN = {
+  key: 'dueDate',
+  label: 'Due Date',
+  width: 108,
+  sortKey: '_sortDueDate',
+  sortType: 'date',
+  thStyle: HEADER_COMPACT,
+};
+
 const SUMMARY_GOAL_COLUMNS = insertBefore(stripActions(GOAL_COLUMNS), 'status', CARE_PLAN_COLUMN);
-const SUMMARY_INTERVENTION_COLUMNS = insertBefore(stripActions(INTERVENTION_COLUMNS), 'status', CARE_PLAN_COLUMN);
+const SUMMARY_INTERVENTION_COLUMNS = insertBefore(
+  insertBefore(stripActions(INTERVENTION_COLUMNS), 'assignee', SUMMARY_DUE_DATE_COLUMN),
+  'status',
+  CARE_PLAN_COLUMN,
+);
 const SUMMARY_BARRIER_COLUMNS = insertBefore(stripActions(BARRIER_COLUMNS), 'status', CARE_PLAN_COLUMN);
 
 // Program cell — first programCode as a badge, plus a `+N` badge
@@ -344,6 +361,26 @@ function buildProgramOverlap(rows) {
   return out;
 }
 const overlapFor = (map, row) => (map?.get((row?.title || '').trim().toLowerCase()) || 1);
+
+// Match the per-plan CarePlanGoalsTable date fallback: legacy goals
+// without a targetDate project createdAt + 90 days so the Target
+// column always shows a real date rather than "—".
+function goalTargetDateOrDefault(g) {
+  if (g?.targetDate) return g.targetDate;
+  const anchor = g?.createdAt ? new Date(g.createdAt) : new Date();
+  if (Number.isNaN(anchor.getTime())) return '';
+  const out = new Date(anchor);
+  out.setDate(out.getDate() + 90);
+  return out.toISOString();
+}
+function fmtMMDDYYYY(v) {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '-';
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
 
 function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, programOverlap }) {
   const sortable = useMemo(() => enrichGoalRows(rows), [rows]);
@@ -387,10 +424,11 @@ function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, programOverlap
                 layout="stacked"
               />
             </td>
-            <td className={sharedRow.valueTd} onClick={e => e.stopPropagation()}>
-              <span className={`${sharedRow.valueText || ''} ${g.currentValue === 'No Data' ? sharedRow.muted || '' : ''}`}>
-                {g.currentValue || '—'}
-              </span>
+            <td className={sharedRow.dateTd} onClick={e => e.stopPropagation()}>
+              <span className={sharedRow.dueDateText}>{fmtMMDDYYYY(g.createdAt)}</span>
+            </td>
+            <td className={sharedRow.dateTd} onClick={e => e.stopPropagation()}>
+              <span className={sharedRow.dueDateText}>{fmtMMDDYYYY(goalTargetDateOrDefault(g))}</span>
             </td>
             <td className={sharedRow.progressTd} onClick={e => e.stopPropagation()}>
               <GbiProgressCell progress={g.progress} />
@@ -486,6 +524,37 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
                   title={i.title}
                   meta={i.duration || null}
                 />
+              </td>
+              <td className={sharedRow.valueTd} onClick={e => e.stopPropagation()}>
+                <span className={sharedRow.dueDateText}>
+                  {(() => {
+                    // Match the per-plan due-date semantics: user override
+                    // wins, then createdAt + parsed duration, otherwise
+                    // fall back to createdAt + 30 days so the column
+                    // always renders a real date.
+                    const cfg = i?.config || {};
+                    const override = cfg.dueDateOverride;
+                    if (override) return fmtMMDDYYYY(override);
+                    const start = i?.createdAt ? new Date(i.createdAt) : new Date();
+                    if (Number.isNaN(start.getTime())) return '-';
+                    const raw = cfg.dueOffset != null && cfg.dueUnit
+                      ? `${cfg.dueOffset}${String(cfg.dueUnit)[0]}`
+                      : i?.duration;
+                    const m = raw && String(raw).trim().match(/^(\d+)\s*([dwmy])$/i);
+                    const end = new Date(start);
+                    if (m) {
+                      const n = Number(m[1]);
+                      const u = m[2].toLowerCase();
+                      if (u === 'd') end.setDate(end.getDate() + n);
+                      else if (u === 'w') end.setDate(end.getDate() + n * 7);
+                      else if (u === 'm') end.setMonth(end.getMonth() + n);
+                      else if (u === 'y') end.setFullYear(end.getFullYear() + n);
+                    } else {
+                      end.setDate(end.getDate() + 30);
+                    }
+                    return fmtMMDDYYYY(end.toISOString());
+                  })()}
+                </span>
               </td>
               <td className={sharedRow.assigneeTd} onClick={e => e.stopPropagation()}>
                 <AssigneeChange
@@ -792,6 +861,14 @@ export function CarePlanSummaryView({
         if (buckets.goal) activityBits.push(`${buckets.goal} Goal${buckets.goal === 1 ? '' : 's'} Update`);
         if (buckets.intervention) activityBits.push(`${buckets.intervention} Intervention${buckets.intervention === 1 ? '' : 's'} Updated`);
         if (buckets.barrier) activityBits.push(`${buckets.barrier} Barrier${buckets.barrier === 1 ? '' : 's'} Closed`);
+        // Every plan-level or otherwise-bucketed audit entry that isn't
+        // captured above still counts as activity for the reviewer —
+        // report it as a generic "N Plan Update(s)" so the cell never
+        // renders a blank clickable when sinceReview has entries but
+        // none of them are goal / intervention / barrier changes.
+        const bucketedTotal = buckets.goal + buckets.intervention + buckets.barrier;
+        const otherCount = Math.max(0, sinceReview.length - bucketedTotal);
+        if (otherCount) activityBits.push(`${otherCount} Plan Update${otherCount === 1 ? '' : 's'}`);
 
         // Patient row's `pcp` is either the provider name or falsy;
         // treat 'Unassigned' / empty as "no PCP on file" so the cell
@@ -942,12 +1019,6 @@ export function CarePlanSummaryView({
         <RingEmptyState icon="solar:hand-heart-linear" label="No Care Plans Yet" />
       ) : (
         <div className={styles.body}>
-          {conditions.length > 0 && (
-            <div className={styles.chips}>
-              {conditions.map(c => <Badge key={c} tone="grey" size="S" label={c} />)}
-            </div>
-          )}
-
           <div className={styles.section}>
             {/* Active Programs Summary — one row per enrolled program.
                 Sits above the GBI sections so the reader gets a quick

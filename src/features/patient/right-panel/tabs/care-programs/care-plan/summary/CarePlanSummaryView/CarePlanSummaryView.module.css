@@ -300,8 +300,11 @@
   border-bottom: 0.5px solid var(--neutral-100);
   white-space: nowrap;
 }
+/* Cell padding matches the thead (8px 12px) so a body row lands at
+   ~36–40px rather than the 56–60px the old 12px block padding
+   produced. */
 .programsTable tbody td {
-  padding: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-bottom: 0.5px solid var(--neutral-100);
   vertical-align: middle;
   background: var(--neutral-0);
@@ -310,14 +313,19 @@
   border-bottom: none;
 }
 
-/* Column widths — first + last are pinned so the middle band scrolls. */
+/* Column widths — first + last are pinned so the middle band scrolls.
+   Text-heavy columns use min-width so wide viewports let them grow,
+   narrow viewports let them shrink to fit the content. */
 .colPlan     { width: 84px; }
-.colConditions { min-width: 200px; }
-.colDates    { width: 180px; white-space: nowrap; }
-.colPerson   { width: 120px; }
-.colReview   { width: 170px; }
-.colActivity { min-width: 220px; }
-.colActions  { width: 112px; }
+.colConditions { min-width: 180px; }
+/* Dates cell reads "09/10/2026 - 12/31/2026". min-width lets it flex
+   down when the container is tight; nowrap keeps the range on one
+   line whenever there's room. */
+.colDates    { min-width: 152px; white-space: nowrap; }
+.colPerson   { min-width: 88px; white-space: nowrap; }
+.colReview   { min-width: 140px; }
+.colActivity { min-width: 180px; }
+.colActions  { width: 108px; }
 
 /* Freeze first and last columns while the middle band scrolls
    horizontally. Higher z-index on th so the sticky header stays above
