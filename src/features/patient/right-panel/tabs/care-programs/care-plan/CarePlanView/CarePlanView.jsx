@@ -505,8 +505,8 @@ export function CarePlanView({ patientId, program }) {
   );
   const appliedTemplateCount = appliedTemplates.length;
   // Applied templates get categorized by priority (Figma 2562:59690) — one
-  // row per level with the priority glyph in a 32px left rail. Templates
-  // without an explicit priority default to Medium so a row is never lost.
+  // row per level, each badge carrying its PriorityIcon. Templates without
+  // an explicit priority default to Medium so a row is never lost.
   const appliedTemplatePriorities = live?.plan?.appliedTemplatePriorities || {};
   const PRIORITY_ORDER = ['high', 'medium', 'low'];
   const templateGroups = useMemo(() => {
@@ -959,12 +959,10 @@ export function CarePlanView({ patientId, program }) {
                 const isFirstRow = rowIdx === 0;
                 return (
                   <div key={p} className={styles.priorityRow}>
-                    <div className={styles.priorityRail} aria-label={`${p} priority`}>
-                      <PriorityIcon priority={p} size={16} />
-                    </div>
                     <div className={`${styles.priorityChips} ${templateStripExpanded ? '' : styles.priorityChipsCollapsed}`}>
                       {list.map(t => {
                         const isActive = templateFilterId === t.id;
+                        const templatePriority = appliedTemplatePriorities[t.id] || p || 'medium';
                         return (
                           <button
                             key={t.id}
@@ -972,12 +970,17 @@ export function CarePlanView({ patientId, program }) {
                             className={`${styles.appliedTemplateBadge} ${isActive ? styles.appliedTemplateBadgeActive : ''}`}
                             aria-pressed={isActive}
                             onClick={() => setTemplateFilterId(prev => (prev === t.id ? null : t.id))}
-                            aria-label={`${t.name}, ${templateGoalCounts.get(t.id) ?? 0} goals${isActive ? ', filter active' : ''}`}
+                            aria-label={`${templatePriority} priority, ${t.name}, ${templateGoalCounts.get(t.id) ?? 0} goals${isActive ? ', filter active' : ''}`}
                           >
                             <Badge
                               tone={isActive ? 'primary' : 'grey'}
                               size="S"
-                              label={t.name}
+                              label={(
+                                <>
+                                  <PriorityIcon priority={templatePriority} size={12} />
+                                  {t.name}
+                                </>
+                              )}
                               trailingIconElement={
                                 <span className={styles.appliedTemplateTrail}>
                                   <span className={styles.appliedTemplateCount}>{templateGoalCounts.get(t.id) ?? 0}</span>

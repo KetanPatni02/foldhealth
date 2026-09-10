@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { SplitDrawerLayout } from '../../../../../../../../components/Drawer/SplitDrawerLayout';
 import { Button } from '../../../../../../../../components/Button/Button';
@@ -8,7 +8,8 @@ import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { downloadCarePlanPdf, generateCarePlanPdf } from '../../lib/carePlanExport';
+import { downloadCarePlanPdf } from '../../lib/carePlanExport';
+import { CarePlanPdfPreview } from './CarePlanPdfPreview';
 import { GbiStatusButton } from '../../tables/carePlanTableShared';
 import styles from './CarePlanShareDrawer.module.css';
 
@@ -55,7 +56,6 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
   const [statusMenu, setStatusMenu] = useState(null);
   const [note, setNote] = useState('');
   const [sharing, setSharing] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(null);
 
   const toggleOff = (set, id) => {
     const next = new Set(set);
@@ -96,23 +96,6 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
     sharedBy: currentUserProfile?.name || '',
     date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
   }), [patientName, program.name, currentUserProfile?.name]);
-
-  useEffect(() => {
-    if (nothingSelected) {
-      setPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
-      return undefined;
-    }
-    const blob = generateCarePlanPdf(docMeta, selection);
-    const url = URL.createObjectURL(blob);
-    setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
-    return () => URL.revokeObjectURL(url);
-  }, [docMeta, selection, nothingSelected]);
 
   const handleDownload = () => {
     const safe = (patientName || 'patient').replace(/[^a-z0-9]+/gi, '-');
@@ -270,19 +253,11 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
 
   const previewPane = (
     <div className={styles.previewPane}>
-      {previewUrl ? (
-        <iframe
-          key={previewUrl}
-          className={styles.previewFrame}
-          src={previewUrl}
-          title="Care plan PDF preview"
-        />
-      ) : (
-        <div className={styles.previewEmpty}>
-          <Icon name="custom:pdf-file" size={32} color="var(--neutral-200)" />
-          <span>Select items on the right to generate a preview.</span>
-        </div>
-      )}
+      <CarePlanPdfPreview
+        docMeta={docMeta}
+        selection={selection}
+        nothingSelected={nothingSelected}
+      />
     </div>
   );
 
@@ -293,7 +268,7 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
         onClose={onClose}
         headerRight={headerRight}
         noCloseDivider
-        width={1180}
+        width={1300}
         bodyClassName={SplitDrawerLayout.bodyClassName}
       >
         <SplitDrawerLayout left={previewPane} right={editorPane} />
