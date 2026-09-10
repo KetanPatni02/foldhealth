@@ -12,6 +12,7 @@ import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimal
 import { toast } from '../../../../../components/Toast/sonnerToast';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { InterventionDrawer } from '../InterventionDrawer/InterventionDrawer';
+import { interventionTemplateFromValues } from '../shared/interventionTemplateValues';
 import { INTERVENTION_KIND_ORDER, KIND_LABELS } from '../shared/interventionKinds';
 import { CARE_PLAN_INTERVENTION_ICONS } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanInterventionMenu';
 import styles from './AddInterventionsDrawer.module.css';
@@ -170,11 +171,9 @@ export function AddInterventionsDrawer({ onClose, onAdd, primaryLabel = 'Add' })
           onKindChange={setCreateKind}
           onClose={() => setCreateKind(null)}
           onSave={async (values) => {
-            const saved = await saveCarePlanInterventionTemplate({
-              kind: createKind,
-              title: values.title,
-              description: values.description || '',
-            });
+            const saved = await saveCarePlanInterventionTemplate(
+              interventionTemplateFromValues(values, { kind: createKind }),
+            );
             if (!saved) return;
             toast.success('Intervention created successfully');
             // Creating one from inside the picker means you want it.

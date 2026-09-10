@@ -3017,8 +3017,15 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await supabase
       .from('patient_care_plans')
       .upsert(
-        { patient_id: patientId, program_id: program.id, program_code: program.code || null },
-        { onConflict: 'patient_id,program_id' },
+        {
+          patient_id: patientId,
+          program_id: program.id,
+          program_code: program.code || null,
+          // Whoever's action created the plan is its author; without this the
+          // header has no name to show.
+          created_by: get().currentUserProfile?.name || null,
+        },
+        { onConflict: 'patient_id,program_id', ignoreDuplicates: false },
       )
       .select()
       .single();
@@ -3999,10 +4006,25 @@ export const useAppStore = create((set, get) => ({
     if (!patientId || !programId) return;
     const key = carePlanKey(patientId, programId);
     set(s => ({ patientCarePlanVersionsLoading: { ...s.patientCarePlanVersionsLoading, [key]: true } }));
-    const { data, error } = await supabase
-      .from('patient_care_plan_versions').select('*')
-      .eq('patient_id', patientId).eq('program_id', programId)
-      .order('version_number', { ascending: false });
+    // Read by plan, the way version numbers are assigned. Reading by patient
+    // instead loses rows whose patient_id has since moved (the member_id
+    // re-identification did exactly that), while the numbering — which counts
+    // by plan_id — keeps climbing past them, so the list opens at v3.
+    // The header asks for versions before the plan is loaded, so the id is
+    // looked up when the cache has none rather than silently falling back.
+    let planId = get().patientCarePlans[key]?.plan?.id || null;
+    if (!planId) {
+      const { data: planRow } = await supabase
+        .from('patient_care_plans').select('id')
+        .eq('patient_id', patientId).eq('program_id', programId)
+        .maybeSingle();
+      planId = planRow?.id || null;
+    }
+    const scoped = supabase.from('patient_care_plan_versions').select('*');
+    const { data, error } = await (planId
+      ? scoped.eq('plan_id', planId)
+      : scoped.eq('patient_id', patientId).eq('program_id', programId)
+    ).order('version_number', { ascending: false });
     if (error) console.warn('fetchCarePlanVersions:', error.message);
     set(s => ({
       patientCarePlanVersions: {

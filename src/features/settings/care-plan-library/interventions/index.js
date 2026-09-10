@@ -1,5 +1,6 @@
 export { InterventionDrawer } from './InterventionDrawer/InterventionDrawer.jsx';
 export { KIND_LABELS, INTERVENTION_KIND_ORDER } from './shared/interventionKinds.js';
+export { interventionTemplateFromValues, interventionDrawerValues } from './shared/interventionTemplateValues.js';
 
 // Every kind is edited by the one drawer — the kind only decides which entity
 // field sits under the title, so switching it swaps fields in place instead of

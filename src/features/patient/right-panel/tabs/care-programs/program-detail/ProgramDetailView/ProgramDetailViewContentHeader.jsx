@@ -14,17 +14,17 @@ import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPop
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
 import { todayMMDDYYYY } from '../../../../../../tasks/TasksView.utils';
 import { MED_RECON_MOCK } from '../../../../../data/medReconMock';
-import { CARE_PLAN_MOCK } from '../../../../../data/carePlanMock';
 import { carePlanSignShareEnabled } from '../../care-plan/lib/carePlanSignState';
 import { EMPTY_TASK_FILTERS } from './ProgramDetailView.utils';
 import styles from './ProgramDetailView.module.css';
 
 function fmtCarePlanDate(isoOrDisplay) {
   if (!isoOrDisplay) return '';
-  if (typeof isoOrDisplay === 'string' && /^\d{2}\/\d{2}\/\d{2}$/.test(isoOrDisplay)) return isoOrDisplay;
+  const short = typeof isoOrDisplay === 'string' && /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(isoOrDisplay);
+  if (short) return `${short[1]}/${short[2]}/20${short[3]}`;
   const d = new Date(isoOrDisplay);
   if (Number.isNaN(d.getTime())) return String(isoOrDisplay);
-  return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
+  return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 }
 
 // Sign dropdown actions — Figma SNP-Story 3039:621576. "Send for Sign Off"
@@ -85,8 +85,21 @@ export function ProgramDetailViewContentHeader({
 
   const carePlanMeta = useMemo(() => {
     const plan = liveCarePlan?.plan;
-    const createdBy = plan?.createdBy || CARE_PLAN_MOCK.createdBy;
-    const createdDate = fmtCarePlanDate(plan?.createdDate || CARE_PLAN_MOCK.createdDate);
+    // Author and date come from the plan row itself. Plans created before the
+    // author was recorded fall back to the earliest version's author, but only
+    // when that version was cut the same day the plan was created — a later
+    // signature says who signed, not who authored, and naming the wrong person
+    // is worse than naming none.
+    const sameDay = (a, b) => {
+      if (!a || !b) return false;
+      const x = new Date(a); const y = new Date(b);
+      return !Number.isNaN(x) && !Number.isNaN(y) && x.toDateString() === y.toDateString();
+    };
+    const firstVersion = carePlanVersions?.length ? carePlanVersions[carePlanVersions.length - 1] : null;
+    const createdBy = plan?.createdBy
+      || (sameDay(firstVersion?.createdAt, plan?.createdDate) ? firstVersion?.createdBy : '')
+      || '';
+    const createdDate = fmtCarePlanDate(plan?.createdDate || '');
     const versionNumber = Math.max(1, carePlanVersions?.[0]?.versionNumber ?? 0);
     const usingMock = !plan;
     const signedBy = plan?.signedBy || null;
@@ -213,13 +226,15 @@ export function ProgramDetailViewContentHeader({
                 <DownChevronIcon size={16} color="var(--neutral-500)" />
               </button>
               <span className={styles.assessmentMeta}>
-                Created by {carePlanMeta.createdBy} on {carePlanMeta.createdDate}
+                {carePlanMeta.createdDate && (carePlanMeta.createdBy
+                  ? `Created by ${carePlanMeta.createdBy} on ${carePlanMeta.createdDate}`
+                  : `Created on ${carePlanMeta.createdDate}`)}
                 {carePlanMeta.signedBy ? (
                   <>
                     <span className={styles.carePlanMetaDot} aria-hidden="true"> • </span>
                     <span className={styles.carePlanSignedMeta}>
                       Signed by {carePlanMeta.signedBy}
-                      {carePlanMeta.signedAt ? ` on ${new Date(carePlanMeta.signedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                      {carePlanMeta.signedAt ? ` on ${fmtCarePlanDate(carePlanMeta.signedAt)}` : ''}
                     </span>
                   </>
                 ) : null}

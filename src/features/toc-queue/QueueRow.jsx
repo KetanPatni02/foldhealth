@@ -7,6 +7,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
+import { Phq9AssessmentDrawer } from './Phq9AssessmentDrawer/Phq9AssessmentDrawer';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './QueueRow.module.css';
 
@@ -418,6 +419,7 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
     platformUsers,
     updatePatient,
   };
+  const [phq9DrawerOpen, setPhq9DrawerOpen] = useState(false);
 
   const handleRowClick = () => {
     if (p.status === 'completed') {
@@ -440,6 +442,7 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
   };
 
   return (
+    <>
     <tr
       className={[rowStyles.row, isSelected ? rowStyles.rowSelected : ''].filter(Boolean).join(' ')}
       onClick={handleRowClick}
@@ -499,10 +502,13 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
             icon="solar:document-text-linear"
             size="L"
             tooltip="View details"
+            // Oncall and completed rows keep their own destinations; every
+            // other row opens the PHQ-9 review. Quick view stays reachable
+            // from the member cell.
             onClick={() => {
               if (p.status === 'oncall' && allowLiveDrawer) openLiveDrawer(p.id);
               else if (p.status === 'completed') openDetail(p.id);
-              else openPatientQuickView();
+              else setPhq9DrawerOpen(true);
             }}
           />
           <span className={rowStyles.actionDivider} />
@@ -528,5 +534,9 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
         </div>
       </td>
     </tr>
+    {phq9DrawerOpen && (
+      <Phq9AssessmentDrawer patient={p} onClose={() => setPhq9DrawerOpen(false)} />
+    )}
+    </>
   );
 }
