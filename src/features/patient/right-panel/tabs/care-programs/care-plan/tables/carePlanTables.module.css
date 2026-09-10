@@ -109,6 +109,18 @@
   max-width: var(--gbi-col-value);
   vertical-align: middle;
 }
+/* Goals table date columns — Start + Target. Width is set by the
+   column definitions (GBI_COL_DATE_WIDTH for Start, GBI_COL_WIDTH.assignee
+   for Target) so they line up column-for-column with the intervention
+   table's Due Date + Assigned To slots. This cell only owns padding +
+   vertical alignment. */
+.dateTd {
+  composes: td from '../../../../../../../components/WorklistShell/WorklistRow.module.css';
+  border-left: none;
+  box-sizing: border-box;
+  padding: calc(var(--space-1) + var(--space-1) / 2) var(--space-2);
+  vertical-align: middle;
+}
 .statusTd,
 .barrierStatusTd {
   width: 124px;

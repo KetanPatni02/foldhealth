@@ -72,11 +72,44 @@ function computeDueDate(intv) {
   return { iso: end.toISOString(), formatted: fmtDate(end.toISOString()) };
 }
 
-// Tighter widths for the newly-added Due Date column and the now
-// avatar-only Assigned To column — the shared GBI widths are sized
-// for text-heavy cells and left too much empty space here.
+// "day" / "days" / "week" / "weeks" — used by the recurrence tooltip
+// so "every 1 week" reads as "every week" and "every 2 weeks" pluralizes.
+function pluralUnit(unit, count) {
+  if (!unit) return '';
+  const u = String(unit).toLowerCase().replace(/s$/, '');
+  return count === 1 ? u : `${u}s`;
+}
+// Compose a human-readable schedule string from the intervention's
+// repeat config. Renders in the recurring-icon tooltip so hovering
+// the glyph reveals "how it repeats". Missing pieces are skipped
+// rather than shown as empty parts.
+function formatRecurrenceLabel(intv) {
+  const c = intv?.config;
+  if (!c?.repeat) return 'Recurring';
+  const parts = [];
+  const every = Number(c.repeatEvery);
+  if (Number.isFinite(every) && every > 0 && c.repeatEveryUnit) {
+    parts.push(every === 1
+      ? `Repeats every ${pluralUnit(c.repeatEveryUnit, 1)}`
+      : `Repeats every ${every} ${pluralUnit(c.repeatEveryUnit, every)}`);
+  } else {
+    parts.push('Repeats');
+  }
+  const times = Number(c.repeatCount);
+  if (Number.isFinite(times) && times > 0) {
+    parts.push(`${times} ${times === 1 ? 'time' : 'times'}`);
+  }
+  const ends = Number(c.repeatEnds);
+  if (Number.isFinite(ends) && ends > 0 && c.repeatEndsUnit) {
+    parts.push(`ends in ${ends} ${pluralUnit(c.repeatEndsUnit, ends)}`);
+  }
+  return parts.join(' · ');
+}
+
+// Due Date column width — separate from the shared assignee width
+// (kept at the GBI default) so the assignee pill can render the full
+// name + avatar pair again.
 const DUE_DATE_COL_WIDTH  = 108;
-const ASSIGNEE_COL_WIDTH  = 72;
 
 const DUE_DATE_COLUMN = {
   key: 'dueDate',
@@ -93,10 +126,7 @@ function insertBefore(cols, key, col) {
   if (i < 0) return [...cols, col];
   return [...cols.slice(0, i), col, ...cols.slice(i)];
 }
-const INTERVENTION_COLUMNS_WITH_DUE = insertBefore(INTERVENTION_COLUMNS, 'assignee', DUE_DATE_COLUMN)
-  // Shrink the assignee column too — the avatar-only pill only needs
-  // ~72px, freeing the whole intervention row from unnecessary padding.
-  .map(c => c.key === 'assignee' ? { ...c, width: ASSIGNEE_COL_WIDTH } : c);
+const INTERVENTION_COLUMNS_WITH_DUE = insertBefore(INTERVENTION_COLUMNS, 'assignee', DUE_DATE_COLUMN);
 
 // The one and only rule for the assignee avatar's color:
 //   • Member (patient) → 'patient' variant (primary / purple)
@@ -228,8 +258,12 @@ export function CarePlanInterventionsTable({
                   iconTitle={KIND_LABELS[i.kind] || 'Intervention'}
                   // `config.repeat` is the drawer's Repeat toggle; a
                   // truthy value renders the small refresh glyph in
-                  // the name cell.
+                  // the name cell. The tooltip spells out the cadence
+                  // (every N weeks, X times, ends in Y months) so the
+                  // schedule is one hover away without opening the
+                  // detail drawer.
                   recurring={!!i.config?.repeat}
+                  recurringLabel={formatRecurrenceLabel(i)}
                   title={i.title}
                   /* Start date + duration read below the title in a
                      stacked layout: "Started 03/20/2026 · 1 week". Font
@@ -295,13 +329,12 @@ export function CarePlanInterventionsTable({
                 return (
                 <>
                   <td className={styles.assigneeTd} onClick={e => e.stopPropagation()}>
-                    {/* Avatar-only trigger — the row's assignee reads
-                        as a compact chip (no name text), matching the
-                        Figma spec. Full name still surfaces via the
-                        avatar's built-in hover tooltip. */}
+                    {/* Full pill — avatar + name — matches the earlier
+                        Assigned To column. Member tasks still lock the
+                        picker so the patient stays the owner. */}
                     <AssigneeChange
                       size="S"
-                      avatarOnly
+                      fillContainer
                       name={effectiveName || (isMemberTask ? 'Member' : undefined)}
                       initials={effectiveInitials}
                       ariaLabel={showAsUnassigned ? 'Assign' : effectiveName}

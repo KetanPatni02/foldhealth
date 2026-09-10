@@ -6,17 +6,19 @@ function parseSortNumber(value) {
   return Number.isFinite(n) ? n : -1;
 }
 
-function normalizeSortText(value) {
-  if (value == null || value === '' || value === 'No Data') return '';
-  return String(value);
+function toIsoDateKey(v) {
+  if (!v) return '';
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
 }
 
 export function enrichGoalRows(rows) {
   return (rows || []).map((g) => ({
     ...g,
     _sortPriority: GBI_PRIORITY_RANK[String(g.priority || '').toLowerCase()] ?? 99,
-    _sortValue: normalizeSortText(g.currentValue),
     _sortProgress: parseSortNumber(g.progress),
+    _sortCreatedAt: toIsoDateKey(g.createdAt),
+    _sortTargetDate: toIsoDateKey(g.targetDate),
   }));
 }
 
