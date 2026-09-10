@@ -27,13 +27,26 @@ function statusStyle(status) {
   return STATUS_STYLE[status] || STATUS_STYLE['Not Started'];
 }
 
+function formatPdfDate(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 /**
  * Build a care plan PDF from the selected elements.
  *
  * @returns {Blob}
  */
 export function generateCarePlanPdf(meta, selection) {
-  const { patientName = 'Patient', programName = '', sharedBy = '', date = '' } = meta;
+  const {
+    patientName = 'Patient',
+    programName = '',
+    sharedBy = '',
+    date = '',
+    note = '',
+  } = meta;
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
@@ -62,44 +75,103 @@ export function generateCarePlanPdf(meta, selection) {
     if (y > pageH - margin - needed) newPage();
   };
 
-  const drawHeaderBand = () => {
-    doc.setFillColor(...C.surface);
-    doc.rect(0, 0, pageW, 108, 'F');
-    doc.setDrawColor(...C.border);
-    doc.setLineWidth(0.5);
-    doc.line(0, 108, pageW, 108);
+  const measureMetaCell = (width, value) => {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    const lines = doc.splitTextToSize(esc(value), width);
+    return 10 + lines.length * 11;
+  };
 
+  const drawMetaCell = (x, startY, width, label, value) => {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
-    doc.setTextColor(...C.text);
-    doc.text('Care Plan', margin, 44);
+    doc.setFontSize(8);
+    doc.setTextColor(...C.faint);
+    doc.text(label.toUpperCase(), x, startY);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(...C.muted);
-    if (programName) doc.text(programName, margin, 62);
+    doc.setFontSize(9);
+    doc.setTextColor(...C.text);
+    const lines = doc.splitTextToSize(esc(value), width);
+    let cellY = startY + 10;
+    for (const line of lines) {
+      doc.text(line, x, cellY);
+      cellY += 11;
+    }
+    return cellY - startY;
+  };
+
+  const drawHeaderBand = () => {
+    const colGap = 16;
+    const colW = (contentW - colGap) / 2;
+    const colRight = margin + colW + colGap;
 
     const metaPairs = [
       { label: 'Patient', value: patientName },
       { label: 'Date', value: date || '—' },
       ...(sharedBy ? [{ label: 'Prepared by', value: sharedBy }] : []),
     ];
-    const colMid = margin + contentW * 0.5;
-    metaPairs.forEach((pair, i) => {
-      const x = i % 2 === 0 ? margin : colMid;
-      const row = Math.floor(i / 2);
-      const metaY = 78 + row * 26;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(8);
-      doc.setTextColor(...C.faint);
-      doc.text(pair.label.toUpperCase(), x, metaY);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(...C.text);
-      doc.text(esc(pair.value), x, metaY + 11, { maxWidth: contentW * 0.45 });
-    });
 
-    y = 128;
+    let contentY = 36;
+    contentY += 26;
+
+    let programLines = [];
+    if (programName) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      programLines = doc.splitTextToSize(esc(programName), contentW);
+      contentY += programLines.length * 13 + 8;
+    }
+
+    let metaBottom = contentY;
+    for (let i = 0; i < metaPairs.length; i += 2) {
+      const left = metaPairs[i];
+      const right = metaPairs[i + 1];
+      const rowH = Math.max(
+        measureMetaCell(colW, left.value),
+        right ? measureMetaCell(colW, right.value) : 0,
+      );
+      metaBottom += rowH + 12;
+    }
+
+    const headerBottom = metaBottom + 14;
+
+    doc.setFillColor(...C.surface);
+    doc.rect(0, 0, pageW, headerBottom, 'F');
+    doc.setDrawColor(...C.border);
+    doc.setLineWidth(0.5);
+    doc.line(0, headerBottom, pageW, headerBottom);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(...C.text);
+    doc.text('Care Plan', margin, 36);
+
+    let drawY = 62;
+    if (programLines.length) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...C.muted);
+      for (const line of programLines) {
+        doc.text(line, margin, drawY);
+        drawY += 13;
+      }
+      drawY += 8;
+    } else {
+      drawY = 62;
+    }
+
+    let rowY = drawY;
+    for (let i = 0; i < metaPairs.length; i += 2) {
+      const left = metaPairs[i];
+      const right = metaPairs[i + 1];
+      const leftH = drawMetaCell(margin, rowY, colW, left.label, left.value);
+      const rightH = right
+        ? drawMetaCell(colRight, rowY, colW, right.label, right.value)
+        : 0;
+      rowY += Math.max(leftH, rightH) + 12;
+    }
+
+    y = headerBottom + 20;
   };
 
   const sectionTitle = (text) => {
@@ -130,13 +202,26 @@ export function generateCarePlanPdf(meta, selection) {
     y += 4;
   };
 
+  const bodyText = (text) => {
+    if (!text) return;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(...C.text);
+    const lines = doc.splitTextToSize(esc(text), contentW);
+    for (const line of lines) {
+      ensureRoom(14);
+      doc.text(line, margin, y);
+      y += 13;
+    }
+    y += 4;
+  };
+
   const drawStatusPill = (status, x, anchorY) => {
     const style = statusStyle(status);
     const label = esc(status || '—');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     const padX = 8;
-    const padY = 4;
     const textW = doc.getTextWidth(label);
     const pillW = textW + padX * 2;
     const pillH = 14;
@@ -181,16 +266,53 @@ export function generateCarePlanPdf(meta, selection) {
     y += chipH + 6;
   };
 
-  const drawItemCard = ({ title, subtitle, metaLeft, metaRight, status }) => {
+  const measureMetaLine = (meta, colW) => {
+    if (!meta) return 0;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    const value = `${meta.label} ${meta.value}`;
+    const lines = doc.splitTextToSize(esc(value), colW);
+    return lines.length * 11;
+  };
+
+  const drawMetaLine = (meta, x, innerY, colW) => {
+    if (!meta) return innerY;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(...C.faint);
+    const prefix = `${meta.label} `;
+    const prefixW = doc.getTextWidth(prefix);
+    doc.text(meta.label, x, innerY);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...C.text);
+    const valueLines = doc.splitTextToSize(esc(meta.value), colW - prefixW);
+    if (valueLines.length === 1) {
+      doc.text(valueLines[0], x + prefixW, innerY);
+      return innerY + 11;
+    }
+    doc.text(valueLines[0], x + prefixW, innerY);
+    let lineY = innerY + 11;
+    for (let i = 1; i < valueLines.length; i += 1) {
+      doc.text(valueLines[i], x, lineY);
+      lineY += 11;
+    }
+    return lineY;
+  };
+
+  const drawItemCard = ({ title, subtitle, metaLeft, metaRight, metaFooter, status }) => {
+    const cardPad = 12;
+    const metaColW = contentW * 0.45;
     const titleLines = doc.splitTextToSize(esc(title), contentW - 100);
     const subtitleLines = subtitle
       ? doc.splitTextToSize(esc(subtitle), contentW - 24)
       : [];
-    const cardPad = 12;
     const titleH = titleLines.length * 12;
     const subtitleH = subtitleLines.length ? subtitleLines.length * 11 + 4 : 0;
-    const metaH = (metaLeft || metaRight) ? 14 : 0;
-    const cardH = cardPad * 2 + titleH + subtitleH + metaH;
+    const metaRowH = (metaLeft || metaRight)
+      ? Math.max(measureMetaLine(metaLeft, metaColW), measureMetaLine(metaRight, metaColW)) + 2
+      : 0;
+    const metaFooterH = metaFooter ? measureMetaLine(metaFooter, contentW - cardPad * 2) + 2 : 0;
+    const cardH = cardPad * 2 + titleH + subtitleH + metaRowH + metaFooterH;
 
     ensureRoom(cardH + 8);
     const cardY = y;
@@ -228,25 +350,14 @@ export function generateCarePlanPdf(meta, selection) {
     }
 
     if (metaLeft || metaRight) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(...C.faint);
-      if (metaLeft) {
-        doc.setFont('helvetica', 'bold');
-        doc.text(metaLeft.label, margin + cardPad, innerY);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...C.text);
-        doc.text(esc(metaLeft.value), margin + cardPad + doc.getTextWidth(metaLeft.label) + 4, innerY);
-      }
-      if (metaRight) {
-        const rightX = margin + contentW * 0.55;
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(...C.faint);
-        doc.text(metaRight.label, rightX, innerY);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(...C.text);
-        doc.text(esc(metaRight.value), rightX + doc.getTextWidth(metaRight.label) + 4, innerY);
-      }
+      const metaY = innerY + 2;
+      const leftEnd = drawMetaLine(metaLeft, margin + cardPad, metaY, metaColW);
+      const rightEnd = drawMetaLine(metaRight, margin + contentW * 0.52, metaY, metaColW);
+      innerY = Math.max(leftEnd, rightEnd);
+    }
+
+    if (metaFooter) {
+      innerY = drawMetaLine(metaFooter, margin + cardPad, innerY + 2, contentW - cardPad * 2);
     }
 
     y = cardY + cardH + 8;
@@ -266,7 +377,9 @@ export function generateCarePlanPdf(meta, selection) {
         title: g.title,
         subtitle: g.subtitle,
         status: g.status,
-        metaLeft: g.currentValue ? { label: 'Current value:', value: g.currentValue } : null,
+        metaLeft: { label: 'Start:', value: formatPdfDate(g.createdAt) },
+        metaRight: { label: 'Target:', value: formatPdfDate(g.targetDate) },
+        metaFooter: g.currentValue ? { label: 'Current value:', value: g.currentValue } : null,
       });
     }
   }
@@ -295,6 +408,11 @@ export function generateCarePlanPdf(meta, selection) {
         status: b.status,
       });
     }
+  }
+
+  if (note?.trim()) {
+    sectionTitle('Additional Note');
+    bodyText(note.trim());
   }
 
   ensureRoom(40);

@@ -95,7 +95,8 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
     programName: program.name,
     sharedBy: currentUserProfile?.name || '',
     date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-  }), [patientName, program.name, currentUserProfile?.name]);
+    note: note.trim(),
+  }), [patientName, program.name, currentUserProfile?.name, note]);
 
   const handleDownload = () => {
     const safe = (patientName || 'patient').replace(/[^a-z0-9]+/gi, '-');
