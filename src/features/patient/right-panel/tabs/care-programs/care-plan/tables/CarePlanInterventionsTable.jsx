@@ -49,30 +49,34 @@ function fmtDate(iso) {
   return `${pad(d.getMonth() + 1)}/${pad(d.getDate())}/${d.getFullYear()}`;
 }
 // Due date = user-picked override when present, else createdAt +
-// parsed duration. Falls back to null when neither is available so
-// the column reads "—" instead of a nonsense date. Returns { iso,
-// formatted } so the calendar can seed itself and the cell has a
-// display string in one call.
+// parsed duration. When neither is set we now fall back to
+// createdAt + 30 days so the column always shows a real date
+// (matches the seed the save handler writes to the DB). Returns
+// { iso, formatted } so the calendar can seed itself and the cell
+// has a display string in one call.
 function computeDueDate(intv) {
   const override = intv?.config?.dueDateOverride;
   if (override) {
     const d = new Date(override);
     if (!Number.isNaN(d.getTime())) return { iso: d.toISOString(), formatted: fmtDate(d.toISOString()) };
   }
-  const start = intv?.createdAt ? new Date(intv.createdAt) : null;
-  if (!start || Number.isNaN(start.getTime())) return { iso: null, formatted: null };
+  const start = intv?.createdAt ? new Date(intv.createdAt) : new Date();
+  if (Number.isNaN(start.getTime())) return { iso: null, formatted: null };
   const raw = intv.config?.dueOffset != null && intv.config?.dueUnit
     ? `${intv.config.dueOffset}${String(intv.config.dueUnit)[0]}`
     : intv.duration;
   const m = raw && String(raw).trim().match(/^(\d+)\s*([dwmy])$/i);
-  if (!m) return { iso: null, formatted: null };
-  const n = Number(m[1]);
-  const unit = m[2].toLowerCase();
   const end = new Date(start);
-  if (unit === 'd') end.setDate(end.getDate() + n);
-  else if (unit === 'w') end.setDate(end.getDate() + n * 7);
-  else if (unit === 'm') end.setMonth(end.getMonth() + n);
-  else if (unit === 'y') end.setFullYear(end.getFullYear() + n);
+  if (m) {
+    const n = Number(m[1]);
+    const unit = m[2].toLowerCase();
+    if (unit === 'd') end.setDate(end.getDate() + n);
+    else if (unit === 'w') end.setDate(end.getDate() + n * 7);
+    else if (unit === 'm') end.setMonth(end.getMonth() + n);
+    else if (unit === 'y') end.setFullYear(end.getFullYear() + n);
+  } else {
+    end.setDate(end.getDate() + 30);
+  }
   return { iso: end.toISOString(), formatted: fmtDate(end.toISOString()) };
 }
 
@@ -358,8 +362,9 @@ export function CarePlanInterventionsTable({
                    cadence + schedule read as one column; hover
                    reveals the composed "Repeats every N weeks · X
                    times · ends in Y months" tooltip. */
-                const dueLabel = computeDueDate(i).formatted || '-';
-                const dueIso = computeDueDate(i).iso || '';
+                const due = computeDueDate(i);
+                const dueLabel = due.formatted || '-';
+                const dueIso = due.iso || '';
                 const isRecurring = !!i.config?.repeat;
                 const editable = canEdit && !!onDueDateChange;
                 return (

@@ -98,6 +98,10 @@
   max-width: var(--gbi-col-progress);
   text-align: left;
   vertical-align: middle;
+  /* Progress + Adherence read-only — cancel the row's pointer cursor
+     so the affordance only shows on truly interactive cells (Title,
+     Target/Due date, Assigned To, Status, Actions). */
+  cursor: default;
 }
 .progressTd > *,
 .adherenceTd > * {
@@ -123,9 +127,9 @@
 }
 .statusTd,
 .barrierStatusTd {
-  width: 124px;
-  min-width: 124px;
-  max-width: 124px;
+  width: 116px;
+  min-width: 116px;
+  max-width: 116px;
   vertical-align: middle;
 }
 .actionsTd {
@@ -275,13 +279,17 @@
   color: var(--neutral-300);
   font-size: var(--font-sm);
   font-variant-numeric: tabular-nums;
+  /* Read-only date (Start Date, and any date cell without an editable
+     button) — cancel the row's pointer cursor so hovering doesn't
+     promise a click that isn't wired. */
+  cursor: default;
 }
 /* Due Date cell wrapper — pairs the date label with the recurring
    glyph so cadence reads inline with the schedule. */
 .dueDateCell {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: calc(var(--space-1) / 2);
 }
 /* Editable date cell — inherits the read-only date's tone so the
    column reads calm at rest and lights up primary on hover to
@@ -289,7 +297,7 @@
 .dateBtn {
   display: inline-flex;
   align-items: center;
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) calc(var(--space-1) / 2) var(--space-1) var(--space-2);
   margin-left: calc(-1 * var(--space-2));
   border: none;
   background: none;
