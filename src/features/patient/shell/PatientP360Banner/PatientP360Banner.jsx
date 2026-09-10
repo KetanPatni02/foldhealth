@@ -4,8 +4,8 @@ import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../components/Icon/Icon';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
-import { formatDobDisplay, deriveDob } from '../../../../lib/patientDob';
 import { formatFoldId } from '../../../../lib/foldId';
+import { usePatientDisplay } from '../../hooks/usePatientDisplay';
 import { PatientAppActiveIndicator } from '../../../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
 import { FALLBACK_P360 } from '../../data/p360Mock';
 import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, ExpandedFamily, QuickViewExpanded } from './PatientP360BannerExpanded';
@@ -72,6 +72,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   );
 
   const p = p360Profile || FALLBACK_P360;
+  const display = usePatientDisplay(patient);
   useEffect(() => { setTags(p.condition_tags || FALLBACK_P360.condition_tags); }, [p.condition_tags]);
 
   if (!patient) return null;
@@ -85,13 +86,13 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
           <Avatar variant="patient" initials={patient.initials || '??'} />
           <div className={styles.nameBlock}>
             <div className={styles.nameRow}>
-              <span className={styles.name}>{patient.name}</span>
+              <span className={styles.name}>{display.displayName}</span>
               {showPatientAppIndicator && patient.patientAppActive && (
                 <PatientAppActiveIndicator size={16} />
               )}
             </div>
             <div className={styles.meta}>
-              {patient.gender} • {formatDobDisplay(patient.dob) || deriveDob(patient.age, patient.name) || '—'} ({patient.age})
+              {display.gender} • {display.dob || '—'} ({display.age})
               {bannerSize !== 'wide' && (
                 <>
                   <span className={styles.metaDot}>•</span>

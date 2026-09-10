@@ -9,44 +9,13 @@ import { DatePicker } from '../../../../../../components/DatePicker/DatePicker';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { formatDobDisplay, deriveDob } from '../../../../../../lib/patientDob';
+import {
+  ageFromDobMdy,
+  genderCodeFrom,
+  genderLabelFrom,
+  LANGUAGE_CODE_MAP,
+} from '../../../../../../lib/patientDisplay';
 import styles from './EditPatientDrawer.module.css';
-
-// patients rows store gender as 'M'/'F'; the form's Select speaks full labels.
-// Convert on both boundaries so the field pre-fills (previously an 'M' row
-// showed the "Select gender" placeholder) and saves back in row shape. Also
-// normalizes legacy free-text seed values ("Identified as Female") that
-// would otherwise match no option and render the placeholder.
-const genderLabelFrom = (g) => {
-  const s = String(g || '').toLowerCase();
-  if (!s) return '';
-  if (s === 'f' || s.includes('female')) return 'Female';
-  if (s === 'm' || s.includes('male')) return 'Male';
-  if (s.includes('non') && s.includes('binary')) return 'Non-binary';
-  return g;
-};
-const genderCodeFrom = (label) => (label === 'Male' ? 'M' : label === 'Female' ? 'F' : label || null);
-
-// "Ny Mm" age from a MM/DD/YYYY dob — keeps the Age field (and everything
-// the save fans out to) in lockstep when the user picks a new DOB.
-const ageFromDobMdy = (mdy) => {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(mdy || ''));
-  if (!m) return '';
-  const birth = new Date(+m[3], +m[1] - 1, +m[2]);
-  const now = new Date();
-  let years = now.getFullYear() - birth.getFullYear();
-  let months = now.getMonth() - birth.getMonth();
-  if (now.getDate() < birth.getDate()) months -= 1;
-  if (months < 0) { years -= 1; months += 12; }
-  return years >= 0 ? `${years}y ${months}m` : '';
-};
-
-// Form language options are display strings ("Es(US-Native)"); patients rows
-// carry ISO-ish codes. Best-effort map for the save fan-out.
-const LANGUAGE_CODE_MAP = {
-  'En(US-Native)': 'en', 'Es(US-Native)': 'es', 'Chinese (Yue-Basic)': 'yue',
-  'Chinese (Mandarin)': 'zh', 'French': 'fr', 'Vietnamese': 'vi',
-  'Tagalog': 'tl', 'Korean': 'ko', 'Arabic': 'ar',
-};
 
 /** MM/DD/YYYY ↔ YYYY-MM-DD helpers — the form stores DOB the way the
  * Profile tab renders it, but the native <input type="date"> only speaks
@@ -105,8 +74,14 @@ function initialForm(patient, p) {
     // Mirrors the banner's exact chain (stored dob → derived-from-age) so the
     // pre-filled date always equals the date the profile displays; the p360
     // row's own date_of_birth is last resort for rows with no age to derive from.
-    date_of_birth:      formatDobDisplay(patient?.dob) || deriveDob(patient?.age, patient?.name) || formatDobDisplay(p?.date_of_birth) || '',
-    age:                patient?.age || p?.age || '',
+    date_of_birth:      (() => {
+      const dob = formatDobDisplay(patient?.dob) || deriveDob(patient?.age, patient?.name) || formatDobDisplay(p?.date_of_birth) || '';
+      return dob;
+    })(),
+    age:                (() => {
+      const dob = formatDobDisplay(patient?.dob) || deriveDob(patient?.age, patient?.name) || formatDobDisplay(p?.date_of_birth) || '';
+      return dob ? ageFromDobMdy(dob) : (patient?.age || p?.age || '');
+    })(),
     gender_identity:    genderLabelFrom(patient?.gender || p?.gender_identity),
     pronoun:            p?.pronoun || '',
     sex_at_birth:       p?.sex_at_birth || '',
@@ -325,16 +300,17 @@ export function EditPatientDrawer({
       // rows, and QuickView drawer all render from those, not p360_profiles.
       const name = form.name.trim();
       updatePatientCore(patientId, {
-        name:     name || undefined,
-        initials: name ? name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() : undefined,
-        gender:   genderCodeFrom(form.gender_identity) || undefined,
-        age:      form.age || undefined,
-        dob:      form.date_of_birth || undefined,
-        language: LANGUAGE_CODE_MAP[form.primary_language],
-        email:    form.email || undefined,
-        phone:    form.phone || undefined,
-        city:     form.city || undefined,
-        state:    form.state || undefined,
+        name:       name || undefined,
+        initials:   name ? name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() : undefined,
+        chosenName: form.chosen_name?.trim() || undefined,
+        gender:     genderCodeFrom(form.gender_identity) || undefined,
+        age:        form.age || undefined,
+        dob:        form.date_of_birth || undefined,
+        language:   LANGUAGE_CODE_MAP[form.primary_language],
+        email:      form.email || undefined,
+        phone:      form.phone || undefined,
+        city:       form.city || undefined,
+        state:      form.state || undefined,
       });
     } finally {
       setSaving(false);
@@ -584,13 +560,12 @@ export function EditPatientDrawer({
                   value={isoFromMdy(form.date_of_birth)}
                   onSelect={(iso) => {
                     const mdy = mdyFromIso(iso);
-                    // Age tracks the picked DOB so the two can't disagree.
-                    setForm(prev => ({ ...prev, date_of_birth: mdy, age: ageFromDobMdy(mdy) || prev.age }));
+                    setForm(prev => ({ ...prev, date_of_birth: mdy, age: ageFromDobMdy(mdy) }));
                   }}
                   placeholder="MM/DD/YYYY"
                 />
               </Field>
-              <Input label="Age" value={form.age} onChange={e => set('age', e.target.value)} placeholder="Enter age" />
+              <Input label="Age" value={form.age} readOnly placeholder="Calculated from date of birth" />
               <Field label="Gender">
                 <Select options={GENDER_OPTIONS} value={form.gender_identity} onChange={(v) => set('gender_identity', v)} placeholder="Select gender" />
               </Field>

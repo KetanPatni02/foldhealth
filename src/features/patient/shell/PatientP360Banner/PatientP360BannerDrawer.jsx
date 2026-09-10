@@ -9,6 +9,7 @@ import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
 import { formatFoldId } from '../../../../lib/foldId';
 import { FALLBACK_P360 } from '../../data/p360Mock';
+import { usePatientDisplay } from '../../hooks/usePatientDisplay';
 import { QuickViewExpanded } from './PatientP360BannerExpanded';
 import { DRAWER_ACTIONS, MORE_MENU_LABELS } from './PatientP360Banner.utils';
 import styles from './PatientP360Banner.module.css';
@@ -30,6 +31,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
+  const display = usePatientDisplay(patient);
 
   const noop = (label) => () => showToast(`${label} — coming soon`);
   const activeProfileName = (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name || p.profile_type;
@@ -72,13 +74,13 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
           <div className={styles.drawerAvatar}>{patient.initials}</div>
           <div className={styles.drawerPatientInfo}>
             <div className={styles.drawerNameRow}>
-              <span className={styles.drawerPatientName}>{patient.name}</span>
+              <span className={styles.drawerPatientName}>{display.displayName}</span>
               {showPatientAppIndicator && patient.patientAppActive && (
                 <PatientAppActiveIndicator size={16} />
               )}
             </div>
             <div className={styles.drawerMetaRow}>
-              <span className={styles.drawerMetaText}>{patient.gender} • {patient.age}</span>
+              <span className={styles.drawerMetaText}>{display.gender} • {display.dob || '—'} ({display.age})</span>
               <span className={styles.drawerMetaDot}>•</span>
               <button ref={consentBadgeRef} className={styles.drawerConsentBadge} onClick={handleConsentClick}>
                 Consent: 2/4

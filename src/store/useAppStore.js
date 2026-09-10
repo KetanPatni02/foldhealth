@@ -3906,6 +3906,16 @@ export const useAppStore = create((set, get) => ({
       summary: `Shared to ${label}`,
       detail: `${goalIds.length} goal(s), ${interventionIds.length} intervention(s)`,
     });
+    if (program?.code) {
+      get().logProgramActivity({
+        patientId,
+        programCode: program.code,
+        title: `Care Plan Shared to ${label}`,
+        activityKind: 'document',
+        statusLabel: 'Signed & Shared',
+        statusType: 'success',
+      });
+    }
     return data;
   },
 
@@ -12237,8 +12247,8 @@ export const useAppStore = create((set, get) => ({
   // other worklist (and the P360 banner opened from them) stale. This action
   // updates every slice row sharing the identity (id match or normalized
   // memberId match) and persists per-table with each table's column shape.
-  // `core` fields: name, initials, gender ('M'/'F'), age ("Ny Mm"), dob
-  // (MM/DD/YYYY), language, email, phone, city, state — all optional.
+  // `core` fields: name, initials, chosenName, gender ('M'/'F'), age ("Ny Mm"),
+  // dob (MM/DD/YYYY), language, email, phone, city, state — all optional.
   updatePatientCore: (patientId, core) => {
     if (!patientId || !core) return;
     const norm = (v) => String(v || '').replace(/^#/, '').trim().toLowerCase();
@@ -12269,27 +12279,27 @@ export const useAppStore = create((set, get) => ({
     // ── Local slices (optimistic) ──────────────────────────────────────
     set(st => ({
       patients: st.patients.map(p => rowMatches(p)
-        ? { ...p, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob, language: core.language, email: core.email, phone: core.phone, city: core.city, state: core.state }) }
+        ? { ...p, ...defined({ name: core.name, initials: core.initials, chosenName: core.chosenName, gender: core.gender, age: core.age, dob: core.dob, language: core.language, email: core.email, phone: core.phone, city: core.city, state: core.state }) }
         : p),
       allPatients: (st.allPatients || []).map(p => rowMatches(p)
-        ? { ...p, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, email: core.email, phone: core.phone, city: core.city, state: core.state }) }
+        ? { ...p, ...defined({ name: core.name, initials: core.initials, chosenName: core.chosenName, gender: core.gender, age: core.age, email: core.email, phone: core.phone, city: core.city, state: core.state }) }
         : p),
       hccMembers: st.hccMembers.map(m => rowMatches(m)
-        ? { ...m, ...defined({ name: core.name, in: core.initials, g: core.gender, age: core.age, dob: core.dob }) }
+        ? { ...m, ...defined({ name: core.name, in: core.initials, chosenName: core.chosenName, g: core.gender, age: core.age, dob: core.dob }) }
         : m),
       awvMembers: (st.awvMembers || []).map(m => rowMatches(m)
-        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age }) }
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, chosenName: core.chosenName, gender: core.gender, age: core.age }) }
         : m),
       ccmWorklistMembers: (st.ccmWorklistMembers || []).map(m => rowMatches(m)
-        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob }) }
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, chosenName: core.chosenName, gender: core.gender, age: core.age, dob: core.dob }) }
         : m),
       snpWorklistMembers: (st.snpWorklistMembers || []).map(m => rowMatches(m)
-        ? { ...m, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age }) }
+        ? { ...m, ...defined({ name: core.name, initials: core.initials, chosenName: core.chosenName, gender: core.gender, age: core.age }) }
         : m),
       // The QuickView drawer renders a snapshot — refresh it so an open
       // drawer reflects the save immediately.
       quickViewPatient: st.quickViewPatient && rowMatches(st.quickViewPatient)
-        ? { ...st.quickViewPatient, ...defined({ name: core.name, initials: core.initials, gender: core.gender, age: core.age, dob: core.dob, language: core.language, memberId: st.quickViewPatient.memberId }) }
+        ? { ...st.quickViewPatient, ...defined({ name: core.name, initials: core.initials, chosenName: core.chosenName, gender: core.gender, age: core.age, dob: core.dob, language: core.language, memberId: st.quickViewPatient.memberId }) }
         : st.quickViewPatient,
     }));
 

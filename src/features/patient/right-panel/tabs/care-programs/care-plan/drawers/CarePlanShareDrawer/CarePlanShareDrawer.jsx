@@ -148,6 +148,7 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
         onClick={() => handleShare('EHR')}
         disabled={nothingSelected || sharing || !canShare}
         menuItems={[
+          { key: 'EHR', label: 'Share to EHR' },
           { key: 'Patient', label: 'Share to Patient' },
           { key: 'POA', label: 'Share to POA' },
         ]}

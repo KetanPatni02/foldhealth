@@ -6,25 +6,13 @@ import { Badge } from '../../../../../../components/Badge/Badge';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { Toggle } from '../../../../../../components/Toggle/Toggle';
 import { PatientAppActiveIndicator } from '../../../../../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
+import { resolvePatientDisplay } from '../../../../../../lib/patientDisplay';
 import styles from './ProfileTab.module.css';
 
 const PROFILE_VIEWS = [
   { key: 'demographics', label: 'Demographics' },
   { key: 'insurance',    label: 'Insurance' },
 ];
-
-/** Compact "y m" age from a MM/DD/YYYY string; blank if it can't parse. */
-function ageFromDob(dob) {
-  if (!dob) return '';
-  const [m, d, y] = dob.split('/').map(Number);
-  if (!m || !d || !y) return '';
-  const now = new Date();
-  let years = now.getFullYear() - y;
-  let months = now.getMonth() + 1 - m;
-  if (now.getDate() < d) months -= 1;
-  if (months < 0) { years -= 1; months += 12; }
-  return years >= 0 ? `${years}y ${months}m` : '';
-}
 
 /** Collapsible section wrapper — matches the Figma section pattern:
  * title + optional edit button on the right, and a grid of label/value
@@ -123,23 +111,25 @@ export function ProfileTab({ patient }) {
   const primaryPhone = p?.plan_numbers_primary?.[0] || patient?.phone || '';
   const contacts    = Array.isArray(p?.family_members) ? p.family_members : [];
 
+  const display = useMemo(() => resolvePatientDisplay(patient, p), [patient, p]);
+
   const basic = useMemo(() => ({
-    Name:              patient?.name || '',
-    'Chosen Name':     p?.chosen_name,
-    'Date of Birth':   p?.date_of_birth || patient?.dob,
-    Age:               p?.date_of_birth ? ageFromDob(p.date_of_birth) : (patient?.age || ''),
-    Gender:            p?.gender_identity || patient?.gender,
+    Name:              display.displayName || display.legalName,
+    'Chosen Name':     display.chosenName,
+    'Date of Birth':   display.dob,
+    Age:               display.age,
+    Gender:            display.gender,
     Pronoun:           p?.pronoun,
     'Sex at Birth':    p?.sex_at_birth,
     'Sexual Orientation': p?.sexual_orientation,
-    'Primary Language':   p?.primary_language || p?.language_preference || patient?.language,
-    'Secondary Language': p?.secondary_language,
+    'Primary Language':   display.primaryLanguage,
+    'Secondary Language': display.secondaryLanguage,
     'Blood Group':     p?.blood_group,
     'Marital Status':  p?.marital_status,
     Race:              p?.race,
     Ethnicity:         p?.ethnicity,
     IPA:               p?.ipa || patient?.ipa,
-  }), [p, patient]);
+  }), [p, patient, display]);
 
   const address = useMemo(() => ({
     'Address Line 1': p?.address_line1,
