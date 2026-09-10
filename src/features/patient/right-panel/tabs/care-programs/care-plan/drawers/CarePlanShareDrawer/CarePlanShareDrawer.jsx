@@ -8,7 +8,7 @@ import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { downloadCarePlanPdf } from '../../lib/carePlanExport';
+import { buildCarePlanDownloadFilename, downloadCarePlanPdf } from '../../lib/carePlanExport';
 import { CarePlanPdfPreview } from './CarePlanPdfPreview';
 import { GbiStatusButton } from '../../tables/carePlanTableShared';
 import styles from './CarePlanShareDrawer.module.css';
@@ -99,8 +99,15 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
   }), [patientName, program.name, currentUserProfile?.name, note]);
 
   const handleDownload = () => {
-    const safe = (patientName || 'patient').replace(/[^a-z0-9]+/gi, '-');
-    downloadCarePlanPdf(docMeta, selection, `CarePlan-${safe}.pdf`);
+    downloadCarePlanPdf(
+      docMeta,
+      selection,
+      buildCarePlanDownloadFilename({
+        patientName,
+        programCode: program.code,
+        programName: program.name,
+      }),
+    );
     showToast('Care plan downloaded');
   };
 

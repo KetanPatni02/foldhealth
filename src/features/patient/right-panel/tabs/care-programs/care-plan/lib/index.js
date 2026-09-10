@@ -1,4 +1,5 @@
 export {
+  buildCarePlanDownloadFilename,
   buildCarePlanHtml,
   downloadCarePlanDocument,
   downloadCarePlanPdf,

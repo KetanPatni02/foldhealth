@@ -108,6 +108,27 @@ export function downloadCarePlanDocument(html, filename) {
 
 export { generateCarePlanPdf };
 
+function filenameSegment(value, fallback) {
+  return String(value ?? fallback)
+    .trim()
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48) || fallback;
+}
+
+/** Build a filesystem-safe care plan PDF download name. */
+export function buildCarePlanDownloadFilename({
+  patientName,
+  programCode,
+  programName,
+  generatedAt = new Date(),
+} = {}) {
+  const patient = filenameSegment(patientName, 'patient');
+  const program = filenameSegment(programCode || programName, 'program');
+  const date = generatedAt.toISOString().slice(0, 10);
+  return `CarePlan-${patient}-${program}-${date}.pdf`;
+}
+
 /** Download the care plan as a PDF built from the current selection. */
 export function downloadCarePlanPdf(meta, selection, filename) {
   const blob = generateCarePlanPdf(meta, selection);
