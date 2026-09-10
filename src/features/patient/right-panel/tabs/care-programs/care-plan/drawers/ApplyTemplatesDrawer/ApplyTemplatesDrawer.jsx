@@ -11,10 +11,10 @@ import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from './ApplyTemplatesDrawer.module.css';
 
 // Figma 2349:336796 — the picker lists PROBLEMS with the parent template as
-// the subtitle line and a three-button priority selector on the right. The
-// existing apply flow still keys off templateIds, so we pass just those to
-// onApply; the priority selection is UI-only for now (a later change can
-// carry it through to `applyPatientCarePlanTemplates`).
+// the subtitle line and a three-button priority selector on the right.
+// `onApply` carries both the selected ids and the priority map through
+// `applyPatientCarePlanTemplates` to `patient_care_plans.applied_template_priorities`,
+// which is what groups the badges into High / Medium / Low rows on the plan.
 // Displayed High → Medium → Low (most urgent first). `medium` is the plan's
 // effective default when a template is applied without an explicit pick, so a
 // selected template reads Medium here to match what the care plan shows.

@@ -16,7 +16,7 @@ import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../../../../components/ConfirmDialog/ConfirmDialog';
 import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
 import { TableSkeleton } from '../../../../../components/TableSkeleton/TableSkeleton';
-import { INTERVENTION_EDITORS } from '../../interventions';
+import { INTERVENTION_EDITORS, interventionTemplateFromValues, interventionDrawerValues } from '../../interventions';
 import { toast } from '../../../../../components/Toast/sonnerToast';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimalist';
@@ -754,7 +754,7 @@ export function CarePlanLibraryPanel() {
           <Editor
             kind={draft.interventionKind}
             title={draft.id ? 'Edit Intervention' : 'Add Intervention'}
-            intervention={draft.id ? draft : undefined}
+            intervention={draft.id ? interventionDrawerValues(draft) : undefined}
             // Only a new intervention can switch type — an existing one's kind
             // decides which fields it has.
             onKindChange={draft.id
@@ -763,7 +763,7 @@ export function CarePlanLibraryPanel() {
             onClose={closeDrawer}
             onSave={async (values) => {
               const saved = await saveCarePlanInterventionTemplate(
-                { kind: draft.interventionKind, title: values.title, description: values.description || '' },
+                interventionTemplateFromValues(values, { kind: draft.interventionKind }),
                 draft.id,
               );
               if (!saved) return;

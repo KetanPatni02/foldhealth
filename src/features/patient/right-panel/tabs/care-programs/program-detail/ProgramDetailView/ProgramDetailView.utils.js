@@ -58,6 +58,7 @@ export const ASSESSMENT_STEPS = {
   HRA: { formName: 'HRA Assessment form', title: 'Health Risk Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
   'BRCSI Assessment': { formName: 'BRCSI Assessment form', title: 'BRCSI Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
   'SNP Assessment': { formName: 'SNP Assessment form', title: 'SNP Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
+  'Post IP Assessment': { formName: 'Post IP Assessment form', title: 'Post IP Assessment', filledBy: 'Annette Brave', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
   'Post Visit Checklist': { checklist: true, title: 'Post Visit Check List', filledBy: 'Robert Fox', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
   'Post-Visit': { checklist: true, title: 'Post Visit Check List', filledBy: 'Robert Fox', filledDate: '10/11/24', reviewedBy: 'Robert Fox', reviewedDate: '10/11/24' },
 };
