@@ -26,6 +26,18 @@ function formatGoalDate(v) {
   const dd = String(d.getDate()).padStart(2, '0');
   return `${mm}/${dd}/${d.getFullYear()}`;
 }
+// Legacy goals were persisted before the Target column existed, so their
+// `targetDate` is empty. Rather than render "-" for those rows, project
+// a default of createdAt + 90 days so the user always sees a date. Any
+// edit through the inline picker writes the real value back to the DB.
+function goalTargetDateOrDefault(g) {
+  if (g?.targetDate) return g.targetDate;
+  const anchor = g?.createdAt ? new Date(g.createdAt) : new Date();
+  if (Number.isNaN(anchor.getTime())) return '';
+  const out = new Date(anchor);
+  out.setDate(out.getDate() + 90);
+  return out.toISOString();
+}
 
 export function CarePlanGoalsTable({
   rows,
@@ -134,12 +146,12 @@ export function CarePlanGoalsTable({
                       type="button"
                       className={styles.dateBtn}
                       onClick={(e) => openTargetPicker(g, e.currentTarget.getBoundingClientRect())}
-                      aria-label={g.targetDate ? `Change target date (${formatGoalDate(g.targetDate)})` : 'Set target date'}
+                      aria-label={g.targetDate ? `Change target date (${formatGoalDate(goalTargetDateOrDefault(g))})` : 'Set target date'}
                     >
-                      {formatGoalDate(g.targetDate)}
+                      {formatGoalDate(goalTargetDateOrDefault(g))}
                     </button>
                   ) : (
-                    <span className={styles.dueDateText}>{formatGoalDate(g.targetDate)}</span>
+                    <span className={styles.dueDateText}>{formatGoalDate(goalTargetDateOrDefault(g))}</span>
                   )}
                 </td>
                 <td className={styles.progressTd} onClick={e => e.stopPropagation()}>
@@ -173,7 +185,16 @@ export function CarePlanGoalsTable({
       {targetPicker && (
         <DatePickerPopover
           open
-          value={targetPicker.goal?.targetDate || null}
+          value={(() => {
+            const iso = goalTargetDateOrDefault(targetPicker.goal);
+            if (!iso) return null;
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return null;
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+          })()}
           anchorRect={targetPicker.rect}
           onChange={commitTargetDate}
           onClose={() => setTargetPicker(null)}

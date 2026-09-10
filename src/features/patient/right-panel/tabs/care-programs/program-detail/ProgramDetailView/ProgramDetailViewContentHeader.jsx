@@ -3,6 +3,8 @@ import { Icon } from '../../../../../../../components/Icon/Icon';
 import { AddIconMinimalist } from '../../../../../../../components/Icon/AddIconMinimalist';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { BulkSelectToggle } from '../../../../../../../components/BulkSelect/BulkSelectToggle';
+import { Badge } from '../../../../../../../components/Badge/Badge';
+import { Tooltip } from '../../../../../../../components/Tooltip/Tooltip';
 import { Button } from '../../../../../../../components/Button/Button';
 import { Link } from '../../../../../../../components/Link/Link';
 import { SelectAssigneeModal } from '../../../../../../../components/SelectAssigneeModal/SelectAssigneeModal';
@@ -38,6 +40,16 @@ const SIGN_MENU_ITEMS = [
   { key: 'send-sign-off', icon: 'solar:checklist-minimalistic-linear', label: 'Send for Sign Off' },
 ];
 
+// Care plan sign-menu — split button. The main half signs directly
+// (Sign is the primary action), the chevron opens a menu with the
+// two alternate paths (send to a reviewer, save the working copy as
+// a draft). Same split pattern the med-recon signer uses so the two
+// step surfaces read consistently.
+const CARE_PLAN_SIGN_MENU_ITEMS = [
+  { key: 'review', icon: 'solar:checklist-minimalistic-linear', label: 'Send for Review' },
+  { key: 'draft', icon: 'solar:bookmark-linear', label: 'Save as Draft' },
+];
+
 export function ProgramDetailViewContentHeader({
   program,
   onSignMedRecon,
@@ -61,6 +73,7 @@ export function ProgramDetailViewContentHeader({
   nextStep,
 }) {
   const [signOffOpen, setSignOffOpen] = useState(false);
+  const [carePlanReviewOpen, setCarePlanReviewOpen] = useState(false);
   const [carePlanMoreMenu, setCarePlanMoreMenu] = useState(null);
   const patient = useAppStore(s => s.patients.find(p => p.id === s.selectedPatientId));
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
@@ -76,6 +89,9 @@ export function ProgramDetailViewContentHeader({
   const carePlanVersions = useAppStore(s => (carePlanKey ? s.patientCarePlanVersions[carePlanKey] : null));
   const fetchCarePlanVersions = useAppStore(s => s.fetchCarePlanVersions);
   const fetchPatientCarePlan = useAppStore(s => s.fetchPatientCarePlan);
+  const signCarePlan = useAppStore(s => s.signCarePlan);
+  const requestCarePlanReview = useAppStore(s => s.requestCarePlanReview);
+  const carePlanAudit = useAppStore(s => (carePlanKey ? s.patientCarePlanAudit[carePlanKey] : null));
 
   useEffect(() => {
     if (!stepFlags?.isCarePlanStep || !selectedPatientId || !program?.id) return;
@@ -104,8 +120,27 @@ export function ProgramDetailViewContentHeader({
     const usingMock = !plan;
     const signedBy = plan?.signedBy || null;
     const signedAt = plan?.signedAt || null;
-    return { createdBy, createdDate, versionNumber, usingMock, signedBy, signedAt };
-  }, [liveCarePlan, carePlanVersions]);
+    // Look for a pending "review requested" audit entry — the newest
+    // review event that hasn't been overtaken by a `signed` event.
+    // The audit slice is newest-first, so the first plan-level entry
+    // we find determines the current state (signed → clears review,
+    // review_requested → sets pending).
+    let reviewRequestedTo = null;
+    let reviewRequestedAt = null;
+    for (const entry of (carePlanAudit || [])) {
+      if (entry.entityType !== 'plan') continue;
+      if (entry.action === 'signed') break;
+      if (entry.action === 'review_requested') {
+        reviewRequestedTo = entry.summary || null;
+        reviewRequestedAt = entry.detail || entry.createdAt || null;
+        break;
+      }
+    }
+    // A brand-new sign clears any pending review even if the audit row
+    // is stale for a moment — signedAt wins.
+    if (signedAt) { reviewRequestedTo = null; reviewRequestedAt = null; }
+    return { createdBy, createdDate, versionNumber, usingMock, signedBy, signedAt, reviewRequestedTo, reviewRequestedAt };
+  }, [liveCarePlan, carePlanVersions, carePlanAudit]);
 
   const signShareEnabled = useMemo(
     () => carePlanSignShareEnabled(liveCarePlan, { usingMock: carePlanMeta.usingMock }),
@@ -156,6 +191,30 @@ export function ProgramDetailViewContentHeader({
     showToast?.(created
       ? `Sign-off task assigned to ${user.name}`
       : 'Could not create the sign-off task');
+  };
+
+  // Care-plan sign menu handlers. All three routes gate on the same
+  // signShareEnabled precondition the primary CTA used (plan exists,
+  // patient loaded, care plan step is active); the menu button itself
+  // stays disabled otherwise so the picker never opens with no plan
+  // to act on.
+  const signCarePlanDirect = async () => {
+    if (!selectedPatientId || !program) return;
+    const v = await signCarePlan(selectedPatientId, program, '');
+    if (v) showToast?.('Care plan signed');
+  };
+  const createCarePlanReviewTask = async (user) => {
+    if (!selectedPatientId || !program) return;
+    const created = await requestCarePlanReview(selectedPatientId, program, user);
+    showToast?.(created
+      ? `Care plan sent to ${user.name} for review`
+      : 'Could not send the care plan for review');
+  };
+  const saveCarePlanAsDraft = () => {
+    // Care plans persist edits in-place until signed, so "Save as Draft"
+    // is confirmation UX rather than a distinct write path. The button
+    // just acknowledges the working copy is safely stored.
+    showToast?.('Care plan saved as draft');
   };
 
   // Signing is gated on the mandatory Medication Checklist — every box has to
@@ -225,20 +284,61 @@ export function ProgramDetailViewContentHeader({
                 <span className={styles.assessmentTitle}>Care Plan • Ver. {carePlanMeta.versionNumber}</span>
                 <DownChevronIcon size={16} color="var(--neutral-500)" />
               </button>
-              <span className={styles.assessmentMeta}>
-                {carePlanMeta.createdDate && (carePlanMeta.createdBy
+              {(() => {
+                // Meta row under the title. Responsive by container width:
+                //   • Narrow  — "Created by …" collapses into a compact
+                //               [•••] Badge (shared component) that reveals
+                //               the full text via the shared Tooltip.
+                //   • Wide    — the full "Created by …" text renders inline.
+                // Status tail (right of the bullet) prefers, in order:
+                //   1. "Sent for review to X on <date>" — warning, when a
+                //      review is pending (unsigned).
+                //   2. "Signed by X on <date>" — green.
+                //   3. "Draft" — neutral grey.
+                // A plan with no recorded author reads "Created on <date>" —
+                // naming nobody beats naming the wrong clinician.
+                const createdText = carePlanMeta.createdBy
                   ? `Created by ${carePlanMeta.createdBy} on ${carePlanMeta.createdDate}`
-                  : `Created on ${carePlanMeta.createdDate}`)}
-                {carePlanMeta.signedBy ? (
-                  <>
-                    <span className={styles.carePlanMetaDot} aria-hidden="true"> • </span>
-                    <span className={styles.carePlanSignedMeta}>
-                      Signed by {carePlanMeta.signedBy}
-                      {carePlanMeta.signedAt ? ` on ${fmtCarePlanDate(carePlanMeta.signedAt)}` : ''}
+                  : `Created on ${carePlanMeta.createdDate}`;
+                const fmtShort = (iso) => fmtCarePlanDate(iso);
+                let statusText = 'Draft';
+                let statusColor = 'var(--neutral-300)';
+                let statusWeight = 400;
+                if (carePlanMeta.reviewRequestedTo) {
+                  const on = carePlanMeta.reviewRequestedAt ? ` on ${fmtShort(carePlanMeta.reviewRequestedAt)}` : '';
+                  statusText = `Sent for review to ${carePlanMeta.reviewRequestedTo}${on}`;
+                  statusColor = 'var(--status-warning)';
+                  statusWeight = 500;
+                } else if (carePlanMeta.signedBy) {
+                  const on = carePlanMeta.signedAt ? ` on ${fmtShort(carePlanMeta.signedAt)}` : '';
+                  statusText = `Signed by ${carePlanMeta.signedBy}${on}`;
+                  statusColor = 'var(--status-success)';
+                  statusWeight = 500;
+                }
+                return (
+                  <span className={styles.carePlanAttribution}>
+                    <span className={styles.carePlanCreatedCollapsed}>
+                      <Tooltip label={createdText}>
+                        <Badge
+                          size="S"
+                          tone="grey"
+                          icon="solar:menu-dots-linear"
+                          className={styles.carePlanCreatedDotsBadge}
+                          aria-label={createdText}
+                        />
+                      </Tooltip>
                     </span>
-                  </>
-                ) : null}
-              </span>
+                    <span className={styles.carePlanCreatedFull}>{createdText}</span>
+                    <span className={styles.carePlanAttributionSep} aria-hidden="true">•</span>
+                    <span
+                      className={styles.carePlanAttributionText}
+                      style={{ color: statusColor, fontWeight: statusWeight }}
+                    >
+                      {statusText}
+                    </span>
+                  </span>
+                );
+              })()}
             </div>
           </div>
         ) : (
@@ -269,9 +369,28 @@ export function ProgramDetailViewContentHeader({
                 Template
               </Button>
               <span className={styles.headerDivider} aria-hidden="true" />
-              <Button variant="alt" size="L" leadingIcon="solar:pen-2-linear" disabled={!signShareEnabled} onClick={() => requestCarePlanShare('share')}>
-                Sign &amp; Share
+              <Button
+                variant="primary"
+                size="M"
+                leadingIcon="solar:pen-2-linear"
+                disabled={!signShareEnabled}
+                onClick={signCarePlanDirect}
+                menuItems={CARE_PLAN_SIGN_MENU_ITEMS}
+                menuWidth={200}
+                menuAriaLabel="Sign care plan options"
+                onMenuSelect={(key) => {
+                  if (key === 'review') setCarePlanReviewOpen(true);
+                  else if (key === 'draft') saveCarePlanAsDraft();
+                }}
+              >
+                Sign
               </Button>
+              <SelectAssigneeModal
+                open={carePlanReviewOpen}
+                title="Send care plan for review"
+                onClose={() => setCarePlanReviewOpen(false)}
+                onConfirm={(user) => { setCarePlanReviewOpen(false); createCarePlanReviewTask(user); }}
+              />
               <span className={styles.headerDivider} aria-hidden="true" />
               <ActionButton
                 icon="solar:menu-dots-linear"

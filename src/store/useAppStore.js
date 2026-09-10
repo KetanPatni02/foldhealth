@@ -64,6 +64,21 @@ function reportPersistFailure(op, error) {
   }
 }
 
+// Seed default ISO date `days` after `anchorIso`. Falls back to `days`
+// after today when the anchor is missing/invalid. Used by the care plan
+// save handlers so every Goal has a Target date and every Intervention
+// has a Due date persisted to the DB from the moment the row is saved.
+function defaultTargetDateIso(anchorIso, days) {
+  const base = anchorIso ? new Date(anchorIso) : null;
+  const start = (base && !Number.isNaN(base.getTime())) ? base : new Date();
+  const out = new Date(start);
+  out.setDate(out.getDate() + Math.max(1, Number(days) || 30));
+  const y = out.getFullYear();
+  const m = String(out.getMonth() + 1).padStart(2, '0');
+  const d = String(out.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 // public.notifications row → the shape the bell popover already renders.
 // `persisted: true` is what separates a DB-backed notification from a local
 // ephemeral one, which decides whether read/dismiss also writes to Supabase.
@@ -3417,11 +3432,18 @@ export const useAppStore = create((set, get) => ({
     const derived = goalId
       ? deriveGoalTableFields({ ...values, id: goalId }, get().patientCarePlans[key]?.measurements || [])
       : null;
+    // Goals always carry a Target date — seed one when the caller hasn't
+    // supplied it so the surface never renders "-" for a persisted goal.
+    // Default = createdAt + 90 days (roughly a quarter, the shortest care
+    // plan review cadence).
+    const seededTargetDate = values.targetDate
+      || defaultTargetDateIso(prevGoal?.createdAt || values.createdAt || new Date().toISOString(), 90);
     const merged = derived ? {
       ...values,
+      targetDate: seededTargetDate,
       currentValue: derived.currentValue === 'No Data' ? '' : derived.currentValue,
       trend: derived.trend,
-    } : values;
+    } : { ...values, targetDate: seededTargetDate };
     const row = patientCarePlanGoalToRow(merged, planId);
     // Stamp the last editor so the Goal Details "Last Update … by <name>" line
     // has an actor.
@@ -3602,7 +3624,23 @@ export const useAppStore = create((set, get) => ({
     const planId = await get().ensurePatientCarePlan(patientId, program);
     if (!planId) return null;
     const prevIntv = id ? (get().patientCarePlans[key]?.interventions || []).find(x => x.id === id) : null;
-    const row = patientCarePlanInterventionToRow(values, planId);
+    // Interventions always carry a Due date — seed a default when the
+    // caller has not supplied a manual override AND the duration-based
+    // computation would produce nothing. Default = createdAt + 30 days
+    // so the table cell never renders "-" for a persisted row.
+    const cfg = values.config || {};
+    const hasOverride = !!cfg.dueDateOverride;
+    const hasDuration = (cfg.dueOffset != null && cfg.dueUnit) || !!values.duration;
+    const seededValues = (hasOverride || hasDuration)
+      ? values
+      : {
+        ...values,
+        config: {
+          ...cfg,
+          dueDateOverride: defaultTargetDateIso(prevIntv?.createdAt || values.createdAt || new Date().toISOString(), 30),
+        },
+      };
+    const row = patientCarePlanInterventionToRow(seededValues, planId);
     // Stamp the last editor so the Intervention Details "Last Updated … by <name>" line has an actor.
     row.updated_by = get().currentUserProfile?.name || row.updated_by || null;
     // Schema-tolerant write for `task_id` — if the column hasn't been
@@ -4120,6 +4158,74 @@ export const useAppStore = create((set, get) => ({
     // failure here would silently lose the version.
     if (!logged) get().showToast('Signed, but the history entry could not be recorded');
     return versionNumber;
+  },
+
+  // "Send for Review" from the care-plan Sign menu. Fans out to three
+  // side-effects so the request is visible everywhere a reviewer looks:
+  //   1. Persist a `plan/review_requested` audit entry — this is the
+  //      source of truth the header derives its warning state from.
+  //   2. Create a task for the reviewer (goes to Supabase) and register
+  //      it under the program so it lands in the Program Related Tasks
+  //      tab AND the sidebar Tasks tab.
+  //   3. Fire an in-app notification the reviewer will see when they
+  //      open their session.
+  requestCarePlanReview: async (patientId, program, user) => {
+    if (!user?.name) return null;
+    const memberName = get().patients.find(p => p.id === patientId)?.name || '';
+    const me = get().currentUserProfile;
+    const nowIso = new Date().toISOString();
+    const dueMMDDYYYY = (() => {
+      const d = new Date();
+      d.setDate(d.getDate() + 3);
+      return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    })();
+
+    // 1. Persist the audit entry (source of truth for header state).
+    await get().logCarePlanAudit(patientId, program, {
+      entityType: 'plan',
+      action: 'review_requested',
+      summary: user.name,
+      detail: nowIso,
+    });
+
+    // 2. Create the review task and register it under this program so it
+    //    surfaces in the Program Related Tasks tab as well as the global
+    //    Tasks sidebar.
+    const task = await get().createTask({
+      name: `Review care plan for ${memberName}`,
+      status: 'pending',
+      priority: 'medium',
+      due_date: dueMMDDYYYY,
+      assigned_to: user.name,
+      assigned_to_id: user.id,
+      member: memberName,
+      labels: ['Care Plan Review'],
+      meta: program?.name || '',
+      description: `Care plan review requested by ${me?.name || 'a teammate'} for ${memberName}.`,
+      pool: null,
+      mentions: [user.name],
+      attachments: 0,
+      comments: 0,
+      is_subtask: false,
+      parent_task: null,
+      parent_task_id: null,
+      created_by: me?.name || null,
+      created_by_id: me?.id || null,
+    });
+    if (task && program?.code) get().addProgramTask?.(program.code, task);
+
+    // 3. Notify the reviewer — persisted rows land via realtime for the
+    //    other session; the ephemeral fallback fires in this tab so the
+    //    sender also sees a confirmation.
+    get().addNotification?.({
+      type: 'care_plan.review_requested',
+      title: 'Care plan review requested',
+      body: `${me?.name || 'A teammate'} sent a care plan for ${memberName} to ${user.name} for review.`,
+      action: 'openCarePlan',
+      recipientId: user.id || null,
+    });
+
+    return task;
   },
 
   // Post-sign maintenance note — recorded without editing the plan (roadmap #36).
