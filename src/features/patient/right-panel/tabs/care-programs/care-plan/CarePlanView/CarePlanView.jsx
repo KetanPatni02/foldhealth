@@ -11,6 +11,8 @@ import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPop
 import { SelectAssigneeModal } from '../../../../../../../components/SelectAssigneeModal/SelectAssigneeModal';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { goalCascade } from '../lib/carePlanGoalCascade';
+import { RemoveGoalDialog } from '../drawers/RemoveGoalDialog';
 import { Select } from '../../../../../../../components/Select/Select';
 import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../../../../../../store/useAppStore';
@@ -36,6 +38,7 @@ import { deriveGoalTableFields } from '../lib/goalMetrics';
 import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
+import { GBI_STATUS_TONE } from '../tables/carePlanTableShared';
 import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
 import { SimpleTableSkeleton } from '../../../../../../../components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
@@ -43,7 +46,11 @@ import { BulkBar } from '../../../../../../../components/BulkBar/BulkBar';
 import { Badge } from '../../../../../../../components/Badge/Badge';
 import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
 import { CarePlanDuplicateGroup } from '../DuplicateFlag/CarePlanDuplicateGroup';
-import { templateGoalCount } from '../lib/carePlanTemplateApply';
+import {
+  barrierPayloadFromTemplateEntry,
+  goalPayloadFromTemplateEntry,
+  interventionPayloadFromTemplateEntry,
+} from '../lib/carePlanTemplateApply';
 import styles from './CarePlanView.module.css';
 
 const EMPTY_ARR = [];
@@ -142,6 +149,9 @@ export function CarePlanView({ patientId, program }) {
   const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
   const carePlanGoals = useAppStore(s => s.carePlanGoals);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
+  const libraryGoals = useAppStore(s => s.carePlanGoals);
+  const repairCarePlanGoalLinks = useAppStore(s => s.repairCarePlanGoalLinks);
+  const syncAppliedCarePlanTemplates = useAppStore(s => s.syncAppliedCarePlanTemplates);
   const applyPatientCarePlanTemplates = useAppStore(s => s.applyPatientCarePlanTemplates);
   const savePatientCarePlanConditions = useAppStore(s => s.savePatientCarePlanConditions);
 
@@ -237,6 +247,18 @@ export function CarePlanView({ patientId, program }) {
   }, [patientId, program?.id, fetchPatientCarePlan, fetchCarePlanLinks, refreshCarePlanDuplicates]); // eslint-disable-line react-hooks/exhaustive-deps -- program object is stable by id
 
   useEffect(() => { fetchCarePlanLibrary?.(); }, [fetchCarePlanLibrary]);
+
+  // Reconcile the plan with what it says it carries, once both it and the
+  // library are loaded: first bring in the content of templates applied before
+  // apply carried it, then reattach any loose interventions and barriers.
+  useEffect(() => {
+    if (!patientId || !program?.id || !live?.plan || !libraryGoals?.length) return;
+    (async () => {
+      await syncAppliedCarePlanTemplates(patientId, program);
+      await repairCarePlanGoalLinks(patientId, program);
+    })();
+  }, [patientId, program?.id, live?.plan?.id, libraryGoals?.length]); // eslint-disable-line react-hooks/exhaustive-deps -- runs once per plan, guarded in the store
+
 
   useEffect(() => {
     if (!carePlanPanelRequest) return;
@@ -427,27 +449,53 @@ export function CarePlanView({ patientId, program }) {
     return counts;
   }, [data.goals, data.interventions, data.barriers, data.conditions]);
 
-  // Plan-level rollup for the summary strip: counts, status mix, avg goal progress.
+  // Rollup for the summary strip: counts, status mix, avg goal progress. Reads
+  // the filtered lists, so picking a template chip (or any filter) restates the
+  // line for what is actually on screen rather than the whole plan.
   const planStats = useMemo(() => {
-    const goals = data.goals, iv = data.interventions, br = data.barriers || [];
+    const goals = filteredGoals, iv = filteredInterventions, br = filteredBarriers;
     const all = [...goals, ...iv, ...br];
     const avgProgress = goals.length
       ? Math.round(goals.reduce((sum, g) => sum + (Number(g.progress) || 0), 0) / goals.length)
       : 0;
+    // One badge per status actually present, in the table's own order and
+    // tone, rather than a hardcoded Met / In Progress / Overdue trio that hides
+    // everything else on the plan.
+    const counts = new Map();
+    for (const item of all) {
+      if (!item.status) continue;
+      counts.set(item.status, (counts.get(item.status) || 0) + 1);
+    }
+    const statuses = Object.keys(GBI_STATUS_TONE)
+      .filter(status => counts.get(status))
+      .map(status => ({ status, count: counts.get(status), tone: GBI_STATUS_TONE[status] }));
     return {
       goals: goals.length,
       iv: iv.length,
       br: br.length,
       total: all.length,
-      met: all.filter(x => x.status === 'Met').length,
-      inProgress: all.filter(x => x.status === 'In Progress').length,
-      overdue: all.filter(x => x.status === 'Overdue').length,
+      statuses,
       avgProgress,
     };
-  }, [data]);
+  }, [filteredGoals, filteredInterventions, filteredBarriers]);
 
   const visibleConditions = data.conditions.slice(0, MAX_VISIBLE_CONDITIONS);
   const hiddenConditionCount = Math.max(0, data.conditionTotal - visibleConditions.length);
+  // Badge count: how many of a template's goals are actually on this plan, not
+  // how many its library definition lists. The two differ while a template is
+  // still being reconciled, or when a goal it brought was removed since.
+  const templateGoalCounts = useMemo(() => {
+    const planTitles = new Set(data.goals.map(g => norm(g.title)));
+    const counts = new Map();
+    for (const t of carePlanTemplates) {
+      const titles = new Set((t.goals || []).map((e) => {
+        const lib = e?.id ? carePlanGoals.find(g => g.id === e.id) : null;
+        return norm(lib?.title || e?.title || '');
+      }).filter(Boolean));
+      counts.set(t.id, [...titles].filter(title => planTitles.has(title)).length);
+    }
+    return counts;
+  }, [carePlanTemplates, carePlanGoals, data.goals]);
   const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
   const appliedTemplates = useMemo(
     () => appliedTemplateIds
@@ -627,29 +675,52 @@ export function CarePlanView({ patientId, program }) {
 
   const renameBarrier = (barrier, title) => savePatientCarePlanBarrier(patientId, program, { ...barrier, title }, barrier.id);
 
+  // A picked row is the whole library goal, so a goal added here carries the
+  // same definition (measure, target, duration) and the same linked items as
+  // one arriving through a template.
   const handleAddGoalsFromPicker = async (picked) => {
     setAddGoalsDrawerOpen(false);
     if (!picked?.length) return;
-    const existingTitles = new Set(data.goals.map(g => g.title.trim().toLowerCase()));
+    const norm = v => (v || '').trim().toLowerCase();
+    const existingTitles = new Set(data.goals.map(g => norm(g.title)));
+    const existingIntvTitles = new Set((data.interventions || []).map(i => norm(i.title)));
+    const existingBarrierTitles = new Set((data.barriers || []).map(b => norm(b.title)));
     let added = 0;
+    let linked = 0;
     for (const g of picked) {
-      const titleKey = g.title.trim().toLowerCase();
+      const titleKey = norm(g.title);
       if (existingTitles.has(titleKey)) continue;
-      const goal = await savePatientCarePlanGoal(patientId, program, {
-        title: g.title,
-        subtitle: g.detail || '',
-        category: g.category || '',
-        priority: g.priority || 'medium',
-        icon: 'solar:flag-linear',
-        status: 'Not Started',
-      });
-      if (goal) {
-        added += 1;
-        existingTitles.add(titleKey);
+      const goal = await savePatientCarePlanGoal(
+        patientId, program,
+        goalPayloadFromTemplateEntry({ id: g.id, title: g.title, subtitle: g.detail }, [g]),
+      );
+      if (!goal) continue;
+      added += 1;
+      existingTitles.add(titleKey);
+      for (const link of g.interventions || []) {
+        const linkKey = norm(link.title);
+        if (!linkKey) continue;
+        if (link.kind === 'barrier') {
+          if (existingBarrierTitles.has(linkKey)) continue;
+          const saved = await savePatientCarePlanBarrier(
+            patientId, program, barrierPayloadFromTemplateEntry(link, [goal.id]),
+          );
+          if (saved) { existingBarrierTitles.add(linkKey); linked += 1; }
+        } else {
+          if (existingIntvTitles.has(linkKey)) continue;
+          const saved = await savePatientCarePlanIntervention(
+            patientId, program, interventionPayloadFromTemplateEntry(link, goal.id),
+          );
+          if (saved) { existingIntvTitles.add(linkKey); linked += 1; }
+        }
       }
     }
-    if (added) { showToast(`Added ${added} goal${added === 1 ? '' : 's'}`); refreshCarePlanDuplicates(patientId, program); }
-    else showToast('Selected goals are already on this plan');
+    if (added) {
+      showToast(linked
+        ? `Added ${added} goal${added === 1 ? '' : 's'} with ${linked} linked item${linked === 1 ? '' : 's'}`
+        : `Added ${added} goal${added === 1 ? '' : 's'}`);
+      refreshCarePlanDuplicates(patientId, program);
+    } else showToast('Selected goals are already on this plan');
   };
 
   const handleAddIntervention = async (values) => {
@@ -735,12 +806,44 @@ export function CarePlanView({ patientId, program }) {
     }
   };
 
-  const confirmDelete = () => {
-    const { kind, id, name, item } = deleteTarget;
-    if (kind === 'goal') deletePatientCarePlanGoal(patientId, program.id, id);
-    else if (kind === 'barrier') deletePatientCarePlanBarrier(patientId, program.id, id);
-    else deletePatientCarePlanIntervention(patientId, program.id, id);
+  // Undoing a cascade puts the goal back first, then re-links its children to
+  // the new row — restoring them in any other order returns them loose.
+  const undoGoalCascade = (goal, cascade) => ({
+    label: 'Undo',
+    onClick: async () => {
+      const { id: goalId, ...goalValues } = goal; // eslint-disable-line no-unused-vars
+      const restored = await savePatientCarePlanGoal(patientId, program, goalValues);
+      for (const intv of cascade.interventions) {
+        const { id: intvId, ...values } = intv; // eslint-disable-line no-unused-vars
+        await savePatientCarePlanIntervention(patientId, program, { ...values, goalId: restored?.id || null });
+      }
+      for (const barrier of cascade.barriers) {
+        const { id: barrierId, ...values } = barrier; // eslint-disable-line no-unused-vars
+        await savePatientCarePlanBarrier(patientId, program, { ...values, goalId: restored?.id || null, goalIds: restored ? [restored.id] : [] });
+      }
+      refreshCarePlanDuplicates(patientId, program);
+    },
+  });
+
+  // `withLinked` false leaves the goal's interventions and barriers on the plan.
+  const removeGoal = async (withLinked) => {
+    const { id, item } = deleteTarget;
     setDeleteTarget(null);
+    const cascade = withLinked ? goalCascade(live, id) : { interventions: [], barriers: [] };
+    const took = cascade.interventions.length + cascade.barriers.length;
+    await deletePatientCarePlanGoal(patientId, program.id, id, { cascade: withLinked });
+    showToast(
+      took ? 'Goal & linked items removed successfully' : 'Goal removed successfully',
+      item ? { action: undoGoalCascade(item, cascade), duration: 6000 } : undefined,
+    );
+  };
+
+  const confirmDelete = async () => {
+    const { kind, id, name, item } = deleteTarget;
+    if (kind === 'goal') { await removeGoal(true); return; }
+    setDeleteTarget(null);
+    if (kind === 'barrier') deletePatientCarePlanBarrier(patientId, program.id, id);
+    else deletePatientCarePlanIntervention(patientId, program.id, id);
     showToast(`"${name}" removed`, item ? { action: undoAction([{ kind: kind === 'intv' ? 'intervention' : kind, item }]), duration: 6000 } : undefined);
   };
 
@@ -845,8 +948,10 @@ export function CarePlanView({ patientId, program }) {
           if (nonEmpty.length === 0) return null;
           const shownPriorities = templateStripExpanded ? nonEmpty : nonEmpty.slice(0, 1);
           const canRemove = canEdit && !live?.plan?.signedAt;
-          const hasOverflow = nonEmpty.length > 1
-            || (templateGroups[nonEmpty[0]] || []).length > 0; // link always shown; when only one row and few chips, it still lets user re-collapse (label reads "View All")
+          // Only the rows below the first are hidden, so the trigger belongs
+          // there and nowhere else: one priority row has nothing to expand to.
+          const hiddenCount = nonEmpty.slice(1)
+            .reduce((n, p) => n + (templateGroups[p] || []).length, 0);
           return (
             <div className={styles.templatePriorityBar}>
               {shownPriorities.map((p, rowIdx) => {
@@ -867,7 +972,7 @@ export function CarePlanView({ patientId, program }) {
                             className={`${styles.appliedTemplateBadge} ${isActive ? styles.appliedTemplateBadgeActive : ''}`}
                             aria-pressed={isActive}
                             onClick={() => setTemplateFilterId(prev => (prev === t.id ? null : t.id))}
-                            aria-label={`${t.name}, ${templateGoalCount(t)} goals${isActive ? ', filter active' : ''}`}
+                            aria-label={`${t.name}, ${templateGoalCounts.get(t.id) ?? 0} goals${isActive ? ', filter active' : ''}`}
                           >
                             <Badge
                               tone={isActive ? 'primary' : 'grey'}
@@ -875,7 +980,7 @@ export function CarePlanView({ patientId, program }) {
                               label={t.name}
                               trailingIconElement={
                                 <span className={styles.appliedTemplateTrail}>
-                                  <span className={styles.appliedTemplateCount}>{templateGoalCount(t)}</span>
+                                  <span className={styles.appliedTemplateCount}>{templateGoalCounts.get(t.id) ?? 0}</span>
                                   {canRemove && (
                                     <span
                                       role="button"
@@ -895,13 +1000,13 @@ export function CarePlanView({ patientId, program }) {
                         );
                       })}
                     </div>
-                    {isFirstRow && hasOverflow && (
+                    {isFirstRow && hiddenCount > 0 && (
                       <button
                         type="button"
                         className={styles.viewMoreLink}
                         onClick={() => setTemplateStripExpanded(v => !v)}
                       >
-                        {templateStripExpanded ? 'View Less' : `View More ${Math.max(0, appliedTemplateCount - 1)}`}
+                        {templateStripExpanded ? 'View Less' : `View More ${hiddenCount}`}
                       </button>
                     )}
                   </div>
@@ -954,7 +1059,7 @@ export function CarePlanView({ patientId, program }) {
 
       <div className={styles.scrollArea}>
       <div className={styles.contentBody}>
-      {!carePlanLoading && planStats.total > 0 && (
+      {!carePlanLoading && (data.goals.length + data.interventions.length + (data.barriers || []).length) > 0 && (
         <div className={styles.summaryStrip}>
           <span className={styles.summaryMetric}><strong>{planStats.goals}</strong> goals</span>
           <span className={styles.summaryDot} aria-hidden="true" />
@@ -963,11 +1068,11 @@ export function CarePlanView({ patientId, program }) {
           <span className={styles.summaryMetric}><strong>{planStats.br}</strong> barriers</span>
           <span className={styles.summaryDot} aria-hidden="true" />
           <span className={styles.summaryMetric}><strong>{planStats.avgProgress}%</strong> avg progress</span>
-          {(planStats.met > 0 || planStats.inProgress > 0 || planStats.overdue > 0) && (
+          {planStats.statuses.length > 0 && (
             <span className={styles.summaryStatuses}>
-              {planStats.met > 0 && <Badge tone="success" size="S" label={`${planStats.met} Met`} />}
-              {planStats.inProgress > 0 && <Badge tone="warning" size="S" label={`${planStats.inProgress} In Progress`} />}
-              {planStats.overdue > 0 && <Badge tone="error" size="S" label={`${planStats.overdue} Overdue`} />}
+              {planStats.statuses.map(({ status, count, tone }) => (
+                <Badge key={status} tone={tone} size="S" label={`${count} ${status}`} />
+              ))}
             </span>
           )}
         </div>
@@ -1079,7 +1184,7 @@ export function CarePlanView({ patientId, program }) {
       <div className={styles.section}>
         <GbiSectionHead
           title="Goals"
-          count={data.goals.length}
+          count={filteredGoals.length}
           open={openSections.goals}
           onToggle={() => toggleSection('goals')}
           trailingEnd={(
@@ -1125,7 +1230,7 @@ export function CarePlanView({ patientId, program }) {
       <div className={styles.section}>
         <GbiSectionHead
           title="Interventions"
-          count={data.interventions.length}
+          count={filteredInterventions.length}
           open={openSections.interventions}
           onToggle={() => toggleSection('interventions')}
           addButton={(
@@ -1191,7 +1296,7 @@ export function CarePlanView({ patientId, program }) {
       <div className={styles.section}>
         <GbiSectionHead
           title="Open Barriers"
-          count={(data.barriers || []).length}
+          count={filteredBarriers.length}
           open={openSections.barriers}
           onToggle={() => toggleSection('barriers')}
           addButton={(
@@ -1636,7 +1741,17 @@ export function CarePlanView({ patientId, program }) {
         </Drawer>
       )}
 
-      {deleteTarget && (
+      {deleteTarget?.kind === 'goal' && (
+        <RemoveGoalDialog
+          goalTitle={deleteTarget.name}
+          cascade={goalCascade(live, deleteTarget.id)}
+          onRemoveAll={() => removeGoal(true)}
+          onRemoveGoalOnly={() => removeGoal(false)}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {deleteTarget && deleteTarget.kind !== 'goal' && (
         <ConfirmDialog
           icon="solar:danger-triangle-linear"
           iconColor="var(--status-error)"
