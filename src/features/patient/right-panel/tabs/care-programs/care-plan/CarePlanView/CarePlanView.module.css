@@ -35,10 +35,8 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 
-/* Applied-template priority strip — Figma 2562:59690.
-   Each priority (High → Medium → Low) gets its own row with per-template
-   PriorityIcon chips, and an optional "View More / View Less" affordance
-   when the row overflows. */
+/* Applied-template strip — templates in apply order on one row; "View More"
+   appears on the right only when the row overflows. */
 .templatePriorityBar {
   display: flex;
   flex-direction: column;
@@ -46,20 +44,21 @@
 }
 .priorityRow {
   display: flex;
-  align-items: stretch;
-  min-height: 38px;
+  align-items: center;
+  min-height: 32px;
   padding-right: var(--space-3);
   border-bottom: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
 }
 .priorityChips {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
 }
 /* Collapsed strip keeps chips on a single line — anything past the row
    width clips out and stays hidden until the user hits "View All". */
@@ -68,6 +67,23 @@
   overflow: hidden;
 }
 .priorityChipsCollapsed > button { flex-shrink: 0; }
+.templateMeasure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}
+.viewMoreMeasure {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
 .viewMoreLink {
   border: none;
   background: none;

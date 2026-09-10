@@ -46,6 +46,7 @@ import { BulkBar } from '../../../../../../../components/BulkBar/BulkBar';
 import { Badge } from '../../../../../../../components/Badge/Badge';
 import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
 import { CarePlanDuplicateGroup } from '../DuplicateFlag/CarePlanDuplicateGroup';
+import { AppliedTemplateStrip } from './AppliedTemplateStrip';
 import {
   barrierPayloadFromTemplateEntry,
   goalPayloadFromTemplateEntry,
@@ -497,27 +498,20 @@ export function CarePlanView({ patientId, program }) {
     return counts;
   }, [carePlanTemplates, carePlanGoals, data.goals]);
   const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
-  const appliedTemplates = useMemo(
-    () => appliedTemplateIds
-      .map(id => carePlanTemplates.find(t => t.id === id))
-      .filter(Boolean),
-    [appliedTemplateIds, carePlanTemplates],
-  );
-  const appliedTemplateCount = appliedTemplates.length;
-  // Applied templates get categorized by priority (Figma 2562:59690) — one
-  // row per level, each badge carrying its PriorityIcon. Templates without
-  // an explicit priority default to Medium so a row is never lost.
   const appliedTemplatePriorities = live?.plan?.appliedTemplatePriorities || {};
-  const PRIORITY_ORDER = ['high', 'medium', 'low'];
-  const templateGroups = useMemo(() => {
-    const g = { high: [], medium: [], low: [] };
-    for (const t of appliedTemplates) {
-      const p = appliedTemplatePriorities[t.id] || 'medium';
-      (g[p] || g.medium).push(t);
-    }
-    return g;
-  }, [appliedTemplates, appliedTemplatePriorities]);
-  const [templateStripExpanded, setTemplateStripExpanded] = useState(false);
+  const appliedTemplates = useMemo(() => {
+    const rank = { high: 0, medium: 1, low: 2 };
+    return appliedTemplateIds
+      .map((id, index) => ({ id, index, template: carePlanTemplates.find(t => t.id === id) }))
+      .filter(item => item.template)
+      .sort((a, b) => {
+        const pa = rank[(appliedTemplatePriorities[a.id] || 'medium').toLowerCase()] ?? 1;
+        const pb = rank[(appliedTemplatePriorities[b.id] || 'medium').toLowerCase()] ?? 1;
+        if (pa !== pb) return pa - pb;
+        return a.index - b.index;
+      })
+      .map(item => item.template);
+  }, [appliedTemplateIds, carePlanTemplates, appliedTemplatePriorities]);
   // Removing an applied template is allowed until the plan is signed. It
   // strips the template's own conditions from the plan header and drops
   // the row from `applied_template_ids` (priority key is pruned server-side
@@ -940,84 +934,15 @@ export function CarePlanView({ patientId, program }) {
     <div className={styles.container}>
       <div className={styles.stickyTop}>
         {/* pinned templates + problems bar */}
-        {appliedTemplateCount > 0 && (() => {
-          // Figma 2562:60230 — collapsed shows just the highest non-empty
-          // priority row with a "View All (N)" link; expanded stacks all
-          // non-empty priority rows and swaps the link to "View Less".
-          const nonEmpty = PRIORITY_ORDER.filter(p => (templateGroups[p] || []).length > 0);
-          if (nonEmpty.length === 0) return null;
-          const shownPriorities = templateStripExpanded ? nonEmpty : nonEmpty.slice(0, 1);
-          const canRemove = canEdit && !live?.plan?.signedAt;
-          // Only the rows below the first are hidden, so the trigger belongs
-          // there and nowhere else: one priority row has nothing to expand to.
-          const hiddenCount = nonEmpty.slice(1)
-            .reduce((n, p) => n + (templateGroups[p] || []).length, 0);
-          return (
-            <div className={styles.templatePriorityBar}>
-              {shownPriorities.map((p, rowIdx) => {
-                const list = templateGroups[p];
-                const isFirstRow = rowIdx === 0;
-                return (
-                  <div key={p} className={styles.priorityRow}>
-                    <div className={`${styles.priorityChips} ${templateStripExpanded ? '' : styles.priorityChipsCollapsed}`}>
-                      {list.map(t => {
-                        const isActive = templateFilterId === t.id;
-                        const templatePriority = appliedTemplatePriorities[t.id] || p || 'medium';
-                        return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            className={`${styles.appliedTemplateBadge} ${isActive ? styles.appliedTemplateBadgeActive : ''}`}
-                            aria-pressed={isActive}
-                            onClick={() => setTemplateFilterId(prev => (prev === t.id ? null : t.id))}
-                            aria-label={`${templatePriority} priority, ${t.name}, ${templateGoalCounts.get(t.id) ?? 0} goals${isActive ? ', filter active' : ''}`}
-                          >
-                            <Badge
-                              tone={isActive ? 'primary' : 'grey'}
-                              size="S"
-                              label={(
-                                <>
-                                  <PriorityIcon priority={templatePriority} size={12} />
-                                  {t.name}
-                                </>
-                              )}
-                              trailingIconElement={
-                                <span className={styles.appliedTemplateTrail}>
-                                  <span className={styles.appliedTemplateCount}>{templateGoalCounts.get(t.id) ?? 0}</span>
-                                  {canRemove && (
-                                    <span
-                                      role="button"
-                                      tabIndex={0}
-                                      className={styles.appliedTemplateRemove}
-                                      aria-label={`Remove ${t.name}`}
-                                      onClick={(e) => handleRemoveTemplate(t.id, e)}
-                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleRemoveTemplate(t.id, e); }}
-                                    >
-                                      <Icon name="solar:close-linear" size={12} color="var(--neutral-300)" />
-                                    </span>
-                                  )}
-                                </span>
-                              }
-                            />
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {isFirstRow && hiddenCount > 0 && (
-                      <button
-                        type="button"
-                        className={styles.viewMoreLink}
-                        onClick={() => setTemplateStripExpanded(v => !v)}
-                      >
-                        {templateStripExpanded ? 'View Less' : `View More ${hiddenCount}`}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
+        <AppliedTemplateStrip
+          templates={appliedTemplates}
+          appliedTemplatePriorities={appliedTemplatePriorities}
+          templateGoalCounts={templateGoalCounts}
+          templateFilterId={templateFilterId}
+          canRemove={canEdit && !live?.plan?.signedAt}
+          onSelect={(id) => setTemplateFilterId(prev => (prev === id ? null : id))}
+          onRemove={handleRemoveTemplate}
+        />
         {(visibleConditions.length > 0 || hiddenConditionCount > 0) && (
         <div className={styles.problemsBar}>
           <div className={styles.conditionRow}>
