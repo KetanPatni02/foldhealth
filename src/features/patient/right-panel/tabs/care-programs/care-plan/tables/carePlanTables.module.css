@@ -276,6 +276,37 @@
   font-size: var(--font-sm);
   font-variant-numeric: tabular-nums;
 }
+/* Due Date cell wrapper — pairs the date label with the recurring
+   glyph so cadence reads inline with the schedule. */
+.dueDateCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* Editable date cell — inherits the read-only date's tone so the
+   column reads calm at rest and lights up primary on hover to
+   telegraph the click affordance. */
+.dateBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  margin-left: calc(-1 * var(--space-2));
+  border: none;
+  background: none;
+  color: var(--neutral-300);
+  font-size: var(--font-sm);
+  font-variant-numeric: tabular-nums;
+  border-radius: var(--space-1);
+  cursor: pointer;
+}
+.dateBtn:hover {
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+.dateBtn:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 1px;
+}
 .rowIcon { display: flex; flex-shrink: 0; align-items: center; }
 .title {
   font-size: var(--font-base);
