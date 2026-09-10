@@ -26,6 +26,8 @@ import { CarePlanLinkDrawer } from '../CarePlanLinkDrawer/CarePlanLinkDrawer';
 import { GoalLinkedInterventionsList } from './GoalLinkedInterventionsList';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../../settings/care-plan-library/lib';
 import { goalProgressBand, goalProgressTone } from '../../lib/goalMetrics';
+import { goalCascade } from '../../lib/carePlanGoalCascade';
+import { RemoveGoalDialog } from '../RemoveGoalDialog';
 import styles from './GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
@@ -1126,20 +1128,27 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         />
       )}
 
-      {confirm?.kind === 'goal' && (
-        <ConfirmDialog
-          variant="error"
-          title={`Remove "${live.title}"?`}
-          description="This removes it from the patient's care plan. This action cannot be undone."
-          confirmLabel="Remove"
-          onCancel={() => setConfirm(null)}
-          onConfirm={async () => {
-            await deletePatientCarePlanGoal(patientId, program.id, live.id);
-            setConfirm(null);
-            onClose?.();
-          }}
-        />
-      )}
+      {confirm?.kind === 'goal' && (() => {
+        // Same choice the goals table offers: remove the linked items too, or
+        // only the goal.
+        const cascade = goalCascade(slice, live.id);
+        const remove = async (withLinked) => {
+          const took = withLinked && (cascade.interventions.length + cascade.barriers.length);
+          await deletePatientCarePlanGoal(patientId, program.id, live.id, { cascade: withLinked });
+          setConfirm(null);
+          onClose?.();
+          showToast?.(took ? 'Goal & linked items removed successfully' : 'Goal removed successfully');
+        };
+        return (
+          <RemoveGoalDialog
+            goalTitle={live.title}
+            cascade={cascade}
+            onRemoveAll={() => remove(true)}
+            onRemoveGoalOnly={() => remove(false)}
+            onCancel={() => setConfirm(null)}
+          />
+        );
+      })()}
 
       {confirm?.kind === 'intv' && (
         <ConfirmDialog

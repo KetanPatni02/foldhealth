@@ -33,7 +33,8 @@ import { normalizeReviewerLabel as hccNormalizeReviewerLabel } from '../features
 import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activityLog';
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
-import { goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
+import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
+import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { resolvePatientStoreId } from '../lib/resolvePatientStoreId';
 
 // Central failure reporter for every persistHccXxx helper. Historically
@@ -330,6 +331,22 @@ function patientCarePlanBarrierToRow(b, planId) {
     priority: b.priority || 'medium',
     sort_order: b.sortOrder ?? 0,
   };
+}
+
+// Sync a barrier's goal set in the join table. Returns the goal ids that ended
+// up recorded — before the join-table migration that is the legacy column only.
+async function linkBarrierGoals(barrierId, goalIds) {
+  const del = await supabase.from('patient_care_plan_barrier_goals').delete().eq('barrier_id', barrierId);
+  const missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
+  if (missingJoin) return goalIds.slice(0, 1);
+  if (!goalIds.length) return [];
+  const ins = await supabase.from('patient_care_plan_barrier_goals')
+    .insert(goalIds.map(gid => ({ barrier_id: barrierId, goal_id: gid })));
+  if (!ins.error) return goalIds;
+  if (ins.error.code !== '42P01' && ins.error.code !== 'PGRST205') {
+    console.warn('linkBarrierGoals:', ins.error.message);
+  }
+  return goalIds.slice(0, 1);
 }
 
 function mapPatientCarePlanRow(row) {
@@ -1628,6 +1645,61 @@ function buildSeedHccActivityFeed() {
   });
   // Newest-first.
   return rows.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+}
+
+/**
+ * Put one template's goals, interventions and barriers onto a patient's plan.
+ *
+ * Deduped by title, so it is safe to run against a plan that already holds
+ * some of them: applying a template and reconciling a template that was
+ * applied earlier are the same operation, and share this code.
+ */
+async function applyTemplateToPlan(get, patientId, program, template, libraryGoals) {
+  const key = carePlanKey(patientId, program.id);
+  const norm = v => (v || '').trim().toLowerCase();
+  const slice = () => get().patientCarePlans[key];
+  const existingGoalTitles = new Set((slice()?.goals || []).map(g => norm(g.title)));
+  const existingIntvTitles = new Set((slice()?.interventions || []).map(i => norm(i.title)));
+  const existingBarrierTitles = new Set((slice()?.barriers || []).map(b => norm(b.title)));
+
+  for (const entry of template.goals || []) {
+    const payload = goalPayloadFromTemplateEntry(entry, libraryGoals);
+    const titleKey = norm(payload.title);
+    if (!payload.title || existingGoalTitles.has(titleKey)) continue;
+    const saved = await get().savePatientCarePlanGoal(patientId, program, payload);
+    if (saved) existingGoalTitles.add(titleKey);
+  }
+
+  // Interventions and barriers come after the goals so the goal they belong to
+  // is already on the plan and resolves to a real id. The link itself lives on
+  // the library goal, not on the template row. Anything whose goal isn't on the
+  // plan is still added, unlinked, rather than dropped.
+  const owners = templateLinkOwners(template, libraryGoals);
+  const planGoalIdByTitle = new Map((slice()?.goals || []).map(g => [norm(g.title), g.id]));
+  const goalIdsFor = (map, title) => (map.get(title) || [])
+    .map(t => planGoalIdByTitle.get(norm(t)))
+    .filter(Boolean);
+
+  for (const entry of template.interventions || []) {
+    const titleKey = norm(entry?.title);
+    if (!titleKey || existingIntvTitles.has(titleKey)) continue;
+    // An intervention is 1:1 with a goal, so it takes the first owner.
+    const payload = interventionPayloadFromTemplateEntry(
+      entry, goalIdsFor(owners.intervention, titleKey)[0] || null,
+    );
+    const saved = await get().savePatientCarePlanIntervention(patientId, program, payload);
+    if (saved) existingIntvTitles.add(titleKey);
+  }
+
+  for (const entry of template.barriers || []) {
+    const titleKey = norm(entry?.title);
+    if (!titleKey || existingBarrierTitles.has(titleKey)) continue;
+    const saved = await get().savePatientCarePlanBarrier(
+      patientId, program,
+      barrierPayloadFromTemplateEntry(entry, goalIdsFor(owners.barrier, titleKey)),
+    );
+    if (saved) existingBarrierTitles.add(titleKey);
+  }
 }
 
 export const useAppStore = create((set, get) => ({
@@ -2967,6 +3039,159 @@ export const useAppStore = create((set, get) => ({
     get().touchCarePlanModified(patientId, programId);
   },
 
+  // A template on a plan should mean its goals, interventions and barriers are
+  // on that plan. Templates applied before apply carried them are missing that
+  // content, so on load each applied template is run through the same apply
+  // path, deduped by title. Idempotent, and guarded to once per plan.
+  carePlanTemplatesSyncedFor: {},
+  syncAppliedCarePlanTemplates: async (patientId, program) => {
+    const programId = program?.id;
+    if (!patientId || !programId) return 0;
+    const key = carePlanKey(patientId, programId);
+    if (get().carePlanTemplatesSyncedFor[key]) return 0;
+    const cur = get().patientCarePlans[key];
+    const libraryGoals = get().carePlanGoals || [];
+    const templates = get().carePlanTemplates || [];
+    const appliedIds = cur?.plan?.appliedTemplateIds || [];
+    if (!cur?.plan || !appliedIds.length || !templates.length) return 0;
+    set(s => ({ carePlanTemplatesSyncedFor: { ...s.carePlanTemplatesSyncedFor, [key]: true } }));
+
+    const before = (cur.goals?.length || 0) + (cur.interventions?.length || 0) + (cur.barriers?.length || 0);
+    // Restoring a template's own content is not a care decision, so it stays
+    // out of History rather than landing as dozens of "created" rows.
+    set({ carePlanAuditSuppressed: true });
+    try {
+      for (const id of appliedIds) {
+        const template = templates.find(t => String(t.id) === String(id));
+        if (template) await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
+      }
+    } finally {
+      set({ carePlanAuditSuppressed: false });
+    }
+    const after = get().patientCarePlans[key];
+    const added = ((after?.goals?.length || 0) + (after?.interventions?.length || 0) + (after?.barriers?.length || 0)) - before;
+    return Math.max(0, added);
+  },
+
+  // One-time repair that brings a plan's links up to what the library says.
+  //
+  // A plan goal that matches a library goal should carry that goal's linked
+  // interventions and barriers, and until apply recorded the linkage it carried
+  // none. So for each matching goal: an item already on the plan is attached to
+  // it, and one that is missing is created against it. Plan items with no
+  // library match are left alone — they were authored by hand here.
+  //
+  // Deliberately no audit rows: this reconciles the plan with the library it
+  // was built from, it is not a care decision someone made.
+  carePlanLinksRepairedFor: {},
+  repairCarePlanGoalLinks: async (patientId, program) => {
+    const programId = program?.id;
+    if (!patientId || !programId) return 0;
+    const key = carePlanKey(patientId, programId);
+    if (get().carePlanLinksRepairedFor[key]) return 0;
+    const cur = get().patientCarePlans[key];
+    const libraryGoals = get().carePlanGoals || [];
+    const planId = cur?.plan?.id;
+    if (!planId || !libraryGoals.length) return 0;
+    // Claim the run before the first await so a second render can't repeat it.
+    set(s => ({ carePlanLinksRepairedFor: { ...s.carePlanLinksRepairedFor, [key]: true } }));
+
+    const norm = v => (v || '').trim().toLowerCase();
+    const intvByTitle = new Map((cur.interventions || []).map(i => [norm(i.title), i]));
+    const barrierByTitle = new Map((cur.barriers || []).map(b => [norm(b.title), b]));
+
+    const intvLinks = new Map();     // existing intervention id → goal id
+    const barrierLinks = new Map();  // existing barrier id → goal ids
+    const newIntv = new Map();       // title → { link, goalId }
+    const newBarriers = new Map();   // title → { link, goalIds }
+
+    for (const goal of cur.goals || []) {
+      const lib = libraryGoals.find(g => norm(g.title) === norm(goal.title));
+      if (!lib) continue;
+      for (const link of lib.interventions || []) {
+        const k = norm(link.title);
+        if (!k) continue;
+        if (link.kind === 'barrier') {
+          const existing = barrierByTitle.get(k);
+          if (existing) {
+            const ids = new Set(barrierLinks.get(existing.id) || barrierGoalIdsOf(existing));
+            ids.add(goal.id);
+            barrierLinks.set(existing.id, [...ids]);
+          } else if (newBarriers.has(k)) {
+            newBarriers.get(k).goalIds.push(goal.id);
+          } else {
+            newBarriers.set(k, { link, goalIds: [goal.id] });
+          }
+        } else {
+          const existing = intvByTitle.get(k);
+          // An intervention is 1:1 with a goal, so an already-linked one stays
+          // where it is rather than being moved.
+          if (existing) { if (!existing.goalId) intvLinks.set(existing.id, goal.id); }
+          else if (!newIntv.has(k)) newIntv.set(k, { link, goalId: goal.id });
+        }
+      }
+    }
+
+    for (const [id, goalId] of intvLinks) {
+      const { error } = await supabase.from('patient_care_plan_interventions')
+        .update({ goal_id: goalId }).eq('id', id);
+      if (error) { console.warn('repairCarePlanGoalLinks (link intervention):', error.message); intvLinks.delete(id); }
+    }
+    for (const [id, goalIds] of barrierLinks) {
+      const { error } = await supabase.from('patient_care_plan_barriers')
+        .update({ goal_id: goalIds[0] }).eq('id', id);
+      if (error) { console.warn('repairCarePlanGoalLinks (link barrier):', error.message); barrierLinks.delete(id); continue; }
+      await linkBarrierGoals(id, goalIds);
+    }
+
+    const addedIntv = [];
+    for (const { link, goalId } of newIntv.values()) {
+      const row = patientCarePlanInterventionToRow(interventionPayloadFromTemplateEntry(link, goalId), planId);
+      const { data, error } = await supabase.from('patient_care_plan_interventions').insert(row).select().single();
+      if (error) { console.warn('repairCarePlanGoalLinks (add intervention):', error.message); continue; }
+      addedIntv.push(mapPatientCarePlanInterventionRow(data));
+    }
+    const addedBarriers = [];
+    for (const { link, goalIds } of newBarriers.values()) {
+      const payload = barrierPayloadFromTemplateEntry(link, goalIds);
+      const row = patientCarePlanBarrierToRow({ ...payload, goalId: goalIds[0] }, planId);
+      const { data, error } = await supabase.from('patient_care_plan_barriers').insert(row).select().single();
+      if (error) { console.warn('repairCarePlanGoalLinks (add barrier):', error.message); continue; }
+      const joined = await linkBarrierGoals(data.id, goalIds);
+      addedBarriers.push(mapPatientCarePlanBarrierRow(data, joined));
+    }
+
+    const changed = intvLinks.size + barrierLinks.size + addedIntv.length + addedBarriers.length;
+    if (!changed) return 0;
+    set(s => {
+      const slice = s.patientCarePlans[key];
+      if (!slice) return {};
+      return {
+        patientCarePlans: {
+          ...s.patientCarePlans,
+          [key]: {
+            ...slice,
+            interventions: [
+              ...(slice.interventions || []).map(i => (
+                intvLinks.has(i.id) ? { ...i, goalId: intvLinks.get(i.id) } : i
+              )),
+              ...addedIntv,
+            ],
+            barriers: [
+              ...(slice.barriers || []).map(b => (
+                barrierLinks.has(b.id)
+                  ? { ...b, goalId: barrierLinks.get(b.id)[0], goalIds: barrierLinks.get(b.id) }
+                  : b
+              )),
+              ...addedBarriers,
+            ],
+          },
+        },
+      };
+    });
+    return changed;
+  },
+
   touchCarePlanModified: async (patientId, programId) => {
     const key = carePlanKey(patientId, programId);
     const planId = get().patientCarePlans[key]?.plan?.id;
@@ -3153,15 +3378,27 @@ export const useAppStore = create((set, get) => ({
     return goal;
   },
 
-  deletePatientCarePlanGoal: async (patientId, programId, id) => {
+  // `cascade` false keeps the goal's linked items on the plan; the schema
+  // unlinks them on its own, so they stay as loose items. The confirm dialog
+  // asks which of the two the user wants when a goal has anything linked.
+  deletePatientCarePlanGoal: async (patientId, programId, id, { cascade: withLinked = true } = {}) => {
     const key = carePlanKey(patientId, programId);
     const prev = get().patientCarePlans[key];
     const removed = (prev?.goals || []).find(g => g.id === id);
+    const cascade = withLinked ? goalCascade(prev, id) : { interventions: [], barriers: [] };
+    for (const intv of cascade.interventions) {
+      await get().deletePatientCarePlanIntervention(patientId, programId, intv.id);
+    }
+    for (const barrier of cascade.barriers) {
+      await get().deletePatientCarePlanBarrier(patientId, programId, barrier.id);
+    }
+    // Re-read: the cascade above already removed rows from the cache.
+    const afterCascade = get().patientCarePlans[key] || prev;
     set(s => ({
-      patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, goals: prev.goals.filter(g => g.id !== id), barriers: prev.barriers || [], interventions: prev.interventions || [] } },
+      patientCarePlans: { ...s.patientCarePlans, [key]: { ...afterCascade, goals: (afterCascade.goals || []).filter(g => g.id !== id), barriers: afterCascade.barriers || [], interventions: afterCascade.interventions || [] } },
     }));
     const { error } = await supabase.from('patient_care_plan_goals').delete().eq('id', id);
-    if (error) { console.warn('deletePatientCarePlanGoal:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete goal'); return; }
+    if (error) { console.warn('deletePatientCarePlanGoal:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: afterCascade } })); get().showToast('Could not delete goal'); return; }
     if (removed) get().logCarePlanAudit(patientId, { id: programId, code: prev?.plan?.programCode }, { entityType: 'goal', entityId: id, action: 'deleted', summary: removed.title });
     get().touchCarePlanModified(patientId, programId);
   },
@@ -3547,25 +3784,7 @@ export const useAppStore = create((set, get) => ({
 
     for (const templateId of toAdd) {
       const template = templates.find(t => t.id === templateId);
-      if (!template) continue;
-      const existingGoalTitles = new Set((get().patientCarePlans[key]?.goals || []).map(g => g.title.trim().toLowerCase()));
-      const existingIntvTitles = new Set((get().patientCarePlans[key]?.interventions || []).map(i => i.title.trim().toLowerCase()));
-
-      for (const entry of template.goals || []) {
-        const payload = goalPayloadFromTemplateEntry(entry, libraryGoals);
-        const titleKey = payload.title.trim().toLowerCase();
-        if (!payload.title || existingGoalTitles.has(titleKey)) continue;
-        const saved = await get().savePatientCarePlanGoal(patientId, program, payload);
-        if (saved) existingGoalTitles.add(titleKey);
-      }
-
-      for (const entry of template.interventions || []) {
-        const payload = interventionPayloadFromTemplateEntry(entry);
-        const titleKey = payload.title.trim().toLowerCase();
-        if (!payload.title || existingIntvTitles.has(titleKey)) continue;
-        const saved = await get().savePatientCarePlanIntervention(patientId, program, payload);
-        if (saved) existingIntvTitles.add(titleKey);
-      }
+      if (template) await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
     }
 
     const ok = await get().setPatientCarePlanAppliedTemplates(patientId, program, nextIds, priorityUpdates);
@@ -3637,7 +3856,12 @@ export const useAppStore = create((set, get) => ({
   // row per field so History can show each change on its own line. Awaitable,
   // so a caller that needs its rows ordered (sign-off) can sequence them;
   // callers that don't care stay fire-and-forget.
+  // Set while the plan is being reconciled with the library or with a template
+  // it already carries: those writes restore what should have been there, so
+  // they must not read as care decisions in History.
+  carePlanAuditSuppressed: false,
   logCarePlanAudit: async (patientId, program, entry) => {
+    if (get().carePlanAuditSuppressed) return true;
     if (!patientId || !program?.id || !entry) return false;
     const list = (Array.isArray(entry) ? entry : [entry]).filter(Boolean);
     if (list.length === 0) return false;
