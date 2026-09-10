@@ -1148,6 +1148,7 @@ export function CarePlanView({ patientId, program }) {
             onPriorityMenu={setPriorityMenu}
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
+            onTargetDateChange={(goal, iso) => savePatientCarePlanGoal(patientId, program, { ...goal, targetDate: iso }, goal.id)}
             linked={linkedForGoal}
             emptyState={filteredGoals.length === 0 ? <div className={styles.emptyRow}>No goals match the filters.</div> : null}
           />
@@ -1208,6 +1209,14 @@ export function CarePlanView({ patientId, program }) {
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
             onAssigneeChange={handleAssigneeChange}
+            onDueDateChange={(intv, iso) => savePatientCarePlanIntervention(patientId, program, {
+              ...intv,
+              config: { ...(intv.config || {}), dueDateOverride: iso || '' },
+            }, intv.id)}
+            onRecurrenceChange={(intv, next) => savePatientCarePlanIntervention(patientId, program, {
+              ...intv,
+              config: { ...(intv.config || {}), ...next },
+            }, intv.id)}
             linked={linkedForChild}
             platformUsers={platformUsers}
             patients={patientName ? [{

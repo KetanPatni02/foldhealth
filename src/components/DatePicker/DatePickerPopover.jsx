@@ -37,7 +37,28 @@ export function DatePickerPopover({
   min,
   max,
   mode = 'single',
+  // Optional slot rendered below the month grid (single mode) or
+  // between the month grid and the Clear/Save row (range mode).
+  // Lets callers attach a controls strip — e.g. a Repeat toggle —
+  // without forking the popover.
+  footer = null,
+  // Optional ISO (YYYY-MM-DD) strings to paint with a subtle grey
+  // fill — used by callers with a recurrence config to show every
+  // future occurrence at a glance. The primary selection still
+  // renders in the solid primary swatch on top.
+  highlightedDates = null,
 }) {
+  const highlightedSet = useMemo(() => {
+    if (!highlightedDates || !highlightedDates.length) return null;
+    const s = new Set();
+    for (const iso of highlightedDates) {
+      if (!iso) continue;
+      const [y, m, d] = String(iso).split('-').map(Number);
+      if (!y || !m || !d) continue;
+      s.add(`${y}-${m}-${d}`);
+    }
+    return s.size ? s : null;
+  }, [highlightedDates]);
   const isRange = mode === 'range';
   const initialDate = pickInitialFocusDate(value, isRange);
   const [viewYear, setViewYear] = useState(initialDate.getFullYear());
@@ -198,6 +219,7 @@ export function DatePickerPopover({
       isRange={isRange}
       onPick={pickDate}
       onHover={(d) => setHoverEnd(d)}
+      highlightedSet={highlightedSet}
     />
   );
 
@@ -281,7 +303,11 @@ export function DatePickerPopover({
   return createPortal(
     <div
       ref={cardRef}
-      className={[styles.card, isRange ? styles.cardRange : ''].filter(Boolean).join(' ')}
+      className={[
+        styles.card,
+        isRange ? styles.cardRange : '',
+        !isRange && footer ? styles.cardWithFooter : '',
+      ].filter(Boolean).join(' ')}
       style={{ top: placement.top, left: placement.left }}
       role="dialog"
       aria-label="Choose a date"
@@ -293,13 +319,17 @@ export function DatePickerPopover({
             {renderMonth(viewYear, viewMonth)}
             {renderMonth(rightMonthYear, rightMonthValue)}
           </div>
+          {footer ? <div className={styles.slot}>{footer}</div> : null}
           <div className={styles.footer}>
             <Button variant="tertiary" size="S" onClick={handleClear}>Clear</Button>
             <Button variant="primary" size="S" onClick={handleSave}>Save</Button>
           </div>
         </>
       ) : (
-        renderMonth(viewYear, viewMonth)
+        <>
+          {renderMonth(viewYear, viewMonth)}
+          {footer ? <div className={styles.slot}>{footer}</div> : null}
+        </>
       )}
     </div>,
     document.body,
@@ -311,7 +341,7 @@ export function DatePickerPopover({
 function MonthGrid({
   year, month, today, minDate, maxDate,
   selectedSingle, rangeStart, rangeEnd, pendingStart, previewStart, previewEnd,
-  isRange, onPick, onHover,
+  isRange, onPick, onHover, highlightedSet,
 }) {
   const gridStart = useMemo(() => {
     const firstOfMonth = new Date(year, month, 1);
@@ -319,10 +349,18 @@ function MonthGrid({
   }, [year, month]);
 
   const cells = useMemo(() => {
+    // Render only as many full weeks as we need to cover the current
+    // month. A month that fits in 5 rows drops the trailing 6th row
+    // of pure next-month spillover so the grid isn't padded with
+    // muted numbers that aren't clickable in context.
+    const firstOfMonth = new Date(year, month, 1);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const rowsNeeded = Math.ceil((firstOfMonth.getDay() + daysInMonth) / 7);
+    const total = rowsNeeded * 7;
     const out = [];
-    for (let i = 0; i < 42; i++) out.push(addDays(gridStart, i));
+    for (let i = 0; i < total; i++) out.push(addDays(gridStart, i));
     return out;
-  }, [gridStart]);
+  }, [gridStart, year, month]);
 
   const rangeMarkers = cells.map((d) => {
     if (!isRange) return null;
@@ -363,11 +401,15 @@ function MonthGrid({
             marker === 'start' ? styles.rangeStart : '',
             marker === 'end' ? styles.rangeEnd : '',
           ].filter(Boolean).join(' ');
+          const isHighlighted = highlightedSet
+            ? highlightedSet.has(`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`)
+            : false;
           const dayCls = [
             styles.day,
             !inMonth ? styles.dayMuted : '',
             isSelected ? styles.daySelected : '',
             isToday && !isSelected ? styles.dayToday : '',
+            isHighlighted && !isSelected ? styles.dayHighlighted : '',
             disabled ? styles.dayDisabled : '',
           ].filter(Boolean).join(' ');
           return (

@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { useTableSort } from '../../../../../../../components/HeaderCell/useTableSort';
+import { DatePickerPopover } from '../../../../../../../components/DatePicker/DatePickerPopover';
 import {
   GOAL_COLUMNS,
   withSelectColumn,
@@ -37,12 +38,28 @@ export function CarePlanGoalsTable({
   onPriorityMenu,
   onStatusMenu,
   onRowMenu,
+  // Target-date cell click hands the goal + the picked ISO date up
+  // so the parent can persist through its own save action. Omitted →
+  // the cell reads as static text (no pointer, no click).
+  onTargetDateChange,
   linked,
   template = false,
   emptyState,
 }) {
   const sortableRows = useMemo(() => enrichGoalRows(rows), [rows]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(sortableRows, 'title', 'asc');
+  // Inline target-date picker state — one instance shared across
+  // rows; the anchor rect + active goal drive the popover position
+  // and its seeded value.
+  const [targetPicker, setTargetPicker] = useState(null); // { goal, rect } | null
+  const openTargetPicker = (goal, rect) => {
+    if (!canEdit || !onTargetDateChange) return;
+    setTargetPicker({ goal, rect });
+  };
+  const commitTargetDate = (iso) => {
+    if (targetPicker?.goal) onTargetDateChange(targetPicker.goal, iso);
+    setTargetPicker(null);
+  };
   // A template row has no value, progress or status, but it still gets its
   // row menu when the caller can act on one.
   const showActions = !template || Boolean(onRowMenu);
@@ -112,7 +129,18 @@ export function CarePlanGoalsTable({
                   <span className={styles.dueDateText}>{formatGoalDate(g.createdAt)}</span>
                 </td>
                 <td className={styles.dateTd} onClick={e => e.stopPropagation()}>
-                  <span className={styles.dueDateText}>{formatGoalDate(g.targetDate)}</span>
+                  {canEdit && onTargetDateChange ? (
+                    <button
+                      type="button"
+                      className={styles.dateBtn}
+                      onClick={(e) => openTargetPicker(g, e.currentTarget.getBoundingClientRect())}
+                      aria-label={g.targetDate ? `Change target date (${formatGoalDate(g.targetDate)})` : 'Set target date'}
+                    >
+                      {formatGoalDate(g.targetDate)}
+                    </button>
+                  ) : (
+                    <span className={styles.dueDateText}>{formatGoalDate(g.targetDate)}</span>
+                  )}
                 </td>
                 <td className={styles.progressTd} onClick={e => e.stopPropagation()}>
                   <GbiProgressCell progress={g.progress} />
@@ -142,6 +170,15 @@ export function CarePlanGoalsTable({
           </tr>
         )}
       />
+      {targetPicker && (
+        <DatePickerPopover
+          open
+          value={targetPicker.goal?.targetDate || null}
+          anchorRect={targetPicker.rect}
+          onChange={commitTargetDate}
+          onClose={() => setTargetPicker(null)}
+        />
+      )}
     </div>
   );
 }

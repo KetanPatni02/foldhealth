@@ -1,9 +1,13 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { AssigneeChange } from '../../../../../../../components/AssigneeChange/AssigneeChange';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { useTableSort } from '../../../../../../../components/HeaderCell/useTableSort';
+import { DatePickerPopover } from '../../../../../../../components/DatePicker/DatePickerPopover';
+import { RepeatEditor } from '../../../../../../../components/RepeatEditor/RepeatEditor';
+import { Icon } from '../../../../../../../components/Icon/Icon';
+import { Tooltip } from '../../../../../../../components/Tooltip/Tooltip';
 import {
   INTERVENTION_COLUMNS,
   withSelectColumn,
@@ -70,6 +74,58 @@ function computeDueDate(intv) {
   else if (unit === 'm') end.setMonth(end.getMonth() + n);
   else if (unit === 'y') end.setFullYear(end.getFullYear() + n);
   return { iso: end.toISOString(), formatted: fmtDate(end.toISOString()) };
+}
+
+// Project the future occurrences of a recurring intervention onto
+// YYYY-MM-DD strings so the calendar popover can paint each cell
+// with the "will fire here" grey-50 marker.
+//
+// Semantics — matches the Add Task drawer's repeat block:
+//   • The first occurrence IS the due date (also the primary
+//     selection, so it shows in primary purple, not grey).
+//   • repeatEvery + repeatEveryUnit sets the interval between runs.
+//   • repeatCount caps the total number of runs.
+//   • repeatEnds + repeatEndsUnit extends the horizon; whichever
+//     rule fires later wins so tweaking either widens the visible
+//     schedule immediately.
+function computeOccurrenceDates(intv) {
+  const c = intv?.config;
+  if (!c?.repeat) return [];
+  const startIso = computeDueDate(intv).iso;
+  if (!startIso) return [];
+  const start = new Date(startIso);
+  if (Number.isNaN(start.getTime())) return [];
+  const every = Math.max(1, Number(c.repeatEvery) || 1);
+  const count = Math.max(1, Number(c.repeatCount) || 1);
+  const everyUnit = String(c.repeatEveryUnit || 'Days').toLowerCase();
+  const endsAmount = Math.max(0, Number(c.repeatEnds) || 0);
+  const endsUnit = String(c.repeatEndsUnit || 'Days').toLowerCase();
+  const horizon = endsAmount > 0 ? addUnit(start, endsAmount, endsUnit) : null;
+  const HARD_CAP = 100;
+  const out = [isoDay(start)];
+  for (let k = 1; k < HARD_CAP; k++) {
+    const next = addUnit(start, every * k, everyUnit);
+    const hitCount = k >= count;
+    const hitHorizon = horizon ? next > horizon : true;
+    if (hitCount && hitHorizon) break;
+    if (horizon && next > horizon) break;
+    out.push(isoDay(next));
+  }
+  return out;
+}
+function addUnit(base, amount, unit) {
+  const d = new Date(base);
+  if (unit.startsWith('day')) d.setDate(d.getDate() + amount);
+  else if (unit.startsWith('week')) d.setDate(d.getDate() + amount * 7);
+  else if (unit.startsWith('month')) d.setMonth(d.getMonth() + amount);
+  else if (unit.startsWith('year')) d.setFullYear(d.getFullYear() + amount);
+  return d;
+}
+function isoDay(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 // "day" / "days" / "week" / "weeks" — used by the recurrence tooltip
@@ -158,6 +214,12 @@ export function CarePlanInterventionsTable({
   onRowMenu,
   onOpenIntervention,
   onAssigneeChange,
+  // Persist a manual due-date override + the full recurrence config
+  // (repeat toggle + count / every / ends fields) from the inline
+  // popover. Both fall through to no-ops for read-only callers (the
+  // cell stays a plain read-only label in that case).
+  onDueDateChange,
+  onRecurrenceChange,
   linked,
   platformUsers,
   // Merged into the inline picker so a member (patient) can be assigned
@@ -167,6 +229,18 @@ export function CarePlanInterventionsTable({
   template = false,
   emptyState,
 }) {
+  // Inline due-date popover state — one popover shared by every row.
+  // The active intervention plus the anchor rect drive positioning
+  // and the seeded value in the calendar.
+  const [duePicker, setDuePicker] = useState(null); // { intv, rect } | null
+  const openDuePicker = (intv, rect) => {
+    if (!canEdit || !onDueDateChange) return;
+    setDuePicker({ intv, rect });
+  };
+  const commitDueDate = (iso) => {
+    if (duePicker?.intv) onDueDateChange(duePicker.intv, iso);
+    setDuePicker(null);
+  };
   // A template row has no assignee, adherence or status, but it still gets
   // its row menu when the caller can act on one.
   const showActions = !template || Boolean(onRowMenu);
@@ -256,14 +330,8 @@ export function CarePlanInterventionsTable({
                   // right glyph as long as `kind` is set.
                   icon={CARE_PLAN_INTERVENTION_ICONS[i.kind] || i.icon || 'solar:clipboard-list-linear'}
                   iconTitle={KIND_LABELS[i.kind] || 'Intervention'}
-                  // `config.repeat` is the drawer's Repeat toggle; a
-                  // truthy value renders the small refresh glyph in
-                  // the name cell. The tooltip spells out the cadence
-                  // (every N weeks, X times, ends in Y months) so the
-                  // schedule is one hover away without opening the
-                  // detail drawer.
-                  recurring={!!i.config?.repeat}
-                  recurringLabel={formatRecurrenceLabel(i)}
+                  // Recurring glyph moved to the Due Date cell so
+                  // schedule + cadence read together in one column.
                   title={i.title}
                   /* Start date + duration read below the title in a
                      stacked layout: "Started 03/20/2026 · 1 week". Font
@@ -284,17 +352,42 @@ export function CarePlanInterventionsTable({
                   canEdit={canEdit}
                   />
               </td>
-              {!template && (
-                /* Read-only due date — plain text in --neutral-300
-                   aligned with the "Due Date" header. Empty rows
-                   render "—" instead of a call-to-action; changing
-                   the date happens in the Intervention drawer. */
-                <td className={styles.valueTd}>
-                  <span className={styles.dueDateText}>
-                    {computeDueDate(i).formatted || '-'}
-                  </span>
-                </td>
-              )}
+              {!template && (() => {
+                /* Due Date cell — click opens an inline calendar
+                   popover. Recurring glyph sits next to the date so
+                   cadence + schedule read as one column; hover
+                   reveals the composed "Repeats every N weeks · X
+                   times · ends in Y months" tooltip. */
+                const dueLabel = computeDueDate(i).formatted || '-';
+                const dueIso = computeDueDate(i).iso || '';
+                const isRecurring = !!i.config?.repeat;
+                const editable = canEdit && !!onDueDateChange;
+                return (
+                  <td className={styles.valueTd} onClick={e => e.stopPropagation()}>
+                    <span className={styles.dueDateCell}>
+                      {editable ? (
+                        <button
+                          type="button"
+                          className={styles.dateBtn}
+                          onClick={(e) => openDuePicker(i, e.currentTarget.getBoundingClientRect())}
+                          aria-label={dueIso ? `Change due date (${dueLabel})` : 'Set due date'}
+                        >
+                          {dueLabel}
+                        </button>
+                      ) : (
+                        <span className={styles.dueDateText}>{dueLabel}</span>
+                      )}
+                      {isRecurring && (
+                        <Tooltip label={formatRecurrenceLabel(i)}>
+                          <span className={styles.recurringIcon} aria-label={formatRecurrenceLabel(i)}>
+                            <Icon name="solar:refresh-linear" size={14} color="var(--neutral-300)" />
+                          </span>
+                        </Tooltip>
+                      )}
+                    </span>
+                  </td>
+                );
+              })()}
               {!template && (() => {
                 // Only Internal Task lets the user reassign — every
                 // other intervention kind runs on the member and the
@@ -375,6 +468,47 @@ export function CarePlanInterventionsTable({
             </tr>
         )}
       />
+      {duePicker && (
+        <DatePickerPopover
+          open
+          value={(() => {
+            const iso = computeDueDate(duePicker.intv).iso;
+            if (!iso) return null;
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return null;
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+          })()}
+          anchorRect={duePicker.rect}
+          onChange={commitDueDate}
+          onClose={() => setDuePicker(null)}
+          highlightedDates={computeOccurrenceDates(duePicker.intv)}
+          footer={(
+            <RepeatEditor
+              value={{
+                repeat: !!duePicker.intv?.config?.repeat,
+                repeatCount: duePicker.intv?.config?.repeatCount ?? '1',
+                repeatEvery: duePicker.intv?.config?.repeatEvery ?? '1',
+                repeatEveryUnit: duePicker.intv?.config?.repeatEveryUnit || 'Weeks',
+                repeatEnds: duePicker.intv?.config?.repeatEnds ?? '0',
+                repeatEndsUnit: duePicker.intv?.config?.repeatEndsUnit || 'Days',
+              }}
+              onChange={(next) => {
+                if (onRecurrenceChange) onRecurrenceChange(duePicker.intv, next);
+                setDuePicker(prev => prev ? ({
+                  ...prev,
+                  intv: {
+                    ...prev.intv,
+                    config: { ...(prev.intv.config || {}), ...next },
+                  },
+                }) : prev);
+              }}
+            />
+          )}
+        />
+      )}
     </div>
   );
 }

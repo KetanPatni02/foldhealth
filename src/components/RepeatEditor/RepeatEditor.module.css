@@ -1,0 +1,69 @@
+/* Fold Repeat editor — Figma Care Plan Creation 14599:200235.
+   Stacked layout on a grey-50 panel so the schedule reads top-to-
+   bottom: Switch → count → "time after" → every+unit → Ends+ends+unit.
+   The panel docks to the bottom of its host (calendar popover) —
+   only the bottom corners are rounded so the top edge butts flush
+   against whatever ends above it, and the color break alone signals
+   the section change (no hairline divider). */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--neutral-50);
+  border-radius: 0 0 8px 8px;
+}
+
+/* Count / every / ends fields all lock to the same 110px shell width
+   so the numeric column reads consistently, matching the Figma frame
+   (count = number + "times", every = number + unit picker, ends =
+   number + unit picker). */
+.countRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+/* Count sits compact (just a number + "times"), the every+unit and
+   ends+unit pairs get more room so the picker chevron isn't cramped.
+   InterventionDrawer.module.css sets `.offsetInput` to a hardcoded
+   160px — that class is composed onto the inner Input.field, so
+   sizing only the outer .repeatField wrapper leaves the field itself
+   at 160 and it blows past the wrapper. Match by [class*=] so the
+   CSS-Module hash doesn't hide the class, and size the inner input
+   directly. */
+.countRow > div:first-child,
+.countRow > div:first-child [class*="offsetInput"] {
+  width: 110px;
+}
+.countRow > div:last-child,
+.countRow > div:last-child [class*="offsetInput"] {
+  width: 130px;
+}
+.endsRow > div,
+.endsRow > div [class*="offsetInput"] {
+  width: 140px;
+}
+
+/* "after" — the connector label glued to the right of the count row
+   so the sentence reads "3 times after ..." inline. */
+.afterLabel {
+  color: var(--neutral-400);
+  font-size: var(--font-base);
+  white-space: nowrap;
+}
+
+/* Ends in row — inline label + 110px field pair on a single line.
+   Wraps only if the panel is squeezed narrower than the intervention
+   cell ever renders. */
+.endsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.endsLabel {
+  color: var(--neutral-400);
+  font-size: var(--font-base);
+  white-space: nowrap;
+}
