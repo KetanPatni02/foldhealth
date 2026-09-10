@@ -11,7 +11,7 @@ import { FALLBACK_P360 } from '../../data/p360Mock';
 import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, ExpandedFamily, QuickViewExpanded } from './PatientP360BannerExpanded';
 import { PatientP360BannerDrawer } from './PatientP360BannerDrawer';
 import { MORE_MENU_LABELS } from './PatientP360Banner.utils';
-import { useCcmTimerDock } from '../CcmTimerWidget/CcmTimerDockContext';
+import { useCcmTimerDockOptional } from '../CcmTimerWidget/CcmTimerDockContext';
 import styles from './PatientP360Banner.module.css';
 
 export function PatientP360Banner({ patient, variant = 'full' }) {
@@ -36,7 +36,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const updatePatient = useAppStore(s => s.updatePatient);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
-  const { dockRef } = useCcmTimerDock();
+  const { dockRef } = useCcmTimerDockOptional();
 
   const measureBanner = useCallback(() => {
     const el = bannerRef.current;
