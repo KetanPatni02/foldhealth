@@ -2902,7 +2902,15 @@ export const useAppStore = create((set, get) => ({
         med_recon_signed_by:   program.medReconSignedBy || null,
         med_recon_signed_role: program.medReconSignedRole || null,
         med_recon_signed_at:   program.medReconSignedAt || null,
-      }, { onConflict: 'id' }).then(({ error }) => {
+      // ON CONFLICT DO NOTHING against (patient_id, code): the local guard at
+      // the top bails when an enrollment already exists locally, so we only
+      // reach here when local state was blind to it. Seed rows carry ids like
+      // `pcp-awv-1-AWV` (embed the worklist id, not the Fold patient id) while
+      // the client generates `pcp-{patientId}-{code}`; upsert-on-`id` used to
+      // miss the seed row, INSERT, and trip the (patient_id, code) unique key.
+      // DO UPDATE would rewrite the id column and dangle references in
+      // care_plan_audit / patient_care_plans / patient_care_plan_versions.
+      }, { onConflict: 'patient_id, code', ignoreDuplicates: true }).then(({ error }) => {
         if (error) console.warn('addCareProgram — insert failed:', error.message);
       });
     }
