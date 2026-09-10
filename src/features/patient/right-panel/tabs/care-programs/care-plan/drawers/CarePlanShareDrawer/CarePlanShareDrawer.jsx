@@ -1,17 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
+import { SplitDrawerLayout } from '../../../../../../../../components/Drawer/SplitDrawerLayout';
 import { Button } from '../../../../../../../../components/Button/Button';
-import { Toggle } from '../../../../../../../../components/Toggle/Toggle';
 import { Textarea } from '../../../../../../../../components/Textarea/Textarea';
 import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
+import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { buildCarePlanHtml, downloadCarePlanDocument } from '../../lib/carePlanExport';
+import { downloadCarePlanPdf, generateCarePlanPdf } from '../../lib/carePlanExport';
+import { GbiStatusButton } from '../../tables/carePlanTableShared';
 import styles from './CarePlanShareDrawer.module.css';
 
-const TARGETS = ['EHR', 'Patient', 'POA'];
 const TARGET_ID = { EHR: 'ehr', Patient: 'patient', POA: 'poa' };
+const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 
 function SectionSelectAll({ label, ids, off, setOff }) {
   const total = ids.length;
@@ -27,8 +29,15 @@ function SectionSelectAll({ label, ids, off, setOff }) {
   );
 }
 
+function applyPatches(items, patches) {
+  return items.map(item => {
+    const patch = patches[item.id];
+    return patch ? { ...item, ...patch } : item;
+  });
+}
+
 // Preview the plan, choose which goals/interventions to include, then download
-// a template-based document or share it to the EHR / patient / POA (#8, #13, #40).
+// a PDF or share it to the EHR / patient / POA (#8, #13, #40).
 export function CarePlanShareDrawer({ patientId, program, data, patientName, canShare = true, onClose }) {
   const sharePatientCarePlan = useAppStore(s => s.sharePatientCarePlan);
   const signCarePlan = useAppStore(s => s.signCarePlan);
@@ -38,15 +47,15 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
   const allGoalIds = data.goals.map(g => g.id);
   const allIntvIds = data.interventions.map(i => i.id);
   const allBarrierIds = (data.barriers || []).map(b => b.id);
-  // Track what's been *deselected* rather than selected, so the default is
-  // "everything included" no matter what the plan currently holds — new rows
-  // are included by default and a stale set can't leave real rows unchecked.
+
   const [goalOff, setGoalOff] = useState(() => new Set());
   const [intvOff, setIntvOff] = useState(() => new Set());
   const [barrierOff, setBarrierOff] = useState(() => new Set());
-  const [target, setTarget] = useState('EHR');
+  const [statusPatches, setStatusPatches] = useState({});
+  const [statusMenu, setStatusMenu] = useState(null);
   const [note, setNote] = useState('');
   const [sharing, setSharing] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(null);
 
   const toggleOff = (set, id) => {
     const next = new Set(set);
@@ -57,74 +66,112 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
   const selectedGoalIds = allGoalIds.filter(id => !goalOff.has(id));
   const selectedIntvIds = allIntvIds.filter(id => !intvOff.has(id));
 
+  const patchedGoals = useMemo(
+    () => applyPatches(data.goals, statusPatches),
+    [data.goals, statusPatches],
+  );
+  const patchedInterventions = useMemo(
+    () => applyPatches(data.interventions, statusPatches),
+    [data.interventions, statusPatches],
+  );
+  const patchedBarriers = useMemo(
+    () => applyPatches(data.barriers || [], statusPatches),
+    [data.barriers, statusPatches],
+  );
+
   const selection = useMemo(() => ({
     conditions: data.conditions.map(c => c.label),
-    goals: data.goals.filter(g => !goalOff.has(g.id)),
-    interventions: data.interventions.filter(i => !intvOff.has(i.id)),
-    barriers: (data.barriers || []).filter(b => !barrierOff.has(b.id)),
-  }), [data, goalOff, intvOff, barrierOff]);
+    goals: patchedGoals.filter(g => !goalOff.has(g.id)),
+    interventions: patchedInterventions.filter(i => !intvOff.has(i.id)),
+    barriers: patchedBarriers.filter(b => !barrierOff.has(b.id)),
+  }), [data.conditions, patchedGoals, patchedInterventions, patchedBarriers, goalOff, intvOff, barrierOff]);
 
   const nothingSelected = selection.goals.length === 0
     && selection.interventions.length === 0
     && selection.barriers.length === 0;
 
-  const buildDoc = () => buildCarePlanHtml(
-    {
-      patientName,
-      programName: program.name,
-      sharedBy: currentUserProfile?.name || '',
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-    },
-    selection,
-  );
+  const docMeta = useMemo(() => ({
+    patientName,
+    programName: program.name,
+    sharedBy: currentUserProfile?.name || '',
+    date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+  }), [patientName, program.name, currentUserProfile?.name]);
+
+  useEffect(() => {
+    if (nothingSelected) {
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+      return undefined;
+    }
+    const blob = generateCarePlanPdf(docMeta, selection);
+    const url = URL.createObjectURL(blob);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    return () => URL.revokeObjectURL(url);
+  }, [docMeta, selection, nothingSelected]);
 
   const handleDownload = () => {
     const safe = (patientName || 'patient').replace(/[^a-z0-9]+/gi, '-');
-    downloadCarePlanDocument(buildDoc(), `CarePlan-${safe}.html`);
+    downloadCarePlanPdf(docMeta, selection, `CarePlan-${safe}.pdf`);
     showToast('Care plan downloaded');
   };
 
-  const handleShare = async () => {
+  const handleShare = async (shareTarget = 'EHR') => {
     setSharing(true);
     const rec = await sharePatientCarePlan(patientId, program, {
-      target: TARGET_ID[target],
+      target: TARGET_ID[shareTarget],
       format: 'standard',
       note: note.trim(),
       goalIds: selectedGoalIds,
       interventionIds: selectedIntvIds,
     });
     if (!rec) { setSharing(false); return; }
-    // Sharing is the Sign & Share flow's commit step, so it signs the plan in
-    // the sharer's name. Signing after the share keeps that share inside the
-    // version the signature closes.
     const version = await signCarePlan(patientId, program, note.trim());
     setSharing(false);
     showToast(version
-      ? `Care plan signed and shared to ${target}`
-      : `Care plan shared to ${target}`);
+      ? `Care plan signed and shared to ${shareTarget}`
+      : `Care plan shared to ${shareTarget}`);
     onClose();
+  };
+
+  const changeStatus = (status) => {
+    if (!statusMenu) return;
+    const { id } = statusMenu;
+    setStatusPatches(prev => ({ ...prev, [id]: { status } }));
+    setStatusMenu(null);
   };
 
   const headerRight = (
     <>
       <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={handleDownload} disabled={nothingSelected}>
-        Download
+        Download PDF
       </Button>
-      <Button variant="primary" size="L" leadingIcon="solar:share-linear" onClick={handleShare} disabled={nothingSelected || sharing || !canShare}>
+      <Button
+        variant="primary"
+        size="L"
+        leadingIcon="solar:share-linear"
+        onClick={() => handleShare('EHR')}
+        disabled={nothingSelected || sharing || !canShare}
+        menuItems={[
+          { key: 'Patient', label: 'Share to Patient' },
+          { key: 'POA', label: 'Share to POA' },
+        ]}
+        onMenuSelect={(key) => handleShare(key)}
+        menuAriaLabel="Share to"
+      >
         Share
       </Button>
       <span className={styles.headerDivider} />
     </>
   );
 
-  return (
-    <Drawer title="Preview & Share Care Plan" onClose={onClose} headerRight={headerRight} noCloseDivider>
+  const editorPane = (
+    <div className={styles.editorScroll}>
       <div className={styles.body}>
-        <div className={styles.field}>
-          <span className={styles.label}>Share with</span>
-          <Toggle size="S" items={TARGETS} active={target} onChange={setTarget} />
-        </div>
-
         {data.conditions.length > 0 && (
           <div className={styles.field}>
             <span className={styles.label}>Conditions</span>
@@ -138,15 +185,20 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
           <SectionSelectAll label="Goals" ids={allGoalIds} off={goalOff} setOff={setGoalOff} />
           <div className={styles.list}>
             {data.goals.length === 0 && <div className={styles.empty}>No goals on this plan.</div>}
-            {data.goals.map(g => (
-              <label key={g.id} className={styles.row}>
+            {patchedGoals.map(g => (
+              <div key={g.id} className={styles.row}>
                 <Checkbox checked={!goalOff.has(g.id)} onCheckedChange={() => setGoalOff(s => toggleOff(s, g.id))} aria-label={`Include ${g.title}`} />
                 <span className={styles.rowText}>
                   <span className={styles.rowTitle}>{g.title}</span>
                   {g.subtitle && <span className={styles.rowSub}>{g.subtitle}</span>}
                 </span>
-                <span className={styles.rowStatus}>{g.status}</span>
-              </label>
+                <span className={styles.rowStatus}>
+                  <GbiStatusButton
+                    value={g.status}
+                    onOpen={rect => setStatusMenu({ kind: 'goal', id: g.id, rect })}
+                  />
+                </span>
+              </div>
             ))}
           </div>
         </div>
@@ -155,15 +207,20 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
           <SectionSelectAll label="Interventions" ids={allIntvIds} off={intvOff} setOff={setIntvOff} />
           <div className={styles.list}>
             {data.interventions.length === 0 && <div className={styles.empty}>No interventions on this plan.</div>}
-            {data.interventions.map(i => (
-              <label key={i.id} className={styles.row}>
+            {patchedInterventions.map(i => (
+              <div key={i.id} className={styles.row}>
                 <Checkbox checked={!intvOff.has(i.id)} onCheckedChange={() => setIntvOff(s => toggleOff(s, i.id))} aria-label={`Include ${i.title}`} />
                 <span className={styles.rowText}>
                   <span className={styles.rowTitle}>{i.title}</span>
                   <span className={styles.rowSub}>{i.assignee?.name}</span>
                 </span>
-                <span className={styles.rowStatus}>{i.status}</span>
-              </label>
+                <span className={styles.rowStatus}>
+                  <GbiStatusButton
+                    value={i.status}
+                    onOpen={rect => setStatusMenu({ kind: 'intv', id: i.id, rect })}
+                  />
+                </span>
+              </div>
             ))}
           </div>
         </div>
@@ -172,14 +229,19 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
           <div className={styles.field}>
             <SectionSelectAll label="Barriers" ids={allBarrierIds} off={barrierOff} setOff={setBarrierOff} />
             <div className={styles.list}>
-              {(data.barriers || []).map(b => (
-                <label key={b.id} className={styles.row}>
+              {patchedBarriers.map(b => (
+                <div key={b.id} className={styles.row}>
                   <Checkbox checked={!barrierOff.has(b.id)} onCheckedChange={() => setBarrierOff(s => toggleOff(s, b.id))} aria-label={`Include ${b.title}`} />
                   <span className={styles.rowText}>
                     <span className={styles.rowTitle}>{b.title}</span>
                   </span>
-                  <span className={styles.rowStatus}>{b.status}</span>
-                </label>
+                  <span className={styles.rowStatus}>
+                    <GbiStatusButton
+                      value={b.status}
+                      onOpen={rect => setStatusMenu({ kind: 'barrier', id: b.id, rect })}
+                    />
+                  </span>
+                </div>
               ))}
             </div>
           </div>
@@ -193,7 +255,7 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
         {nothingSelected && (
           <div className={styles.warn}>
             <Icon name="solar:info-circle-linear" size={14} color="var(--status-warning)" />
-            Select at least one goal, intervention, or barrier to download or share.
+            Select at least one goal, intervention, or barrier to preview or download.
           </div>
         )}
         {!canShare && (
@@ -203,6 +265,51 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
           </div>
         )}
       </div>
-    </Drawer>
+    </div>
+  );
+
+  const previewPane = (
+    <div className={styles.previewPane}>
+      {previewUrl ? (
+        <iframe
+          key={previewUrl}
+          className={styles.previewFrame}
+          src={previewUrl}
+          title="Care plan PDF preview"
+        />
+      ) : (
+        <div className={styles.previewEmpty}>
+          <Icon name="custom:pdf-file" size={32} color="var(--neutral-200)" />
+          <span>Select items on the right to generate a preview.</span>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <Drawer
+        title="Preview & Share Care Plan"
+        onClose={onClose}
+        headerRight={headerRight}
+        noCloseDivider
+        width={1180}
+        bodyClassName={SplitDrawerLayout.bodyClassName}
+      >
+        <SplitDrawerLayout left={previewPane} right={editorPane} />
+      </Drawer>
+
+      {statusMenu && (
+        <MenuPopover
+          anchorRect={statusMenu.rect}
+          align="left"
+          width={160}
+          ariaLabel="Change status"
+          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
+          onSelect={changeStatus}
+          onClose={() => setStatusMenu(null)}
+        />
+      )}
+    </>
   );
 }

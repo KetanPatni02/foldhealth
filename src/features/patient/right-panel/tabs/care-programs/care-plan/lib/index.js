@@ -1,1 +1,6 @@
-export { buildCarePlanHtml, downloadCarePlanDocument } from './carePlanExport.js';
+export {
+  buildCarePlanHtml,
+  downloadCarePlanDocument,
+  downloadCarePlanPdf,
+  generateCarePlanPdf,
+} from './carePlanExport.js';

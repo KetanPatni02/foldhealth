@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Icon } from '../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
-import { PhoneVerifiedIcon } from '../../../../components/Icon/PhoneVerifiedIcon';
+import { PatientAppActiveIndicator } from '../../../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { ConsentPopover } from '../../../../components/ConsentPopover/ConsentPopover';
 import { ScheduleDrawer } from '../../../../components/ScheduleDrawer/ScheduleDrawer';
@@ -29,6 +29,7 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
   const updatePatient = useAppStore(s => s.updatePatient);
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
+  const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
 
   const noop = (label) => () => showToast(`${label} — coming soon`);
   const activeProfileName = (p.insurance_profiles || FALLBACK_P360.insurance_profiles).find(pr => pr.id === selectedProfileId)?.name || p.profile_type;
@@ -72,7 +73,9 @@ export function PatientP360BannerDrawer({ patient, p, programCodes }) {
           <div className={styles.drawerPatientInfo}>
             <div className={styles.drawerNameRow}>
               <span className={styles.drawerPatientName}>{patient.name}</span>
-              <PhoneVerifiedIcon size={16} />
+              {showPatientAppIndicator && patient.patientAppActive && (
+                <PatientAppActiveIndicator size={16} />
+              )}
             </div>
             <div className={styles.drawerMetaRow}>
               <span className={styles.drawerMetaText}>{patient.gender} • {patient.age}</span>

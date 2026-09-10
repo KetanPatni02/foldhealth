@@ -23,6 +23,13 @@
   color: var(--neutral-300);
 }
 
+.fieldHint {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  margin: 0;
+  line-height: 1.4;
+}
+
 .required {
   color: var(--status-error);
   margin-left: 3px;

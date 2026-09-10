@@ -1,0 +1,74 @@
+.splitBody {
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+}
+
+.splitRow {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.leftPane {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--neutral-0);
+}
+
+.rightPane {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--neutral-0);
+  border-left: 0.5px solid var(--neutral-150);
+}
+
+.resizeHandle {
+  flex: 0 0 1px;
+  align-self: stretch;
+  background: var(--neutral-150);
+  cursor: col-resize;
+  position: relative;
+  z-index: 1;
+  transition: background 120ms ease;
+}
+
+.resizeHandle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+
+.resizeHandle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 32px;
+  border-radius: 2px;
+  background: var(--neutral-300);
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.resizeHandle:hover {
+  background: var(--primary-300);
+}
+
+.resizeHandle:hover::after {
+  opacity: 1;
+  background: var(--primary-300);
+}

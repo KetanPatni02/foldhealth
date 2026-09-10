@@ -4633,6 +4633,30 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  // Org-level feature flags (from org_settings).
+  showPatientAppIndicator: false,
+  orgFeaturesDidFetch: false,
+  fetchOrgFeatures: async () => {
+    if (useAppStore.getState().orgFeaturesDidFetch) return;
+    set({ orgFeaturesDidFetch: true });
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) return;
+      const { data, error } = await supabase
+        .from('org_settings')
+        .select('show_patient_app_indicator')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+      if (error) {
+        console.warn('fetchOrgFeatures error:', error.message);
+        return;
+      }
+      set({ showPatientAppIndicator: !!data?.show_patient_app_indicator });
+    } catch (err) {
+      console.warn('fetchOrgFeatures failed:', err?.message || err);
+    }
+  },
+
   // Table
   patients: [],
   patientsLoading: true,
@@ -10575,6 +10599,7 @@ export const useAppStore = create((set, get) => ({
       apcmConsent: r.apcm_consent,
       assignee: r.assignee,
       assigneeInitials: r.assignee_initials,
+      patientAppActive: r.patient_app_active ?? false,
     }));
     set({ allPatients: rows, allPatientsLoading: false });
   },

@@ -25,6 +25,7 @@ export function OrgPanel() {
   const [logo, setLogo] = useState(null);
   const [name, setName] = useState('');
   const [showName, setShowName] = useState(false);
+  const [showPatientAppIndicator, setShowPatientAppIndicator] = useState(false);
   const [primaryColor, setPrimaryColor] = useState('#8C5AE2');
   const [about, setAbout] = useState('');
   const [socials, setSocials] = useState({ twitter: '', instagram: '', facebook: '', linkedin: '', website: '' });
@@ -52,6 +53,7 @@ export function OrgPanel() {
         if (data) {
           setName(data.name || '');
           setShowName(!!data.show_name);
+          setShowPatientAppIndicator(!!data.show_patient_app_indicator);
           setPrimaryColor(data.primary_color || '#8C5AE2');
           setAbout(data.about || '');
           setLogo(data.logo_url || null);
@@ -117,6 +119,7 @@ export function OrgPanel() {
           user_id: session.user.id,
           name,
           show_name: showName,
+          show_patient_app_indicator: showPatientAppIndicator,
           primary_color: primaryColor,
           about,
           logo_url: logo,
@@ -129,6 +132,7 @@ export function OrgPanel() {
         }, { onConflict: 'user_id' });
 
       if (error) throw error;
+      useAppStore.setState({ showPatientAppIndicator });
       showToast('Organization settings saved');
     } catch (err) {
       console.error('Failed to save org settings:', err);
@@ -234,6 +238,18 @@ export function OrgPanel() {
           </div>
         </div>
       )}
+
+      {/* Patient app indicator */}
+      <div className={styles.formGroup}>
+        <Switch
+          checked={showPatientAppIndicator}
+          onChange={setShowPatientAppIndicator}
+          label="Show patient app active indicator"
+        />
+        <p className={styles.fieldHint}>
+          When enabled, members active on the Fold patient mobile app show a green phone icon in the P360 banner and an extra column in All Patients.
+        </p>
+      </div>
 
       {/* About */}
       <div className={styles.formGroup}>

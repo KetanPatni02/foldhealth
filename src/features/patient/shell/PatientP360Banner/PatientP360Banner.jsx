@@ -6,6 +6,7 @@ import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../store/useAppStore';
 import { formatDobDisplay, deriveDob } from '../../../../lib/patientDob';
 import { formatFoldId } from '../../../../lib/foldId';
+import { PatientAppActiveIndicator } from '../../../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
 import { FALLBACK_P360 } from '../../data/p360Mock';
 import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, ExpandedFamily, QuickViewExpanded } from './PatientP360BannerExpanded';
 import { PatientP360BannerDrawer } from './PatientP360BannerDrawer';
@@ -33,6 +34,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const showToast = useAppStore(s => s.showToast);
   const updatePatient = useAppStore(s => s.updatePatient);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
+  const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
 
   const measureBanner = useCallback(() => {
     const el = bannerRef.current;
@@ -51,7 +53,9 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
 
   const p360Profile = useAppStore(s => (patient?.id ? s.p360ProfilesById[patient.id] : null));
   const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
+  const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
   useEffect(() => { if (patient?.id) fetchP360Profile(patient.id); }, [patient?.id, fetchP360Profile]);
+  useEffect(() => { fetchOrgFeatures(); }, [fetchOrgFeatures]);
 
   // Real enrolled care programs (patient_care_programs) — the "Programs:"
   // badges must reflect actual enrollment, not the static p360 mock field.
@@ -82,7 +86,9 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
           <div className={styles.nameBlock}>
             <div className={styles.nameRow}>
               <span className={styles.name}>{patient.name}</span>
-              <Icon name="solar:pen-2-linear" size={16} color="var(--neutral-200)" />
+              {showPatientAppIndicator && patient.patientAppActive && (
+                <PatientAppActiveIndicator size={16} />
+              )}
             </div>
             <div className={styles.meta}>
               {patient.gender} • {formatDobDisplay(patient.dob) || deriveDob(patient.age, patient.name) || '—'} ({patient.age})

@@ -1,6 +1,6 @@
 import { useMemo, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
-import { AllPatientsRow, ALL_PATIENTS_MIDDLE_COLUMNS } from './AllPatientsRow';
+import { AllPatientsRow, buildAllPatientsMiddleColumns } from './AllPatientsRow';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -71,6 +71,7 @@ function fillDummy(row, idx) {
   const lastVisit = new Date(2025, (seed % 12), (seed % 27) + 1).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
   const ccm = (seed % 3) === 0 ? false : (seed % 3) === 1 ? true : null;
   const apcm = ((seed >> 4) % 3) === 0 ? false : ((seed >> 4) % 3) === 1 ? true : null;
+  const patientAppActive = row.patientAppActive ?? ((seed % 3) !== 0);
   const tags = row.tags?.length ? row.tags : [pick(['High Risk', 'Rising Risk', 'Stable'], seed >> 1)];
 
   return {
@@ -93,6 +94,7 @@ function fillDummy(row, idx) {
     activeCareProgram: row.activeCareProgram || program,
     ccmConsent: row.ccmConsent ?? ccm,
     apcmConsent: row.apcmConsent ?? apcm,
+    patientAppActive,
     tags,
   };
 }
@@ -105,6 +107,8 @@ export function AllPatientsTable() {
   const hccMembers = useAppStore(s => s.hccMembers);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers || []);
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
+  const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
+  const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
   const selectedIds = useAppStore(s => s.selectedAllPatientsIds);
   const selectOne = useAppStore(s => s.selectAllPatient);
   const selectAll = useAppStore(s => s.selectAllAllPatients);
@@ -114,6 +118,7 @@ export function AllPatientsTable() {
   const searchQuery = useAppStore(s => s.searchQuery);
 
   useEffect(() => { fetchAllPatients(); }, [fetchAllPatients]);
+  useEffect(() => { fetchOrgFeatures(); }, [fetchOrgFeatures]);
   // SubNav already prefetches this on mount, but landing directly on All
   // Patients (e.g. via hash route) can beat that, so make sure the SNP roster
   // is in the store before we compose the union below.
@@ -166,6 +171,7 @@ export function AllPatientsTable() {
       language: p.language,
       assignee: p.assignee,
       assigneeInitials: p.assigneeInitials,
+      patientAppActive: p.patientAppActive,
       tags: p.lace ? [`LACE ${p.lace}`] : [],
     }));
 
@@ -225,8 +231,13 @@ export function AllPatientsTable() {
     else clearSelected();
   };
 
+  const middleColumnDefs = useMemo(
+    () => buildAllPatientsMiddleColumns(showPatientAppIndicator),
+    [showPatientAppIndicator],
+  );
+
   // Column prefs — bespoke table, wire useWorklistColumns directly.
-  const columnPrefs = useWorklistColumns('all-patients', ALL_PATIENTS_MIDDLE_COLUMNS);
+  const columnPrefs = useWorklistColumns('all-patients', middleColumnDefs);
   const visibleMiddle = columnPrefs.visibleColumns;
   const orderedColumnsForRow = useMemo(() => (
     [{ key: 'select', showCheckbox: true, sticky: 'left' },

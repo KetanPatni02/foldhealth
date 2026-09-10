@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { PatientP360Banner } from './shell/PatientP360Banner/PatientP360Banner';
@@ -45,6 +45,7 @@ function worklistMemberToPatient(m) {
     pcp: m.pcp,
     rp: m.rp,
     language: m.language || 'en',
+    patientAppActive: m.patientAppActive ?? false,
   };
 }
 
@@ -64,6 +65,7 @@ export function PatientDetailView() {
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
   const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
+  const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
   const navigateBackToWorklist = useAppStore(s => s.navigateBackToWorklist);
   const patientsLoading = useAppStore(s => s.patientsLoading);
   const patientsDidFetch = useAppStore(s => s.patientsDidFetch);
@@ -127,6 +129,19 @@ export function PatientDetailView() {
     || worklistMemberToPatient(hedisMembers?.find(matchesId))
     || worklistMemberToPatient(allPatients?.find(matchesId));
 
+  // Worklist slices don't all carry patient_app_active — merge from the
+  // patients / all_patients tables when the resolved row is missing it.
+  const patientWithAppStatus = useMemo(() => {
+    if (!patient) return null;
+    if (patient.patientAppActive != null) return patient;
+    const byMember = (rows) => rows?.find(
+      (r) => r.id === patient.id || String(r.memberId) === String(patient.memberId),
+    );
+    const source = byMember(patients) || byMember(allPatients);
+    if (!source || source.patientAppActive == null) return patient;
+    return { ...patient, patientAppActive: source.patientAppActive };
+  }, [patient, patients, allPatients]);
+
   // The app assumes we're always inside a real patient's record — if the id
   // doesn't resolve to a patient (e.g. a stale hash from a deleted row, or a
   // worklist row wired to a placeholder id), bounce straight back to the
@@ -154,6 +169,8 @@ export function PatientDetailView() {
   // `selectedPatientId && !patient` so this only fires while we're
   // actually stuck looking for a patient, not on normal profile mounts
   // where the row is already in memory.
+  useEffect(() => { fetchOrgFeatures?.(); }, [fetchOrgFeatures]);
+
   useEffect(() => {
     if (!selectedPatientId || patient) return;
     if (patients.length === 0) fetchPatients?.();
@@ -178,17 +195,17 @@ export function PatientDetailView() {
     }
   }, [patient, selectedPatientId]);
 
-  if (!patient) return null;
+  if (!patientWithAppStatus) return null;
 
   return (
     <div className={styles.wrapper}>
-      <PatientP360Banner patient={patient} />
+      <PatientP360Banner patient={patientWithAppStatus} />
       <CcmTimerWidget />
       <div className={styles.body} ref={bodyRef}>
         {!leftCollapsed && (
           <>
             <div style={{ width: leftWidth, minWidth: 300, maxWidth: 700, flexShrink: 0 }}>
-              <PatientProfileTabs patientId={selectedPatientId} patient={patient} />
+              <PatientProfileTabs patientId={selectedPatientId} patient={patientWithAppStatus} />
             </div>
             {/* Drag handle */}
             <div className={styles.dragHandle} onMouseDown={handleMouseDown}>
@@ -207,13 +224,13 @@ export function PatientDetailView() {
             {activeTab === 'Overview' ? (
               <OverviewTab />
             ) : activeTab === 'Monitoring' ? (
-              <MonitoringTab patient={patient} />
+              <MonitoringTab patient={patientWithAppStatus} />
             ) : activeTab === 'Notes' ? (
-              <PatientNotesTab patient={patient} />
+              <PatientNotesTab patient={patientWithAppStatus} />
             ) : activeTab === 'Care Management' ? (
               <CareManagementView />
             ) : activeTab === 'Profile' ? (
-              <ProfileTab patient={patient} />
+              <ProfileTab patient={patientWithAppStatus} />
             ) : activeTab === 'Tasks' ? (
               <TasksTab />
             ) : (

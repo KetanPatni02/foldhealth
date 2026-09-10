@@ -1435,6 +1435,36 @@ async function main() {
     }
   }
 
+  // ── Patient app indicator (org flag + per-patient active status) ──
+  {
+    const seedHash = (s) => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+    const { error: orgErr } = await supabase
+      .from('org_settings')
+      .update({ show_patient_app_indicator: true })
+      .not('user_id', 'is', null);
+    if (orgErr && orgErr.code !== '42703' && orgErr.code !== 'PGRST204') {
+      console.log(`  ✗ patient app org flag: ${orgErr.message}`);
+    } else if (!orgErr) {
+      console.log('  ✓ patient app indicator enabled for org_settings');
+    }
+
+    const { data: pts } = await supabase.from('patients').select('id');
+    let activeCount = 0;
+    for (const row of pts || []) {
+      const active = (seedHash(row.id) % 3) !== 0;
+      const { error } = await supabase.from('patients').update({ patient_app_active: active }).eq('id', row.id);
+      if (!error && active) activeCount += 1;
+    }
+    const { data: aps } = await supabase.from('all_patients').select('id');
+    for (const row of aps || []) {
+      const active = (seedHash(row.id) % 3) !== 0;
+      await supabase.from('all_patients').update({ patient_app_active: active }).eq('id', row.id);
+    }
+    if ((pts || []).length) {
+      console.log(`  ✓ patient_app_active backfill (${activeCount}/${pts.length} active on patients)`);
+    }
+  }
+
   console.log('\n✅  Seed complete. Run `bun run dev` to verify.\n');
 }
 
