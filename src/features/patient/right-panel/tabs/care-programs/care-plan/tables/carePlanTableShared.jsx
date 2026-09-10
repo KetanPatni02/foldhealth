@@ -67,9 +67,9 @@ export const GBI_COL_WIDTH = {
   priority: 28,
   /** Shared by Goals "Current Value" and Interventions "Assigned To". */
   value: 132,
-  assignee: 132,
+  assignee: 124,
   progress: 90,
-  status: 124,
+  status: 116,
   actions: 36,
 };
 
