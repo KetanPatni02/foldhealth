@@ -5,6 +5,7 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { Toggle } from '../../../../../../components/Toggle/Toggle';
+import { PatientAppActiveIndicator } from '../../../../../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
 import styles from './ProfileTab.module.css';
 
 const PROFILE_VIEWS = [
@@ -58,11 +59,13 @@ function Section({ title, actionIcon = 'solar:pen-linear', onEdit, children }) {
 }
 
 /** Two-line label/value cell used across every section. */
-function Field({ label, value }) {
+function Field({ label, value, children }) {
   return (
     <div className={styles.field}>
       <div className={styles.fieldLabel}>{label}</div>
-      <div className={styles.fieldValue}>{value || '-'}</div>
+      <div className={styles.fieldValue}>
+        {children ?? (value || '-')}
+      </div>
     </div>
   );
 }
@@ -101,6 +104,7 @@ export function ProfileTab({ patient }) {
   const p360Loading = useAppStore((s) => s.p360Loading);
   const fetchP360Profile = useAppStore((s) => s.fetchP360Profile);
   const openEdit = useAppStore((s) => s.openPatientEdit);
+  const showPatientAppIndicator = useAppStore((s) => s.showPatientAppIndicator);
   // Two-view segmented control: Demographics (current sections) vs Insurance
   // (Primary Insurance + Plan Benefits). Local state — persistence isn't
   // needed since the tab-switch is transient viewing chrome.
@@ -219,6 +223,18 @@ export function ProfileTab({ patient }) {
             {Object.entries(basic).map(([label, value]) => (
               <Field key={label} label={label} value={value} />
             ))}
+            {showPatientAppIndicator && (
+              <Field label="Patient App">
+                {patient?.patientAppActive
+                  ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <PatientAppActiveIndicator size={16} />
+                      Active
+                    </span>
+                  )
+                  : 'Inactive'}
+              </Field>
+            )}
           </Section>
 
           <Section title="Address">

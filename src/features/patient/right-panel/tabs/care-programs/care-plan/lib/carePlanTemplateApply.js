@@ -37,10 +37,17 @@ export function goalPayloadFromTemplateEntry(entry, libraryGoals = []) {
   };
 }
 
-/** Build a patient-plan intervention payload from a template intervention entry. */
-export function interventionPayloadFromTemplateEntry(entry) {
+/**
+ * Build a patient-plan intervention payload from a template intervention entry.
+ *
+ * `goalId` is the plan goal this intervention serves, resolved by the caller.
+ * Without it the intervention lands on the plan unlinked, which is what the
+ * table, the cascade on goal removal, and version history all read.
+ */
+export function interventionPayloadFromTemplateEntry(entry, goalId = null) {
   return {
     kind: entry?.kind || 'internal-task',
+    goalId,
     title: entry?.title || '',
     icon: 'solar:clipboard-list-linear',
     duration: entry?.duration || null,
@@ -49,4 +56,49 @@ export function interventionPayloadFromTemplateEntry(entry) {
     status: 'Not Started',
     assignee: { name: 'Unassigned', initials: '' },
   };
+}
+
+/**
+ * Build a patient-plan barrier payload from a template barrier entry.
+ *
+ * `goalIds` is the set of plan goals this barrier belongs to, resolved by the
+ * caller; an empty set adds the barrier unlinked rather than dropping it.
+ */
+export function barrierPayloadFromTemplateEntry(entry, goalIds = []) {
+  return {
+    title: entry?.title || '',
+    description: entry?.description || '',
+    priority: entry?.priority || 'medium',
+    status: 'Not Started',
+    goalIds,
+  };
+}
+
+const normTitle = v => (v || '').trim().toLowerCase();
+
+/**
+ * Which goals of a template own each of its interventions and barriers, keyed
+ * by the linked item's title.
+ *
+ * A template goal entry points at a library goal, and that library goal's links
+ * are what carry its interventions and barriers, so the ownership lives one hop
+ * away in the library rather than on the template row itself.
+ */
+export function templateLinkOwners(template, libraryGoals = []) {
+  const owners = { intervention: new Map(), barrier: new Map() };
+  for (const entry of template?.goals || []) {
+    const lib = libraryGoals.find(g => g.id === entry?.id)
+      || libraryGoals.find(g => normTitle(g.title) === normTitle(entry?.title));
+    const goalTitle = lib?.title || entry?.title || '';
+    if (!goalTitle) continue;
+    for (const link of lib?.interventions || []) {
+      const key = normTitle(link.title);
+      if (!key) continue;
+      const map = link.kind === 'barrier' ? owners.barrier : owners.intervention;
+      const list = map.get(key) || [];
+      if (!list.includes(goalTitle)) list.push(goalTitle);
+      map.set(key, list);
+    }
+  }
+  return owners;
 }

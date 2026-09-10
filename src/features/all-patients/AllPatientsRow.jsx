@@ -10,6 +10,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
+import { PatientAppActiveIndicator } from '../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
 import rowStyles from '../toc-worklist/WorklistRow.module.css';
 import styles from './AllPatientsRow.module.css';
 
@@ -85,15 +86,17 @@ function AttributesCell({ row }) {
   );
 }
 
-/**
- * Middle-column defs for All Patients. Each carries `renderCell(row, ctx)`
- * so hide + reorder in the Show Columns popover ripple through the body.
- * Sticky checkbox / Members / Actions columns stay hardcoded around this
- * band.
- *
- * ctx shape: { showToast }
- */
-export const ALL_PATIENTS_MIDDLE_COLUMNS = [
+export const PATIENT_APP_COLUMN = {
+  key: 'patientApp',
+  label: 'Patient App',
+  renderCell: (row) => (
+    row.patientAppActive
+      ? <PatientAppActiveIndicator size={16} />
+      : <span className={styles.dash}>—</span>
+  ),
+};
+
+const ALL_PATIENTS_BASE_COLUMNS = [
   {
     key: 'contact',
     label: 'Contact Info',
@@ -188,6 +191,19 @@ export const ALL_PATIENTS_MIDDLE_COLUMNS = [
     },
   },
 ];
+
+/** Middle-column defs for All Patients (without the optional Patient App column). */
+export const ALL_PATIENTS_MIDDLE_COLUMNS = ALL_PATIENTS_BASE_COLUMNS;
+
+/** Inserts the Patient App column after Contact Info when the org flag is on. */
+export function buildAllPatientsMiddleColumns(showPatientAppIndicator) {
+  if (!showPatientAppIndicator) return ALL_PATIENTS_BASE_COLUMNS;
+  return [
+    ALL_PATIENTS_BASE_COLUMNS[0],
+    PATIENT_APP_COLUMN,
+    ...ALL_PATIENTS_BASE_COLUMNS.slice(1),
+  ];
+}
 
 export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }) {
   const showToast = useAppStore(s => s.showToast);

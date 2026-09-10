@@ -1,8 +1,9 @@
+import { generateCarePlanPdf } from './generateCarePlanPdf.js';
+
 // Template-based care plan export (roadmap #13). The download is a formatted
 // document generated from a template, not a raw dump — today there is one
 // "standard" template; the format id is carried through so more can be added.
-// The file is a self-contained HTML document (inline styles) so it opens and
-// prints anywhere without the app.
+// PDF is the primary download format; HTML remains for legacy callers.
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, c => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
@@ -99,6 +100,21 @@ export function downloadCarePlanDocument(html, filename) {
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export { generateCarePlanPdf };
+
+/** Download the care plan as a PDF built from the current selection. */
+export function downloadCarePlanPdf(meta, selection, filename) {
+  const blob = generateCarePlanPdf(meta, selection);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
   document.body.appendChild(a);
   a.click();
   a.remove();

@@ -250,9 +250,13 @@ export function AppLayout() {
   const activePage = useAppStore(s => s.activePage);
   const builderAgent = useAppStore(s => s.builderAgent);
 
+  const fetchOrgFeatures = useAppStore(s => s.fetchOrgFeatures);
+
   // Bell feed: resolves the signed-in profile, subscribes to this user's
   // notification rows, and resyncs after the tab/socket comes back.
   useNotificationsFeed();
+
+  useEffect(() => { fetchOrgFeatures(); }, [fetchOrgFeatures]);
 
   // Keep profiles in sync with auth.users. Self-signups and OAuth logins don't
   // go through the Invite flow, so profiles would otherwise stay empty for them.

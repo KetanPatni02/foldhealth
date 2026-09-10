@@ -69,6 +69,7 @@ export function dbToJs(row) {
     tagsMore: row.tags_more ?? 0,
     radar: row.radar || null,
     riskIq: row.risk_iq || null,
+    patientAppActive: row.patient_app_active ?? false,
   };
 }
 
@@ -142,6 +143,7 @@ export function jsToDb(patient) {
     tagsMore: 'tags_more',
     radar: 'radar',
     riskIq: 'risk_iq',
+    patientAppActive: 'patient_app_active',
   };
 
   for (const [jsKey, dbKey] of Object.entries(map)) {
