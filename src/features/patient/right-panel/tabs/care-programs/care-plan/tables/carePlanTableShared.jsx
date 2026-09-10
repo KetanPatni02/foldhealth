@@ -81,10 +81,18 @@ export const SELECT_COLUMN = { key: 'select', label: '', showCheckbox: true, wid
 export const withSelectColumn = (columns, bulkMode) =>
   (bulkMode ? [SELECT_COLUMN, ...columns] : columns);
 
+// Goals surface Start + Target instead of Current Value — the value
+// is more useful on the goal detail drawer, where trends and last
+// measurement context live; the schedule cadence reads better in the
+// table. Widths intentionally match the intervention table one-for-one
+// (Start ↔ Due Date, Target ↔ Assigned To) so a plan that stacks
+// Goals over Interventions reads as a single grid.
+export const GBI_COL_DATE_WIDTH = 108;
 export const GOAL_COLUMNS = [
   { key: 'priority', label: 'P', width: GBI_COL_WIDTH.priority, align: 'center', sortKey: '_sortPriority', sortType: 'priority', hideSortIcon: true, thStyle: { paddingLeft: 4, paddingRight: 4 } },
   { key: 'title', label: 'Goal Title', sortKey: 'title', sortType: 'alpha' },
-  { key: 'value', label: 'Current Value', width: GBI_COL_WIDTH.value, sortKey: '_sortValue', sortType: 'generic', thStyle: HEADER_COMPACT },
+  { key: 'createdDate', label: 'Start', width: GBI_COL_DATE_WIDTH, sortKey: '_sortCreatedAt', sortType: 'generic', thStyle: HEADER_COMPACT },
+  { key: 'targetDate', label: 'Target', width: GBI_COL_WIDTH.assignee, sortKey: '_sortTargetDate', sortType: 'generic', thStyle: HEADER_COMPACT },
   { key: 'progress', label: 'Progress', width: GBI_COL_WIDTH.progress, sortKey: '_sortProgress', sortType: 'number', thStyle: HEADER_COMPACT },
   { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, sortKey: 'status', sortType: 'alpha', thStyle: HEADER_COMPACT },
   { key: 'actions', label: '', width: GBI_COL_WIDTH.actions, thStyle: { paddingLeft: 4, paddingRight: 4 } },
@@ -137,6 +145,10 @@ export function GbiNameCell({
   // the link button so recurring interventions are visible at a
   // glance. No-op for goals / barriers, which never pass it.
   recurring = false,
+  // Rich tooltip content for the recurring glyph (e.g. "Repeats every
+  // 2 weeks · 5 times, ends in 3 months"). Falls back to "Recurring"
+  // when the caller hasn't computed a schedule label.
+  recurringLabel = 'Recurring',
 }) {
   const stacked = layout === 'stacked';
 
@@ -166,8 +178,8 @@ export function GbiNameCell({
         {meta && stacked ? <span className={styles.nameSecondary}>{meta}</span> : null}
       </span>
       {recurring && (
-        <Tooltip label="Recurring">
-          <span className={styles.recurringIcon} aria-label="Recurring">
+        <Tooltip label={recurringLabel}>
+          <span className={styles.recurringIcon} aria-label={recurringLabel}>
             <Icon name="solar:refresh-linear" size={14} color="var(--neutral-300)" />
           </span>
         </Tooltip>

@@ -15,6 +15,17 @@ import { enrichGoalRows } from './carePlanTableSort';
 import { normalizeCategory } from '../../../../../../settings/care-plan-library/lib';
 import styles from './carePlanTables.module.css';
 
+// MM/DD/YYYY, matches the grey read-only date look used across the
+// intervention Due Date column so all care-plan tables read the same.
+function formatGoalDate(v) {
+  if (!v) return '-';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return '-';
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
 export function CarePlanGoalsTable({
   rows,
   canEdit,
@@ -97,10 +108,11 @@ export function CarePlanGoalsTable({
             </td>
             {!template && (
               <>
-                <td className={styles.valueTd} onClick={e => e.stopPropagation()}>
-                  <span className={`${styles.valueText} ${g.currentValue === 'No Data' ? styles.muted : ''}`}>
-                    {g.currentValue}
-                  </span>
+                <td className={styles.dateTd} onClick={e => e.stopPropagation()}>
+                  <span className={styles.dueDateText}>{formatGoalDate(g.createdAt)}</span>
+                </td>
+                <td className={styles.dateTd} onClick={e => e.stopPropagation()}>
+                  <span className={styles.dueDateText}>{formatGoalDate(g.targetDate)}</span>
                 </td>
                 <td className={styles.progressTd} onClick={e => e.stopPropagation()}>
                   <GbiProgressCell progress={g.progress} />
