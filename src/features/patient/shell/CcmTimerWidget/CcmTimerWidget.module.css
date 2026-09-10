@@ -8,6 +8,45 @@
   gap: 8px;
 }
 
+.wrapAnimated {
+  transition:
+    right 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    bottom 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.24s ease;
+}
+
+.wrapDragging {
+  transition: none;
+}
+
+.dockHost {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+  animation: ccmTimerDockIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Merges into row2 flex when only the control bar is shown — no extra padding. */
+.dockHostInline {
+  display: contents;
+  animation: none;
+}
+
+@keyframes ccmTimerDockIn {
+  from {
+    opacity: 0.72;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .control {
   display: inline-flex;
   align-items: stretch;
@@ -17,6 +56,72 @@
   border-radius: 10px;
   box-shadow: var(--shadow-card);
   overflow: hidden;
+}
+
+.controlDocked {
+  height: 22px;
+  border-color: var(--neutral-150);
+  border-radius: 4px;
+  box-shadow: none;
+  background: var(--neutral-0);
+}
+
+.controlDocked .dragHandle {
+  width: 14px;
+  background: var(--neutral-50);
+}
+
+.chipWrapDocked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  min-width: var(--space-12);
+  height: 100%;
+  border-right: 0.5px solid var(--neutral-100);
+}
+
+.chipWrapIdle {
+  background: var(--neutral-0);
+}
+
+.chipWrapActive {
+  background: var(--status-success-light);
+}
+
+.controlDocked .chipTime {
+  font-size: var(--font-sm);
+}
+
+.controlDocked .chipDot {
+  width: 5px;
+  height: 5px;
+}
+
+.controlDocked .segmentBtn {
+  padding: 0 var(--space-2);
+  gap: var(--space-1);
+}
+
+.controlDocked .segmentLabel,
+.controlDocked .logBtnLabel,
+.controlDocked .loggedLabel {
+  font-size: var(--font-sm);
+}
+
+.controlDocked .logBtn,
+.controlDocked .logBtnDisabled {
+  padding: 0 var(--space-2);
+  gap: var(--space-1);
+}
+
+.controlDocked .loggedBadge {
+  padding: 0 var(--space-2);
+  gap: var(--space-1);
+}
+
+.controlDocked .resetBtn {
+  width: 24px;
 }
 
 .dragHandle {

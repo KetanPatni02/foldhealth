@@ -11,6 +11,7 @@ import { FALLBACK_P360 } from '../../data/p360Mock';
 import { ExpandedDemographics, ExpandedHealthStatus, ExpandedAppointments, ExpandedFamily, QuickViewExpanded } from './PatientP360BannerExpanded';
 import { PatientP360BannerDrawer } from './PatientP360BannerDrawer';
 import { MORE_MENU_LABELS } from './PatientP360Banner.utils';
+import { useCcmTimerDock } from '../CcmTimerWidget/CcmTimerDockContext';
 import styles from './PatientP360Banner.module.css';
 
 export function PatientP360Banner({ patient, variant = 'full' }) {
@@ -35,6 +36,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const updatePatient = useAppStore(s => s.updatePatient);
   const openPatientEdit = useAppStore(s => s.openPatientEdit);
   const showPatientAppIndicator = useAppStore(s => s.showPatientAppIndicator);
+  const { dockRef } = useCcmTimerDock();
 
   const measureBanner = useCallback(() => {
     const el = bannerRef.current;
@@ -225,7 +227,7 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         />
       )}
 
-      <div className={styles.row2}>
+      <div className={styles.row2} data-ccm-timer-row>
         <button className={styles.patientTypeBadge}>{p.patient_type} <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" /></button>
         <span className={styles.tagDivider} />
         {tags.map((tag, i) => (
@@ -237,6 +239,8 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
           </span>
         ))}
         <button className={styles.addTagBtn} aria-label="Add tag"><Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" /></button>
+        <span className={styles.row2Spacer} aria-hidden="true" />
+        <div ref={dockRef} className={styles.timerDockSlot} data-ccm-timer-dock />
       </div>
 
       {expanded && (

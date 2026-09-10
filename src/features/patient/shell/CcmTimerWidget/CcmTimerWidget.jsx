@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from '../../../../components/Icon/Icon';
 import { Button } from '../../../../components/Button/Button';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
@@ -6,6 +7,7 @@ import { Select } from '../../../../components/Select/Select';
 import { Textarea } from '../../../../components/Textarea/Textarea';
 import { useAppStore } from '../../../../store/useAppStore';
 import { CCM_ACTIVITY_TYPES, secondsToTime } from '../../data/ccmBillingMock';
+import { useCcmTimerDock } from './CcmTimerDockContext';
 import styles from './CcmTimerWidget.module.css';
 
 // Time Tracker Control workflow (Time Tracker Control standalone.html):
@@ -17,12 +19,85 @@ import styles from './CcmTimerWidget.module.css';
 //   classifying → log form (app extension — opened via Log)
 //
 // Timer auto-starts when a patient profile opens.
-const START_POS = { right: 16, bottom: 16 };
 const DRAG_GHOST_CLASS = 'ccm-timer-dragging';
 const LOGGED_FEEDBACK_MS = 1600;
+const MAGNET_RADIUS = 160;
+const SNAP_RADIUS = 80;
 
 function activityId() {
   return `act-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+}
+
+function fixedPosFromRect(rect) {
+  return {
+    right: Math.max(8, window.innerWidth - rect.right),
+    bottom: Math.max(8, window.innerHeight - rect.bottom),
+  };
+}
+
+/** Tags-row dock zone — uses row2 so the target stays valid while undocked. */
+function getDockTargetRect(dockEl, controlWidth = 200) {
+  const row = dockEl?.closest('[data-ccm-timer-row]') ?? dockEl?.parentElement;
+  if (!row) return null;
+  const rowRect = row.getBoundingClientRect();
+  if (rowRect.width <= 0 || rowRect.height <= 0) return null;
+  const width = Math.max(controlWidth, 160);
+  return {
+    left: rowRect.right - width,
+    top: rowRect.top,
+    right: rowRect.right,
+    bottom: rowRect.bottom,
+    width,
+    height: rowRect.height,
+  };
+}
+
+function distanceToDockZone(cx, cy, targetRect) {
+  const closestX = Math.max(targetRect.left, Math.min(cx, targetRect.right));
+  const closestY = Math.max(targetRect.top, Math.min(cy, targetRect.bottom));
+  return Math.hypot(cx - closestX, cy - closestY);
+}
+
+function floatPosForDockedPlacement(controlRect, targetRect) {
+  const top = targetRect.top + (targetRect.height - controlRect.height) / 2;
+  const left = targetRect.right - controlRect.width;
+  return {
+    right: Math.max(8, window.innerWidth - left - controlRect.width),
+    bottom: Math.max(8, window.innerHeight - top - controlRect.height),
+  };
+}
+
+function magnetizePos(pos, controlEl, dockEl) {
+  if (!controlEl || !dockEl) return { pos, snap: false };
+  const controlRect = controlEl.getBoundingClientRect();
+  const targetRect = getDockTargetRect(dockEl, controlRect.width);
+  if (!targetRect) return { pos, snap: false };
+
+  const cx = controlRect.left + controlRect.width / 2;
+  const cy = controlRect.top + controlRect.height / 2;
+  const dist = distanceToDockZone(cx, cy, targetRect);
+  if (dist >= MAGNET_RADIUS) return { pos, snap: false };
+  if (dist <= SNAP_RADIUS) return { pos, snap: true };
+
+  const pull = (1 - dist / MAGNET_RADIUS) ** 2 * 0.88;
+  const dockedPos = floatPosForDockedPlacement(controlRect, targetRect);
+  return {
+    pos: {
+      right: pos.right + (dockedPos.right - pos.right) * pull,
+      bottom: pos.bottom + (dockedPos.bottom - pos.bottom) * pull,
+    },
+    snap: false,
+  };
+}
+
+function shouldSnapToDock(controlEl, dockEl) {
+  if (!controlEl || !dockEl) return false;
+  const controlRect = controlEl.getBoundingClientRect();
+  const targetRect = getDockTargetRect(dockEl, controlRect.width);
+  if (!targetRect) return false;
+  const cx = controlRect.left + controlRect.width / 2;
+  const cy = controlRect.top + controlRect.height / 2;
+  return distanceToDockZone(cx, cy, targetRect) <= SNAP_RADIUS;
 }
 
 export function CcmTimerWidget() {
@@ -32,18 +107,22 @@ export function CcmTimerWidget() {
   const addCcmBillableActivity = useAppStore(s => s.addCcmBillableActivity);
   const currentPeriod = periods && periods[0];
 
+  const { dockEl, isDocked, setIsDocked, floatPos, setFloatPos } = useCcmTimerDock();
+
   const [mode, setMode] = useState('idle');
   const [elapsed, setElapsed] = useState(0);
   const [activityType, setActivityType] = useState(CCM_ACTIVITY_TYPES[0]);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
-  const [pos, setPos] = useState(START_POS);
+  const [isDragging, setIsDragging] = useState(false);
 
   const startedAtRef = useRef(null);
   const accumulatedRef = useRef(0);
   const rafRef = useRef(null);
   const loggedTimeoutRef = useRef(null);
   const autoStartedForRef = useRef(null);
+  const shellRef = useRef(null);
+  const controlRef = useRef(null);
 
   const isIdle = mode === 'idle';
   const isRunning = mode === 'running';
@@ -59,6 +138,10 @@ export function CcmTimerWidget() {
     if (!patientId) return;
     if (periods == null) fetchCcmBilling(patientId);
   }, [patientId, periods, fetchCcmBilling]);
+
+  useEffect(() => {
+    setIsDocked(true);
+  }, [patientId, setIsDocked]);
 
   const tick = useCallback(() => {
     if (startedAtRef.current == null) return;
@@ -97,7 +180,6 @@ export function CcmTimerWidget() {
     setMode('idle');
   }, [stopTick]);
 
-  // Auto-start whenever the patient profile (or billing period) opens.
   useEffect(() => {
     if (!patientId || !currentPeriod) return;
     const key = `${patientId}:${currentPeriod.id}`;
@@ -171,35 +253,63 @@ export function CcmTimerWidget() {
     }, LOGGED_FEEDBACK_MS);
   };
 
-  // ── Drag ─────────────────────────────────────────────────────────────
+  const dockTimer = useCallback((endDrag) => {
+    endDrag?.();
+    setIsDragging(false);
+    setIsDocked(true);
+    document.body.classList.remove(DRAG_GHOST_CLASS);
+  }, [setIsDocked]);
+
   const onDragPointerDown = (e) => {
     if (isClassifying) return;
     e.preventDefault();
     const handle = e.currentTarget;
     const { pointerId } = e;
     try { handle.setPointerCapture(pointerId); } catch { /* ignore */ }
+
+    const controlRect = controlRef.current?.getBoundingClientRect();
+    let dragStartPos = floatPos;
+    if (isDocked && controlRect) {
+      dragStartPos = fixedPosFromRect(controlRect);
+      setIsDocked(false);
+      setFloatPos(dragStartPos);
+    }
+
     const startClientX = e.clientX;
     const startClientY = e.clientY;
-    const startPos = pos;
+    const startPos = dragStartPos;
+    setIsDragging(true);
     document.body.classList.add(DRAG_GHOST_CLASS);
+
+    const endDrag = () => {
+      handle.removeEventListener('pointermove', onMove);
+      handle.removeEventListener('pointerup', onUp);
+      handle.removeEventListener('pointercancel', onUp);
+      try { handle.releasePointerCapture(pointerId); } catch { /* ignore */ }
+    };
 
     const onMove = (ev) => {
       if (ev.pointerId !== pointerId) return;
       const dx = ev.clientX - startClientX;
       const dy = ev.clientY - startClientY;
-      setPos({
+      let nextPos = {
         right: Math.max(8, startPos.right - dx),
         bottom: Math.max(8, startPos.bottom - dy),
-      });
+      };
+      const magnet = magnetizePos(nextPos, controlRef.current, dockEl);
+      nextPos = magnet.pos;
+      setFloatPos(nextPos);
+      if (magnet.snap) dockTimer(endDrag);
     };
+
     const onUp = (ev) => {
       if (ev.pointerId !== pointerId) return;
-      handle.removeEventListener('pointermove', onMove);
-      handle.removeEventListener('pointerup', onUp);
-      handle.removeEventListener('pointercancel', onUp);
-      try { handle.releasePointerCapture(pointerId); } catch { /* ignore */ }
+      endDrag();
+      setIsDragging(false);
       document.body.classList.remove(DRAG_GHOST_CLASS);
+      if (shouldSnapToDock(controlRef.current, dockEl)) dockTimer();
     };
+
     handle.addEventListener('pointermove', onMove);
     handle.addEventListener('pointerup', onUp);
     handle.addEventListener('pointercancel', onUp);
@@ -207,8 +317,27 @@ export function CcmTimerWidget() {
 
   if (!currentPeriod) return null;
 
-  return (
-    <div className={styles.wrap} style={{ right: pos.right, bottom: pos.bottom }}>
+  const shellClass = [
+    isDocked ? styles.dockHost : styles.wrap,
+    isDocked && !isClassifying ? styles.dockHostInline : '',
+    !isDocked && !isDragging ? styles.wrapAnimated : '',
+    isDragging ? styles.wrapDragging : '',
+  ].filter(Boolean).join(' ');
+
+  const controlClass = [
+    styles.control,
+    isDocked ? styles.controlDocked : '',
+  ].filter(Boolean).join(' ');
+
+  const chipWrapClass = [
+    styles.chipWrap,
+    isDocked ? styles.chipWrapDocked : '',
+    isDocked && chipIdle ? styles.chipWrapIdle : '',
+    isDocked && chipActive ? styles.chipWrapActive : '',
+  ].filter(Boolean).join(' ');
+
+  const ui = (
+    <div ref={shellRef} className={shellClass} style={isDocked ? undefined : { right: floatPos.right, bottom: floatPos.bottom }}>
       {isClassifying && (
         <div className={styles.formPanel}>
           <div className={styles.formHead}>
@@ -241,13 +370,13 @@ export function CcmTimerWidget() {
         </div>
       )}
 
-      <div className={styles.control}>
+      <div ref={controlRef} className={controlClass}>
         <button
           type="button"
           className={styles.dragHandle}
           onPointerDown={onDragPointerDown}
           aria-label="Drag timer"
-          title="Drag to reorder"
+          title="Drag to move or dock"
         >
           <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" aria-hidden="true">
             <circle cx="2" cy="2" r="1.3" />
@@ -259,17 +388,28 @@ export function CcmTimerWidget() {
           </svg>
         </button>
 
-        <div className={styles.chipWrap}>
-          {chipIdle && (
-            <div className={styles.chipIdle}>
-              <span className={`${styles.chipTime} ${styles.chipTimeIdle}`}>{secondsToTime(elapsed)}</span>
-            </div>
-          )}
-          {chipActive && (
-            <div className={styles.chipActive}>
+        <div className={chipWrapClass}>
+          {isDocked ? (
+            <>
               {isRunning && <span className={styles.chipDot} aria-hidden="true" />}
-              <span className={`${styles.chipTime} ${styles.chipTimeActive}`}>{secondsToTime(elapsed)}</span>
-            </div>
+              <span className={`${styles.chipTime} ${chipIdle ? styles.chipTimeIdle : styles.chipTimeActive}`}>
+                {secondsToTime(elapsed)}
+              </span>
+            </>
+          ) : (
+            <>
+              {chipIdle && (
+                <div className={styles.chipIdle}>
+                  <span className={`${styles.chipTime} ${styles.chipTimeIdle}`}>{secondsToTime(elapsed)}</span>
+                </div>
+              )}
+              {chipActive && (
+                <div className={styles.chipActive}>
+                  {isRunning && <span className={styles.chipDot} aria-hidden="true" />}
+                  <span className={`${styles.chipTime} ${styles.chipTimeActive}`}>{secondsToTime(elapsed)}</span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -277,19 +417,19 @@ export function CcmTimerWidget() {
           <button type="button" className={styles.segmentBtn} onClick={onPrimary}>
             {isIdle && (
               <>
-                <Icon name="solar:play-circle-linear" size={17} color="var(--primary-300)" />
+                <Icon name="solar:play-circle-linear" size={isDocked ? 14 : 17} color="var(--primary-300)" />
                 <span className={`${styles.segmentLabel} ${styles.segmentStart}`}>Start</span>
               </>
             )}
             {isRunning && (
               <>
-                <Icon name="solar:pause-circle-linear" size={16} color="var(--neutral-400)" />
+                <Icon name="solar:pause-circle-linear" size={isDocked ? 14 : 16} color="var(--neutral-400)" />
                 <span className={`${styles.segmentLabel} ${styles.segmentPause}`}>Pause</span>
               </>
             )}
             {isPaused && (
               <>
-                <Icon name="solar:play-linear" size={15} color="var(--status-success)" />
+                <Icon name="solar:play-linear" size={isDocked ? 14 : 15} color="var(--status-success)" />
                 <span className={`${styles.segmentLabel} ${styles.segmentResume}`}>Resume</span>
               </>
             )}
@@ -311,16 +451,22 @@ export function CcmTimerWidget() {
 
         {canLog ? (
           <button type="button" className={styles.logBtn} onClick={onLog}>
-            <Icon name="solar:add-circle-linear" size={16} color="var(--neutral-0)" />
+            <Icon name="solar:add-circle-linear" size={isDocked ? 14 : 16} color="var(--neutral-0)" />
             <span className={styles.logBtnLabel}>Log</span>
           </button>
         ) : (
           <div className={styles.logBtnDisabled} aria-disabled="true">
-            <Icon name="solar:add-circle-linear" size={16} color="var(--neutral-200)" />
+            <Icon name="solar:add-circle-linear" size={isDocked ? 14 : 16} color="var(--neutral-200)" />
             <span className={styles.logBtnLabel}>Log</span>
           </div>
         )}
       </div>
     </div>
   );
+
+  if (isDocked && dockEl) {
+    return createPortal(ui, dockEl);
+  }
+
+  return ui;
 }

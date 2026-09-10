@@ -12,6 +12,7 @@ import { ClinicalNotePreviewDrawer } from '../tasks/ClinicalNotePreviewDrawer';
 import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
 import { TasksTab } from './left-panel/tabs/tasks/TasksTab/TasksTab';
 import { CcmTimerWidget } from './shell/CcmTimerWidget/CcmTimerWidget';
+import { CcmTimerDockProvider } from './shell/CcmTimerWidget/CcmTimerDockContext';
 import styles from './PatientDetailView.module.css';
 
 function TabPlaceholder({ tabName }) {
@@ -198,6 +199,7 @@ export function PatientDetailView() {
   if (!patientWithAppStatus) return null;
 
   return (
+    <CcmTimerDockProvider>
     <div className={styles.wrapper}>
       <PatientP360Banner patient={patientWithAppStatus} />
       <CcmTimerWidget />
@@ -241,6 +243,7 @@ export function PatientDetailView() {
       </div>
       <P360NotePreviewMount />
     </div>
+    </CcmTimerDockProvider>
   );
 }
 

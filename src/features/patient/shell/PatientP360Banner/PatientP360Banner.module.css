@@ -264,6 +264,20 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 
+.row2Spacer {
+  flex: 1;
+  min-width: 12px;
+}
+
+.timerDockSlot {
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
 /* Tags */
 /* Teal is collapsed into info/blue for dark-mode compatibility; was #109CAE / #E5F8FB in light-only era */
 .tagCyan { display: inline-flex; align-items: center; gap: 4px; height: 22px; padding: 2px 6px; border-radius: 4px; font-size: var(--font-base); color: var(--status-info); background: var(--status-info-light); border: 0.5px solid color-mix(in srgb, var(--status-info) 20%, transparent); }
