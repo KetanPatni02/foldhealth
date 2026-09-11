@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
+import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
+import { DateRangePopover } from '../../../../../../../components/DateRangePopover/DateRangePopover';
 import { getOpenIcdsForMember } from '../../../../../../hcc/data/icds';
 import styles from './ProgramDiagnosisGapsTable.module.css';
 
@@ -45,6 +47,22 @@ function groupByHcc(icds) {
     };
   });
 }
+
+// Parse an MM/DD/YYYY string into a comparable Date. Returns null if
+// the value is missing or malformed (e.g. the "-" placeholder).
+function parseMmddyyyy(s) {
+  if (!s || typeof s !== 'string') return null;
+  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!m) return null;
+  return new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
+}
+
+function yearOf(dateStr) {
+  const d = parseMmddyyyy(dateStr);
+  return d ? String(d.getFullYear()) : null;
+}
+
+const EMPTY_FILTERS = { my: [], hcc: [], icd: [], date: [] };
 
 function DiagnosisGapRow({ item }) {
   const [expanded, setExpanded] = useState(false);
@@ -101,39 +119,155 @@ function DiagnosisGapRow({ item }) {
 }
 
 export function ProgramDiagnosisGapsTable({ memberName, search }) {
-  const items = useMemo(() => {
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const setFilter = (k, v) => setFilters(f => ({ ...f, [k]: v }));
+
+  const allGroups = useMemo(() => {
     if (!memberName) return [];
     const { all } = getOpenIcdsForMember(memberName);
-    const grouped = groupByHcc(all);
-    const q = (search || '').trim().toLowerCase();
-    if (!q) return grouped;
-    return grouped.filter(g => {
-      const inTitle = g.raw.toLowerCase().includes(q);
-      const inIcds = g.icds.some(i =>
-        (i.code || '').toLowerCase().includes(q)
-        || (i.desc || '').toLowerCase().includes(q),
-      );
-      return inTitle || inIcds;
-    });
-  }, [memberName, search]);
+    return groupByHcc(all);
+  }, [memberName]);
 
-  if (!items.length) {
-    return (
-      <div className={styles.wrapper}>
-        <div className={styles.empty}>
-          {search ? 'No diagnosis gaps match your search' : 'No open diagnosis gaps'}
-        </div>
-      </div>
-    );
-  }
+  // Options are derived from the full unfiltered set so a picker never
+  // hides a value the user might want to add — narrowing on Measure Year
+  // doesn't collapse the HCC dropdown to a single row.
+  const filterMeta = useMemo(() => {
+    const yearSet = new Set();
+    const hccSet = new Set();
+    const icdSet = new Set();
+    for (const g of allGroups) {
+      for (const icd of g.icds) {
+        const y = yearOf(icd.last);
+        if (y) yearSet.add(y);
+        if (icd.code) icdSet.add(icd.code);
+      }
+      if (g.raw) hccSet.add(g.raw);
+    }
+    // Fall back to the standard 3-year Measurement Year window when the
+    // data itself doesn't carry dates, so the filter still reads normally.
+    if (!yearSet.size) {
+      const y = new Date().getFullYear();
+      [y, y - 1, y - 2].forEach(v => yearSet.add(String(v)));
+    }
+    return {
+      years: [...yearSet].sort((a, b) => Number(b) - Number(a)),
+      hccs: [...hccSet].sort(),
+      icds: [...icdSet].sort(),
+    };
+  }, [allGroups]);
+
+  const items = useMemo(() => {
+    const q = (search || '').trim().toLowerCase();
+    const yearActive = filters.my.length > 0;
+    const hccActive = filters.hcc.length > 0;
+    const icdActive = filters.icd.length > 0;
+    const [rangeStart, rangeEnd] = filters.date;
+    const start = rangeStart ? new Date(rangeStart) : null;
+    const end = rangeEnd ? new Date(rangeEnd) : null;
+
+    return allGroups.filter(g => {
+      // Group-level HCC filter — the whole HCC row drops out when its
+      // label isn't in the picked set.
+      if (hccActive && !filters.hcc.includes(g.raw)) return false;
+
+      // The other filters gate on the ICDs inside the group. A group
+      // survives when at least one ICD passes every active filter, so a
+      // narrow ICD pick doesn't also require a matching HCC pick to keep
+      // the HCC card visible.
+      const someIcdMatches = g.icds.some(icd => {
+        if (icdActive && !filters.icd.includes(icd.code)) return false;
+        if (yearActive) {
+          const y = yearOf(icd.last);
+          if (!y || !filters.my.includes(y)) return false;
+        }
+        if (start || end) {
+          const d = parseMmddyyyy(icd.last);
+          if (!d) return false;
+          if (start && d < start) return false;
+          if (end && d > end) return false;
+        }
+        if (q) {
+          const inCode = (icd.code || '').toLowerCase().includes(q);
+          const inDesc = (icd.desc || '').toLowerCase().includes(q);
+          const inHcc = g.raw.toLowerCase().includes(q);
+          if (!inCode && !inDesc && !inHcc) return false;
+        }
+        return true;
+      });
+      return someIcdMatches;
+    });
+  }, [allGroups, filters, search]);
+
+  const dateSummary = filters.date.length === 2
+    ? `${fmtShort(filters.date[0])} – ${fmtShort(filters.date[1])}`
+    : '';
 
   return (
     <div className={styles.wrapper}>
-      <div className={styles.card}>
-        {items.map(item => (
-          <DiagnosisGapRow key={item.id} item={item} />
-        ))}
+      <div className={styles.filterBar}>
+        <FilterChip
+          size="S"
+          label="Measure Year"
+          options={filterMeta.years}
+          selected={filters.my}
+          onChange={v => setFilter('my', v)}
+        />
+        <FilterChip
+          size="S"
+          label="HCC"
+          options={filterMeta.hccs}
+          selected={filters.hcc}
+          onChange={v => setFilter('hcc', v)}
+          searchable
+        />
+        <FilterChip
+          size="S"
+          label="ICD"
+          options={filterMeta.icds}
+          selected={filters.icd}
+          onChange={v => setFilter('icd', v)}
+          searchable
+        />
+        <FilterChip
+          size="S"
+          label="Documented Date"
+          active={filters.date.length === 2}
+          activeSummary={dateSummary}
+          onClear={() => setFilter('date', [])}
+          renderPopover={({ anchorRect, onClose }) => (
+            <DateRangePopover
+              anchorRect={anchorRect}
+              label="Documented Date"
+              selected={filters.date}
+              onChange={v => setFilter('date', v)}
+              onClose={onClose}
+            />
+          )}
+        />
       </div>
+      {items.length ? (
+        <div className={styles.card}>
+          {items.map(item => (
+            <DiagnosisGapRow key={item.id} item={item} />
+          ))}
+        </div>
+      ) : (
+        <div className={styles.empty}>
+          {search || filters.my.length || filters.hcc.length || filters.icd.length || filters.date.length
+            ? 'No diagnosis gaps match your filters'
+            : 'No open diagnosis gaps'}
+        </div>
+      )}
     </div>
   );
+}
+
+// Short display (MM/DD) for the Documented Date chip. Keeps the pill
+// value legible without repeating the full 10-char date twice.
+function fmtShort(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return String(iso);
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${mm}/${dd}`;
 }
