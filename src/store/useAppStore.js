@@ -7488,6 +7488,61 @@ export const useAppStore = create((set, get) => ({
     }));
     persistHedisGaps(memberId);
   },
+
+  // Open a NEW HEDIS gap on a member natively inside Fold, distinct
+  // from gaps ingested from the Astrana API. Today's caller is DSF-A's
+  // "Save score" path — a Positive PHQ-2 automatically opens DSF-B on
+  // the same member so the follow-up PHQ-9 flow has a row to attach to.
+  // Idempotent — a gap with the same code is not duplicated. Also
+  // drops a Fold-native activity entry so the timeline reads "Gap
+  // opened by PHQ-2 Positive" instead of the Astrana ingestion source.
+  openNativeGap: (memberId, code, meta = {}) => {
+    track('hedis.gap_opened_native', { memberId, code });
+    const startDate = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    let created = false;
+    set(s => ({
+      hedisMembers: (s.hedisMembers || []).map(m => {
+        if (m.id !== memberId) return m;
+        const gaps = m.gaps || [];
+        if (gaps.some(g => g.code === code)) return m; // idempotent
+        created = true;
+        return {
+          ...m,
+          gaps: [
+            ...gaps,
+            {
+              code,
+              status: 'Open',
+              startDate,
+              assignee: meta.assignee || m.assignee || null,
+              source: 'fold-native',
+              linkedTo: meta.linkedTo || null,
+              dueDateISO: meta.dueDateISO || null,
+            },
+          ],
+        };
+      }),
+    }));
+    if (created) {
+      persistHedisGaps(memberId);
+      const entry = {
+        id: Date.now(),
+        at: new Date().toISOString(),
+        actor: 'Fold',
+        t: 'system',
+        title: meta.title || `Gap opened - ${code}`,
+        subtitle: meta.subtitle || (meta.linkedTo ? `Linked to ${meta.linkedTo}` : null),
+      };
+      set(s => ({
+        caregapActivity: {
+          ...s.caregapActivity,
+          [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
+        },
+      }));
+      persistCaregapActivityInsert(memberId, entry);
+    }
+    return created;
+  },
   logCareGapActivity: (memberId, entry) => {
     const full = { id: Date.now(), at: new Date().toISOString(), ...entry };
     set(s => ({

@@ -71,5 +71,8 @@ export function useWorklistColumns(worklistKey, defaultColumns, options = {}) {
  * ColumnConfigPopover's { k, lb } shape.
  */
 export function toPopoverColumns(columns) {
-  return columns.map(c => ({ k: c.key || c.k, lb: c.label || c.lb }));
+  // `popoverLabel` wins when set so a table header can stay compact
+  // (e.g. "P", "Start") while the column-picker row reads the full name
+  // ("Priority", "Start Date"). Falls back to the header label otherwise.
+  return columns.map(c => ({ k: c.key || c.k, lb: c.popoverLabel || c.label || c.lb }));
 }

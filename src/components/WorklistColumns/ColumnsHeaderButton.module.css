@@ -9,6 +9,11 @@
   width: 100%;
   justify-content: space-between;
 }
+/* Bare-icon variant (no label) — center the trigger in the header cell
+   so it doesn't hug the right edge inside a narrow actions column. */
+.wrapIconOnly {
+  justify-content: center;
+}
 
 .label {
   font-size: var(--font-sm);

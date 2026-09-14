@@ -1,0 +1,224 @@
+/* DSF-A / DSF-B evidence-form styles. Local to the DSF surface so
+   nothing here leaks into the other HEDIS measures' bespoke forms. */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.fieldStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.fieldLabel {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.required { color: var(--status-error); }
+.fieldError {
+  font-size: var(--font-sm);
+  color: var(--status-error);
+  margin-top: var(--space-1);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.radioStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.procedureRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--radius-md, 8px);
+  background: var(--neutral-25);
+}
+.procedureLabel {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.procedureValue {
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+}
+
+/* ── Likert score matrix ─────────────────────────────────────────── */
+.matrix {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  background: var(--neutral-0);
+}
+.matrixHeader,
+.matrixRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(4, 84px);
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+.matrixHeader {
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.matrixRow {
+  border-bottom: 0.5px solid var(--neutral-100);
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+}
+.matrixRow:last-child { border-bottom: none; }
+.matrixQuestion {
+  min-width: 0;
+  padding-right: var(--space-2);
+  line-height: var(--leading-normal);
+}
+.matrixCell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.matrixLocked {
+  background: var(--neutral-25);
+  color: var(--neutral-300);
+  pointer-events: none;
+}
+
+/* ── Score-block save flow (info banner + Save button + result) ─── */
+.scoreBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--radius-md, 8px);
+  background: var(--neutral-25);
+}
+.scoreBlockRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.scoreTotal {
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.scoreHelp {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.resultLabel {
+  font-size: var(--font-md);
+  font-weight: 500;
+}
+.resultLabelPositive { color: var(--status-warning); }
+.resultLabelNegative { color: var(--status-success); }
+
+/* ── Care Plan outcome panel ─────────────────────────────────────── */
+.carePlanPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--primary-100);
+  border-left: 4px solid var(--primary-300);
+  border-radius: var(--radius-md, 8px);
+  background: var(--primary-25);
+}
+.carePlanTitle {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.carePlanBullets {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+  line-height: var(--leading-normal);
+}
+.carePlanBullets li { padding-left: var(--space-1); }
+.carePlanFooter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 0.5px dashed var(--primary-200);
+}
+.carePlanCheckboxRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+.carePlanCheckboxLabel {
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+  font-weight: 500;
+}
+
+/* Standing "Decline follow-up" checkbox — same shape as
+   .carePlanCheckboxRow but with an emphasized left indent + amber
+   accent so it never blends into a body form field. */
+.declineRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--radius-md, 8px);
+  background: var(--neutral-0);
+  cursor: pointer;
+}
+.declineLabel {
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+  font-weight: 500;
+}
+
+.subQuestion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--radius-md, 8px);
+  background: var(--neutral-25);
+}
+.subQuestionText {
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+}
+.subQuestionRadios {
+  display: flex;
+  gap: var(--space-3);
+}

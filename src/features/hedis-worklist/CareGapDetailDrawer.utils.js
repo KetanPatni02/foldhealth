@@ -12,6 +12,8 @@ export const MEASURE_NAMES = {
   KED:      'Kidney Health Evaluation',
   EED:      'Eye Exam for Patients With Diabetes',
   GSD3:     'Glycemic Status Assessment',
+  'DSF-A':  'Depression Screening (PHQ-2)',
+  'DSF-B':  'Depression Follow-Up (PHQ-9)',
 };
 
 export const STATUSES = [

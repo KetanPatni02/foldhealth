@@ -35,6 +35,8 @@ export const MEASURE_NAMES = {
   APE:        'Adult Preventive Exam',
   FMC:        'Follow-Up After ED Visit for Mental Illness',
   MRP:        'Medication Reconciliation Post-Discharge',
+  'DSF-A':    'Depression Screening (PHQ-2)',
+  'DSF-B':    'Depression Follow-Up (PHQ-9)',
 };
 
 export const EED_EXAM_TYPES = [
@@ -456,6 +458,13 @@ export const GAP_TEMPLATES = {
 export const MANDATORY_FIELDS = {
   EED: ['evidenceType', 'examType', 'examDate', 'examiningProvider', 'examResult', 'icd10', 'patientCounseledOn'],
   CBP: ['bpDate', 'systolic', 'diastolic', 'location'],
+  // DSF-A / DSF-B: DOS + Location + telehealth consent (when telehealth) +
+  // provider + a saved PHQ-2 score are the minimum before Submit for Review.
+  // DSF-B additionally needs a saved PHQ-9 score and the "All components of
+  // care plan completed" acknowledgement, OR the standing Decline checkbox
+  // (Decline short-circuits the sign-off queue entirely — see plan Section 6).
+  'DSF-A': ['dateOfService', 'location', 'telehealthConsent', 'performedBy', 'phq2ScoreSaved'],
+  'DSF-B': ['dateOfService', 'location', 'telehealthConsent', 'performedBy', 'phq9ScoreSaved', 'carePlanAcknowledged'],
 };
 
 function mandatoryFieldsFor(code) {
@@ -504,13 +513,71 @@ export function defaultGapData(code) {
         nextExamDue: '',
         patientCounseledOn: '',
       };
+    case 'DSF-A':
+      return {
+        evidenceLabel: 'DSF-A Evidence',
+        // Date of Service and telehealth consent live on the note-level
+        // shared DOS card (v.dateOfService / v.audioOnly / v.audioVideo).
+        // DSF-A only owns its Location radio + Performed by + PHQ-2.
+        location: '',                    // 'telehealth' | 'home'
+        performedBy: '',
+        phq2: { item1: null, item2: null, totalScore: null, savedAt: null, locked: false, outcome: null },
+        decline: false,
+        carePlan: { allCompleted: false, outreachNotes: '' },
+      };
+    case 'DSF-B':
+      return {
+        evidenceLabel: 'DSF-B Evidence',
+        location: '',
+        performedBy: '',
+        phq9: { items: [null, null, null, null, null, null, null, null, null], totalScore: null, band: null, subMildAnswer: null, savedAt: null, locked: false },
+        decline: false,
+        carePlan: { allCompleted: false, outreachNotes: '' },
+      };
     default:
       return defaultTemplateData(code);
   }
 }
 
-export function isMandatoryComplete(code, data) {
+// Derived-flag lookup used only by DSF-A / DSF-B where the "mandatory"
+// entries are computed from nested payload state (telehealth consent is
+// really "Location=Home OR audio-only/audio-video consent ticked in the
+// shared DOS card"; phq2ScoreSaved reads the nested `phq2.locked`; etc.).
+// Kept here so the derivation lives next to the MANDATORY_FIELDS list it
+// feeds. `noteContext` carries the note-level audioOnly/audioVideo flags
+// that the shared DOS card owns — DSF-A doesn't duplicate that block.
+function dsfDerivedFlag(field, data, noteContext) {
+  switch (field) {
+    case 'telehealthConsent':
+      return data.location === 'home'
+        || !!noteContext?.audioOnly
+        || !!noteContext?.audioVideo;
+    case 'phq2ScoreSaved': {
+      // No explicit Save step any more — DSF-A is "scored" once both
+      // PHQ-2 items carry a numeric answer.
+      const p = data.phq2 || {};
+      return p.item1 != null && p.item2 != null;
+    }
+    case 'phq9ScoreSaved': {
+      const items = data.phq9?.items || [];
+      return items.length === 9 && items.every(v => v != null);
+    }
+    case 'carePlanAcknowledged':
+      return !!data.decline || !!data.carePlan?.allCompleted;
+    default:
+      return null; // caller falls back to the raw truthy check
+  }
+}
+
+export function isMandatoryComplete(code, data, noteContext) {
   const req = mandatoryFieldsFor(code);
   if (!req.length || !data) return false;
-  return req.every(f => !!data[f]);
+  const isDsf = code === 'DSF-A' || code === 'DSF-B';
+  return req.every(f => {
+    if (isDsf) {
+      const derived = dsfDerivedFlag(f, data, noteContext);
+      if (derived !== null) return derived;
+    }
+    return !!data[f];
+  });
 }

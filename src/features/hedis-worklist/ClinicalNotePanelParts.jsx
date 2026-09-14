@@ -24,9 +24,16 @@ import {
   CBP_YES_NO,
   CBP_SYMPTOM_OPTIONS,
   GAP_TEMPLATES,
-  isMandatoryComplete,
+  isMandatoryComplete as isMandatoryCompleteRaw,
 } from './ClinicalNotePanel.utils';
+import { DsfaEvidenceForm, DsfbEvidenceForm } from './dsf/DsfEvidenceForms';
 import styles from './ClinicalNotePanel.module.css';
+
+// Wraps `isMandatoryComplete` so DSF measures see the note-level
+// audio-only/audio-video consent flags. Non-DSF codes are unaffected.
+function isMandatoryComplete(code, data, v) {
+  return isMandatoryCompleteRaw(code, data, v ? { audioOnly: v.audioOnly, audioVideo: v.audioVideo } : undefined);
+}
 
 export function HeaderActions({
   onSaveDraft,
@@ -265,12 +272,12 @@ export function NoteContextPane({ v, member, year }) {
               gap={g}
               data={v.gapState[g.code]}
               ready={v.isReadyForReview(g.code)}
-              mandatoryComplete={isMandatoryComplete(g.code, v.gapState[g.code])}
+              mandatoryComplete={isMandatoryComplete(g.code, v.gapState[g.code], v)}
               assignee={v.assigneeFor(g)}
               isActive={v.activeGapCode === g.code}
               onSelect={() => v.setActiveGapCode(g.code)}
               onToggleReady={(next) => {
-                if (next && !isMandatoryComplete(g.code, v.gapState[g.code])) return;
+                if (next && !isMandatoryComplete(g.code, v.gapState[g.code], v)) return;
                 v.updateGap(g.code, { manuallyOff: !next });
               }}
             />
@@ -335,7 +342,7 @@ export function GapEvidencePane({ v }) {
 
   const data = v.gapState[gap.code] ?? {};
   const ready = v.isReadyForReview(gap.code);
-  const mandatoryComplete = isMandatoryComplete(gap.code, data);
+  const mandatoryComplete = isMandatoryComplete(gap.code, data, v);
   const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
   const assignee = v.assigneeFor(gap);
 
@@ -393,6 +400,10 @@ export function GapEvidencePane({ v }) {
             <EedEvidenceForm v={v} data={data} submitted={v.submitted} />
           ) : gap.code === 'CBP' ? (
             <CbpEvidenceForm v={v} data={data} submitted={v.submitted} />
+          ) : gap.code === 'DSF-A' ? (
+            <DsfaEvidenceForm v={v} data={data} submitted={v.submitted} onOpenPhq9Gap={v.openDsfbGap} />
+          ) : gap.code === 'DSF-B' ? (
+            <DsfbEvidenceForm v={v} data={data} submitted={v.submitted} />
           ) : GAP_TEMPLATES[gap.code] ? (
             <GenericEvidenceForm code={gap.code} v={v} data={data} submitted={v.submitted} />
           ) : (
@@ -513,6 +524,10 @@ function GapSection({ v, gap }) {
             <EedEvidenceForm v={v} data={data} submitted={v.submitted} />
           ) : gap.code === 'CBP' ? (
             <CbpEvidenceForm v={v} data={data} submitted={v.submitted} />
+          ) : gap.code === 'DSF-A' ? (
+            <DsfaEvidenceForm v={v} data={data} submitted={v.submitted} onOpenPhq9Gap={v.openDsfbGap} />
+          ) : gap.code === 'DSF-B' ? (
+            <DsfbEvidenceForm v={v} data={data} submitted={v.submitted} />
           ) : GAP_TEMPLATES[gap.code] ? (
             <GenericEvidenceForm code={gap.code} v={v} data={data} submitted={v.submitted} />
           ) : (
@@ -1052,6 +1067,10 @@ export function ClinicalNoteWorkspaceBody({ v }) {
           <EedEvidenceForm v={v} data={data} submitted={v.submitted} />
         ) : gap.code === 'CBP' ? (
           <CbpEvidenceForm v={v} data={data} submitted={v.submitted} />
+        ) : gap.code === 'DSF-A' ? (
+          <DsfaEvidenceForm v={v} data={data} submitted={v.submitted} onOpenPhq9Gap={v.openDsfbGap} />
+        ) : gap.code === 'DSF-B' ? (
+          <DsfbEvidenceForm v={v} data={data} submitted={v.submitted} />
         ) : GAP_TEMPLATES[gap.code] ? (
           <GenericEvidenceForm code={gap.code} v={v} data={data} submitted={v.submitted} />
         ) : (

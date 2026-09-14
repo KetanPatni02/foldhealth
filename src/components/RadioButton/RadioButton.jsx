@@ -15,12 +15,17 @@ import styles from './RadioButton.module.css';
  * @param {boolean}  props.checked     – Current selected state
  * @param {function} props.onChange    – Called on click
  * @param {string}   [props.label]    – Optional visible label text
+ * @param {string}   [props.ariaLabel] – Screen-reader-only label. Use when
+ *                                       the visible label would be too
+ *                                       verbose (e.g. score matrices that
+ *                                       already show the question / column
+ *                                       header). Falls back to `label`.
  * @param {boolean}  [props.disabled] – Disable interaction
  * @param {string}   [props.className] – Extra class on the wrapper
  * @param {string}   [props.name]     – HTML name attribute for form grouping
  * @param {string}   [props.value]    – HTML value attribute
  */
-export function RadioButton({ checked, onChange, label, disabled = false, className, name, value }) {
+export function RadioButton({ checked, onChange, label, ariaLabel, disabled = false, className, name, value }) {
   const wrapClass = [
     styles.radioOption,
     disabled ? styles.radioOptionDisabled : '',
@@ -32,7 +37,7 @@ export function RadioButton({ checked, onChange, label, disabled = false, classN
       type="button"
       role="radio"
       aria-checked={checked}
-      aria-label={label}
+      aria-label={ariaLabel || label}
       disabled={disabled}
       className={wrapClass}
       onClick={(e) => {

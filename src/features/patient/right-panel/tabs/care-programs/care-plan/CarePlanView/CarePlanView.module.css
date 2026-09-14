@@ -470,8 +470,22 @@
   justify-content: flex-start;
   gap: var(--space-1);
 }
+/* Bare wrapper so a section-header duplicate Badge stays clickable
+   without inheriting the default button chrome. Sits inline right
+   after the section title's count pill. */
+.duplicateBadgeBtn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
 .gbiSectionHeadEnd {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .barriersSectionHead {
   justify-content: flex-start;

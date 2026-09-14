@@ -33,9 +33,15 @@ export function ColumnsHeaderButton({
     setAnchorRect(e.currentTarget.getBoundingClientRect());
   };
 
+  // When the caller passes an empty label (or opts out with showLabel),
+  // drop the label span entirely and center the icon in the cell —
+  // otherwise `justify-content: space-between` on the wrap pins a bare
+  // icon to the right edge instead of centering it.
+  const hasLabel = showLabel && !!label;
+
   return (
-    <span className={styles.wrap}>
-      {showLabel && <span className={styles.label}>{label}</span>}
+    <span className={`${styles.wrap} ${hasLabel ? '' : styles.wrapIconOnly}`}>
+      {hasLabel && <span className={styles.label}>{label}</span>}
       <button
         ref={btnRef}
         type="button"
@@ -44,7 +50,7 @@ export function ColumnsHeaderButton({
         aria-label="Show or hide columns"
         onClick={openOrClose}
       >
-        <ColumnsIcon size={16} color={anchorRect ? 'var(--primary-300)' : 'var(--neutral-300)'} />
+        <ColumnsIcon size={14} color={anchorRect ? 'var(--primary-300)' : 'var(--neutral-300)'} />
       </button>
 
       {anchorRect && (

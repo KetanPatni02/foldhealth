@@ -219,26 +219,42 @@ export function WorklistShell({
   const entityPlural = bulkSelect?.entityLabelPlural || `${entity}s`;
 
   // Only non-sticky columns are user-customisable. The sticky columns keep
-  // their fixed position around the customisable band.
-  const { customisableColumns, lockedTop, lockedBottom } = useMemo(() => {
+  // their fixed position around the customisable band. A non-sticky
+  // column can also opt out of the picker with `locked: true` — it stays
+  // rendered in-flow but the popover shows it as a locked bottom row
+  // (mixed in with the sticky-right locked rows for the picker's UX).
+  const { customisableColumns, lockedInFlow, lockedTop, lockedBottom } = useMemo(() => {
     const top = [];
-    const bot = [];
+    const botSticky = [];
+    const botLockedInFlow = [];
     const mid = [];
     for (const c of columns) {
       if (c.sticky === 'left' && !c.showCheckbox) top.push(c);
-      else if (c.sticky === 'right') bot.push(c);
+      else if (c.sticky === 'right') botSticky.push(c);
+      else if (c.locked && !c.showCheckbox) botLockedInFlow.push(c);
       else if (!c.showCheckbox) mid.push(c);
     }
     return {
       customisableColumns: mid,
-      lockedTop: top.map(c => ({ k: c.key, lb: c.label })),
-      lockedBottom: bot.map(c => ({ k: c.key, lb: c.label })),
+      lockedInFlow: botLockedInFlow,
+      lockedTop: top.map(c => ({ k: c.key, lb: c.popoverLabel || c.label })),
+      lockedBottom: [...botLockedInFlow, ...botSticky].map(c => ({
+        k: c.key, lb: c.popoverLabel || c.label,
+      })),
     };
   }, [columns]);
 
   // `prefs` is only wired when the caller opts in with worklistKey. Otherwise
   // pass through the raw column list so existing worklists keep working.
-  const prefs = useWorklistColumns(worklistKey || '__off__', customisableColumns);
+  const hiddenByDefault = useMemo(
+    () => customisableColumns.filter(c => c.defaultHidden).map(c => c.key || c.k),
+    [customisableColumns],
+  );
+  const prefs = useWorklistColumns(
+    worklistKey || '__off__',
+    customisableColumns,
+    { hiddenByDefault },
+  );
   const activeCustomisable = worklistKey ? prefs.visibleColumns : customisableColumns;
   const hiddenSet = worklistKey ? prefs.hiddenSet : null;
   const orderedColumnsForRow = worklistKey
@@ -246,6 +262,7 @@ export function WorklistShell({
         ...columns.filter(c => c.showCheckbox),
         ...columns.filter(c => c.sticky === 'left' && !c.showCheckbox),
         ...activeCustomisable,
+        ...lockedInFlow,
         ...columns.filter(c => c.sticky === 'right'),
       ]
     : columns;

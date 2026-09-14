@@ -16,6 +16,7 @@ const FORM_TYPE_LABEL = {
 export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, onClose, editingTaskId = null, amendNoteId = null }) {
   const showToast = useAppStore(s => s.showToast);
   const bulkUpdateGapStatuses = useAppStore(s => s.bulkUpdateGapStatuses);
+  const openNativeGap = useAppStore(s => s.openNativeGap);
   const logCareGapActivity = useAppStore(s => s.logCareGapActivity);
   const createCareGapSignOffTask = useAppStore(s => s.createCareGapSignOffTask);
   const updateSignOffTaskPdf = useAppStore(s => s.updateSignOffTaskPdf);
@@ -123,9 +124,50 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     if (editKeys.length) markDirty(code);
   }, [markDirty]);
 
+  // Back-fill gapState whenever a new gap appears on the member (e.g.
+  // DSF-B opened natively after PHQ-2 Positive). Without this the DSF-B
+  // dispatch would crash on undefined data.
+  useEffect(() => {
+    setGapState(prev => {
+      let next = prev;
+      for (const g of activeGaps) {
+        if (!next[g.code]) {
+          if (next === prev) next = { ...prev };
+          next[g.code] = { manuallyOff: false, ...defaultGapData(g.code), ...(g.draft ?? {}) };
+        }
+      }
+      return next;
+    });
+  }, [activeGaps]);
+
+  // DSF-A calls this from its "Save score" handler when PHQ-2 lands
+  // Positive. Opens a DSF-B gap on the same member natively (30-day
+  // due date computed from the save timestamp) and jumps the RHS pane
+  // to it so the Coordinator flows straight into PHQ-9. Idempotent —
+  // subsequent calls no-op via the store's dedup.
+  const openDsfbGap = useCallback(({ savedAt } = {}) => {
+    if (!member?.id) return;
+    const stamp = savedAt ? new Date(savedAt) : new Date();
+    const due = new Date(stamp);
+    due.setDate(due.getDate() + 30);
+    const dueDateISO = due.toISOString();
+    const created = openNativeGap(member.id, 'DSF-B', {
+      linkedTo: 'DSF-A',
+      dueDateISO,
+      title: 'Gap opened - PHQ-2 Positive',
+      subtitle: 'Linked to DSF-A - 30-day window',
+    });
+    if (created) {
+      showToast?.('DSF-B opened - continue with PHQ-9');
+      // Nudge the RHS to the new gap once the store update reaches this
+      // hook via the member prop refresh.
+      setTimeout(() => setActiveGapCode('DSF-B'), 0);
+    }
+  }, [member?.id, openNativeGap, showToast]);
+
   const isReadyForReview = (code) => {
     const data = gapState[code] ?? {};
-    return isMandatoryComplete(code, data) && !data.manuallyOff;
+    return isMandatoryComplete(code, data, { audioOnly, audioVideo }) && !data.manuallyOff;
   };
 
   const collectReadyCodes = () => {
@@ -444,20 +486,47 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       reviewerName: reviewer.name,
     });
     if (note?.id) finalCodes.forEach(c => rememberNoteId(c, note.id));
-    bulkUpdateGapStatuses(member.id, Object.fromEntries(finalCodes.map(c => [c, 'Submitted'])), { assignee: reviewer.name });
+    // DSF Decline short-circuit: any gap with `data.decline === true`
+    // is documented in the note but skips the sign-off queue and stays
+    // Open (no CPT/LOINC code, no task). The user story is explicit:
+    // "The note documents the decline only" (Section 6).
+    const declinedCodes = finalCodes.filter(c => gapState[c]?.decline);
+    const routableCodes = finalCodes.filter(c => !gapState[c]?.decline);
+    if (routableCodes.length) {
+      bulkUpdateGapStatuses(member.id, Object.fromEntries(routableCodes.map(c => [c, 'Submitted'])), { assignee: reviewer.name });
+    }
+    for (const c of declinedCodes) {
+      logCareGapActivity(member.id, {
+        title: 'Patient declined follow-up',
+        detail: `${c} - decline documented, no sign-off task created`,
+        actor: actorName(),
+        icon: 'solar:info-circle-linear',
+        gapCodes: [c],
+        t: 'system',
+      });
+    }
     // Sign-off task + activity card share one derived name so the Tasks
     // table and the nested review-task card read identically. Single-gap
     // notes drop the "Consolidated" prefix — they're one gap's note, not a
     // consolidated pack.
-    const formLabel = finalCodes.length > 1
+    const formLabel = routableCodes.length > 1
       ? 'Consolidated Clinical Note'
-      : `${finalCodes[0]} Visit Note`;
+      : routableCodes.length === 1
+        ? `${routableCodes[0]} Visit Note`
+        : 'Consolidated Clinical Note';
     const signOffTaskName = `Request for Sign-off - ${formLabel}`;
     // Reuse the existing sign-off task if this note already has one
     // (edit → resubmit). Do NOT create a duplicate task for the same note.
     const existingForTask = selectedNoteId ? notesForMember.find(n => n.id === selectedNoteId) : null;
     const existingTaskId = existingForTask?.reviewTaskId || note?.reviewTaskId || null;
     let task = null;
+    if (routableCodes.length === 0) {
+      // Everything in the batch was declined - nothing to route.
+      showToast('Decline documented - no sign-off task created');
+      setReviewerPickerOpen(false);
+      onClose();
+      return;
+    }
     if (existingTaskId) {
       // Update the existing task's PDF so the reviewer sees the latest
       // content, but keep the same task id.
@@ -470,7 +539,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       // so the entry can carry the real taskId.
       task = await createCareGapSignOffTask({
         hedisMemberId: member.id,
-        gapCodes: finalCodes,
+        gapCodes: routableCodes,
         state: member.state,
         pdf,
         reviewerId: reviewer.id,
@@ -638,11 +707,12 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   const drawerTitle = editingTaskId ? 'Edit Clinical Note' : 'Clinical Note';
   const ageShort = member.age ? member.age.split('y')[0] + 'Y' : '';
 
+  const noteCtx = { audioOnly, audioVideo };
   const activeMandatoryComplete = activeGap
-    ? isMandatoryComplete(activeGap.code, gapState[activeGap.code] ?? {})
+    ? isMandatoryComplete(activeGap.code, gapState[activeGap.code] ?? {}, noteCtx)
     : false;
   const anyReadyForReview = activeGaps.some(g =>
-    isMandatoryComplete(g.code, gapState[g.code] ?? {})
+    isMandatoryComplete(g.code, gapState[g.code] ?? {}, noteCtx)
   );
   const hasChanges = dirtyCodes.size > 0;
 
@@ -655,5 +725,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     reviewerPickerOpen, setReviewerPickerOpen,
     drawerTitle, ageShort,
     hasChanges, activeMandatoryComplete, anyReadyForReview,
+    // DSF: exposed so the bespoke DsfaEvidenceForm can fire the
+    // native "open DSF-B" trigger on PHQ-2 Positive.
+    openDsfbGap,
   };
 }

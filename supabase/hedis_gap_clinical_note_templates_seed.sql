@@ -132,3 +132,17 @@ WHERE NOT EXISTS (SELECT 1 FROM public.forms WHERE name = 'FMC Visit Note');
 INSERT INTO public.forms (name, description, category, form_type, status, response_count, updated_at)
 SELECT 'MRP Visit Note', 'Medication Reconciliation Post-Discharge — reconciled medication list within 30 days of discharge.', 'Care Gap', 'Note', 'active', 0, now()
 WHERE NOT EXISTS (SELECT 1 FROM public.forms WHERE name = 'MRP Visit Note');
+
+-- DSF-A / DSF-B (Depression Screening) — the two carrier gaps for the
+-- PHQ-2 → PHQ-9 depression screening workflow. The DSF-A Visit Note owns
+-- the shared DOS + telehealth consent + PHQ-2 scoring; DSF-B Visit Note
+-- carries the PHQ-9 severity band and matching care plan. DSF-A is the
+-- billing carrier for both gaps, so a single note in production may
+-- reference either template.
+INSERT INTO public.forms (name, description, category, form_type, status, response_count, updated_at)
+SELECT 'DSF-A Visit Note', 'Depression Screening (PHQ-2) — 2-item PHQ-2 with save-lock and PHQ-2-negative care plan.', 'Care Gap', 'Note', 'active', 0, now()
+WHERE NOT EXISTS (SELECT 1 FROM public.forms WHERE name = 'DSF-A Visit Note');
+
+INSERT INTO public.forms (name, description, category, form_type, status, response_count, updated_at)
+SELECT 'DSF-B Visit Note', 'Depression Follow-Up (PHQ-9) — 9-item PHQ-9 with severity-band care plan (Minimal / Mild / Moderate / Severe) and Decline Follow-Up branch.', 'Care Gap', 'Note', 'active', 0, now()
+WHERE NOT EXISTS (SELECT 1 FROM public.forms WHERE name = 'DSF-B Visit Note');

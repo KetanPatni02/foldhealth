@@ -13,7 +13,10 @@ export const HEDIS_MEMBERS = [
   {
     id: 'ap-002', in: 'WD', name: 'William Davis',
     gender: 'M', age: '77y', memberId: '10029', language: 'en',
-    gaps: [{ code: 'COL', status: 'Open' }],
+    gaps: [
+      { code: 'COL', status: 'Open' },
+      { code: 'DSF-A', status: 'Open', startDate: '05/21/2026', source: 'astrana' },
+    ],
     assignee: null, assigneeInitials: null,
     startDate: '05/21/2026',
     advIllness: 0, frailty: 0, riskLevel: '2_Mod-High', tasks: null,
@@ -46,7 +49,11 @@ export const HEDIS_MEMBERS = [
   {
     id: 'ap-005', in: 'TS', name: 'Terri Schulist',
     gender: 'F', age: '60y', memberId: '10004', language: 'es',
-    gaps: [{ code: 'ABA', status: 'Open', startDate: '05/15/2026' }, { code: 'CBP', status: 'Open', startDate: '05/14/2026' }],
+    gaps: [
+      { code: 'ABA', status: 'Open', startDate: '05/15/2026' },
+      { code: 'CBP', status: 'Open', startDate: '05/14/2026' },
+      { code: 'DSF-A', status: 'Open', startDate: '05/15/2026', source: 'astrana' },
+    ],
     assignee: null, assigneeInitials: null,
     startDate: '05/15/2026',
     advIllness: 3, frailty: 1, riskLevel: '1_High', tasks: 1,
@@ -60,6 +67,7 @@ export const HEDIS_MEMBERS = [
     gaps: [
       { code: 'DM', status: 'Open', startDate: '05/14/2026' },
       { code: 'KED', status: 'Open', startDate: '05/13/2026', assignee: 'Marcus Chen' },
+      { code: 'DSF-A', status: 'Open', startDate: '05/14/2026', source: 'astrana' },
     ],
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP',
     startDate: '05/14/2026',
