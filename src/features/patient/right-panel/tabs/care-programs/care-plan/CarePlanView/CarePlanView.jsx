@@ -65,14 +65,23 @@ const PRIORITIES = ['high', 'medium', 'low'];
 // Capitalized labels for the priority filter chip (values compare case-insensitively).
 const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
 
-/** Collapsible GBI section header: title · divider · add action · [optional trailing end]. */
-function GbiSectionHead({ title, count, open, onToggle, addButton, trailingEnd }) {
+/** Collapsible GBI section header: title · divider · add action · [right cluster].
+ *  `rightAccessory` and `trailingEnd` share the right-aligned slot: accessory
+ *  first (used by Goals/Interventions/Barriers for the "N possible duplicates"
+ *  badge), then trailing content (Trends button on Goals). */
+function GbiSectionHead({ title, count, open, onToggle, addButton, trailingEnd, rightAccessory }) {
+  const hasRight = !!rightAccessory || !!trailingEnd;
   return (
     <div className={`${styles.sectionHead} ${styles.gbiSectionHead}`}>
       <SectionTitle label={title} count={count} open={open} onToggle={onToggle} />
       <span className={styles.sectionActionDivider} aria-hidden="true" />
       {addButton}
-      {trailingEnd ? <div className={styles.gbiSectionHeadEnd}>{trailingEnd}</div> : null}
+      {hasRight ? (
+        <div className={styles.gbiSectionHeadEnd}>
+          {rightAccessory}
+          {trailingEnd}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -321,6 +330,10 @@ export function CarePlanView({ patientId, program }) {
     try { localStorage.setItem('carePlanOpenSections', JSON.stringify(openSections)); } catch { /* storage unavailable */ }
   }, [openSections]);
   const toggleSection = (name) => setOpenSections(s => ({ ...s, [name]: !s[name] }));
+  // Which section's duplicate flags are expanded — { goal: bool, intervention: bool, barrier: bool }.
+  // Default collapsed; clicking the section-header duplicates badge toggles the panel.
+  const [expandedDuplicates, setExpandedDuplicates] = useState({});
+  const toggleDuplicates = (kind) => setExpandedDuplicates(s => ({ ...s, [kind]: !s[kind] }));
   const [statusMenu, setStatusMenu] = useState(null); // { kind, item, rect }
   const [priorityMenu, setPriorityMenu] = useState(null); // { kind, item, rect }
   const [addGoalsDrawerOpen, setAddGoalsDrawerOpen] = useState(false);
@@ -876,15 +889,47 @@ export function CarePlanView({ patientId, program }) {
     openGbiEditor(flag.kind, flag.existing.item);
     dismissCarePlanDuplicate(key, flag.flagId);
   };
-  const renderDuplicateFlags = (kind) => (
-    <CarePlanDuplicateGroup
-      flags={duplicateFlags.filter(f => f.kind === kind)}
-      onIgnore={handleDuplicateIgnore}
-      onAcceptExisting={handleDuplicateAcceptExisting}
-      onAcceptNew={handleDuplicateAcceptNew}
-      onEditExisting={handleDuplicateEditExisting}
-    />
-  );
+  const flagsForKind = (kind) => duplicateFlags.filter(f => f.kind === kind);
+  // Section-header duplicate badge: renders inline next to the title as a
+  // secondary Badge and toggles the CarePlanDuplicateGroup panel below.
+  // Nothing renders when the kind has no open duplicate flags.
+  const renderDuplicateBadge = (kind) => {
+    const flags = flagsForKind(kind);
+    if (!flags.length) return null;
+    const expanded = !!expandedDuplicates[kind];
+    return (
+      <button
+        type="button"
+        className={styles.duplicateBadgeBtn}
+        onClick={() => toggleDuplicates(kind)}
+        aria-expanded={expanded}
+        aria-label={`${flags.length} possible duplicate${flags.length === 1 ? '' : 's'}`}
+      >
+        <Badge
+          tone="secondary"
+          size="S"
+          icon="solar:danger-triangle-linear"
+          label={`${flags.length} possible duplicate${flags.length === 1 ? '' : 's'}`}
+        />
+      </button>
+    );
+  };
+  // Expanded panel — hides the group's own summary since the section-header
+  // badge already surfaces the count.
+  const renderDuplicateFlags = (kind) => {
+    const flags = flagsForKind(kind);
+    if (!flags.length || !expandedDuplicates[kind]) return null;
+    return (
+      <CarePlanDuplicateGroup
+        flags={flags}
+        hideSummary
+        onIgnore={handleDuplicateIgnore}
+        onAcceptExisting={handleDuplicateAcceptExisting}
+        onAcceptNew={handleDuplicateAcceptNew}
+        onEditExisting={handleDuplicateEditExisting}
+      />
+    );
+  };
 
   const doAddProblem = async () => {
     const label = problemText.trim();
@@ -1072,6 +1117,7 @@ export function CarePlanView({ patientId, program }) {
           count={filteredGoals.length}
           open={openSections.goals}
           onToggle={() => toggleSection('goals')}
+          rightAccessory={renderDuplicateBadge('goal')}
           trailingEnd={(
             <button type="button" className={styles.trendsBtn} onClick={handleTrends}>
               <Icon name="solar:chart-2-linear" size={16} color="var(--neutral-300)" />
@@ -1119,6 +1165,7 @@ export function CarePlanView({ patientId, program }) {
           count={filteredInterventions.length}
           open={openSections.interventions}
           onToggle={() => toggleSection('interventions')}
+          rightAccessory={renderDuplicateBadge('intervention')}
           addButton={(
             <ActionButton
               ref={intvAddRef}
@@ -1193,12 +1240,14 @@ export function CarePlanView({ patientId, program }) {
           count={filteredBarriers.length}
           open={openSections.barriers}
           onToggle={() => toggleSection('barriers')}
+          rightAccessory={renderDuplicateBadge('barrier')}
           addButton={(
             <ActionButton size="S" tooltip="Add barrier" onClick={() => setAddBarriersDrawerOpen(true)} disabled={!canEdit}>
               <AddIconMinimalist size={16} color="var(--neutral-300)" />
             </ActionButton>
           )}
         />
+        {renderDuplicateFlags('barrier')}
         {openSections.barriers && (carePlanLoading ? (
           <SimpleTableSkeleton rows={3} cols={3} />
         ) : filteredBarriers.length === 0 && (data.barriers || []).length === 0 ? (

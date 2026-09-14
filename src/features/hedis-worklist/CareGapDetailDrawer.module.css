@@ -27,17 +27,22 @@
   min-width: 0;
 }
 
-/* Left workspace pane — hosts Add Task / Add Note / Schedule. Fixed at
-   640px so the 1280px expanded drawer splits 640/640 with the right pane
-   (mirrors Diagnosis Gaps 50/50 split). `flex: 0 0 640px` guarantees the
-   two sides stay equal regardless of inner content. */
+/* Left workspace pane — hosts Add Task / Add Note / Schedule / Measure
+   Tutorial. Flexes to fill the space the drawer's 700→1280 width
+   transition frees up on the left side; the right pane stays pinned at
+   640px so the Care Gap content never shifts. During the open/close
+   transition this reads as the workspace sliding out from behind the
+   right pane (matches HCC DiagPanel's LeftWorkspace, which uses the
+   same flex-grow pattern). Capped at 640px so a fully-expanded 1280px
+   drawer still splits 640/640. */
 .leftPane {
-  flex: 0 0 640px;
+  flex: 1 1 auto;
   min-width: 0;
   max-width: 640px;
   display: flex;
   flex-direction: column;
   border-right: 0.5px solid var(--neutral-150);
+  overflow: hidden;
 }
 .paneHeader {
   min-height: 44px;

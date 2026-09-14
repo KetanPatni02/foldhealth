@@ -11,6 +11,7 @@ import {
   GbiNameCell,
   GbiProgressCell,
   GbiStatusButton,
+  TrendCell,
 } from './carePlanTableShared';
 import { enrichGoalRows } from './carePlanTableSort';
 import { normalizeCategory, goalCategoryIcon } from '../../../../../../settings/care-plan-library/lib';
@@ -96,7 +97,15 @@ export function CarePlanGoalsTable({
         onSelectAll={onSelectAll}
         minTableWidth={0}
         emptyState={emptyState}
-        renderRow={(g) => (
+        // Opts into the shell's column-prefs machinery — Actions header
+        // hosts a Show/Hide Columns button (checkbox popover), and the
+        // renderRow below skips the cells the user has hidden. Prefs
+        // persist per-user under this key.
+        worklistKey={template ? undefined : 'carePlan:goals'}
+        renderRow={(g, _i, ctx) => {
+          const hidden = ctx?.hiddenSet || null;
+          const isHidden = (k) => hidden ? hidden.has(k) : false;
+          return (
           <tr
             key={g.id}
             className={`${styles.row} ${styles.rowClickable} ${styles.gbiRow}`}
@@ -110,6 +119,7 @@ export function CarePlanGoalsTable({
                 disabled={!canEdit}
               />
             )}
+            {!isHidden('priority') && (
             <td className={styles.priorityTd} onClick={e => e.stopPropagation()}>
               {canEdit ? (
                 <button
@@ -124,6 +134,8 @@ export function CarePlanGoalsTable({
                 <PriorityIcon priority={g.priority} size={16} />
               )}
             </td>
+            )}
+            {!isHidden('title') && (
             <td className={styles.titleTd}>
               <GbiNameCell
                 icon={goalCategoryIcon(g.category)}
@@ -135,11 +147,15 @@ export function CarePlanGoalsTable({
                 canEdit={canEdit}
               />
             </td>
+            )}
             {!template && (
               <>
+                {!isHidden('createdDate') && (
                 <td className={styles.dateTd} onClick={e => e.stopPropagation()}>
                   <span className={styles.dueDateText}>{formatGoalDate(g.createdAt)}</span>
                 </td>
+                )}
+                {!isHidden('targetDate') && (
                 <td className={styles.dateTd} onClick={e => e.stopPropagation()}>
                   {canEdit && onTargetDateChange ? (
                     <button
@@ -154,9 +170,23 @@ export function CarePlanGoalsTable({
                     <span className={styles.dueDateText}>{formatGoalDate(goalTargetDateOrDefault(g))}</span>
                   )}
                 </td>
+                )}
+                {!isHidden('currentValue') && (
+                <td className={styles.progressTd} onClick={e => e.stopPropagation()}>
+                  <span className={styles.dueDateText}>{g.currentValue ?? '-'}</span>
+                </td>
+                )}
+                {!isHidden('progress') && (
                 <td className={styles.progressTd} onClick={e => e.stopPropagation()}>
                   <GbiProgressCell progress={g.progress} />
                 </td>
+                )}
+                {!isHidden('trend') && (
+                <td className={styles.progressTd} onClick={e => e.stopPropagation()}>
+                  <TrendCell trend={g.trend} />
+                </td>
+                )}
+                {!isHidden('status') && (
                 <td className={styles.statusTd} onClick={e => e.stopPropagation()}>
                   <GbiStatusButton
                     value={g.status}
@@ -164,6 +194,7 @@ export function CarePlanGoalsTable({
                     onOpen={rect => onStatusMenu({ kind: 'goal', item: g, rect })}
                   />
                 </td>
+                )}
               </>
             )}
             {showActions && (
@@ -180,7 +211,8 @@ export function CarePlanGoalsTable({
               </td>
             )}
           </tr>
-        )}
+          );
+        }}
       />
       {targetPicker && (
         <DatePickerPopover
