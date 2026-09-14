@@ -19,6 +19,7 @@ import { useScheduleDrawer } from '../../components/ScheduleDrawer/useScheduleDr
 import { ScheduleDrawerBookingBody } from '../../components/ScheduleDrawer/ScheduleDrawerBookingForm';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
+import { Phq9ExitDialog } from './dsf/Phq9ExitDialog';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
@@ -314,14 +315,43 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   // left pane is still mounted; its flex space shrinks in lock-step so it
   // reads as sliding back into the right pane. Phase 2 — actually unmount.
   const [leftClosing, setLeftClosing] = useState(false);
+  // DSF-B: incomplete-PHQ-9 exit modal. Set when the user tries to
+  // leave a clinical-note workspace whose active DSF-B gap has some
+  // but not all PHQ-9 items answered and no saved score yet.
+  const [phq9ExitPrompt, setPhq9ExitPrompt] = useState(null); // { answered, total, dueDateISO } | null
   const runLeftClose = () => {
     setLeftClosing(true);
     setTimeout(() => { setLeftWorkspace(null); setLeftClosing(false); setSelectedNoteId(null); setAmendNoteId(null); setInPlaceTaskId(null); }, 250);
+  };
+  // Detect a partially-answered PHQ-9 on the active DSF-B gap. Returns
+  // `{ answered, total, dueDateISO }` when the guard should fire, else
+  // null. Only fires for a note actively editing DSF-B; skips when the
+  // score is already saved (locked) or nothing has been answered yet.
+  const detectPhq9Incomplete = () => {
+    if (leftWorkspace !== 'clinical-note') return null;
+    const dsfb = clinicalNote?.gapState?.['DSF-B'];
+    if (!dsfb) return null;
+    // Decline short-circuits the sign-off queue; skip the guard entirely.
+    if (dsfb.decline) return null;
+    const items = dsfb.phq9?.items || [];
+    const answered = items.filter(v => v !== null && v !== undefined).length;
+    if (answered === 0 || answered >= 9) return null;
+    // 30-day window is anchored to when PHQ-2 first landed as Positive
+    // on the paired DSF-A. Falls back to now + 30d if the anchor is
+    // missing (e.g. the note carries DSF-B only).
+    const dsfa = clinicalNote?.gapState?.['DSF-A'];
+    const anchor = dsfa?.phq2?.savedAt ? new Date(dsfa.phq2.savedAt) : new Date();
+    const due = new Date(anchor);
+    due.setDate(due.getDate() + 30);
+    return { answered, total: 9, dueDateISO: due.toISOString() };
   };
   const closeLeftWorkspace = () => {
     // Task workspace has a "discard unsaved changes?" guard; the scheduler
     // discards silently for parity with its standalone usage.
     if (leftWorkspace === 'task' && addTask.guardClose() === false) return;
+    // DSF-B: block close on a partial PHQ-9 and surface the exit modal.
+    const guard = detectPhq9Incomplete();
+    if (guard) { setPhq9ExitPrompt(guard); return; }
     // Clear the selected note so the next preview starts from currentCode
     // rather than a stale id.
     setSelectedNoteId(null);
@@ -465,6 +495,23 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           variant="error"
           onConfirm={() => { addTask.setShowCloseConfirm(false); runLeftClose(); }}
           onCancel={() => addTask.setShowCloseConfirm(false)}
+        />
+      )}
+      {phq9ExitPrompt && (
+        <Phq9ExitDialog
+          answered={phq9ExitPrompt.answered}
+          total={phq9ExitPrompt.total}
+          dueDateISO={phq9ExitPrompt.dueDateISO}
+          onCompleteNow={() => setPhq9ExitPrompt(null)}
+          onSaveExit={() => {
+            setPhq9ExitPrompt(null);
+            // Persist whatever the user has already answered before
+            // dropping the workspace.
+            if (typeof clinicalNote.handleSaveDraft === 'function') {
+              try { clinicalNote.handleSaveDraft(); } catch { /* draft best-effort */ }
+            }
+            runLeftClose();
+          }}
         />
       )}
       <ReviewerPickerPopover

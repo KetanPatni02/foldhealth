@@ -79,6 +79,92 @@ export const MEASURE_INFO = {
       },
     ],
   },
+  'DSF-A': {
+    requirements: [
+      {
+        text: 'Administer PHQ-2 (2-item depression screener) inside Fold',
+        children: [
+          { text: 'Date of Service, Location (Telehealth or Home), and Performed by' },
+          { text: 'Verbal telehealth consent (audio-only or audio-video) when Location is Telehealth' },
+          { text: 'Item scores for both PHQ-2 questions (0 to 3)' },
+        ],
+      },
+      {
+        text: 'Save the PHQ-2 score to lock DSF-A',
+        children: [
+          { text: 'Negative (total under 3): the wellness care plan renders, ready to submit' },
+          { text: 'Positive (total 3 or more): DSF-B opens automatically for the same patient' },
+        ],
+      },
+    ],
+    instructions: [
+      { intro: 'Score PHQ-2 in the same consolidated Clinical Note used for other measures.' },
+      {
+        heading: 'PHQ-2 Negative',
+        items: [
+          { text: 'Review the wellness care plan with the patient and mark "All components of care plan completed".' },
+          { text: 'Submit for Review; the note routes to the provider queue under LOINC 55758-7.' },
+        ],
+      },
+      {
+        heading: 'PHQ-2 Positive',
+        items: [
+          { text: 'Saving the score locks DSF-A and opens the DSF-B gap automatically.' },
+          { text: 'Continue in the same note into PHQ-9, or save as draft and finish within 30 days.' },
+        ],
+      },
+      {
+        heading: 'Patient declines further evaluation',
+        items: [
+          { text: 'Tick Decline Follow-Up. The Decline care plan renders and no sign-off task is created.' },
+        ],
+      },
+    ],
+  },
+  'DSF-B': {
+    requirements: [
+      {
+        text: 'Administer PHQ-9 (9-item depression severity) inside Fold',
+        children: [
+          { text: 'Item scores for all nine PHQ-9 questions (0 to 3)' },
+          { text: 'If total falls in the Mild band (5 to 9), answer the follow-up sub-question' },
+        ],
+      },
+      {
+        text: 'Complete within 30 days of the positive PHQ-2 result',
+        children: [
+          { text: 'Save as Draft is allowed with partial responses until the window closes.' },
+        ],
+      },
+    ],
+    instructions: [
+      { intro: 'DSF-B opens automatically when PHQ-2 is Positive. Complete PHQ-9 in the same note.' },
+      {
+        heading: 'Minimal (0 to 4)',
+        items: [
+          { text: 'Wellness care plan renders. Submit for Review routes to the provider queue.' },
+        ],
+      },
+      {
+        heading: 'Mild (5 to 9)',
+        items: [
+          { text: 'Answer the sub-question. Mild/No shows active-surveillance care; Mild/Yes escalates to a PCP follow-up in 2 to 4 weeks.' },
+        ],
+      },
+      {
+        heading: 'Moderate (10 to 19) or Severe (20 or more)',
+        items: [
+          { text: 'The corresponding care plan renders immediately with escalation guidance and mental-health resources.' },
+        ],
+      },
+      {
+        heading: 'Sign-off',
+        items: [
+          { text: 'DSF-A is the billing carrier for both PHQ-2 and PHQ-9; on Save & Sign both DSF-A and DSF-B close together.' },
+        ],
+      },
+    ],
+  },
   COL: {
     requirements: [
       {
