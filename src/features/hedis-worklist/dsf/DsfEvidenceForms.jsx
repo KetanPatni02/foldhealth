@@ -15,11 +15,13 @@ import { useEffect, useMemo } from 'react';
 // mirrored into the payload.)
 import { Alert } from '../../../components/Alert/Alert';
 import { Badge } from '../../../components/Badge/Badge';
+import { Button } from '../../../components/Button/Button';
+import { InfoBar } from '../../../components/InfoBar/InfoBar';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { CheckboxTick } from '../../../components/CheckboxTick/CheckboxTick';
 import { Select } from '../../../components/Select/Select';
 import { Textarea } from '../../../components/Textarea/Textarea';
-import { getItems, getResponseScale, isPhq2Positive, phq9Branch, totalScore } from './dsfScoring';
+import { getItems, getResponseScale, isPhq2Positive, phq9Branch, phq9BandLabel, totalScore } from './dsfScoring';
 import { DSF_CARE_PLANS } from './dsfCarePlans';
 import styles from './DsfEvidenceForms.module.css';
 
@@ -55,8 +57,11 @@ function FieldError({ children }) {
   return <div className={styles.fieldError}>{children}</div>;
 }
 
-// Likert item scored 0..3, one row per instrument item. The parent
-// owns state; this component just reads/writes an array of numbers.
+// PHQ-style questionnaire: each question is a numbered heading with
+// its response options stacked vertically underneath. The parent owns
+// state; this component just reads/writes an array of numbers. Point
+// values are intentionally hidden from the option labels — the score
+// interpretation lives in the summary card below the questionnaire.
 function LikertMatrix({ scoreKey, values, onChange, locked }) {
   const items = getItems(scoreKey);
   const scale = getResponseScale(scoreKey);
@@ -67,26 +72,24 @@ function LikertMatrix({ scoreKey, values, onChange, locked }) {
     onChange(next);
   };
   return (
-    <div className={[styles.matrix, locked ? styles.matrixLocked : ''].filter(Boolean).join(' ')}>
-      <div className={styles.matrixHeader}>
-        <span>Question</span>
-        {scale.map(opt => (
-          <span key={opt.score} className={styles.matrixCell}>{opt.score}</span>
-        ))}
-      </div>
+    <div className={[styles.questionnaire, locked ? styles.questionnaireLocked : ''].filter(Boolean).join(' ')}>
       {items.map((item, idx) => (
-        <div key={item.code} className={styles.matrixRow}>
-          <span className={styles.matrixQuestion}>{item.text}</span>
-          {scale.map(opt => (
-            <span key={opt.score} className={styles.matrixCell}>
+        <div key={item.code} className={styles.questionBlock}>
+          <div className={styles.questionText}>
+            <span className={styles.questionNumber}>{idx + 1}.</span>
+            {item.text}
+          </div>
+          <div className={styles.optionStack}>
+            {scale.map(opt => (
               <RadioButton
+                key={opt.score}
                 checked={values?.[idx] === opt.score}
                 onChange={() => setAt(idx, opt.score)}
-                ariaLabel={`${item.text} - ${opt.value}`}
+                label={opt.value}
                 disabled={locked}
               />
-            </span>
-          ))}
+            ))}
+          </div>
         </div>
       ))}
     </div>
@@ -100,23 +103,24 @@ function CarePlanOutcomePanel({ title, bullets, allCompleted, onAllCompletedChan
   return (
     <div className={styles.carePlanPanel}>
       <div className={styles.carePlanTitle}>{title}</div>
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={!!allCompleted}
+        className={styles.carePlanCheckboxRow}
+        onClick={() => onAllCompletedChange(!allCompleted)}
+      >
+        <CheckboxTick checked={!!allCompleted} size={16} />
+        <span className={styles.carePlanCheckboxLabel}>
+          All components of care plan completed
+        </span>
+      </button>
       <ul className={styles.carePlanBullets}>
         {bullets.map((b, i) => <li key={i}>{b}</li>)}
       </ul>
       <div className={styles.carePlanFooter}>
-        <button
-          type="button"
-          role="checkbox"
-          aria-checked={!!allCompleted}
-          className={styles.carePlanCheckboxRow}
-          onClick={() => onAllCompletedChange(!allCompleted)}
-        >
-          <CheckboxTick checked={!!allCompleted} size={16} />
-          <span className={styles.carePlanCheckboxLabel}>
-            All components of care plan completed
-          </span>
-        </button>
         <Textarea
+          title="Outreach Notes"
           value={outreachNotes || ''}
           onChange={(e) => onOutreachNotesChange(e.target.value)}
           placeholder="Optional notes from the encounter..."
@@ -144,29 +148,28 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
   // are NOT re-rendered here (the shared DOS card owns them).
   const consentSatisfied = isHome || !!v.audioOnly || !!v.audioVideo;
   const bothPhq2Answered = phq2Values.every(v2 => v2 !== null && v2 !== undefined);
-  const phq2Total = data.phq2?.totalScore ?? totalScore(phq2Values);
+  const phq2Total = totalScore(phq2Values);
   const positive = isPhq2Positive(phq2Total);
+  // DSF-A is only locked once THIS note has committed a Save on a
+  // Positive PHQ-2 (which is also the moment DSF-B is created). A
+  // fresh note starts unlocked regardless of whether DSF-B may exist
+  // for the member from an earlier flow, and Negative scoring keeps
+  // the form editable forever (no save step, no lock).
+  const phq2Saved = !!data.phq2?.savedAt;
 
-  // Auto-open the DSF-B gap the moment PHQ-2 lands Positive with both
-  // items answered. The store's openNativeGap is idempotent (skips the
-  // second call for the same code), so it's safe to run on every render
-  // that meets the condition — the toast fires only on the first create.
-  // Persists a lightweight timestamp on the note payload so the exit
-  // dialog can compute the 30-day due date without needing an explicit
-  // Save action.
-  useEffect(() => {
-    if (!bothPhq2Answered || !positive) return;
-    const savedAt = data.phq2?.savedAt || new Date().toISOString();
-    if (!data.phq2?.savedAt) {
-      onUpdate({ phq2: { ...(data.phq2 || {}), savedAt } });
-    }
+  // Positive PHQ-2 gates DSF-B creation on an explicit Save click so a
+  // mis-tick at 3 points doesn't spawn a gap. Negative flows show the
+  // wellness care plan inline without a Save step.
+  const handleSavePhq2Score = () => {
+    if (!bothPhq2Answered || !positive || phq2Saved) return;
+    const savedAt = new Date().toISOString();
+    // Save locks PHQ-2, marks DSF-A Ready for Review (so the note picker
+    // includes it automatically), and opens the linked DSF-B gap.
+    onUpdate({ phq2: { ...(data.phq2 || {}), savedAt }, manuallyOff: false });
     if (typeof onOpenPhq9Gap === 'function') {
       onOpenPhq9Gap({ savedAt });
     }
-    // Intentional narrow deps: we want to trigger on the transition to
-    // (bothAnswered && positive), not on unrelated state changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bothPhq2Answered, positive]);
+  };
 
   return (
     <div className={styles.form}>
@@ -194,47 +197,77 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
         />
       )}
 
-      <div className={styles.grid2}>
-        <FieldStack>
-          <FieldLabel required>Performed by</FieldLabel>
-          <Select
-            options={DSF_PROVIDERS}
-            value={data.performedBy}
-            onChange={(v2) => onUpdate({ performedBy: v2 })}
-            placeholder="Select Provider"
-            variant={err('performedBy') ? 'error' : 'default'}
-          />
-          {err('performedBy') && <FieldError>Provider is required</FieldError>}
-        </FieldStack>
-        <div className={styles.procedureRow}>
-          <span className={styles.procedureLabel}>Procedure Performed</span>
-          <span className={styles.procedureValue}>PHQ-2</span>
-        </div>
-      </div>
-
       <FieldStack>
-        <FieldLabel required>PHQ-2 Score</FieldLabel>
+        <FieldLabel required>Performed by</FieldLabel>
+        <Select
+          options={DSF_PROVIDERS}
+          value={data.performedBy}
+          onChange={(v2) => onUpdate({ performedBy: v2 })}
+          placeholder="Select Provider"
+          variant={err('performedBy') ? 'error' : 'default'}
+        />
+        {err('performedBy') && <FieldError>Provider is required</FieldError>}
+      </FieldStack>
+
+      <div className={styles.phq2Card}>
+        <div className={styles.phq2CardHeader}>
+          <div className={styles.fieldLabel}>Depression Screening : PHQ-2<span className={styles.required}>•</span></div>
+          {bothPhq2Answered && (
+            <Badge
+              tone={positive ? 'warning' : 'success'}
+              size="S"
+              label={`Score : ${phq2Total} Point${phq2Total === 1 ? '' : 's'} (${positive ? 'Positive for Depression' : 'Negative for Depression'})`}
+            />
+          )}
+        </div>
         <LikertMatrix
           scoreKey="phq2"
           values={phq2Values}
           onChange={(next) => onUpdate({
             phq2: { ...(data.phq2 || {}), item1: next[0], item2: next[1] },
           })}
+          locked={phq2Saved}
         />
-      </FieldStack>
-
-      {bothPhq2Answered && (
-        <div className={styles.scoreBlock}>
-          <div className={styles.scoreBlockRow}>
-            <span className={styles.scoreTotal}>Total: {phq2Total}</span>
-            <span
-              className={[styles.resultLabel, positive ? styles.resultLabelPositive : styles.resultLabelNegative].join(' ')}
+        {/* Positive PHQ-2 (total 3 or higher) surfaces a Save button
+            that opens DSF-B on click. Negative auto-completes without a
+            gap, so no explicit save step is needed there. */}
+        {bothPhq2Answered && positive && !phq2Saved && (
+          <div className={styles.phq2CardFooter}>
+            <Button
+              variant="primary"
+              size="M"
+              leadingIcon="solar:check-circle-linear"
+              onClick={handleSavePhq2Score}
             >
-              {positive ? 'Positive for depression' : 'Negative for depression'}
-            </span>
+              Save score
+            </Button>
           </div>
-        </div>
-      )}
+        )}
+        {bothPhq2Answered && positive && !phq2Saved && (
+          <InfoBar className={styles.phq2InfoBarAttached}>
+            Saving this score opens the DSF-B gap for this patient. Once saved, DSF-A cannot be edited.
+          </InfoBar>
+        )}
+        {phq2Saved && (
+          <InfoBar
+            className={styles.phq2InfoBarAttached}
+            tone="success"
+            icon="solar:check-circle-linear"
+          >
+            <span className={styles.phq2InfoBarSaved}>
+              <span>Score saved, DSF-A locked and DSF-B is created.</span>
+              <Button
+                variant="tertiary"
+                size="S"
+                trailingIcon="solar:arrow-right-linear"
+                onClick={() => (v.openDsfbView ? v.openDsfbView() : v.setActiveGapCode?.('DSF-B'))}
+              >
+                Open DSF-B
+              </Button>
+            </span>
+          </InfoBar>
+        )}
+      </div>
 
       {bothPhq2Answered && !positive && (
         <CarePlanOutcomePanel
@@ -261,13 +294,21 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
   const err = (field) => submitted && !data[field];
   const phq9Values = data.phq9?.items || [null, null, null, null, null, null, null, null, null];
   const allAnswered = phq9Values.every(v2 => v2 !== null && v2 !== undefined);
-  const phq9Total = data.phq9?.totalScore ?? totalScore(phq9Values);
+  // Always recompute from the current items — falling back to a stored
+  // `data.phq9.totalScore` would freeze the visible total the first time
+  // the payload savedAt is stamped, so any later edit (change one item's
+  // score) wouldn't show up in the Badge.
+  const phq9Total = totalScore(phq9Values);
   const branch = phq9Branch(phq9Total);
-  // The shared validated-instruments module splits 15-19 into its own
-  // "Moderately severe" band; the story only defines four branches
-  // (Minimal / Mild / Moderate / Severe) so the visible badge follows
-  // the branch label to stay consistent with the care-plan panel.
-  const bandLabel = branch ? branch.charAt(0).toUpperCase() + branch.slice(1) : null;
+  // Reference vocabulary — see dsfScoring.phq9BandLabel. Renders as
+  // "Minimal / None", "Mild", "Moderate", "Severe" so the DSF-B Badge
+  // reads the same as the clinical scoring reference sheet.
+  const bandLabel = phq9BandLabel(branch);
+  const bandTone = branch === 'minimal' ? 'success'
+    : branch === 'mild' ? 'warning'
+    : branch === 'moderate' ? 'secondary'
+    : branch === 'severe' ? 'error'
+    : 'grey';
 
   // Timestamp the first "all answered" moment so the note payload has a
   // stable savedAt for downstream analytics + the 30-day due-date math.
@@ -293,24 +334,24 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
 
   return (
     <div className={styles.form}>
-      <FieldStack>
-        <FieldLabel required>PHQ-9 Score</FieldLabel>
+      <div className={styles.phq2Card}>
+        <div className={styles.phq2CardHeader}>
+          <div className={styles.fieldLabel}>Depression Follow-Up : PHQ-9<span className={styles.required}>•</span></div>
+          {allAnswered && bandLabel && (
+            <Badge
+              tone={bandTone}
+              size="S"
+              label={`Score : ${phq9Total} Point${phq9Total === 1 ? '' : 's'} (${bandLabel})`}
+            />
+          )}
+        </div>
         <LikertMatrix
           scoreKey="phq9"
           values={phq9Values}
           onChange={(next) => onUpdate({ phq9: { ...(data.phq9 || {}), items: next } })}
           locked={data.decline}
         />
-      </FieldStack>
-
-      {allAnswered && !data.decline && (
-        <div className={styles.scoreBlock}>
-          <div className={styles.scoreBlockRow}>
-            <span className={styles.scoreTotal}>Total: {phq9Total}</span>
-            {bandLabel && <Badge tone="grey" size="S" label={bandLabel} />}
-          </div>
-        </div>
-      )}
+      </div>
 
       {allAnswered && !data.decline && branch === 'mild' && (
         <div className={styles.subQuestion}>
@@ -334,22 +375,6 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
         </div>
       )}
 
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={!!data.decline}
-        className={styles.declineRow}
-        onClick={() => onUpdate({ decline: !data.decline })}
-      >
-        <CheckboxTick checked={!!data.decline} size={16} />
-        <span className={styles.declineLabel}>
-          Decline Follow-Up
-          <span style={{ color: 'var(--neutral-300)', fontWeight: 400, marginLeft: 8 }}>
-            Patient declines further evaluation and treatment.
-          </span>
-        </span>
-      </button>
-
       {planKey && (
         <CarePlanOutcomePanel
           title={DSF_CARE_PLANS[planKey].title}
@@ -366,8 +391,24 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
         />
       )}
 
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={!!data.decline}
+        className={styles.declineRow}
+        onClick={() => onUpdate({ decline: !data.decline })}
+      >
+        <CheckboxTick checked={!!data.decline} size={16} />
+        <span className={styles.declineLabel}>
+          Decline follow-up:
+          <span style={{ color: 'var(--neutral-400)', fontWeight: 400, marginLeft: 4 }}>
+            patient declines further evaluation and treatment related to this depression screening measure, independent of the result above.
+          </span>
+        </span>
+      </button>
+
       {submitted && !acknowledged && (
-        <FieldError>Acknowledge the care plan or mark Decline Follow-Up to submit.</FieldError>
+        <FieldError>Acknowledge the care plan or mark Decline follow-up to submit.</FieldError>
       )}
     </div>
   );
