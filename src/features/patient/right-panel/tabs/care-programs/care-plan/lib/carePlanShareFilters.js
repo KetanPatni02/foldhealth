@@ -13,6 +13,7 @@ export const SHARE_FILTERS_DEFAULT = {
   status: [],
   priority: [],
   assignee: [],
+  conditions: [],
 };
 
 /** ISO timestamp on the row — prefers last update, then create. */
@@ -40,9 +41,29 @@ export function matchesShareDatePreset(item, datePreset, lastVisitIso) {
   return true;
 }
 
+/** When plan condition labels are selected, keep rows whose text/tags mention one. */
+export function matchesShareConditionFilter(item, selectedLabels) {
+  if (!selectedLabels?.length) return true;
+  const hay = [
+    ...(Array.isArray(item?.conditions) ? item.conditions : []),
+    item?.title || '',
+    item?.subtitle || '',
+    item?.category || '',
+  ].join(' ').toLowerCase();
+  return selectedLabels.some((label) => {
+    const l = String(label || '').trim().toLowerCase();
+    if (!l) return false;
+    if (hay.includes(l)) return true;
+    const stem = l.split(/\s+/).find(w => w.length > 3);
+    return stem ? hay.includes(stem) : false;
+  });
+}
+
 export function matchesShareFilters(item, filters, { lastVisitIso, kind } = {}) {
   const status = item?.status || 'Not Started';
   if (filters.status?.length && !filters.status.includes(status)) return false;
+
+  if (!matchesShareConditionFilter(item, filters.conditions)) return false;
 
   if (filters.priority?.length) {
     const p = (item?.priority || 'medium').toLowerCase();
@@ -65,5 +86,6 @@ export function isShareFiltersActive(filters) {
     || (filters.status?.length > 0)
     || (filters.priority?.length > 0)
     || (filters.assignee?.length > 0)
+    || (filters.conditions?.length > 0)
   );
 }

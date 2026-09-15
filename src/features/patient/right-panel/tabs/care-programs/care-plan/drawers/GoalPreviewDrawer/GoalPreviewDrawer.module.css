@@ -385,7 +385,7 @@
     minmax(0, 1fr)
     var(--gbi-col-assignee)
     var(--gbi-col-status)
-    var(--gbi-col-actions);
+    minmax(var(--gbi-col-actions), max-content);
   align-items: center;
   column-gap: 0;
   min-height: 40px;
@@ -486,9 +486,10 @@
 .intvActions {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  gap: calc(var(--space-1) / 2);
   flex-shrink: 0;
-  width: var(--gbi-col-actions);
+  min-width: var(--gbi-col-actions);
   padding: var(--gbi-row-pad-y) var(--space-1);
   box-sizing: border-box;
 }

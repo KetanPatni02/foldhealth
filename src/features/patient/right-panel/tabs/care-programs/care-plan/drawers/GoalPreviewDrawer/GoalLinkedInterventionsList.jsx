@@ -16,6 +16,7 @@ export function GoalLinkedInterventionsList({
   onAssigneeChange,
   onStatusMenu,
   onRowMenu,
+  onUnlink,
 }) {
   return (
     <div className={styles.intvList}>
@@ -87,6 +88,15 @@ export function GoalLinkedInterventionsList({
             </div>
 
             <div className={styles.intvActions} onClick={(e) => e.stopPropagation()}>
+              {canEdit && onUnlink && (
+                <ActionButton
+                  icon="solar:link-broken-minimalistic-linear"
+                  size="S"
+                  tooltip="Unlink"
+                  tooltipBelow
+                  onClick={() => onUnlink(i)}
+                />
+              )}
               <ActionButton
                 icon="solar:menu-dots-linear"
                 size="S"

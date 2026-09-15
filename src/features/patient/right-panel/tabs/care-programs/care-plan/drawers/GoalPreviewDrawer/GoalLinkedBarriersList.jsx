@@ -1,4 +1,5 @@
 import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { GbiStatusButton } from '../../tables/carePlanTableShared';
 import styles from './GoalPreviewDrawer.module.css';
 
@@ -7,6 +8,7 @@ export function GoalLinkedBarriersList({
   barriers,
   canEdit,
   onStatusMenu,
+  onUnlink,
 }) {
   return (
     <div className={styles.intvList}>
@@ -34,7 +36,17 @@ export function GoalLinkedBarriersList({
             />
           </div>
 
-          <div className={styles.intvActions} aria-hidden="true" />
+          <div className={styles.intvActions} onClick={(e) => e.stopPropagation()}>
+            {canEdit && onUnlink && (
+              <ActionButton
+                icon="solar:link-broken-minimalistic-linear"
+                size="S"
+                tooltip="Unlink"
+                tooltipBelow
+                onClick={() => onUnlink(b)}
+              />
+            )}
+          </div>
         </div>
       ))}
     </div>

@@ -29,25 +29,51 @@ function SectionSelectAll({ label, ids, off, setOff, collapsed, onToggle }) {
   const allOn = count === total && total > 0;
   return (
     <div className={styles.sectionHead}>
-      <span className={styles.sectionHeadLeft}>
-        <button
-          type="button"
-          className={styles.collapseToggle}
-          onClick={onToggle}
-          aria-expanded={!collapsed}
-          aria-label={collapsed ? `Expand ${label}` : `Collapse ${label}`}
-        >
-          <DownChevronIcon
-            size={14}
-            color="var(--neutral-300)"
-            className={`${styles.collapseChevron} ${collapsed ? styles.collapseChevronCollapsed : ''}`}
-          />
-        </button>
-        <span className={styles.sectionTitle}>{label} <span className={styles.count}>{count}/{total}</span></span>
-      </span>
-      <button type="button" className={styles.selectAll} onClick={() => setOff(allOn ? new Set(ids) : new Set())}>
+      <button
+        type="button"
+        className={styles.sectionToggle}
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+      >
+        <DownChevronIcon
+          size={12}
+          color="var(--neutral-400)"
+          className={`${styles.sectionChevron} ${collapsed ? '' : styles.sectionChevronOpen}`}
+        />
+        <span className={styles.sectionTitle}>
+          {label}
+          {' '}
+          <span className={styles.count}>{count}/{total}</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        className={styles.selectAll}
+        onClick={() => setOff(allOn ? new Set(ids) : new Set())}
+      >
         {allOn ? 'Clear all' : 'Select all'}
       </button>
+    </div>
+  );
+}
+
+function SectionToggleHead({ title, collapsed, onToggle, trailing }) {
+  return (
+    <div className={styles.sectionHead}>
+      <button
+        type="button"
+        className={styles.sectionToggle}
+        onClick={onToggle}
+        aria-expanded={!collapsed}
+      >
+        <DownChevronIcon
+          size={12}
+          color="var(--neutral-400)"
+          className={`${styles.sectionChevron} ${collapsed ? '' : styles.sectionChevronOpen}`}
+        />
+        <span className={styles.sectionTitle}>{title}</span>
+      </button>
+      {trailing}
     </div>
   );
 }
@@ -105,6 +131,20 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
   // Per-section collapse (Goals / Interventions / Barriers).
   const [collapsed, setCollapsed] = useState({});
   const toggleCollapsed = (key) => setCollapsed(c => ({ ...c, [key]: !c[key] }));
+
+  const toggleConditionFilter = (label) => {
+    setShareFilters((f) => {
+      const set = new Set(f.conditions || []);
+      if (set.has(label)) set.delete(label);
+      else set.add(label);
+      return { ...f, conditions: [...set] };
+    });
+  };
+
+  const conditionLabels = useMemo(
+    () => (data.conditions || []).map(c => c.label).filter(Boolean),
+    [data.conditions],
+  );
 
   const toggleOff = (set, id) => {
     const next = new Set(set);
@@ -240,12 +280,59 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
           )}
         </div>
 
-        {data.conditions.length > 0 && (
+        <div className={styles.field}>
+          <SectionToggleHead
+            title={<>Note <span className={styles.optional}>(optional)</span></>}
+            collapsed={collapsed.note}
+            onToggle={() => toggleCollapsed('note')}
+          />
+          {!collapsed.note && (
+            <Textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="Add a note for the recipient"
+              rows={2}
+            />
+          )}
+        </div>
+
+        {conditionLabels.length > 0 && (
           <div className={styles.field}>
-            <span className={styles.label}>Conditions</span>
-            <div className={styles.chips}>
-              {data.conditions.map(c => <Badge key={c.label} tone="grey" size="S" label={c.label} />)}
-            </div>
+            <SectionToggleHead
+              title="Conditions"
+              collapsed={collapsed.conditions}
+              onToggle={() => toggleCollapsed('conditions')}
+              trailing={shareFilters.conditions?.length > 0 ? (
+                <button
+                  type="button"
+                  className={styles.selectAll}
+                  onClick={() => setShareFilter('conditions', [])}
+                >
+                  Clear filter
+                </button>
+              ) : null}
+            />
+            {!collapsed.conditions && (
+              <div className={styles.chips}>
+                {conditionLabels.map((label) => {
+                  const active = shareFilters.conditions?.includes(label);
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      className={styles.conditionChipBtn}
+                      aria-pressed={active}
+                      onClick={() => toggleConditionFilter(label)}
+                    >
+                      <Badge tone={active ? 'primary' : 'grey'} size="S" label={label} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {shareFilters.conditions?.length > 0 && (
+              <p className={styles.filterHint}>Showing goals, interventions, and barriers related to selected conditions.</p>
+            )}
           </div>
         )}
 
@@ -311,11 +398,6 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
             )}
           </div>
         )}
-
-        <div className={styles.field}>
-          <span className={styles.label}>Note <span className={styles.optional}>(optional)</span></span>
-          <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note for the recipient" rows={2} />
-        </div>
 
         {nothingSelected && (
           <div className={styles.warn}>

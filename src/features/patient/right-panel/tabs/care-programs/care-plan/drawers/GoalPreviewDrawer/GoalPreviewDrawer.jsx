@@ -904,6 +904,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                   onAssigneeChange={consolidated ? undefined : handleAssigneeChange}
                   onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
                   onRowMenu={consolidated ? undefined : setRowMenu}
+                  onUnlink={consolidated || !canEdit ? undefined : (item) => toggleInterventionLink(item.id, false)}
                 />
               )
             )}
@@ -957,6 +958,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                     barriers={barriers}
                     canEdit={canEdit && !consolidated}
                     onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
+                    onUnlink={consolidated || !canEdit ? undefined : (item) => setConfirm({ kind: 'unlink-barrier', item })}
                   />
                 )}
               </>
@@ -1270,6 +1272,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           ariaLabel="Intervention actions"
           items={[
             { key: 'rename', icon: 'solar:pen-linear', label: 'Rename', disabled: !canEdit },
+            { key: 'unlink', icon: 'solar:link-broken-minimalistic-linear', label: 'Unlink', disabled: !canEdit },
             { key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Remove', danger: true, disabled: !canEdit },
           ]}
           onSelect={(k) => {
@@ -1277,6 +1280,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             setRowMenu(null);
             if (k === 'delete') setConfirm({ kind: 'intv', id: item.id, name: item.title });
             else if (k === 'rename') onOpenIntervention?.(item);
+            else if (k === 'unlink') toggleInterventionLink(item.id, false);
           }}
           onClose={() => setRowMenu(null)}
         />
@@ -1314,6 +1318,24 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           onConfirm={async () => {
             await deletePatientCarePlanIntervention(patientId, program.id, confirm.id);
             setConfirm(null);
+          }}
+        />
+      )}
+
+      {confirm?.kind === 'unlink-barrier' && (
+        <ConfirmDialog
+          icon="solar:danger-triangle-linear"
+          iconColor="var(--status-warning)"
+          title={`Unlink from "${live.title}"?`}
+          description="This removes the barrier from this goal. It stays linked to any other goals it's attached to."
+          confirmLabel="Unlink"
+          cancelLabel="Cancel"
+          onCancel={() => setConfirm(null)}
+          onConfirm={async () => {
+            const item = confirm.item;
+            setConfirm(null);
+            await toggleBarrierLink(item.id, false);
+            showToast?.(`Unlinked from ${live.title}`);
           }}
         />
       )}
