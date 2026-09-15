@@ -120,6 +120,40 @@
 .rowRejected:hover [class*="stickyLeft"],
 .rowRejected:hover [class*="stickyRight"] { background: var(--neutral-0) !important; }
 
+/* Billed record — same read-only treatment as .rowRejected but with a
+   success-green feel. The DOS is post-billing and cannot be edited any
+   more, but the row is a happy-path outcome (not a failure) so we keep
+   the text at a live neutral-300 rather than the muted neutral-150 the
+   rejected treatment uses. Only the sticky-right actions column and
+   the View More expander stay clickable so the reviewer can still
+   inspect what was billed and browse other DOS entries. */
+.rowBilled > td,
+.rowBilled > td *,
+.rowBilled .patientName,
+.rowBilled .patientNameLink { color: var(--neutral-300) !important; }
+.rowBilled svg { color: var(--neutral-300) !important; }
+.rowBilled .actionsRow button svg,
+.rowBilled .actionsRow button svg * { color: var(--neutral-300) !important; }
+.rowBilled td[data-status="billed"] svg,
+.rowBilled td[data-status="billed"] svg * { color: var(--status-success) !important; }
+.rowBilled button,
+.rowBilled [role="button"] {
+  pointer-events: none;
+  opacity: 0.6;
+}
+.rowBilled .actionsRow button,
+.rowBilled .actionsRow [role="button"],
+.rowBilled button[class*="viewMoreBtn"] {
+  pointer-events: auto;
+  opacity: 1;
+}
+.rowBilled button[class*="viewMoreBtn"],
+.rowBilled button[class*="viewMoreBtn"] * { color: var(--neutral-300) !important; }
+.rowBilled:hover { background: var(--neutral-0); }
+.rowBilled:hover > td,
+.rowBilled:hover [class*="stickyLeft"],
+.rowBilled:hover [class*="stickyRight"] { background: var(--neutral-0) !important; }
+
 /* ── Sticky columns ── */
 .stickyLeft {
   position: sticky;
@@ -133,8 +167,18 @@
   border-left: 0.5px solid var(--neutral-150);
   z-index: 3;
 }
-.stickyCheck  { left: 0; padding: 8px 10px !important; }
-.stickyMember { left: 36px; padding: 8px 12px !important; border-right: 0.5px solid var(--neutral-150); }
+/* Row-level sticky classes — scoped to <td> so the header row's own
+   .memberTh / .checkTh (which enforce the shared 32px header height)
+   don't lose to the body padding on selector-specificity ties. */
+td.stickyCheck  { left: 0; padding: var(--space-2) calc(var(--space-3) - var(--space-1) / 2) !important; }
+/* Left padding trimmed from 12px to 4px so the patient avatar sits
+   closer to the selection column — same tightening shipped across
+   every worklist. */
+td.stickyMember { left: 36px; padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1) !important; border-right: 0.5px solid var(--neutral-150); }
+/* Header cells still need the sticky offsets, but their padding + height
+   come from HccWorklistTable.module.css's .checkTh / .memberTh rules. */
+th.stickyCheck  { left: 0; }
+th.stickyMember { left: 36px; border-right: 0.5px solid var(--neutral-150); }
 
 /* ── DOS-level group (Figma 4680:138476 / 4672:131830). The DOS · Open
    ICDs · Visit Type · Provider · POS columns read as ONE bordered group
@@ -632,6 +676,20 @@
 .progressDot_done    { background: var(--status-success); }
 .progressDot_active  { background: var(--status-warning); }
 .progressDot_pending { background: var(--neutral-200); }
+/* Small "Billed" chip sits under the 4 progress dots so a reviewer
+   can read the terminal state at a glance. Uses the success token so
+   it visually pairs with the green dollar badge on the Avatar and the
+   Billed chip in the Assignee column. */
+.progressBilledLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--status-success);
+  line-height: 1;
+}
 
 /* ── PCP cell — name + "+N More" pill. ── */
 .pcpCell {
@@ -899,6 +957,12 @@
 .colAssignee    { min-width: 170px; }
 .colRole        { min-width: 150px; }
 .colProgress    { min-width: 110px; }
+.progressStack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
 
 /* Assignee cell — Avatar + 2-line stack (name on top, current role below).
    Mirrors the Member cell's typography so the column reads as a person. */

@@ -60,6 +60,12 @@ export function FilterChip({
   // grey down-chevron (same glyph the idle state uses) instead of the
   // primary "✕", and clicks fall through to toggling the popover.
   noClear = false,
+  // By default `noClear` also drops the pill into the neutral grey
+  // palette (info-display look). Pass `noClearNeutral={false}` to keep
+  // the primary active tint even for never-empty pickers — used when
+  // the picker is a headline control (e.g. HEDIS worklist Year chip)
+  // and should visually match other primary chrome around it.
+  noClearNeutral = true,
   // Optional tooltip content shown from a small info icon rendered
   // between the chip value and the trailing glyph. Active state only:
   // idle chips have no value to sit beside. Anything truthy renders
@@ -92,15 +98,19 @@ export function FilterChip({
           // Never-empty pickers (`noClear`) get the neutral grey palette
           // even when a value is selected — matches the intent that the
           // pill is an information display, not a clearable filter.
-          active && noClear ? styles.chipNeutral : '',
+          active && noClear && noClearNeutral ? styles.chipNeutral : '',
           size === 'S' ? styles.sizeS : '',
         ].filter(Boolean).join(' ')}
         onClick={(e) => setRect(rect ? null : e.currentTarget.getBoundingClientRect())}
       >
-        <span className={styles.chipLabel}>{label}</span>
+        {label && <span className={styles.chipLabel}>{label}</span>}
         {active ? (
           <>
-            <span className={styles.divider} aria-hidden="true">:</span>
+            {/* The "Label : Value" divider only makes sense when both
+                sides are visible. Callers that pass an empty label
+                (e.g. Measurement Year chip in the HEDIS header) get a
+                bare-value pill like "2026 ⌄". */}
+            {label && <span className={styles.divider} aria-hidden="true">:</span>}
             <span className={styles.chipValue}>{summary.text}</span>
             {summary.extra != null && (
               <span className={styles.chipExtra}>+{summary.extra}</span>
@@ -124,9 +134,14 @@ export function FilterChip({
             {noClear ? (
               // Never-empty filters (e.g. Measurement Year) skip the clear
               // ✕ and reuse the idle chevron so users know clicking the
-              // chip re-opens the picker — nothing to clear. Grey tone
-              // matches the idle "Label ⌄" affordance.
-              <DownChevronIcon size={iconSize} color="var(--neutral-300)" />
+              // chip re-opens the picker — nothing to clear. The chevron
+              // picks up the pill's palette: neutral grey by default,
+              // primary purple when the caller opted into the primary
+              // active tint via `noClearNeutral={false}`.
+              <DownChevronIcon
+                size={iconSize}
+                color={noClearNeutral ? 'var(--neutral-300)' : 'var(--primary-300)'}
+              />
             ) : (
               /* span, not <button>: the chip trigger is already a <button> and
                  nested interactive elements are invalid HTML. */

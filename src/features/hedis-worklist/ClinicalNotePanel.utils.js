@@ -570,7 +570,19 @@ function dsfDerivedFlag(field, data, noteContext) {
 }
 
 export function isMandatoryComplete(code, data, noteContext) {
-  const req = mandatoryFieldsFor(code);
+  let req = mandatoryFieldsFor(code);
+  // Standalone DSF-B (no paired DSF-A on the same note) has to collect
+  // its own visit context — Location, Performed by, and the telehealth
+  // consent that normally rides on the shared DOS card. The paired
+  // flow keeps inheriting from the DSF-A carrier, so the base list
+  // stays lean and only widens when this note is DSF-B-only.
+  if (code === 'DSF-B') {
+    const pairedCodes = noteContext?.activeGaps?.map(g => g.code) || [];
+    const hasDsfA = pairedCodes.includes('DSF-A');
+    if (!hasDsfA) {
+      req = ['location', 'telehealthConsent', 'performedBy', ...req];
+    }
+  }
   if (!req.length || !data) return false;
   const isDsf = code === 'DSF-A' || code === 'DSF-B';
   return req.every(f => {

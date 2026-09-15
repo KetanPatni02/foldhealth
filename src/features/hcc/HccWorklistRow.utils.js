@@ -1,11 +1,13 @@
 import { staffById } from './assignment/astranaStaff';
 
-const TERMINAL_STATUSES = new Set(['Completed', 'Skipped', 'Billing Ready']);
+const TERMINAL_STATUSES = new Set(['Completed', 'Skipped', 'Billing Ready', 'Billed']);
 const BLOCKING_STATUSES = new Set(['Reject', 'Rejected', 'Insufficient']);
 const REJECTED_STATUSES = new Set(['Rejected', 'Reject']);
+const BILLED_STATUSES = new Set(['Billed']);
 const STAGES_LOW_TO_HIGH = ['support', 'coder', 'reviewer', 'reviewer2'];
 
 export function isRejectedStatus(s) { return REJECTED_STATUSES.has(s); }
+export function isBilledStatus(s) { return BILLED_STATUSES.has(s); }
 
 function nameToInitials(name) {
   if (!name) return '';
@@ -44,7 +46,25 @@ function makeActiveLegacy(name, role, status) {
   };
 }
 
+// Billed is a terminal post-billing state — if any role's status carries
+// it, the whole DOS is billed and the assignee cell should show that
+// instead of "Billing Ready". Callers rely on the returned kind='billed'
+// to render the green Billed chip in place of the review chip.
+function isDosBilled(dosState, member) {
+  if (dosState) {
+    for (const role of STAGES_LOW_TO_HIGH) {
+      if (BILLED_STATUSES.has(dosState?.[role]?.status)) return true;
+    }
+    return false;
+  }
+  return BILLED_STATUSES.has(member?.supS)
+    || BILLED_STATUSES.has(member?.cdrS)
+    || BILLED_STATUSES.has(member?.r1s)
+    || BILLED_STATUSES.has(member?.r2s);
+}
+
 export function resolveCurrentAssignee(member, dosState, platformUsers = []) {
+  if (isDosBilled(dosState, member)) return { kind: 'billed' };
   if (dosState) {
     for (const role of STAGES_LOW_TO_HIGH) {
       const rs = dosState[role];

@@ -45,11 +45,20 @@ export function SectionTitleBar({
 
   // TitleWithDropdown variant — uses shared FilterChip (see CLAUDE.md).
   // `dropdownValue` accepts either a single string or a string[] to stay
-  // aligned with FilterChip's array-shaped onChange contract.
+  // aligned with FilterChip's array-shaped onChange contract. When the
+  // picker is never-empty (Measurement Year, etc.) pass `dropdownNoClear`
+  // so the trailing glyph reads as a chevron instead of a clear X, and
+  // `dropdownSize` overrides the default compact chip size.
   dropdownLabel = 'Filter',
   dropdownValue,
   dropdownOptions = [],
   onDropdownChange,
+  dropdownNoClear = false,
+  // When `dropdownNoClear` is on, the pill defaults to a neutral info-
+  // display palette; pass `dropdownNoClearNeutral={false}` to keep the
+  // primary active tint on a headline picker (e.g. HEDIS Year chip).
+  dropdownNoClearNeutral = true,
+  dropdownSize,
 
   // TitleWithToggle variant
   toggleItems = [],
@@ -131,6 +140,9 @@ export function SectionTitleBar({
             value={dropdownValue}
             options={dropdownOptions}
             onChange={onDropdownChange}
+            noClear={dropdownNoClear}
+            noClearNeutral={dropdownNoClearNeutral}
+            size={dropdownSize}
           />
         )}
         {variant === 'titleWithToggle' && (
@@ -400,17 +412,19 @@ function TabsSection({ tabs, activeTab, onTabChange, barRef, rightRef }) {
   );
 }
 
-function TitleDropdownSection({ title, label, value, options, onChange }) {
+function TitleDropdownSection({ title, label, value, options, onChange, noClear = false, noClearNeutral = true, size }) {
   const selected = Array.isArray(value) ? value : value == null || value === '' ? [] : [value];
   return (
     <div className={styles.titleRow}>
-      <span className={styles.title}>{title}</span>
+      {title && <span className={styles.title}>{title}</span>}
       <FilterChip
         label={label}
         options={options}
         selected={selected}
         singleSelect
-        size="S"
+        size={size || 'S'}
+        noClear={noClear}
+        noClearNeutral={noClearNeutral}
         onChange={(next) => onChange && onChange(next[0] ?? null)}
       />
     </div>

@@ -148,6 +148,18 @@ export const STATUS_SPEC = {
     border: 'rgba(0, 155, 83, 0.2)',
     legendOrder: null,
   },
+  // Post-billing terminal state — the ASM has been submitted / paid, so
+  // the DOS is read-only across every role (same treatment as Reject,
+  // but with a green success tone since nothing went wrong). Dollar-in-
+  // circle stays legible next to "Completed" (check-circle) and
+  // "Billing Ready" (check-read) at row size.
+  Billed: {
+    icon: 'solar:dollar-linear',
+    color: 'var(--status-success)',
+    bg: 'var(--status-success-light)',
+    border: 'rgba(0, 155, 83, 0.2)',
+    legendOrder: 10,
+  },
 };
 
 // True when `status` has a real spec (vs. falling back to the "Unassigned"
@@ -209,7 +221,7 @@ export const ROLE_STATUS_OPTIONS = {
 // the full set, deduped, so the menu is never empty.
 export const ALL_STATUS_OPTIONS = [
   'New', 'Awaiting', 'In Progress', 'Record Received', 'Record Requested',
-  'Insufficient', 'Returned', 'Skipped', 'Completed', 'Reject',
+  'Insufficient', 'Returned', 'Skipped', 'Completed', 'Reject', 'Billed',
 ];
 
 // Status options ordered for the StatusLegend strip. `status` is the

@@ -5,21 +5,33 @@ import styles from './Avatar.module.css';
 // `locked` — greys the avatar out and stamps a lock badge (white rounded
 // square + outlined red lock) on the bottom-right corner. Matches the HCC
 // "record rejected" treatment (Figma spec).
-function LockedWrapper({ locked, children, className }) {
-  if (!locked) return children;
+//
+// `billed` layers on top with the same badge slot: a green dollar coin
+// marks a DOS that has been billed out. Billed also implies read-only
+// (like rejected) but keeps the inner avatar in its normal colours since
+// billing is a happy-path terminal state, not a failure.
+function LockedWrapper({ locked, billed, children, className }) {
+  if (!locked && !billed) return children;
   return (
     <span className={[styles.lockedWrap, className || ''].filter(Boolean).join(' ')}>
       {children}
-      <span className={styles.lockBadge} aria-label="Locked — record rejected">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="12" height="12" rx="2" fill="white" />
-          <path
-            d="M3 5V4C3 2.34 4.34 1 6 1C7.66 1 9 2.34 9 4V5M4 11H8C9.41 11 10.12 11 10.56 10.56C11 10.12 11 9.41 11 8C11 6.59 11 5.88 10.56 5.44C10.12 5 9.41 5 8 5H4C2.59 5 1.88 5 1.44 5.44C1 5.88 1 6.59 1 8C1 9.41 1 10.12 1.44 10.56C1.88 11 2.59 11 4 11ZM7 8C7 8.55 6.55 9 6 9C5.45 9 5 8.55 5 8C5 7.45 5.45 7 6 7C6.55 7 7 7.45 7 8Z"
-            stroke="var(--status-error)"
-            strokeLinecap="round"
-          />
-        </svg>
-      </span>
+      {locked && (
+        <span className={styles.lockBadge} aria-label="Locked — record rejected">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="12" height="12" rx="2" fill="white" />
+            <path
+              d="M3 5V4C3 2.34 4.34 1 6 1C7.66 1 9 2.34 9 4V5M4 11H8C9.41 11 10.12 11 10.56 10.56C11 10.12 11 9.41 11 8C11 6.59 11 5.88 10.56 5.44C10.12 5 9.41 5 8 5H4C2.59 5 1.88 5 1.44 5.44C1 5.88 1 6.59 1 8C1 9.41 1 10.12 1.44 10.56C1.88 11 2.59 11 4 11ZM7 8C7 8.55 6.55 9 6 9C5.45 9 5 8.55 5 8C5 7.45 5.45 7 6 7C6.55 7 7 7.45 7 8Z"
+              stroke="var(--status-error)"
+              strokeLinecap="round"
+            />
+          </svg>
+        </span>
+      )}
+      {!locked && billed && (
+        <span className={styles.billedBadge} aria-label="Billed — record is read-only">
+          <Icon name="solar:dollar-linear" size={10} color="var(--neutral-0)" />
+        </span>
+      )}
     </span>
   );
 }
@@ -55,7 +67,7 @@ const ICON_COLOR_BY_VARIANT = {
   primary: 'var(--primary-300)',
 };
 
-export function Avatar({ type = 'initial', variant = 'patient', initials, iconName, size, agentName, icon, backgroundColor, borderColor, color, className, locked = false }) {
+export function Avatar({ type = 'initial', variant = 'patient', initials, iconName, size, agentName, icon, backgroundColor, borderColor, color, className, locked = false, billed = false }) {
   const agentKey = agentName ? agentName.toLowerCase() : '';
   const lockedClass = locked ? styles.locked : '';
   const scaleClass = sizeScaleClass(size, styles);
@@ -105,7 +117,7 @@ export function Avatar({ type = 'initial', variant = 'patient', initials, iconNa
       ? { width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.44)) }
       : undefined;
     return (
-      <LockedWrapper locked={locked}>
+      <LockedWrapper locked={locked} billed={billed}>
         <div className={[styles.provider, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')} style={style}>
           {iconEl || initials}
         </div>
@@ -114,7 +126,7 @@ export function Avatar({ type = 'initial', variant = 'patient', initials, iconNa
   }
   if (['others', 'success', 'error', 'warning', 'primary'].includes(variant)) {
     return (
-      <LockedWrapper locked={locked}>
+      <LockedWrapper locked={locked} billed={billed}>
         <div className={[styles[variant], scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')}>
           {iconEl || initials}
         </div>
@@ -123,7 +135,7 @@ export function Avatar({ type = 'initial', variant = 'patient', initials, iconNa
   }
   if (variant === 'assignee') {
     return (
-      <LockedWrapper locked={locked}>
+      <LockedWrapper locked={locked} billed={billed}>
         <div className={[styles.assignee, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')}>{initials}</div>
       </LockedWrapper>
     );
@@ -140,7 +152,7 @@ export function Avatar({ type = 'initial', variant = 'patient', initials, iconNa
       ? { width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.44)) }
       : undefined;
     return (
-      <LockedWrapper locked={locked}>
+      <LockedWrapper locked={locked} billed={billed}>
         <div className={[styles.patient, scaleClass, lockedClass, className || ''].filter(Boolean).join(' ')} style={style}>{iconEl || initials}</div>
       </LockedWrapper>
     );

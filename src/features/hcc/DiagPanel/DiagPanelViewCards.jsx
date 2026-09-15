@@ -11,7 +11,8 @@ import styles from './DiagPanel.module.css';
 
 export function DiagPanelViewCards(p) {
   const {
-    isDosRejected, dosState, rejectInfo, member, newRowNotice, memberId, dismissNewRowNotice,
+    isDosRejected, isDosBilled, billedLockReason,
+    dosState, rejectInfo, member, newRowNotice, memberId, dismissNewRowNotice,
     openDiagPanel, pendingGaps, memberDosList, chartsList, gapDosOptions, gapPosOptions,
     gapVtOptions, gapDocTypeOptions, gapProviderAll, updatePendingGap, removePendingGap,
     savePendingGap, bulkMode, rowKeys, associatedSelectState, toggleSelectAllAssociated,
@@ -22,14 +23,18 @@ export function DiagPanelViewCards(p) {
   } = p;
   // A single reason string surfaced on every locked control below. Rejection
   // is the more specific / terminal explanation, so it wins over the
-  // records-request pending one when both would apply.
-  const lockReason = rejectionLockReason || recordsRequestLockReason;
+  // records-request pending one when both would apply. Billed sits in the
+  // middle: less specific than a rejection reason, more specific than a
+  // records-request pending prompt.
+  const lockReason = rejectionLockReason || billedLockReason || recordsRequestLockReason;
+  const reviewLocked = stageLocked || isDosRejected || isDosBilled;
   return (
     <>
       {/* ── Body: ICD-first cards + HCC suspect groups + collapsed history ── */}
       <div className={styles.cardsList}>
         <DiagPanelViewCardsAlerts
           isDosRejected={isDosRejected}
+          isDosBilled={isDosBilled}
           dosState={dosState}
           rejectInfo={rejectInfo}
           member={member}
@@ -183,7 +188,7 @@ export function DiagPanelViewCards(p) {
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
-              reviewLocked={stageLocked || isDosRejected}
+              reviewLocked={reviewLocked}
               lockReason={lockReason}
             />
           ))}
@@ -199,7 +204,7 @@ export function DiagPanelViewCards(p) {
               openDismissKey={openDismissKey}
               onOpenDismiss={setOpenDismissKey}
               onActed={advanceFocusAfterAction}
-              reviewLocked={stageLocked || isDosRejected}
+              reviewLocked={reviewLocked}
               lockReason={lockReason}
             />
           ))}
@@ -215,7 +220,7 @@ export function DiagPanelViewCards(p) {
               icd={icd}
               dosList={dosList}
               member={member}
-              reviewLocked={stageLocked || isDosRejected}
+              reviewLocked={reviewLocked}
               lockReason={lockReason}
               bulkDisabled={bulkMode}
             />

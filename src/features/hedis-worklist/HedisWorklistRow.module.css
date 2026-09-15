@@ -33,8 +33,22 @@
 .stickyMember { left: 36px; }
 
 .checkTd { padding: 8px 10px; vertical-align: middle; }
+
+/* Checkbox wrapper — matches the member identity block height (avatar +
+   name + meta) and centers the checkbox so it aligns to the avatar's
+   vertical centre even on multi-gap rows where the row grows tall and
+   the check td top-aligns. Same 35px height HCC's worklist uses so the
+   two tables read as one system. */
+.checkAlign {
+  display: flex;
+  align-items: center;
+  height: 35px;
+}
 .memberTd {
-  padding: 8px 12px;
+  /* Left padding trimmed to 4px so the patient avatar sits closer to
+     the selection checkbox column — matches the shared worklist rule
+     applied across HCC / APCM / TOC. */
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1);
   border-right: 0.5px solid var(--neutral-150);
   vertical-align: middle;
   min-width: 220px;
@@ -155,6 +169,32 @@
 }
 .gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
 
+/* Gap-code chip is a clickable button — opens the Care Gap Details
+   drawer for that specific measure. The default Badge (compliance-na)
+   is a static grey pill; wrapping it in this button applies a hover
+   affordance (primary tint on background + border) so the user can tell
+   the pill is interactive on hover. Reset the button chrome so only the
+   Badge's own styling is visible in the idle state. */
+.gapBadgeButton {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  border-radius: 4px;
+  transition: transform .12s ease;
+}
+.gapBadgeButton:hover :global([class*="_badge_"]) {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+  color: var(--primary-300);
+}
+.gapBadgeButton:active { transform: translateY(0.5px); }
+.gapBadgeButton:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+}
+
 /* Equal-height footer row rendered by every gap-iterating column when more
    than MAX_INLINE_GAPS gaps exist — mirrors the HCC dosFooter so the "View
    More N" button in Total Gaps stays vertically aligned with the empty
@@ -217,6 +257,15 @@
 .startDateCell { display: flex; flex-direction: column; gap: 2px; }
 .startDateCode { font-size: var(--font-sm); color: var(--neutral-300); font-weight: 500; }
 .startDateValue { font-size: var(--font-md); color: var(--neutral-400); white-space: nowrap; }
+/* DSF-B row surfaces the 30-day-window countdown under the created
+   date. Warning tone signals the closing follow-up window without
+   escalating to the red overdue treatment. */
+.startDateDue {
+  font-size: var(--font-xs);
+  color: var(--status-warning);
+  font-weight: 500;
+  white-space: nowrap;
+}
 
 /* Numeric cells */
 .numText { font-size: var(--font-base); color: var(--neutral-400); font-variant-numeric: tabular-nums; }

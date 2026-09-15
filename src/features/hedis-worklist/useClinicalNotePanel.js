@@ -167,7 +167,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
 
   const isReadyForReview = (code) => {
     const data = gapState[code] ?? {};
-    return isMandatoryComplete(code, data, { audioOnly, audioVideo }) && !data.manuallyOff;
+    return isMandatoryComplete(code, data, { audioOnly, audioVideo, activeGaps }) && !data.manuallyOff;
   };
 
   const collectReadyCodes = () => {
@@ -707,7 +707,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   const drawerTitle = editingTaskId ? 'Edit Clinical Note' : 'Clinical Note';
   const ageShort = member.age ? member.age.split('y')[0] + 'Y' : '';
 
-  const noteCtx = { audioOnly, audioVideo };
+  const noteCtx = { audioOnly, audioVideo, activeGaps };
   const activeMandatoryComplete = activeGap
     ? isMandatoryComplete(activeGap.code, gapState[activeGap.code] ?? {}, noteCtx)
     : false;
