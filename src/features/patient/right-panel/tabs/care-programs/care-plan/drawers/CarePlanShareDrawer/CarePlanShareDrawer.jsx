@@ -7,8 +7,17 @@ import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/Shad
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
+import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { buildCarePlanDownloadFilename, downloadCarePlanPdf } from '../../lib/carePlanExport';
+import {
+  SHARE_DATE_OPTIONS,
+  SHARE_FILTERS_DEFAULT,
+  SHARE_GBI_STATUSES,
+  SHARE_PRIORITY_LABELS,
+  isShareFiltersActive,
+  matchesShareFilters,
+} from '../../lib/carePlanShareFilters';
 import { CarePlanPdfPreview } from './CarePlanPdfPreview';
 import styles from './CarePlanShareDrawer.module.css';
 
@@ -50,10 +59,43 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
   const signCarePlan = useAppStore(s => s.signCarePlan);
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const showToast = useAppStore(s => s.showToast);
+  const lastVisit = useAppStore((s) => {
+    const p = (s.patients || []).find(x => x.id === patientId)
+      || (s.allPatients || []).find(x => x.id === patientId);
+    return p?.lastVisit || p?.last_visit || null;
+  });
 
-  const allGoalIds = data.goals.map(g => g.id);
-  const allIntvIds = data.interventions.map(i => i.id);
-  const allBarrierIds = (data.barriers || []).map(b => b.id);
+  const [shareFilters, setShareFilters] = useState(() => ({ ...SHARE_FILTERS_DEFAULT }));
+  const setShareFilter = (key, value) => setShareFilters(f => ({ ...f, [key]: value }));
+  const clearShareFilters = () => setShareFilters({ ...SHARE_FILTERS_DEFAULT });
+  const filtersActive = isShareFiltersActive(shareFilters);
+
+  const filterCtx = useMemo(
+    () => ({ lastVisitIso: lastVisit }),
+    [lastVisit],
+  );
+
+  const filteredGoals = useMemo(
+    () => data.goals.filter(g => matchesShareFilters(g, shareFilters, filterCtx)),
+    [data.goals, shareFilters, filterCtx],
+  );
+  const filteredInterventions = useMemo(
+    () => data.interventions.filter(i => matchesShareFilters(i, shareFilters, { ...filterCtx, kind: 'intervention' })),
+    [data.interventions, shareFilters, filterCtx],
+  );
+  const filteredBarriers = useMemo(
+    () => (data.barriers || []).filter(b => matchesShareFilters(b, shareFilters, filterCtx)),
+    [data.barriers, shareFilters, filterCtx],
+  );
+
+  const assigneeOptions = useMemo(
+    () => [...new Set((data.interventions || []).map(i => i.assignee?.name).filter(Boolean))],
+    [data.interventions],
+  );
+
+  const filteredGoalIds = useMemo(() => filteredGoals.map(g => g.id), [filteredGoals]);
+  const filteredIntvIds = useMemo(() => filteredInterventions.map(i => i.id), [filteredInterventions]);
+  const filteredBarrierIds = useMemo(() => filteredBarriers.map(b => b.id), [filteredBarriers]);
 
   const [goalOff, setGoalOff] = useState(() => new Set());
   const [intvOff, setIntvOff] = useState(() => new Set());
@@ -70,15 +112,15 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
     return next;
   };
 
-  const selectedGoalIds = allGoalIds.filter(id => !goalOff.has(id));
-  const selectedIntvIds = allIntvIds.filter(id => !intvOff.has(id));
+  const selectedGoalIds = filteredGoals.filter(g => !goalOff.has(g.id)).map(g => g.id);
+  const selectedIntvIds = filteredInterventions.filter(i => !intvOff.has(i.id)).map(i => i.id);
 
   const selection = useMemo(() => ({
     conditions: data.conditions.map(c => c.label),
-    goals: data.goals.filter(g => !goalOff.has(g.id)),
-    interventions: data.interventions.filter(i => !intvOff.has(i.id)),
-    barriers: (data.barriers || []).filter(b => !barrierOff.has(b.id)),
-  }), [data.conditions, data.goals, data.interventions, data.barriers, goalOff, intvOff, barrierOff]);
+    goals: filteredGoals.filter(g => !goalOff.has(g.id)),
+    interventions: filteredInterventions.filter(i => !intvOff.has(i.id)),
+    barriers: filteredBarriers.filter(b => !barrierOff.has(b.id)),
+  }), [data.conditions, filteredGoals, filteredInterventions, filteredBarriers, goalOff, intvOff, barrierOff]);
 
   const nothingSelected = selection.goals.length === 0
     && selection.interventions.length === 0
@@ -148,9 +190,56 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
     </>
   );
 
+  const dateChipSelected = useMemo(() => {
+    if (shareFilters.datePreset === 'all') return [];
+    const opt = SHARE_DATE_OPTIONS.find(o => o.key === shareFilters.datePreset);
+    return opt ? [opt.label] : [];
+  }, [shareFilters.datePreset]);
+
   const editorPane = (
     <div className={styles.editorScroll}>
       <div className={styles.body}>
+        <div className={styles.filterBar}>
+          <FilterChip
+            label="Date"
+            options={SHARE_DATE_OPTIONS.map(o => o.label)}
+            selected={dateChipSelected}
+            singleSelect
+            onChange={(next) => {
+              const pick = next[0];
+              const opt = SHARE_DATE_OPTIONS.find(o => o.label === pick);
+              setShareFilter('datePreset', opt?.key || 'all');
+            }}
+          />
+          <FilterChip
+            label="Status"
+            options={SHARE_GBI_STATUSES}
+            selected={shareFilters.status}
+            onChange={(v) => setShareFilter('status', v)}
+          />
+          <FilterChip
+            label="Priority"
+            options={SHARE_PRIORITY_LABELS}
+            selected={shareFilters.priority}
+            onChange={(v) => setShareFilter('priority', v)}
+          />
+          {assigneeOptions.length > 0 && (
+            <FilterChip
+              label="Assignee"
+              options={assigneeOptions}
+              selected={shareFilters.assignee}
+              searchable
+              onChange={(v) => setShareFilter('assignee', v)}
+            />
+          )}
+          {filtersActive && (
+            <button type="button" className={styles.clearFilters} onClick={clearShareFilters}>
+              <Icon name="solar:backspace-linear" size={16} color="var(--primary-300)" />
+              Clear all
+            </button>
+          )}
+        </div>
+
         {data.conditions.length > 0 && (
           <div className={styles.field}>
             <span className={styles.label}>Conditions</span>
@@ -161,11 +250,14 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
         )}
 
         <div className={styles.field}>
-          <SectionSelectAll label="Goals" ids={allGoalIds} off={goalOff} setOff={setGoalOff} collapsed={collapsed.goals} onToggle={() => toggleCollapsed('goals')} />
+          <SectionSelectAll label="Goals" ids={filteredGoalIds} off={goalOff} setOff={setGoalOff} collapsed={collapsed.goals} onToggle={() => toggleCollapsed('goals')} />
           {!collapsed.goals && (
           <div className={styles.list}>
             {data.goals.length === 0 && <div className={styles.empty}>No goals on this plan.</div>}
-            {data.goals.map(g => (
+            {data.goals.length > 0 && filteredGoals.length === 0 && (
+              <div className={styles.empty}>No goals match the filters.</div>
+            )}
+            {filteredGoals.map(g => (
               <div key={g.id} className={styles.row}>
                 <Checkbox checked={!goalOff.has(g.id)} onCheckedChange={() => setGoalOff(s => toggleOff(s, g.id))} aria-label={`Include ${g.title}`} />
                 <span className={styles.rowText}>
@@ -179,11 +271,14 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
         </div>
 
         <div className={styles.field}>
-          <SectionSelectAll label="Interventions" ids={allIntvIds} off={intvOff} setOff={setIntvOff} collapsed={collapsed.interventions} onToggle={() => toggleCollapsed('interventions')} />
+          <SectionSelectAll label="Interventions" ids={filteredIntvIds} off={intvOff} setOff={setIntvOff} collapsed={collapsed.interventions} onToggle={() => toggleCollapsed('interventions')} />
           {!collapsed.interventions && (
           <div className={styles.list}>
             {data.interventions.length === 0 && <div className={styles.empty}>No interventions on this plan.</div>}
-            {data.interventions.map(i => (
+            {data.interventions.length > 0 && filteredInterventions.length === 0 && (
+              <div className={styles.empty}>No interventions match the filters.</div>
+            )}
+            {filteredInterventions.map(i => (
               <div key={i.id} className={styles.row}>
                 <Checkbox checked={!intvOff.has(i.id)} onCheckedChange={() => setIntvOff(s => toggleOff(s, i.id))} aria-label={`Include ${i.title}`} />
                 <span className={styles.rowText}>
@@ -196,12 +291,15 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
           )}
         </div>
 
-        {allBarrierIds.length > 0 && (
+        {(data.barriers || []).length > 0 && (
           <div className={styles.field}>
-            <SectionSelectAll label="Barriers" ids={allBarrierIds} off={barrierOff} setOff={setBarrierOff} collapsed={collapsed.barriers} onToggle={() => toggleCollapsed('barriers')} />
+            <SectionSelectAll label="Barriers" ids={filteredBarrierIds} off={barrierOff} setOff={setBarrierOff} collapsed={collapsed.barriers} onToggle={() => toggleCollapsed('barriers')} />
             {!collapsed.barriers && (
             <div className={styles.list}>
-              {(data.barriers || []).map(b => (
+              {filteredBarriers.length === 0 && (
+                <div className={styles.empty}>No barriers match the filters.</div>
+              )}
+              {filteredBarriers.map(b => (
                 <div key={b.id} className={styles.row}>
                   <Checkbox checked={!barrierOff.has(b.id)} onCheckedChange={() => setBarrierOff(s => toggleOff(s, b.id))} aria-label={`Include ${b.title}`} />
                   <span className={styles.rowText}>

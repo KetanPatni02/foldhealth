@@ -3,27 +3,23 @@ import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { AssigneeChange } from '../../../../../../../../components/AssigneeChange/AssigneeChange';
 import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
-import { LinkChip, GbiProgressCell } from '../../tables/carePlanTableShared';
+import { GbiStatusButton } from '../../tables/carePlanTableShared';
 import styles from './GoalPreviewDrawer.module.css';
 
 /** Linked interventions inside Goal Details — Figma SNP-Story 2632:80869. */
 export function GoalLinkedInterventionsList({
   interventions,
   canEdit,
-  linkCount,
   platformUsers,
   onOpen,
   onPriorityMenu,
-  onLinkOwner,
   onAssigneeChange,
+  onStatusMenu,
   onRowMenu,
 }) {
   return (
     <div className={styles.intvList}>
-      {interventions.map((i) => {
-        const adherence = Number(i.adherence);
-        const showAdherence = Number.isFinite(adherence) && i.adherence !== '-';
-        return (
+      {interventions.map((i) => (
           <div
             key={i.id}
             className={styles.intvRow}
@@ -66,15 +62,6 @@ export function GoalLinkedInterventionsList({
                   />
                 )}
               </div>
-              <span
-                className={`${styles.intvLinkChip} ${canEdit ? styles.intvLinkChipClickable : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (canEdit) onLinkOwner?.({ kind: 'intervention', item: i });
-                }}
-              >
-                <LinkChip count={linkCount(i.id)} />
-              </span>
             </div>
 
             <div className={styles.intvAssignee} onClick={(e) => e.stopPropagation()}>
@@ -91,10 +78,12 @@ export function GoalLinkedInterventionsList({
               />
             </div>
 
-            <div className={styles.intvAdherence} onClick={(e) => e.stopPropagation()}>
-              {showAdherence
-                ? <GbiProgressCell progress={adherence} />
-                : <span className={styles.intvAdherenceDash}>—</span>}
+            <div className={styles.intvStatus} onClick={(e) => e.stopPropagation()}>
+              <GbiStatusButton
+                value={i.status || 'Not Started'}
+                disabled={!canEdit}
+                onOpen={(rect) => onStatusMenu?.({ kind: 'intv', item: i, rect })}
+              />
             </div>
 
             <div className={styles.intvActions} onClick={(e) => e.stopPropagation()}>
@@ -108,8 +97,7 @@ export function GoalLinkedInterventionsList({
               />
             </div>
           </div>
-        );
-      })}
+      ))}
     </div>
   );
 }

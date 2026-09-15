@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { CloseIcon } from '../Icon/CloseIcon';
 import styles from './CloseButton.module.css';
 
@@ -13,16 +14,21 @@ import styles from './CloseButton.module.css';
  * @param {string}  [props.label='Close']   — aria-label + tooltip
  * @param {string}  [props.className]
  */
-export function CloseButton({ onClick, size = 18, label = 'Close', className }) {
+export const CloseButton = forwardRef(function CloseButton(
+  { onClick, size = 18, label = 'Close', className, ...rest },
+  ref,
+) {
   return (
     <button
       type="button"
+      ref={ref}
       className={[styles.btn, className || ''].filter(Boolean).join(' ')}
       onClick={onClick}
       aria-label={label}
       title={label}
+      {...rest}
     >
       <CloseIcon size={size} />
     </button>
   );
-}
+});

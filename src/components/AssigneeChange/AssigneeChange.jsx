@@ -51,6 +51,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   disabled = false,
   // Opt-in for table rows: drop the fixed 140px pill width and fill the
   // parent cell so long names use every pixel the column allocates.
+  // Ignored in avatarOnly mode — that variant is always a tight pill.
   fillContainer = false,
   users,
   onSelect,
@@ -164,7 +165,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
        patient rows fill with a primary halo instead of the default
        secondary one. */
     avatarOnly && !unassigned && avatarVariant === 'patient' ? styles.variantPatient : '',
-    fillContainer ? styles.fillContainer : '',
+    fillContainer && !avatarOnly ? styles.fillContainer : '',
     disabled ? styles.disabled : '',
     className || '',
   ].filter(Boolean).join(' ');
