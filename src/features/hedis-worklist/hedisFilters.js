@@ -11,38 +11,45 @@
 //   - date  → DateRangePopover
 //   - range → RangeSliderPopover
 
+// Ordering matches the HEDIS filter-list reference (Figma / product spec):
+// the "More Filters" popover reads top-to-bottom, left-to-right in the
+// exact sequence below. `primary: true` items are the six the chip row
+// shows by default (Member Status, Language, Care Gaps, Gap Status,
+// Assignee, Care Gap Added Date); the rest stay hidden until toggled on.
 export const MORE_FILTER_ITEMS = [
-  // Primary — shown in the chip row by default. Auto-fit trims to one row.
+  // ── Row 1 — Identity & outreach essentials ─────────────────────────
   { k: 'memberStatus',                label: 'Member Status',                primary: true },
-  { k: 'gapStatus',                   label: 'Gap Status',                   primary: true },
-  { k: 'assignee',                    label: 'Assignee',                     primary: true },
-  { k: 'gender',                      label: 'Gender',                       primary: true },
-  { k: 'language',                    label: 'Language',                     primary: true },
-  { k: 'lastOutreachOutcome',         label: 'Last Outreach Outcome',        primary: true },
-  { k: 'preferredCallTime',           label: 'Preferred Call Time',          primary: true },
-  { k: 'state',                       label: 'State of Residence',           primary: true },
-  // Extended — hidden until toggled on via MoreFiltersPopover.
   { k: 'phone',                       label: 'Phone Number',                 primary: false },
   { k: 'dob',                         label: 'DOB',                          primary: false },
+  { k: 'gender',                      label: 'Gender',                       primary: false },
+  { k: 'language',                    label: 'Language',                     primary: true },
+  { k: 'gapStatus',                   label: 'Gap Status',                   primary: true },
+  { k: 'assignee',                    label: 'Assignee',                     primary: true },
   { k: 'lastOutreachDate',            label: 'Last Outreach Date',           primary: false },
+  { k: 'lastOutreachOutcome',         label: 'Last Outreach Outcome',        primary: false },
   { k: 'ipa',                         label: 'IPA',                          primary: false },
+  // ── Row 2 — Coverage & plan attributes ─────────────────────────────
+  { k: 'hpCode',                      label: 'HP Codes',                     primary: false },
   { k: 'isOwnedIpa',                  label: 'Is Owned IPA',                 primary: false },
   { k: 'lob',                         label: 'LOB',                          primary: false },
-  { k: 'hpCode',                      label: 'HP Codes',                     primary: false },
   { k: 'hpGroup',                     label: 'HP Group',                     primary: false },
   { k: 'contractType',                label: 'Contract Type',                primary: false },
   { k: 'snpType',                     label: 'SNP Type',                     primary: false },
   { k: 'networkMarket',               label: 'Network Market',               primary: false },
   { k: 'zip',                         label: 'Zip Code',                     primary: false },
   { k: 'city',                        label: 'City',                         primary: false },
+  { k: 'preferredCallTime',           label: 'Preferred Call Time',          primary: false },
+  // ── Row 3 — Residence + PCP attribution + care-gap timing ──────────
+  { k: 'state',                       label: 'State of Residence',           primary: false },
   { k: 'pcp',                         label: 'PCP',                          primary: false },
   { k: 'pcpCounty',                   label: 'PCP County',                   primary: false },
   { k: 'pcpPod',                      label: 'PCP Pod',                      primary: false },
   { k: 'pcpVendor',                   label: 'PCP Vendor',                   primary: false },
   { k: 'pcpState',                    label: 'PCP State',                    primary: false },
-  { k: 'careGaps',                    label: 'Care Gaps',                    primary: false },
-  { k: 'careGapAddedDate',            label: 'Care Gap Added Date',          primary: false },
+  { k: 'careGaps',                    label: 'Care Gaps',                    primary: true },
+  { k: 'careGapAddedDate',            label: 'Care Gap Added Date',          primary: true },
   { k: 'lastCareGapAssessmentDate',   label: 'Last Care Gap Assessment Date',primary: false },
+  // ── Row 4 — Visit + clinical risk scores ───────────────────────────
   { k: 'lastVisitDate',               label: 'Last Visit Date',              primary: false },
   { k: 'riskIQ',                      label: 'Risk IQ',                      primary: false },
   { k: 'advancedIllness',             label: 'Advanced Illness',             primary: false },
@@ -112,9 +119,13 @@ export const FILTER_DEFS = [
   { k: 'pcpState',            label: 'PCP State', type: 'multi',
     dynamic: 'pcpState', opts: [] },
   // ── Care-gap volume + timing ───────────────────────────────────────
-  // Same bucketing HCC uses for its `hccG` / `gaps` radio filters.
-  { k: 'careGaps',            label: 'Care Gaps', type: 'radio',
-    opts: ['0', '1 - 5', '6 - 10', '11 - 20', '> 20'] },
+  // Care Gaps is the measure filter — pick specific gap codes (CBP,
+  // COL, DSF-A, …) to keep the worklist to members carrying any of
+  // those gaps. Options are computed from the loaded members at
+  // render time (dynamic: 'careGaps'); labels render as "CODE —
+  // Measure Name" so the popover reads without needing the codebook.
+  { k: 'careGaps',            label: 'Care Gaps', type: 'multi',
+    dynamic: 'careGaps', opts: [], searchable: true },
   { k: 'careGapAddedDate',    label: 'Care Gap Added Date', type: 'date', field: 'careGapAddedDate' },
   { k: 'lastCareGapAssessmentDate', label: 'Last Care Gap Assessment Date', type: 'date', field: 'lastCareGapAssessmentDate' },
   { k: 'lastVisitDate',       label: 'Last Visit Date', type: 'date', field: 'lastVisitDate' },
@@ -194,15 +205,15 @@ function matchOne(m, k, vals) {
     case 'pcpState':            return vals.includes(m.pcpState);
     // Care-gap volume + timing
     case 'careGaps': {
-      const cnt = (m.gaps || []).length;
-      return vals.some(v => {
-        if (v === '0')       return cnt === 0;
-        if (v === '1 - 5')   return cnt >= 1 && cnt <= 5;
-        if (v === '6 - 10')  return cnt >= 6 && cnt <= 10;
-        if (v === '11 - 20') return cnt >= 11 && cnt <= 20;
-        if (v === '> 20')    return cnt > 20;
-        return false;
-      });
+      // Match on the gap CODE — vals are things like 'CBP', 'DSF-A'
+      // (pulled from the loaded members via the `careGaps` dynamic
+      // options resolver). A member passes when any of their open
+      // gaps is in the selected set.
+      const valSet = new Set(vals);
+      for (const g of (m.gaps || [])) {
+        if (valSet.has(g.code)) return true;
+      }
+      return false;
     }
     case 'careGapAddedDate':          return matchDateRange(m.careGapAddedDate, vals);
     case 'lastCareGapAssessmentDate': return matchDateRange(m.lastCareGapAssessmentDate, vals);

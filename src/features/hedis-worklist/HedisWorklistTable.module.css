@@ -24,7 +24,7 @@
 }
 
 .table thead th {
-  padding: 8px 14px;
+  padding: 0 calc(var(--space-3) + var(--space-1) / 2);
   font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
@@ -36,13 +36,16 @@
   top: 0;
   z-index: 2;
   user-select: none;
-  height: 32px;
+  height: var(--space-8);
 }
 .table thead th[class*="stickyLeft"],
 .table thead th[class*="stickyRight"] { z-index: 4; }
 
-.checkTh { padding: 8px 10px !important; width: 36px; }
-.memberTh { padding: 8px 12px !important; border-right: 0.5px solid var(--neutral-150); }
+/* Header row is fixed at 32px (see HeaderCell.module.css). Kill the
+   check/member sticky cells' vertical padding so they don't stretch
+   the row past that height. */
+.checkTh { height: var(--space-8); padding: 0 calc(var(--space-3) - var(--space-1) / 2) !important; width: 36px; }
+.memberTh { height: var(--space-8); padding: 0 var(--space-3) !important; border-right: 0.5px solid var(--neutral-150); }
 
 /* ── Pagination bar ── */
 .paginationBar {

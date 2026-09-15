@@ -341,13 +341,15 @@
   top: 0;
   z-index: 2;
   user-select: none;
-  height: 36px;
+  /* Header row fixed at 32px across every worklist. */
+  height: var(--space-8);
 }
 /* Sticky header cells need higher z-index to overlap sticky columns */
 .table thead th[class*="stickyLeft"],
 .table thead th[class*="stickyRight"] { z-index: 4; }
 
-.checkTh { padding: 8px 10px !important; width: 36px; }
+/* Header row fixed at 32px (see HeaderCell.module.css). */
+.checkTh { height: var(--space-8); padding: 0 calc(var(--space-3) - var(--space-1) / 2) !important; width: 36px; }
 
 /* ── Pagination ── */
 .pagination {

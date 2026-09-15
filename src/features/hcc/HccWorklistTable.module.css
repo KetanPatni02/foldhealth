@@ -139,7 +139,11 @@
 }
 
 .table thead th {
-  padding: 8px 14px;
+  /* Header row fixed at 32px across every worklist. Vertical padding
+     goes to 0 so the sticky sibling cells (checkbox / member / actions)
+     don't stretch the row past the height HeaderCell asks for. */
+  height: var(--space-8);
+  padding: 0 calc(var(--space-3) + var(--space-1) / 2);
   font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
@@ -152,7 +156,6 @@
   top: 0; /* tabBar is outside scrollWrap now, so header sticks at top of scroll */
   z-index: 2;
   user-select: none;
-  height: 32px;
 }
 
 /* Bump z-index on sticky-left / sticky-right header cells */
@@ -161,13 +164,17 @@
   z-index: 4;
 }
 
-/* Header cells for the split member columns */
+/* Header cells for the split member columns. Header row is fixed at
+   32px (see HeaderCell.module.css); vertical padding stripped so
+   these sticky sibling cells don't stretch the row taller. */
 .checkTh {
-  padding: 8px 10px !important;
+  height: var(--space-8);
+  padding: 0 calc(var(--space-3) - var(--space-1) / 2) !important;
   width: 36px;
 }
 .memberTh {
-  padding: 8px 12px !important;
+  height: var(--space-8);
+  padding: 0 var(--space-3) !important;
   border-right: 0.5px solid var(--neutral-150);
 }
 

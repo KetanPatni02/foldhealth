@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '../Icon/Icon';
 import styles from './SortPopover.module.css';
 
 /**
@@ -47,9 +46,10 @@ export function SortPopover({
 
   if (!anchorRect) return null;
 
+  // Apply the sort but keep the popover open so the reviewer can see
+  // the picked direction highlighted in primary before they dismiss.
   const select = (key, dir) => {
     onSort?.(key, dir);
-    onClose?.();
   };
 
   return createPortal(
@@ -99,7 +99,7 @@ export function SortPopover({
 }
 
 function DirButton({ dir, active, onClick }) {
-  const iconName = dir === 'asc' ? 'solar:arrow-up-linear' : 'solar:arrow-down-linear';
+  const stroke = active ? 'var(--neutral-0)' : 'var(--neutral-300)';
   return (
     <button
       type="button"
@@ -107,15 +107,36 @@ function DirButton({ dir, active, onClick }) {
       onClick={onClick}
       aria-label={dir === 'asc' ? 'Sort ascending' : 'Sort descending'}
     >
-      <Icon name={iconName} size={12} color={active ? 'var(--neutral-0)' : 'var(--neutral-300)'} />
+      {/* Real arrow (shaft + head) — the shared Icon layer maps
+          `solar:arrow-*` names to a plain chevron, which reads as a
+          disclosure indicator instead of a direction cue, so this
+          component ships its own inline SVG. */}
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        {dir === 'asc' ? (
+          <>
+            <path d="M8 13V3" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M4 7L8 3L12 7" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        ) : (
+          <>
+            <path d="M8 3V13" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" />
+            <path d="M4 9L8 13L12 9" stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        )}
+      </svg>
     </button>
   );
 }
 
+// Anchor the popover to the RIGHT edge of the trigger so it lines up
+// under the sort icon inside a HeaderCell (the label sits on the left
+// and the chevron on the right). Falls back to left-alignment if the
+// popover would spill past the viewport on the right.
 function positionPopover(rect, width) {
   if (!rect) return { top: 0, left: 0 };
   const margin = 8;
   const top = Math.min(rect.bottom + 4, window.innerHeight - 220);
-  const left = Math.min(rect.left, window.innerWidth - width - margin);
-  return { top, left: Math.max(margin, left) };
+  const preferred = rect.right - width;
+  const clamped = Math.min(Math.max(margin, preferred), window.innerWidth - width - margin);
+  return { top, left: clamped };
 }

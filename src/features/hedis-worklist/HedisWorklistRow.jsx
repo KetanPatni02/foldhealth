@@ -111,9 +111,14 @@ export const HEDIS_MIDDLE_COLUMNS = [
       <div className={styles.gapItems}>
         {(ctx.visibleGaps || []).map(g => (
           <div key={g.code} className={styles.gapItem}>
-            <span onClick={() => ctx.onOpenGap?.(member, g.code)} style={{ cursor: 'pointer' }}>
+            <button
+              type="button"
+              className={styles.gapBadgeButton}
+              aria-label={`Open ${g.code} care gap details`}
+              onClick={(e) => { e.stopPropagation(); ctx.onOpenGap?.(member, g.code); }}
+            >
               <Badge size="M" variant="compliance-na" label={g.code} />
-            </span>
+            </button>
           </div>
         ))}
         {ctx.extraCount > 0 && (
@@ -219,7 +224,17 @@ export const HEDIS_MIDDLE_COLUMNS = [
       <div className={styles.gapItems}>
         {(ctx.visibleGaps || []).map(g => (
           <div key={g.code} className={styles.gapItem}>
-            <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
+            <div className={styles.startDateCell}>
+              <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
+              {/* DSF-B carries a 30-day window from the paired DSF-A
+                  Positive-save moment. Surface the remaining time
+                  under the created date so Coordinators can spot the
+                  ones running out (mock uses a fixed "Due in 18d"
+                  copy to match the product spec). */}
+              {g.code === 'DSF-B' && (
+                <span className={styles.startDateDue}>Due in 18d</span>
+              )}
+            </div>
           </div>
         ))}
         {ctx.extraCount > 0 && <div className={styles.gapFooter} />}
@@ -326,9 +341,13 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
       ].filter(Boolean).join(' ')}
       onClick={() => onOpenGap?.(member, primaryGap.code)}
     >
-      {/* Checkbox */}
+      {/* Checkbox — wrapped in `.checkAlign` so it aligns to the avatar's
+          vertical centre even on multi-gap rows where the td top-aligns
+          to the first gap row. Same pattern the HCC worklist uses. */}
       <td className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`} onClick={e => e.stopPropagation()}>
-        <Checkbox checked={isSelected} onCheckedChange={() => onSelect(member.id)} aria-label={`Select ${member.name}`} />
+        <div className={styles.checkAlign}>
+          <Checkbox checked={isSelected} onCheckedChange={() => onSelect(member.id)} aria-label={`Select ${member.name}`} />
+        </div>
       </td>
 
       {/* Member — entire cell clickable for patient quick view */}
@@ -388,16 +407,12 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
         );
       })}
 
-      {/* Actions */}
+      {/* Actions — HEDIS rows expose Call + More only. The eye affordance
+          was removed because the gap pills in-row already open the Care
+          Gap Details drawer, so a duplicate view button in the actions
+          column added noise without a distinct outcome. */}
       <td className={`${styles.actionsCell} ${styles.stickyRight}`}>
         <div className={styles.actionsBtns}>
-          <ActionButton
-            icon="solar:eye-linear"
-            size="L"
-            tooltip="View care gap details"
-            onClick={e => { e.stopPropagation(); onOpenGap?.(member, primaryGap.code); }}
-          />
-          <span className={styles.actionsDivider} />
           <ActionButton
             icon="solar:phone-linear"
             size="L"

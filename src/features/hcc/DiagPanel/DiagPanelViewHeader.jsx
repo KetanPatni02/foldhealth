@@ -9,7 +9,7 @@ export function DiagPanelViewHeader(p) {
   const {
     member, rafImpact, noop, slaVerdict, pillRef, onPillEnter, onPillLeave, onPillClick,
     pillLabel, reviewProgress, pillRect, reviewStages, cancelClose, requestClose,
-    setPillPinned, setPillRect, dosState, currentDos, isDosRejected, actingStatus,
+    setPillPinned, setPillRect, dosState, currentDos, isDosRejected, isDosBilled, actingStatus,
     handleStatusChange, actingRole, stageLocked, recordsRequestLockReason,
   } = p;
   return (
@@ -70,16 +70,23 @@ export function DiagPanelViewHeader(p) {
           )}
         </div>
         <div className={styles.dosRowRight}>
-          <AssigneeAvatar member={member} dosState={dosState} currentDos={currentDos} locked={isDosRejected} />
+          <AssigneeAvatar
+            member={member}
+            dosState={dosState}
+            currentDos={currentDos}
+            locked={isDosRejected}
+            billed={isDosBilled}
+          />
           <span className={styles.dosRowDivider} />
           <DosStatusMenu
             value={actingStatus}
             onChange={handleStatusChange}
             role={actingRole}
-            disabled={stageLocked || isDosRejected}
+            disabled={stageLocked || isDosRejected || isDosBilled}
             disabledReason={(() => {
               const supStatus = dosState?.support?.status || member?.supS;
               if (isDosRejected) return 'Record was Rejected upstream — no downstream action';
+              if (isDosBilled) return 'Record has been billed — no further edits allowed';
               if (recordsRequestLockReason) return recordsRequestLockReason;
               if (supStatus === 'Insufficient') return 'Support marked the documents Insufficient — nothing to code yet';
               if (supStatus === 'Reject' || supStatus === 'Rejected') return 'Support rejected this DOS — no downstream action';

@@ -292,6 +292,12 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
 export function DsfbEvidenceForm({ v, data, submitted }) {
   const onUpdate = (patch) => v.updateGap('DSF-B', patch);
   const err = (field) => submitted && !data[field];
+  // When the note has no paired DSF-A, DSF-B is standalone — the
+  // reviewer completed the PHQ-2 virtually and skipped creating the
+  // Depression Screening care program. DSF-B has to collect its own
+  // Location + Performed by; the paired flow keeps inheriting them
+  // from the DSF-A carrier.
+  const hasPairedDsfA = !!v.activeGaps?.some(g => g.code === 'DSF-A');
   const phq9Values = data.phq9?.items || [null, null, null, null, null, null, null, null, null];
   const allAnswered = phq9Values.every(v2 => v2 !== null && v2 !== undefined);
   // Always recompute from the current items — falling back to a stored
@@ -334,6 +340,39 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
 
   return (
     <div className={styles.form}>
+      {/* Standalone DSF-B (no paired DSF-A on the note) needs its own
+          visit-context fields. The DSF-A carrier normally provides
+          these, but a virtually-run PHQ-2 skips creating that gap. */}
+      {!hasPairedDsfA && (
+        <>
+          <FieldStack>
+            <FieldLabel required>Location</FieldLabel>
+            <div className={styles.radioStack}>
+              {LOCATION_OPTIONS.map(opt => (
+                <RadioButton
+                  key={opt.value}
+                  checked={data.location === opt.value}
+                  onChange={() => onUpdate({ location: opt.value })}
+                  label={opt.label}
+                />
+              ))}
+            </div>
+            {err('location') && <FieldError>Location is required</FieldError>}
+          </FieldStack>
+          <FieldStack>
+            <FieldLabel required>Performed by</FieldLabel>
+            <Select
+              options={DSF_PROVIDERS}
+              value={data.performedBy}
+              onChange={(v2) => onUpdate({ performedBy: v2 })}
+              placeholder="Select Provider"
+              variant={err('performedBy') ? 'error' : 'default'}
+            />
+            {err('performedBy') && <FieldError>Provider is required</FieldError>}
+          </FieldStack>
+        </>
+      )}
+
       <div className={styles.phq2Card}>
         <div className={styles.phq2CardHeader}>
           <div className={styles.fieldLabel}>Depression Follow-Up : PHQ-9<span className={styles.required}>•</span></div>

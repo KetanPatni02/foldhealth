@@ -248,8 +248,14 @@ export function ProgressStepper({ member }) {
     };
   }, [pinned]);
 
+  // Terminal Billed state — render a small "Billed" label under the
+  // stepper so a reviewer can scan the column at row height and know
+  // the record has been submitted, without hovering to open the
+  // popover. Rejected already gets its own row treatment; Billed is
+  // the green happy-path parallel.
+  const isBilled = statuses.some(s => s === 'Billed');
   return (
-    <>
+    <span className={styles.progressStack}>
       <span
         ref={anchorRef}
         className={styles.progress}
@@ -271,6 +277,12 @@ export function ProgressStepper({ member }) {
           );
         })}
       </span>
+      {isBilled && (
+        <span className={styles.progressBilledLabel} aria-label="Billed">
+          <Icon name="solar:dollar-linear" size={11} color="var(--status-success)" />
+          Billed
+        </span>
+      )}
       {rect && (
         <ReviewProgressPopover
           anchorRect={rect}
@@ -280,7 +292,7 @@ export function ProgressStepper({ member }) {
           onClose={() => { setPinned(false); setRect(null); }}
         />
       )}
-    </>
+    </span>
   );
 }
 
@@ -496,6 +508,20 @@ export function AssigneeCell({ member, dosState }) {
         <div className={styles.assigneeText}>
           <span className={styles.assigneeName}>Billing Ready</span>
           <span className={styles.assigneeRole}>All reviews complete</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (a.kind === 'billed') {
+    return (
+      <div className={styles.assigneeCell}>
+        <span className={styles.billingBadge}>
+          <Icon name="solar:dollar-linear" size={16} color="var(--status-success)" />
+        </span>
+        <div className={styles.assigneeText}>
+          <span className={styles.assigneeName}>Billed</span>
+          <span className={styles.assigneeRole}>Record submitted &amp; billed</span>
         </div>
       </div>
     );

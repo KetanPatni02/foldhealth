@@ -44,9 +44,12 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
     return () => document.removeEventListener('click', handler);
   }, []);
 
-  // Show bar when selections appear
+  // Show bar when selections appear, hide when the caller clears the
+  // set (e.g. after a bulk Apply). Without the hide branch the bar
+  // lingered at "0 Selected" until the close button was clicked.
   useEffect(() => {
     if (selectedIds.length > 0) setVisible(true);
+    else setVisible(false);
   }, [selectedIds.length]);
 
   const handleDismiss = () => {

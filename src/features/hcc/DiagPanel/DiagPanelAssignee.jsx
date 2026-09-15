@@ -33,9 +33,29 @@ function UnassignedAssignTrigger({ role, memberId, dosDate }) {
   );
 }
 
-export function AssigneeAvatar({ member, dosState, currentDos, locked = false }) {
+export function AssigneeAvatar({ member, dosState, currentDos, locked = false, billed = false }) {
   const a = resolveCurrentAssignee(member, dosState);
   if (!a) return null;
+  // Post-billing terminal state — same lock semantics as rejected but a
+  // green Billed chip in place of the greyed assignee tile.
+  if (billed || a.kind === 'billed') {
+    return (
+      <RoleTooltip name="Billed" role="Record submitted & billed" initials="$" variant="staff">
+        <span
+          title="Billed — record is read-only"
+          style={{
+            width: 24, height: 24, borderRadius: 6,
+            background: 'var(--status-success-light)',
+            border: '0.5px solid rgba(0, 155, 83, 0.3)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0, color: 'var(--status-success)',
+          }}
+        >
+          <Icon name="solar:dollar-linear" size={14} color="var(--status-success)" />
+        </span>
+      </RoleTooltip>
+    );
+  }
   if (a.kind === 'unassigned') {
     if (locked) {
       return (
