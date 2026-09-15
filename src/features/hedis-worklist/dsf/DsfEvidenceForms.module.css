@@ -27,114 +27,104 @@
   margin-top: var(--space-1);
 }
 
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
-}
-
 .radioStack {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
 }
 
-.procedureRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--radius-md, 8px);
-  background: var(--neutral-25);
-}
-.procedureLabel {
-  font-size: var(--font-md);
-  font-weight: 500;
-  color: var(--neutral-400);
-}
-.procedureValue {
-  font-size: var(--font-md);
-  color: var(--neutral-500);
-}
-
-/* ── Likert score matrix ─────────────────────────────────────────── */
-.matrix {
-  display: flex;
-  flex-direction: column;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--radius-md, 8px);
-  overflow: hidden;
-  background: var(--neutral-0);
-}
-.matrixHeader,
-.matrixRow {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) repeat(4, 84px);
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-}
-.matrixHeader {
-  background: var(--neutral-50);
-  border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--neutral-300);
-}
-.matrixRow {
-  border-bottom: 0.5px solid var(--neutral-100);
-  font-size: var(--font-md);
-  color: var(--neutral-500);
-}
-.matrixRow:last-child { border-bottom: none; }
-.matrixQuestion {
-  min-width: 0;
-  padding-right: var(--space-2);
-  line-height: var(--leading-normal);
-}
-.matrixCell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.matrixLocked {
-  background: var(--neutral-25);
-  color: var(--neutral-300);
-  pointer-events: none;
-}
-
-/* ── Score-block save flow (info banner + Save button + result) ─── */
-.scoreBlock {
+/* PHQ-2 Score card — wraps the label + question list + save-score
+   button so the section reads as one bordered card, matching the
+   Care Plan panel treatment below it. */
+.phq2Card {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-3);
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--radius-md, 8px);
-  background: var(--neutral-25);
+  background: var(--neutral-0);
 }
-.scoreBlockRow {
+/* Header row inside the PHQ-2 card: "PHQ-2 Score" label on the left,
+   live score Badge on the right once both items are answered. */
+.phq2CardHeader {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-2);
   flex-wrap: wrap;
 }
-.scoreTotal {
+.phq2CardFooter {
+  display: flex;
+  justify-content: flex-start;
+}
+/* InfoBar sits INSIDE the PHQ-2 card as a full-bleed footer strip.
+   Negative left/right/bottom margins pull it through the card's 12px
+   padding to the very edges, and a slim top divider replaces the
+   card's inner gap so the banner reads as part of the same container
+   rather than a floating chip. Only the card's bottom corners stay
+   rounded — the top corners of the strip are squared so the join is
+   invisible. */
+.phq2Card .phq2InfoBarAttached {
+  margin: 0 calc(var(--space-3) * -1) calc(var(--space-3) * -1);
+  border: 0;
+  border-top: 0.5px solid var(--neutral-150);
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: var(--radius-md, 8px);
+  border-bottom-right-radius: var(--radius-md, 8px);
+}
+/* InfoBar's `.body` span is a min-width:0 wrapper — force it to grow
+   so our two-column layout inside can span end-to-end. */
+.phq2Card .phq2InfoBarAttached :global([class*="body"]) {
+  flex: 1;
+}
+/* Post-save state: message on the left, "Open DSF-B" jump button on
+   the right. */
+.phq2InfoBarSaved {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+/* ── PHQ questionnaire (stacked question + options) ─────────────── */
+.questionnaire {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.questionBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.questionText {
   font-size: var(--font-md);
   font-weight: 500;
   color: var(--neutral-500);
+  line-height: var(--leading-normal);
+  display: inline-flex;
+  gap: var(--space-1);
 }
-.scoreHelp {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
+.questionNumber {
+  color: var(--neutral-500);
 }
-.resultLabel {
-  font-size: var(--font-md);
-  font-weight: 500;
+.optionStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-left: var(--space-3);
 }
-.resultLabelPositive { color: var(--status-warning); }
-.resultLabelNegative { color: var(--status-success); }
+.questionnaireLocked {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+/* ── Score-block save flow (info banner + Save button + result) ─── */
 
 /* ── Care Plan outcome panel ─────────────────────────────────────── */
 .carePlanPanel {
@@ -142,10 +132,9 @@
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-3);
-  border: 0.5px solid var(--primary-100);
-  border-left: 4px solid var(--primary-300);
+  border: 0.5px solid var(--neutral-150);
   border-radius: var(--radius-md, 8px);
-  background: var(--primary-25);
+  background: var(--neutral-0);
 }
 .carePlanTitle {
   font-size: var(--font-md);
@@ -153,22 +142,30 @@
   color: var(--neutral-500);
 }
 .carePlanBullets {
+  /* Native list layout — flex on a <ul> hides the disc markers because
+     ::marker isn't rendered on flex items. */
   margin: 0;
-  padding-left: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + var(--space-4));
+  list-style: disc outside;
+  background: var(--primary-50);
+  border-radius: var(--radius-md, 8px);
   font-size: var(--font-md);
-  color: var(--neutral-500);
+  color: var(--neutral-300);
   line-height: var(--leading-normal);
 }
 .carePlanBullets li { padding-left: var(--space-1); }
+.carePlanBullets li + li { margin-top: var(--space-1); }
 .carePlanFooter {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 0.5px dashed var(--primary-200);
+}
+/* Tighten the shared Textarea's label-to-input rhythm inside the
+   Care Plan panel so "Outreach Notes" sits 6px above its textarea
+   (design ask on the DSF surface only — other Textarea usages keep
+   the default var(--space-2) gap). */
+.carePlanFooter :global([class*="enhRoot"]) {
+  gap: calc(var(--space-1) + var(--space-1) / 2);
 }
 .carePlanCheckboxRow {
   display: inline-flex;
@@ -182,27 +179,30 @@
 }
 .carePlanCheckboxLabel {
   font-size: var(--font-md);
-  color: var(--neutral-500);
-  font-weight: 500;
+  color: var(--neutral-300);
+  font-weight: 400;
 }
 
 /* Standing "Decline follow-up" checkbox — same shape as
    .carePlanCheckboxRow but with an emphasized left indent + amber
    accent so it never blends into a body form field. */
 .declineRow {
-  display: inline-flex;
-  align-items: center;
+  display: flex;
+  align-items: flex-start;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-3);
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--radius-md, 8px);
   background: var(--neutral-0);
   cursor: pointer;
+  text-align: left;
+  width: 100%;
 }
 .declineLabel {
   font-size: var(--font-md);
   color: var(--neutral-500);
   font-weight: 500;
+  line-height: var(--leading-normal);
 }
 
 .subQuestion {
@@ -212,7 +212,7 @@
   padding: var(--space-3);
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--radius-md, 8px);
-  background: var(--neutral-25);
+  background: var(--neutral-0);
 }
 .subQuestionText {
   font-size: var(--font-md);

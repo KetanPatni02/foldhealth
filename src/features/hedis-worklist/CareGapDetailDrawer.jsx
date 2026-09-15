@@ -308,6 +308,20 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     selectedNoteId,
     amendNoteId,
     onClose: () => { setAmendNoteId(null); runLeftClose(); },
+    // DSF-A save on a single-gap note opens DSF-B natively. Its
+    // "Open DSF-B" success button then jumps into the consolidated
+    // Clinical Note drawer (multi-gap) so the Coordinator gets the
+    // Visit Notes list + DOS card layout the paired flow expects.
+    // The hook passes the target code so the promoted panel lands on
+    // DSF-B; without setting currentCode first, ClinicalNotePanel
+    // would inherit the outer drawer's gap (DSF-A) and open the wrong
+    // RHS pane.
+    onPromoteToConsolidated: (targetCode) => {
+      if (targetCode) setCurrentCode(targetCode);
+      setLeftWorkspace(null);
+      setLeftClosing(false);
+      setShowClinicalNote(true);
+    },
   });
 
   // Two-phase close so the drawer collapses with the same easing it opens

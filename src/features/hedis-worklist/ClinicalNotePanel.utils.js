@@ -458,13 +458,23 @@ export const GAP_TEMPLATES = {
 export const MANDATORY_FIELDS = {
   EED: ['evidenceType', 'examType', 'examDate', 'examiningProvider', 'examResult', 'icd10', 'patientCounseledOn'],
   CBP: ['bpDate', 'systolic', 'diastolic', 'location'],
-  // DSF-A / DSF-B: DOS + Location + telehealth consent (when telehealth) +
-  // provider + a saved PHQ-2 score are the minimum before Submit for Review.
-  // DSF-B additionally needs a saved PHQ-9 score and the "All components of
-  // care plan completed" acknowledgement, OR the standing Decline checkbox
-  // (Decline short-circuits the sign-off queue entirely — see plan Section 6).
-  'DSF-A': ['dateOfService', 'location', 'telehealthConsent', 'performedBy', 'phq2ScoreSaved'],
-  'DSF-B': ['dateOfService', 'location', 'telehealthConsent', 'performedBy', 'phq9ScoreSaved', 'carePlanAcknowledged'],
+  // DSF-A / DSF-B: Location + telehealth consent (when telehealth) +
+  // provider + a saved PHQ-2 score are the minimum before Submit for
+  // Review. Date of Service is intentionally NOT listed here — it
+  // lives on the note-level shared DOS card (v.dateOfService), not
+  // in the per-gap payload, and useClinicalNotePanel's submit path
+  // already blocks on a missing DOS. Location/consent/performedBy
+  // stay per-gap, so they're what the isMandatoryComplete check reads.
+  // DSF-B additionally needs a saved PHQ-9 score and the "All components
+  // of care plan completed" acknowledgement, OR the standing Decline
+  // checkbox (Decline short-circuits the sign-off queue entirely —
+  // see plan Section 6).
+  'DSF-A': ['location', 'telehealthConsent', 'performedBy', 'phq2ScoreSaved'],
+  // DSF-B inherits visit context (Location / consent / provider) from
+  // the paired DSF-A note that opened it, so those fields aren't asked
+  // twice on the DSF-B surface. Only PHQ-9 completeness + acknowledged
+  // care plan (or Decline) gate the sign-off queue for DSF-B.
+  'DSF-B': ['phq9ScoreSaved', 'carePlanAcknowledged'],
 };
 
 function mandatoryFieldsFor(code) {

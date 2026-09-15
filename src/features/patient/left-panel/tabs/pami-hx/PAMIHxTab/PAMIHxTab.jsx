@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../../../components/Icon/Icon';
-import { Input } from '../../../../../../components/Input/Input';
+import { IcdSearch } from '../../../../../../components/IcdSearch/IcdSearch';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
@@ -130,8 +130,17 @@ function CollapseWrapper({ collapsed, children }) {
   );
 }
 
-function AddBtn({ onClick }) {
-  return <ActionButton icon="solar:add-linear" size="S" tooltip="Add" className={styles.addBtn} onClick={onClick} />;
+function AddBtn({ onClick, disabled }) {
+  return (
+    <ActionButton
+      icon="solar:add-linear"
+      size="S"
+      tooltip="Add"
+      className={styles.addBtn}
+      onClick={onClick}
+      disabled={disabled}
+    />
+  );
 }
 
 // — Row components —
@@ -350,12 +359,12 @@ function RecentClinicalEvents() {
 function ProblemsSection({ patientId }) {
   const [collapsed, setCollapsed] = useState(false);
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState('');
   const storeProblems = useAppStore(s => (patientId ? s.patientProblems[patientId] : null));
   const loadedFor = useAppStore(s => (patientId ? s.patientProblemsLoadedFor[patientId] : false));
   const fetchPatientProblems = useAppStore(s => s.fetchPatientProblems);
   const addPatientProblem = useAppStore(s => s.addPatientProblem);
   const removePatientProblem = useAppStore(s => s.removePatientProblem);
+  const showToast = useAppStore(s => s.showToast);
 
   useEffect(() => { if (patientId) fetchPatientProblems(patientId); }, [patientId, fetchPatientProblems]);
 
@@ -366,20 +375,37 @@ function ProblemsSection({ patientId }) {
   const active = problems.filter(p => (p.status || 'Active') !== 'Resolved');
   const resolvedCount = problems.filter(p => p.status === 'Resolved').length;
   const loading = !!patientId && !loadedFor;
+  const existingCodes = useMemo(
+    () => problems.map(p => p.code).filter(Boolean),
+    [problems],
+  );
 
-  const commitAdd = async () => {
-    const title = draft.trim();
-    if (!title) { setAdding(false); return; }
-    await addPatientProblem(patientId, { title });
-    setDraft('');
-    setAdding(false);
+  const startAdd = () => {
+    if (!patientId) return;
+    setCollapsed(false);
+    setAdding(true);
+  };
+
+  const handleSelectProblem = async (icd) => {
+    if (!patientId || !icd?.code) return;
+    if (existingCodes.includes(icd.code)) {
+      showToast?.('This problem is already on the list');
+      return;
+    }
+    const ok = await addPatientProblem(patientId, {
+      title: icd.title,
+      code: icd.code,
+      type: 'Chronic',
+      severity: 'Mild',
+    });
+    if (ok) setAdding(false);
   };
 
   return (
     <div className={styles.section}>
       <SectionHeader
         title="Problems"
-        actions={<AddBtn onClick={() => { setDraft(''); setAdding(true); }} />}
+        actions={<AddBtn onClick={startAdd} disabled={!patientId} />}
         collapsed={collapsed}
         onToggle={() => setCollapsed(v => !v)}
       />
@@ -387,16 +413,17 @@ function ProblemsSection({ patientId }) {
         <div className={styles.card}>
           <ColHeader />
           {adding && (
-            <div className={styles.row}>
-              <Input
+            <div className={styles.problemAddRow}>
+              <IcdSearch
                 autoFocus
-                value={draft}
-                onChange={e => setDraft(e.target.value)}
-                onBlur={commitAdd}
-                onKeyDown={e => { if (e.key === 'Enter') commitAdd(); if (e.key === 'Escape') { setDraft(''); setAdding(false); } }}
-                placeholder="Add a condition (e.g. Hypertension)"
-                aria-label="Add a problem"
+                placeholder="Search ICD-10 code or condition name…"
+                excludeCodes={existingCodes}
+                onSelect={handleSelectProblem}
+                className={styles.problemSearch}
               />
+              <button type="button" className={styles.addCancel} onClick={() => setAdding(false)}>
+                Cancel
+              </button>
             </div>
           )}
           {loading ? (

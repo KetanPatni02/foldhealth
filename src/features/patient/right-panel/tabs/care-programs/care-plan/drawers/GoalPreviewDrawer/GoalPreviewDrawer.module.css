@@ -1,5 +1,5 @@
 /* Goal Details body — Figma SNP-Story 2632:81504.
-   Uniform 16px inset is owned by <Drawer> .body; this class only lays out
+   Uniform inset is owned by <Drawer> .body (var(--space-4)); this class lays out
    the scroll column so children stay full width inside that padding. */
 .drawerPad {
   display: flex;
@@ -12,6 +12,13 @@
   gap: var(--space-5);
   width: 100%;
   min-width: 0;
+  /* Align drawer list rows with care-plan GBI table columns. */
+  --gbi-col-priority: 28px;
+  --gbi-col-assignee: 124px;
+  --gbi-col-status: 116px;
+  --gbi-col-actions: 36px;
+  --gbi-row-pad-y: calc(var(--space-1) + var(--space-1) / 2);
+  --gbi-row-pad-x: var(--space-2);
 }
 
 /* ── Status bar ── */
@@ -35,9 +42,15 @@
   gap: var(--space-2);
   flex-shrink: 0;
 }
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  flex-shrink: 0;
+}
 .headerDivider {
   width: 1px;
-  height: 16px;
+  height: var(--space-4);
   background: var(--neutral-150);
   flex-shrink: 0;
 }
@@ -85,7 +98,7 @@
 }
 .badgeDivider {
   width: 0.5px;
-  height: 16px;
+  height: var(--space-4);
   background: var(--neutral-150);
   flex-shrink: 0;
 }
@@ -109,64 +122,21 @@
   flex-direction: column;
   gap: var(--space-2);
 }
-.accSectionOpen {}
-.accHead {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 24px;
-}
-.accToggle {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  flex: 1;
-  min-width: 0;
-  text-align: left;
-}
-.accChevron {
-  display: inline-flex;
-  width: 12px;
-  height: 12px;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transform: rotate(-90deg);
-  transition: transform 0.12s ease;
-}
-.accChevronAfter {
-  display: inline-flex;
-  width: 16px;
-  height: 16px;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transform: rotate(-90deg);
-  transition: transform 0.12s ease;
-}
-.accChevronOpen { transform: rotate(0deg); }
-.accTitle {
-  font-size: var(--font-base);
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--neutral-400);
-}
-.accTitleMuted {
-  font-size: var(--font-base);
-  font-weight: 400;
-  line-height: 1.2;
-  color: var(--neutral-300);
-}
 
 /* ── Progress ── */
 .progressCard {
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
   padding: var(--space-2) var(--space-3);
+}
+.progressCardRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.progressCardTrack {
+  flex: 1;
+  min-width: 0;
 }
 .progressWrap {
   position: relative;
@@ -223,7 +193,7 @@
 .addRow :global(> *) { flex: 0 0 auto; }
 .addRow :global(> *:first-child) { flex: 1; min-width: 0; }
 .favorableToggle {
-  height: 32px;
+  height: var(--space-8);
   padding: 0 var(--space-3);
   border-radius: var(--space-2);
   border: 0.5px solid var(--neutral-150);
@@ -327,31 +297,76 @@
 .spark { display: block; }
 .sparkEmpty { font-size: var(--font-base); color: var(--neutral-200); }
 
-/* ── Linked lists ── */
+/* ── Linked lists (barriers, automations) ── */
 .linkedList {
   display: flex;
   flex-direction: column;
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
+  overflow: hidden;
+  background: var(--neutral-0);
 }
 .linkedRow {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3);
+  min-height: 40px;
+  padding: var(--gbi-row-pad-y) var(--space-3);
   border-bottom: 0.5px solid var(--neutral-100);
 }
 .linkedRow:last-child { border-bottom: none; }
-.linkedIcon { display: flex; flex-shrink: 0; }
+.linkedRow:hover { background: var(--neutral-50); }
+.linkedIcon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-4);
+  height: var(--space-4);
+}
 .linkedText {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: calc(var(--space-1) / 2);
   min-width: 0;
   flex: 1;
 }
-.linkedTitle { font-size: var(--font-base); color: var(--neutral-400); }
-.linkedMeta { font-size: var(--font-md); color: var(--neutral-300); }
+.linkedTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+.linkedMeta {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-300);
+}
+.linkedRowActions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: var(--space-2);
+}
+.linkedRowRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: var(--space-1);
+  cursor: pointer;
+  border-radius: var(--space-1);
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+.linkedRowRemove:hover {
+  background: var(--neutral-100);
+}
+.linkedRow:hover .linkedRowRemove {
+  opacity: 1;
+}
 
 /* ── Linked interventions (Goal Details) — Figma SNP-Story 2632:80869 ── */
 .intvList {
@@ -360,21 +375,41 @@
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
   overflow: hidden;
+  background: var(--neutral-0);
 }
-.intvRow {
-  display: flex;
-  align-items: stretch;
+.intvRow,
+.barrierRow {
+  display: grid;
+  grid-template-columns:
+    var(--gbi-col-priority)
+    minmax(0, 1fr)
+    var(--gbi-col-assignee)
+    var(--gbi-col-status)
+    minmax(var(--gbi-col-actions), max-content);
+  align-items: center;
+  column-gap: 0;
   min-height: 40px;
   border-bottom: 0.5px solid var(--neutral-100);
+}
+.intvRow {
   cursor: pointer;
 }
-.intvRow:last-child { border-bottom: none; }
-.intvRow:hover { background: var(--neutral-50); }
+.intvRow:last-child,
+.barrierRow:last-child { border-bottom: none; }
+.intvRow:hover,
+.barrierRow:hover { background: var(--neutral-50); }
 .intvPriority {
   display: flex;
   align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  padding: var(--space-2);
+  padding: var(--gbi-row-pad-y) var(--space-1);
+}
+/* Barriers: reserve the priority column width without showing a control. */
+.gbiDrawerLeadSpacer {
+  width: var(--gbi-col-priority);
+  min-width: var(--gbi-col-priority);
+  max-width: var(--gbi-col-priority);
 }
 .intvPriorityBtn {
   display: inline-flex;
@@ -391,24 +426,24 @@
 }
 .intvMain {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: var(--space-2);
-  flex: 1;
   min-width: 0;
-  padding: var(--space-2);
+  padding: var(--gbi-row-pad-y) var(--gbi-row-pad-x);
 }
 .intvTypeIcon {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  height: var(--space-5);
+  justify-content: center;
 }
 .intvTitleStack {
   display: flex;
   flex: 1;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-1);
+  justify-content: center;
+  gap: calc(var(--space-1) / 2);
   min-width: 0;
 }
 .intvTitle {
@@ -422,37 +457,41 @@
   white-space: nowrap;
 }
 .intvDurationBadge { align-self: flex-start; }
-.intvLinkChip {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  align-self: center;
-}
-.intvLinkChipClickable { cursor: pointer; }
 .intvAssignee {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   flex-shrink: 0;
-  width: 40px;
-  padding: var(--space-2);
+  min-width: 0;
+  width: 100%;
+  max-width: var(--gbi-col-assignee);
+  padding: var(--gbi-row-pad-y) var(--gbi-row-pad-x);
+  box-sizing: border-box;
 }
-.intvAdherence {
+.intvStatus {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   flex-shrink: 0;
-  width: 100px;
-  padding: var(--space-2);
+  min-width: 0;
+  width: 100%;
+  max-width: var(--gbi-col-status);
+  padding: var(--gbi-row-pad-y) var(--gbi-row-pad-x);
+  box-sizing: border-box;
+  cursor: default;
 }
-.intvAdherenceDash {
-  font-size: var(--font-base);
-  color: var(--neutral-200);
+.intvStatus > * {
+  max-width: 100%;
 }
 .intvActions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--space-1) / 2);
   flex-shrink: 0;
-  padding: var(--space-2);
+  min-width: var(--gbi-col-actions);
+  padding: var(--gbi-row-pad-y) var(--space-1);
+  box-sizing: border-box;
 }
 
 /* Read-only "Care Note"-shaped card for the most recently saved note on
@@ -518,11 +557,12 @@
 }
 
 .emptyCard {
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border: 0.5px dashed var(--neutral-200);
   border-radius: var(--space-2);
   background: var(--neutral-0);
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
+  line-height: 1.45;
   color: var(--neutral-300);
   text-align: center;
 }
@@ -532,11 +572,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  /* Full-bleed to the drawer's edges — the Drawer body itself has 16px
-     padding, so a matching negative side margin brings the tab bar and
-     timeline flush with the panel. No inner padding: the tabs and log
-     rows sit at x=0/x=maxWidth. */
-  margin: var(--space-4) calc(var(--space-4) * -1) 0;
+  /* Full-bleed tab bar + timeline — cancel Drawer body horizontal padding only. */
+  margin: 0 calc(var(--space-4) * -1) 0;
   padding: 0;
 }
 .activityList {
@@ -569,7 +606,7 @@
   flex: 1;
   width: 0.5px;
   background: var(--neutral-150);
-  min-height: 8px;
+  min-height: var(--space-2);
 }
 .logBody {
   display: flex;
@@ -689,7 +726,7 @@
   /* Match the shared Input primitive: 0.5px placeholder-text stroke,
      4px radius, primary focus ring. */
   border: 0.5px solid var(--placeholder-text);
-  border-radius: 4px;
+  border-radius: var(--space-1);
   transition: border-color .15s, box-shadow .15s;
   cursor: text;
 }

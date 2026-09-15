@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
@@ -22,17 +22,46 @@ import { INTERVENTION_EDITORS } from '../../../../../../../settings/care-plan-li
 import { AddTaskDrawer } from '../../../../../../../tasks/AddTaskDrawer';
 import { buildInterventionRecordFromConfig } from '../../lib/carePlanInterventionMenu';
 import { CreateGoalDrawer } from '../../../../../../../settings/care-plan-library/goals/CreateGoalDrawer/CreateGoalDrawer';
-import { CarePlanLinkDrawer } from '../CarePlanLinkDrawer/CarePlanLinkDrawer';
 import { GoalLinkedInterventionsList } from './GoalLinkedInterventionsList';
+import { GoalLinkedBarriersList } from './GoalLinkedBarriersList';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../../settings/care-plan-library/lib';
 import { goalProgressBand, goalProgressTone } from '../../lib/goalMetrics';
-import { goalCascade } from '../../lib/carePlanGoalCascade';
+import { goalCascade, barrierGoalIdsOf } from '../../lib/carePlanGoalCascade';
 import { RemoveGoalDialog } from '../RemoveGoalDialog';
+import { LinkExistingItemsPopover } from './LinkExistingItemsPopover';
 import styles from './GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+
+/** Session-persisted accordion open state for Goal Details sections. */
+const GOAL_PREVIEW_SECTIONS_KEY = 'fold.carePlan.goalPreview.sections';
+const GOAL_PREVIEW_SECTIONS_DEFAULT = {
+  trends: true,
+  interventions: false,
+  barriers: false,
+  automations: false,
+};
+
+function readGoalPreviewSectionsOpen() {
+  try {
+    const raw = sessionStorage.getItem(GOAL_PREVIEW_SECTIONS_KEY);
+    if (!raw) return { ...GOAL_PREVIEW_SECTIONS_DEFAULT };
+    return { ...GOAL_PREVIEW_SECTIONS_DEFAULT, ...JSON.parse(raw) };
+  } catch {
+    return { ...GOAL_PREVIEW_SECTIONS_DEFAULT };
+  }
+}
+
+function persistGoalPreviewSectionsOpen(next) {
+  try {
+    sessionStorage.setItem(GOAL_PREVIEW_SECTIONS_KEY, JSON.stringify(next));
+  } catch {
+    /* private mode / quota */
+  }
+}
+
 const ACTIVITY_TABS = [
   { key: 'all', label: 'All' },
   { key: 'since', label: 'Since Last Visit' },
@@ -197,7 +226,21 @@ function Sparkline({ values }) {
 // reads with the same title weight, chevron placement, and hover
 // affordance. `muted` is preserved as a flag but the styling no longer
 // diverges — the visual language is now unified.
-const AccordionHead = function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit, addRef, addAriaHasPopup, addAriaExpanded }) {
+const AccordionHead = function AccordionHead({
+  title,
+  open,
+  onToggle,
+  onAdd,
+  addTooltip,
+  canEdit,
+  addRef,
+  addAriaHasPopup,
+  addAriaExpanded,
+  onLinkExisting,
+  linkTooltip,
+  linkRef,
+  linkMenuOpen,
+}) {
   return (
     <div className={barrierStyles.sectionHead}>
       <button
@@ -214,15 +257,31 @@ const AccordionHead = function AccordionHead({ title, open, onToggle, onAdd, add
         />
       </button>
       {canEdit && (
-        <ActionButton
-          ref={addRef}
-          icon="solar:add-linear"
-          size="S"
-          tooltip={addTooltip}
-          onClick={onAdd}
-          aria-haspopup={addAriaHasPopup}
-          aria-expanded={addAriaExpanded}
-        />
+        <div className={styles.sectionActions}>
+          {onLinkExisting && (
+            <>
+              <ActionButton
+                ref={linkRef}
+                icon="solar:link-round-linear"
+                size="S"
+                tooltip={linkTooltip || 'Link existing'}
+                onClick={onLinkExisting}
+                aria-haspopup="dialog"
+                aria-expanded={linkMenuOpen}
+              />
+              <span className={styles.headerDivider} aria-hidden="true" />
+            </>
+          )}
+          <ActionButton
+            ref={addRef}
+            icon="solar:add-linear"
+            size="S"
+            tooltip={addTooltip}
+            onClick={onAdd}
+            aria-haspopup={addAriaHasPopup}
+            aria-expanded={addAriaExpanded}
+          />
+        </div>
       )}
     </div>
   );
@@ -269,7 +328,6 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const updateCarePlanNote = useAppStore(s => s.updateCarePlanNote);
   const deleteCarePlanNote = useAppStore(s => s.deleteCarePlanNote);
   const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
-  const fetchCarePlanLinks = useAppStore(s => s.fetchCarePlanLinks);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   const platformUsers = useAppStore(s => s.platformUsers);
   const patientName = useAppStore(s => {
@@ -277,15 +335,35 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       || (s.allPatients || []).find(x => x.id === patientId);
     return p?.name;
   });
-  const carePlanLinks = useAppStore(s => (key ? s.patientCarePlanLinks[key] : null)) || [];
-  const linkCount = (id) => carePlanLinks.filter(l => l.ownerId === String(id)).length;
 
   const live = (slice?.goals || []).find(g => g.id === goal?.id) || goal;
   const interventions = useMemo(
     () => (slice?.interventions || []).filter(i => String(i.goalId) === String(live?.id)),
     [slice, live],
   );
-  const barriers = useMemo(() => (slice?.barriers || []).filter(b => b.goalId === live?.id), [slice, live]);
+  const barriers = useMemo(() => (slice?.barriers || []).filter(b => {
+    const ids = barrierGoalIdsOf(b);
+    return ids.map(String).includes(String(live?.id));
+  }), [slice, live?.id]);
+
+  const interventionLinkItems = useMemo(
+    () => (slice?.interventions || []).map(i => ({
+      id: i.id,
+      title: i.title,
+      subtitle: i.assignee?.name && i.assignee.name !== 'Unassigned' ? i.assignee.name : null,
+      checked: String(i.goalId) === String(live?.id),
+    })),
+    [slice?.interventions, live?.id],
+  );
+
+  const barrierLinkItems = useMemo(
+    () => (slice?.barriers || []).map(b => ({
+      id: b.id,
+      title: b.title,
+      checked: barrierGoalIdsOf(b).map(String).includes(String(live?.id)),
+    })),
+    [slice?.barriers, live?.id],
+  );
   const measurements = useMemo(
     () => (slice?.measurements || []).filter(m => m.goalId === live?.id).slice().sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt)),
     [slice, live],
@@ -294,7 +372,14 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
 
   const [pct, setPct] = useState(Number(live?.progress) || 0);
   const [pctDragging, setPctDragging] = useState(false);
-  const [open, setOpen] = useState({ trends: true, interventions: false, barriers: false, automations: false });
+  const [open, setOpen] = useState(readGoalPreviewSectionsOpen);
+  const patchSectionsOpen = useCallback((updater) => {
+    setOpen((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      persistGoalPreviewSectionsOpen(next);
+      return next;
+    });
+  }, []);
   const [addingReading, setAddingReading] = useState(false);
   const [readingValue, setReadingValue] = useState('');
   const [readingFavorable, setReadingFavorable] = useState(true);
@@ -308,8 +393,12 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   // item the user picked, seeded onto the AddInterventionDrawer that
   // then opens.
   const [intvMenuOpen, setIntvMenuOpen] = useState(false);
+  const [intvLinkMenuOpen, setIntvLinkMenuOpen] = useState(false);
+  const [barrierLinkMenuOpen, setBarrierLinkMenuOpen] = useState(false);
   const [intvSelectedKind, setIntvSelectedKind] = useState(null);
   const intvAddRef = useRef(null);
+  const intvLinkRef = useRef(null);
+  const barrierLinkRef = useRef(null);
   const [note, setNote] = useState('');
   const [notePlain, setNotePlain] = useState('');
   const [noteEditing, setNoteEditing] = useState(false);
@@ -325,7 +414,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const [confirm, setConfirm] = useState(null);
   const [priorityMenu, setPriorityMenu] = useState(null);
   const [rowMenu, setRowMenu] = useState(null);
-  const [linkOwner, setLinkOwner] = useState(null);
+  const [linkedStatusMenu, setLinkedStatusMenu] = useState(null);
   const moreBtnRef = useRef(null);
   const filterBtnRef = useRef(null);
 
@@ -359,13 +448,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
     setNotePlain(seed);
     setNoteEditing(false);
   }, [latestGoalNote?.id]);
-  useEffect(() => {
-    if (patientId && program?.id) fetchCarePlanLinks(patientId, program.id);
-  }, [patientId, program?.id, fetchCarePlanLinks]);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
-  useEffect(() => {
-    if (interventions.length > 0) setOpen(s => ({ ...s, interventions: true }));
-  }, [live?.id, interventions.length]);
 
   const activity = useMemo(() => {
     const rows = audit
@@ -412,8 +495,8 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const unit = live.customUnit || measurements[0]?.unit || '';
   const youSuffix = (name) => (name && currentUserName && name === currentUserName ? ` by ${name} (You)` : name ? ` by ${name}` : '');
 
-  const toggle = (k) => setOpen(s => ({ ...s, [k]: !s[k] }));
-  const expandAnd = (k, fn) => { setOpen(s => ({ ...s, [k]: true })); fn(); };
+  const toggle = (k) => patchSectionsOpen(s => ({ ...s, [k]: !s[k] }));
+  const expandAnd = (k, fn) => { patchSectionsOpen(s => ({ ...s, [k]: true })); fn(); };
 
   const commitProgress = (v) => {
     const next = v[0];
@@ -483,6 +566,48 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       intervention.id,
     );
     showToast?.(`Assigned to ${user.name}`);
+  };
+
+  const changeLinkedItemStatus = (status) => {
+    const { kind, item } = linkedStatusMenu || {};
+    setLinkedStatusMenu(null);
+    if (!item || !canEdit || status === item.status) return;
+    if (kind === 'barrier') {
+      savePatientCarePlanBarrier(patientId, program, { ...item, status }, item.id);
+      return;
+    }
+    savePatientCarePlanIntervention(patientId, program, { ...item, status }, item.id);
+  };
+
+  const toggleInterventionLink = async (interventionId, linked) => {
+    const intv = (slice?.interventions || []).find(i => i.id === interventionId);
+    if (!intv || !canEdit) return;
+    await savePatientCarePlanIntervention(
+      patientId,
+      program,
+      { ...intv, goalId: linked ? live.id : null },
+      intv.id,
+    );
+    patchSectionsOpen(s => ({ ...s, interventions: true }));
+  };
+
+  const toggleBarrierLink = async (barrierId, linked) => {
+    const barrier = (slice?.barriers || []).find(b => b.id === barrierId);
+    if (!barrier || !canEdit) return;
+    const gid = String(live.id);
+    let nextIds = barrierGoalIdsOf(barrier).map(String);
+    if (linked) {
+      if (!nextIds.includes(gid)) nextIds = [...nextIds, gid];
+    } else {
+      nextIds = nextIds.filter(id => id !== gid);
+    }
+    await savePatientCarePlanBarrier(
+      patientId,
+      program,
+      { ...barrier, goalIds: nextIds, goalId: nextIds[0] || null },
+      barrier.id,
+    );
+    patchSectionsOpen(s => ({ ...s, barriers: true }));
   };
 
   const changePriority = (priority) => {
@@ -621,10 +746,10 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
 
         <section className={styles.section}>
           <span className={styles.progressLabel}>Progress</span>
-          <div className={styles.progressCard} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <div className={`${styles.progressCard} ${styles.progressCardRow}`}>
             <div
-              className={styles.progressWrap}
-              style={{ '--slider-tone': progressSliderColor(pct), flex: 1, minWidth: 0 }}
+              className={`${styles.progressWrap} ${styles.progressCardTrack}`}
+              style={{ '--slider-tone': progressSliderColor(pct) }}
             >
               {pctDragging && (
                 <div className={styles.progressBubble} style={{ left: `${pct}%` }}>
@@ -723,7 +848,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             the "+" add affordance on the head, and render their rows
             read-only. */}
         {(!consolidated || interventions.length > 0) && (
-          <section className={`${styles.accSection} ${open.interventions ? styles.accSectionOpen : ''}`}>
+          <section className={styles.accSection}>
             <AccordionHead
               title="Interventions"
               open={open.interventions}
@@ -734,7 +859,23 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               addAriaHasPopup="menu"
               addAriaExpanded={intvMenuOpen}
               onAdd={() => expandAnd('interventions', () => setIntvMenuOpen(v => !v))}
+              linkRef={intvLinkRef}
+              linkTooltip="Link existing intervention"
+              linkMenuOpen={intvLinkMenuOpen}
+              onLinkExisting={() => expandAnd('interventions', () => setIntvLinkMenuOpen(v => !v))}
             />
+            {intvLinkMenuOpen && !consolidated && (
+              <LinkExistingItemsPopover
+                anchorRef={intvLinkRef}
+                align="right"
+                ariaLabel="Link existing interventions"
+                title="Link to this goal"
+                items={interventionLinkItems}
+                emptyLabel="No other interventions on this plan yet."
+                onToggle={toggleInterventionLink}
+                onClose={() => setIntvLinkMenuOpen(false)}
+              />
+            )}
             {intvMenuOpen && !consolidated && (
               <MenuPopover
                 anchorRef={intvAddRef}
@@ -757,13 +898,13 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 <GoalLinkedInterventionsList
                   interventions={interventions}
                   canEdit={canEdit && !consolidated}
-                  linkCount={linkCount}
                   platformUsers={platformUsers}
                   onOpen={onOpenIntervention}
                   onPriorityMenu={consolidated ? undefined : setPriorityMenu}
-                  onLinkOwner={consolidated ? undefined : setLinkOwner}
                   onAssigneeChange={consolidated ? undefined : handleAssigneeChange}
+                  onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
                   onRowMenu={consolidated ? undefined : setRowMenu}
+                  onUnlink={consolidated || !canEdit ? undefined : (item) => toggleInterventionLink(item.id, false)}
                 />
               )
             )}
@@ -771,7 +912,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         )}
 
         {(!consolidated || barriers.length > 0) && (
-          <section className={`${styles.accSection} ${open.barriers ? styles.accSectionOpen : ''}`}>
+          <section className={styles.accSection}>
             <AccordionHead
               title="Barriers"
               open={open.barriers}
@@ -779,7 +920,23 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               canEdit={canEdit && !consolidated}
               addTooltip="Add Barriers"
               onAdd={() => expandAnd('barriers', () => setAddingBarrier(v => !v))}
+              linkRef={barrierLinkRef}
+              linkTooltip="Link existing barrier"
+              linkMenuOpen={barrierLinkMenuOpen}
+              onLinkExisting={() => expandAnd('barriers', () => setBarrierLinkMenuOpen(v => !v))}
             />
+            {barrierLinkMenuOpen && !consolidated && (
+              <LinkExistingItemsPopover
+                anchorRef={barrierLinkRef}
+                align="right"
+                ariaLabel="Link existing barriers"
+                title="Link to this goal"
+                items={barrierLinkItems}
+                emptyLabel="No barriers on this plan yet."
+                onToggle={toggleBarrierLink}
+                onClose={() => setBarrierLinkMenuOpen(false)}
+              />
+            )}
             {open.barriers && (
               <>
                 {addingBarrier && !consolidated && (
@@ -797,17 +954,12 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 {barriers.length === 0 ? (
                   <div className={styles.emptyCard}>No barriers linked yet.</div>
                 ) : (
-                  <div className={styles.linkedList}>
-                    {barriers.map(b => (
-                      <div key={b.id} className={styles.linkedRow}>
-                        <span className={styles.linkedIcon}><Icon name="custom:barrier" size={16} color="var(--neutral-400)" /></span>
-                        <span className={styles.linkedText}>
-                          <span className={styles.linkedTitle}>{b.title}</span>
-                          {b.status && <span className={styles.linkedMeta}>{b.status}</span>}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <GoalLinkedBarriersList
+                    barriers={barriers}
+                    canEdit={canEdit && !consolidated}
+                    onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
+                    onUnlink={consolidated || !canEdit ? undefined : (item) => setConfirm({ kind: 'unlink-barrier', item })}
+                  />
                 )}
               </>
             )}
@@ -815,7 +967,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         )}
 
         {(!consolidated || automations.length > 0) && (
-          <section className={`${styles.accSection} ${open.automations ? styles.accSectionOpen : ''}`}>
+          <section className={styles.accSection}>
             <AccordionHead
               title="Automations"
               open={open.automations}
@@ -847,9 +999,11 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                         <span className={styles.linkedIcon}><Icon name={a.icon || 'solar:bolt-linear'} size={16} color="var(--neutral-400)" /></span>
                         <span className={styles.linkedText}><span className={styles.linkedTitle}>{a.title}</span></span>
                         {canEdit && !consolidated && (
-                          <button type="button" className={styles.valueRemove} onClick={() => deleteCarePlanAutomation(patientId, program.id, a.id)} aria-label="Remove automation">
-                            <Icon name="solar:trash-bin-minimalistic-linear" size={14} color="var(--neutral-300)" />
-                          </button>
+                          <span className={styles.linkedRowActions}>
+                            <button type="button" className={styles.linkedRowRemove} onClick={() => deleteCarePlanAutomation(patientId, program.id, a.id)} aria-label="Remove automation">
+                              <Icon name="solar:trash-bin-minimalistic-linear" size={14} color="var(--neutral-300)" />
+                            </button>
+                          </span>
                         )}
                       </div>
                     ))}
@@ -957,11 +1111,10 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             )}
           </div>
         )}
-      </div>
 
-      <div className={styles.activityBlock}>
-        <TabStrip
-          items={ACTIVITY_TABS}
+        <div className={styles.activityBlock}>
+          <TabStrip
+            items={ACTIVITY_TABS}
           activeKey={activityTab}
           onChange={setActivityTab}
           fullWidth={false}
@@ -1007,6 +1160,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             entries={activity}
             emptyLabel="No activity yet."
           />
+        </div>
         </div>
       </div>
 
@@ -1083,16 +1237,6 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         );
       })()}
 
-      {linkOwner && (
-        <CarePlanLinkDrawer
-          patientId={patientId}
-          program={program}
-          patientName={patientName}
-          owner={linkOwner}
-          onClose={() => setLinkOwner(null)}
-        />
-      )}
-
       {priorityMenu && (
         <MenuPopover
           anchorRect={priorityMenu.rect}
@@ -1109,6 +1253,18 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         />
       )}
 
+      {linkedStatusMenu && (
+        <MenuPopover
+          anchorRect={linkedStatusMenu.rect}
+          align="left"
+          width={160}
+          ariaLabel="Change status"
+          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
+          onSelect={changeLinkedItemStatus}
+          onClose={() => setLinkedStatusMenu(null)}
+        />
+      )}
+
       {rowMenu && (
         <MenuPopover
           anchorRect={rowMenu.rect}
@@ -1116,6 +1272,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           ariaLabel="Intervention actions"
           items={[
             { key: 'rename', icon: 'solar:pen-linear', label: 'Rename', disabled: !canEdit },
+            { key: 'unlink', icon: 'solar:link-broken-minimalistic-linear', label: 'Unlink', disabled: !canEdit },
             { key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Remove', danger: true, disabled: !canEdit },
           ]}
           onSelect={(k) => {
@@ -1123,6 +1280,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             setRowMenu(null);
             if (k === 'delete') setConfirm({ kind: 'intv', id: item.id, name: item.title });
             else if (k === 'rename') onOpenIntervention?.(item);
+            else if (k === 'unlink') toggleInterventionLink(item.id, false);
           }}
           onClose={() => setRowMenu(null)}
         />
@@ -1160,6 +1318,24 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           onConfirm={async () => {
             await deletePatientCarePlanIntervention(patientId, program.id, confirm.id);
             setConfirm(null);
+          }}
+        />
+      )}
+
+      {confirm?.kind === 'unlink-barrier' && (
+        <ConfirmDialog
+          icon="solar:danger-triangle-linear"
+          iconColor="var(--status-warning)"
+          title={`Unlink from "${live.title}"?`}
+          description="This removes the barrier from this goal. It stays linked to any other goals it's attached to."
+          confirmLabel="Unlink"
+          cancelLabel="Cancel"
+          onCancel={() => setConfirm(null)}
+          onConfirm={async () => {
+            const item = confirm.item;
+            setConfirm(null);
+            await toggleBarrierLink(item.id, false);
+            showToast?.(`Unlinked from ${live.title}`);
           }}
         />
       )}

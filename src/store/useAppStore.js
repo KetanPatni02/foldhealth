@@ -9,6 +9,35 @@ import { generateFlowFromPrompt } from '../lib/flowGenerator';
 import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTimeSeries } from '../lib/eventMapper';
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
+import { resolveCampaignAudience, simulateStatus } from '../features/campaign/audienceResolver';
+
+// campaign_sends row → JS shape for the delivery log / summary UI.
+function campaignSendRowToJs(row) {
+  return {
+    id: row.id,
+    campaignId: row.campaign_id,
+    memberId: row.member_id,
+    name: row.recipient_name,
+    email: row.recipient_email,
+    status: row.status,
+    subject: row.subject,
+    sentAt: row.sent_at,
+    openedAt: row.opened_at,
+    error: row.error,
+  };
+}
+
+// Selectable audiences before audience_segments is fetched (or if the table
+// isn't migrated yet). Mirrors supabase/audience_segments_migration.sql.
+const FALLBACK_AUDIENCE_SEGMENTS = [
+  { id: 'all-patients', label: 'All Patients',         resolverKey: 'all' },
+  { id: 'diabetic',     label: 'Diabetic',             resolverKey: 'diabetic' },
+  { id: 'cardiac',      label: 'Cardiac / Heart',      resolverKey: 'cardiac' },
+  { id: 'seniors',      label: 'Seniors (65+)',        resolverKey: 'seniors' },
+  { id: 'pediatric',    label: 'Pediatric (under 18)', resolverKey: 'pediatric' },
+  { id: 'nj-patients',  label: 'New Jersey patients',  resolverKey: 'nj' },
+  { id: 'ny-patients',  label: 'New York patients',    resolverKey: 'ny' },
+];
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
 import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch } from '../lib/worklistDefaults';
 import { MONITORING_SEED, mapMonitoringRow } from '../features/patient/right-panel/tabs/monitoring/monitoringData';
@@ -756,6 +785,97 @@ function persistSnpMemberUpdate(id, patch) {
         reportPersistFailure(`persistSnpMemberUpdate(${id})`, { message: 'affected 0 rows' });
       }
     });
+}
+
+// The SNP program + care plan are the single source of truth for the worklist's
+// Program Sub Status, Care Plan Status, and Assignee columns. These helpers
+// derive the worklist labels from that source so the two never drift.
+//
+// Care Plan Status is derived from the plan row alone (cheap enough for the
+// bulk worklist projection). "In Review", which needs the plan's audit log,
+// stays a program-view-only distinction.
+function snpCarePlanStatusLabel(plan) {
+  if (!plan) return 'No Care Plan';
+  return plan.signed_at ? 'Signed' : 'Draft';
+}
+const snpInitialsFromName = (name) =>
+  (name || '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
+// A program assignee is a plain name string ("Unassigned" when none). Normalize
+// it to the worklist's { name, initials } shape (null when unassigned).
+function snpAssigneeFromProgram(assignee) {
+  const name = assignee && assignee !== 'Unassigned' ? assignee : null;
+  return { assigneeName: name, assigneeInitials: name ? snpInitialsFromName(name) : null };
+}
+
+// Overlay each worklist row with its SNP program + care plan status, so those
+// three columns project the single source of truth. Two bulk queries keyed by
+// patient_id / program_id; rows without a resolvable SNP program keep the
+// snapshot they came in with. `programId` is stamped on so worklist-side edits
+// know which program row to write back to.
+async function projectSnpProgramState(rows) {
+  const patientIds = [...new Set(rows.map(r => r.patientId).filter(Boolean))];
+  if (!patientIds.length) return rows;
+  const { data: progs, error: progErr } = await supabase
+    .from('patient_care_programs')
+    .select('id, patient_id, status, assignee, created_at')
+    .eq('code', 'SNP')
+    .in('patient_id', patientIds)
+    .order('created_at', { ascending: true });
+  if (progErr || !progs?.length) return rows;
+
+  // Latest SNP enrollment per patient (rows are created_at-ascending, so the
+  // last one seen wins).
+  const progByPatient = new Map();
+  progs.forEach(p => progByPatient.set(p.patient_id, p));
+  const progIds = [...progByPatient.values()].map(p => p.id);
+
+  const planByProgram = new Map();
+  if (progIds.length) {
+    const { data: plans } = await supabase
+      .from('patient_care_plans')
+      .select('program_id, signed_at')
+      .in('program_id', progIds);
+    (plans || []).forEach(pl => planByProgram.set(pl.program_id, pl));
+  }
+
+  return rows.map(row => {
+    const prog = row.patientId ? progByPatient.get(row.patientId) : null;
+    if (!prog) return row;
+    return {
+      ...row,
+      programId:        prog.id,
+      programSubStatus: prog.status || row.programSubStatus,
+      carePlanStatus:   snpCarePlanStatusLabel(planByProgram.get(prog.id)),
+      assigneeId:       null,
+      assigneeRole:     null,
+      ...snpAssigneeFromProgram(prog.assignee),
+    };
+  });
+}
+
+// Write a worklist-initiated status/assignee edit through to the SNP care
+// program (the source of truth), and mirror it into a loaded program slice so
+// an open program view reflects it immediately. `patch` keys (status, assignee)
+// match both the in-memory program shape and the DB columns.
+function writeSnpProgramField(get, set, member, patch) {
+  const { programId, patientId } = member;
+  if (!programId) return;
+  const now = new Date();
+  const stamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
+  if (patientId && get().careProgramsByPatient[patientId]) {
+    set(s => ({
+      careProgramsByPatient: {
+        ...s.careProgramsByPatient,
+        [patientId]: (s.careProgramsByPatient[patientId] || []).map(p =>
+          p.id === programId ? { ...p, ...patch, lastUpdated: stamp } : p,
+        ),
+      },
+    }));
+  }
+  supabase.from('patient_care_programs')
+    .update({ ...patch, last_updated: stamp })
+    .eq('id', programId)
+    .then(({ error }) => { if (error) reportPersistFailure(`writeSnpProgramField(${programId})`, error); });
 }
 function persistHccGapDelete(code, memberName) {
   if (!code) return;
@@ -4182,6 +4302,11 @@ export const useAppStore = create((set, get) => ({
     const planId = cur?.plan?.id;
     if (!planId) { get().showToast('Add a goal before signing.'); return null; }
     const versionNumber = await get().snapshotCarePlanVersion(patientId, program, { reason: 'signed', note });
+    // The signature is what the version records, so a failed snapshot has to
+    // stop it: signing anyway leaves a History entry pointing at a version that
+    // does not exist and nothing to restore. snapshotCarePlanVersion has
+    // already said why it failed.
+    if (!versionNumber) return null;
     const name = get().currentUserProfile?.name || null;
     const signedAt = new Date().toISOString();
     const { error } = await supabase.from('patient_care_plans')
@@ -4191,6 +4316,18 @@ export const useAppStore = create((set, get) => ({
       const c = s.patientCarePlans[key];
       return c ? { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, plan: { ...c.plan, signedBy: name, signedAt, updatedAt: signedAt } } } } : {};
     });
+    // Care Plan Status on the SNP worklist is derived from the plan's signed
+    // state, so reflect the signature there immediately (the projection on next
+    // load would too, but this keeps an open worklist in sync).
+    if (program?.code === 'SNP') {
+      set(s => ({
+        snpWorklistMembers: (s.snpWorklistMembers || []).map(m => {
+          if (m.patientId !== patientId) return m;
+          if (m.programId && m.programId !== program.id) return m;
+          return { ...m, carePlanStatus: 'Signed' };
+        }),
+      }));
+    }
     // Signing is what cuts a version, so the templates this version carries are
     // recorded here — added ones with the goals / interventions / barriers
     // sitting under them, removed ones by name. Logged before the signature so
@@ -4352,12 +4489,29 @@ export const useAppStore = create((set, get) => ({
     if (!planId) return;
     const snap = version.snapshot || {};
     // Replace children: delete current, insert from the snapshot (new ids).
-    await supabase.from('patient_care_plan_goals').delete().eq('plan_id', planId);
-    await supabase.from('patient_care_plan_interventions').delete().eq('plan_id', planId);
+    // Every step is checked: the deletes run before the inserts, so a failure
+    // that went unreported would leave the plan emptied while the toast and
+    // the audit row claimed the restore worked.
+    const failed = (step, error) => {
+      console.warn(`restoreCarePlanVersion (${step}):`, error.message);
+      get().showToast('Could not restore this version — the plan may be incomplete, refresh to see its current state');
+      return undefined;
+    };
+    const delGoals = await supabase.from('patient_care_plan_goals').delete().eq('plan_id', planId);
+    if (delGoals.error) return failed('clear goals', delGoals.error);
+    const delIntv = await supabase.from('patient_care_plan_interventions').delete().eq('plan_id', planId);
+    if (delIntv.error) return failed('clear interventions', delIntv.error);
+
     const goalRows = (snap.goals || []).map((g, i) => ({ ...patientCarePlanGoalToRow(g, planId), sort_order: i }));
     const intvRows = (snap.interventions || []).map((x, i) => ({ ...patientCarePlanInterventionToRow(x, planId), sort_order: i }));
-    if (goalRows.length) await supabase.from('patient_care_plan_goals').insert(goalRows);
-    if (intvRows.length) await supabase.from('patient_care_plan_interventions').insert(intvRows);
+    if (goalRows.length) {
+      const { error } = await supabase.from('patient_care_plan_goals').insert(goalRows);
+      if (error) return failed('restore goals', error);
+    }
+    if (intvRows.length) {
+      const { error } = await supabase.from('patient_care_plan_interventions').insert(intvRows);
+      if (error) return failed('restore interventions', error);
+    }
     // Reload the plan from the DB and audit the restore.
     set(s => ({ patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: false } }));
     await get().fetchPatientCarePlan(patientId, program.id);
@@ -4722,6 +4876,24 @@ export const useAppStore = create((set, get) => ({
         careProgramsByPatient: { ...state.careProgramsByPatient, [patientId]: next },
       };
     });
+    // Mirror an SNP program's status / assignee edit into the worklist row so
+    // the two stay in agreement without a reload. Only touches the enrollment
+    // the worklist tracks (the latest); rows keyed only by patient (no known
+    // programId yet) match too.
+    if (updated && updated.code === 'SNP' && (patch.status !== undefined || patch.assignee !== undefined)) {
+      set(state => ({
+        snpWorklistMembers: (state.snpWorklistMembers || []).map(m => {
+          if (m.patientId !== patientId) return m;
+          if (m.programId && m.programId !== updated.id) return m;
+          const nextRow = { ...m, programId: updated.id };
+          if (patch.status !== undefined) nextRow.programSubStatus = updated.status;
+          if (patch.assignee !== undefined) {
+            Object.assign(nextRow, snpAssigneeFromProgram(updated.assignee), { assigneeId: null, assigneeRole: null });
+          }
+          return nextRow;
+        }),
+      }));
+    }
     // A status change is a program activity — log it so the Program Activity Log
     // reflects it, grouped under the program.
     if (updated && patch.status && patch.status !== prevStatus) {
@@ -7082,46 +7254,58 @@ export const useAppStore = create((set, get) => ({
       });
       return;
     }
-    set({
-      snpWorklistMembers: data.map(r => ({
-        id:               r.id,
-        initials:         r.initials,
-        name:             r.name,
-        gender:           r.gender,
-        age:              r.age,
-        memberId:         r.member_id,
-        language:         r.language || 'en',
-        programSubStatus: r.program_sub_status,
-        carePlanStatus:   r.care_plan_status,
-        nextActionDue:    r.next_action_due,
-        outreach:         r.outreach || null,
-        assigneeId:       r.assignee_id,
-        assigneeName:     r.assignee_name,
-        assigneeInitials: r.assignee_initials,
-        assigneeRole:     r.assignee_role,
-        triggerDate:      r.trigger_date,
-        lastAdmission:    r.last_admission,
-        trigger:          r.trigger,
-        riskIq:           r.risk_iq || 'Undetermined',
-        tags:             r.tags || [],
-        tagsMore:         r.tags_more ?? 0,
-        taskCount:        r.task_count ?? 0,
-        patientId:        r.patient_id,
-      })),
-      snpWorklistLoading: false,
-    });
+    const baseRows = data.map(r => ({
+      id:               r.id,
+      initials:         r.initials,
+      name:             r.name,
+      gender:           r.gender,
+      age:              r.age,
+      memberId:         r.member_id,
+      language:         r.language || 'en',
+      programSubStatus: r.program_sub_status,
+      carePlanStatus:   r.care_plan_status,
+      nextActionDue:    r.next_action_due,
+      outreach:         r.outreach || null,
+      assigneeId:       r.assignee_id,
+      assigneeName:     r.assignee_name,
+      assigneeInitials: r.assignee_initials,
+      assigneeRole:     r.assignee_role,
+      triggerDate:      r.trigger_date,
+      lastAdmission:    r.last_admission,
+      trigger:          r.trigger,
+      riskIq:           r.risk_iq || 'Undetermined',
+      tags:             r.tags || [],
+      tagsMore:         r.tags_more ?? 0,
+      taskCount:        r.task_count ?? 0,
+      patientId:        r.patient_id,
+      programId:        null,
+    }));
+
+    // Project the SNP care program + care plan onto Program Sub Status, Care
+    // Plan Status, and Assignee so those columns read from the same source the
+    // program view writes to. A patient can be enrolled in SNP more than once
+    // (triggers 1, 2, 3…); the latest enrollment drives the row. Rows with no
+    // patient link, or a patient with no SNP program yet, keep their snapshot.
+    const overlaid = await projectSnpProgramState(baseRows);
+    set({ snpWorklistMembers: overlaid, snpWorklistLoading: false });
   },
 
-  // Optimistic in-memory update for an SNP member's Program Sub Status,
-  // then persisted to snp_worklist_members. The filter chip options
-  // recompute from the updated array automatically.
+  // Program Sub Status is the SNP care program's `status`. Editing it from the
+  // worklist writes THROUGH to patient_care_programs (the single source), and
+  // mirrors into any loaded program slice so an open program view reflects it.
+  // Rows with no linked SNP program fall back to the worklist snapshot column.
   setSnpProgramSubStatus: (id, next) => {
+    const member = get().snpWorklistMembers.find(m => m.id === id);
     set(s => ({
       snpWorklistMembers: s.snpWorklistMembers.map(m =>
         m.id === id ? { ...m, programSubStatus: next } : m,
       ),
     }));
-    persistSnpMemberUpdate(id, { program_sub_status: next });
+    if (member?.programId) {
+      writeSnpProgramField(get, set, member, { status: next });
+    } else {
+      persistSnpMemberUpdate(id, { program_sub_status: next });
+    }
   },
 
   // Assign / re-assign an SNP member to a platform user. Accepts the shape
@@ -7131,6 +7315,7 @@ export const useAppStore = create((set, get) => ({
   // update so a reload keeps the new assignment.
   setSnpAssignee: (memberId, user) => {
     const role = user?.role || user?.clinicalRoles?.[0] || null;
+    const member = get().snpWorklistMembers.find(m => m.id === memberId);
     set(s => ({
       snpWorklistMembers: s.snpWorklistMembers.map(m =>
         m.id === memberId
@@ -7144,12 +7329,19 @@ export const useAppStore = create((set, get) => ({
           : m,
       ),
     }));
-    persistSnpMemberUpdate(memberId, {
-      assignee_id:       user?.id || null,
-      assignee_name:     user?.name || null,
-      assignee_initials: user?.initials || null,
-      assignee_role:     role,
-    });
+    // Assignee lives on the SNP care program (a plain name string). Write it
+    // through so the program and worklist stay in agreement; snapshot fallback
+    // for rows with no linked program.
+    if (member?.programId) {
+      writeSnpProgramField(get, set, member, { assignee: user?.name || 'Unassigned' });
+    } else {
+      persistSnpMemberUpdate(memberId, {
+        assignee_id:       user?.id || null,
+        assignee_name:     user?.name || null,
+        assignee_initials: user?.initials || null,
+        assignee_role:     role,
+      });
+    }
   },
 
   // Enrolling a patient in the SNP care program implies membership in the
@@ -13121,6 +13313,120 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // ── Audience segments (CampaignBuilder Include/Exclude options) ──
+  audienceSegments: FALLBACK_AUDIENCE_SEGMENTS,
+  fetchAudienceSegments: async () => {
+    const { data, error } = await supabase
+      .from('audience_segments')
+      .select('*')
+      .eq('active', true)
+      .order('sort_order', { ascending: true });
+    if (error || !data || !data.length) return; // keep the fallback list
+    set({
+      audienceSegments: data.map(r => ({
+        id: r.id, label: r.label, resolverKey: r.resolver_key, sortOrder: r.sort_order,
+      })),
+    });
+  },
+
+  // ── Delivery log (campaign_sends), keyed by campaign id ──
+  campaignSends: {},
+  campaignSendsLoading: {},
+  fetchCampaignSends: async (id) => {
+    if (!id) return;
+    set(s => ({ campaignSendsLoading: { ...s.campaignSendsLoading, [id]: true } }));
+    const { data, error } = await supabase
+      .from('campaign_sends')
+      .select('*')
+      .eq('campaign_id', id)
+      .order('created_at', { ascending: true });
+    if (error) {
+      console.warn('[store] campaign_sends fetch failed — run supabase/campaign_sends_migration.sql:', error.message);
+      set(s => ({ campaignSendsLoading: { ...s.campaignSendsLoading, [id]: false } }));
+      return;
+    }
+    set(s => ({
+      campaignSends: { ...s.campaignSends, [id]: (data || []).map(campaignSendRowToJs) },
+      campaignSendsLoading: { ...s.campaignSendsLoading, [id]: false },
+    }));
+  },
+
+  // Simulated send: resolve the audience from all_patients, assign each
+  // recipient a deterministic delivery status, write the campaign_sends log,
+  // and roll the results up into the campaign's audience/delivered/opened
+  // stats. No real email is sent to demo patients (test sends still go through
+  // Resend). Replaces the old flag-only runCampaignNow for the Run button.
+  sendCampaignNow: async () => {
+    const id = get().campaignBuilderId;
+    if (!id) return false;
+    const campaign = get().campaigns.find(c => c.id === id) || await get().fetchCampaignById(id);
+    if (!campaign) { get().showToast('Campaign not found'); return false; }
+    track('campaign.send_now', { campaignId: id });
+
+    // Flush any pending debounced field save so the audience we resolve
+    // reflects the latest edit.
+    const pending = _campaignSaveTimers.get(id);
+    if (pending) { clearTimeout(pending); _campaignSaveTimers.delete(id); }
+
+    let recipients = [];
+    try {
+      recipients = await resolveCampaignAudience(campaign, { segments: get().audienceSegments });
+    } catch (e) {
+      console.error('resolveCampaignAudience failed:', e);
+    }
+    if (!recipients.length) {
+      get().showToast('No patients match this audience — adjust it and try again');
+      return false;
+    }
+
+    const nowIso = new Date().toISOString();
+    const subject = campaign.subjectLine || campaign.name;
+    const rows = recipients.map(r => {
+      const status = simulateStatus(id, r.memberId);
+      const bounced = status === 'bounced';
+      return {
+        id: `${id}::${r.memberId}`,
+        campaign_id: id,
+        member_id: r.memberId,
+        recipient_name: r.name,
+        recipient_email: r.email,
+        status,
+        subject,
+        sent_at: bounced ? null : nowIso,
+        opened_at: status === 'opened' ? nowIso : null,
+        error: bounced ? 'Mailbox unavailable (simulated)' : null,
+      };
+    });
+
+    const { error } = await supabase.from('campaign_sends').upsert(rows, { onConflict: 'id' });
+    if (error) {
+      console.error('sendCampaignNow log error:', error);
+      get().showToast('Could not record campaign send — is the migration run?');
+      return false;
+    }
+
+    const N = rows.length;
+    const deliveredCount = rows.filter(r => r.status !== 'bounced' && r.status !== 'failed').length;
+    const openedCount = rows.filter(r => r.status === 'opened').length;
+    const deliveredPct = Math.round((deliveredCount / N) * 100);
+    const openedPct = Math.round((openedCount / N) * 100);
+    // Match CampaignView.computeHealth (delivered − opened gap) so the stored
+    // value agrees with the badge the list derives.
+    const gap = deliveredPct - openedPct;
+    const health = gap <= 10 ? 'Good' : gap <= 20 ? 'Moderate' : 'Poor';
+    const patch = { section: 'running', enabled: true, audience: N, delivered: deliveredPct, opened: openedPct, progress: 100, health };
+
+    const { error: upErr } = await supabase.from('campaigns').update(patch).eq('id', id);
+    if (upErr) console.error('sendCampaignNow stats error:', upErr);
+
+    set(s => ({
+      campaigns: s.campaigns.map(c => c.id === id ? { ...c, ...patch } : c),
+      campaignSends: { ...s.campaignSends, [id]: rows.map(campaignSendRowToJs) },
+    }));
+    get().showToast(`Sent to ${N} recipient${N !== 1 ? 's' : ''} · ${deliveredPct}% delivered · ${openedPct}% opened`);
+    return true;
+  },
+
   // Hand-off from the CampaignBuilder to the EmailBuilder for "Edit Template".
   // Reuses the existing email-builder takeover; closing it returns to the
   // CampaignBuilder because campaignBuilderId stays set.
@@ -13836,6 +14142,28 @@ export const useAppStore = create((set, get) => ({
   editingCampaignId: null,
   editingCampaignName: null,
   setEditingCampaignName: (name) => set({ editingCampaignName: name }),
+
+  // Org-level CAN-SPAM footer settings (physical address + unsubscribe URL).
+  // Single-row `email_compliance_settings` table; stays null until fetched,
+  // and renderEmail.js falls back to DEFAULT_COMPLIANCE while it is.
+  emailComplianceSettings: null,
+  fetchEmailComplianceSettings: async () => {
+    if (get().emailComplianceSettings) return;
+    const { data, error } = await supabase
+      .from('email_compliance_settings')
+      .select('clinic_name, physical_address, unsubscribe_url')
+      .eq('id', 'default')
+      .maybeSingle();
+    if (error || !data) return;
+    set({
+      emailComplianceSettings: {
+        clinicName: data.clinic_name,
+        physicalAddress: data.physical_address,
+        unsubscribeUrl: data.unsubscribe_url,
+      },
+    });
+  },
+
   emailDocument: null,
   selectedBlockId: 'root',
   selectedColumnIdx: null,
@@ -14000,6 +14328,7 @@ export const useAppStore = create((set, get) => ({
     // customFooterPresets which both default to [], so the builder renders
     // immediately and gets populated when the fetch resolves.
     get().fetchCustomPresets();
+    get().fetchEmailComplianceSettings();
     updateHash(get);
   },
   closeEmailBuilder: () => {
