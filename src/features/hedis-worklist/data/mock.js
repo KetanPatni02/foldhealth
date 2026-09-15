@@ -77,6 +77,17 @@ export const HEDIS_MEMBERS = [
     ipa: 'CFC', hpCode: 'HP-001', zip: '10016', city: 'Manhattan', state: 'NY',
   },
   {
+    id: 'ap-dsfa-solo', in: 'MP', name: 'Maria Perez',
+    gender: 'F', age: '64y', memberId: '10099', language: 'es',
+    gaps: [{ code: 'DSF-A', status: 'Open', startDate: '05/12/2026', source: 'astrana' }],
+    assignee: null, assigneeInitials: null,
+    startDate: '05/12/2026',
+    advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
+    outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
+    memberStatus: 'Active', phone: '(555) 010-0099', dob: '02/14/1962',
+    ipa: 'Astrana', hpCode: 'HP-001', zip: '10001', city: 'Bronx', state: 'NY',
+  },
+  {
     id: 'ap-007', in: 'GB', name: 'Glenn Bauch',
     gender: 'M', age: '71y', memberId: '10006', language: 'zh',
     gaps: [{ code: 'FUH', status: 'Open' }],

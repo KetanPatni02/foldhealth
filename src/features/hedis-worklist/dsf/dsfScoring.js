@@ -65,14 +65,29 @@ export function isPhq2Positive(total) {
 
 // PHQ-9 severity → the caller's care-plan branch key. Maps every
 // interpretation label in `validatedInstruments.js` PHQ-9 def to the
-// story's plain-English branches (minimal / mild / moderate / severe).
-// "Moderately severe" folds into the "severe" branch per the story,
-// which only defines four bands (Minimal 0–4, Mild 5–9, Moderate
-// 10–19, Severe ≥20).
+// scoring reference's four-band scheme:
+//    0-4 points  → minimal (/ none)
+//    5-9 points  → mild
+//    10-19 pts   → moderate  (folds validatedInstruments'
+//                  "moderately severe" 15-19 into this bucket)
+//    20-27 pts   → severe
 export function phq9Branch(total) {
   if (typeof total !== 'number') return null;
   if (total <= 4) return 'minimal';
   if (total <= 9) return 'mild';
   if (total <= 19) return 'moderate';
   return 'severe';
+}
+
+// Human-readable band label — matches the scoring reference's
+// vocabulary exactly (Minimal / None, Mild, Moderate, Severe) so the
+// interpretation Badge reads the same as the clinical worksheet.
+export function phq9BandLabel(branch) {
+  switch (branch) {
+    case 'minimal':  return 'Minimal / None';
+    case 'mild':     return 'Mild';
+    case 'moderate': return 'Moderate';
+    case 'severe':   return 'Severe';
+    default: return null;
+  }
 }

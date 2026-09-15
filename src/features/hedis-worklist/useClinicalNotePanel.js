@@ -13,7 +13,7 @@ const FORM_TYPE_LABEL = {
   cbp_visit_note: 'CBP Visit Note',
 };
 
-export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, onClose, editingTaskId = null, amendNoteId = null }) {
+export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, onClose, editingTaskId = null, amendNoteId = null, onPromoteToConsolidated = null }) {
   const showToast = useAppStore(s => s.showToast);
   const bulkUpdateGapStatuses = useAppStore(s => s.bulkUpdateGapStatuses);
   const openNativeGap = useAppStore(s => s.openNativeGap);
@@ -159,11 +159,56 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     });
     if (created) {
       showToast?.('DSF-B opened - continue with PHQ-9');
-      // Nudge the RHS to the new gap once the store update reaches this
-      // hook via the member prop refresh.
-      setTimeout(() => setActiveGapCode('DSF-B'), 0);
+      // Note: RHS deliberately stays on DSF-A so the Coordinator sees
+      // the post-save success banner. The banner carries an "Open
+      // DSF-B" action button that flips the RHS to the new gap.
     }
   }, [member?.id, openNativeGap, showToast]);
+
+  // "Open DSF-B" from the DSF-A success banner. If the drawer is
+  // running the single-gap inline workspace and now has more than one
+  // gap in flight, promote to the multi-gap consolidated drawer so the
+  // Coordinator sees the Visit Notes list + shared DOS card layout.
+  // Falls back to a plain gap-focus swap when consolidation isn't
+  // wired (or there's no second gap yet).
+  //
+  // The promoted view mounts a NEW useClinicalNotePanel instance with
+  // its own local gapState, so the saved PHQ-2 answers here would be
+  // lost. Persist a draft of DSF-A first so the consolidated panel's
+  // fetch-clinical-notes hydrate restores the locked, filled state.
+  const openDsfbView = async () => {
+    const multiGap = activeGaps.length > 1
+      || member?.gaps?.some(g => g.code === 'DSF-B');
+    if (multiGap && typeof onPromoteToConsolidated === 'function') {
+      const dsfaData = gapState['DSF-A'];
+      if (dsfaData?.phq2?.savedAt) {
+        try {
+          const codes = ['DSF-A'];
+          const primary = 'DSF-A';
+          const effectiveId = selectedNoteId || noteIdByCode[primary];
+          const note = await upsertClinicalNote({
+            id: effectiveId,
+            hedisMemberId: member.id,
+            patientId: member.id,
+            gapCodes: codes,
+            formType: formTypeForCodes(codes),
+            status: 'draft',
+            payload: buildNotePayload(codes),
+          });
+          if (note?.id) codes.forEach(c => rememberNoteId(c, note.id));
+          clearDirty(codes);
+        } catch { /* best-effort — promotion still proceeds */ }
+      }
+      // Hand the target code to the drawer so the consolidated
+      // ClinicalNotePanel mounts with DSF-B active (the point of the
+      // "Open DSF-B" button); without this it inherits currentCode
+      // from the outer drawer, which is still DSF-A and lands the
+      // reviewer on the wrong RHS gap.
+      onPromoteToConsolidated('DSF-B');
+      return;
+    }
+    setActiveGapCode('DSF-B');
+  };
 
   const isReadyForReview = (code) => {
     const data = gapState[code] ?? {};
@@ -728,5 +773,6 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     // DSF: exposed so the bespoke DsfaEvidenceForm can fire the
     // native "open DSF-B" trigger on PHQ-2 Positive.
     openDsfbGap,
+    openDsfbView,
   };
 }
