@@ -196,9 +196,6 @@
   white-space: nowrap;
 }
 .rowSub { font-size: var(--font-md); color: var(--neutral-300); }
-.rowStatus {
-  flex-shrink: 0;
-}
 .empty {
   padding: var(--space-4);
   font-size: var(--font-base);

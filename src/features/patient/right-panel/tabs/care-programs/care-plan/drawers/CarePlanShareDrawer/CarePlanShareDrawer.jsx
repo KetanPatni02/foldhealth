@@ -7,15 +7,12 @@ import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/Shad
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
-import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { buildCarePlanDownloadFilename, downloadCarePlanPdf } from '../../lib/carePlanExport';
 import { CarePlanPdfPreview } from './CarePlanPdfPreview';
-import { GbiStatusButton } from '../../tables/carePlanTableShared';
 import styles from './CarePlanShareDrawer.module.css';
 
 const TARGET_ID = { EHR: 'ehr', Patient: 'patient', POA: 'poa' };
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 
 function SectionSelectAll({ label, ids, off, setOff, collapsed, onToggle }) {
   const total = ids.length;
@@ -46,13 +43,6 @@ function SectionSelectAll({ label, ids, off, setOff, collapsed, onToggle }) {
   );
 }
 
-function applyPatches(items, patches) {
-  return items.map(item => {
-    const patch = patches[item.id];
-    return patch ? { ...item, ...patch } : item;
-  });
-}
-
 // Preview the plan, choose which goals/interventions to include, then download
 // a PDF or share it to the EHR / patient / POA (#8, #13, #40).
 export function CarePlanShareDrawer({ patientId, program, data, patientName, canShare = true, onClose }) {
@@ -68,8 +58,6 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
   const [goalOff, setGoalOff] = useState(() => new Set());
   const [intvOff, setIntvOff] = useState(() => new Set());
   const [barrierOff, setBarrierOff] = useState(() => new Set());
-  const [statusPatches, setStatusPatches] = useState({});
-  const [statusMenu, setStatusMenu] = useState(null);
   const [note, setNote] = useState('');
   const [sharing, setSharing] = useState(false);
   // Per-section collapse (Goals / Interventions / Barriers).
@@ -85,25 +73,12 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
   const selectedGoalIds = allGoalIds.filter(id => !goalOff.has(id));
   const selectedIntvIds = allIntvIds.filter(id => !intvOff.has(id));
 
-  const patchedGoals = useMemo(
-    () => applyPatches(data.goals, statusPatches),
-    [data.goals, statusPatches],
-  );
-  const patchedInterventions = useMemo(
-    () => applyPatches(data.interventions, statusPatches),
-    [data.interventions, statusPatches],
-  );
-  const patchedBarriers = useMemo(
-    () => applyPatches(data.barriers || [], statusPatches),
-    [data.barriers, statusPatches],
-  );
-
   const selection = useMemo(() => ({
     conditions: data.conditions.map(c => c.label),
-    goals: patchedGoals.filter(g => !goalOff.has(g.id)),
-    interventions: patchedInterventions.filter(i => !intvOff.has(i.id)),
-    barriers: patchedBarriers.filter(b => !barrierOff.has(b.id)),
-  }), [data.conditions, patchedGoals, patchedInterventions, patchedBarriers, goalOff, intvOff, barrierOff]);
+    goals: data.goals.filter(g => !goalOff.has(g.id)),
+    interventions: data.interventions.filter(i => !intvOff.has(i.id)),
+    barriers: (data.barriers || []).filter(b => !barrierOff.has(b.id)),
+  }), [data.conditions, data.goals, data.interventions, data.barriers, goalOff, intvOff, barrierOff]);
 
   const nothingSelected = selection.goals.length === 0
     && selection.interventions.length === 0
@@ -148,13 +123,6 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
     onClose();
   };
 
-  const changeStatus = (status) => {
-    if (!statusMenu) return;
-    const { id } = statusMenu;
-    setStatusPatches(prev => ({ ...prev, [id]: { status } }));
-    setStatusMenu(null);
-  };
-
   const headerRight = (
     <>
       <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={handleDownload} disabled={nothingSelected}>
@@ -197,18 +165,12 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
           {!collapsed.goals && (
           <div className={styles.list}>
             {data.goals.length === 0 && <div className={styles.empty}>No goals on this plan.</div>}
-            {patchedGoals.map(g => (
+            {data.goals.map(g => (
               <div key={g.id} className={styles.row}>
                 <Checkbox checked={!goalOff.has(g.id)} onCheckedChange={() => setGoalOff(s => toggleOff(s, g.id))} aria-label={`Include ${g.title}`} />
                 <span className={styles.rowText}>
                   <span className={styles.rowTitle}>{g.title}</span>
                   {g.subtitle && <span className={styles.rowSub}>{g.subtitle}</span>}
-                </span>
-                <span className={styles.rowStatus}>
-                  <GbiStatusButton
-                    value={g.status}
-                    onOpen={rect => setStatusMenu({ kind: 'goal', id: g.id, rect })}
-                  />
                 </span>
               </div>
             ))}
@@ -221,18 +183,12 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
           {!collapsed.interventions && (
           <div className={styles.list}>
             {data.interventions.length === 0 && <div className={styles.empty}>No interventions on this plan.</div>}
-            {patchedInterventions.map(i => (
+            {data.interventions.map(i => (
               <div key={i.id} className={styles.row}>
                 <Checkbox checked={!intvOff.has(i.id)} onCheckedChange={() => setIntvOff(s => toggleOff(s, i.id))} aria-label={`Include ${i.title}`} />
                 <span className={styles.rowText}>
                   <span className={styles.rowTitle}>{i.title}</span>
                   <span className={styles.rowSub}>{i.assignee?.name}</span>
-                </span>
-                <span className={styles.rowStatus}>
-                  <GbiStatusButton
-                    value={i.status}
-                    onOpen={rect => setStatusMenu({ kind: 'intv', id: i.id, rect })}
-                  />
                 </span>
               </div>
             ))}
@@ -245,17 +201,11 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
             <SectionSelectAll label="Barriers" ids={allBarrierIds} off={barrierOff} setOff={setBarrierOff} collapsed={collapsed.barriers} onToggle={() => toggleCollapsed('barriers')} />
             {!collapsed.barriers && (
             <div className={styles.list}>
-              {patchedBarriers.map(b => (
+              {(data.barriers || []).map(b => (
                 <div key={b.id} className={styles.row}>
                   <Checkbox checked={!barrierOff.has(b.id)} onCheckedChange={() => setBarrierOff(s => toggleOff(s, b.id))} aria-label={`Include ${b.title}`} />
                   <span className={styles.rowText}>
                     <span className={styles.rowTitle}>{b.title}</span>
-                  </span>
-                  <span className={styles.rowStatus}>
-                    <GbiStatusButton
-                      value={b.status}
-                      onOpen={rect => setStatusMenu({ kind: 'barrier', id: b.id, rect })}
-                    />
                   </span>
                 </div>
               ))}
@@ -307,18 +257,6 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
       >
         <SplitDrawerLayout left={previewPane} right={editorPane} />
       </Drawer>
-
-      {statusMenu && (
-        <MenuPopover
-          anchorRect={statusMenu.rect}
-          align="left"
-          width={160}
-          ariaLabel="Change status"
-          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
-          onSelect={changeStatus}
-          onClose={() => setStatusMenu(null)}
-        />
-      )}
     </>
   );
 }
