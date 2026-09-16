@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { RULE_FIELDS, FIELD_GROUPS, groupAccent } from './fieldCatalog';
+import { RULE_FIELDS, FIELD_GROUPS, groupAccent, groupAccentFg } from './fieldCatalog';
 import styles from './ruleBuilder.module.css';
 
 /* Groups laid over five columns: Personal Info + Location stack in the first,
@@ -61,7 +61,7 @@ export function AddConditionPopover({ anchorRect, inline = false, onSelect, onCl
                         onClick={() => onSelect(field)}
                       >
                         <span className={styles.popoverItemIcon} style={{ background: groupAccent(groupKey) }}>
-                          <Icon name={field.icon} size={16} color="var(--neutral-400)" />
+                          <Icon name={field.icon} size={16} color={groupAccentFg(groupKey)} />
                         </span>
                         {field.label}
                         {field.isNew && <span className={styles.newBadge}>New</span>}

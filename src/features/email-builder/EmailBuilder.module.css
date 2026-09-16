@@ -44,14 +44,25 @@
   font-weight: 600;
   color: var(--neutral-400);
   margin: 0;
-  border: none;
-  background: transparent;
-  outline: none;
-  padding: 0;
+  height: auto;
+  width: auto;
   min-width: 80px;
   max-width: 320px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   border-bottom: 1.5px solid transparent;
   transition: border-color 0.15s;
+}
+
+.titleInput:hover,
+.titleInput:focus {
+  box-shadow: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
 }
 
 .titleInput:hover { border-bottom-color: var(--neutral-200); }
@@ -163,19 +174,6 @@
   letter-spacing: 0.5px;
 }
 
-.testEmailInput {
-  height: 36px;
-  padding: 0 12px;
-  border: 1px solid var(--neutral-150);
-  border-radius: 8px;
-  font-size: var(--font-md);
-  color: var(--neutral-400);
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.testEmailInput:focus { border-color: var(--primary-300); }
-
 .testEmailDivider {
   height: 0.5px;
   background: var(--neutral-150);
@@ -199,23 +197,11 @@
 }
 
 .testEmailRecentChip {
-  all: unset;
-  cursor: pointer;
-  font-size: var(--font-sm);
-  color: var(--neutral-400);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
-  border-radius: 4px;
+  max-width: 100%;
+  justify-content: flex-start;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.testEmailRecentChip:hover {
-  background: var(--primary-50);
-  color: var(--primary-500);
 }
 
 .testEmailActions {
@@ -281,47 +267,23 @@
   background: var(--primary-200);
 }
 
-.tabs {
-  display: flex;
-  border-bottom: 0.5px solid var(--neutral-150);
-}
-
-.tab {
-  flex: 1;
-  height: 40px;
-  border: none;
-  background: transparent;
-  font-size: var(--font-md);
-  font-weight: 500;
-  color: var(--neutral-300);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-}
-
-.tab:hover { color: var(--neutral-400); }
-
-.tabActive {
-  color: var(--primary-300);
-  border-bottom-color: var(--primary-300);
-}
-
 .panelScroll {
   flex: 1;
   overflow-y: auto;
   overflow-y: overlay;
   padding: 16px 12px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(58, 72, 95, 0.25) transparent;
+  scrollbar-color: color-mix(in srgb, var(--neutral-300) 25%, transparent) transparent;
 }
 .panelScroll::-webkit-scrollbar { width: 8px; }
 .panelScroll::-webkit-scrollbar-track { background: transparent; }
 .panelScroll::-webkit-scrollbar-thumb {
-  background: rgba(58, 72, 95, 0.22);
+  background: color-mix(in srgb, var(--neutral-300) 22%, transparent);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-.panelScroll::-webkit-scrollbar-thumb:hover { background: rgba(58, 72, 95, 0.4); background-clip: padding-box; }
+.panelScroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--neutral-300) 40%, transparent); background-clip: padding-box; }
 
 .panelScrollFlush {
   flex: 1;
@@ -331,17 +293,17 @@
   padding: 0;
   background: var(--neutral-0);
   scrollbar-width: thin;
-  scrollbar-color: rgba(58, 72, 95, 0.25) transparent;
+  scrollbar-color: color-mix(in srgb, var(--neutral-300) 25%, transparent) transparent;
 }
 .panelScrollFlush::-webkit-scrollbar { width: 8px; }
 .panelScrollFlush::-webkit-scrollbar-track { background: transparent; }
 .panelScrollFlush::-webkit-scrollbar-thumb {
-  background: rgba(58, 72, 95, 0.22);
+  background: color-mix(in srgb, var(--neutral-300) 22%, transparent);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
-.panelScrollFlush::-webkit-scrollbar-thumb:hover { background: rgba(58, 72, 95, 0.4); background-clip: padding-box; }
+.panelScrollFlush::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--neutral-300) 40%, transparent); background-clip: padding-box; }
 
 .sectionHeading {
   height: 32px;
@@ -393,7 +355,11 @@
   color: var(--primary-300);
 }
 
-.componentTile:hover svg { color: var(--primary-300) !important; }
+/* Icons inherit tile color (default + hover) via currentColor. */
+.componentTile svg {
+  color: currentColor;
+  transition: color var(--duration-instant) var(--ease-hover);
+}
 
 .componentTileDragging {
   opacity: 0.4;
@@ -885,7 +851,7 @@
 .canvas {
   width: 600px;
   max-width: 100%;
-  background: #fff;
+  background: var(--neutral-0);
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, .04);
   overflow: visible;
@@ -971,6 +937,16 @@
 .blockToolbarBtn:hover { background: rgba(255, 255, 255, 0.16); }
 .blockToolbarBtn:active { background: rgba(255, 255, 255, 0.24); }
 
+.blockToolbarAction {
+  color: var(--neutral-0);
+}
+.blockToolbarAction:hover {
+  background: var(--primary-200);
+}
+.blockToolbarAction:active {
+  background: var(--primary-100);
+}
+
 /* ── Right: Properties panel ── */
 .rightPanel {
   position: relative;
@@ -1015,43 +991,29 @@
   flex: 1;
   width: 100%;
   border: none;
-  background: #fff;
+  background: var(--neutral-0);
 }
 
 /* Tabs at top */
-.rightTabs {
+/* Embedded TabStrip must sit in a fixed-height horizontal row (same pattern
+   as HCC DiagPanel LeftWorkspace). Otherwise embedded's flex:1 stretches
+   the strip to fill a column flex parent. */
+.panelTabBar {
   display: flex;
-  border-bottom: 0.5px solid var(--neutral-150);
-  background: var(--neutral-0);
-  flex-shrink: 0;
-}
-
-.rightTab {
-  flex: 1;
+  flex-direction: row;
+  align-items: stretch;
   height: 40px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  color: var(--neutral-300);
-  transition: color .12s, border-color .12s;
-  font-size: var(--font-md);
-  font-weight: 500;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--space-2);
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
 }
 
-.rightTabLabel {
-  line-height: 1;
-}
-
-.rightTab:hover { color: var(--neutral-400); }
-
-.rightTabActive {
-  color: var(--primary-300);
-  border-bottom-color: var(--primary-300);
+.panelTabBar > * {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Design / Template scroll containers. The scrollbar is rendered inside a
@@ -1083,7 +1045,7 @@
 .canvasWrap,
 .layersScroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(58, 72, 95, 0.25) transparent;
+  scrollbar-color: color-mix(in srgb, var(--neutral-300) 25%, transparent) transparent;
 }
 
 .designScroll::-webkit-scrollbar,
@@ -1100,13 +1062,13 @@
 .templateScroll::-webkit-scrollbar-thumb,
 .canvasWrap::-webkit-scrollbar-thumb,
 .layersScroll::-webkit-scrollbar-thumb {
-  background: rgba(58, 72, 95, 0.18);
+  background: color-mix(in srgb, var(--neutral-300) 18%, transparent);
   border-radius: 999px;
 }
 .designScroll::-webkit-scrollbar-thumb:hover,
 .templateScroll::-webkit-scrollbar-thumb:hover,
 .canvasWrap::-webkit-scrollbar-thumb:hover,
-.layersScroll::-webkit-scrollbar-thumb:hover { background: rgba(58, 72, 95, 0.4); }
+.layersScroll::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--neutral-300) 40%, transparent); }
 
 /* Section heading strip (grey #F6F7F8, 32px tall) */
 /* Section heading — light surface strip that titles each group. Slightly
@@ -1330,6 +1292,10 @@
   transition:
     background-color var(--duration-base) var(--ease-hover),
     border-color var(--duration-base) var(--ease-hover);
+}
+
+.colorDotWhiteFill {
+  border-color: var(--neutral-200);
 }
 
 .colorHex {
@@ -1779,10 +1745,12 @@
   border-radius: 12px;
   color: #FFFFFF;
   font-size: var(--font-sm);
-  outline: none;
+  box-shadow: none;
 }
 .selectionToolbarLinkInput::placeholder { color: rgba(255, 255, 255, 0.4); }
+.selectionToolbarLinkInput:hover,
 .selectionToolbarLinkInput:focus {
+  box-shadow: none;
   border-color: var(--primary-300);
 }
 
@@ -2236,22 +2204,7 @@
 }
 
 .presetSaveBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
   width: 100%;
-  padding: 8px 10px;
-  background: var(--primary-50);
-  border: 0.5px dashed var(--primary-200);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: var(--font-sm);
-  font-weight: 500;
-  color: var(--primary-400, #5020A0);
-}
-.presetSaveBtn:hover {
-  background: var(--primary-100);
-  border-style: solid;
 }
 
 .presetSaveForm {
@@ -2264,48 +2217,11 @@
   border-radius: 6px;
 }
 
-.presetSaveInput {
-  width: 100%;
-  height: 28px;
-  padding: 0 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 4px;
-  background: var(--neutral-0);
-  font-size: var(--font-sm);
-  color: var(--neutral-400);
-  outline: none;
-  box-sizing: border-box;
-}
-.presetSaveInput:focus { border-color: var(--primary-300); }
-
 .presetSaveActions {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
 }
-
-.presetSaveCancel,
-.presetSavePrimary {
-  height: 24px;
-  padding: 0 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: var(--font-xs);
-  font-weight: 500;
-  border: 0.5px solid var(--neutral-150);
-}
-.presetSaveCancel {
-  background: var(--neutral-0);
-  color: var(--neutral-400);
-}
-.presetSaveCancel:hover { background: var(--neutral-50); }
-.presetSavePrimary {
-  background: var(--primary-300);
-  border-color: var(--primary-300);
-  color: #fff;
-}
-.presetSavePrimary:hover:not(:disabled) { background: var(--primary-400, #5020A0); border-color: var(--primary-400, #5020A0); }
-.presetSavePrimary:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Vertical list inside the Template tab — refined modern card layout. */
 .presetCardList {
@@ -2323,7 +2239,7 @@
 .livePreviewWrap {
   position: relative;
   overflow: hidden;
-  background: #fff;
+  background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
 }
 
@@ -2346,7 +2262,7 @@
   border: 0;
   transform-origin: top left;
   pointer-events: none;
-  background: #fff;
+  background: var(--neutral-0);
 }
 
 /* Template tab */
@@ -2449,18 +2365,23 @@
   background: var(--primary-50, #F6F4FF);
 }
 .tableEditorCell {
-  background: #fff;
+  background: var(--neutral-0);
 }
 .tableEditorInput {
   width: 100%;
+  height: auto;
   padding: 6px 8px;
   border: none;
+  border-radius: 0;
   background: transparent;
+  box-shadow: none;
   font-size: var(--font-xs);
   color: var(--neutral-500, #3A485F);
-  outline: none;
 }
+.tableEditorInput:hover,
 .tableEditorInput:focus {
+  box-shadow: none;
+  border: none;
   background: var(--primary-25, #FAFAFF);
 }
 .tableEditorRemoveBtn {
@@ -2887,7 +2808,7 @@
 .skCanvas {
   width: 600px;
   max-width: 100%;
-  background: #fff;
+  background: var(--neutral-0);
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, .04);
   padding: 24px;

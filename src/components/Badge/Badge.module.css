@@ -173,7 +173,7 @@
 
 /* ── Priority Badges ── */
 .priority-critical { background: var(--status-error-light); color: var(--status-error); border-color: rgba(215,40,37,0.2); }
-.priority-high { background: #FFF8F5; color: #E8742C; border-color: rgba(232,116,44,0.2); }
+.priority-high { background: var(--secondary-50); color: var(--secondary-300-fg); border-color: color-mix(in srgb, var(--secondary-300) 20%, transparent); }
 .priority-medium { background: var(--status-warning-light); color: var(--status-warning); border-color: rgba(217,165,11,0.2); }
 .priority-low { background: var(--neutral-50); color: var(--neutral-300); border-color: rgba(111,122,144,0.2); }
 
@@ -186,7 +186,7 @@
 
 /* ── Escalation Badges ── */
 .escalation-confidence { background: var(--status-error-light); color: var(--status-error); border-color: rgba(215,40,37,0.2); }
-.escalation-sentiment { background: #FFF8F5; color: #E8742C; border-color: rgba(232,116,44,0.2); }
+.escalation-sentiment { background: var(--secondary-50); color: var(--secondary-300-fg); border-color: color-mix(in srgb, var(--secondary-300) 20%, transparent); }
 .escalation-loops { background: var(--status-warning-light); color: var(--status-warning); border-color: rgba(217,165,11,0.2); }
 .escalation-max-turns { background: var(--neutral-50); color: var(--neutral-400); border-color: rgba(111,122,144,0.2); }
 .escalation-emergency { background: var(--status-error-light); color: var(--status-error); border-color: color-mix(in srgb, var(--status-error) 25%, transparent); font-weight: 400; }

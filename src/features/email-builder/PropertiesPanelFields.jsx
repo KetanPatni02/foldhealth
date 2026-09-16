@@ -12,6 +12,7 @@ import { Toggle } from '../../components/Toggle/Toggle';
 import { Input } from '../../components/Input/Input';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { Select as SharedSelect } from '../../components/Select/Select';
+import { Button } from '../../components/Button/Button';
 import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
 import { PresetLivePreview } from './PresetLivePreview';
 import { uploadImage } from './uploadImage';
@@ -404,6 +405,7 @@ export function IconInput({ label, suffix, icon, value, onChange, freeform, unit
   const [localValue, setLocalValue] = useState(null);
   const editing = localValue !== null;
   const displayed = editing ? localValue : (value ?? '');
+  const hasUnitToggle = Boolean(unit && onUnitChange);
 
   const handleKeyDown = (e) => {
     if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
@@ -425,28 +427,25 @@ export function IconInput({ label, suffix, icon, value, onChange, freeform, unit
   return (
     <div className={styles.fieldCol}>
       {label && <label className={styles.fieldLabel} htmlFor={controlId}>{label}</label>}
-      <div className={styles.iconInputWrap}>
-        {icon && <span className={styles.iconInputIcon}>{icon}</span>}
-        <input
-          id={controlId}
-          className={styles.iconInputValue}
-          type="text"
-          value={displayed}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-        />
-        {unit && onUnitChange ? (
-          <button
-            type="button"
-            className={styles.unitToggleBtn}
-            onClick={() => onUnitChange(unit === 'px' ? '%' : 'px')}
-            title={`Switch to ${unit === 'px' ? '%' : 'px'}`}
-          >
-            {unit}
-          </button>
-        ) : (suffix && <span className={styles.iconInputSuffix}>{suffix}</span>)}
-      </div>
+      <Input
+        id={controlId}
+        type="text"
+        inputMode={freeform ? 'text' : 'decimal'}
+        value={String(displayed)}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        leadingIconElement={icon ? (
+          <span className={styles.iconInputIcon} aria-hidden>{icon}</span>
+        ) : undefined}
+        trailingText={!hasUnitToggle && suffix ? suffix : undefined}
+        trailingTextSegment={!hasUnitToggle && Boolean(suffix)}
+        trailingButton={hasUnitToggle}
+        trailingButtonText={unit}
+        onTrailingButtonClick={hasUnitToggle
+          ? () => onUnitChange(unit === 'px' ? '%' : 'px')
+          : undefined}
+      />
     </div>
   );
 }
@@ -516,11 +515,11 @@ export function TableEditor({ columns, rows, onChangeColumns, onChangeRows }) {
       <div className={styles.tableEditorGrid} style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr) 24px` }}>
         {columns.map((col, ci) => (
           <div key={ci} className={styles.tableEditorHeaderCell}>
-            <input
+            <Input
               className={styles.tableEditorInput}
               value={col.header}
               aria-label="Column header"
-              onChange={e => updateHeader(ci, e.target.value)}
+              onChange={(e) => updateHeader(ci, e.target.value)}
               style={{ fontWeight: 600 }}
             />
             {columns.length > 1 && (
@@ -533,11 +532,11 @@ export function TableEditor({ columns, rows, onChangeColumns, onChangeRows }) {
           <Fragment key={ri}>
             {columns.map((col, ci) => (
               <div key={ci} className={styles.tableEditorCell}>
-                <input
+                <Input
                   className={styles.tableEditorInput}
                   value={row[col.key] || ''}
                   aria-label="Cell value"
-                  onChange={e => updateCell(ri, col.key, e.target.value)}
+                  onChange={(e) => updateCell(ri, col.key, e.target.value)}
                 />
               </div>
             ))}
@@ -546,8 +545,8 @@ export function TableEditor({ columns, rows, onChangeColumns, onChangeRows }) {
         ))}
       </div>
       <div className={styles.tableEditorActions}>
-        <button className={styles.tableEditorAddBtn} onClick={addRow}>+ Row</button>
-        <button className={styles.tableEditorAddBtn} onClick={addColumn}>+ Column</button>
+        <Button variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={addRow}>+ Row</Button>
+        <Button variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={addColumn}>+ Column</Button>
       </div>
     </div>
   );
@@ -634,17 +633,18 @@ export function SocialEditor({ platforms, onChange }) {
             currentUrl={p.iconUrl}
             onUpload={url => updatePlatform(i, 'iconUrl', url)}
           />
-          <input
+          <Input
             className={styles.tableEditorInput}
             value={p.label}
             aria-label="Platform label"
-            onChange={e => updatePlatform(i, 'label', e.target.value)}
+            onChange={(e) => updatePlatform(i, 'label', e.target.value)}
             style={{ fontWeight: 500, flex: '0 0 70px' }}
           />
-          <input aria-label="Social link URL"
+          <Input
+            aria-label="Social link URL"
             className={styles.tableEditorInput}
             value={p.url || ''}
-            onChange={e => updatePlatform(i, 'url', e.target.value)}
+            onChange={(e) => updatePlatform(i, 'url', e.target.value)}
             placeholder="URL"
             style={{ flex: 1 }}
           />
@@ -653,13 +653,13 @@ export function SocialEditor({ platforms, onChange }) {
       ))}
       <div className={styles.socialPresets}>
         {SOCIAL_PRESETS.filter(sp => !platforms.some(p => p.id === sp.id)).map(sp => (
-          <button key={sp.id} className={styles.tableEditorAddBtn} onClick={() => addPlatform(sp)}>
+          <Button key={sp.id} variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={() => addPlatform(sp)}>
             + {sp.label}
-          </button>
+          </Button>
         ))}
-        <button className={styles.tableEditorAddBtn} onClick={addCustom}>
+        <Button variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={addCustom}>
           + Custom
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -677,24 +677,26 @@ export function NavLinkEditor({ links, onChange }) {
     <div className={styles.tableEditor}>
       {links.map((link, i) => (
         <div key={i} className={styles.socialRow}>
-          <input aria-label="Nav link label"
+          <Input
+            aria-label="Nav link label"
             className={styles.tableEditorInput}
             value={link.label}
-            onChange={e => updateLink(i, 'label', e.target.value)}
+            onChange={(e) => updateLink(i, 'label', e.target.value)}
             placeholder="Label"
             style={{ fontWeight: 500, flex: '0 0 80px' }}
           />
-          <input aria-label="Nav link URL"
+          <Input
+            aria-label="Nav link URL"
             className={styles.tableEditorInput}
             value={link.url || ''}
-            onChange={e => updateLink(i, 'url', e.target.value)}
+            onChange={(e) => updateLink(i, 'url', e.target.value)}
             placeholder="URL"
             style={{ flex: 1 }}
           />
           <CloseButton size={12} onClick={() => removeLink(i)} className={styles.tableEditorRemoveRowBtn} label="Remove link" />
         </div>
       ))}
-      <button className={styles.tableEditorAddBtn} onClick={addLink}>+ Add link</button>
+      <Button variant="ghost" size="S" className={styles.tableEditorAddBtn} onClick={addLink}>+ Add link</Button>
     </div>
   );
 }

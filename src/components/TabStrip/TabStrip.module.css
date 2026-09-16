@@ -122,6 +122,10 @@
   scrollbar-width: none;
 }
 .embedded::-webkit-scrollbar { display: none; }
+/* Embedded rows that own the baseline (parent wrapper has no border-bottom). */
+.embeddedWithBaseline {
+  border-bottom: 0.5px solid var(--neutral-150);
+}
 .embedded .tabItem { flex-shrink: 0; }
 
 .tabBar.embedded .tabItem {
@@ -129,4 +133,16 @@
   padding-top: 0;
   padding-bottom: 0;
   align-items: center;
+}
+
+/* Equal-width tabs for narrow side panels (email builder, etc.). */
+.balanceTabs {
+  width: 100%;
+}
+.tabItemBalanced {
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

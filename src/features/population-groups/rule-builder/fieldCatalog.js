@@ -86,15 +86,15 @@ export const EVENT_TYPES = [
   { value: 'immunization', label: 'Immunizations' },
 ];
 
-/* Category accents — chip background token + the Solar icon color stays
-   currentColor (grey-300) per the Figma. */
+/* Category accents — `accent` is the chip surface; `fg` is label + icon
+   color. Token pairs invert under [data-theme="dark"] so contrast holds. */
 export const FIELD_GROUPS = [
-  { key: 'personal', label: 'Personal Info', accent: 'var(--accent-light-purple)' },
-  { key: 'location', label: 'Location', accent: 'var(--accent-light-pink)' },
-  { key: 'medical', label: 'Medical Records', accent: 'var(--accent-light-light-green)' },
-  { key: 'coded', label: 'Coded Conditions', accent: 'var(--accent-light-teal)' },
-  { key: 'patientInfo', label: 'Patient Information', accent: 'var(--accent-light-amber)' },
-  { key: 'others', label: 'Others', accent: 'var(--accent-light-cyan)' },
+  { key: 'personal', label: 'Personal Info', accent: 'var(--accent-light-purple)', fg: 'var(--accent-purple)' },
+  { key: 'location', label: 'Location', accent: 'var(--accent-light-pink)', fg: 'var(--accent-pink)' },
+  { key: 'medical', label: 'Medical Records', accent: 'var(--accent-light-light-green)', fg: 'var(--accent-light-green)' },
+  { key: 'coded', label: 'Coded Conditions', accent: 'var(--accent-light-teal)', fg: 'var(--accent-teal)' },
+  { key: 'patientInfo', label: 'Patient Information', accent: 'var(--accent-light-amber)', fg: 'var(--accent-amber)' },
+  { key: 'others', label: 'Others', accent: 'var(--accent-light-cyan)', fg: 'var(--accent-cyan)' },
 ];
 
 export const RULE_FIELDS = [
@@ -177,6 +177,15 @@ export const FIELD_BY_KEY = Object.fromEntries(RULE_FIELDS.map(f => [f.key, f]))
 
 export const groupAccent = (groupKey) =>
   FIELD_GROUPS.find(g => g.key === groupKey)?.accent || 'var(--neutral-50)';
+
+export const groupAccentFg = (groupKey) =>
+  FIELD_GROUPS.find(g => g.key === groupKey)?.fg || 'var(--neutral-400)';
+
+export const groupChipStyle = (groupKey, extra = {}) => ({
+  background: groupAccent(groupKey),
+  color: groupAccentFg(groupKey),
+  ...extra,
+});
 
 /* Badge descriptors for a rule's node row: [{ text, tone }]. Complex
    conditions (metrics, negations, qualifiers — e.g. "Vital · Blood Pressure ·

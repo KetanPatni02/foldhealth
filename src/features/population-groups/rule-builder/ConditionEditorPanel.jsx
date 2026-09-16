@@ -5,7 +5,7 @@ import { Input } from '../../../components/Input/Input';
 import { Select } from '../../../components/Select/Select';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
-import { FIELD_BY_KEY, NEGATED_OP, EVENT_TYPES, groupAccent, todayLabel } from './fieldCatalog';
+import { FIELD_BY_KEY, NEGATED_OP, EVENT_TYPES, groupAccent, groupAccentFg, groupChipStyle, todayLabel } from './fieldCatalog';
 import { TerminologySearch } from './TerminologySearch';
 import { LookbackWindowInput } from './LookbackWindowInput';
 import styles from './ruleBuilder.module.css';
@@ -57,9 +57,9 @@ export function ConditionEditorPanel({ rule, onSave, onClose }) {
 
         <div className={styles.editorFields}>
           {/* Field identity chip */}
-          <div className={styles.editorFieldChip} style={{ background: groupAccent(field.group) }}>
+          <div className={styles.editorFieldChip} style={groupChipStyle(field.group)}>
             <span className={styles.fieldChipIcon} style={{ background: groupAccent(field.group) }}>
-              <Icon name={field.icon} size={16} color="var(--neutral-400)" />
+              <Icon name={field.icon} size={16} color={groupAccentFg(field.group)} />
             </span>
             {field.label}
           </div>

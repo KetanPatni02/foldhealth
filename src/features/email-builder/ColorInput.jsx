@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useLayoutEffect, useId, useCallback } from
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../store/useAppStore';
 import { ColorPicker } from './ColorPicker';
+import { Input } from '../../components/Input/Input';
 import { isGradient } from './colorHelpers';
 import styles from './EmailBuilder.module.css';
 
@@ -108,30 +109,31 @@ export function ColorInput({ label, value, onChange, allowGradient = true }) {
   return (
     <div className={styles.fieldCol} ref={fieldRef}>
       {label && <label className={styles.fieldLabel} htmlFor={hexId}>{label}</label>}
-      <div className={styles.colorInputWrap}>
-        <button
-          type="button"
-          className={styles.colorDotBtn}
-          onClick={() => (shown ? closePicker() : openPicker())}
-          aria-label="Open color picker"
-        >
-          <span
-            className={styles.colorDot}
-            style={{
-              background: v,
-              borderColor: !isGrad && typeof v === 'string' && v.toLowerCase() === '#ffffff' ? '#CED4DD' : (isGrad ? 'transparent' : v),
-            }}
-          />
-        </button>
-        <input
-          id={hexId}
-          type="text"
-          className={styles.colorHex}
-          value={displayText}
-          onChange={e => { if (!isGrad) onChange(e.target.value); }}
-          readOnly={isGrad}
-        />
-      </div>
+      <Input
+        id={hexId}
+        value={displayText}
+        onChange={(e) => { if (!isGrad) onChange(e.target.value); }}
+        readOnly={isGrad}
+        leadingIconElement={(
+          <button
+            type="button"
+            className={styles.colorDotBtn}
+            onClick={() => (shown ? closePicker() : openPicker())}
+            aria-label="Open color picker"
+          >
+            <span
+              className={[
+                styles.colorDot,
+                !isGrad && typeof v === 'string' && v.toLowerCase() === '#ffffff' ? styles.colorDotWhiteFill : '',
+              ].filter(Boolean).join(' ')}
+              style={{
+                background: v,
+                borderColor: isGrad ? 'transparent' : (typeof v === 'string' ? v : undefined),
+              }}
+            />
+          </button>
+        )}
+      />
       {mounted && createPortal(
         <div
           ref={popoverRef}

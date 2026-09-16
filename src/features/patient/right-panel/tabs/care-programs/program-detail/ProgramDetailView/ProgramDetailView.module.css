@@ -7,7 +7,7 @@
   justify-content: space-between;
   height: 40px;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: linear-gradient(to right, #fff8fd, white 71%);
+  background: linear-gradient(to right, var(--primary-50), var(--neutral-0) 71%);
   flex-shrink: 0;
 }
 .headerLeft {
@@ -37,7 +37,7 @@
   padding: 4px 6px;
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
-  background: white;
+  background: var(--neutral-0);
   cursor: pointer;
 }
 .statusIcon { display: flex; align-items: center; flex-shrink: 0; }
@@ -185,7 +185,7 @@
   min-width: 220px;
   border-right: 0.5px solid var(--neutral-150);
   overflow-y: auto;
-  background: white;
+  background: var(--neutral-0);
   flex-shrink: 0;
 }
 .stepItem {
@@ -195,16 +195,16 @@
   padding: 12px;
   border: none;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: white;
+  background: var(--neutral-0);
   width: 100%;
   text-align: left;
   cursor: pointer;
   position: relative;
 }
-.stepItem:hover { background: rgba(22,24,29,0.02); }
+.stepItem:hover { background: var(--neutral-25); }
 .stepItemActive {
-  background: #F5F0FF;
-  border-bottom-color: #D7C0FF;
+  background: var(--primary-100);
+  border-bottom-color: var(--primary-200);
 }
 .stepItemActive::before {
   content: '';
@@ -218,7 +218,7 @@
 .stepChild { padding-left: 32px; }
 .stepName {
   font-size: var(--font-base);
-  color: #3A485F;
+  color: var(--neutral-400);
   flex: 1;
 }
 .stepNameActive {
@@ -230,7 +230,7 @@
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  border: 1px solid #8A94A8;
+  border: 1px solid var(--neutral-200);
   flex-shrink: 0;
   box-sizing: border-box;
 }
@@ -239,7 +239,7 @@
   height: 16px;
   border-radius: 50%;
   border: 1px solid var(--status-success);
-  background: #F5FFFA;
+  background: var(--status-success-light);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -261,15 +261,15 @@
   min-height: 36px;
   border: none;
   border-bottom: 0.5px solid var(--neutral-150);
-  background: #F8F8F9;
+  background: var(--neutral-25);
   width: 100%;
   text-align: left;
   cursor: pointer;
 }
-.sectionHeader:hover { background: #f0f0f2; }
+.sectionHeader:hover { background: var(--neutral-50); }
 .sectionName {
   font-size: var(--font-base);
-  color: #3A485F;
+  color: var(--neutral-400);
   flex: 1;
 }
 

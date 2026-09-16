@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Toggle } from '../../components/Toggle/Toggle';
+import { Button } from '../../components/Button/Button';
 import { OverlayVerticalScroll, highlightJson, highlightHtml } from './PropertiesPanel.utils.jsx';
 import { CodeTabHtmlOverrideBanner, CodeTabCustomHtmlBanner } from './PropertiesPanelCodeTabBanners.jsx';
 import { usePropertiesPanelCodeTab } from './usePropertiesPanelCodeTab.js';
@@ -35,14 +36,12 @@ export function CodeTab({ doc }) {
           onChange={switchMode}
         />
         <div className={styles.codeToolbarRight}>
-          <button className={styles.codeCopyBtn} onClick={reformat} aria-label="Format">
-            <Icon name="solar:magic-stick-3-linear" size={14} color="currentColor" />
+          <Button variant="secondary" size="S" leadingIcon="solar:magic-stick-3-linear" onClick={reformat} aria-label="Format">
             Format
-          </button>
-          <button className={styles.codeCopyBtn} onClick={copy} aria-label="Copy">
-            <Icon name="solar:copy-linear" size={14} color="currentColor" />
+          </Button>
+          <Button variant="secondary" size="S" leadingIcon="solar:copy-linear" onClick={copy} aria-label="Copy">
             Copy
-          </button>
+          </Button>
         </div>
       </div>
 

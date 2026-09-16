@@ -3,30 +3,9 @@ import { Avatar } from '../../../components/Avatar/Avatar';
 import { Input } from '../../../components/Input/Input';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { UnityIcon } from '../../../components/UnityIcon/UnityIcon';
-import { FIELD_BY_KEY, ruleSummary } from './fieldCatalog';
+import { ruleSummaryLines } from './ruleSummaryLines';
 import { toSQL, toJsonLogic } from './formatQueryBridge';
 import styles from './ruleBuilder.module.css';
-
-/* Nested plain-text lines of the rule tree for the criteria card — the same
-   copy the node badges show, arranged Figma-style: field heading, indented
-   value line, combinator between conditions. */
-function summaryLines(query) {
-  const lines = [];
-  const walk = (group, depth) => {
-    const combinator = (group.combinator || 'and').toUpperCase();
-    (group.rules || []).forEach((node, i) => {
-      if (i > 0) lines.push({ text: combinator, kind: 'combinator', depth });
-      if (Array.isArray(node.rules)) { walk(node, depth + 1); return; }
-      const field = FIELD_BY_KEY[node.field];
-      if (!field) return;
-      lines.push({ text: field.label, kind: 'field', depth });
-      const badges = ruleSummary(node);
-      badges.forEach(b => lines.push({ text: b.text, kind: 'value', depth }));
-    });
-  };
-  if (query) walk(query, 0);
-  return lines;
-}
 
 /**
  * RuleSummaryPanel — the 320px left rail of the dynamic group detail screen
@@ -58,7 +37,7 @@ export function RuleSummaryPanel({ session, query, qualifiedCount, onEdit, onRen
       committingRef.current = false;
     }
   };
-  const lines = summaryLines(query);
+  const lines = ruleSummaryLines(query);
   const [exportMode, setExportMode] = useState(null); // null | 'sql' | 'jsonlogic'
   const sqlOutput = useMemo(() => (exportMode === 'sql' ? toSQL(query) : null), [query, exportMode]);
   const jsonOutput = useMemo(() => (exportMode === 'jsonlogic' ? toJsonLogic(query) : null), [query, exportMode]);

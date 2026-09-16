@@ -4,7 +4,11 @@ import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { Toggle } from '../../components/Toggle/Toggle';
+import { Button } from '../../components/Button/Button';
 import { Input } from '../../components/Input/Input';
+import { TabStrip } from '../../components/TabStrip/TabStrip';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { Select as SharedSelect } from '../../components/Select/Select';
 import { makeInitialDocument } from './initialDocument';
@@ -94,19 +98,15 @@ export function PropertiesPanel() {
         <div className={styles.dragHandleLine} />
       </div>
 
-      <div className={styles.rightTabs}>
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            className={[styles.rightTab, tab === t.id ? styles.rightTabActive : ''].join(' ')}
-            onClick={() => setTab(t.id)}
-            title={t.label}
-            aria-label={t.label}
-          >
-            <Icon name={t.icon} size={16} color="currentColor" />
-            <span className={styles.rightTabLabel}>{t.label}</span>
-          </button>
-        ))}
+      <div className={styles.panelTabBar}>
+        <TabStrip
+          items={TABS.map((t) => ({ key: t.id, label: t.label, icon: t.icon }))}
+          activeKey={tab}
+          onChange={setTab}
+          embedded
+          fullWidth={false}
+          balanceTabs
+        />
       </div>
 
       {tab === 'design' && (isBulk
@@ -230,45 +230,41 @@ function TemplateTab({ block }) {
         {canSavePreset && (
         <div className={styles.presetSaveBar}>
           {!saveOpen ? (
-            <button
-              type="button"
+            <Button
+              variant="tertiary"
+              size="S"
+              fullWidth
+              leadingIcon="solar:bookmark-linear"
               className={styles.presetSaveBtn}
               onClick={() => { setSaveOpen(true); setSaveName(''); setSaveDesc(''); }}
             >
-              <Icon name="solar:bookmark-linear" size={14} color="currentColor" />
               Save current {label.toLowerCase()} as preset
-            </button>
+            </Button>
           ) : (
             <div className={styles.presetSaveForm}>
-              <input
+              <Input
                 autoFocus
-                className={styles.presetSaveInput}
                 placeholder={`${label} name (e.g. Brand banner)`}
                 value={saveName}
-                onChange={e => setSaveName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setSaveOpen(false); }}
+                onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setSaveOpen(false); }}
                 maxLength={60}
               />
-              <input aria-label="Preset description"
-                className={styles.presetSaveInput}
+              <Input
+                aria-label="Preset description"
                 placeholder="Short description (optional)"
                 value={saveDesc}
-                onChange={e => setSaveDesc(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setSaveOpen(false); }}
+                onChange={(e) => setSaveDesc(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setSaveOpen(false); }}
                 maxLength={120}
               />
               <div className={styles.presetSaveActions}>
-                <button type="button" className={styles.presetSaveCancel} onClick={() => setSaveOpen(false)}>
+                <Button variant="secondary" size="S" onClick={() => setSaveOpen(false)}>
                   Cancel
-                </button>
-                <button
-                  type="button"
-                  className={styles.presetSavePrimary}
-                  onClick={handleSave}
-                  disabled={saving}
-                >
+                </Button>
+                <Button variant="primary" size="S" onClick={handleSave} disabled={saving}>
                   {saving ? 'Saving…' : 'Save'}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -302,7 +298,7 @@ function TemplateTab({ block }) {
                   onCancelRename={() => setRenamingId(null)}
                   onApply={() => applyRolePreset(p)}
                   onEdit={() => startRename(p)}
-                  onDelete={() => { if (window.confirm(`Delete preset "${p.label}"?`)) deleteCustomPreset(p.id, role); }}
+                  onDelete={() => deleteCustomPreset(p.id, role)}
                 />
               ))}
             </>
@@ -362,6 +358,7 @@ function TemplatePresetCard({
   onDelete,
 }) {
   const isUser = !!preset.isUserPreset;
+  const [deleteOpen, setDeleteOpen] = useState(false);
   return (
     <div className={styles.presetCardWrap}>
       <button
@@ -382,17 +379,17 @@ function TemplatePresetCard({
       </button>
       {isRenaming && (
         <div className={styles.presetCardEditForm}>
-          <input aria-label="Preset name"
+          <Input
+            aria-label="Preset name"
             autoFocus
-            className={styles.presetCardEditInput}
             placeholder="Name"
             value={draftName}
             onChange={(e) => onDraftName(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') onCommitRename(); if (e.key === 'Escape') onCancelRename(); }}
             maxLength={60}
           />
-          <input aria-label="Preset description"
-            className={styles.presetCardEditInput}
+          <Input
+            aria-label="Preset description"
             placeholder="Description (optional)"
             value={draftDesc}
             onChange={(e) => onDraftDesc(e.target.value)}
@@ -400,30 +397,41 @@ function TemplatePresetCard({
             maxLength={120}
           />
           <div className={styles.presetCardEditActions}>
-            <button type="button" className={styles.presetCardEditCancel} onClick={onCancelRename}>Cancel</button>
-            <button type="button" className={styles.presetCardEditSave} onClick={onCommitRename}>Save</button>
+            <Button variant="secondary" size="S" onClick={onCancelRename}>Cancel</Button>
+            <Button variant="primary" size="S" onClick={onCommitRename}>Save</Button>
           </div>
         </div>
       )}
       {isUser && !isRenaming && (
         <div className={styles.presetCardActions}>
-          <button
-            type="button"
+          <ActionButton
+            icon="solar:pen-2-linear"
+            size="S"
+            tooltip="Rename"
             className={styles.presetCardActionBtn}
-            title="Rename"
             onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          >
-            <Icon name="solar:pen-2-linear" size={12} color="currentColor" />
-          </button>
-          <button
-            type="button"
-            className={[styles.presetCardActionBtn, styles.presetCardActionDanger].join(' ')}
-            title="Delete"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          >
-            <Icon name="solar:trash-bin-minimalistic-linear" size={12} color="currentColor" />
-          </button>
+            aria-label="Rename preset"
+          />
+          <ActionButton
+            icon="solar:trash-bin-minimalistic-linear"
+            size="S"
+            tooltip="Delete"
+            state="error"
+            className={styles.presetCardActionBtn}
+            onClick={(e) => { e.stopPropagation(); setDeleteOpen(true); }}
+            aria-label="Delete preset"
+          />
         </div>
+      )}
+      {deleteOpen && (
+        <ConfirmDialog
+          variant="destructive"
+          title="Delete preset?"
+          description={`"${preset.label}" will be removed from your library. This cannot be undone.`}
+          confirmLabel="Delete"
+          onConfirm={() => { onDelete(); setDeleteOpen(false); }}
+          onCancel={() => setDeleteOpen(false)}
+        />
       )}
     </div>
   );

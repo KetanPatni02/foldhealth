@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
+import { Input } from '../../components/Input/Input';
 import { renderPreviewHtml, getComplianceSettings } from './renderEmail';
 import styles from './EmailBuilder.module.css';
 
@@ -141,14 +142,13 @@ export function SendTestPopover({ onClose, campaignId }) {
   return (
     <div ref={popoverRef} className={styles.testEmailPopover}>
       <div className={styles.testEmailLabel}>Send test email</div>
-      <input aria-label="Send test email to"
+      <Input
         ref={inputRef}
-        type="text"
-        className={styles.testEmailInput}
+        aria-label="Send test email to"
         placeholder="name@example.com, another@example.com"
         value={email}
-        onChange={e => setEmail(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') handleSend(); if (e.key === 'Escape') onClose(); }}
+        onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Enter') handleSend(); if (e.key === 'Escape') onClose(); }}
       />
       {status === 'ok' && (
         <div className={`${styles.testEmailStatus} ${styles.testEmailStatusOk}`}>
@@ -175,8 +175,11 @@ export function SendTestPopover({ onClose, campaignId }) {
           </div>
           <div className={styles.testEmailRecents}>
             {recents.map(addr => (
-              <button
+              <Button
                 key={addr}
+                variant="tertiary"
+                size="S"
+                leadingIcon="solar:letter-linear"
                 className={styles.testEmailRecentChip}
                 onClick={() => {
                   const existing = parseEmails(email);
@@ -185,9 +188,8 @@ export function SendTestPopover({ onClose, campaignId }) {
                 }}
                 title={addr}
               >
-                <Icon name="solar:letter-linear" size={12} color="currentColor" />
                 {addr}
-              </button>
+              </Button>
             ))}
           </div>
         </>

@@ -2,7 +2,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useAppStore } from '../../store/useAppStore';
-import { Icon } from '../../components/Icon/Icon';
+import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { BlockBody } from './PreviewCanvasBlockBody';
 import { blockLabel } from './PreviewCanvas.utils';
 import styles from './EmailBuilder.module.css';
@@ -10,12 +10,12 @@ import styles from './EmailBuilder.module.css';
 function DragHandleDots() {
   return (
     <svg width="12" height="14" viewBox="0 0 12 14" fill="none" aria-hidden="true">
-      <circle cx="3" cy="3" r="1.2" fill="#fff" />
-      <circle cx="9" cy="3" r="1.2" fill="#fff" />
-      <circle cx="3" cy="7" r="1.2" fill="#fff" />
-      <circle cx="9" cy="7" r="1.2" fill="#fff" />
-      <circle cx="3" cy="11" r="1.2" fill="#fff" />
-      <circle cx="9" cy="11" r="1.2" fill="#fff" />
+      <circle cx="3" cy="3" r="1.2" fill="currentColor" />
+      <circle cx="9" cy="3" r="1.2" fill="currentColor" />
+      <circle cx="3" cy="7" r="1.2" fill="currentColor" />
+      <circle cx="9" cy="7" r="1.2" fill="currentColor" />
+      <circle cx="3" cy="11" r="1.2" fill="currentColor" />
+      <circle cx="9" cy="11" r="1.2" fill="currentColor" />
     </svg>
   );
 }
@@ -153,6 +153,7 @@ function SortableBlock({ id, ctx }) {
       {isSelected && (
         <div className={styles.blockToolbar}>
           <button
+            type="button"
             {...attributes}
             {...listeners}
             data-no-drag
@@ -165,32 +166,35 @@ function SortableBlock({ id, ctx }) {
           <span className={styles.blockToolbarDivider} />
           <span className={styles.blockToolbarLabel}>{blockLabel(block)}</span>
           <span className={styles.blockToolbarDivider} />
-          <button
-            className={styles.blockToolbarBtn}
+          <ActionButton
+            icon="solar:undo-left-round-linear"
+            size="S"
+            tooltip="Select parent (⇧↵)"
+            className={styles.blockToolbarAction}
+            iconColor="currentColor"
             onClick={(e) => { e.stopPropagation(); ctx.selectParentBlock(id); }}
             aria-label="Select parent"
-            title="Select parent (⇧↵)"
-          >
-            <Icon name="solar:undo-left-round-linear" size={14} color="#fff" />
-          </button>
+          />
           <span className={styles.blockToolbarDivider} />
-          <button
-            className={styles.blockToolbarBtn}
+          <ActionButton
+            icon="solar:copy-linear"
+            size="S"
+            tooltip="Duplicate"
+            className={styles.blockToolbarAction}
+            iconColor="currentColor"
             onClick={(e) => { e.stopPropagation(); ctx.duplicateBlock(id); }}
             aria-label="Duplicate"
-            title="Duplicate"
-          >
-            <Icon name="solar:copy-linear" size={14} color="#fff" />
-          </button>
+          />
           <span className={styles.blockToolbarDivider} />
-          <button
-            className={styles.blockToolbarBtn}
+          <ActionButton
+            icon="solar:trash-bin-trash-linear"
+            size="S"
+            tooltip="Delete"
+            className={styles.blockToolbarAction}
+            iconColor="currentColor"
             onClick={(e) => { e.stopPropagation(); ctx.removeBlock(id); }}
             aria-label="Delete"
-            title="Delete"
-          >
-            <Icon name="solar:trash-bin-trash-linear" size={14} color="#fff" />
-          </button>
+          />
         </div>
       )}
       <BlockBody id={id} block={block} ctx={ctx} dragAttributes={attributes} dragListeners={listeners} />

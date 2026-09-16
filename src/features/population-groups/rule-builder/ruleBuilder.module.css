@@ -86,10 +86,12 @@
 /* ── Rule node row ── */
 .node {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  row-gap: calc(var(--space-1) + var(--space-1) / 2);
   width: 100%;
-  padding: 4px;
+  padding: calc(var(--space-1) + var(--space-1) / 2) var(--space-1);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 4px;
@@ -103,12 +105,14 @@
   color: var(--neutral-300);
   cursor: grab;
   flex-shrink: 0;
+  align-self: center;
 }
 .fieldChip {
   display: flex;
   align-items: center;
   gap: 4px;
   height: 24px;
+  align-self: center;
   box-sizing: border-box;
   /* Hairline border like the IF / combinator chips; the extra right padding
      optically balances the icon box on the left so the text doesn't hug the
@@ -133,8 +137,9 @@
 .nodeBadges {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: calc(var(--space-1) + var(--space-1) / 2);
   min-width: 0;
+  flex: 1 1 12rem;
   flex-wrap: wrap;
 }
 .nodeRight {
@@ -143,6 +148,7 @@
   gap: 8px;
   margin-left: auto;
   flex-shrink: 0;
+  align-self: center;
 }
 
 /* AND | OR | + combo — bordered group of ghost toggles */
@@ -644,28 +650,126 @@
 
 /* ── Live qualified-member preview panel (edit mode, right side) ── */
 .previewPanel {
-  width: 260px;
+  position: relative;
   flex-shrink: 0;
   border-left: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 260px;
+  max-width: 520px;
 }
-.previewHeader {
+.previewResizeHandle {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  border-bottom: 0.5px solid var(--neutral-150);
+  justify-content: center;
+  z-index: 2;
 }
-.previewTitle {
+.previewResizeHandle:hover { background: var(--primary-50); }
+.previewResizeHandle:hover .previewResizeLine { background: var(--primary-200); }
+.previewResizeLine {
+  width: 2px;
+  height: 32px;
+  border-radius: 1px;
+  background: var(--neutral-150);
+}
+/* Same TabStrip row pattern as email builder PropertiesPanel.panelTabBar */
+.previewPanelTabBar {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-md);
-  font-weight: 500;
+  flex-direction: row;
+  align-items: stretch;
+  height: 40px;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--space-3);
+}
+.previewPanelTabBar > * {
+  flex: 1;
+  min-width: 0;
+}
+.aiChat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.aiChatScroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.aiChatBubbleUser {
+  align-self: flex-end;
+  max-width: 92%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--space-2) var(--space-2) var(--space-1) var(--space-2);
+  background: var(--primary-50);
+  color: var(--neutral-500);
+  font-size: var(--font-sm);
+  line-height: 1.4;
+}
+.aiChatBubbleAssistant {
+  align-self: flex-start;
+  max-width: 92%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--space-2) var(--space-2) var(--space-2) var(--space-1);
+  background: var(--neutral-50);
   color: var(--neutral-400);
+  font-size: var(--font-sm);
+  line-height: 1.4;
+}
+.aiChatTyping {
+  color: var(--neutral-300);
+}
+.aiComposer {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-top: 0.5px solid var(--neutral-150);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.previewMembersPane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.aiExamples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.aiExampleChip {
+  border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-50);
+  border-radius: calc(var(--space-1) + var(--space-1) / 2);
+  padding: calc(var(--space-1) + var(--space-1) / 2) var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.35;
+}
+.aiExampleChip:hover:not(:disabled) {
+  background: var(--primary-50);
+  border-color: var(--primary-100);
+  color: var(--primary-300);
+}
+.aiExampleChip:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .previewCount {
   font-size: 1.75rem;

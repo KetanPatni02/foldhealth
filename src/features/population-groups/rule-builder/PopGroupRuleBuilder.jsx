@@ -18,7 +18,7 @@ import { QualifiedMembersTable } from './QualifiedMembersTable';
 import { TriggersTab } from './TriggersTab';
 import { useQualifiedMembers } from './useQualifiedMembers';
 import { toSQL, toJsonLogic } from './formatQueryBridge';
-import { FIELD_BY_KEY, groupAccent, ruleSummary } from './fieldCatalog';
+import { FIELD_BY_KEY, groupAccent, groupAccentFg, groupChipStyle, ruleSummary } from './fieldCatalog';
 import styles from './ruleBuilder.module.css';
 
 let ruleSeq = 0;
@@ -170,7 +170,7 @@ function RuleNode({ rule, readOnly, combinator, onOpenEditor, onJoin, onRemove, 
   const chipInner = (
     <>
       <span className={styles.fieldChipIcon} style={{ background: groupAccent(field.group) }}>
-        <Icon name={field.icon} size={12} color="var(--neutral-400)" />
+        <Icon name={field.icon} size={12} color={groupAccentFg(field.group)} />
       </span>
       {field.label}
     </>
@@ -195,14 +195,14 @@ function RuleNode({ rule, readOnly, combinator, onOpenEditor, onJoin, onRemove, 
         onDragEnd={readOnly ? undefined : () => drag?.onEnd()}
       ><GripIcon /></span>
       {readOnly ? (
-        <span className={styles.fieldChip} style={{ background: groupAccent(field.group), cursor: 'default' }}>
+        <span className={styles.fieldChip} style={groupChipStyle(field.group, { cursor: 'default' })}>
           {chipInner}
         </span>
       ) : (
         <button
           type="button"
           className={styles.fieldChip}
-          style={{ background: groupAccent(field.group) }}
+          style={groupChipStyle(field.group)}
           onClick={onOpenEditor}
         >
           {chipInner}
@@ -622,6 +622,11 @@ export function PopGroupRuleBuilder() {
                   loading={membersLoading}
                   error={membersError}
                   onRetry={refresh}
+                  currentRule={query}
+                  onApplyQuery={(rule) => {
+                    setQuery((prev) => ({ ...rule, id: prev.id }));
+                    setEditingRuleId(null);
+                  }}
                 />
               )}
             </div>

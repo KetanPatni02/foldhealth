@@ -4,6 +4,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import { Icon } from '../../components/Icon/Icon';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
+import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { useAppStore } from '../../store/useAppStore';
 import { HEADER_PRESETS, FOOTER_PRESETS } from './headerFooterLibrary';
 import { buildParentMap, computeDropPosition } from './blockHelpers';
@@ -34,6 +35,11 @@ const COMPONENTS = [
   // Row 6 — Header & Footer use a preset picker rather than a single block
   { type: 'Header',    label: 'Header',   icon: null, customIcon: 'header', preset: 'header' },
   { type: 'Footer',    label: 'Footer',   icon: null, customIcon: 'footer', preset: 'footer' },
+];
+
+const LEFT_PANEL_TABS = [
+  { key: 'components', label: 'Components' },
+  { key: 'layers', label: 'Layers' },
 ];
 
 // Pre-configured ColumnsContainer templates so the user can drop a layout
@@ -201,15 +207,15 @@ export function ComponentsPanel() {
 
   return (
     <div ref={panelRef} className={styles.leftPanel} style={{ width: panelWidth }}>
-      <div className={styles.tabs}>
-        <button
-          className={[styles.tab, tab === 'components' ? styles.tabActive : ''].join(' ')}
-          onClick={() => setTab('components')}
-        >Components</button>
-        <button
-          className={[styles.tab, tab === 'layers' ? styles.tabActive : ''].join(' ')}
-          onClick={() => setTab('layers')}
-        >Layers</button>
+      <div className={styles.panelTabBar}>
+        <TabStrip
+          items={LEFT_PANEL_TABS}
+          activeKey={tab}
+          onChange={setTab}
+          embedded
+          fullWidth={false}
+          balanceTabs
+        />
       </div>
 
       <div className={styles.panelScrollFlush}>
@@ -266,13 +272,13 @@ function DraggableTile({ item, onClick }) {
       onClick={onClick}
       title={item.soon ? `${item.label} — coming soon` : `Add ${item.label}`}
     >
-      {item.customIcon === true && <ColumnIcon size={20} color="var(--neutral-300)" />}
-      {item.customIcon === 'table' && <TableIcon size={20} color="var(--neutral-300)" />}
-      {item.customIcon === 'group' && <GroupIcon size={20} color="var(--neutral-300)" />}
-      {item.customIcon === 'header' && <HeaderIcon size={20} color="var(--neutral-300)" />}
-      {item.customIcon === 'footer' && <FooterIcon size={20} color="var(--neutral-300)" />}
-      {item.customIcon === 'heading' && <HeadingIcon size={20} color="var(--neutral-300)" />}
-      {!item.customIcon && <Icon name={item.icon} size={20} color="var(--neutral-300)" />}
+      {item.customIcon === true && <ColumnIcon size={20} />}
+      {item.customIcon === 'table' && <TableIcon size={20} />}
+      {item.customIcon === 'group' && <GroupIcon size={20} />}
+      {item.customIcon === 'header' && <HeaderIcon size={20} />}
+      {item.customIcon === 'footer' && <FooterIcon size={20} />}
+      {item.customIcon === 'heading' && <HeadingIcon size={20} />}
+      {!item.customIcon && <Icon name={item.icon} size={20} color="currentColor" />}
       {item.label}
     </button>
   );

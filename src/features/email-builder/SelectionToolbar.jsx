@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
+import { Input } from '../../components/Input/Input';
+import { Button } from '../../components/Button/Button';
 import styles from './EmailBuilder.module.css';
 
 // Floating toolbar that pops up when the user selects text inside a Text or
@@ -193,19 +195,18 @@ export function SelectionToolbar() {
       )}
       {!linkOpen ? (
         <>
-          <button className={styles.selectionToolbarBtn} title="Link" onClick={startLink} aria-label="Link">
-            <Icon name="solar:link-linear" size={14} color="currentColor" />
-          </button>
+          <Button variant="ghost" size="S" iconOnly leadingIcon="solar:link-linear" className={styles.selectionToolbarBtn} title="Link" onClick={startLink} aria-label="Link" />
           <div className={styles.selectionToolbarDivider} />
-          <button className={styles.selectionToolbarBtn} title="Bold" onClick={() => apply('bold')} aria-label="Bold"><b>B</b></button>
-          <button className={styles.selectionToolbarBtn} title="Italic" onClick={() => apply('italic')} aria-label="Italic"><i>I</i></button>
-          <button className={styles.selectionToolbarBtn} title="Underline" onClick={() => apply('underline')} aria-label="Underline"><u>U</u></button>
-          <button className={styles.selectionToolbarBtn} title="Strikethrough" onClick={() => apply('strikeThrough')} aria-label="Strikethrough"><s>S</s></button>
-          <button className={styles.selectionToolbarBtn} title="Code" onClick={wrapCode} aria-label="Code">{'<>'}</button>
+          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Bold" onClick={() => apply('bold')} aria-label="Bold"><b>B</b></Button>
+          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Italic" onClick={() => apply('italic')} aria-label="Italic"><i>I</i></Button>
+          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Underline" onClick={() => apply('underline')} aria-label="Underline"><u>U</u></Button>
+          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Strikethrough" onClick={() => apply('strikeThrough')} aria-label="Strikethrough"><s>S</s></Button>
+          <Button variant="ghost" size="S" iconOnly className={styles.selectionToolbarBtn} title="Code" onClick={wrapCode} aria-label="Code">{'<>'}</Button>
         </>
       ) : (
         <>
-          <input aria-label="Link URL"
+          <Input
+            aria-label="Link URL"
             autoFocus
             className={styles.selectionToolbarLinkInput}
             value={linkValue}
@@ -216,13 +217,16 @@ export function SelectionToolbar() {
               if (e.key === 'Escape') { e.preventDefault(); setLinkOpen(false); }
             }}
           />
-          <button
+          <Button
+            variant="ghost"
+            size="S"
+            iconOnly
+            leadingIcon="solar:check-circle-linear"
             className={styles.selectionToolbarBtn}
             title={linkValue ? 'Apply link' : 'Remove link'}
             onClick={submitLink}
-          >
-            <Icon name="solar:check-circle-linear" size={14} color="currentColor" />
-          </button>
+            aria-label={linkValue ? 'Apply link' : 'Remove link'}
+          />
         </>
       )}
     </div>,

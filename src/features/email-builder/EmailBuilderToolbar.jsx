@@ -1,6 +1,7 @@
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
+import { Input } from '../../components/Input/Input';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { CloseButton } from '../../components/CloseButton/CloseButton';
@@ -20,12 +21,12 @@ export function EmailBuilderToolbar({
   return (
     <div className={styles.topBar}>
       <div className={styles.topLeft}>
-        <input
+        <Input
           className={styles.titleInput}
           aria-label="Email name"
           value={name}
-          onChange={e => setName(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }}
           spellCheck={false}
         />
       </div>

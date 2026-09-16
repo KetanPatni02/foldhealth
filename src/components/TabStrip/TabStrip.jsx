@@ -25,8 +25,23 @@ import styles from './TabStrip.module.css';
  *                                          right (edit button, action group).
  *                                          Sits on the same row as the tabs
  *                                          past a flex spacer.
+ *  - balanceTabs boolean (default false) — each tab grows equally to fill the
+ *                                          row (email builder side panels).
+ *  - embeddedBaseline boolean (default false) — when embedded, draw the bar's
+ *                  bottom hairline on the strip so the active underline meets it.
+ *                  Use instead of a duplicate border on the parent wrapper.
  */
-export function TabStrip({ items, activeKey, onChange, fullWidth = true, embedded = false, trailing, size = 'M' }) {
+export function TabStrip({
+  items,
+  activeKey,
+  onChange,
+  fullWidth = true,
+  embedded = false,
+  embeddedBaseline = false,
+  trailing,
+  size = 'M',
+  balanceTabs = false,
+}) {
   const rowRef = useRef(null);
   const tabRefs = useRef(new Map());
   const [indicator, setIndicator] = useState({ x: 0, w: 0, ready: false });
@@ -43,8 +58,10 @@ export function TabStrip({ items, activeKey, onChange, fullWidth = true, embedde
   const classes = [
     styles.tabBar,
     embedded ? styles.embedded : '',
+    embedded && embeddedBaseline ? styles.embeddedWithBaseline : '',
     !embedded && fullWidth ? styles.fullWidth : '',
     size === 'S' ? styles.sizeS : '',
+    balanceTabs ? styles.balanceTabs : '',
   ].filter(Boolean).join(' ');
 
   return (
@@ -59,7 +76,11 @@ export function TabStrip({ items, activeKey, onChange, fullWidth = true, embedde
               if (el) tabRefs.current.set(it.key, el);
               else tabRefs.current.delete(it.key);
             }}
-            className={[styles.tabItem, active ? styles.active : ''].filter(Boolean).join(' ')}
+            className={[
+              styles.tabItem,
+              active ? styles.active : '',
+              balanceTabs ? styles.tabItemBalanced : '',
+            ].filter(Boolean).join(' ')}
             onClick={() => onChange?.(it.key)}
           >
             {it.icon && (
