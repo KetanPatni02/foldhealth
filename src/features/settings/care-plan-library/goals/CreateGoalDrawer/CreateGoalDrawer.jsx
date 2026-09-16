@@ -162,6 +162,13 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const [comparator, setComparator] = useState(goal?.comparator || '=');
   const [targetValue, setTargetValue] = useState(goal?.targetValue || '');
   const [targetValue2, setTargetValue2] = useState(goal?.targetValue2 || '');
+  // Vitals authors an Initial Value alongside the Target Value when
+  // Set Target is on — the shipped baseline the goal starts from.
+  // Kept as two slots so a dual measure (Blood Pressure, Height) can
+  // capture both parts the same way targetValue2 handles the target
+  // side. Other categories don't collect this today.
+  const [initialValue, setInitialValue] = useState(goal?.initialValue || '');
+  const [initialValue2, setInitialValue2] = useState(goal?.initialValue2 || '');
   const [duration, setDuration] = useState(goal?.duration || '');
   const [durationUnit, setDurationUnit] = useState(goal?.durationUnit || 'Month');
   const [frequency, setFrequency] = useState(goal?.frequency || 'Daily');
@@ -172,6 +179,13 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const [setTarget, setSetTarget] = useState(goal ? goal.setTarget !== false : true);
   const [priorityOpen, setPriorityOpen] = useState(false);
   const [durationUnitOpen, setDurationUnitOpen] = useState(false);
+  // Height carries multiple valid unit systems (Ft/In, cm, m). The
+  // Vitals two-up renders a dropdown on the trailing unit segment so
+  // the reviewer can flip between them; the pick reshapes the field
+  // between the dual Ft/In layout and the single cm / m layout.
+  const [heightUnit, setHeightUnit] = useState(goal?.heightUnit || 'Ft/In');
+  const [heightUnitOpen, setHeightUnitOpen] = useState(false);
+  const heightUnitRef = useRef(null);
   // Interventions are staged here and written with the goal, because a new
   // goal has no id to hang them off until it is saved.
   const [interventions, setInterventions] = useState(
@@ -208,7 +222,28 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   // is expected by. Everything else (Set Target, Current Value, Target
   // Value, Duration, Frequency) is hidden.
   const isAssessment = category === 'Assessment';
-  const cfg = MEASURE_CONFIG[measure] || {};
+  // Vitals uses the dedicated Initial Value + Target Value two-up
+  // reveal (Figma reference) and keeps Duration + Frequency + Target
+  // Date visible even when Set Target is off, because those two
+  // define the cadence the goal tracks against regardless of a
+  // named baseline / target.
+  const isVitals = category === 'Vitals';
+  const isHeight = measure === 'Height';
+  const HEIGHT_UNITS = ['Ft/In', 'cm', 'm'];
+  // Height carries multiple valid unit systems. The base MEASURE_CONFIG
+  // entry is dual Ft/in, but the reviewer picks between Ft/In (dual),
+  // cm (single), and m (single) via the trailing unit dropdown. Every
+  // downstream helper (twoValues, units, placeholders, separator) then
+  // reads from this override instead of the raw config so the two-up
+  // reshapes itself around the chosen unit.
+  const heightCfgOverride = isHeight
+    ? (heightUnit === 'Ft/In'
+        ? { dual: true, units: ['Ft', 'in'], placeholders: ['Ft', 'in'], separator: '/' }
+        : heightUnit === 'cm'
+          ? { unit: 'cm', placeholder: 'Enter height' }
+          : { unit: 'm', placeholder: 'Enter height' })
+    : null;
+  const cfg = heightCfgOverride || MEASURE_CONFIG[measure] || {};
   // "between" also needs a second field, labelled as a range rather than as
   // the measure's own second part (e.g. Height's Ft / in).
   const isRange = comparator === 'between';
@@ -219,8 +254,71 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const units = isOther ? ['', ''] : cfg.dual ? cfg.units : [cfg.unit || '', cfg.unit || ''];
   const placeholders = cfg.dual
     ? cfg.placeholders
-    : isRange ? ['From', 'To'] : ['Enter Value', 'Enter Value'];
+    : isRange ? ['From', 'To'] : [cfg.placeholder || 'Enter Value', cfg.placeholder || 'Enter Value'];
   const separator = cfg.dual ? (cfg.separator || '/') : 'and';
+  // For the Vitals two-up (Initial + Target) we render one merged
+  // input per side even when the measure is dual (Blood Pressure,
+  // Height). The user types "120/80" and we split on save; visually
+  // this reads exactly like the Figma reference where "Sys/Dia" is
+  // a single field with a single mmHg trailing. When the underlying
+  // placeholder is generic ("Enter Value"), fall back to the unit
+  // labels so the dual placeholder reads as "Ft/in" instead of
+  // "Enter/Enter".
+  const SHORT_DUAL_PLACEHOLDER = {
+    'Systolic BP': 'Sys',
+    'Diastolic BP': 'Dia',
+  };
+  const isGenericPh = (p) => !p || /^Enter\b/i.test(p);
+  const shortenDualPh = (p) => SHORT_DUAL_PLACEHOLDER[p] || (p || '').split(' ')[0];
+  const dualPlaceholder = twoValues
+    ? (isGenericPh(placeholders[0]) && isGenericPh(placeholders[1])
+        ? `${units[0]}${separator}${units[1]}`
+        : `${shortenDualPh(placeholders[0])}${separator}${shortenDualPh(placeholders[1])}`)
+    : placeholders[0];
+  // Sanitize whatever the user types into a dual-value input into
+  // "<digits>[<separator><digits>]" — non-digit characters (letters,
+  // punctuation) are stripped, and each half is capped so the pair
+  // stays inside a realistic Blood Pressure / Height envelope. First 3
+  // digits ⇒ part A (systolic / feet), remainder up to 3 digits ⇒
+  // part B (diastolic / inches). The separator auto-inserts itself
+  // when the user rolls past 3 digits so they don't have to type it.
+  const DUAL_MAX_PER_PART = 3;
+  const splitDualDigits = (raw) => {
+    const digits = String(raw ?? '').replace(/\D/g, '').slice(0, DUAL_MAX_PER_PART * 2);
+    const a = digits.slice(0, DUAL_MAX_PER_PART);
+    const b = digits.slice(DUAL_MAX_PER_PART);
+    return { a, b };
+  };
+  const composeDualDisplay = (a, b) => {
+    if (twoValues && !cfg.stepper && (a || b)) {
+      // Once the first part is full, keep the separator visible even
+      // if the reviewer hasn't started the second half yet, so the
+      // "/" reads as a boundary and hints at how many more digits are
+      // expected.
+      if (b) return `${a}${separator}${b}`;
+      if ((a || '').length >= DUAL_MAX_PER_PART) return `${a}${separator}`;
+      return a;
+    }
+    return [a, b].filter(v => v && String(v).length).join(separator);
+  };
+  const mergedInitial = twoValues
+    ? composeDualDisplay(initialValue, initialValue2)
+    : initialValue;
+  const mergedTarget = twoValues
+    ? composeDualDisplay(targetValue, targetValue2)
+    : targetValue;
+  const commitMergedInitial = (raw) => {
+    if (!twoValues) { setInitialValue(raw); return; }
+    const { a, b } = splitDualDigits(raw);
+    setInitialValue(a);
+    setInitialValue2(b);
+  };
+  const commitMergedTarget = (raw) => {
+    if (!twoValues) { setTargetValue(raw); return; }
+    const { a, b } = splitDualDigits(raw);
+    setTargetValue(a);
+    setTargetValue2(b);
+  };
   // A goal is valid when it names WHAT it tracks (a measure for the structured
   // types; "Other" tracks via a typed unit) and, when a target is set, the
   // value(s) that target needs — so saved goals are structured, not blank.
@@ -231,7 +329,13 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
   const hasTargetValue = isOther || isAssessment || !setTarget || (
     targetValue.trim().length > 0 && (!twoValues || targetValue2.trim().length > 0)
   );
-  const canSave = title.trim().length > 0 && hasMeasure && hasTargetValue;
+  // Vitals requires both baseline and target when Set Target is on — a
+  // goal like "Blood Pressure < 120/80 mmHg" is only actionable when
+  // the current reading is captured too.
+  const hasInitialValue = !isVitals || !setTarget || (
+    initialValue.trim().length > 0 && (!twoValues || initialValue2.trim().length > 0)
+  );
+  const canSave = title.trim().length > 0 && hasMeasure && hasTargetValue && hasInitialValue;
 
   const updateIntervention = (index, patch) => {
     setInterventions(prev => prev.map((it, i) => (i === index ? { ...it, ...patch } : it)));
@@ -298,7 +402,7 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         variant="primary"
         size="L"
         disabled={!canSave}
-        onClick={() => onSave?.({ category, measure, conditions, title: title.trim(), priority, comparator, targetValue, targetValue2, customUnit, setTarget, duration, durationUnit, frequency, targetDate, interventions: [...interventions, ...barriers] })}
+        onClick={() => onSave?.({ category, measure, conditions, title: title.trim(), priority, comparator, targetValue, targetValue2, initialValue, initialValue2, customUnit, setTarget, duration, durationUnit, frequency, targetDate, heightUnit: isHeight ? heightUnit : undefined, interventions: [...interventions, ...barriers] })}
       >
         Save
       </Button>
@@ -388,13 +492,142 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
           <Switch checked={setTarget} onChange={setSetTarget} label="Set Target" />
         )}
 
-        {!isOther && !isAssessment && (
+        {/* Current Value read-only placeholder — used by every structured
+            category except Vitals. Vitals author an editable Initial
+            Value inside the Set Target reveal below instead. */}
+        {!isOther && !isAssessment && !isVitals && (
         <div className={styles.field}>
           <Input label="Current Value" value="" disabled placeholder="No initial value found" />
         </div>
         )}
 
-        {!isAssessment && setTarget && (
+        {/* Vitals reveal on Set Target = on — Initial Value + Target
+            Value share one row (Figma reference). Each column carries
+            the same trailing-unit chrome the single-column Target Value
+            uses, so a dual measure like Blood Pressure still splits
+            into Systolic / Diastolic on each side. Height's trailing
+            unit is a dropdown that switches between Ft/In (dual), cm
+            and m (both single-value) so the reviewer picks the system
+            they measured in. */}
+        {isVitals && setTarget && (() => {
+          // Trailing unit for the Height dropdown — same visual as the
+          // Duration unit chevron. Non-Height measures reuse the
+          // regular unit string.
+          const heightTrigger = isHeight ? (
+            <button
+              ref={heightUnitRef}
+              type="button"
+              className={styles.unitTrigger}
+              aria-haspopup="menu"
+              aria-expanded={heightUnitOpen}
+              onClick={() => setHeightUnitOpen(v => !v)}
+            >
+              {heightUnit}
+              <DownChevronIcon size={14} color="var(--neutral-300)" />
+            </button>
+          ) : null;
+          const trailing = heightTrigger || units[0] || undefined;
+          const trailingSegment = Boolean(heightTrigger) || Boolean(units[0]);
+          return (
+        <div className={styles.twoUp}>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>
+              Initial Value<span className={styles.mandatoryDot} aria-hidden="true" />
+            </span>
+            <div className={styles.targetRow}>
+              {cfg.kind === 'select' ? (
+                <Select
+                  options={asOptions(cfg.options)}
+                  value={initialValue}
+                  onChange={setInitialValue}
+                  placeholder="Select Value"
+                  className={styles.valueSelect}
+                />
+              ) : (
+                /* One merged input even for dual measures — the user
+                   types "120/80" and the string is split on the
+                   configured separator on commit so the underlying
+                   `initialValue` / `initialValue2` state contract
+                   stays intact for downstream code. Placeholder
+                   collapses to "Sys/Dia" (or the first-word slice
+                   for unknown duals) so the field reads compactly
+                   in a two-column column. */
+                <span className={styles.dualInput}>
+                  <Input
+                    value={mergedInitial}
+                    onChange={e => commitMergedInitial(e.target.value)}
+                    placeholder={dualPlaceholder}
+                    trailingText={trailing}
+                    trailingTextSegment={trailingSegment}
+                    type={!twoValues && cfg.stepper ? 'number' : undefined}
+                    inputMode="decimal"
+                    aria-label={`Initial ${dualPlaceholder}`}
+                  />
+                </span>
+              )}
+            </div>
+          </div>
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>
+              Target Value<span className={styles.mandatoryDot} aria-hidden="true" />
+            </span>
+            <div className={styles.targetRow}>
+              <Select
+                options={asOptions(COMPARATORS)}
+                value={comparator}
+                onChange={setComparator}
+                className={twoValues ? styles.comparatorCompact : styles.comparator}
+              />
+              {cfg.kind === 'select' ? (
+                <Select
+                  options={asOptions(cfg.options)}
+                  value={targetValue}
+                  onChange={setTargetValue}
+                  placeholder="Select Value"
+                  className={styles.valueSelect}
+                />
+              ) : (
+                <span className={styles.dualInput}>
+                  <Input
+                    value={mergedTarget}
+                    onChange={e => commitMergedTarget(e.target.value)}
+                    placeholder={dualPlaceholder}
+                    trailingText={trailing}
+                    trailingTextSegment={trailingSegment}
+                    type={!twoValues && cfg.stepper ? 'number' : undefined}
+                    inputMode="decimal"
+                    aria-label={dualPlaceholder}
+                  />
+                </span>
+              )}
+            </div>
+          </div>
+          {isHeight && heightUnitOpen && (
+            <MenuPopover
+              anchorRef={heightUnitRef}
+              align="right"
+              width={140}
+              ariaLabel="Height unit"
+              items={HEIGHT_UNITS.map(u => ({ key: u, label: u }))}
+              onSelect={(next) => {
+                setHeightUnit(next);
+                // Clear the dual second half when switching to a
+                // single-value unit — it would otherwise ride along
+                // as a stale digit stored under initialValue2 /
+                // targetValue2 that nothing renders.
+                if (next !== 'Ft/In') { setInitialValue2(''); setTargetValue2(''); }
+                setHeightUnitOpen(false);
+              }}
+              onClose={() => setHeightUnitOpen(false)}
+            />
+          )}
+        </div>
+          );
+        })()}
+
+        {/* Legacy single-column Target Value — every non-Vitals,
+            non-Assessment category still uses this shape. */}
+        {!isAssessment && !isVitals && setTarget && (
         <div className={styles.field}>
           <span className={styles.fieldLabel}>
             Target Value<span className={styles.mandatoryDot} aria-hidden="true" />
@@ -453,22 +686,23 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         </div>
         )}
 
-        {/* Duration + Frequency stays visible for Others too — those are
-            the only structured fields that category exposes. Assessment
-            hides them entirely (only Target Date is authored). */}
-        {setTarget && !isAssessment && (
+        {/* Duration + Frequency — always visible for Vitals since those
+            two define the cadence the goal tracks against regardless
+            of a target being set. Every other category still reveals
+            them only when Set Target is on. Assessment hides them. */}
+        {!isAssessment && (setTarget || isVitals) && (
         <div className={styles.twoUp}>
           <div className={styles.field}>
             {/* One field — the unit is the trailing segment, same treatment as
                 the mmHg suffix, but it opens a picker. */}
             <Input
-              label="Duration"
+              label="Target Duration"
               required
               value={duration}
               onChange={e => setDuration(e.target.value.replace(/\D/g, ''))}
-              placeholder="Enter Duration"
+              placeholder="Enter Target Duration"
               inputMode="numeric"
-              aria-label="Duration"
+              aria-label="Target Duration"
               trailingTextSegment
               trailingText={(
                 <button
@@ -495,6 +729,18 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
                 onClose={() => setDurationUnitOpen(false)}
               />
             )}
+            {/* Caption reads the Duration back as a relative date so
+                the reviewer sees, in the moment, what "3 Months" or
+                "1 Week" will resolve to once the Care Plan is signed.
+                Mirrors the way the intervention Due Date summarises
+                `dueOffset` + `dueUnit`. */}
+            <span className={styles.durationHint}>
+              {duration
+                ? `${duration} ${Number(duration) === 1
+                    ? durationUnit.toLowerCase()
+                    : `${durationUnit.toLowerCase()}s`} after Care Plan creation date`
+                : 'After Care Plan creation date'}
+            </span>
           </div>
 
           <div className={styles.field}>
@@ -509,9 +755,13 @@ export function CreateGoalDrawer({ onClose, onSave, goal }) {
         </div>
         )}
 
-        {/* Target Date shows for every structured category except Others,
-            and is the ONLY authored field for Assessment. */}
-        {((!isOther && setTarget) || isAssessment) && (
+        {/* Assessment goals still need a concrete deadline (they don't
+            author a Target Duration), so keep the DatePicker there.
+            Every other structured category derives its Target Date
+            from Care Plan sign date + Target Duration — same rule the
+            intervention Due Date uses, so no separate date field is
+            authored here. */}
+        {isAssessment && (
         <div className={styles.field}>
           <div className={styles.targetDate}>
             <DatePicker label="Target Date" value={targetDate} onSelect={setTargetDate} />

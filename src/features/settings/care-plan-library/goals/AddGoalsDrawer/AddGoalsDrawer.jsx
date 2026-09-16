@@ -142,10 +142,12 @@ export function AddGoalsDrawer({
     [grouped, rows, addedTitleSet, recommendedSet],
   );
 
-  // One goal row. `added` (already on the plan) starts checked and shows an
-  // "Added" badge; unchecking it marks the goal for removal on Apply.
+  // One goal row. `added` (already on the plan) starts checked, and
+  // unchecking it marks the goal for removal on Apply. The list is
+  // already grouped under an "Added goals" header, so the per-row
+  // "Added" chip is redundant and has been dropped.
   // `divider` draws the Recently-Used hairline after the row.
-  const renderRow = (g, { added = false, divider = false } = {}) => (
+  const renderRow = (g, { divider = false } = {}) => (
     <div key={g.id} className={styles.rowWrap}>
       <label className={styles.row}>
         <Checkbox
@@ -171,7 +173,6 @@ export function AddGoalsDrawer({
         </span>
         <span className={styles.rowActionsDivider} aria-hidden />
         <span className={styles.rowMeta}>
-          {added && <Badge tone="grey" size="S" label="Added" />}
           {g.category && <Badge tone="grey" size="S" label={normalizeCategory(g.category)} />}
           <PriorityIcon priority={g.priority} size={16} />
         </span>
@@ -232,7 +233,7 @@ export function AddGoalsDrawer({
               {addedRows.length > 0 && (
                 <>
                   <span className={styles.groupLabel}>Added goals</span>
-                  {addedRows.map(g => renderRow(g, { added: true }))}
+                  {addedRows.map(g => renderRow(g))}
                   <span className={styles.groupDivider} />
                 </>
               )}

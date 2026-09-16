@@ -64,8 +64,8 @@
   color: var(--neutral-400);
 }
 .rowDetail {
-  font-size: var(--font-base);
-  color: var(--neutral-300);
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
 }
 
 /* Fixed width so the badge + priority column lines up down the list. */
