@@ -10,7 +10,7 @@ import { worklistMemberCallId } from '../../lib/patientCall';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
-import { assigneeRoleLabel, platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
+import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import styles from './HedisWorklistRow.module.css';
 
 const LANG_MAP = {
@@ -192,11 +192,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                 <AssigneeChange
                   name={assignee}
                   initials={initials}
-                  role={assigneeRoleLabel(
-                    assignee,
-                    ctx.platformUsers,
-                    g.assigneeRole ?? member.assigneeRole,
-                  )}
+                  showRole={false}
                   users={ctx.assigneePickerUsers}
                   pickerTitle="Change assignee"
                   onSelect={handlePick}
@@ -205,6 +201,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                 <AssigneeChange
                   unassigned
                   unassignedLabel="Assign"
+                  showRole={false}
                   users={ctx.assigneePickerUsers}
                   pickerTitle="Assign to"
                   onSelect={handlePick}

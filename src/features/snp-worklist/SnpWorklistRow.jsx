@@ -10,6 +10,7 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
 import { worklistMemberCallId } from '../../lib/patientCall';
+import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
@@ -107,15 +108,6 @@ function TagCell({ tags, tagsMore }) {
 
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
 
-const DEMO_ASSIGNEE_ROLE = {
-  'Daniel Arsulo':            'Care Manager',
-  'Dr. Shravank Montgomery':  'Physician',
-  'PoojaNurse CFC Hills':     'SNP Nurse',
-  'shravank 7hills':          'SNP Nurse',
-  'Chemy Maa':                'Care Coordinator',
-  'Michelle Ling':            'Care Manager',
-};
-
 /**
  * Middle-column defs for the SNP worklist. Each carries `renderCell(member,
  * ctx)` so the ColumnsHeaderButton popover can hide + reorder columns and
@@ -125,7 +117,7 @@ const DEMO_ASSIGNEE_ROLE = {
  * ctx shape: {
  *   showStatusMenu, setShowStatusMenu, statusBtnRef,
  *   setSnpProgramSubStatus, setSnpAssignee, eligibleUsers,
- *   showToast, derivedAssigneeRole,
+ *   showToast,
  * }
  */
 export const SNP_MIDDLE_COLUMNS = [
@@ -197,7 +189,7 @@ export const SNP_MIDDLE_COLUMNS = [
         <AssigneeChange
           name={m.assigneeName}
           initials={m.assigneeInitials}
-          role={ctx.derivedAssigneeRole}
+          showRole={false}
           users={ctx.eligibleUsers}
           onSelect={(u) => ctx.setSnpAssignee(m.id, u)}
           pickerTitle="Change assignee"
@@ -205,6 +197,7 @@ export const SNP_MIDDLE_COLUMNS = [
       ) : (
         <AssigneeChange
           unassigned
+          showRole={false}
           users={ctx.eligibleUsers}
           onSelect={(u) => ctx.setSnpAssignee(m.id, u)}
           pickerTitle="Assign user"
@@ -279,15 +272,9 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
       id: u.id,
       name: u.name,
       initials: u.initials,
-      role: u.clinicalRoles?.[0] || '',
+      role: clinicalRolesPickerLabel(u),
     });
   }
-
-  const derivedAssigneeRole =
-    m.assigneeRole ||
-    platformUsers.find(u => u.name === m.assigneeName)?.clinicalRoles?.[0] ||
-    DEMO_ASSIGNEE_ROLE[m.assigneeName] ||
-    undefined;
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -302,7 +289,6 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
     setSnpProgramSubStatus,
     setSnpAssignee,
     eligibleUsers,
-    derivedAssigneeRole,
     showToast,
   };
 

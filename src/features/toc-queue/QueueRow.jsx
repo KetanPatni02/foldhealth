@@ -4,7 +4,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
-import { assigneeRoleLabel, platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
+import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../store/useAppStore';
@@ -340,7 +340,7 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
         <AssigneeChange
           name={p.assignee}
           initials={p.assigneeInitials}
-          role={assigneeRoleLabel(p.assignee, ctx.platformUsers, p.assigneeRole)}
+          showRole={false}
           users={ctx.assigneePickerUsers}
           onSelect={(u) => ctx.updatePatient?.(p.id, {
             assignee: u.name,
@@ -352,6 +352,7 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
       ) : (
         <AssigneeChange
           unassigned
+          showRole={false}
           users={ctx.assigneePickerUsers}
           onSelect={(u) => ctx.updatePatient?.(p.id, {
             assignee: u.name,

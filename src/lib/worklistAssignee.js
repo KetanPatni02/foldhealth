@@ -1,9 +1,6 @@
-/** Clinical role line under an assignee name in worklist tables. */
-export function assigneeRoleLabel(assigneeName, platformUsers, storedRole) {
-  if (storedRole) return storedRole;
-  if (!assigneeName) return undefined;
-  const user = (platformUsers || []).find((u) => u.name === assigneeName);
-  return user?.clinicalRoles?.[0] || undefined;
+/** Roles string for AssigneeChange picker rows (all clinical roles). */
+export function clinicalRolesPickerLabel(user) {
+  return (user?.clinicalRoles || []).filter(Boolean).join(', ');
 }
 
 /** Map platform users to AssigneeChange picker rows. */
@@ -15,6 +12,6 @@ export function platformUsersForAssigneePicker(platformUsers, { excludeClinicalR
       id: u.id,
       name: u.name,
       initials: u.initials,
-      role: u.clinicalRoles?.[0] || '',
+      role: clinicalRolesPickerLabel(u),
     }));
 }

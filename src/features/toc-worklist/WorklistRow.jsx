@@ -13,6 +13,7 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
+import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import styles from './WorklistRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
@@ -106,12 +107,7 @@ function OutreachCell({ patient }) {
 }
 
 function AssigneeCell({ patient, platformUsers, updatePatient }) {
-  const users = platformUsers.map(u => ({
-    id: u.id,
-    name: u.name,
-    initials: u.initials,
-    role: u.clinicalRoles?.[0] || '',
-  }));
+  const users = platformUsersForAssigneePicker(platformUsers);
   const onSelect = (u) => updatePatient(patient.id, {
     assignee: u.name,
     assigneeInitials: u.initials,
@@ -122,10 +118,7 @@ function AssigneeCell({ patient, platformUsers, updatePatient }) {
       <AssigneeChange
         name={patient.assignee}
         initials={patient.assigneeInitials}
-        role={
-          patient.assigneeRole ||
-          platformUsers.find(u => u.name === patient.assignee)?.clinicalRoles?.[0]
-        }
+        showRole={false}
         users={users}
         onSelect={onSelect}
         pickerTitle="Change assignee"
@@ -135,6 +128,7 @@ function AssigneeCell({ patient, platformUsers, updatePatient }) {
   return (
     <AssigneeChange
       unassigned
+      showRole={false}
       users={users}
       onSelect={onSelect}
       pickerTitle="Assign user"
