@@ -32,6 +32,7 @@ function BarrierRow({
   return (
     <tr
       key={b.id}
+      data-cp-row-id={b.id}
       className={`${styles.row} ${styles.gbiRow} ${onOpenBarrier ? styles.rowClickable : ''}`}
       onClick={() => onOpenBarrier?.(b)}
     >

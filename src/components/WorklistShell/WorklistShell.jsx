@@ -220,25 +220,33 @@ export function WorklistShell({
 
   // Only non-sticky columns are user-customisable. The sticky columns keep
   // their fixed position around the customisable band. A non-sticky
-  // column can also opt out of the picker with `locked: true` — it stays
-  // rendered in-flow but the popover shows it as a locked bottom row
-  // (mixed in with the sticky-right locked rows for the picker's UX).
-  const { customisableColumns, lockedInFlow, lockedTop, lockedBottom } = useMemo(() => {
+  // column can also opt out of the picker with `locked: true`:
+  //   • it renders IN PLACE in the row (right where the caller declared
+  //     it, so a locked "Goal Title" at position 2 stays at position 2);
+  //   • the picker shows it as a locked bottom row so the user knows the
+  //     column is always visible;
+  //   • useWorklistColumns keeps it out of the hidden set.
+  const {
+    customisableColumns, lockedTop, lockedBottom, lockedKeys,
+  } = useMemo(() => {
     const top = [];
     const botSticky = [];
-    const botLockedInFlow = [];
+    const inPlaceLocked = [];
     const mid = [];
     for (const c of columns) {
       if (c.sticky === 'left' && !c.showCheckbox) top.push(c);
       else if (c.sticky === 'right') botSticky.push(c);
-      else if (c.locked && !c.showCheckbox) botLockedInFlow.push(c);
+      else if (c.locked && !c.showCheckbox) {
+        mid.push(c);              // still rendered in-place in the row
+        inPlaceLocked.push(c);    // and tagged for the popover locked band
+      }
       else if (!c.showCheckbox) mid.push(c);
     }
     return {
       customisableColumns: mid,
-      lockedInFlow: botLockedInFlow,
+      lockedKeys: new Set(inPlaceLocked.map(c => c.key)),
       lockedTop: top.map(c => ({ k: c.key, lb: c.popoverLabel || c.label })),
-      lockedBottom: [...botLockedInFlow, ...botSticky].map(c => ({
+      lockedBottom: [...inPlaceLocked, ...botSticky].map(c => ({
         k: c.key, lb: c.popoverLabel || c.label,
       })),
     };
@@ -255,14 +263,27 @@ export function WorklistShell({
     customisableColumns,
     { hiddenByDefault },
   );
-  const activeCustomisable = worklistKey ? prefs.visibleColumns : customisableColumns;
-  const hiddenSet = worklistKey ? prefs.hiddenSet : null;
+  // Locked columns are immune to the hidden set — a stale pref from
+  // before a column got flagged `locked` must not keep it hidden any
+  // longer. Filter prefs.orderedColumns manually so we can override.
+  const activeCustomisable = worklistKey
+    ? prefs.orderedColumns.filter(c => {
+        const key = c.key || c.k;
+        return lockedKeys.has(key) || !prefs.hiddenSet.has(key);
+      })
+    : customisableColumns;
+  // Same immunity for the row-render side: never treat a locked column
+  // as hidden, otherwise the header renders but the body td doesn't.
+  const hiddenSet = worklistKey
+    ? new Set(Array.from(prefs.hiddenSet).filter(k => !lockedKeys.has(k)))
+    : null;
   const orderedColumnsForRow = worklistKey
     ? [
         ...columns.filter(c => c.showCheckbox),
         ...columns.filter(c => c.sticky === 'left' && !c.showCheckbox),
+        // Locked columns are already inside `activeCustomisable` at their
+        // declared position — no separate lockedInFlow tail any more.
         ...activeCustomisable,
-        ...lockedInFlow,
         ...columns.filter(c => c.sticky === 'right'),
       ]
     : columns;
@@ -437,7 +458,12 @@ export function WorklistShell({
                     >
                       {isColumnsAnchor ? (
                         <ColumnsHeaderButton
-                          columns={prefs.orderedColumns}
+                          /* Locked columns render in-place in the row
+                             but must be filtered out of the togglable
+                             list — they surface in the popover's
+                             `lockedBottom` band instead so the user
+                             sees them as always-on. */
+                          columns={prefs.orderedColumns.filter(c => !lockedKeys.has(c.key || c.k))}
                           hiddenSet={prefs.hiddenSet}
                           onToggle={prefs.onToggle}
                           onReorder={prefs.onReorder}

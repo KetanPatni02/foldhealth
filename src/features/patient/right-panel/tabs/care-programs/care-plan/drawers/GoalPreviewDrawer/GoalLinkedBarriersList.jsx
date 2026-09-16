@@ -3,52 +3,85 @@ import { ActionButton } from '../../../../../../../../components/ActionButton/Ac
 import { GbiStatusButton } from '../../tables/carePlanTableShared';
 import styles from './GoalPreviewDrawer.module.css';
 
-/** Linked barriers inside Goal Details — grid aligns with GoalLinkedInterventionsList. */
+/**
+ * Linked barriers inside the Goal Details drawer.
+ *
+ * Row shape is identical to `GoalLinkedInterventionsList` (which mirrors
+ * BarrierDetailDrawer's Linked Goals list), so every drawer's linked
+ * list reads as one primitive:
+ *   [ icon ]  [ title / subtitle ]  [ status | (open) | unlink ]
+ *
+ * Barriers have no priority or assignee, so those slots are omitted.
+ * `onOpen` is optional — when provided, the arrow-right-up action
+ * surfaces the same way it does on the interventions list.
+ */
 export function GoalLinkedBarriersList({
   barriers,
   canEdit,
+  onOpen,
   onStatusMenu,
-  onUnlink,
+  onRowMenu,
 }) {
   return (
-    <div className={styles.intvList}>
+    <ul className={styles.intvLinkList}>
       {barriers.map((b) => (
-        <div key={b.id} className={styles.barrierRow}>
-          {/* Empty track — barriers have no priority; column keeps status aligned with interventions. */}
-          <div className={styles.gbiDrawerLeadSpacer} aria-hidden="true" />
-
-          <div className={styles.intvMain}>
-            <span className={styles.intvTypeIcon}>
-              <Icon name="custom:barrier" size={16} color="var(--neutral-400)" />
-            </span>
-            <div className={styles.intvTitleStack}>
-              <span className={styles.intvTitle}>{b.title}</span>
-            </div>
+        <li
+          key={b.id}
+          className={styles.intvLinkRow}
+          role={onOpen ? 'button' : undefined}
+          tabIndex={onOpen ? 0 : undefined}
+          onClick={onOpen ? () => onOpen(b) : undefined}
+          onKeyDown={onOpen
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onOpen(b);
+                }
+              }
+            : undefined}
+        >
+          <span className={styles.intvLinkIcon}>
+            <Icon name="custom:barrier" size={16} color="var(--neutral-400)" />
+          </span>
+          <div className={styles.intvLinkStack}>
+            <span className={styles.intvLinkTitle}>{b.title}</span>
+            {b.subtitle && <span className={styles.intvLinkSubtitle}>{b.subtitle}</span>}
           </div>
-
-          <div className={styles.intvAssignee} aria-hidden="true" />
-
-          <div className={styles.intvStatus} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={styles.intvLinkActions}
+            style={{ gap: 'var(--space-2)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <GbiStatusButton
               value={b.status || 'Not Started'}
               disabled={!canEdit}
               onOpen={(rect) => onStatusMenu?.({ kind: 'barrier', item: b, rect })}
             />
-          </div>
-
-          <div className={styles.intvActions} onClick={(e) => e.stopPropagation()}>
-            {canEdit && onUnlink && (
-              <ActionButton
-                icon="solar:link-broken-minimalistic-linear"
-                size="S"
-                tooltip="Unlink"
-                tooltipBelow
-                onClick={() => onUnlink(b)}
-              />
+            {onOpen && (
+              <>
+                <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
+                <ActionButton
+                  icon="solar:arrow-right-up-linear"
+                  size="S"
+                  tooltip="Open barrier"
+                  onClick={() => onOpen(b)}
+                />
+              </>
             )}
+            {/* Three-dot menu — Open, Unlink and the scope-aware
+                Delete flow all live here so both rows carry the
+                identical overflow control on the far right. */}
+            <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
+            <ActionButton
+              icon="solar:menu-dots-linear"
+              size="S"
+              tooltip="More"
+              disabled={!canEdit && !onOpen}
+              onClick={(e) => onRowMenu?.({ item: b, rect: e.currentTarget.getBoundingClientRect() })}
+            />
           </div>
-        </div>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }

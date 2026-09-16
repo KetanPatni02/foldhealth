@@ -215,7 +215,10 @@
 /* ── Actions <th> — embeds the column hide/show trigger ───────────────── */
 
 .actionsTh {
-  padding: 8px 8px !important;
+  /* Header row is pinned at 32px across every worklist — vertical
+     padding stripped so the inner button doesn't stretch the tr. */
+  height: var(--space-8);
+  padding: 0 var(--space-2) !important;
 }
 
 .actionsHeaderLabel {

@@ -108,6 +108,9 @@ export function CarePlanGoalsTable({
           return (
           <tr
             key={g.id}
+            /* `data-cp-row-id` lets the CarePlan linked-items popover
+               scroll to and flash this row on click. */
+            data-cp-row-id={g.id}
             className={`${styles.row} ${styles.rowClickable} ${styles.gbiRow}`}
             onClick={() => onOpenGoal(g)}
           >

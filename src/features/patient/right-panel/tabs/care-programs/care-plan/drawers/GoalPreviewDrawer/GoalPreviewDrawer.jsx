@@ -17,6 +17,8 @@ import { TabStrip } from '../../../../../../../../components/TabStrip/TabStrip';
 import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { RadioButton } from '../../../../../../../../components/RadioButton/RadioButton';
+import { createPortal } from 'react-dom';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { INTERVENTION_EDITORS } from '../../../../../../../settings/care-plan-library/interventions';
 import { AddTaskDrawer } from '../../../../../../../tasks/AddTaskDrawer';
@@ -24,11 +26,13 @@ import { buildInterventionRecordFromConfig } from '../../lib/carePlanInterventio
 import { CreateGoalDrawer } from '../../../../../../../settings/care-plan-library/goals/CreateGoalDrawer/CreateGoalDrawer';
 import { GoalLinkedInterventionsList } from './GoalLinkedInterventionsList';
 import { GoalLinkedBarriersList } from './GoalLinkedBarriersList';
+import { computeDueDate, formatRecurrenceLabel } from '../../tables/CarePlanInterventionsTable';
+import { Tooltip } from '../../../../../../../../components/Tooltip/Tooltip';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../../settings/care-plan-library/lib';
 import { goalProgressBand, goalProgressTone } from '../../lib/goalMetrics';
 import { goalCascade, barrierGoalIdsOf } from '../../lib/carePlanGoalCascade';
 import { RemoveGoalDialog } from '../RemoveGoalDialog';
-import { LinkExistingItemsPopover } from './LinkExistingItemsPopover';
+import { LinkItemsToGoalDrawer } from './LinkItemsToGoalDrawer';
 import styles from './GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
@@ -298,6 +302,78 @@ const INTERVENTION_KIND_ITEMS = [
   { divider: true },
   { key: 'internal-task', label: 'Internal Task', icon: 'solar:clipboard-check-linear' },
 ];
+
+// Scope choices offered when the reviewer deletes a linked
+// intervention from the Goal Details drawer. Each key drives a
+// downstream delete surface (currently the same call for all — the
+// template-scoped / global deletes are not wired yet, so the picker
+// just captures the intent and toasts the chosen scope).
+const SCOPE_LABEL = {
+  'this-goal':      "this goal on this template",
+  'all-templates':  "this goal on every linked template",
+  'everywhere':     "everywhere in the plan",
+};
+const SCOPE_OPTIONS = [
+  { value: 'this-goal',     label: 'From this goal on this template' },
+  { value: 'all-templates', label: 'From this goal on all linked templates' },
+  { value: 'everywhere',    label: 'From everywhere in the plan' },
+];
+
+/** Radio-picker dialog for the "Delete intervention / barrier" scope choice. */
+function IntvDeleteScopePicker({ name, kindLabel = 'intervention', onCancel, onConfirm }) {
+  const [scope, setScope] = useState('this-goal');
+  return createPortal(
+    <div
+      aria-hidden="true"
+      onClick={onCancel}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9400,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Delete ${name}`}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 360,
+          background: 'var(--neutral-0)',
+          borderRadius: 'var(--space-2)',
+          padding: 'var(--space-4)',
+          display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
+          boxShadow: '0 24px 60px -20px rgba(0,0,0,0.24)',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+          <span style={{ fontSize: 'var(--font-md)', fontWeight: 600, color: 'var(--neutral-500)' }}>
+            Delete &ldquo;{name}&rdquo;?
+          </span>
+          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
+            Pick where this {kindLabel} should be removed from.
+          </span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          {SCOPE_OPTIONS.map((opt) => (
+            <RadioButton
+              key={opt.value}
+              checked={scope === opt.value}
+              onChange={() => setScope(opt.value)}
+              label={opt.label}
+            />
+          ))}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+          <Button variant="secondary" size="M" onClick={onCancel}>Cancel</Button>
+          <Button variant="destructive" size="M" onClick={() => onConfirm(scope)}>Delete</Button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 /**
  * Goal Details — Figma SNP-Story 2632:81504.
  * Every edit (status, progress, readings, automations, notes, interventions,
@@ -322,6 +398,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const savePatientCarePlanIntervention = useAppStore(s => s.savePatientCarePlanIntervention);
   const deletePatientCarePlanIntervention = useAppStore(s => s.deletePatientCarePlanIntervention);
   const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
+  const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
   const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
   const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
   const showToast = useAppStore(s => s.showToast);
@@ -335,6 +412,19 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       || (s.allPatients || []).find(x => x.id === patientId);
     return p?.name;
   });
+  const patientInitials = useAppStore(s => {
+    const p = (s.patients || []).find(x => x.id === patientId)
+      || (s.allPatients || []).find(x => x.id === patientId);
+    return p?.initials;
+  });
+  // Patient record for GoalLinkedInterventionsList — memoised so
+  // Zustand's default reference-equality doesn't tear us down on
+  // every render (returning a fresh object literal inside a selector
+  // triggers an infinite update loop → white screen).
+  const patient = useMemo(
+    () => (patientId ? { id: patientId, name: patientName, initials: patientInitials } : null),
+    [patientId, patientName, patientInitials],
+  );
 
   const live = (slice?.goals || []).find(g => g.id === goal?.id) || goal;
   const interventions = useMemo(
@@ -346,23 +436,90 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
     return ids.map(String).includes(String(live?.id));
   }), [slice, live?.id]);
 
-  const interventionLinkItems = useMemo(
-    () => (slice?.interventions || []).map(i => ({
-      id: i.id,
-      title: i.title,
-      subtitle: i.assignee?.name && i.assignee.name !== 'Unassigned' ? i.assignee.name : null,
-      checked: String(i.goalId) === String(live?.id),
-    })),
-    [slice?.interventions, live?.id],
+  // Candidate lists for the multi-select "Link existing" drawer: only
+  // items NOT already linked to this goal show up in the picker. This
+  // mirrors LinkGoalToBarrierDrawer's add-only shape used by the
+  // Intervention / Barrier detail drawers when linking goals.
+  const interventionLinkCandidates = useMemo(
+    () => {
+      const goalById = new Map(
+        (slice?.goals || []).map(g => [String(g.id), g]),
+      );
+      return (slice?.interventions || [])
+        .filter(i => String(i.goalId) !== String(live?.id))
+        .map(i => {
+          const kindMeta = INTERVENTION_KIND_ITEMS.find(k => k.key === i.kind);
+          const due = computeDueDate(i);
+          const isRecurring = !!i.config?.repeat;
+          // Second line reads like the intervention row inside the
+          // Goal Details drawer: "Due <date> [↻]". Recurring glyph
+          // gets a tooltip explaining the cadence.
+          const subtitleNode = (due.formatted || isRecurring) ? (
+            <span
+              className="_linkItemDueLine"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 'var(--space-1)',
+                fontSize: 'var(--font-sm)',
+                color: 'var(--neutral-300)',
+              }}
+            >
+              {due.formatted ? `Due ${due.formatted}` : null}
+              {isRecurring && (
+                <Tooltip label={formatRecurrenceLabel(i)}>
+                  <span aria-label={formatRecurrenceLabel(i)} style={{ display: 'inline-flex' }}>
+                    <Icon name="solar:refresh-linear" size={14} color="var(--neutral-300)" />
+                  </span>
+                </Tooltip>
+              )}
+            </span>
+          ) : null;
+          const linkedGoal = goalById.get(String(i.goalId));
+          return {
+            id: i.id,
+            title: i.title,
+            subtitleNode,
+            priority: i.priority,
+            badge: kindMeta?.label,
+            // Right-rail affordance mirrors the plan-level table: a
+            // link icon with a count badge, hover pops a preview of
+            // the goal this intervention is already wired onto (an
+            // intervention only lives on a single goal, so this is
+            // 0 or 1 entries).
+            linkedPreview: linkedGoal
+              ? { goals: [{ id: linkedGoal.id, title: linkedGoal.title, icon: linkedGoal.icon }] }
+              : { goals: [] },
+          };
+        });
+    },
+    [slice?.interventions, slice?.goals, live?.id],
   );
 
-  const barrierLinkItems = useMemo(
-    () => (slice?.barriers || []).map(b => ({
-      id: b.id,
-      title: b.title,
-      checked: barrierGoalIdsOf(b).map(String).includes(String(live?.id)),
-    })),
-    [slice?.barriers, live?.id],
+  const barrierLinkCandidates = useMemo(
+    () => {
+      const goalById = new Map(
+        (slice?.goals || []).map(g => [String(g.id), g]),
+      );
+      return (slice?.barriers || [])
+        .filter(b => !barrierGoalIdsOf(b).map(String).includes(String(live?.id)))
+        .map(b => {
+          const linkedGoals = barrierGoalIdsOf(b)
+            .map(id => goalById.get(String(id)))
+            .filter(Boolean)
+            .map(g => ({ id: g.id, title: g.title, icon: g.icon }));
+          return {
+            id: b.id,
+            title: b.title,
+            subtitle: b.subtitle || null,
+            // Right-rail affordance uses the same GbiLinkButton the
+            // plan-level table shows: a link icon with a count badge
+            // that pops a preview of the linked goals on hover.
+            linkedPreview: { goals: linkedGoals },
+          };
+        });
+    },
+    [slice?.barriers, slice?.goals, live?.id],
   );
   const measurements = useMemo(
     () => (slice?.measurements || []).filter(m => m.goalId === live?.id).slice().sort((a, b) => new Date(a.takenAt) - new Date(b.takenAt)),
@@ -577,6 +734,34 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       return;
     }
     savePatientCarePlanIntervention(patientId, program, { ...item, status }, item.id);
+  };
+
+  // Inline-edit hook for the Due Date on a linked intervention row.
+  // Persists the picked ISO into `config.dueDateOverride` so the same
+  // computeDueDate helper the table uses picks it up.
+  const handleDueDateChange = async (intv, iso) => {
+    if (!intv || !canEdit) return;
+    const nextConfig = { ...(intv.config || {}), dueDateOverride: iso || null };
+    await savePatientCarePlanIntervention(
+      patientId,
+      program,
+      { ...intv, config: nextConfig },
+      intv.id,
+    );
+  };
+  // Recurrence updates from the RepeatEditor footer inside the date
+  // picker. Same shape as CarePlanInterventionsTable's callback: the
+  // repeat flags land inside `config` so computeOccurrenceDates and
+  // formatRecurrenceLabel read them back.
+  const handleRecurrenceChange = async (intv, patch) => {
+    if (!intv || !canEdit) return;
+    const nextConfig = { ...(intv.config || {}), ...patch };
+    await savePatientCarePlanIntervention(
+      patientId,
+      program,
+      { ...intv, config: nextConfig },
+      intv.id,
+    );
   };
 
   const toggleInterventionLink = async (interventionId, linked) => {
@@ -865,15 +1050,19 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               onLinkExisting={() => expandAnd('interventions', () => setIntvLinkMenuOpen(v => !v))}
             />
             {intvLinkMenuOpen && !consolidated && (
-              <LinkExistingItemsPopover
-                anchorRef={intvLinkRef}
-                align="right"
-                ariaLabel="Link existing interventions"
-                title="Link to this goal"
-                items={interventionLinkItems}
-                emptyLabel="No other interventions on this plan yet."
-                onToggle={toggleInterventionLink}
+              <LinkItemsToGoalDrawer
+                title="Link Intervention to Goal"
+                items={interventionLinkCandidates}
+                searchPlaceholder="Search Intervention"
+                emptyAllLinkedLabel="Every intervention on this plan is already linked to this goal."
+                emptyNoMatchLabel="No interventions match that search."
                 onClose={() => setIntvLinkMenuOpen(false)}
+                onLink={async (ids) => {
+                  for (const id of ids) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await toggleInterventionLink(id, true);
+                  }
+                }}
               />
             )}
             {intvMenuOpen && !consolidated && (
@@ -899,12 +1088,14 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                   interventions={interventions}
                   canEdit={canEdit && !consolidated}
                   platformUsers={platformUsers}
+                  patient={patient}
                   onOpen={onOpenIntervention}
                   onPriorityMenu={consolidated ? undefined : setPriorityMenu}
                   onAssigneeChange={consolidated ? undefined : handleAssigneeChange}
                   onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
-                  onRowMenu={consolidated ? undefined : setRowMenu}
-                  onUnlink={consolidated || !canEdit ? undefined : (item) => toggleInterventionLink(item.id, false)}
+                  onDueDateChange={consolidated ? undefined : handleDueDateChange}
+                  onRecurrenceChange={consolidated ? undefined : handleRecurrenceChange}
+                  onRowMenu={consolidated ? undefined : (m) => setRowMenu({ ...m, kind: 'intv-menu' })}
                 />
               )
             )}
@@ -926,15 +1117,19 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               onLinkExisting={() => expandAnd('barriers', () => setBarrierLinkMenuOpen(v => !v))}
             />
             {barrierLinkMenuOpen && !consolidated && (
-              <LinkExistingItemsPopover
-                anchorRef={barrierLinkRef}
-                align="right"
-                ariaLabel="Link existing barriers"
-                title="Link to this goal"
-                items={barrierLinkItems}
-                emptyLabel="No barriers on this plan yet."
-                onToggle={toggleBarrierLink}
+              <LinkItemsToGoalDrawer
+                title="Link Barrier to Goal"
+                items={barrierLinkCandidates}
+                searchPlaceholder="Search Barrier"
+                emptyAllLinkedLabel="Every barrier on this plan is already linked to this goal."
+                emptyNoMatchLabel="No barriers match that search."
                 onClose={() => setBarrierLinkMenuOpen(false)}
+                onLink={async (ids) => {
+                  for (const id of ids) {
+                    // eslint-disable-next-line no-await-in-loop
+                    await toggleBarrierLink(id, true);
+                  }
+                }}
               />
             )}
             {open.barriers && (
@@ -958,7 +1153,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                     barriers={barriers}
                     canEdit={canEdit && !consolidated}
                     onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
-                    onUnlink={consolidated || !canEdit ? undefined : (item) => setConfirm({ kind: 'unlink-barrier', item })}
+                    onRowMenu={consolidated ? undefined : (m) => setRowMenu({ ...m, kind: 'barrier-menu' })}
                   />
                 )}
               </>
@@ -1265,26 +1460,74 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         />
       )}
 
-      {rowMenu && (
-        <MenuPopover
-          anchorRect={rowMenu.rect}
-          width={160}
-          ariaLabel="Intervention actions"
-          items={[
-            { key: 'rename', icon: 'solar:pen-linear', label: 'Rename', disabled: !canEdit },
-            { key: 'unlink', icon: 'solar:link-broken-minimalistic-linear', label: 'Unlink', disabled: !canEdit },
-            { key: 'delete', icon: 'solar:trash-bin-trash-linear', label: 'Remove', danger: true, disabled: !canEdit },
-          ]}
-          onSelect={(k) => {
-            const item = rowMenu.item;
-            setRowMenu(null);
-            if (k === 'delete') setConfirm({ kind: 'intv', id: item.id, name: item.title });
-            else if (k === 'rename') onOpenIntervention?.(item);
-            else if (k === 'unlink') toggleInterventionLink(item.id, false);
-          }}
-          onClose={() => setRowMenu(null)}
-        />
-      )}
+      {rowMenu && (() => {
+        const isBarrier = rowMenu.kind === 'barrier-menu';
+        const label = isBarrier ? 'barrier' : 'intervention';
+        return (
+          <MenuPopover
+            anchorRect={rowMenu.rect}
+            width={220}
+            ariaLabel={`${isBarrier ? 'Barrier' : 'Intervention'} actions`}
+            items={[
+              {
+                key: 'open',
+                icon: 'solar:arrow-right-up-linear',
+                label: `Open ${label}`,
+                disabled: isBarrier,  // barriers have no dedicated open path yet
+              },
+              // Unlink moved off the row rail and into this menu so
+              // both intervention + barrier rows carry the same
+              // primary controls (priority / assignee / status) and
+              // hide the destructive actions under the overflow.
+              {
+                key: 'unlink',
+                icon: 'solar:link-broken-minimalistic-linear',
+                label: `Unlink from this goal`,
+                disabled: !canEdit,
+              },
+              {
+                key: 'delete',
+                icon: 'solar:trash-bin-trash-linear',
+                label: `Delete ${label}`,
+                danger: true,
+                disabled: !canEdit,
+              },
+            ]}
+            onSelect={(k) => {
+              const item = rowMenu.item;
+              const rowKind = rowMenu.kind;
+              setRowMenu(null);
+              if (k === 'open' && !isBarrier) onOpenIntervention?.(item);
+              /* Unlink routing mirrors what the row Unlink button used
+                 to do: intervention flips its goalId off this goal
+                 immediately (single-owner), barrier goes through the
+                 warning ConfirmDialog because it can still stay linked
+                 to other goals. */
+              else if (k === 'unlink') {
+                if (rowKind === 'barrier-menu') {
+                  setConfirm({ kind: 'unlink-barrier', item });
+                } else {
+                  toggleInterventionLink(item.id, false);
+                }
+              }
+              /* Delete opens the scope picker below — the user chooses
+                 whether the removal applies to this goal on this
+                 template, every linked template, or the whole plan.
+                 Same picker handles both interventions and barriers;
+                 `deleteKind` routes to the right store action. */
+              else if (k === 'delete') {
+                setConfirm({
+                  kind: 'gbi-delete-scope',
+                  deleteKind: rowKind === 'barrier-menu' ? 'barrier' : 'intervention',
+                  id: item.id,
+                  name: item.title,
+                });
+              }
+            }}
+            onClose={() => setRowMenu(null)}
+          />
+        );
+      })()}
 
       {confirm?.kind === 'goal' && (() => {
         // Same choice the goals table offers: remove the linked items too, or
@@ -1317,6 +1560,29 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           onCancel={() => setConfirm(null)}
           onConfirm={async () => {
             await deletePatientCarePlanIntervention(patientId, program.id, confirm.id);
+            setConfirm(null);
+          }}
+        />
+      )}
+
+      {confirm?.kind === 'gbi-delete-scope' && (
+        <IntvDeleteScopePicker
+          name={confirm.name}
+          kindLabel={confirm.deleteKind === 'barrier' ? 'barrier' : 'intervention'}
+          onCancel={() => setConfirm(null)}
+          onConfirm={async (scope) => {
+            /* Backend for template-scoped and global deletes is not
+               wired yet — every scope hits the plain delete store
+               action for its kind. The toast makes the user's chosen
+               scope visible so QA can verify the picker fires
+               end-to-end. */
+            if (confirm.deleteKind === 'barrier') {
+              await deletePatientCarePlanBarrier(patientId, program.id, confirm.id);
+            } else {
+              await deletePatientCarePlanIntervention(patientId, program.id, confirm.id);
+            }
+            const scopeLabel = SCOPE_LABEL[scope] || 'this goal';
+            showToast?.(`Removed "${confirm.name}" from ${scopeLabel}`);
             setConfirm(null);
           }}
         />

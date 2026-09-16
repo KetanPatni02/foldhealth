@@ -90,7 +90,10 @@ export const withSelectColumn = (columns, bulkMode) =>
 export const GBI_COL_DATE_WIDTH = 108;
 export const GOAL_COLUMNS = [
   { key: 'priority', label: 'P', popoverLabel: 'Priority', width: GBI_COL_WIDTH.priority, align: 'center', sortKey: '_sortPriority', sortType: 'priority', hideSortIcon: true, thStyle: { paddingLeft: 4, paddingRight: 4 } },
-  { key: 'title', label: 'Goal Title', sortKey: 'title', sortType: 'alpha' },
+  // Goal Title is the row's identity — hiding it leaves a nameless row,
+  // so lock the picker's Hide toggle off (the column still renders and
+  // stays sortable).
+  { key: 'title', label: 'Goal Title', sortKey: 'title', sortType: 'alpha', locked: true },
   { key: 'createdDate', label: 'Start', popoverLabel: 'Start Date', width: GBI_COL_DATE_WIDTH, sortKey: '_sortCreatedAt', sortType: 'generic', thStyle: HEADER_COMPACT },
   { key: 'targetDate', label: 'Target', popoverLabel: 'Target Date', width: GBI_COL_WIDTH.assignee, sortKey: '_sortTargetDate', sortType: 'generic', thStyle: HEADER_COMPACT },
   // Optional columns — off by default; users opt in through the picker.
@@ -106,7 +109,9 @@ export const GOAL_COLUMNS = [
 
 export const INTERVENTION_COLUMNS = [
   { key: 'priority', label: 'P', popoverLabel: 'Priority', width: GBI_COL_WIDTH.priority, align: 'center', sortKey: '_sortPriority', sortType: 'priority', hideSortIcon: true, thStyle: { paddingLeft: 4, paddingRight: 4 } },
-  { key: 'title', label: 'Name', sortKey: 'title', sortType: 'alpha' },
+  // Name is the intervention row's identity — same locking treatment
+  // as Goal Title above.
+  { key: 'title', label: 'Name', sortKey: 'title', sortType: 'alpha', locked: true },
   { key: 'assignee', label: 'Assigned To', width: GBI_COL_WIDTH.assignee, sortKey: '_sortAssignee', sortType: 'alpha', thStyle: HEADER_COMPACT },
   { key: 'adherence', label: 'Adherence', width: GBI_COL_WIDTH.progress, sortKey: '_sortAdherence', sortType: 'number', defaultHidden: true, thStyle: HEADER_COMPACT },
   { key: 'status', label: 'Status', width: GBI_COL_WIDTH.status, sortKey: 'status', sortType: 'alpha', thStyle: HEADER_COMPACT },
