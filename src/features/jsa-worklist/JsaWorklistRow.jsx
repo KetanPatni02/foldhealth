@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
+import { assigneeRoleLabel } from '../../lib/worklistAssignee';
 import { Badge } from '../../components/Badge/Badge';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -115,18 +117,17 @@ export const JSA_MIDDLE_COLUMNS = [
     width: 170,
     renderCell: (member, ctx) => (
       member.assignee ? (
-        <div className={styles.assigneeCell}>
-          <Avatar variant="assignee" initials={member.assigneeIn} />
-          <span className={styles.assigneeName}>{member.assignee}</span>
-        </div>
+        <AssigneeChange
+          name={member.assignee}
+          initials={member.assigneeIn}
+          role={assigneeRoleLabel(member.assignee, ctx.platformUsers, member.assigneeRole)}
+          onClick={() => ctx.showToast(`Change assignee for ${member.name} — coming soon`)}
+        />
       ) : (
-        <button
-          type="button"
-          className={styles.assignBtn}
+        <AssigneeChange
+          unassigned
           onClick={() => ctx.showToast(`Assign owner for ${member.name} — coming soon`)}
-        >
-          Assign
-        </button>
+        />
       )
     ),
   },
@@ -195,6 +196,7 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
   const updateJsaMemberStatus = useAppStore(s => s.updateJsaMemberStatus);
   const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
+  const platformUsers = useAppStore(s => s.platformUsers);
   const callBtnRef = useRef(null);
   const [statusAnchor, setStatusAnchor] = useState(null);
   const quickViewPayload = { id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, memberId: member.memberId, language: member.language };
@@ -214,6 +216,7 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
     setStatusAnchor,
     updateJsaMemberStatus,
     showToast,
+    platformUsers,
   };
 
   return (

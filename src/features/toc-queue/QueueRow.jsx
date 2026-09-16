@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
+import { assigneeRoleLabel, platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../store/useAppStore';
@@ -333,11 +335,32 @@ export function getQueueMiddleColumns(programLabel = 'TOC') {
     key: 'assignee',
     label: 'Assignee',
     tdClassName: rowStyles.td,
-    renderCell: (p) => (
-      <div className={rowStyles.assigneeCell}>
-        <Avatar variant="assignee" initials={p.assigneeInitials} />
-        <span style={{ fontSize: 'var(--font-md)' }}>{p.assignee}</span>
-      </div>
+    renderCell: (p, ctx) => (
+      p.assignee ? (
+        <AssigneeChange
+          name={p.assignee}
+          initials={p.assigneeInitials}
+          role={assigneeRoleLabel(p.assignee, ctx.platformUsers, p.assigneeRole)}
+          users={ctx.assigneePickerUsers}
+          onSelect={(u) => ctx.updatePatient?.(p.id, {
+            assignee: u.name,
+            assigneeInitials: u.initials,
+            assigneeRole: u.role,
+          })}
+          pickerTitle="Change assignee"
+        />
+      ) : (
+        <AssigneeChange
+          unassigned
+          users={ctx.assigneePickerUsers}
+          onSelect={(u) => ctx.updatePatient?.(p.id, {
+            assignee: u.name,
+            assigneeInitials: u.initials,
+            assigneeRole: u.role,
+          })}
+          pickerTitle="Assign user"
+        />
+      )
     ),
   },
   {
@@ -417,6 +440,7 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
     openOutreachStatusDrawer,
     openAiTasksDrawer,
     platformUsers,
+    assigneePickerUsers: platformUsersForAssigneePicker(platformUsers),
     updatePatient,
   };
   const [phq9DrawerOpen, setPhq9DrawerOpen] = useState(false);

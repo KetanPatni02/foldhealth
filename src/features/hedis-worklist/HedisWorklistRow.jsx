@@ -10,6 +10,7 @@ import { worklistMemberCallId } from '../../lib/patientCall';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
+import { assigneeRoleLabel, platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import styles from './HedisWorklistRow.module.css';
 
 const LANG_MAP = {
@@ -191,8 +192,12 @@ export const HEDIS_MIDDLE_COLUMNS = [
                 <AssigneeChange
                   name={assignee}
                   initials={initials}
-                  showRole={false}
-                  users={ctx.platformUsers}
+                  role={assigneeRoleLabel(
+                    assignee,
+                    ctx.platformUsers,
+                    g.assigneeRole ?? member.assigneeRole,
+                  )}
+                  users={ctx.assigneePickerUsers}
                   pickerTitle="Change assignee"
                   onSelect={handlePick}
                 />
@@ -200,7 +205,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                 <AssigneeChange
                   unassigned
                   unassignedLabel="Assign"
-                  users={ctx.platformUsers}
+                  users={ctx.assigneePickerUsers}
                   pickerTitle="Assign to"
                   onSelect={handlePick}
                 />
@@ -318,6 +323,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
     expanded,
     toggleExpanded: () => setExpanded(v => !v),
     platformUsers,
+    assigneePickerUsers: platformUsersForAssigneePicker(platformUsers),
     updateGapAssignee,
     memberId: member.id,
     allTasks,

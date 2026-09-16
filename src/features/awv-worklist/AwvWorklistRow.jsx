@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
+import { assigneeRoleLabel } from '../../lib/worklistAssignee';
 import { Badge } from '../../components/Badge/Badge';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -132,7 +133,7 @@ export const AWV_MIDDLE_COLUMNS = [
         <AssigneeChange
           name={member.assignee}
           initials={member.assigneeIn}
-          role={member.assigneeRole || 'Outreach'}
+          role={assigneeRoleLabel(member.assignee, ctx.platformUsers, member.assigneeRole) || 'Outreach'}
           onClick={() => ctx.showToast(`Change assignee for ${member.name} — coming soon`)}
         />
       ) : (
@@ -220,6 +221,7 @@ export function AwvWorklistRow({ member, columns, hiddenSet, selected, onToggle,
   const updateAwvMemberStatus = useAppStore(s => s.updateAwvMemberStatus);
   const openQuickView = useAppStore(s => s.openQuickView);
   const openCallPopover = useAppStore(s => s.openCallPopover);
+  const platformUsers = useAppStore(s => s.platformUsers);
   const callBtnRef = useRef(null);
   const [statusAnchor, setStatusAnchor] = useState(null);
   const quickViewPayload = { id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, memberId: member.memberId, language: member.language };
@@ -239,6 +241,7 @@ export function AwvWorklistRow({ member, columns, hiddenSet, selected, onToggle,
     setStatusAnchor,
     updateAwvMemberStatus,
     showToast,
+    platformUsers,
   };
 
   return (

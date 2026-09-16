@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
+import { assigneeRoleLabel } from '../../lib/worklistAssignee';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
@@ -81,17 +83,20 @@ export const CCM_MIDDLE_COLUMNS = [
   {
     key: 'assignee',
     label: 'Assignee',
-    renderCell: (m) => (
+    renderCell: (m, ctx) => (
       m.assigneeName ? (
-        <div className={styles.assigneeCell}>
-          <Avatar variant="assignee" initials={m.assigneeInitials || m.assigneeName.slice(0, 2).toUpperCase()} />
-          <span className={styles.assigneeName}>{m.assigneeName}</span>
-        </div>
+        <AssigneeChange
+          name={m.assigneeName}
+          initials={m.assigneeInitials || m.assigneeName.slice(0, 2).toUpperCase()}
+          role={assigneeRoleLabel(m.assigneeName, ctx.platformUsers, m.assigneeRole)}
+          onClick={() => ctx.showToast?.(`Change assignee for ${m.name} — coming soon`)}
+        />
       ) : (
-        <span className={styles.assignPlaceholder}>
-          <Icon name="solar:user-plus-linear" size={14} color="var(--neutral-300)" />
-          Assign User
-        </span>
+        <AssigneeChange
+          unassigned
+          unassignedLabel="Assign User"
+          onClick={() => ctx.showToast?.(`Assign owner for ${m.name} — coming soon`)}
+        />
       )
     ),
   },
@@ -156,6 +161,7 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
   const menuBtnRef = useRef(null);
   const callBtnRef = useRef(null);
   const openCallPopover = useAppStore(s => s.openCallPopover);
+  const platformUsers = useAppStore(s => s.platformUsers);
 
   const middleCols = (columns || CCM_MIDDLE_COLUMNS)
     .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
@@ -233,7 +239,7 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
     openQuickView?.(quickViewPayload);
   };
 
-  const cellCtx = { openBilling };
+  const cellCtx = { openBilling, showToast, platformUsers };
 
   return (
     <>
