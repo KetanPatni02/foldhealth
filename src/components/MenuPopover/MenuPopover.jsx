@@ -86,11 +86,22 @@ export function MenuPopover({
 
   return createPortal(
     <>
-      <div className={styles.overlay} onClick={onClose} aria-hidden="true" />
+      {/* Overlay + menu both stop mousedown so a parent popover
+          (e.g. DatePickerPopover) whose outside-click detector fires
+          on mousedown doesn't dismiss itself when the user picks a
+          menu item that was portaled to document.body. Click still
+          reaches onClose for the overlay path (close-on-outside). */}
+      <div
+        className={styles.overlay}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div
         ref={popRef}
         className={styles.menu}
         style={style}
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         role="menu"
         aria-label={ariaLabel}

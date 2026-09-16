@@ -7,6 +7,7 @@ import { Tooltip } from '../../../../../../../../components/Tooltip/Tooltip';
 import { DatePickerPopover } from '../../../../../../../../components/DatePicker/DatePickerPopover';
 import { RepeatEditor } from '../../../../../../../../components/RepeatEditor/RepeatEditor';
 import { GbiStatusButton } from '../../tables/carePlanTableShared';
+import { GbiLinkButton } from '../../tables/CarePlanLinkedPreview';
 import { computeDueDate, computeOccurrenceDates, formatRecurrenceLabel } from '../../tables/CarePlanInterventionsTable';
 import styles from './GoalPreviewDrawer.module.css';
 
@@ -129,6 +130,12 @@ export function GoalLinkedInterventionsList({
                 onSelect={(u) => onAssigneeChange?.(i, u)}
                 disabled={!canEdit || isMemberTask}
               />
+              {(i.linkedPreview?.goals?.length || 0) > 0 && (
+                <>
+                  <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
+                  <GbiLinkButton data={i.linkedPreview} />
+                </>
+              )}
               <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
               <GbiStatusButton
                 value={i.status || 'Not Started'}

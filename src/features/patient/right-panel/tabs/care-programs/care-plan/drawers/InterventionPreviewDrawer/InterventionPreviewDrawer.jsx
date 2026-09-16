@@ -18,6 +18,8 @@ import { LinkGoalToBarrierDrawer } from '../BarrierDetailDrawer/LinkGoalToBarrie
 import { DetailDropdown } from '../../../../../../../tasks/TasksViewDropdowns';
 import { PRIORITY_OPTIONS } from '../../../../../../../tasks/TasksView.utils';
 import { GbiProgressCell } from '../../tables/carePlanTableShared';
+import { computeDueDate, computeOccurrenceDates, formatRecurrenceLabel } from '../../tables/CarePlanInterventionsTable';
+import { CARE_PLAN_INTERVENTION_ICONS, interventionDurationFromConfig } from '../../lib/carePlanInterventionMenu';
 import { KIND_LABELS } from '../../../../../../../settings/care-plan-library/interventions/shared/interventionKinds';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { adherenceBand, adherenceTone } from '../../lib/goalMetrics';
@@ -221,7 +223,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
 
   const [pct, setPct] = useState(adherenceNum(live?.adherence));
   const [pctDragging, setPctDragging] = useState(false);
-  const [open, setOpen] = useState({ goals: true, automations: true });
+  const [open, setOpen] = useState({ tasks: true, goals: true, automations: true });
   const [addingAutomation, setAddingAutomation] = useState(false);
   const [automationTitle, setAutomationTitle] = useState('');
   const [note, setNote] = useState('');
@@ -375,11 +377,30 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
     || live.config?.dueDate || derivedDueFromConfig || null;
   const hasRepeat = !!(pairedTask?.repeat || live.config?.repeat);
 
+  // Prefer the same computeDueDate helper the plan table + inline
+  // date picker use so this line, the picker, and the Day Wise Task
+  // Progress rows all read the same date. Falls back to the legacy
+  // paired-task / config paths for older records that only carry
+  // those fields.
+  const computedDueIso = computeDueDate(live).iso;
+  const displayDueIso = computedDueIso
+    || (dueDate ? (typeof dueDate === 'string' ? dueDate : null) : null);
+  const durationLabel = interventionDurationFromConfig(live.config);
+  const recurringLabel = hasRepeat ? formatRecurrenceLabel(live) : null;
+
+  // Primary line: everything the reviewer needs at a glance about
+  // scheduling — start, due, duration, recurrence. Audit line
+  // (Last Update) drops to its own row so the primary line stays
+  // scannable at any width.
   const metaParts = [
     live.createdAt ? `Start Date : ${fmtDate(live.createdAt)}` : null,
-    dueDate ? `Due Date : ${fmtDate(dueDate)}` : null,
-    live.updatedAt ? `Last Update : ${fmtDate(live.updatedAt)}${youSuffix(live.updatedBy)}` : null,
+    displayDueIso ? `Due Date : ${fmtDate(displayDueIso)}` : null,
+    durationLabel ? `Duration : ${durationLabel}` : null,
+    recurringLabel ? recurringLabel : null,
   ].filter(Boolean);
+  const lastUpdateLabel = live.updatedAt
+    ? `Last Update : ${fmtDate(live.updatedAt)}${youSuffix(live.updatedBy)}`
+    : null;
 
   return (
     <Drawer
@@ -477,6 +498,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             )}
           </div>
           {metaParts.length > 0 && <span className={styles.meta}>{metaParts.join(' • ')}</span>}
+          {lastUpdateLabel && <span className={styles.meta}>{lastUpdateLabel}</span>}
           {(linkedContent || live.duration) && (
             <div className={styles.heroBadgeRow}>
               {linkedContent && (
@@ -543,6 +565,104 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
             />
           </div>
         </section>
+
+        {(() => {
+          // Day Wise Task Progress — every recurring intervention fans
+          // out into a series of dated task rows. Uses the same
+          // occurrence math as the plan-table due-date picker so this
+          // list stays in lockstep with the highlighted dates the user
+          // saw when scheduling the intervention. Non-recurring
+          // interventions still render one row (the due date itself).
+          const occurrenceIsos = live?.config?.repeat
+            ? computeOccurrenceDates(live)
+            : (computeDueDate(live).iso ? [computeDueDate(live).iso] : []);
+          if (!occurrenceIsos.length) return null;
+          const todayIso = (() => {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          })();
+          // Row status is derived, not per-instance persisted: the
+          // intervention only carries one overall status today. Past
+          // dates read as "Completed" once the parent intervention is
+          // Completed, otherwise every row shows "Pending". This keeps
+          // the view honest without inventing per-day state.
+          const overallStatus = live?.status || 'Not Started';
+          const parentDone = ['Completed', 'Met'].includes(overallStatus);
+          const rowsForRow = occurrenceIsos.map(iso => {
+            const isPast = iso < todayIso;
+            const status = parentDone
+              ? 'Completed'
+              : (isPast ? 'Completed' : 'Pending');
+            return { iso, status };
+          });
+          const kindIcon = CARE_PLAN_INTERVENTION_ICONS[live?.kind] || live?.icon || 'solar:clipboard-list-linear';
+          const fmtRow = (iso) => {
+            const d = new Date(iso);
+            if (Number.isNaN(d.getTime())) return iso;
+            return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+          };
+          return (
+            <section className={barrierStyles.section}>
+              <div className={barrierStyles.sectionHead}>
+                <button
+                  type="button"
+                  className={barrierStyles.sectionToggle}
+                  onClick={() => toggle('tasks')}
+                  aria-expanded={open.tasks}
+                >
+                  <span className={barrierStyles.sectionTitle}>Day Wise Task Progress</span>
+                  <DownChevronIcon
+                    size={12}
+                    color="var(--neutral-400)"
+                    className={`${barrierStyles.sectionChevron} ${open.tasks ? barrierStyles.sectionChevronOpen : ''}`}
+                  />
+                </button>
+              </div>
+              {open.tasks && (
+                <table
+                  style={{
+                    width: '100%',
+                    borderCollapse: 'collapse',
+                    fontSize: 'var(--font-base)',
+                    color: 'var(--neutral-500)',
+                  }}
+                >
+                  <thead>
+                    <tr style={{ textAlign: 'left', color: 'var(--neutral-300)' }}>
+                      <th style={{ width: 32, padding: 'var(--space-2) 0', fontWeight: 400 }}>P</th>
+                      <th style={{ padding: 'var(--space-2) 0', fontWeight: 400 }}>Name</th>
+                      <th style={{ width: 140, padding: 'var(--space-2) 0', fontWeight: 400 }}>Status</th>
+                      <th style={{ width: 120, padding: 'var(--space-2) 0', fontWeight: 400 }}>Due Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rowsForRow.map(({ iso, status }) => (
+                      <tr key={iso} style={{ borderTop: '0.5px solid var(--neutral-150)' }}>
+                        <td style={{ padding: 'var(--space-2) 0' }}>
+                          <PriorityIcon priority={live?.priority} size={16} />
+                        </td>
+                        <td style={{ padding: 'var(--space-2) 0' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                            <Icon name={kindIcon} size={16} color="var(--neutral-400)" />
+                            {live?.title}
+                          </span>
+                        </td>
+                        <td style={{ padding: 'var(--space-2) 0' }}>
+                          <Badge
+                            size="S"
+                            tone={status === 'Completed' ? 'success' : 'grey'}
+                            label={status}
+                          />
+                        </td>
+                        <td style={{ padding: 'var(--space-2) 0', color: 'var(--neutral-300)' }}>{fmtRow(iso)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          );
+        })()}
 
         {/* Linked Goals section — hidden entirely in the Comprehensive
             Care Plan view when nothing is linked (user can't link new
