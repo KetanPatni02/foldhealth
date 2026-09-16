@@ -54,7 +54,7 @@ function fmtDate(iso) {
 // (matches the seed the save handler writes to the DB). Returns
 // { iso, formatted } so the calendar can seed itself and the cell
 // has a display string in one call.
-function computeDueDate(intv) {
+export function computeDueDate(intv) {
   const override = intv?.config?.dueDateOverride;
   if (override) {
     const d = new Date(override);
@@ -92,7 +92,7 @@ function computeDueDate(intv) {
 //   • repeatEnds + repeatEndsUnit extends the horizon; whichever
 //     rule fires later wins so tweaking either widens the visible
 //     schedule immediately.
-function computeOccurrenceDates(intv) {
+export function computeOccurrenceDates(intv) {
   const c = intv?.config;
   if (!c?.repeat) return [];
   const startIso = computeDueDate(intv).iso;
@@ -143,7 +143,7 @@ function pluralUnit(unit, count) {
 // repeat config. Renders in the recurring-icon tooltip so hovering
 // the glyph reveals "how it repeats". Missing pieces are skipped
 // rather than shown as empty parts.
-function formatRecurrenceLabel(intv) {
+export function formatRecurrenceLabel(intv) {
   const c = intv?.config;
   if (!c?.repeat) return 'Recurring';
   const parts = [];
@@ -306,6 +306,7 @@ export function CarePlanInterventionsTable({
           return (
             <tr
               key={i.id}
+              data-cp-row-id={i.id}
               className={`${styles.row} ${styles.rowClickable} ${styles.gbiRow}`}
               onClick={() => onOpenIntervention(i)}
             >

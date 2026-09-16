@@ -60,3 +60,49 @@
   color: var(--neutral-400);
   line-height: 1.35;
 }
+
+/* Clickable rows (interventions / barriers / goals) — jump to the
+   underlying table row on click. Hint clickability with a hover tint
+   + underline; keep the resting state visually identical to the
+   original non-clickable rows so the popover doesn't read as
+   uniformly button-styled. */
+.rowLink {
+  cursor: pointer;
+  border-radius: var(--space-1);
+  padding-inline: var(--space-1);
+  margin-inline: calc(-1 * var(--space-1));
+}
+.rowLink:hover {
+  background: var(--neutral-50);
+}
+.rowLink:hover .rowLabel {
+  color: var(--primary-300);
+  text-decoration: underline;
+}
+.rowLink:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+}
+
+/* Flash treatment applied to the target <tr> for ~3s after the user
+   navigates from the linked-items popover. Backgrounds set on <tr>
+   don't render reliably across browsers, so the animation runs on
+   every <td> child. The leftmost cell also gets a primary-300 left
+   rail so the flash reads as a discrete "here it is" cue even when
+   the row-body colours are muted. */
+@keyframes cpRowFlashCell {
+  0%   { background-color: var(--primary-50); }
+  70%  { background-color: var(--primary-50); }
+  100% { background-color: transparent; }
+}
+@keyframes cpRowFlashRail {
+  0%   { background-color: var(--primary-50); box-shadow: inset 3px 0 0 0 var(--primary-300); }
+  70%  { background-color: var(--primary-50); box-shadow: inset 3px 0 0 0 var(--primary-300); }
+  100% { background-color: transparent;       box-shadow: inset 3px 0 0 0 transparent; }
+}
+.rowFlash > td {
+  animation: cpRowFlashCell 3s ease-out forwards;
+}
+.rowFlash > td:first-child {
+  animation: cpRowFlashRail 3s ease-out forwards;
+}

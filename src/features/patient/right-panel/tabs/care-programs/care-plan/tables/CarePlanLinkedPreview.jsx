@@ -12,9 +12,34 @@ export function linkedTotal(data) {
     + (data.barriers?.length || 0) + (data.automations?.length || 0);
 }
 
-function Row({ icon, iconColor = 'var(--neutral-400)', label }) {
+// Locate the target row by its `data-cp-row-id`, scroll it into view,
+// and pulse the highlight class for 3s before letting it fade back.
+function jumpToRow(rowId) {
+  if (!rowId) return;
+  const target = document.querySelector(`[data-cp-row-id="${CSS.escape(String(rowId))}"]`);
+  if (!target) return;
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  target.classList.add(styles.rowFlash);
+  window.setTimeout(() => {
+    target.classList.remove(styles.rowFlash);
+  }, 3000);
+}
+
+function Row({ icon, iconColor = 'var(--neutral-400)', label, rowId, onNavigate }) {
+  const clickable = !!rowId;
+  const handleClick = clickable
+    ? (e) => { e.stopPropagation(); onNavigate?.(); jumpToRow(rowId); }
+    : undefined;
   return (
-    <div className={styles.row}>
+    <div
+      className={[styles.row, clickable ? styles.rowLink : ''].filter(Boolean).join(' ')}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={handleClick}
+      onKeyDown={clickable
+        ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(e); } }
+        : undefined}
+    >
       <Icon name={icon} size={16} color={iconColor} className={styles.rowIcon} />
       <span className={styles.rowLabel}>{label}</span>
     </div>
@@ -22,7 +47,7 @@ function Row({ icon, iconColor = 'var(--neutral-400)', label }) {
 }
 
 /** Portal-rendered hover card previewing a goal's linked items (Figma SNP-Story 2632:112808). */
-function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave }) {
+function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave, onNavigate }) {
   const total = linkedTotal(data);
   const width = 320;
   // Right-aligned to the trigger and clamped to the viewport. A trigger in the
@@ -58,7 +83,7 @@ function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave }) {
         <div className={styles.section}>
           <span className={styles.sectionLabel}>{data.goals.length === 1 ? 'Goal' : 'Goals'}</span>
           {data.goals.map(g => (
-            <Row key={g.id} icon={g.icon || 'solar:flag-linear'} label={g.title} />
+            <Row key={g.id} rowId={g.id} onNavigate={onNavigate} icon={g.icon || 'solar:flag-linear'} label={g.title} />
           ))}
         </div>
       )}
@@ -66,7 +91,7 @@ function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave }) {
         <div className={styles.section}>
           <span className={styles.sectionLabel}>Interventions</span>
           {data.interventions.map(i => (
-            <Row key={i.id} icon={i.icon || 'solar:clipboard-list-linear'} label={i.title} />
+            <Row key={i.id} rowId={i.id} onNavigate={onNavigate} icon={i.icon || 'solar:clipboard-list-linear'} label={i.title} />
           ))}
         </div>
       )}
@@ -74,13 +99,14 @@ function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave }) {
         <div className={styles.section}>
           <span className={styles.sectionLabel}>Barriers</span>
           {data.barriers.map(b => (
-            <Row key={b.id} icon="custom:barrier" label={b.title} />
+            <Row key={b.id} rowId={b.id} onNavigate={onNavigate} icon="custom:barrier" label={b.title} />
           ))}
         </div>
       )}
       {data.automations?.length > 0 && (
         <div className={styles.section}>
           <span className={styles.sectionLabel}>Automation</span>
+          {/* Automations don't render as GBI rows, so no jump-to target. */}
           {data.automations.map(a => (
             <Row key={a.id} icon="solar:bolt-linear" iconColor="var(--neutral-300)" label={a.title} />
           ))}
@@ -150,6 +176,13 @@ export function GbiLinkButton({ data, size = 'S' }) {
           data={data}
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
+          /* Close the popover once the user picks an item so the
+             flashing target isn't hidden behind the hover card. */
+          onNavigate={() => {
+            clearTimeout(openTimerRef.current);
+            clearTimeout(closeTimerRef.current);
+            setRect(null);
+          }}
         />
       )}
     </span>
