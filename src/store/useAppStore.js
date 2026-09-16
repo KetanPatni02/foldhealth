@@ -3257,20 +3257,33 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await q.select().single();
     if (error) { console.warn('savePatientCarePlanBarrier:', error.message); get().showToast('Could not save barrier'); return null; }
 
-    // Sync the join table so the goal set reflects `nextGoalIds`. Wipe
-    // any prior links, then insert the new set. Silent no-op if the join
-    // table hasn't been migrated yet (schema-tolerant fallback).
+    // Diff-based join sync. Bulk status/priority changes loop over every
+    // barrier without touching its goals, so most saves land here with
+    // nextGoalIds == prev.goalIds and issue zero DB writes to the join.
+    // When they do differ, only touch the actual delta rather than wiping
+    // and re-inserting the whole set. Free-tier Disk IO depends on this.
     const barrierId = data.id;
     let joinGoalIds = nextGoalIds;
-    const del = await supabase.from('patient_care_plan_barrier_goals').delete().eq('barrier_id', barrierId);
-    const missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
-    if (!missingJoin && nextGoalIds.length > 0) {
-      const ins = await supabase.from('patient_care_plan_barrier_goals')
-        .insert(nextGoalIds.map(gid => ({ barrier_id: barrierId, goal_id: gid })));
-      if (ins.error && (ins.error.code === '42P01' || ins.error.code === 'PGRST205')) {
-        // Join table absent — clients will read the legacy goal_id only.
-        joinGoalIds = legacyGoalId ? [legacyGoalId] : [];
+    const prevSet = new Set(prev?.goalIds || []);
+    const nextSet = new Set(nextGoalIds);
+    const toRemove = [...prevSet].filter(g => !nextSet.has(g));
+    const toAdd    = [...nextSet].filter(g => !prevSet.has(g));
+    if (toRemove.length || toAdd.length) {
+      let missingJoin = false;
+      if (toRemove.length) {
+        const del = await supabase.from('patient_care_plan_barrier_goals')
+          .delete().eq('barrier_id', barrierId).in('goal_id', toRemove);
+        missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
       }
+      if (!missingJoin && toAdd.length) {
+        const ins = await supabase.from('patient_care_plan_barrier_goals')
+          .insert(toAdd.map(gid => ({ barrier_id: barrierId, goal_id: gid })));
+        if (ins.error && (ins.error.code === '42P01' || ins.error.code === 'PGRST205')) {
+          missingJoin = true;
+        }
+      }
+      // Pre-migration dev DBs fall back to the legacy 1:1 goal_id column.
+      if (missingJoin) joinGoalIds = legacyGoalId ? [legacyGoalId] : [];
     }
 
     const barrier = mapPatientCarePlanBarrierRow(data, joinGoalIds);
