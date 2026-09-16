@@ -842,6 +842,19 @@ async function projectSnpProgramState(rows) {
     (plans || []).forEach(pl => planByProgram.set(pl.program_id, pl));
   }
 
+  // Tasks created inside the SNP program, tallied per patient. `tasks` are
+  // tagged by program_code (not a specific enrollment), so this is the count
+  // for the patient's SNP program as a whole — what the Tasks column shows.
+  const taskCountByPatient = new Map();
+  const { data: taskRows } = await supabase
+    .from('tasks')
+    .select('patient_id')
+    .eq('program_code', 'SNP')
+    .in('patient_id', patientIds);
+  (taskRows || []).forEach(t => {
+    taskCountByPatient.set(t.patient_id, (taskCountByPatient.get(t.patient_id) || 0) + 1);
+  });
+
   return rows.map(row => {
     const prog = row.patientId ? progByPatient.get(row.patientId) : null;
     if (!prog) return row;
@@ -850,6 +863,7 @@ async function projectSnpProgramState(rows) {
       programId:        prog.id,
       programSubStatus: prog.status || row.programSubStatus,
       carePlanStatus:   snpCarePlanStatusLabel(planByProgram.get(prog.id)),
+      taskCount:        taskCountByPatient.get(row.patientId) || 0,
       assigneeId:       null,
       assigneeRole:     null,
       ...snpAssigneeFromProgram(prog.assignee),
@@ -3261,20 +3275,33 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await q.select().single();
     if (error) { console.warn('savePatientCarePlanBarrier:', error.message); get().showToast('Could not save barrier'); return null; }
 
-    // Sync the join table so the goal set reflects `nextGoalIds`. Wipe
-    // any prior links, then insert the new set. Silent no-op if the join
-    // table hasn't been migrated yet (schema-tolerant fallback).
+    // Diff-based join sync. Bulk status/priority changes loop over every
+    // barrier without touching its goals, so most saves land here with
+    // nextGoalIds == prev.goalIds and issue zero DB writes to the join.
+    // When they do differ, only touch the actual delta rather than wiping
+    // and re-inserting the whole set. Free-tier Disk IO depends on this.
     const barrierId = data.id;
     let joinGoalIds = nextGoalIds;
-    const del = await supabase.from('patient_care_plan_barrier_goals').delete().eq('barrier_id', barrierId);
-    const missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
-    if (!missingJoin && nextGoalIds.length > 0) {
-      const ins = await supabase.from('patient_care_plan_barrier_goals')
-        .insert(nextGoalIds.map(gid => ({ barrier_id: barrierId, goal_id: gid })));
-      if (ins.error && (ins.error.code === '42P01' || ins.error.code === 'PGRST205')) {
-        // Join table absent — clients will read the legacy goal_id only.
-        joinGoalIds = legacyGoalId ? [legacyGoalId] : [];
+    const prevSet = new Set(prev?.goalIds || []);
+    const nextSet = new Set(nextGoalIds);
+    const toRemove = [...prevSet].filter(g => !nextSet.has(g));
+    const toAdd    = [...nextSet].filter(g => !prevSet.has(g));
+    if (toRemove.length || toAdd.length) {
+      let missingJoin = false;
+      if (toRemove.length) {
+        const del = await supabase.from('patient_care_plan_barrier_goals')
+          .delete().eq('barrier_id', barrierId).in('goal_id', toRemove);
+        missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
       }
+      if (!missingJoin && toAdd.length) {
+        const ins = await supabase.from('patient_care_plan_barrier_goals')
+          .insert(toAdd.map(gid => ({ barrier_id: barrierId, goal_id: gid })));
+        if (ins.error && (ins.error.code === '42P01' || ins.error.code === 'PGRST205')) {
+          missingJoin = true;
+        }
+      }
+      // Pre-migration dev DBs fall back to the legacy 1:1 goal_id column.
+      if (missingJoin) joinGoalIds = legacyGoalId ? [legacyGoalId] : [];
     }
 
     const barrier = mapPatientCarePlanBarrierRow(data, joinGoalIds);
@@ -14904,6 +14931,17 @@ export const useAppStore = create((set, get) => ({
     const tempId = Date.now();
     const optimistic = { ...normalized, id: tempId };
     set(s => ({ tasks: [...s.tasks, optimistic] }));
+
+    // Keep the SNP worklist's Tasks count live when a task is created inside a
+    // patient's SNP program. The projection recomputes the authoritative count
+    // on the next worklist load, so this is just immediate feedback in-session.
+    if (normalized.program_code === 'SNP' && normalized.patient_id) {
+      set(s => ({
+        snpWorklistMembers: (s.snpWorklistMembers || []).map(m =>
+          m.patientId === normalized.patient_id ? { ...m, taskCount: (m.taskCount || 0) + 1 } : m,
+        ),
+      }));
+    }
 
     // dbOmit: client-only fields the tasks table has no columns for
     // (consolidatedPdf blob, duplicated state string). They stay on the
