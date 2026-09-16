@@ -5,6 +5,7 @@ import { Badge } from '../Badge/Badge';
 import { BannerExpandIcon } from '../Icon/BannerExpandIcon';
 import { Tooltip } from '../Tooltip/Tooltip';
 import { deriveDob, formatDobDisplay } from '../../lib/patientDob';
+import { usePatientCallButton } from '../../hooks/usePatientCallButton';
 import styles from './PatientBanner.module.css';
 
 /**
@@ -25,7 +26,8 @@ import styles from './PatientBanner.module.css';
  * @param {string}   [raf]      RAF score e.g. "4.234"
  * @param {string}   [rafChange] RAF change e.g. "0.512"
  * @param {boolean}  [rafUp=true] RAF trend direction
- * @param {function} [onCall]   Call button handler
+ * @param {string}   [patientId] Canonical patient / member id for CallPopover
+ * @param {function} [onCall]   Call button handler (legacy; prefer patientId)
  * @param {string}   [className] Extra class
  * @param {boolean}  [hidePatientLabel=false] Omit the leading "Patient" meta label
  */
@@ -48,8 +50,14 @@ const MOCK_SYNOPSIS = {
   generatedAt: '2d ago',
 };
 
-export function PatientBanner({ initials, name, gender, age, dob, memberId, raf, rafChange, rafUp = true, onCall, className, hidePatientLabel = false }) {
+export function PatientBanner({
+  initials, name, gender, age, dob, memberId, raf, rafChange, rafUp = true,
+  patientId, onCall, className, hidePatientLabel = false,
+}) {
   const [expanded, setExpanded] = useState(false);
+  const { callBtnRef, openCall } = usePatientCallButton(patientId);
+  const showCall = Boolean(patientId || onCall);
+  const handleCall = patientId ? openCall : onCall;
 
   // Age meta gets a hover tooltip revealing DOB in mm/dd/yyyy. Prefer the
   // caller-supplied dob (normalized from ISO / m/d/yyyy variants); otherwise
@@ -110,8 +118,15 @@ export function PatientBanner({ initials, name, gender, age, dob, memberId, raf,
           </div>
         </div>
         <div className={styles.actions}>
-          {onCall && (
-            <ActionButton icon="solar:phone-calling-rounded-linear" size="L" tooltip="Call" onClick={onCall} tooltipBelow />
+          {showCall && (
+            <ActionButton
+              ref={patientId ? callBtnRef : undefined}
+              icon="solar:phone-calling-rounded-linear"
+              size="L"
+              tooltip="Call patient"
+              onClick={handleCall}
+              tooltipBelow
+            />
           )}
           <span className={styles.divider} />
           <ActionButton

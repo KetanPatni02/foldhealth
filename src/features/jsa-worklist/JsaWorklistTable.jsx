@@ -178,7 +178,6 @@ export function JsaWorklistTable() {
           selected={selectedIds.includes(m.id)}
           onToggle={() => selectMember(m.id)}
           onView={() => showToast(`Program details for ${m.name} — coming soon`)}
-          onCall={() => showToast(`Calling ${m.name} — coming soon`)}
           showToast={showToast}
         />
       )}

@@ -53,81 +53,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Maintain home safety",
         "subtitle": "Address identified home safety risks.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "9f0c70e2-a7ff-4253-84dc-cc2beba3f42f",
         "kind": "patient-education",
-        "title": "Assistive-device education"
+        "title": "Assistive-device education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2f6d27ee-de20-457d-89e4-13b4a612f5b3",
         "kind": "internal-task",
-        "title": "Assistive-device follow-up"
+        "title": "Assistive-device follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2a7e41bc-122f-45c7-83f9-5b5d849d410a",
         "kind": "measure-vital",
-        "title": "Caregiver-needs assessment"
+        "title": "Caregiver-needs assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c9cbf2f7-0669-4066-89d4-784c3a7470db",
         "kind": "internal-task",
-        "title": "Caregiver-resource coordination"
+        "title": "Caregiver-resource coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "3713892e-1adf-498a-8cb3-4474d07c0858",
         "kind": "internal-task",
-        "title": "Activity plan"
+        "title": "Activity plan",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "27591e3a-cd9d-4122-8661-fbaff0a06023",
         "kind": "measure-vital",
-        "title": "Functional assessment"
+        "title": "Functional assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "bc05a74b-e4dd-49a3-8106-e9491a6a14af",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "fb3d9beb-6dff-442b-8e64-cb5378074d7e",
         "kind": "patient-education",
-        "title": "Self-care coaching"
+        "title": "Self-care coaching",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "eb7bcfb2-d6e4-47d8-8c81-13dae47e8641",
         "title": "Assistive-device difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "3c12a425-3def-4a3b-847a-b567e74e073a",
         "title": "Equipment access issue",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "db4bc44c-b7c8-4f2b-8f90-ab052340d5d0",
         "title": "Caregiver capacity limitation",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "8c58c376-6233-4a84-8699-32df778adb63",
         "title": "Caregiver burden",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "b0c42d48-0418-498e-8c46-c47b2fdbc3d6",
         "title": "Limited physical activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e76ec93b-faf8-4508-8e53-ab535407ea29",
         "title": "Functional limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -157,56 +187,75 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Reduce reliance on rescue interventions",
         "subtitle": "Reduce frequency of rescue medication or urgent symptom interventions when clinically appropriate.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "02e7f498-c227-4fde-80b5-564d01dfef51",
         "kind": "measure-vital",
-        "title": "Pain assessment"
+        "title": "Pain assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "6a317190-03c8-43a5-8b10-b9023154e983",
         "kind": "measure-vital",
-        "title": "Non-pharmacologic pain support"
+        "title": "Non-pharmacologic pain support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "39850447-c78e-453f-8e68-6eded8f8d3a4",
         "kind": "internal-task",
-        "title": "Pain-care coordination"
+        "title": "Pain-care coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "d1f39aab-af51-4757-880d-da9070055934",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "4997ac07-49b9-499b-81c7-69103b7a9def",
         "kind": "measure-vital",
-        "title": "Rescue-use tracking"
+        "title": "Rescue-use tracking",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "26ab02a0-fc22-4725-8a4a-e41b64e05d19",
         "title": "Chronic pain burden",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "744988e5-c812-48f1-868d-a02628220f4b",
         "title": "Limited response to current pain plan",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "32950d82-e64d-4b1d-838b-6094470f88b3",
         "title": "Functional limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8721d169-59e2-4e66-8d5e-b944abafa990",
         "title": "Frequent rescue use",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -229,28 +278,28 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Establish emergency care plan",
         "subtitle": "Maintain an accessible emergency plan and key contact information.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "ca6c08f8-6792-4bff-8f8f-128c95e16186",
         "title": "Improve balance",
         "subtitle": "Improve balance and safe movement.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "04d6e32a-02bd-4ece-8752-d5b0fe85cb0c",
         "title": "Improve fall-prevention behaviors",
         "subtitle": "Follow agreed fall-prevention strategies.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "2c55bc49-3692-4fe9-8ab5-9bdf01944164",
         "title": "Maintain home safety",
         "subtitle": "Address identified home safety risks.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "3108d0f4-efd9-4afe-8dad-56d78583a097",
@@ -264,74 +313,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "ecbfe671-7035-496f-885f-75d422bdbd65",
         "kind": "patient-education",
-        "title": "Fall-risk education"
+        "title": "Fall-risk education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "23dd03ef-3586-47b6-86f7-c764c5bf6082",
         "kind": "measure-vital",
-        "title": "Fall-risk assessment"
+        "title": "Fall-risk assessment",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "d49aed68-7061-4372-810a-89aaab5abf95",
         "kind": "patient-education",
-        "title": "Emergency-plan education"
+        "title": "Emergency-plan education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "f4b91563-0f99-41fb-81cc-d0fee15f0c59",
         "kind": "internal-task",
-        "title": "Emergency-contact review"
+        "title": "Emergency-contact review",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "568b9a05-329d-4900-89f2-fd4167b1801e",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9652a02d-2cf9-4566-853e-ea7d6d84084c",
         "kind": "internal-task",
-        "title": "Balance exercise support"
+        "title": "Balance exercise support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "85b6ebb4-4045-452b-8c26-586d3008936f",
         "kind": "patient-education",
-        "title": "Home safety education"
+        "title": "Home safety education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f2f00ed5-43d3-4d85-8a02-f7f14707195c",
         "kind": "internal-task",
-        "title": "Home-safety follow-up"
+        "title": "Home-safety follow-up",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "46c8140a-08e0-48e4-801b-80ee0055b367",
         "title": "Fall-risk environment",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "dfc070dc-2bf0-47d5-8421-a416a3e11ba4",
         "title": "Incomplete fall assessment",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "b83319ab-abf5-4479-8f55-c331346082ad",
         "title": "Emergency-plan gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ccc31edd-b941-4a3e-8b46-44fbdd166f3b",
         "title": "Contact-information gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "498b7eac-b1cc-410f-8f32-8b4664237945",
         "title": "Mobility limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "861c2721-d5e8-447b-8022-3bd54fef4a79",
         "title": "Difficulty following safety plan",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -347,14 +426,14 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Address food insecurity",
         "subtitle": "Establish reliable access to adequate food.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "e52df84a-0530-437d-8894-8fa558fcf9af",
         "title": "Address housing instability",
         "subtitle": "Connect the patient with housing-support resources when a need is identified.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "e7476e3e-c4da-4f0f-8c7e-ccece599dced",
@@ -368,44 +447,60 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "bb3b7601-8e41-4886-8149-d0480b43e77c",
         "kind": "internal-task",
-        "title": "Community-resource navigation"
+        "title": "Community-resource navigation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "778a3116-d321-4699-87f7-f2b3e3ba2fa0",
         "kind": "internal-task",
-        "title": "Food-resource coordination"
+        "title": "Food-resource coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "3fec993a-a301-431b-8fcd-3ca0c7ffc5cb",
         "kind": "internal-task",
-        "title": "Housing-resource coordination"
+        "title": "Housing-resource coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "5bc028ac-379e-458c-8762-c3cf35056f5d",
         "kind": "internal-task",
-        "title": "SDOH follow-up"
+        "title": "SDOH follow-up",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "6f2e7667-a806-4680-86b1-8c22bd292926",
         "title": "Resource-navigation difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "c52a201a-4967-46c5-8d14-18b182fa2d19",
         "title": "Food insecurity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6bb1c348-6692-45c2-8117-94e43d387f70",
         "title": "Housing instability",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "925ec7ea-9eea-4bfd-8b45-035d8e58b742",
         "title": "Social needs remain unresolved",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -435,102 +530,132 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Reduce respiratory exacerbations",
         "subtitle": "Reduce preventable exacerbations and urgent respiratory visits.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "2d5b1f3d-63ba-4da7-8d90-0f3dc557ebe3",
         "title": "Improve asthma control",
         "subtitle": "Maintain asthma symptoms within the individualized control plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "c7e2033c-8c3b-4ab4-8fd6-7cc4d671aa85",
         "title": "Improve COPD symptom control",
         "subtitle": "Maintain respiratory symptoms at or below the individualized baseline.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "0b4d9b8a-1c15-4e43-85b7-6480e8d0fbe8",
         "title": "Improve recognition of warning signs",
         "subtitle": "Recognize and appropriately respond to individualized warning signs.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "9c8d4e04-3f45-49f1-8846-78879c2834b7",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "dd55d535-8a25-476b-8391-b7371e9b4746",
         "kind": "patient-education",
-        "title": "Inhaler education"
+        "title": "Inhaler education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "e870ea46-6a58-41d7-84e0-96b24de1a0eb",
         "kind": "patient-education",
-        "title": "Inhaler teach-back"
+        "title": "Inhaler teach-back",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "584a93de-f041-4988-8a8a-9a4db1717dcc",
         "kind": "measure-vital",
-        "title": "Respiratory symptom monitoring"
+        "title": "Respiratory symptom monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "83895208-95a8-48c5-8bb4-a4f63560dafa",
         "kind": "patient-education",
-        "title": "Respiratory action-plan education"
+        "title": "Respiratory action-plan education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "dfd8cc4c-be1e-4117-8959-f80d6964a0f6",
         "kind": "internal-task",
-        "title": "Exacerbation prevention"
+        "title": "Exacerbation prevention",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "5a0192d2-1b8e-4caf-8486-da2a07245e6b",
         "kind": "patient-education",
-        "title": "Asthma action-plan review"
+        "title": "Asthma action-plan review",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "7ecc4cad-9ba0-45f4-85b3-4fee4ce4fcf2",
         "kind": "patient-education",
-        "title": "Asthma trigger education"
+        "title": "Asthma trigger education",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "6515f77f-ea00-4738-84c7-15b2aed52eef",
         "title": "Medication adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9c424ff2-bf18-47c4-872d-43171bed3c66",
         "title": "Inhaler adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "1518924d-3a32-47ac-81ab-2406b1af54b6",
         "title": "Incorrect inhaler technique",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "d2bfe721-e6fa-4133-857e-c3e047677d5d",
         "title": "Difficulty learning equipment technique",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "d3fc2b67-e85b-4b91-863c-aa4bb2c50c3d",
         "title": "Respiratory symptom burden",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "7b3cdb6e-ca8b-4d86-873f-b5d7395df1a4",
         "title": "Respiratory trigger exposure",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -552,6 +677,13 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13471",
         "title": "Adopt low-impact aerobic routine",
         "subtitle": "Complete daily low-impact aerobic activity (cycling / swimming / walking) tuned to member ability.",
+        "category": "Other",
+        "priority": "low"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13581",
+        "title": "Consume calories",
+        "subtitle": "Meet the individualized daily calorie target to support recovery and energy needs.",
         "category": "Other",
         "priority": "medium"
       },
@@ -575,87 +707,110 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "subtitle": "Follow the agreed nutrition plan.",
         "category": "Other",
         "priority": "medium"
-      },
-      {
-        "id": "b5709052-110e-4ce8-8570-6518908f1c37",
-        "title": "Improve nutritional intake",
-        "subtitle": "Improve consistency and adequacy of nutritional intake.",
-        "category": "Other",
-        "priority": "medium"
       }
     ],
     "interventions": [
       {
         "id": "e7c0636b-f1e4-4683-8adb-b30c4fdea920",
         "kind": "internal-task",
-        "title": "Activity plan"
+        "title": "Activity plan",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "646e2c9b-2ccc-4a84-848d-3fd512d6d5e6",
         "kind": "patient-education",
-        "title": "Activity coaching"
+        "title": "Activity coaching",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472",
         "kind": "patient-education",
-        "title": "Choosing low-impact activities"
+        "title": "Choosing low-impact activities",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473",
         "kind": "patient-task",
-        "title": "Log daily activity minutes"
+        "title": "Log daily activity minutes",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474",
         "kind": "internal-task",
-        "title": "Follow-up on activity plan"
+        "title": "Follow-up on activity plan",
+        "config": {
+          "priority": "low"
+        }
       },
       {
-        "id": "cd51d936-5ff4-46ee-866b-6009aedf893d",
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13582",
         "kind": "patient-education",
-        "title": "Nutrition risk counseling"
+        "title": "Meeting calorie needs",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
-        "id": "a0d9423c-ee7b-479d-8c7c-62b3f5e6ed4f",
-        "kind": "patient-education",
-        "title": "Medication adherence education"
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13583",
+        "kind": "patient-task",
+        "title": "Log daily calories",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
-        "id": "57197f1b-2927-4f5d-8166-155e892f3886",
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13584",
         "kind": "internal-task",
-        "title": "Lipid-management follow-up"
+        "title": "Nutrition coach check-in",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "ffaae93f-6c8a-4be4-8d36-911bdf0fac88",
         "title": "Limited physical activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "412c4c98-f6a7-4b2a-8968-188a419108bf",
         "title": "Nutrition challenges",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ccd46c73-2449-4fb6-82cf-81fdee24b8e2",
         "title": "Physical limitations",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475",
         "title": "Weather limits outdoor activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476",
         "title": "Fatigue reduces activity tolerance",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
-        "id": "68329229-a9c0-4493-8afd-ba5ea74b2f09",
-        "title": "Medication adherence difficulty",
-        "description": ""
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13585",
+        "title": "Poor appetite",
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -671,7 +826,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Reduce episodes of hypoglycemia",
         "subtitle": "Reduce preventable low blood glucose episodes.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "7446959a-7e00-4f91-8267-aec7b82d83bb",
@@ -685,7 +840,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve renal risk monitoring",
         "subtitle": "Complete scheduled kidney-function and urine monitoring.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "27eda6dd-1649-41a8-8dc1-4a32695a16ae",
@@ -713,74 +868,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "15a1c7a9-395c-4b2e-8514-a1624637a2d8",
         "kind": "patient-education",
-        "title": "Hypoglycemia education"
+        "title": "Hypoglycemia education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "0b2b47b9-10f0-4d72-85ea-d63556678a45",
         "kind": "internal-task",
-        "title": "Hypoglycemia review"
+        "title": "Hypoglycemia review",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "1e1b8a4a-f687-4f34-852b-e3ceb17552b8",
         "kind": "measure-vital",
-        "title": "Glucose pattern review"
+        "title": "Glucose pattern review",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "8fbaa2e1-dbcc-4222-8866-d70815dd030e",
         "kind": "patient-education",
-        "title": "Diabetes education"
+        "title": "Diabetes education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f4fe5573-f968-4144-8bad-e15d0ad87a01",
         "kind": "patient-education",
-        "title": "Diabetes nutrition coaching"
+        "title": "Diabetes nutrition coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "4c049743-c854-4834-88f5-69bf11823393",
         "kind": "internal-task",
-        "title": "A1C follow-up"
+        "title": "A1C follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5a0e7a1f-7ca0-44ca-8a2b-f7502cb2ddef",
         "kind": "measure-vital",
-        "title": "Lab tracking"
+        "title": "Lab tracking",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "cda7b22a-a17c-4952-8500-f57fa29f57e7",
         "kind": "measure-vital",
-        "title": "Renal monitoring"
+        "title": "Renal monitoring",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "d50a2ca4-8962-4b24-8e86-f71b6331519d",
         "title": "Glucose variability",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ad3a8a0b-c1d9-49b3-8754-4b564aee4c48",
         "title": "Hypoglycemia risk",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "80a8b9c6-cda0-420b-830a-0559f9a32d98",
         "title": "Difficulty responding to low glucose",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "38f6921b-e929-45cb-8eb6-e8c6148e9614",
         "title": "Glucose-monitoring difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e6b8cc96-22d6-4671-8f58-3e28f07fb2e1",
         "title": "Limited progress toward A1C target",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "77a95d8e-4f15-4de8-8b51-6287296efe10",
         "title": "Inconsistent diabetes routine",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -795,6 +980,13 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "id": "632a2797-cf1c-4572-8eb6-91e996052687",
         "title": "Complete recommended post-discharge services",
         "subtitle": "Complete referrals, labs, therapy, or other services listed in the discharge plan.",
+        "category": "Other",
+        "priority": "high"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13581",
+        "title": "Consume calories",
+        "subtitle": "Meet the individualized daily calorie target to support recovery and energy needs.",
         "category": "Other",
         "priority": "medium"
       },
@@ -825,87 +1017,110 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "subtitle": "Follow the agreed nutrition plan.",
         "category": "Other",
         "priority": "medium"
-      },
-      {
-        "id": "b5709052-110e-4ce8-8570-6518908f1c37",
-        "title": "Improve nutritional intake",
-        "subtitle": "Improve consistency and adequacy of nutritional intake.",
-        "category": "Other",
-        "priority": "medium"
       }
     ],
     "interventions": [
       {
         "id": "bd8d6f4a-d200-47f9-8d31-4a0c88139500",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "79c0e677-c94d-46b3-8feb-f27630742f9a",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "high"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13582",
+        "kind": "patient-education",
+        "title": "Meeting calorie needs",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13583",
+        "kind": "patient-task",
+        "title": "Log daily calories",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13584",
+        "kind": "internal-task",
+        "title": "Nutrition coach check-in",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "8fbaa2e1-dbcc-4222-8866-d70815dd030e",
         "kind": "patient-education",
-        "title": "Diabetes education"
+        "title": "Diabetes education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f4fe5573-f968-4144-8bad-e15d0ad87a01",
         "kind": "patient-education",
-        "title": "Diabetes nutrition coaching"
+        "title": "Diabetes nutrition coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "4c049743-c854-4834-88f5-69bf11823393",
         "kind": "internal-task",
-        "title": "A1C follow-up"
-      },
-      {
-        "id": "f500f956-e4cc-4e0d-8bb0-c17518eef9e0",
-        "kind": "measure-vital",
-        "title": "Lab tracking"
-      },
-      {
-        "id": "ada11434-e543-415e-8909-0d8c98c16039",
-        "kind": "internal-task",
-        "title": "Lab completion follow-up"
-      },
-      {
-        "id": "a12c7081-a7aa-414e-8073-feb0b303becb",
-        "kind": "patient-education",
-        "title": "Nutrition coaching"
+        "title": "A1C follow-up",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "fcb1ae4c-be40-437e-8945-c770fcb56256",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "d71ad103-0e19-468d-8856-d21ffddc7e10",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "0d1e63ef-6f2c-494c-8282-99a24c5f124e",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13585",
+        "title": "Poor appetite",
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13586",
+        "title": "Food insecurity",
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "38f6921b-e929-45cb-8eb6-e8c6148e9614",
         "title": "Glucose-monitoring difficulty",
-        "description": ""
-      },
-      {
-        "id": "e6b8cc96-22d6-4671-8f58-3e28f07fb2e1",
-        "title": "Limited progress toward A1C target",
-        "description": ""
-      },
-      {
-        "id": "77a95d8e-4f15-4de8-8b51-6287296efe10",
-        "title": "Inconsistent diabetes routine",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -928,14 +1143,14 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve balance",
         "subtitle": "Improve balance and safe movement.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5681f593-37ed-4f9e-8e47-f1d95dab03b1",
         "title": "Improve blood pressure control",
         "subtitle": "Reduce average home blood pressure toward the individualized target.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "03835872-38c7-493d-8c35-61ae965a8d54",
@@ -963,74 +1178,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "0e9c0543-c215-4280-8335-7e5293fe382a",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "26255521-7838-4584-8c9d-664e9dabbc35",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "568b9a05-329d-4900-89f2-fd4167b1801e",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9652a02d-2cf9-4566-853e-ea7d6d84084c",
         "kind": "internal-task",
-        "title": "Balance exercise support"
+        "title": "Balance exercise support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "52403562-10f8-4a7b-8c2a-9952fbd1eb83",
         "kind": "measure-vital",
-        "title": "Blood pressure monitoring"
+        "title": "Blood pressure monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "da25836b-f1ae-40bb-8220-0cb5d427f437",
         "kind": "patient-education",
-        "title": "BP technique education"
+        "title": "BP technique education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "bc045527-78b2-4193-824e-8163e242eee9",
         "kind": "internal-task",
-        "title": "BP trend follow-up"
+        "title": "BP trend follow-up",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "3713892e-1adf-498a-8cb3-4474d07c0858",
         "kind": "internal-task",
-        "title": "Activity plan"
+        "title": "Activity plan",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "9214ffdd-346c-49d0-88a5-95c0663c45b2",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "4b118246-96da-4aab-869b-d9fe4f532d2f",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9d32b242-64b4-4907-8c9e-d5f427d04116",
         "title": "Scheduling barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6d7efe02-e06a-4100-8d85-5d067d36d67d",
         "title": "Fall-risk environment",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "498b7eac-b1cc-410f-8f32-8b4664237945",
         "title": "Mobility limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b0d6fd8d-d2eb-4c0f-8caf-2b6d404a04be",
         "title": "Difficulty controlling condition",
-        "description": ""
+        "description": "",
+        "priority": "high"
       }
     ]
   },
@@ -1074,7 +1319,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Increase social engagement",
         "subtitle": "Increase meaningful social connection.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "351558d3-1fd7-4573-8f64-2c9714fc234d",
@@ -1088,74 +1333,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "ddcc9220-1650-468b-8e8f-247830e80b8c",
         "kind": "internal-task",
-        "title": "Community-resource navigation"
+        "title": "Community-resource navigation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5bc028ac-379e-458c-8762-c3cf35056f5d",
         "kind": "internal-task",
-        "title": "SDOH follow-up"
+        "title": "SDOH follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "e3df7ef6-b98f-444d-8a34-3697caec5746",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f598631c-33df-4ed9-829f-3b99b061782c",
         "kind": "internal-task",
-        "title": "Organization tools"
+        "title": "Organization tools",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "6d61bc34-3ef9-48b1-8eb8-164621dfdc12",
         "kind": "internal-task",
-        "title": "Care-management outreach"
+        "title": "Care-management outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "fdc2e9a9-40cd-496b-8f4c-ca8ac382fc63",
         "kind": "patient-education",
-        "title": "Action-plan tracking"
+        "title": "Action-plan tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "6e5043fc-4aa5-49ef-868a-9b8d5f074181",
         "kind": "patient-education",
-        "title": "Teach-back education"
+        "title": "Teach-back education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "02302783-e71e-476a-863a-8499d08841e9",
         "kind": "patient-education",
-        "title": "Self-management education"
+        "title": "Self-management education",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "8eb09e06-0f9f-4af9-8f75-4e2874bbda09",
         "title": "Resource-navigation difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "925ec7ea-9eea-4bfd-8b45-035d8e58b742",
         "title": "Social needs remain unresolved",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "76d3ea90-fd2f-41f9-8d97-fbe5c290c711",
         "title": "Cognitive impairment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ce414361-dc76-49c1-8141-cf5b4006c735",
         "title": "Organizational difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "2b49b9c4-a43b-4b5d-874d-d51431a254f0",
         "title": "Care-management engagement barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "a6dd135a-efc1-4f8a-8fbd-7c6ce7a17606",
         "title": "Competing priorities",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -1213,74 +1488,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "33a9a8f0-a75f-4e1c-8b88-7278dd671fd4",
         "kind": "measure-vital",
-        "title": "Functional assessment"
+        "title": "Functional assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c4988d2d-5520-48ce-894c-1cc483df461f",
         "kind": "patient-education",
-        "title": "ADL support planning"
+        "title": "ADL support planning",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9f0c70e2-a7ff-4253-84dc-cc2beba3f42f",
         "kind": "patient-education",
-        "title": "Assistive-device education"
+        "title": "Assistive-device education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2f6d27ee-de20-457d-89e4-13b4a612f5b3",
         "kind": "internal-task",
-        "title": "Assistive-device follow-up"
+        "title": "Assistive-device follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2a7e41bc-122f-45c7-83f9-5b5d849d410a",
         "kind": "measure-vital",
-        "title": "Caregiver-needs assessment"
+        "title": "Caregiver-needs assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c9cbf2f7-0669-4066-89d4-784c3a7470db",
         "kind": "internal-task",
-        "title": "Caregiver-resource coordination"
+        "title": "Caregiver-resource coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "3713892e-1adf-498a-8cb3-4474d07c0858",
         "kind": "internal-task",
-        "title": "Activity plan"
+        "title": "Activity plan",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "bc05a74b-e4dd-49a3-8106-e9491a6a14af",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "168f44f6-7116-4d13-84cd-adc6a92de8f5",
         "title": "Functional limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "bdd392f2-c87f-4d8f-863b-ca6186a9a18c",
         "title": "Need for caregiver assistance",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "eb7bcfb2-d6e4-47d8-8c81-13dae47e8641",
         "title": "Assistive-device difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "3c12a425-3def-4a3b-847a-b567e74e073a",
         "title": "Equipment access issue",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "db4bc44c-b7c8-4f2b-8f90-ab052340d5d0",
         "title": "Caregiver capacity limitation",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "8c58c376-6233-4a84-8699-32df778adb63",
         "title": "Caregiver burden",
-        "description": ""
+        "description": "",
+        "priority": "high"
       }
     ]
   },
@@ -1296,28 +1601,28 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Maintain controlled heart rate",
         "subtitle": "Maintain resting heart rate within the individualized target range.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13471",
         "title": "Adopt low-impact aerobic routine",
         "subtitle": "Complete daily low-impact aerobic activity (cycling / swimming / walking) tuned to member ability.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13491",
         "title": "Follow Mediterranean eating pattern",
         "subtitle": "Adhere to Mediterranean eating pattern to reduce cardiometabolic risk.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "5681f593-37ed-4f9e-8e47-f1d95dab03b1",
         "title": "Improve blood pressure control",
         "subtitle": "Reduce average home blood pressure toward the individualized target.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "011015d6-afbd-4f73-80d6-eed0918e9b24",
@@ -1338,74 +1643,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "8c0cf89e-ec85-4309-8d4a-aae542279263",
         "kind": "measure-vital",
-        "title": "Heart-rate monitoring"
+        "title": "Heart-rate monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "8c710846-0609-4c69-8b35-d4e087470433",
         "kind": "patient-education",
-        "title": "Cardiac symptom education"
+        "title": "Cardiac symptom education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472",
         "kind": "patient-education",
-        "title": "Choosing low-impact activities"
+        "title": "Choosing low-impact activities",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473",
         "kind": "patient-task",
-        "title": "Log daily activity minutes"
+        "title": "Log daily activity minutes",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474",
         "kind": "internal-task",
-        "title": "Follow-up on activity plan"
+        "title": "Follow-up on activity plan",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13492",
         "kind": "patient-education",
-        "title": "Mediterranean eating plan"
+        "title": "Mediterranean eating plan",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13493",
         "kind": "patient-task",
-        "title": "Log Mediterranean adherence weekly"
+        "title": "Log Mediterranean adherence weekly",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13494",
         "kind": "internal-task",
-        "title": "Nutrition follow-up"
+        "title": "Nutrition follow-up",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "e29f09b0-ab07-4186-8b01-cd8b96253707",
         "title": "Variable heart rate",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e60a115e-d4ca-4561-815b-12ffe97b1630",
         "title": "Difficulty recognizing cardiac symptoms",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475",
         "title": "Weather limits outdoor activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476",
         "title": "Fatigue reduces activity tolerance",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13495",
         "title": "Limited cooking skills",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13496",
         "title": "Cost of key ingredients",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -1421,7 +1756,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Monitor daily weight for heart failure",
         "subtitle": "Complete and record daily weights.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "2c7eda0c-baad-45d1-8a75-e2a466057e4f",
@@ -1435,7 +1770,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve heart failure symptom control",
         "subtitle": "Maintain stable symptoms and promptly identify worsening congestion.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "853630db-0268-438e-8e5a-46e7d47d8531",
@@ -1456,81 +1791,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve recognition of warning signs",
         "subtitle": "Recognize and appropriately respond to individualized warning signs.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "4c8aa7d5-6ca1-457e-8373-32c5201b64fd",
         "kind": "measure-vital",
-        "title": "Daily weight monitoring"
+        "title": "Daily weight monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "68468b27-d65b-4b4f-8499-766139e73a91",
         "kind": "measure-vital",
-        "title": "Self-monitoring log"
+        "title": "Self-monitoring log",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "4581bbd7-73bd-417c-897f-ec84181a2f83",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "13d32003-6ed8-43cd-8942-a7d2d729c9d2",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9346036c-2112-42a6-8771-cfc9d5045fa7",
         "kind": "internal-task",
-        "title": "Medication reminders"
+        "title": "Medication reminders",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "07a5a880-12bf-44b2-8f96-995c51bd51fb",
         "kind": "internal-task",
-        "title": "Heart-failure symptom review"
+        "title": "Heart-failure symptom review",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "d59ae21a-b98a-44e7-8db2-589c8dca75a6",
         "kind": "internal-task",
-        "title": "Escalation coordination"
+        "title": "Escalation coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "4463cd3a-c00f-483e-8194-88673cf38412",
         "kind": "patient-education",
-        "title": "Warning-sign education"
+        "title": "Warning-sign education",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "326c8b38-daf7-4cea-8a76-0abe208c3a63",
         "title": "Inconsistent self-monitoring",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "31a8acd4-db09-4d18-823a-39d2cea5a259",
         "title": "Difficulty using monitoring equipment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "4f340ede-14a6-4d04-8e33-3f95d041d3a7",
         "title": "Scale or equipment access",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "07b79155-98fd-48aa-8c84-be68681070fc",
         "title": "Medication adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6d1ed546-4d23-42ed-8545-f2038bbffdc0",
         "title": "Complex medication schedule",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e1a53048-2e0e-443a-8991-28c0bc5cc0b6",
         "title": "Forgetfulness",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -1546,14 +1911,14 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Adopt low-impact aerobic routine",
         "subtitle": "Complete daily low-impact aerobic activity (cycling / swimming / walking) tuned to member ability.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "ca6c08f8-6792-4bff-8f8f-128c95e16186",
         "title": "Improve balance",
         "subtitle": "Improve balance and safe movement.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "62fef7fd-2e89-4cbf-84c8-bfe455d33123",
@@ -1581,81 +1946,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Increase physical activity for metabolic health",
         "subtitle": "Increase safe physical activity.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       }
     ],
     "interventions": [
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472",
         "kind": "patient-education",
-        "title": "Choosing low-impact activities"
+        "title": "Choosing low-impact activities",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473",
         "kind": "patient-task",
-        "title": "Log daily activity minutes"
+        "title": "Log daily activity minutes",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474",
         "kind": "internal-task",
-        "title": "Follow-up on activity plan"
+        "title": "Follow-up on activity plan",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "568b9a05-329d-4900-89f2-fd4167b1801e",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9652a02d-2cf9-4566-853e-ea7d6d84084c",
         "kind": "internal-task",
-        "title": "Balance exercise support"
+        "title": "Balance exercise support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "02e7f498-c227-4fde-80b5-564d01dfef51",
         "kind": "measure-vital",
-        "title": "Pain assessment"
+        "title": "Pain assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "6a317190-03c8-43a5-8b10-b9023154e983",
         "kind": "measure-vital",
-        "title": "Non-pharmacologic pain support"
+        "title": "Non-pharmacologic pain support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "39850447-c78e-453f-8e68-6eded8f8d3a4",
         "kind": "internal-task",
-        "title": "Pain-care coordination"
+        "title": "Pain-care coordination",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475",
         "title": "Weather limits outdoor activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476",
         "title": "Fatigue reduces activity tolerance",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6d7efe02-e06a-4100-8d85-5d067d36d67d",
         "title": "Fall-risk environment",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "498b7eac-b1cc-410f-8f32-8b4664237945",
         "title": "Mobility limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "26ab02a0-fc22-4725-8a4a-e41b64e05d19",
         "title": "Chronic pain burden",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "744988e5-c812-48f1-868d-a02628220f4b",
         "title": "Limited response to current pain plan",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -1671,6 +2066,13 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Adopt low-impact aerobic routine",
         "subtitle": "Complete daily low-impact aerobic activity (cycling / swimming / walking) tuned to member ability.",
         "category": "Other",
+        "priority": "low"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13581",
+        "title": "Consume calories",
+        "subtitle": "Meet the individualized daily calorie target to support recovery and energy needs.",
+        "category": "Other",
         "priority": "medium"
       },
       {
@@ -1678,7 +2080,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve blood pressure control",
         "subtitle": "Reduce average home blood pressure toward the individualized target.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "2c7eda0c-baad-45d1-8a75-e2a466057e4f",
@@ -1700,87 +2102,110 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "subtitle": "Follow the agreed nutrition plan consistently.",
         "category": "Other",
         "priority": "medium"
-      },
-      {
-        "id": "93ede45c-df78-4d06-879b-0ecad62d76e9",
-        "title": "Improve nutrition plan adherence",
-        "subtitle": "Follow the agreed nutrition plan.",
-        "category": "Other",
-        "priority": "medium"
       }
     ],
     "interventions": [
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472",
         "kind": "patient-education",
-        "title": "Choosing low-impact activities"
+        "title": "Choosing low-impact activities",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473",
         "kind": "patient-task",
-        "title": "Log daily activity minutes"
+        "title": "Log daily activity minutes",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474",
         "kind": "internal-task",
-        "title": "Follow-up on activity plan"
+        "title": "Follow-up on activity plan",
+        "config": {
+          "priority": "low"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13582",
+        "kind": "patient-education",
+        "title": "Meeting calorie needs",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13583",
+        "kind": "patient-task",
+        "title": "Log daily calories",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13584",
+        "kind": "internal-task",
+        "title": "Nutrition coach check-in",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "52403562-10f8-4a7b-8c2a-9952fbd1eb83",
         "kind": "measure-vital",
-        "title": "Blood pressure monitoring"
+        "title": "Blood pressure monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "da25836b-f1ae-40bb-8220-0cb5d427f437",
         "kind": "patient-education",
-        "title": "BP technique education"
-      },
-      {
-        "id": "bc045527-78b2-4193-824e-8163e242eee9",
-        "kind": "internal-task",
-        "title": "BP trend follow-up"
-      },
-      {
-        "id": "4581bbd7-73bd-417c-897f-ec84181a2f83",
-        "kind": "patient-education",
-        "title": "Medication adherence education"
-      },
-      {
-        "id": "13d32003-6ed8-43cd-8942-a7d2d729c9d2",
-        "kind": "internal-task",
-        "title": "Refill support"
+        "title": "BP technique education",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475",
         "title": "Weather limits outdoor activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476",
         "title": "Fatigue reduces activity tolerance",
-        "description": ""
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13585",
+        "title": "Poor appetite",
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13586",
+        "title": "Food insecurity",
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b0d6fd8d-d2eb-4c0f-8caf-2b6d404a04be",
         "title": "Difficulty controlling condition",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "e0d1f364-c879-405b-8134-488b544ab563",
         "title": "Medication adherence difficulty",
-        "description": ""
-      },
-      {
-        "id": "1c5f319d-e97e-487b-8b8e-5fb8b158db13",
-        "title": "Persistent abnormal readings",
-        "description": ""
-      },
-      {
-        "id": "6d1ed546-4d23-42ed-8545-f2038bbffdc0",
-        "title": "Complex medication schedule",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -1796,7 +2221,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve blood pressure control",
         "subtitle": "Reduce average home blood pressure toward the individualized target.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "2c7eda0c-baad-45d1-8a75-e2a466057e4f",
@@ -1824,7 +2249,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve recognition of warning signs",
         "subtitle": "Recognize and appropriately respond to individualized warning signs.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "b840c54d-f087-42df-8eb7-ab9ac985a1cc",
@@ -1838,74 +2263,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "52403562-10f8-4a7b-8c2a-9952fbd1eb83",
         "kind": "measure-vital",
-        "title": "Blood pressure monitoring"
+        "title": "Blood pressure monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "da25836b-f1ae-40bb-8220-0cb5d427f437",
         "kind": "patient-education",
-        "title": "BP technique education"
+        "title": "BP technique education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "bc045527-78b2-4193-824e-8163e242eee9",
         "kind": "internal-task",
-        "title": "BP trend follow-up"
+        "title": "BP trend follow-up",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "4581bbd7-73bd-417c-897f-ec84181a2f83",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "13d32003-6ed8-43cd-8942-a7d2d729c9d2",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9346036c-2112-42a6-8771-cfc9d5045fa7",
         "kind": "internal-task",
-        "title": "Medication reminders"
+        "title": "Medication reminders",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "4463cd3a-c00f-483e-8194-88673cf38412",
         "kind": "patient-education",
-        "title": "Warning-sign education"
+        "title": "Warning-sign education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "52fc9af1-e3cc-46db-8774-5cd85c22dece",
         "kind": "patient-education",
-        "title": "Symptom escalation education"
+        "title": "Symptom escalation education",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "b0d6fd8d-d2eb-4c0f-8caf-2b6d404a04be",
         "title": "Difficulty controlling condition",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "e0d1f364-c879-405b-8134-488b544ab563",
         "title": "Medication adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "1c5f319d-e97e-487b-8b8e-5fb8b158db13",
         "title": "Persistent abnormal readings",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "6d1ed546-4d23-42ed-8545-f2038bbffdc0",
         "title": "Complex medication schedule",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e1a53048-2e0e-443a-8991-28c0bc5cc0b6",
         "title": "Forgetfulness",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8983a61c-d9de-43c8-8533-b4292df1223b",
         "title": "Limited health literacy",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -1921,7 +2376,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete medication reconciliation",
         "subtitle": "Maintain an accurate medication list after a care transition.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "82f770fe-a6cc-4e73-894c-fb30d5bd8c68",
@@ -1935,7 +2390,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Reduce medication-related adverse effects",
         "subtitle": "Identify and address medication-related adverse effects.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "741e6cd2-603f-467e-84ed-f75662658607",
@@ -1949,7 +2404,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Follow post-discharge medication plan",
         "subtitle": "Follow the reconciled post-discharge medication plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "21e2e7d8-4c67-4720-8023-5bd934dbf916",
@@ -1963,74 +2418,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "1d7aef58-8fe5-4839-8523-701a476f6621",
         "kind": "internal-task",
-        "title": "Medication reconciliation"
+        "title": "Medication reconciliation",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "446a877b-fdd1-4141-8ff1-198e525ce3cf",
         "kind": "internal-task",
-        "title": "Medication-list update"
+        "title": "Medication-list update",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "a30b8bad-ad3d-4692-8739-962a60bb20f0",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "21d3e05e-a446-43df-8cdf-91a2930559dd",
         "kind": "internal-task",
-        "title": "Refill coordination"
+        "title": "Refill coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "b2227fea-9124-40c6-8739-4d3e47707d13",
         "kind": "internal-task",
-        "title": "Medication issue escalation"
+        "title": "Medication issue escalation",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "e941a09a-f890-4b02-8f2c-ce83434e1694",
         "kind": "internal-task",
-        "title": "Medication review"
+        "title": "Medication review",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2e574b7b-f297-45e7-83ff-20af5f3282f8",
         "kind": "internal-task",
-        "title": "Regimen simplification review"
+        "title": "Regimen simplification review",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "aa3439f1-e4ed-47c6-8703-07e33a07182f",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "d489e19a-69ad-4d5e-8672-3309e35e2b68",
         "title": "Medication list discrepancy",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "07931b12-22d3-4eca-83e2-ef1361150a0c",
         "title": "Incomplete care-team communication",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "182f70a0-a501-40b4-8290-2a29bac6b7af",
         "title": "Multiple prescribers",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "3aa23632-0920-4c3a-87aa-737ea7f17b9d",
         "title": "Refill gap risk",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "7684a8a9-60f9-4e75-8e1c-4dc442a8392c",
         "title": "Pharmacy access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6fa3d039-02cb-41f0-8268-15140866fef7",
         "title": "Medication side effects",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -2046,14 +2531,14 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Address food insecurity",
         "subtitle": "Establish reliable access to adequate food.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "e52df84a-0530-437d-8894-8fa558fcf9af",
         "title": "Address housing instability",
         "subtitle": "Connect the patient with housing-support resources when a need is identified.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "e7476e3e-c4da-4f0f-8c7e-ccece599dced",
@@ -2074,88 +2559,118 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Increase social engagement",
         "subtitle": "Increase meaningful social connection.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "30ba13fd-8aeb-4695-8db2-bded705ebf5a",
         "title": "Reduce social isolation",
         "subtitle": "Increase meaningful connection with family, friends, or community supports.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       }
     ],
     "interventions": [
       {
         "id": "bb3b7601-8e41-4886-8149-d0480b43e77c",
         "kind": "internal-task",
-        "title": "Community-resource navigation"
+        "title": "Community-resource navigation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "778a3116-d321-4699-87f7-f2b3e3ba2fa0",
         "kind": "internal-task",
-        "title": "Food-resource coordination"
+        "title": "Food-resource coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "3fec993a-a301-431b-8fcd-3ca0c7ffc5cb",
         "kind": "internal-task",
-        "title": "Housing-resource coordination"
+        "title": "Housing-resource coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "5bc028ac-379e-458c-8762-c3cf35056f5d",
         "kind": "internal-task",
-        "title": "SDOH follow-up"
+        "title": "SDOH follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "ebd7c8ce-e538-4c53-8a5d-2dc891781593",
         "kind": "measure-vital",
-        "title": "Transportation assessment"
+        "title": "Transportation assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "899de6a5-19d8-4cdf-8fa0-74648758f5ec",
         "kind": "internal-task",
-        "title": "Transportation coordination"
+        "title": "Transportation coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "7b38fbb4-9937-4e10-8dcf-4c8101a8a4ba",
         "kind": "patient-education",
-        "title": "Social-connection planning"
+        "title": "Social-connection planning",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "26e08e9e-518d-4b53-81b3-507995244f2c",
         "kind": "internal-task",
-        "title": "Community-engagement referral"
+        "title": "Community-engagement referral",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "6f2e7667-a806-4680-86b1-8c22bd292926",
         "title": "Resource-navigation difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "c52a201a-4967-46c5-8d14-18b182fa2d19",
         "title": "Food insecurity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6bb1c348-6692-45c2-8117-94e43d387f70",
         "title": "Housing instability",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "925ec7ea-9eea-4bfd-8b45-035d8e58b742",
         "title": "Social needs remain unresolved",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "4bb5c8a0-0b9e-4efe-8fbe-692d3c3ad380",
         "title": "Transportation barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6643fa3e-89e4-4df4-8305-1893d2eda3c8",
         "title": "Distance to care",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -2171,116 +2686,146 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete post-discharge follow-up",
         "subtitle": "Complete a timely follow-up after hospital discharge.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "632a2797-cf1c-4572-8eb6-91e996052687",
         "title": "Complete recommended post-discharge services",
         "subtitle": "Complete referrals, labs, therapy, or other services listed in the discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5e167694-3234-4347-88bd-be2f96d101c6",
         "title": "Establish post-discharge care coordination",
         "subtitle": "Ensure key members of the care team have the same post-discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "729f6631-cac5-4c32-8059-63b2df882baa",
         "title": "Follow post-discharge medication plan",
         "subtitle": "Follow the reconciled post-discharge medication plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "19cee8a8-deb3-4c3c-81b5-53df34b44373",
         "title": "Prevent avoidable readmission",
         "subtitle": "Reduce risk of an avoidable readmission following discharge.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "829040bf-75ac-4baa-8c13-b4793e25ea6b",
         "title": "Complete medication reconciliation",
         "subtitle": "Maintain an accurate medication list after a care transition.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "fe001e03-319c-488c-897b-31676f97033b",
         "kind": "internal-task",
-        "title": "Post-discharge outreach"
+        "title": "Post-discharge outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "815d1406-54bb-45bb-80f8-d2fff2616ed7",
         "kind": "internal-task",
-        "title": "Post-discharge appointment coordination"
+        "title": "Post-discharge appointment coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "bd8d6f4a-d200-47f9-8d31-4a0c88139500",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "79c0e677-c94d-46b3-8feb-f27630742f9a",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "d8ead013-091a-4d5d-8417-b532f9a2c0ce",
         "kind": "internal-task",
-        "title": "Care-team handoff"
+        "title": "Care-team handoff",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "35d60cc7-b8e6-478b-8eb6-d45b2ad24d2a",
         "kind": "internal-task",
-        "title": "Care-plan handoff documentation"
+        "title": "Care-plan handoff documentation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2c281f9e-0801-4ef1-84e1-a13f5ecd7ab4",
         "kind": "internal-task",
-        "title": "Medication reconciliation"
+        "title": "Medication reconciliation",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "aa3439f1-e4ed-47c6-8703-07e33a07182f",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "10846474-1fbf-48ce-860d-b0fe3df5316c",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8e0a5ed7-08a2-493a-85fb-af3b53bb31d0",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "d71ad103-0e19-468d-8856-d21ffddc7e10",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "0d1e63ef-6f2c-494c-8282-99a24c5f124e",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "11e53182-a614-4ebf-8d23-023583b83be8",
         "title": "Incomplete care-team communication",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ec92801a-b6a4-4cfc-8272-698514add4fe",
         "title": "Care-team coordination gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -2324,69 +2869,96 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "ddcc9220-1650-468b-8e8f-247830e80b8c",
         "kind": "internal-task",
-        "title": "Community-resource navigation"
+        "title": "Community-resource navigation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5bc028ac-379e-458c-8762-c3cf35056f5d",
         "kind": "internal-task",
-        "title": "SDOH follow-up"
+        "title": "SDOH follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "23dc30e8-b8f7-422e-83fb-5ccff9b35cfe",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "629407e6-9e43-402e-82fc-9a7b9e81f0ec",
         "kind": "internal-task",
-        "title": "Primary-care coordination"
+        "title": "Primary-care coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "ebd7c8ce-e538-4c53-8a5d-2dc891781593",
         "kind": "measure-vital",
-        "title": "Transportation assessment"
+        "title": "Transportation assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "899de6a5-19d8-4cdf-8fa0-74648758f5ec",
         "kind": "internal-task",
-        "title": "Transportation coordination"
+        "title": "Transportation coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "cfb2f65f-2685-482e-85d4-6873ee2d84ff",
         "kind": "internal-task",
-        "title": "Appointment reminders"
+        "title": "Appointment reminders",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "8eb09e06-0f9f-4af9-8f75-4e2874bbda09",
         "title": "Resource-navigation difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "925ec7ea-9eea-4bfd-8b45-035d8e58b742",
         "title": "Social needs remain unresolved",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e6ab8bfa-f788-454c-87ec-118ce09aeacd",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "1e7b3773-69d7-41fd-86ad-35308b091090",
         "title": "Scheduling barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "4bb5c8a0-0b9e-4efe-8fbe-692d3c3ad380",
         "title": "Transportation barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6643fa3e-89e4-4df4-8305-1893d2eda3c8",
         "title": "Distance to care",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -2416,14 +2988,14 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Increase social engagement",
         "subtitle": "Increase meaningful social connection.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "824567ff-8cbc-466b-8972-87e7808f332b",
         "title": "Maintain timely care-plan outreach",
         "subtitle": "Complete scheduled care-management contacts.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "3108d0f4-efd9-4afe-8dad-56d78583a097",
@@ -2444,74 +3016,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "6d61bc34-3ef9-48b1-8eb8-164621dfdc12",
         "kind": "internal-task",
-        "title": "Care-management outreach"
+        "title": "Care-management outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "fdc2e9a9-40cd-496b-8f4c-ca8ac382fc63",
         "kind": "patient-education",
-        "title": "Action-plan tracking"
+        "title": "Action-plan tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "cf7ebb9e-9bbb-4cf0-83a5-ce66e88153a1",
         "kind": "internal-task",
-        "title": "Outreach response support"
+        "title": "Outreach response support",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "7b38fbb4-9937-4e10-8dcf-4c8101a8a4ba",
         "kind": "patient-education",
-        "title": "Social-connection planning"
+        "title": "Social-connection planning",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "26e08e9e-518d-4b53-81b3-507995244f2c",
         "kind": "internal-task",
-        "title": "Community-engagement referral"
+        "title": "Community-engagement referral",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "a10b8a73-1bc7-4609-8abc-dc6f41b1bb4e",
         "kind": "internal-task",
-        "title": "Proactive care-management review"
+        "title": "Proactive care-management review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "3aa81c3e-591d-489e-82a2-40dfdef7e6ef",
         "kind": "internal-task",
-        "title": "Emergency-contact review"
+        "title": "Emergency-contact review",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "03fb004b-0f3f-439b-8a2f-f6cee0fdd982",
         "kind": "send-form",
-        "title": "Patient-information review"
+        "title": "Patient-information review",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "2b49b9c4-a43b-4b5d-874d-d51431a254f0",
         "title": "Care-management engagement barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "a6dd135a-efc1-4f8a-8fbd-7c6ce7a17606",
         "title": "Competing priorities",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "eed1f185-cdba-4d22-8750-07f5aef23278",
         "title": "Organizational difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8097b27d-ea9b-4352-867c-c2f52a10d2a5",
         "title": "Limited social network",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "88351a3a-928f-455f-8160-2bcf8e572694",
         "title": "Social isolation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e6544a8d-bd15-4d18-88f0-e7bcb3994b45",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -2555,69 +3157,96 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "5b488a25-3469-4634-864a-8b364b8ec022",
         "kind": "measure-vital",
-        "title": "Functional assessment"
+        "title": "Functional assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "fb3d9beb-6dff-442b-8e64-cb5378074d7e",
         "kind": "patient-education",
-        "title": "Self-care coaching"
+        "title": "Self-care coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c4988d2d-5520-48ce-894c-1cc483df461f",
         "kind": "patient-education",
-        "title": "ADL support planning"
+        "title": "ADL support planning",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "3713892e-1adf-498a-8cb3-4474d07c0858",
         "kind": "internal-task",
-        "title": "Activity plan"
+        "title": "Activity plan",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "bc05a74b-e4dd-49a3-8106-e9491a6a14af",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9f0c70e2-a7ff-4253-84dc-cc2beba3f42f",
         "kind": "patient-education",
-        "title": "Assistive-device education"
+        "title": "Assistive-device education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2f6d27ee-de20-457d-89e4-13b4a612f5b3",
         "kind": "internal-task",
-        "title": "Assistive-device follow-up"
+        "title": "Assistive-device follow-up",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "c7f0b01b-6d50-4942-8bb0-5295a32842da",
         "title": "Functional limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "2b7cc268-8d37-482f-8c8f-d0e6d4061f34",
         "title": "Need for caregiver assistance",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "53ae1771-ef31-42a8-8eae-8b291f39fccb",
         "title": "Reduced self-care independence",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b0c42d48-0418-498e-8c46-c47b2fdbc3d6",
         "title": "Limited physical activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "2437799a-fa28-4613-8ea6-6e09fd10f816",
         "title": "Mobility limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "eb7bcfb2-d6e4-47d8-8c81-13dae47e8641",
         "title": "Assistive-device difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -2633,85 +3262,109 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete advance care planning review",
         "subtitle": "Review advance care planning preferences and documentation.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "e8edf6e8-cf7e-4dc7-8c1d-028f42ec01f7",
         "title": "Establish emergency care plan",
         "subtitle": "Maintain an accessible emergency plan and key contact information.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "b1019a1b-ca1e-4ed0-8e82-1cc463ff407c",
         "title": "Increase patient participation in care decisions",
         "subtitle": "Participate in agreed care-plan decisions and goal setting.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       }
     ],
     "interventions": [
       {
         "id": "6d0fecc8-cbf1-4587-869c-2b9f1ab3d57d",
         "kind": "patient-education",
-        "title": "Advance-care-planning review"
+        "title": "Advance-care-planning review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "e0b173b0-7628-41c1-8095-8ac57f3f676d",
         "kind": "internal-task",
-        "title": "Advance-care-plan documentation"
+        "title": "Advance-care-plan documentation",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "d49aed68-7061-4372-810a-89aaab5abf95",
         "kind": "patient-education",
-        "title": "Emergency-plan education"
+        "title": "Emergency-plan education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "f4b91563-0f99-41fb-81cc-d0fee15f0c59",
         "kind": "internal-task",
-        "title": "Emergency-contact review"
+        "title": "Emergency-contact review",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "cbd9ceec-dae8-4301-8ffa-5646466d5ff8",
         "kind": "internal-task",
-        "title": "Care-plan review"
+        "title": "Care-plan review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "094e76ce-0275-45d6-8340-99215b18bbe5",
         "kind": "internal-task",
-        "title": "Shared goal setting"
+        "title": "Shared goal setting",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "5358eb3f-839d-49ab-869a-031d910be6c5",
         "title": "Advance-care-planning uncertainty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ec68b8ff-b2b2-4b36-89aa-b4286db353c8",
         "title": "Documentation gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b83319ab-abf5-4479-8f55-c331346082ad",
         "title": "Emergency-plan gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ccc31edd-b941-4a3e-8b46-44fbdd166f3b",
         "title": "Contact-information gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "72e54455-8b79-460a-8fa2-15662338e5d3",
         "title": "Low confidence with self-management",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "cfe90906-f87f-4c79-867f-b7276455d30c",
         "title": "Preference mismatch",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -2741,14 +3394,14 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Maintain cognitive safety plan",
         "subtitle": "Maintain an effective support and safety plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "2c55bc49-3692-4fe9-8ab5-9bdf01944164",
         "title": "Maintain home safety",
         "subtitle": "Address identified home safety risks.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "3108d0f4-efd9-4afe-8dad-56d78583a097",
@@ -2762,81 +3415,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Meet daily water intake target",
         "subtitle": "Meet daily hydration target to support renal, cardiovascular, and cognitive health.",
         "category": "Other",
-        "priority": "low"
+        "priority": "medium"
       }
     ],
     "interventions": [
       {
         "id": "e3df7ef6-b98f-444d-8a34-3697caec5746",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f598631c-33df-4ed9-829f-3b99b061782c",
         "kind": "internal-task",
-        "title": "Organization tools"
+        "title": "Organization tools",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "2a7e41bc-122f-45c7-83f9-5b5d849d410a",
         "kind": "measure-vital",
-        "title": "Caregiver-needs assessment"
+        "title": "Caregiver-needs assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c9cbf2f7-0669-4066-89d4-784c3a7470db",
         "kind": "internal-task",
-        "title": "Caregiver-resource coordination"
+        "title": "Caregiver-resource coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "4f96cdb7-469e-426f-8cd0-e0f997b35f3c",
         "kind": "patient-education",
-        "title": "Cognitive support planning"
+        "title": "Cognitive support planning",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "a448c09b-b9d2-43ca-82f8-19ab16dfdb04",
         "kind": "internal-task",
-        "title": "Cognitive safety review"
+        "title": "Cognitive safety review",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "feb38f77-c8e9-4072-808d-810c580ed258",
         "kind": "patient-education",
-        "title": "Home safety education"
+        "title": "Home safety education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f2f00ed5-43d3-4d85-8a02-f7f14707195c",
         "kind": "internal-task",
-        "title": "Home-safety follow-up"
+        "title": "Home-safety follow-up",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "76d3ea90-fd2f-41f9-8d97-fbe5c290c711",
         "title": "Cognitive impairment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ce414361-dc76-49c1-8141-cf5b4006c735",
         "title": "Organizational difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "db4bc44c-b7c8-4f2b-8f90-ab052340d5d0",
         "title": "Caregiver capacity limitation",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "8c58c376-6233-4a84-8699-32df778adb63",
         "title": "Caregiver burden",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "3c87d43c-cff4-4fbb-8d01-29c2580a50c8",
         "title": "Safety-awareness limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9f1050a2-f1a3-4f01-8782-d4d3a4526f52",
         "title": "Fall-risk environment",
-        "description": ""
+        "description": "",
+        "priority": "high"
       }
     ]
   },
@@ -2852,14 +3535,14 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Increase patient participation in care decisions",
         "subtitle": "Participate in agreed care-plan decisions and goal setting.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "824567ff-8cbc-466b-8972-87e7808f332b",
         "title": "Maintain timely care-plan outreach",
         "subtitle": "Complete scheduled care-management contacts.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "816c5a17-bd70-4ddd-8c26-dca8795b7e9a",
@@ -2894,69 +3577,96 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "cbd9ceec-dae8-4301-8ffa-5646466d5ff8",
         "kind": "internal-task",
-        "title": "Care-plan review"
+        "title": "Care-plan review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "094e76ce-0275-45d6-8340-99215b18bbe5",
         "kind": "internal-task",
-        "title": "Shared goal setting"
+        "title": "Shared goal setting",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "24dc965e-11bc-423a-8b16-bd692a6a3f51",
         "kind": "internal-task",
-        "title": "Care-management outreach"
+        "title": "Care-management outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "a10b8a73-1bc7-4609-8abc-dc6f41b1bb4e",
         "kind": "internal-task",
-        "title": "Proactive care-management review"
+        "title": "Proactive care-management review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "fa261ddc-63e8-49d7-871d-f8b5c8dad55a",
         "kind": "patient-education",
-        "title": "Action-plan tracking"
+        "title": "Action-plan tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "03005cb4-9d38-4d13-8007-a0cc5e2598d1",
         "kind": "internal-task",
-        "title": "Goal-progress review"
+        "title": "Goal-progress review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "cf7ebb9e-9bbb-4cf0-83a5-ce66e88153a1",
         "kind": "internal-task",
-        "title": "Outreach response support"
+        "title": "Outreach response support",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "72e54455-8b79-460a-8fa2-15662338e5d3",
         "title": "Low confidence with self-management",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "cfe90906-f87f-4c79-867f-b7276455d30c",
         "title": "Preference mismatch",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e6544a8d-bd15-4d18-88f0-e7bcb3994b45",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5bdc7745-ea62-49a3-87f3-d3106a9059bf",
         "title": "Care-management engagement barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "56b4bbe1-a4b3-457a-8977-017da39c2ce2",
         "title": "Competing priorities",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "4ac7e221-9a66-4c08-8b83-234845285296",
         "title": "Multiple active goals",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -2993,81 +3703,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Maintain home safety",
         "subtitle": "Address identified home safety risks.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "9f0c70e2-a7ff-4253-84dc-cc2beba3f42f",
         "kind": "patient-education",
-        "title": "Assistive-device education"
+        "title": "Assistive-device education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2f6d27ee-de20-457d-89e4-13b4a612f5b3",
         "kind": "internal-task",
-        "title": "Assistive-device follow-up"
+        "title": "Assistive-device follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "3713892e-1adf-498a-8cb3-4474d07c0858",
         "kind": "internal-task",
-        "title": "Activity plan"
+        "title": "Activity plan",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "27591e3a-cd9d-4122-8661-fbaff0a06023",
         "kind": "measure-vital",
-        "title": "Functional assessment"
+        "title": "Functional assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "bc05a74b-e4dd-49a3-8106-e9491a6a14af",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c4988d2d-5520-48ce-894c-1cc483df461f",
         "kind": "patient-education",
-        "title": "ADL support planning"
+        "title": "ADL support planning",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "feb38f77-c8e9-4072-808d-810c580ed258",
         "kind": "patient-education",
-        "title": "Home safety education"
+        "title": "Home safety education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f2f00ed5-43d3-4d85-8a02-f7f14707195c",
         "kind": "internal-task",
-        "title": "Home-safety follow-up"
+        "title": "Home-safety follow-up",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "eb7bcfb2-d6e4-47d8-8c81-13dae47e8641",
         "title": "Assistive-device difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "3c12a425-3def-4a3b-847a-b567e74e073a",
         "title": "Equipment access issue",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "b0c42d48-0418-498e-8c46-c47b2fdbc3d6",
         "title": "Limited physical activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e76ec93b-faf8-4508-8e53-ab535407ea29",
         "title": "Functional limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "2437799a-fa28-4613-8ea6-6e09fd10f816",
         "title": "Mobility limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "bdd392f2-c87f-4d8f-863b-ca6186a9a18c",
         "title": "Need for caregiver assistance",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -3083,116 +3823,146 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete post-discharge follow-up",
         "subtitle": "Complete a timely follow-up after hospital discharge.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "632a2797-cf1c-4572-8eb6-91e996052687",
         "title": "Complete recommended post-discharge services",
         "subtitle": "Complete referrals, labs, therapy, or other services listed in the discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5e167694-3234-4347-88bd-be2f96d101c6",
         "title": "Establish post-discharge care coordination",
         "subtitle": "Ensure key members of the care team have the same post-discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "729f6631-cac5-4c32-8059-63b2df882baa",
         "title": "Follow post-discharge medication plan",
         "subtitle": "Follow the reconciled post-discharge medication plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "0b4d9b8a-1c15-4e43-85b7-6480e8d0fbe8",
         "title": "Improve recognition of warning signs",
         "subtitle": "Recognize and appropriately respond to individualized warning signs.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "19cee8a8-deb3-4c3c-81b5-53df34b44373",
         "title": "Prevent avoidable readmission",
         "subtitle": "Reduce risk of an avoidable readmission following discharge.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "fe001e03-319c-488c-897b-31676f97033b",
         "kind": "internal-task",
-        "title": "Post-discharge outreach"
+        "title": "Post-discharge outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "815d1406-54bb-45bb-80f8-d2fff2616ed7",
         "kind": "internal-task",
-        "title": "Post-discharge appointment coordination"
+        "title": "Post-discharge appointment coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "bd8d6f4a-d200-47f9-8d31-4a0c88139500",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "79c0e677-c94d-46b3-8feb-f27630742f9a",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "d8ead013-091a-4d5d-8417-b532f9a2c0ce",
         "kind": "internal-task",
-        "title": "Care-team handoff"
+        "title": "Care-team handoff",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "35d60cc7-b8e6-478b-8eb6-d45b2ad24d2a",
         "kind": "internal-task",
-        "title": "Care-plan handoff documentation"
+        "title": "Care-plan handoff documentation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2c281f9e-0801-4ef1-84e1-a13f5ecd7ab4",
         "kind": "internal-task",
-        "title": "Medication reconciliation"
+        "title": "Medication reconciliation",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "aa3439f1-e4ed-47c6-8703-07e33a07182f",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "10846474-1fbf-48ce-860d-b0fe3df5316c",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8e0a5ed7-08a2-493a-85fb-af3b53bb31d0",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "d71ad103-0e19-468d-8856-d21ffddc7e10",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "0d1e63ef-6f2c-494c-8282-99a24c5f124e",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "11e53182-a614-4ebf-8d23-023583b83be8",
         "title": "Incomplete care-team communication",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ec92801a-b6a4-4cfc-8272-698514add4fe",
         "title": "Care-team coordination gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -3208,7 +3978,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve balance",
         "subtitle": "Improve balance and safe movement.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "08a4dce6-5a5b-4d66-8269-c67bcb65abe4",
@@ -3222,7 +3992,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve fall-prevention behaviors",
         "subtitle": "Follow agreed fall-prevention strategies.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "03835872-38c7-493d-8c35-61ae965a8d54",
@@ -3243,81 +4013,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Maintain home safety",
         "subtitle": "Address identified home safety risks.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "568b9a05-329d-4900-89f2-fd4167b1801e",
         "kind": "patient-education",
-        "title": "Mobility coaching"
+        "title": "Mobility coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9652a02d-2cf9-4566-853e-ea7d6d84084c",
         "kind": "internal-task",
-        "title": "Balance exercise support"
+        "title": "Balance exercise support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "ecbfe671-7035-496f-885f-75d422bdbd65",
         "kind": "patient-education",
-        "title": "Fall-risk education"
+        "title": "Fall-risk education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "23dd03ef-3586-47b6-86f7-c764c5bf6082",
         "kind": "measure-vital",
-        "title": "Fall-risk assessment"
+        "title": "Fall-risk assessment",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "85b6ebb4-4045-452b-8c26-586d3008936f",
         "kind": "patient-education",
-        "title": "Home safety education"
+        "title": "Home safety education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "3713892e-1adf-498a-8cb3-4474d07c0858",
         "kind": "internal-task",
-        "title": "Activity plan"
+        "title": "Activity plan",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "27591e3a-cd9d-4122-8661-fbaff0a06023",
         "kind": "measure-vital",
-        "title": "Functional assessment"
+        "title": "Functional assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9f0c70e2-a7ff-4253-84dc-cc2beba3f42f",
         "kind": "patient-education",
-        "title": "Assistive-device education"
+        "title": "Assistive-device education",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "6d7efe02-e06a-4100-8d85-5d067d36d67d",
         "title": "Fall-risk environment",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "498b7eac-b1cc-410f-8f32-8b4664237945",
         "title": "Mobility limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "dfc070dc-2bf0-47d5-8421-a416a3e11ba4",
         "title": "Incomplete fall assessment",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "861c2721-d5e8-447b-8022-3bd54fef4a79",
         "title": "Difficulty following safety plan",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b0c42d48-0418-498e-8c46-c47b2fdbc3d6",
         "title": "Limited physical activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e76ec93b-faf8-4508-8e53-ab535407ea29",
         "title": "Functional limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -3333,28 +4133,28 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete annual wellness visit",
         "subtitle": "Complete the annual wellness assessment and update the care plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "7ca0c022-cb98-4014-86f3-6ffaa608665f",
         "title": "Complete immunization review",
         "subtitle": "Review immunization status and complete indicated vaccinations.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "6118231d-741d-40a9-852c-8446d897f472",
         "title": "Complete preventive screening plan",
         "subtitle": "Complete age- and risk-appropriate preventive screenings.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "ae068eb6-1396-4b51-8566-3811aaa85901",
         "title": "Improve completion of recommended preventive services",
         "subtitle": "Address all recommended preventive services that are due.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13401",
@@ -3375,74 +4175,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "175ccd17-7c04-4cd2-8cf3-2de687e90e8d",
         "kind": "internal-task",
-        "title": "AWV coordination"
+        "title": "AWV coordination",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "3755b9c5-0cbc-4f64-8101-839b8db3e6fd",
         "kind": "internal-task",
-        "title": "AWV care-plan update"
+        "title": "AWV care-plan update",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "a68924bc-7279-4b18-8382-85dce3a4b959",
         "kind": "internal-task",
-        "title": "Immunization review"
+        "title": "Immunization review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "bc064377-8403-47ef-835f-3c2cdb8a6318",
         "kind": "internal-task",
-        "title": "Immunization coordination"
+        "title": "Immunization coordination",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "770437bc-c78f-48ac-89c8-620d16825839",
         "kind": "measure-vital",
-        "title": "Lab tracking"
+        "title": "Lab tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c3575745-e0eb-4a67-8d59-5414866d1a54",
         "kind": "measure-vital",
-        "title": "Preventive screening tracking"
+        "title": "Preventive screening tracking",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13402",
         "kind": "measure-vital",
-        "title": "Measure standing height"
+        "title": "Measure standing height",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13403",
         "kind": "patient-education",
-        "title": "Why height matters for BMI"
+        "title": "Why height matters for BMI",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "09db0e37-73c9-4afd-80ec-000ff4f65f32",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e986bcb9-1c69-418d-849b-ae76adf5b4d0",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "27228f03-3e28-4fd2-8f6b-4b721a4d3624",
         "title": "Immunization access barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "74058092-60c4-4bee-8952-110a96dc990c",
         "title": "Vaccine hesitancy or uncertainty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b3bf3314-f0ef-492d-8978-4e72b5fd2b0e",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9dc2308b-fdfc-4779-8987-51a68218f5ad",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -3458,7 +4288,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve COPD symptom control",
         "subtitle": "Maintain respiratory symptoms at or below the individualized baseline.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "fdee5ffb-d19d-419b-84cb-edd170ffd56a",
@@ -3479,7 +4309,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Maintain oxygen therapy adherence",
         "subtitle": "Use prescribed oxygen therapy according to the care plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13421",
@@ -3493,81 +4323,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Reduce respiratory exacerbations",
         "subtitle": "Reduce preventable exacerbations and urgent respiratory visits.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "ad276a5c-91c1-482b-860b-92f25f7604c1",
         "kind": "measure-vital",
-        "title": "Respiratory symptom monitoring"
+        "title": "Respiratory symptom monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "0d89a3fd-a27a-4ee5-891f-d5b3e699fc41",
         "kind": "patient-education",
-        "title": "Respiratory action-plan education"
+        "title": "Respiratory action-plan education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "781665be-08b7-4607-8d41-d66c4e7c9940",
         "kind": "patient-education",
-        "title": "COPD self-management support"
+        "title": "COPD self-management support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9c8d4e04-3f45-49f1-8846-78879c2834b7",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "dd55d535-8a25-476b-8391-b7371e9b4746",
         "kind": "patient-education",
-        "title": "Inhaler education"
+        "title": "Inhaler education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "e870ea46-6a58-41d7-84e0-96b24de1a0eb",
         "kind": "patient-education",
-        "title": "Inhaler teach-back"
+        "title": "Inhaler teach-back",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "fd52f409-4706-4ab0-8ab0-c650420f11e2",
         "kind": "internal-task",
-        "title": "Oxygen-use support"
+        "title": "Oxygen-use support",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13422",
         "kind": "measure-vital",
-        "title": "Daily SpO2 log"
+        "title": "Daily SpO2 log",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "369990a9-fba6-43ab-89a0-7a7f73e633a1",
         "title": "Tobacco exposure",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "56e8e09a-bcd2-4320-817b-1e701f6686f2",
         "title": "Respiratory symptom burden",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "a20dcca7-7c54-4146-81fa-71e35c167134",
         "title": "Respiratory trigger exposure",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6515f77f-ea00-4738-84c7-15b2aed52eef",
         "title": "Medication adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9c424ff2-bf18-47c4-872d-43171bed3c66",
         "title": "Inhaler adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "1518924d-3a32-47ac-81ab-2406b1af54b6",
         "title": "Incorrect inhaler technique",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -3583,35 +4443,35 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve renal risk monitoring",
         "subtitle": "Complete scheduled kidney-function and urine monitoring.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "87448feb-c543-4d5d-804e-c98c93a0ca6e",
         "title": "Maintain individualized renal-protection plan",
         "subtitle": "Follow the individualized renal-protection care plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13521",
         "title": "Meet daily water intake target",
         "subtitle": "Meet daily hydration target to support renal, cardiovascular, and cognitive health.",
         "category": "Other",
-        "priority": "low"
+        "priority": "medium"
       },
       {
         "id": "632a2797-cf1c-4572-8eb6-91e996052687",
         "title": "Complete recommended post-discharge services",
         "subtitle": "Complete referrals, labs, therapy, or other services listed in the discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5681f593-37ed-4f9e-8e47-f1d95dab03b1",
         "title": "Improve blood pressure control",
         "subtitle": "Reduce average home blood pressure toward the individualized target.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "0ebef36f-8fb6-4ee7-87b0-a514d63a09d4",
@@ -3625,74 +4485,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "5a0e7a1f-7ca0-44ca-8a2b-f7502cb2ddef",
         "kind": "measure-vital",
-        "title": "Lab tracking"
+        "title": "Lab tracking",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "cda7b22a-a17c-4952-8500-f57fa29f57e7",
         "kind": "measure-vital",
-        "title": "Renal monitoring"
+        "title": "Renal monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "62044bda-736c-4597-8c0b-5570fea304e7",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f6affbe7-2199-4f39-8588-b4fa4fe29259",
         "kind": "patient-education",
-        "title": "Chronic kidney disease education"
+        "title": "Chronic kidney disease education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "71083b93-0ff6-4abc-8a3c-b8dbf2516f07",
         "kind": "internal-task",
-        "title": "Renal risk-factor support"
+        "title": "Renal risk-factor support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13522",
         "kind": "patient-education",
-        "title": "Hydration best practices"
+        "title": "Hydration best practices",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13523",
         "kind": "patient-task",
-        "title": "Log daily water intake"
+        "title": "Log daily water intake",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13524",
         "kind": "internal-task",
-        "title": "Hydration coaching call"
+        "title": "Hydration coaching call",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "c8898687-acd4-4e1b-890e-75467ba3bac8",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "32563b0b-63b9-4e00-8d86-e7aaabab5a79",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "4b6f9db7-5c51-428f-8d40-40d5ee57e759",
         "title": "Kidney-monitoring complexity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "22e0eb92-4f2e-463a-87ea-7d799441b0de",
         "title": "Medication adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "90ef2ee5-7579-4372-8886-c064414950b0",
         "title": "Nutrition challenges",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ea1424c8-bb70-4736-8f23-b205e7f017c3",
         "title": "Food access limitation",
-        "description": ""
+        "description": "",
+        "priority": "high"
       }
     ]
   },
@@ -3708,6 +4598,13 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete wound-care regimen",
         "subtitle": "Complete prescribed wound-care activities.",
         "category": "Other",
+        "priority": "high"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13581",
+        "title": "Consume calories",
+        "subtitle": "Meet the individualized daily calorie target to support recovery and energy needs.",
+        "category": "Other",
         "priority": "medium"
       },
       {
@@ -3736,88 +4633,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Prevent unintended weight loss",
         "subtitle": "Maintain weight within the individualized acceptable range.",
         "category": "Other",
-        "priority": "medium"
-      },
-      {
-        "id": "50d09fd1-856e-4183-845c-2daf1d6451d5",
-        "title": "Reduce risk of skin breakdown",
-        "subtitle": "Follow the skin-protection and repositioning plan.",
-        "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "2489763c-1058-4d95-8f87-a10e53adcd96",
         "kind": "patient-education",
-        "title": "Wound-care education"
+        "title": "Wound-care education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "0ea0b23b-5b37-4aa1-8258-14cd0e5cbcf4",
         "kind": "internal-task",
-        "title": "Wound adherence support"
+        "title": "Wound adherence support",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13582",
+        "kind": "patient-education",
+        "title": "Meeting calorie needs",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13583",
+        "kind": "patient-task",
+        "title": "Log daily calories",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13584",
+        "kind": "internal-task",
+        "title": "Nutrition coach check-in",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "458cf63c-9170-47d1-8f05-9623272be903",
         "kind": "patient-education",
-        "title": "Diabetes nutrition coaching"
+        "title": "Diabetes nutrition coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "a12c7081-a7aa-414e-8073-feb0b303becb",
         "kind": "patient-education",
-        "title": "Nutrition coaching"
+        "title": "Nutrition coaching",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "a298cd17-fb1e-45b9-810f-79d32b494730",
         "kind": "internal-task",
-        "title": "Nutrition support"
-      },
-      {
-        "id": "7ad1a7e8-6669-4239-8a8b-d066c658436e",
-        "kind": "measure-vital",
-        "title": "Nutrition/hydration monitoring"
-      },
-      {
-        "id": "4915ff3a-4441-4540-867e-f16a3d417dc6",
-        "kind": "measure-vital",
-        "title": "Weight monitoring"
-      },
-      {
-        "id": "b19f650c-de43-480a-82fa-abb40d4b745e",
-        "kind": "patient-education",
-        "title": "Skin-protection education"
+        "title": "Nutrition support",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "ffa0e269-6e32-453e-8598-72ab223ed975",
         "title": "Complex medication schedule",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8a40c7b2-1c69-4283-8c0c-99b0d97da88e",
         "title": "Wound-care complexity",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "f73ddf42-7136-4bfa-852b-776810a32fac",
         "title": "Wound-care adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "high"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13585",
+        "title": "Poor appetite",
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13586",
+        "title": "Food insecurity",
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9d7d636d-95ad-4662-84ee-720aad16e58c",
         "title": "Nutrition challenges",
-        "description": ""
-      },
-      {
-        "id": "75e2d12d-7950-48aa-8394-9d67e337ddda",
-        "title": "Food access limitation",
-        "description": ""
-      },
-      {
-        "id": "abccb2d3-f29f-43db-8452-fbf062e6e26c",
-        "title": "Difficulty maintaining meal plan",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -3833,12 +4753,19 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Prevent unintended weight loss",
         "subtitle": "Maintain weight within the individualized acceptable range.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "814ae06a-00bb-4ee3-897e-e4e4b8680bd1",
         "title": "Address food insecurity",
         "subtitle": "Establish reliable access to adequate food.",
+        "category": "Other",
+        "priority": "high"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13581",
+        "title": "Consume calories",
+        "subtitle": "Meet the individualized daily calorie target to support recovery and energy needs.",
         "category": "Other",
         "priority": "medium"
       },
@@ -3862,87 +4789,110 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "subtitle": "Improve consistency and adequacy of nutritional intake.",
         "category": "Other",
         "priority": "medium"
-      },
-      {
-        "id": "15f398de-d51c-4be9-81d7-1c867200231e",
-        "title": "Maintain adequate hydration",
-        "subtitle": "Follow the individualized hydration plan.",
-        "category": "Other",
-        "priority": "medium"
       }
     ],
     "interventions": [
       {
         "id": "7ad1a7e8-6669-4239-8a8b-d066c658436e",
         "kind": "measure-vital",
-        "title": "Nutrition/hydration monitoring"
+        "title": "Nutrition/hydration monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "480b92cc-5767-4d79-8c5a-13a00019470a",
         "kind": "internal-task",
-        "title": "Nutrition support"
+        "title": "Nutrition support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "4915ff3a-4441-4540-867e-f16a3d417dc6",
         "kind": "measure-vital",
-        "title": "Weight monitoring"
+        "title": "Weight monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "bb3b7601-8e41-4886-8149-d0480b43e77c",
         "kind": "internal-task",
-        "title": "Community-resource navigation"
+        "title": "Community-resource navigation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "778a3116-d321-4699-87f7-f2b3e3ba2fa0",
         "kind": "internal-task",
-        "title": "Food-resource coordination"
+        "title": "Food-resource coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
-        "id": "458cf63c-9170-47d1-8f05-9623272be903",
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13582",
         "kind": "patient-education",
-        "title": "Diabetes nutrition coaching"
+        "title": "Meeting calorie needs",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
-        "id": "a12c7081-a7aa-414e-8073-feb0b303becb",
-        "kind": "patient-education",
-        "title": "Nutrition coaching"
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13583",
+        "kind": "patient-task",
+        "title": "Log daily calories",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
-        "id": "3443822b-90b8-449a-8418-004e3d840b1c",
-        "kind": "patient-education",
-        "title": "Hydration education"
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13584",
+        "kind": "internal-task",
+        "title": "Nutrition coach check-in",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "ac572fa4-2cfd-4c9b-8797-c826108686ba",
         "title": "Poor appetite",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9c6175b2-86fb-4794-8123-73af17b76c02",
         "title": "Unintended weight loss",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "71902ba9-ed05-417f-8cbe-9be8a79a0a35",
         "title": "Nutrition-related functional limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6f2e7667-a806-4680-86b1-8c22bd292926",
         "title": "Resource-navigation difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "c52a201a-4967-46c5-8d14-18b182fa2d19",
         "title": "Food insecurity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9d7d636d-95ad-4662-84ee-720aad16e58c",
         "title": "Nutrition challenges",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -3958,12 +4908,26 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Prevent unintended weight loss",
         "subtitle": "Maintain weight within the individualized acceptable range.",
         "category": "Other",
+        "priority": "high"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13601",
+        "title": "Target to achieve a healthy weight",
+        "subtitle": "Reach the individualized target weight through combined diet and activity changes.",
+        "category": "Other",
         "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13471",
         "title": "Adopt low-impact aerobic routine",
         "subtitle": "Complete daily low-impact aerobic activity (cycling / swimming / walking) tuned to member ability.",
+        "category": "Other",
+        "priority": "low"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13581",
+        "title": "Consume calories",
+        "subtitle": "Meet the individualized daily calorie target to support recovery and energy needs.",
         "category": "Other",
         "priority": "medium"
       },
@@ -3980,94 +4944,110 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "subtitle": "Follow the agreed nutrition plan.",
         "category": "Other",
         "priority": "medium"
-      },
-      {
-        "id": "b5709052-110e-4ce8-8570-6518908f1c37",
-        "title": "Improve nutritional intake",
-        "subtitle": "Improve consistency and adequacy of nutritional intake.",
-        "category": "Other",
-        "priority": "medium"
-      },
-      {
-        "id": "9bd92904-fd03-4cf0-8cec-05d525e76dca",
-        "title": "Improve weight management",
-        "subtitle": "Achieve gradual, sustainable weight reduction when clinically appropriate.",
-        "category": "Other",
-        "priority": "medium"
       }
     ],
     "interventions": [
       {
         "id": "7ad1a7e8-6669-4239-8a8b-d066c658436e",
         "kind": "measure-vital",
-        "title": "Nutrition/hydration monitoring"
+        "title": "Nutrition/hydration monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "480b92cc-5767-4d79-8c5a-13a00019470a",
         "kind": "internal-task",
-        "title": "Nutrition support"
+        "title": "Nutrition support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "4915ff3a-4441-4540-867e-f16a3d417dc6",
         "kind": "measure-vital",
-        "title": "Weight monitoring"
+        "title": "Weight monitoring",
+        "config": {
+          "priority": "high"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13602",
+        "kind": "patient-education",
+        "title": "Healthy weight strategies",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13603",
+        "kind": "patient-task",
+        "title": "Log weekly weight",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13604",
+        "kind": "internal-task",
+        "title": "Weight-loss coaching call",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472",
         "kind": "patient-education",
-        "title": "Choosing low-impact activities"
+        "title": "Choosing low-impact activities",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473",
         "kind": "patient-task",
-        "title": "Log daily activity minutes"
-      },
-      {
-        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474",
-        "kind": "internal-task",
-        "title": "Follow-up on activity plan"
-      },
-      {
-        "id": "458cf63c-9170-47d1-8f05-9623272be903",
-        "kind": "patient-education",
-        "title": "Diabetes nutrition coaching"
-      },
-      {
-        "id": "a12c7081-a7aa-414e-8073-feb0b303becb",
-        "kind": "patient-education",
-        "title": "Nutrition coaching"
+        "title": "Log daily activity minutes",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "ac572fa4-2cfd-4c9b-8797-c826108686ba",
         "title": "Poor appetite",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9c6175b2-86fb-4794-8123-73af17b76c02",
         "title": "Unintended weight loss",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "71902ba9-ed05-417f-8cbe-9be8a79a0a35",
         "title": "Nutrition-related functional limitation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13605",
+        "title": "Emotional eating",
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13606",
+        "title": "Limited access to nutritious food",
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475",
         "title": "Weather limits outdoor activity",
-        "description": ""
-      },
-      {
-        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476",
-        "title": "Fatigue reduces activity tolerance",
-        "description": ""
-      },
-      {
-        "id": "9d7d636d-95ad-4662-84ee-720aad16e58c",
-        "title": "Nutrition challenges",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -4083,21 +5063,21 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve COPD symptom control",
         "subtitle": "Maintain respiratory symptoms at or below the individualized baseline.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "6b829781-05cc-46bc-8f2a-ec5adcd2176c",
         "title": "Maintain oxygen therapy adherence",
         "subtitle": "Use prescribed oxygen therapy according to the care plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13431",
         "title": "Maintain resting respiratory rate",
         "subtitle": "Keep resting respiratory rate within the normal range for the member's age and comorbidities.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5dbfcf2a-dbb5-43cb-8bb6-451af62e7000",
@@ -4111,7 +5091,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Reduce respiratory exacerbations",
         "subtitle": "Reduce preventable exacerbations and urgent respiratory visits.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "c73e6acb-92a2-4c07-8996-af07f72dcb4d",
@@ -4125,74 +5105,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "ad276a5c-91c1-482b-860b-92f25f7604c1",
         "kind": "measure-vital",
-        "title": "Respiratory symptom monitoring"
+        "title": "Respiratory symptom monitoring",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "0d89a3fd-a27a-4ee5-891f-d5b3e699fc41",
         "kind": "patient-education",
-        "title": "Respiratory action-plan education"
+        "title": "Respiratory action-plan education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "781665be-08b7-4607-8d41-d66c4e7c9940",
         "kind": "patient-education",
-        "title": "COPD self-management support"
+        "title": "COPD self-management support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "fd52f409-4706-4ab0-8ab0-c650420f11e2",
         "kind": "internal-task",
-        "title": "Oxygen-use support"
+        "title": "Oxygen-use support",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "9db2dc46-3a7c-41af-8d98-6fb019e50330",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13432",
         "kind": "measure-vital",
-        "title": "Weekly respiratory-rate check"
+        "title": "Weekly respiratory-rate check",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13433",
         "kind": "patient-education",
-        "title": "Breathing-technique guidance"
+        "title": "Breathing-technique guidance",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13434",
         "kind": "internal-task",
-        "title": "Trend review for respiratory rate"
+        "title": "Trend review for respiratory rate",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "369990a9-fba6-43ab-89a0-7a7f73e633a1",
         "title": "Tobacco exposure",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "56e8e09a-bcd2-4320-817b-1e701f6686f2",
         "title": "Respiratory symptom burden",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "a20dcca7-7c54-4146-81fa-71e35c167134",
         "title": "Respiratory trigger exposure",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9c7ecb94-afc8-41a7-87f8-a57a4c8ca1d3",
         "title": "Oxygen equipment issue",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "e9067de7-2f98-45f5-8385-504bda63187d",
         "title": "Oxygen-use burden",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13435",
         "title": "Difficulty controlling condition",
-        "description": ""
+        "description": "",
+        "priority": "high"
       }
     ]
   },
@@ -4222,83 +5232,110 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve sleep consistency",
         "subtitle": "Establish a consistent sleep routine.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "0efb1a4f-1a00-4cc3-8a23-b881b6807641",
         "title": "Increase social engagement",
         "subtitle": "Increase meaningful social connection.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       }
     ],
     "interventions": [
       {
         "id": "6a10a233-63c3-4a09-8d67-e79785985991",
         "kind": "internal-task",
-        "title": "Behavioral-health follow-up"
+        "title": "Behavioral-health follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "1437e0f7-ee3e-4576-80c2-0d55254d1628",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5750f95d-d2d7-4c8e-87fc-178b3bd14a41",
         "kind": "measure-vital",
-        "title": "Mood tracking"
+        "title": "Mood tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "e2e9dee9-1d35-4bcd-8ed8-b507fd446f6e",
         "kind": "patient-education",
-        "title": "Sleep-hygiene education"
+        "title": "Sleep-hygiene education",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "26a23fa9-39c8-43af-8d1b-510cb94b7a3a",
         "kind": "measure-vital",
-        "title": "Sleep routine tracking"
+        "title": "Sleep routine tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "7b38fbb4-9937-4e10-8dcf-4c8101a8a4ba",
         "kind": "patient-education",
-        "title": "Social-connection planning"
+        "title": "Social-connection planning",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "26e08e9e-518d-4b53-81b3-507995244f2c",
         "kind": "internal-task",
-        "title": "Community-engagement referral"
+        "title": "Community-engagement referral",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "73447b4d-76ea-44c3-84ab-3de8c24ac093",
         "title": "Treatment engagement difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "a044b42c-7fdb-4291-807f-eb9db9266950",
         "title": "Behavioral-health stigma or concern",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "945b5867-c7f1-4633-87b1-ab10cf0b471a",
         "title": "Mood symptoms",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "21b9492b-d218-4333-8a2e-7d7a994de08d",
         "title": "Behavioral-health access",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6abf9f20-e025-48d4-8ac9-76d033c7180b",
         "title": "Irregular sleep schedule",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "133bc0c9-5edc-4f40-8ef8-3d4a3988c75f",
         "title": "Sleep environment barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -4314,7 +5351,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Increase social engagement",
         "subtitle": "Increase meaningful social connection.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "e7476e3e-c4da-4f0f-8c7e-ccece599dced",
@@ -4342,81 +5379,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Reduce social isolation",
         "subtitle": "Increase meaningful connection with family, friends, or community supports.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       }
     ],
     "interventions": [
       {
         "id": "7b38fbb4-9937-4e10-8dcf-4c8101a8a4ba",
         "kind": "patient-education",
-        "title": "Social-connection planning"
+        "title": "Social-connection planning",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "26e08e9e-518d-4b53-81b3-507995244f2c",
         "kind": "internal-task",
-        "title": "Community-engagement referral"
+        "title": "Community-engagement referral",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "ddcc9220-1650-468b-8e8f-247830e80b8c",
         "kind": "internal-task",
-        "title": "Community-resource navigation"
+        "title": "Community-resource navigation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5bc028ac-379e-458c-8762-c3cf35056f5d",
         "kind": "internal-task",
-        "title": "SDOH follow-up"
+        "title": "SDOH follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2a7e41bc-122f-45c7-83f9-5b5d849d410a",
         "kind": "measure-vital",
-        "title": "Caregiver-needs assessment"
+        "title": "Caregiver-needs assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c9cbf2f7-0669-4066-89d4-784c3a7470db",
         "kind": "internal-task",
-        "title": "Caregiver-resource coordination"
+        "title": "Caregiver-resource coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "3aa81c3e-591d-489e-82a2-40dfdef7e6ef",
         "kind": "internal-task",
-        "title": "Emergency-contact review"
+        "title": "Emergency-contact review",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "03fb004b-0f3f-439b-8a2f-f6cee0fdd982",
         "kind": "send-form",
-        "title": "Patient-information review"
+        "title": "Patient-information review",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "8097b27d-ea9b-4352-867c-c2f52a10d2a5",
         "title": "Limited social network",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "88351a3a-928f-455f-8160-2bcf8e572694",
         "title": "Social isolation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8eb09e06-0f9f-4af9-8f75-4e2874bbda09",
         "title": "Resource-navigation difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "925ec7ea-9eea-4bfd-8b45-035d8e58b742",
         "title": "Social needs remain unresolved",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "db4bc44c-b7c8-4f2b-8f90-ab052340d5d0",
         "title": "Caregiver capacity limitation",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "8c58c376-6233-4a84-8699-32df778adb63",
         "title": "Caregiver burden",
-        "description": ""
+        "description": "",
+        "priority": "high"
       }
     ]
   },
@@ -4432,6 +5499,13 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Adopt low-impact aerobic routine",
         "subtitle": "Complete daily low-impact aerobic activity (cycling / swimming / walking) tuned to member ability.",
         "category": "Other",
+        "priority": "low"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13581",
+        "title": "Consume calories",
+        "subtitle": "Meet the individualized daily calorie target to support recovery and energy needs.",
+        "category": "Other",
         "priority": "medium"
       },
       {
@@ -4439,21 +5513,21 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve daytime energy",
         "subtitle": "Improve daytime energy and ability to complete planned activities.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "d95cafdd-79cb-441f-87bd-c169847d96e1",
         "title": "Improve sleep consistency",
         "subtitle": "Establish a consistent sleep routine.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "2778ff3e-c5f9-4f21-82c6-94e8a7c54785",
         "title": "Increase physical activity for metabolic health",
         "subtitle": "Increase safe physical activity.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "5dbfcf2a-dbb5-43cb-8bb6-451af62e7000",
@@ -4467,74 +5541,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472",
         "kind": "patient-education",
-        "title": "Choosing low-impact activities"
+        "title": "Choosing low-impact activities",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473",
         "kind": "patient-task",
-        "title": "Log daily activity minutes"
+        "title": "Log daily activity minutes",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474",
         "kind": "internal-task",
-        "title": "Follow-up on activity plan"
+        "title": "Follow-up on activity plan",
+        "config": {
+          "priority": "low"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13582",
+        "kind": "patient-education",
+        "title": "Meeting calorie needs",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13583",
+        "kind": "patient-task",
+        "title": "Log daily calories",
+        "config": {
+          "priority": "medium"
+        }
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13584",
+        "kind": "internal-task",
+        "title": "Nutrition coach check-in",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "0386948c-626e-4ebd-88a7-32ad9fd24cac",
         "kind": "internal-task",
-        "title": "Activity plan"
+        "title": "Activity plan",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "8da37e24-4d20-48ef-8d31-42708a0af7b6",
         "kind": "patient-education",
-        "title": "Sleep-hygiene education"
-      },
-      {
-        "id": "a5028334-47e7-4681-8a32-f44ae3341d4e",
-        "kind": "internal-task",
-        "title": "Energy/activity pacing"
-      },
-      {
-        "id": "26a23fa9-39c8-43af-8d1b-510cb94b7a3a",
-        "kind": "measure-vital",
-        "title": "Sleep routine tracking"
-      },
-      {
-        "id": "36bc58b7-f93d-406d-8a29-666a1cd2d996",
-        "kind": "patient-education",
-        "title": "Activity coaching"
+        "title": "Sleep-hygiene education",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475",
         "title": "Weather limits outdoor activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476",
         "title": "Fatigue reduces activity tolerance",
-        "description": ""
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13585",
+        "title": "Poor appetite",
+        "description": "",
+        "priority": "medium"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13586",
+        "title": "Food insecurity",
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b1b85288-a6d9-4510-824c-e7189cb1d3f5",
         "title": "Limited physical activity",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "d63e57b8-b3c5-4328-820b-d6337cafbcf5",
         "title": "Fatigue",
-        "description": ""
-      },
-      {
-        "id": "6abf9f20-e025-48d4-8ac9-76d033c7180b",
-        "title": "Irregular sleep schedule",
-        "description": ""
-      },
-      {
-        "id": "133bc0c9-5edc-4f40-8ef8-3d4a3988c75f",
-        "title": "Sleep environment barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -4592,69 +5696,96 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "e3df7ef6-b98f-444d-8a34-3697caec5746",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f598631c-33df-4ed9-829f-3b99b061782c",
         "kind": "internal-task",
-        "title": "Organization tools"
+        "title": "Organization tools",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "4581bbd7-73bd-417c-897f-ec84181a2f83",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9346036c-2112-42a6-8771-cfc9d5045fa7",
         "kind": "internal-task",
-        "title": "Medication reminders"
+        "title": "Medication reminders",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "21d3e05e-a446-43df-8cdf-91a2930559dd",
         "kind": "internal-task",
-        "title": "Refill coordination"
+        "title": "Refill coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "591c5b46-6634-4ac0-838c-d1b4247f4286",
         "kind": "internal-task",
-        "title": "Medication review"
+        "title": "Medication review",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2e574b7b-f297-45e7-83ff-20af5f3282f8",
         "kind": "internal-task",
-        "title": "Regimen simplification review"
+        "title": "Regimen simplification review",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "76d3ea90-fd2f-41f9-8d97-fbe5c290c711",
         "title": "Cognitive impairment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ce414361-dc76-49c1-8141-cf5b4006c735",
         "title": "Organizational difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "07b79155-98fd-48aa-8c84-be68681070fc",
         "title": "Medication adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6d1ed546-4d23-42ed-8545-f2038bbffdc0",
         "title": "Complex medication schedule",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e1a53048-2e0e-443a-8991-28c0bc5cc0b6",
         "title": "Forgetfulness",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "3aa23632-0920-4c3a-87aa-737ea7f17b9d",
         "title": "Refill gap risk",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -4670,7 +5801,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete medication reconciliation",
         "subtitle": "Maintain an accurate medication list after a care transition.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "2c7eda0c-baad-45d1-8a75-e2a466057e4f",
@@ -4698,83 +5829,110 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Reduce medication-related adverse effects",
         "subtitle": "Identify and address medication-related adverse effects.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "d79737c5-5df0-4f51-8a0c-a9270a3ce7ca",
         "title": "Resolve medication discrepancies",
         "subtitle": "Resolve identified medication discrepancies with the care team.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "1d7aef58-8fe5-4839-8523-701a476f6621",
         "kind": "internal-task",
-        "title": "Medication reconciliation"
+        "title": "Medication reconciliation",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "446a877b-fdd1-4141-8ff1-198e525ce3cf",
         "kind": "internal-task",
-        "title": "Medication-list update"
+        "title": "Medication-list update",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "4581bbd7-73bd-417c-897f-ec84181a2f83",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "13d32003-6ed8-43cd-8942-a7d2d729c9d2",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "9346036c-2112-42a6-8771-cfc9d5045fa7",
         "kind": "internal-task",
-        "title": "Medication reminders"
+        "title": "Medication reminders",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "b2227fea-9124-40c6-8739-4d3e47707d13",
         "kind": "internal-task",
-        "title": "Medication issue escalation"
+        "title": "Medication issue escalation",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "e941a09a-f890-4b02-8f2c-ce83434e1694",
         "kind": "internal-task",
-        "title": "Medication review"
+        "title": "Medication review",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "d489e19a-69ad-4d5e-8672-3309e35e2b68",
         "title": "Medication list discrepancy",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "07931b12-22d3-4eca-83e2-ef1361150a0c",
         "title": "Incomplete care-team communication",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "182f70a0-a501-40b4-8290-2a29bac6b7af",
         "title": "Multiple prescribers",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "07b79155-98fd-48aa-8c84-be68681070fc",
         "title": "Medication adherence difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6d1ed546-4d23-42ed-8545-f2038bbffdc0",
         "title": "Complex medication schedule",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e1a53048-2e0e-443a-8991-28c0bc5cc0b6",
         "title": "Forgetfulness",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -4790,28 +5948,28 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete annual wellness visit",
         "subtitle": "Complete the annual wellness assessment and update the care plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "7ca0c022-cb98-4014-86f3-6ffaa608665f",
         "title": "Complete immunization review",
         "subtitle": "Review immunization status and complete indicated vaccinations.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "6118231d-741d-40a9-852c-8446d897f472",
         "title": "Complete preventive screening plan",
         "subtitle": "Complete age- and risk-appropriate preventive screenings.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "632a2797-cf1c-4572-8eb6-91e996052687",
         "title": "Complete recommended post-discharge services",
         "subtitle": "Complete referrals, labs, therapy, or other services listed in the discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "0ebef36f-8fb6-4ee7-87b0-a514d63a09d4",
@@ -4825,81 +5983,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve completion of recommended preventive services",
         "subtitle": "Address all recommended preventive services that are due.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       }
     ],
     "interventions": [
       {
         "id": "175ccd17-7c04-4cd2-8cf3-2de687e90e8d",
         "kind": "internal-task",
-        "title": "AWV coordination"
+        "title": "AWV coordination",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "3755b9c5-0cbc-4f64-8101-839b8db3e6fd",
         "kind": "internal-task",
-        "title": "AWV care-plan update"
+        "title": "AWV care-plan update",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "a68924bc-7279-4b18-8382-85dce3a4b959",
         "kind": "internal-task",
-        "title": "Immunization review"
+        "title": "Immunization review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "bc064377-8403-47ef-835f-3c2cdb8a6318",
         "kind": "internal-task",
-        "title": "Immunization coordination"
+        "title": "Immunization coordination",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "770437bc-c78f-48ac-89c8-620d16825839",
         "kind": "measure-vital",
-        "title": "Lab tracking"
+        "title": "Lab tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c3575745-e0eb-4a67-8d59-5414866d1a54",
         "kind": "measure-vital",
-        "title": "Preventive screening tracking"
+        "title": "Preventive screening tracking",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "bd8d6f4a-d200-47f9-8d31-4a0c88139500",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "79c0e677-c94d-46b3-8feb-f27630742f9a",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "09db0e37-73c9-4afd-80ec-000ff4f65f32",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e986bcb9-1c69-418d-849b-ae76adf5b4d0",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "27228f03-3e28-4fd2-8f6b-4b721a4d3624",
         "title": "Immunization access barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "74058092-60c4-4bee-8952-110a96dc990c",
         "title": "Vaccine hesitancy or uncertainty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b3bf3314-f0ef-492d-8978-4e72b5fd2b0e",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9dc2308b-fdfc-4779-8987-51a68218f5ad",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -4915,14 +6103,14 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete preventive screening plan",
         "subtitle": "Complete age- and risk-appropriate preventive screenings.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "632a2797-cf1c-4572-8eb6-91e996052687",
         "title": "Complete recommended post-discharge services",
         "subtitle": "Complete referrals, labs, therapy, or other services listed in the discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "0ebef36f-8fb6-4ee7-87b0-a514d63a09d4",
@@ -4936,71 +6124,97 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve completion of recommended preventive services",
         "subtitle": "Address all recommended preventive services that are due.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       }
     ],
     "interventions": [
       {
         "id": "770437bc-c78f-48ac-89c8-620d16825839",
         "kind": "measure-vital",
-        "title": "Lab tracking"
+        "title": "Lab tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c3575745-e0eb-4a67-8d59-5414866d1a54",
         "kind": "measure-vital",
-        "title": "Preventive screening tracking"
+        "title": "Preventive screening tracking",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "bd8d6f4a-d200-47f9-8d31-4a0c88139500",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "79c0e677-c94d-46b3-8feb-f27630742f9a",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "ada11434-e543-415e-8909-0d8c98c16039",
         "kind": "internal-task",
-        "title": "Lab completion follow-up"
+        "title": "Lab completion follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "e41753fb-f0ff-4d24-8e69-5be8e774cb5b",
         "kind": "internal-task",
-        "title": "AWV coordination"
+        "title": "AWV coordination",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "4e81c991-83f4-45d2-86e4-aa429f9969d8",
         "kind": "internal-task",
-        "title": "Immunization review"
+        "title": "Immunization review",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "ba05fd97-db66-48db-8203-fc7434b031e5",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b3bf3314-f0ef-492d-8978-4e72b5fd2b0e",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9dc2308b-fdfc-4779-8987-51a68218f5ad",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "fc669fee-da97-466b-8f39-de619b6aedf1",
         "title": "Scheduling barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "c7bc6732-7f56-441e-84bf-bc21b7abf3cf",
         "title": "Immunization access barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -5030,7 +6244,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Increase social engagement",
         "subtitle": "Increase meaningful social connection.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "0b1dfa2b-d5ea-4575-81e5-d0bb6f9e3211",
@@ -5051,74 +6265,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "ddcc9220-1650-468b-8e8f-247830e80b8c",
         "kind": "internal-task",
-        "title": "Community-resource navigation"
+        "title": "Community-resource navigation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "5bc028ac-379e-458c-8762-c3cf35056f5d",
         "kind": "internal-task",
-        "title": "SDOH follow-up"
+        "title": "SDOH follow-up",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "2a7e41bc-122f-45c7-83f9-5b5d849d410a",
         "kind": "measure-vital",
-        "title": "Caregiver-needs assessment"
+        "title": "Caregiver-needs assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c9cbf2f7-0669-4066-89d4-784c3a7470db",
         "kind": "internal-task",
-        "title": "Caregiver-resource coordination"
+        "title": "Caregiver-resource coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "7b38fbb4-9937-4e10-8dcf-4c8101a8a4ba",
         "kind": "patient-education",
-        "title": "Social-connection planning"
+        "title": "Social-connection planning",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "26e08e9e-518d-4b53-81b3-507995244f2c",
         "kind": "internal-task",
-        "title": "Community-engagement referral"
+        "title": "Community-engagement referral",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "33a9a8f0-a75f-4e1c-8b88-7278dd671fd4",
         "kind": "measure-vital",
-        "title": "Functional assessment"
+        "title": "Functional assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "c4988d2d-5520-48ce-894c-1cc483df461f",
         "kind": "patient-education",
-        "title": "ADL support planning"
+        "title": "ADL support planning",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "8eb09e06-0f9f-4af9-8f75-4e2874bbda09",
         "title": "Resource-navigation difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "925ec7ea-9eea-4bfd-8b45-035d8e58b742",
         "title": "Social needs remain unresolved",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "db4bc44c-b7c8-4f2b-8f90-ab052340d5d0",
         "title": "Caregiver capacity limitation",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "8c58c376-6233-4a84-8699-32df778adb63",
         "title": "Caregiver burden",
-        "description": ""
+        "description": "",
+        "priority": "high"
       },
       {
         "id": "8097b27d-ea9b-4352-867c-c2f52a10d2a5",
         "title": "Limited social network",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "88351a3a-928f-455f-8160-2bcf8e572694",
         "title": "Social isolation",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -5134,21 +6378,21 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Complete post-discharge follow-up",
         "subtitle": "Complete a timely follow-up after hospital discharge.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5e167694-3234-4347-88bd-be2f96d101c6",
         "title": "Establish post-discharge care coordination",
         "subtitle": "Ensure key members of the care team have the same post-discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "632a2797-cf1c-4572-8eb6-91e996052687",
         "title": "Complete recommended post-discharge services",
         "subtitle": "Complete referrals, labs, therapy, or other services listed in the discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "a502f391-4c55-4cfe-8e15-9f37ab6d6bd8",
@@ -5162,7 +6406,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Follow post-discharge medication plan",
         "subtitle": "Follow the reconciled post-discharge medication plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "00142cba-38b2-4204-837d-a444be70a121",
@@ -5176,74 +6420,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "fe001e03-319c-488c-897b-31676f97033b",
         "kind": "internal-task",
-        "title": "Post-discharge outreach"
+        "title": "Post-discharge outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "815d1406-54bb-45bb-80f8-d2fff2616ed7",
         "kind": "internal-task",
-        "title": "Post-discharge appointment coordination"
+        "title": "Post-discharge appointment coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "d8ead013-091a-4d5d-8417-b532f9a2c0ce",
         "kind": "internal-task",
-        "title": "Care-team handoff"
+        "title": "Care-team handoff",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "35d60cc7-b8e6-478b-8eb6-d45b2ad24d2a",
         "kind": "internal-task",
-        "title": "Care-plan handoff documentation"
+        "title": "Care-plan handoff documentation",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "bd8d6f4a-d200-47f9-8d31-4a0c88139500",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "79c0e677-c94d-46b3-8feb-f27630742f9a",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "2c281f9e-0801-4ef1-84e1-a13f5ecd7ab4",
         "kind": "internal-task",
-        "title": "Medication reconciliation"
+        "title": "Medication reconciliation",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "aa3439f1-e4ed-47c6-8703-07e33a07182f",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "10846474-1fbf-48ce-860d-b0fe3df5316c",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8e0a5ed7-08a2-493a-85fb-af3b53bb31d0",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "11e53182-a614-4ebf-8d23-023583b83be8",
         "title": "Incomplete care-team communication",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ec92801a-b6a4-4cfc-8272-698514add4fe",
         "title": "Care-team coordination gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "d71ad103-0e19-468d-8856-d21ffddc7e10",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "0d1e63ef-6f2c-494c-8282-99a24c5f124e",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -5259,116 +6533,146 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Follow post-discharge medication plan",
         "subtitle": "Follow the reconciled post-discharge medication plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "e8820f6f-e89f-4f8a-89b0-62b2076d199c",
         "title": "Complete post-discharge follow-up",
         "subtitle": "Complete a timely follow-up after hospital discharge.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "632a2797-cf1c-4572-8eb6-91e996052687",
         "title": "Complete recommended post-discharge services",
         "subtitle": "Complete referrals, labs, therapy, or other services listed in the discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "5e167694-3234-4347-88bd-be2f96d101c6",
         "title": "Establish post-discharge care coordination",
         "subtitle": "Ensure key members of the care team have the same post-discharge plan.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "0b4d9b8a-1c15-4e43-85b7-6480e8d0fbe8",
         "title": "Improve recognition of warning signs",
         "subtitle": "Recognize and appropriately respond to individualized warning signs.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "19cee8a8-deb3-4c3c-81b5-53df34b44373",
         "title": "Prevent avoidable readmission",
         "subtitle": "Reduce risk of an avoidable readmission following discharge.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "2c281f9e-0801-4ef1-84e1-a13f5ecd7ab4",
         "kind": "internal-task",
-        "title": "Medication reconciliation"
+        "title": "Medication reconciliation",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "aa3439f1-e4ed-47c6-8703-07e33a07182f",
         "kind": "patient-education",
-        "title": "Medication adherence education"
+        "title": "Medication adherence education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "12033dbb-8724-4373-872f-a931b66e68fb",
         "kind": "patient-education",
-        "title": "Teach-back education"
+        "title": "Teach-back education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "fe001e03-319c-488c-897b-31676f97033b",
         "kind": "internal-task",
-        "title": "Post-discharge outreach"
+        "title": "Post-discharge outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "815d1406-54bb-45bb-80f8-d2fff2616ed7",
         "kind": "internal-task",
-        "title": "Post-discharge appointment coordination"
+        "title": "Post-discharge appointment coordination",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "bd8d6f4a-d200-47f9-8d31-4a0c88139500",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "79c0e677-c94d-46b3-8feb-f27630742f9a",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "d8ead013-091a-4d5d-8417-b532f9a2c0ce",
         "kind": "internal-task",
-        "title": "Care-team handoff"
+        "title": "Care-team handoff",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "f9f4d93c-f4ea-4041-841c-63a9285b2e6d",
         "title": "Medication list discrepancy",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "369f0c2e-56c8-4ca1-88ba-c884ecded3e0",
         "title": "Refill gap risk",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "fadd4a59-7ea3-4c8e-8ab0-959ceecbd875",
         "title": "Limited health literacy",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "10846474-1fbf-48ce-860d-b0fe3df5316c",
         "title": "Appointment access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8e0a5ed7-08a2-493a-85fb-af3b53bb31d0",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "d71ad103-0e19-468d-8856-d21ffddc7e10",
         "title": "Lab access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -5412,64 +6716,88 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "05edbec6-cadc-4fe7-8bed-138aacb14ae7",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "1783f5a5-0a66-448f-8988-6f238b4f01bb",
         "kind": "measure-vital",
-        "title": "Referral-closure tracking"
+        "title": "Referral-closure tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "26255521-7838-4584-8c9d-664e9dabbc35",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "e3df7ef6-b98f-444d-8a34-3697caec5746",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f598631c-33df-4ed9-829f-3b99b061782c",
         "kind": "internal-task",
-        "title": "Organization tools"
+        "title": "Organization tools",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "cfb2f65f-2685-482e-85d4-6873ee2d84ff",
         "kind": "internal-task",
-        "title": "Appointment reminders"
+        "title": "Appointment reminders",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "05e4a823-a788-4c3d-8eb9-c97d29dd3065",
         "title": "Referral completion barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e0790f93-febb-40fd-8e35-b5cdc2236a49",
         "title": "Care-team coordination gap",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "3993c9c4-932b-40d9-8ffe-7bbf826bf323",
         "title": "Scheduling barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9214ffdd-346c-49d0-88a5-95c0663c45b2",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "76d3ea90-fd2f-41f9-8d97-fbe5c290c711",
         "title": "Cognitive impairment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ce414361-dc76-49c1-8141-cf5b4006c735",
         "title": "Organizational difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -5506,7 +6834,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve continuity after provider transition",
         "subtitle": "Maintain continuity of care after a provider or facility transition.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "82f770fe-a6cc-4e73-894c-fb30d5bd8c68",
@@ -5527,74 +6855,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "23dc30e8-b8f7-422e-83fb-5ccff9b35cfe",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "629407e6-9e43-402e-82fc-9a7b9e81f0ec",
         "kind": "internal-task",
-        "title": "Primary-care coordination"
+        "title": "Primary-care coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "ebd7c8ce-e538-4c53-8a5d-2dc891781593",
         "kind": "measure-vital",
-        "title": "Transportation assessment"
+        "title": "Transportation assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "899de6a5-19d8-4cdf-8fa0-74648758f5ec",
         "kind": "internal-task",
-        "title": "Transportation coordination"
+        "title": "Transportation coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "e3df7ef6-b98f-444d-8a34-3697caec5746",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f598631c-33df-4ed9-829f-3b99b061782c",
         "kind": "internal-task",
-        "title": "Organization tools"
+        "title": "Organization tools",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "dd99a1bf-6fce-4056-87e4-52ab0bb34677",
         "kind": "internal-task",
-        "title": "Post-discharge outreach"
+        "title": "Post-discharge outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "a9cdf6ee-5a7f-45b0-8b8d-f5f0a1bcee40",
         "kind": "internal-task",
-        "title": "Care-team handoff"
+        "title": "Care-team handoff",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "e6ab8bfa-f788-454c-87ec-118ce09aeacd",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "1e7b3773-69d7-41fd-86ad-35308b091090",
         "title": "Scheduling barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "4bb5c8a0-0b9e-4efe-8fbe-692d3c3ad380",
         "title": "Transportation barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6643fa3e-89e4-4df4-8305-1893d2eda3c8",
         "title": "Distance to care",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "76d3ea90-fd2f-41f9-8d97-fbe5c290c711",
         "title": "Cognitive impairment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ce414361-dc76-49c1-8141-cf5b4006c735",
         "title": "Organizational difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -5610,7 +6968,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Improve recognition of warning signs",
         "subtitle": "Recognize and appropriately respond to individualized warning signs.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "b840c54d-f087-42df-8eb7-ab9ac985a1cc",
@@ -5631,83 +6989,110 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Increase patient participation in care decisions",
         "subtitle": "Participate in agreed care-plan decisions and goal setting.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "low"
       },
       {
         "id": "2b1ceed9-9f1e-4718-8c84-e1bf71b9909e",
         "title": "Understand discharge instructions",
         "subtitle": "Demonstrate understanding of discharge instructions and warning signs.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "4463cd3a-c00f-483e-8194-88673cf38412",
         "kind": "patient-education",
-        "title": "Warning-sign education"
+        "title": "Warning-sign education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "52fc9af1-e3cc-46db-8774-5cd85c22dece",
         "kind": "patient-education",
-        "title": "Symptom escalation education"
+        "title": "Symptom escalation education",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "a4744f43-bd06-4c86-8003-1148cd1fa1f9",
         "kind": "measure-vital",
-        "title": "Self-monitoring log"
+        "title": "Self-monitoring log",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "dc2e9912-76fa-4cf9-8c8e-480118f7f575",
         "kind": "patient-education",
-        "title": "Self-management education"
+        "title": "Self-management education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "6e5043fc-4aa5-49ef-868a-9b8d5f074181",
         "kind": "patient-education",
-        "title": "Teach-back education"
+        "title": "Teach-back education",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "cbd9ceec-dae8-4301-8ffa-5646466d5ff8",
         "kind": "internal-task",
-        "title": "Care-plan review"
+        "title": "Care-plan review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "094e76ce-0275-45d6-8340-99215b18bbe5",
         "kind": "internal-task",
-        "title": "Shared goal setting"
+        "title": "Shared goal setting",
+        "config": {
+          "priority": "low"
+        }
       }
     ],
     "barriers": [
       {
         "id": "8983a61c-d9de-43c8-8533-b4292df1223b",
         "title": "Limited health literacy",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "59c1441c-cd56-4215-8128-1aba0d3973ec",
         "title": "Cognitive impairment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "2cadd7a0-846f-469f-8149-61f75f43816d",
         "title": "Inconsistent self-monitoring",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "b4f3febc-bc78-4d7a-8ed1-b156967878b9",
         "title": "Difficulty using monitoring equipment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "8934d1d8-cc30-4888-8a84-0014b1529d81",
         "title": "Difficulty learning equipment technique",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e38f17a3-c949-4eca-8a93-af7f7bea3049",
         "title": "Need for repeated education",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -5751,81 +7136,111 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Maintain timely care-plan outreach",
         "subtitle": "Complete scheduled care-management contacts.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       }
     ],
     "interventions": [
       {
         "id": "371960ec-981e-43f4-88c2-790bd47512d9",
         "kind": "measure-vital",
-        "title": "Appointment tracking"
+        "title": "Appointment tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "cfb2f65f-2685-482e-85d4-6873ee2d84ff",
         "kind": "internal-task",
-        "title": "Appointment reminders"
+        "title": "Appointment reminders",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "ebd7c8ce-e538-4c53-8a5d-2dc891781593",
         "kind": "measure-vital",
-        "title": "Transportation assessment"
+        "title": "Transportation assessment",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "899de6a5-19d8-4cdf-8fa0-74648758f5ec",
         "kind": "internal-task",
-        "title": "Transportation coordination"
+        "title": "Transportation coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "e3df7ef6-b98f-444d-8a34-3697caec5746",
         "kind": "internal-task",
-        "title": "Refill support"
+        "title": "Refill support",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "f598631c-33df-4ed9-829f-3b99b061782c",
         "kind": "internal-task",
-        "title": "Organization tools"
+        "title": "Organization tools",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "77dfdae1-fe96-4348-88ef-234f51390dd2",
         "kind": "internal-task",
-        "title": "Care-management outreach"
+        "title": "Care-management outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "cf7ebb9e-9bbb-4cf0-83a5-ce66e88153a1",
         "kind": "internal-task",
-        "title": "Outreach response support"
+        "title": "Outreach response support",
+        "config": {
+          "priority": "high"
+        }
       }
     ],
     "barriers": [
       {
         "id": "87378341-b25d-4866-8582-a6801a6703be",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "bfb47014-a29c-499e-8410-2c2bc9d42b36",
         "title": "Transportation barrier",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "9fb2ad7b-2c5c-4032-898a-8f0cb129bc67",
         "title": "Missed appointment pattern",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "6643fa3e-89e4-4df4-8305-1893d2eda3c8",
         "title": "Distance to care",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "76d3ea90-fd2f-41f9-8d97-fbe5c290c711",
         "title": "Cognitive impairment",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "ce414361-dc76-49c1-8141-cf5b4006c735",
         "title": "Organizational difficulty",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   },
@@ -5862,7 +7277,7 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
         "title": "Maintain timely care-plan outreach",
         "subtitle": "Complete scheduled care-management contacts.",
         "category": "Other",
-        "priority": "medium"
+        "priority": "high"
       },
       {
         "id": "00142cba-38b2-4204-837d-a444be70a121",
@@ -5883,74 +7298,104 @@ export const CARE_PLAN_TEMPLATE_LIBRARY = [
       {
         "id": "a8a6add1-0710-4afc-823e-acf19599aeeb",
         "kind": "internal-task",
-        "title": "Care-plan review"
+        "title": "Care-plan review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "ebd3353a-a830-42ed-84ab-a7b5db1a1e4c",
         "kind": "patient-education",
-        "title": "Action-plan tracking"
+        "title": "Action-plan tracking",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "03005cb4-9d38-4d13-8007-a0cc5e2598d1",
         "kind": "internal-task",
-        "title": "Goal-progress review"
+        "title": "Goal-progress review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "e524ec2f-9fb7-4c45-8414-2d0c994ca30c",
         "kind": "internal-task",
-        "title": "Proactive care-management review"
+        "title": "Proactive care-management review",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "5f55ade9-3245-4434-8255-126b12092b4f",
         "kind": "internal-task",
-        "title": "Shared goal setting"
+        "title": "Shared goal setting",
+        "config": {
+          "priority": "low"
+        }
       },
       {
         "id": "24dc965e-11bc-423a-8b16-bd692a6a3f51",
         "kind": "internal-task",
-        "title": "Care-management outreach"
+        "title": "Care-management outreach",
+        "config": {
+          "priority": "high"
+        }
       },
       {
         "id": "05edbec6-cadc-4fe7-8bed-138aacb14ae7",
         "kind": "internal-task",
-        "title": "Referral coordination"
+        "title": "Referral coordination",
+        "config": {
+          "priority": "medium"
+        }
       },
       {
         "id": "1783f5a5-0a66-448f-8988-6f238b4f01bb",
         "kind": "measure-vital",
-        "title": "Referral-closure tracking"
+        "title": "Referral-closure tracking",
+        "config": {
+          "priority": "medium"
+        }
       }
     ],
     "barriers": [
       {
         "id": "848c2913-2f8e-4e07-8683-70c936498518",
         "title": "Changing clinical needs",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "eee431a3-2095-4976-8044-d801a6325e25",
         "title": "Multiple active goals",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "f00cc865-efc5-4bd1-881e-20b9f9ec0fae",
         "title": "Frequent acute needs",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "70fd7669-8ff1-4510-8ef5-ce61cad276e5",
         "title": "Low confidence with self-management",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "56b4bbe1-a4b3-457a-8977-017da39c2ce2",
         "title": "Competing priorities",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       },
       {
         "id": "e6544a8d-bd15-4d18-88f0-e7bcb3994b45",
         "title": "Follow-up access issue",
-        "description": ""
+        "description": "",
+        "priority": "medium"
       }
     ]
   }

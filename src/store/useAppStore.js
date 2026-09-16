@@ -65,6 +65,7 @@ import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { resolvePatientStoreId } from '../lib/resolvePatientStoreId';
+import { resolvePatientForCall } from '../lib/patientCall';
 
 // Central failure reporter for every persistHccXxx helper. Historically
 // each of these was fire-and-forget with only console.warn on error — so
@@ -12954,7 +12955,15 @@ export const useAppStore = create((set, get) => ({
     set({ callTimerRef: ref });
   },
 
-  openCallPopover: (patientId, btnRef) => set({ callPopoverPatient: patientId, callPopoverBtnRef: btnRef }),
+  openCallPopover: (patientId, btnRef) => {
+    const state = get();
+    const patient = resolvePatientForCall(state, patientId);
+    if (!patient) {
+      state.showToast?.('Unable to start call — patient not found');
+      return;
+    }
+    set({ callPopoverPatient: patient.id, callPopoverBtnRef: btnRef });
+  },
   closeCallPopover: () => set({ callPopoverPatient: null, callPopoverBtnRef: null }),
 
   startActiveCall: (patientId) => {

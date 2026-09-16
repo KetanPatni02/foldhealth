@@ -9,6 +9,7 @@ import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
+import { worklistMemberCallId } from '../../lib/patientCall';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { CcmBillingReviewDrawer } from './CcmBillingReviewDrawer';
 import styles from './CcmWorklistRow.module.css';
@@ -153,6 +154,8 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
   const [billingOpen, setBillingOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtnRef = useRef(null);
+  const callBtnRef = useRef(null);
+  const openCallPopover = useAppStore(s => s.openCallPopover);
 
   const middleCols = (columns || CCM_MIDDLE_COLUMNS)
     .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
@@ -290,7 +293,16 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
         <div className={styles.actionsCell}>
           <ActionButton icon="solar:document-text-linear" size="L" tooltip="Open CCM care program" onClick={openInCarePlan} />
           <span className={styles.actionDivider} />
-          <ActionButton icon="solar:phone-linear" size="L" tooltip="Call patient" />
+          <ActionButton
+            ref={callBtnRef}
+            icon="solar:phone-linear"
+            size="L"
+            tooltip="Call patient"
+            onClick={(e) => {
+              e.stopPropagation();
+              openCallPopover(worklistMemberCallId(m), callBtnRef);
+            }}
+          />
           <span className={styles.actionDivider} />
           <ActionButton
             ref={menuBtnRef}

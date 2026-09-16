@@ -70,7 +70,7 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
             dob={member.dob}
             memberId={member.memberId}
             hidePatientLabel
-            onCall={() => v.showToast('Call — coming soon')}
+            patientId={member.id}
           />
         ) : undefined}
         headerRight={

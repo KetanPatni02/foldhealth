@@ -10,6 +10,7 @@ import { ProviderPicker } from './ProviderPicker';
 import { DatePicker } from './DatePicker';
 import { StaffInstructionIcon } from './ScheduleDrawerScreens';
 import { getInitials, MODE_OPTIONS, LOCATION_OPTIONS, APPOINTMENT_STATUSES } from './scheduleDrawerConstants';
+import { usePatientCallButton } from '../../hooks/usePatientCallButton';
 import styles from './ScheduleDrawer.module.css';
 
 export function ScheduleDrawerViewMode({
@@ -54,6 +55,7 @@ export function ScheduleDrawerViewMode({
   const matchedType = appointmentTypes.find(t => t.name === ea.appointment_type_name);
   const apptTypeColor = matchedType?.color || (ea.appointment_type_name?.includes('Wellness') ? 'var(--status-warning)' : 'var(--primary-300)');
   const apptTypeForPicker = appointmentType || (ea.appointment_type_name ? { name: ea.appointment_type_name, color: matchedType?.color || apptTypeColor, id: matchedType?.id } : null);
+  const { callBtnRef, openCall } = usePatientCallButton(ea?.patient_id);
 
   return (
     <Drawer title="Appointment Details" onClose={onClose} bodyClassName={styles.drawerBody}>
@@ -107,7 +109,13 @@ export function ScheduleDrawerViewMode({
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <ActionButton icon="solar:phone-linear" size="L" tooltip="Call" />
+                <ActionButton
+                  ref={callBtnRef}
+                  icon="solar:phone-linear"
+                  size="L"
+                  tooltip="Call patient"
+                  onClick={openCall}
+                />
                 <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
                 <ActionButton icon="solar:chat-round-line-linear" size="L" tooltip="Chat" />
                 <span style={{ width: 0.5, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />

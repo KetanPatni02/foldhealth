@@ -17,6 +17,7 @@ import {
 import { sftpEncStatus, highConfidenceSftpIdxs, ICD_LOOKUP, countFlaggedEncounters } from './HccSftpReviewDrawer.utils';
 import { getFieldConfidence } from '../data/confidence';
 import { POS_LABEL } from './mockOcr';
+import { usePatientCallButton } from '../../../hooks/usePatientCallButton';
 import styles from './HccSftpReviewDrawer.module.css';
 
 export function DocToolbar({ batch, setSelectedAll, showToast }) {
@@ -104,6 +105,8 @@ export function DocToolbar({ batch, setSelectedAll, showToast }) {
  * don't repeat it (Figma 1:3574).
  */
 export function PatientReviewBanner({ patient, member, encounterCount }) {
+  const callTarget = member?.id || patient?.id;
+  const { callBtnRef, openCall } = usePatientCallButton(callTarget);
   const name = member?.name || patient?.name || '(unmatched patient)';
   const initials = member?.in || name.split(' ').map(p => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '?';
   const gender = member?.g || '';
@@ -143,7 +146,13 @@ export function PatientReviewBanner({ patient, member, encounterCount }) {
         </div>
       </div>
       <div className={styles.patientBannerActions}>
-        <ActionButton size="S" icon="solar:phone-linear" tooltip="Contact patient" />
+        <ActionButton
+          ref={callBtnRef}
+          size="S"
+          icon="solar:phone-linear"
+          tooltip="Call patient"
+          onClick={openCall}
+        />
         <ActionButton size="S" icon="solar:alt-arrow-down-linear" tooltip="More" />
       </div>
     </div>

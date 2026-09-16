@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
@@ -9,6 +9,7 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { useAppStore } from '../../store/useAppStore';
+import { worklistMemberCallId } from '../../lib/patientCall';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import styles from './JsaWorklistRow.module.css';
 
@@ -190,9 +191,11 @@ export const JSA_MIDDLE_COLUMNS = [
   },
 ];
 
-export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle, onView, onCall, showToast }) {
+export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle, onView, showToast }) {
   const updateJsaMemberStatus = useAppStore(s => s.updateJsaMemberStatus);
   const openQuickView = useAppStore(s => s.openQuickView);
+  const openCallPopover = useAppStore(s => s.openCallPopover);
+  const callBtnRef = useRef(null);
   const [statusAnchor, setStatusAnchor] = useState(null);
   const quickViewPayload = { id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, memberId: member.memberId, language: member.language };
   const handleMemberCellClick = (e) => {
@@ -283,10 +286,14 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
           />
           <span className={styles.actionDivider} />
           <ActionButton
+            ref={callBtnRef}
             icon="solar:phone-linear"
             size="L"
-            tooltip="Call"
-            onClick={onCall}
+            tooltip="Call patient"
+            onClick={(e) => {
+              e.stopPropagation();
+              openCallPopover(worklistMemberCallId(member), callBtnRef);
+            }}
           />
           <span className={styles.actionDivider} />
           <ActionButton

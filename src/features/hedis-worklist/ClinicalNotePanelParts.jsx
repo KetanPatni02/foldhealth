@@ -212,7 +212,7 @@ export function NoteContextPane({ v, member, year }) {
           dob={member.dob}
           memberId={member.memberId}
           hidePatientLabel
-          onCall={() => v.showToast('Call — coming soon')}
+          patientId={member.id}
         />
       </div>
 

@@ -555,7 +555,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         banner={inSplit ? undefined : (
           <div className={styles.patientBannerWrap}>
             <PatientBanner initials={member.in} name={member.name} gender={member.gender} age={member.age} dob={member.dob}
-              memberId={member.memberId} hidePatientLabel onCall={() => showToast('Call — coming soon')} />
+              memberId={member.memberId} hidePatientLabel patientId={member.id} />
           </div>
         )}
       >
@@ -822,7 +822,7 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           {inSplit && (
             <div className={styles.patientBannerWrap}>
               <PatientBanner initials={member.in} name={member.name} gender={member.gender} age={member.age} dob={member.dob}
-                memberId={member.memberId} hidePatientLabel onCall={() => showToast('Call — coming soon')} />
+                memberId={member.memberId} hidePatientLabel patientId={member.id} />
             </div>
           )}
           <CareGapDetailDrawerHeader

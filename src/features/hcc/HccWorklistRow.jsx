@@ -97,6 +97,8 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
   const requestChartPopoverClose = () => {
     chartHoverCloseTimer.current = setTimeout(() => setChartRect(null), 200);
   };
+  const actionsBtnRef = useRef(null);
+  const openCallPopover = useAppStore(s => s.openCallPopover);
   const openActions = (e) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -289,6 +291,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
           />
           <span className={styles.actionsDivider} />
           <ActionButton
+            ref={actionsBtnRef}
             icon="solar:menu-dots-linear"
             size="L"
             tooltip="More actions"
@@ -333,6 +336,11 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
         anchorRect={actionsRect}
         onClose={() => setActionsRect(null)}
         onAction={(label) => {
+          if (label === 'Make a Call') {
+            setActionsRect(null);
+            openCallPopover(member.id, actionsBtnRef);
+            return;
+          }
           if (label === 'Edit Details') {
             openPatientEdit('basic', {
               id: member.id,

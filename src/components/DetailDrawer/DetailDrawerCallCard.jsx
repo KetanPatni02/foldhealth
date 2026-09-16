@@ -2,9 +2,11 @@ import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { CallTypeAvatar } from '../CallTypeAvatar/CallTypeAvatar';
 import { DIR_LABEL } from '../CallTypeAvatar/CallTypeAvatar.constants';
+import { usePatientCallButton } from '../../hooks/usePatientCallButton';
 import styles from './DetailDrawer.module.css';
 
 export function DetailDrawerCallCard({ callDir, callDate, callDurationFull, agentName, patient, detailPatientCallsCount }) {
+  const { callBtnRef, openCall } = usePatientCallButton(patient?.id);
   return (
     <div className={styles.callCard}>
       <div className={styles.callCardLeft}>
@@ -32,7 +34,14 @@ export function DetailDrawerCallCard({ callDir, callDate, callDurationFull, agen
         </div>
       </div>
       <div className={styles.callCardActions} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <ActionButton icon="solar:phone-linear" size="L" tooltip="Call" className={styles.callCardBtn} />
+        <ActionButton
+          ref={callBtnRef}
+          icon="solar:phone-linear"
+          size="L"
+          tooltip="Call patient"
+          className={styles.callCardBtn}
+          onClick={openCall}
+        />
         <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
         <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More options" className={styles.callCardBtn} />
       </div>

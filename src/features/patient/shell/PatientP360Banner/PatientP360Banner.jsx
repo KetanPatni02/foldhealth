@@ -31,6 +31,8 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
   const [selectedProfileId, setSelectedProfileId] = useState('central');
   const [moreMenuRect, setMoreMenuRect] = useState(null);
   const bannerRef = useRef(null);
+  const callBtnRef = useRef(null);
+  const openCallPopover = useAppStore(s => s.openCallPopover);
   const [bannerSize, setBannerSize] = useState('wide');
   const showToast = useAppStore(s => s.showToast);
   const updatePatient = useAppStore(s => s.updatePatient);
@@ -179,7 +181,16 @@ export function PatientP360Banner({ patient, variant = 'full' }) {
         <div className={styles.actionsGroup}>
           <div className={styles.actionCol}><ActionButton icon="solar:square-top-down-linear" size="L" tooltip="EHR" /><span className={styles.actionLabel}>EHR</span></div>
           <span className={styles.hDivider} />
-          <div className={styles.actionCol}><ActionButton icon="solar:phone-linear" size="L" tooltip="Call" /><span className={styles.actionLabel}>Call</span></div>
+          <div className={styles.actionCol}>
+            <ActionButton
+              ref={callBtnRef}
+              icon="solar:phone-linear"
+              size="L"
+              tooltip="Call"
+              onClick={() => openCallPopover(patient.id, callBtnRef)}
+            />
+            <span className={styles.actionLabel}>Call</span>
+          </div>
           <span className={styles.hDivider} />
           <div className={styles.actionCol}><ActionButton icon="solar:letter-linear" size="L" tooltip="Email" /><span className={styles.actionLabel}>Email</span></div>
           <span className={styles.hDivider} />

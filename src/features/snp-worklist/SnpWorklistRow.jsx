@@ -9,6 +9,7 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
+import { worklistMemberCallId } from '../../lib/patientCall';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
@@ -329,8 +330,7 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
 
   const handleCallClick = (e) => {
     e.stopPropagation();
-    if (openCallPopover) openCallPopover(m.id, callBtnRef);
-    else showToast(`Call ${m.name} — coming soon`);
+    openCallPopover(worklistMemberCallId(m), callBtnRef);
   };
 
   const menuItems = buildPatientRowMenuItems([

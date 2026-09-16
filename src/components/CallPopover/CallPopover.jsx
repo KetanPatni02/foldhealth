@@ -4,20 +4,21 @@ import { CloseIcon } from '../Icon/CloseIcon';
 import { Avatar } from '../Avatar/Avatar';
 import { TcpaIndicator } from '../ComplianceBadges/ComplianceBadges';
 import { useAppStore } from '../../store/useAppStore';
+import { resolvePatientForCall } from '../../lib/patientCall';
 import styles from './CallPopover.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
 export function CallPopover() {
-  const callPopoverPatient = useAppStore(s => s.callPopoverPatient);
-  const patients = useAppStore(s => s.patients);
   const closeCallPopover = useAppStore(s => s.closeCallPopover);
   const startActiveCall = useAppStore(s => s.startActiveCall);
   const showToast = useAppStore(s => s.showToast);
   const btnRef = useAppStore(s => s.callPopoverBtnRef);
   const popRef = useRef(null);
 
-  const p = patients.find(x => x.id === callPopoverPatient);
+  const p = useAppStore((s) => (
+    s.callPopoverPatient ? resolvePatientForCall(s, s.callPopoverPatient) : null
+  ));
 
   useEffect(() => {
     if (!p) return;

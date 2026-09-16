@@ -27,6 +27,7 @@ import { parseHash } from '../lib/router';
 import { useNotificationsFeed } from '../components/NotificationsPopover/useNotificationsFeed';
 import { splitFullName } from '../lib/nameValidation';
 import { Toaster } from '../components/Toast/Toast';
+import { CallPopoverHost } from '../components/CallPopover/CallPopoverHost';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
 
@@ -53,7 +54,6 @@ const FormView          = lz(() => import('../features/forms/view/FormView'),   
 
 // Drawers and overlays — only mounted when their state is truthy, so lazy here
 // keeps them out of the entry chunk entirely.
-const CallPopover          = lz(() => import('../components/CallPopover/CallPopover'),                     'CallPopover');
 const DetailDrawer         = lz(() => import('../components/DetailDrawer/DetailDrawer'),                   'DetailDrawer');
 const LiveDrawer           = lz(() => import('../components/LiveDrawer/LiveDrawer'),                       'LiveDrawer');
 const QuickViewDrawer      = lz(() => import('../components/QuickViewDrawer/QuickViewDrawer'),             'QuickViewDrawer');
@@ -140,6 +140,7 @@ function PopulationView() {
             <PatientDetailView />
           </Suspense>
         </div>
+        <CallPopoverHost />
       </div>
     );
   }
@@ -423,7 +424,6 @@ export function AppLayout() {
   }, []);
 
   const showCreateAgent = useAppStore(s => s.showCreateAgent);
-  const callPopoverPatient = useAppStore(s => s.callPopoverPatient);
   const detailPatient = useAppStore(s => s.detailPatient);
   const liveDrawerPatient = useAppStore(s => s.liveDrawerPatient);
   const goalDetailId = useAppStore(s => s.goalDetailId);
@@ -556,7 +556,7 @@ export function AppLayout() {
 
       <Suspense fallback={null}>
         {showCreateAgent && <CreateAgentDrawer />}
-        {callPopoverPatient && <CallPopover />}
+        <CallPopoverHost />
         <ActiveCallCard />
         <InvokeAgentModal />
         {detailPatient && <DetailDrawer />}

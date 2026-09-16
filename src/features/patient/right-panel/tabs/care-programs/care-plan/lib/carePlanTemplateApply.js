@@ -51,7 +51,10 @@ export function interventionPayloadFromTemplateEntry(entry, goalId = null) {
     title: entry?.title || '',
     icon: 'solar:clipboard-list-linear',
     duration: entry?.duration || null,
-    priority: 'medium',
+    priority: (() => {
+      const p = String(entry?.config?.priority || entry?.priority || 'medium').toLowerCase();
+      return p === 'high' || p === 'low' ? p : 'medium';
+    })(),
     config: entry?.config || {},
     status: 'Not Started',
     assignee: { name: 'Unassigned', initials: '' },

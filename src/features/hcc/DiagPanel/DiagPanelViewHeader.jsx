@@ -25,7 +25,7 @@ export function DiagPanelViewHeader(p) {
         raf={member.raf}
         rafChange={rafImpact}
         rafUp={member.ru !== false}
-        onCall={noop('Call')}
+        patientId={member.id}
       />
 
       {/* ── Meta row: Created date + overdue + stage pill | assignee + status ── */}

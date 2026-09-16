@@ -7,6 +7,7 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { useAppStore } from '../../store/useAppStore';
+import { usePatientCallButton } from '../../hooks/usePatientCallButton';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
@@ -212,6 +213,7 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
   const openQuickView = useAppStore(s => s.openQuickView);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropBtnRef = useRef(null);
+  const { callBtnRef, openCall } = usePatientCallButton(row);
 
   const middleCols = (columns || ALL_PATIENTS_MIDDLE_COLUMNS)
     .filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
@@ -333,6 +335,14 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
             size="L"
             tooltip="Email"
             onClick={() => showToast(`Email ${row.name} — coming soon`)}
+          />
+          <span className={rowStyles.actionDivider} />
+          <ActionButton
+            ref={callBtnRef}
+            icon="solar:phone-linear"
+            size="L"
+            tooltip="Call patient"
+            onClick={openCall}
           />
           <span className={rowStyles.actionDivider} />
           <ActionButton

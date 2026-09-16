@@ -1,6 +1,7 @@
 // Structured Care Plan Goals Library
 // Generated from structured_care_plan_goals_library.md. Upserted by
-// `bun run seed` (onConflict: 'id'). Do not hand-edit — regenerate instead.
+// `bun run seed` (onConflict: 'id'). Priorities assigned by
+// scripts/applyCarePlanLibraryPriorities.mjs — re-run after library content changes.
 
 export const CARE_PLAN_GOAL_LIBRARY = [
   {
@@ -78,7 +79,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "52403562-10f8-4a7b-8c2a-9952fbd1eb83",
@@ -271,7 +272,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "8c0cf89e-ec85-4309-8d4a-aae542279263",
@@ -313,7 +314,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "a27fa7d7-1621-4953-8a84-23567b233e11",
@@ -360,7 +361,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "4c8aa7d5-6ca1-457e-8373-32c5201b64fd",
@@ -709,7 +710,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "15a1c7a9-395c-4b2e-8514-a1624637a2d8",
@@ -808,7 +809,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "70f58b43-26c9-437f-869e-88383bd3cf42",
@@ -949,7 +950,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "5a0e7a1f-7ca0-44ca-8a2b-f7502cb2ddef",
@@ -996,7 +997,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "ad276a5c-91c1-482b-860b-92f25f7604c1",
@@ -1048,7 +1049,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "54e67a6d-ad8f-4772-8af5-d80e7af474c6",
@@ -1189,7 +1190,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "584a93de-f041-4988-8a8a-9a4db1717dcc",
@@ -1241,7 +1242,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "fd52f409-4706-4ab0-8ab0-c650420f11e2",
@@ -1335,7 +1336,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "1d7aef58-8fe5-4839-8523-701a476f6621",
@@ -1382,7 +1383,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "84cd3185-676e-473f-84fe-be5f28bcf664",
@@ -1424,7 +1425,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "b2227fea-9124-40c6-8739-4d3e47707d13",
@@ -1550,7 +1551,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "fe001e03-319c-488c-897b-31676f97033b",
@@ -1592,7 +1593,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "6ac25efd-d21b-4179-8fd5-9262f33a51a1",
@@ -1649,7 +1650,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "1e38d11d-4c92-4e40-8a41-15d4afeb48b8",
@@ -1691,7 +1692,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "2c281f9e-0801-4ef1-84e1-a13f5ecd7ab4",
@@ -1743,7 +1744,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "bd8d6f4a-d200-47f9-8d31-4a0c88139500",
@@ -1790,7 +1791,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "d8ead013-091a-4d5d-8417-b532f9a2c0ce",
@@ -1832,7 +1833,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "175ccd17-7c04-4cd2-8cf3-2de687e90e8d",
@@ -1874,7 +1875,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "770437bc-c78f-48ac-89c8-620d16825839",
@@ -1921,7 +1922,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "a68924bc-7279-4b18-8382-85dce3a4b959",
@@ -2005,7 +2006,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "54446b77-a53b-4e36-89d6-842fb616766a",
@@ -2047,7 +2048,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "6d0fecc8-cbf1-4587-869c-2b9f1ab3d57d",
@@ -2089,7 +2090,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "d49aed68-7061-4372-810a-89aaab5abf95",
@@ -2225,7 +2226,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "568b9a05-329d-4900-89f2-fd4167b1801e",
@@ -2445,7 +2446,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "7ad1a7e8-6669-4239-8a8b-d066c658436e",
@@ -2628,7 +2629,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "4f96cdb7-469e-426f-8cd0-e0f997b35f3c",
@@ -2712,7 +2713,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "7b38fbb4-9937-4e10-8dcf-4c8101a8a4ba",
@@ -2843,7 +2844,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "930696d9-0cca-4ebb-8c1a-7e7cd2315737",
@@ -2885,7 +2886,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "7af4c16c-13a5-4d63-839a-95dd1d057beb",
@@ -2927,7 +2928,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "62044bda-736c-4597-8c0b-5570fea304e7",
@@ -2979,7 +2980,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "6b28357b-d9b7-472a-8509-41ea97a06605",
@@ -3026,7 +3027,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "f6268d0a-377f-420c-8316-67cf98f3023b",
@@ -3073,7 +3074,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "2489763c-1058-4d95-8f87-a10e53adcd96",
@@ -3120,7 +3121,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "b19f650c-de43-480a-82fa-abb40d4b745e",
@@ -3471,7 +3472,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "4463cd3a-c00f-483e-8194-88673cf38412",
@@ -3513,7 +3514,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "cbd9ceec-dae8-4301-8ffa-5646466d5ff8",
@@ -3602,7 +3603,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "e2e9dee9-1d35-4bcd-8ed8-b507fd446f6e",
@@ -3644,7 +3645,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "0386948c-626e-4ebd-88a7-32ad9fd24cac",
@@ -3691,7 +3692,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "bb3b7601-8e41-4886-8149-d0480b43e77c",
@@ -3733,7 +3734,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "579a8e31-21c9-4a98-8d24-81e6a6979467",
@@ -3817,7 +3818,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Week",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "1232ce13-48ea-47f8-8200-cc7c881d63aa",
@@ -3869,7 +3870,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "feb38f77-c8e9-4072-808d-810c580ed258",
@@ -3911,7 +3912,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "24dc965e-11bc-423a-8b16-bd692a6a3f51",
@@ -4126,7 +4127,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "19ddc270-1d45-466b-8797-45573d33d9fe",
@@ -4277,7 +4278,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "e9aaab74-4ca8-407c-8fd8-fd96ed6bfa6c",
@@ -4366,7 +4367,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Day",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
       {
         "id": "dd99a1bf-6fce-4056-87e4-52ab0bb34677",
@@ -4522,7 +4523,7 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Quarterly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
       {
         "id": "e41753fb-f0ff-4d24-8e69-5be8e774cb5b",
@@ -4608,17 +4609,15 @@ export const CARE_PLAN_GOAL_LIBRARY = [
       }
     ]
   },
-  // ── Expanded coverage: specific Vitals (Height, SPO2, Respiratory Rate,
-  //    Temperature, Waist Circumference) + Exercise + Diet goals. Each row
-  //    carries the same {interventions | barriers | conditions} shape the
-  //    seeder writes; the classifier maps `title` → new category enum.
   {
     "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13401",
     "title": "Maintain healthy body height record",
     "description": "Record annual measured height for longitudinal growth tracking and BMI calculation.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Preventive care"],
+    "conditions": [
+      "Preventive care"
+    ],
     "comparator": "=",
     "target_value": "Recorded",
     "target_value_2": "",
@@ -4630,11 +4629,31 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "target_date": "",
     "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13402", "kind": "measure-vital", "title": "Measure standing height" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13403", "kind": "patient-education", "title": "Why height matters for BMI" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13404", "kind": "internal-task", "title": "Add height to intake worklist" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13405", "kind": "barrier", "title": "Missed annual visit" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13406", "kind": "barrier", "title": "Mobility limits standing measurement" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13402",
+        "kind": "measure-vital",
+        "title": "Measure standing height"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13403",
+        "kind": "patient-education",
+        "title": "Why height matters for BMI"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13404",
+        "kind": "internal-task",
+        "title": "Add height to intake worklist"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13405",
+        "kind": "barrier",
+        "title": "Missed annual visit"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13406",
+        "kind": "barrier",
+        "title": "Mobility limits standing measurement"
+      }
     ]
   },
   {
@@ -4643,7 +4662,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Keep resting SpO2 at or above the individualized target so hypoxemia is caught early.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Chronic obstructive pulmonary disease"],
+    "conditions": [
+      "Chronic obstructive pulmonary disease"
+    ],
     "comparator": ">=",
     "target_value": "94",
     "target_value_2": "",
@@ -4653,13 +4674,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13412", "kind": "measure-vital", "title": "Home pulse-oximeter reading" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13413", "kind": "patient-education", "title": "How to use a pulse oximeter" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13414", "kind": "internal-task", "title": "Weekly SpO2 review" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13415", "kind": "barrier", "title": "No home pulse oximeter" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13416", "kind": "barrier", "title": "Inconsistent self-monitoring" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13412",
+        "kind": "measure-vital",
+        "title": "Home pulse-oximeter reading"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13413",
+        "kind": "patient-education",
+        "title": "How to use a pulse oximeter"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13414",
+        "kind": "internal-task",
+        "title": "Weekly SpO2 review"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13415",
+        "kind": "barrier",
+        "title": "No home pulse oximeter"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13416",
+        "kind": "barrier",
+        "title": "Inconsistent self-monitoring"
+      }
     ]
   },
   {
@@ -4668,7 +4709,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Track daily home SpO2 for members with moderate-to-severe COPD to trigger early follow-up.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Chronic obstructive pulmonary disease"],
+    "conditions": [
+      "Chronic obstructive pulmonary disease"
+    ],
     "comparator": ">=",
     "target_value": "92",
     "target_value_2": "",
@@ -4680,11 +4723,31 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "target_date": "",
     "priority": "high",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13422", "kind": "measure-vital", "title": "Daily SpO2 log" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13423", "kind": "patient-education", "title": "COPD action plan" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13424", "kind": "internal-task", "title": "Escalate low-SpO2 alerts" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13425", "kind": "barrier", "title": "Difficulty controlling condition" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13426", "kind": "barrier", "title": "Limited access to device" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13422",
+        "kind": "measure-vital",
+        "title": "Daily SpO2 log"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13423",
+        "kind": "patient-education",
+        "title": "COPD action plan"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13424",
+        "kind": "internal-task",
+        "title": "Escalate low-SpO2 alerts"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13425",
+        "kind": "barrier",
+        "title": "Difficulty controlling condition"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13426",
+        "kind": "barrier",
+        "title": "Limited access to device"
+      }
     ]
   },
   {
@@ -4693,7 +4756,10 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Keep resting respiratory rate within the normal range for the member's age and comorbidities.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Chronic obstructive pulmonary disease", "Heart failure"],
+    "conditions": [
+      "Chronic obstructive pulmonary disease",
+      "Heart failure"
+    ],
     "comparator": "between",
     "target_value": "12",
     "target_value_2": "20",
@@ -4703,13 +4769,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13432", "kind": "measure-vital", "title": "Weekly respiratory-rate check" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13433", "kind": "patient-education", "title": "Breathing-technique guidance" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13434", "kind": "internal-task", "title": "Trend review for respiratory rate" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13435", "kind": "barrier", "title": "Difficulty controlling condition" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13436", "kind": "barrier", "title": "Missed self-monitoring" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13432",
+        "kind": "measure-vital",
+        "title": "Weekly respiratory-rate check"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13433",
+        "kind": "patient-education",
+        "title": "Breathing-technique guidance"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13434",
+        "kind": "internal-task",
+        "title": "Trend review for respiratory rate"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13435",
+        "kind": "barrier",
+        "title": "Difficulty controlling condition"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13436",
+        "kind": "barrier",
+        "title": "Missed self-monitoring"
+      }
     ]
   },
   {
@@ -4718,7 +4804,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Detect and log temperature outside the normal range so infections are surfaced early.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Recent hospitalization"],
+    "conditions": [
+      "Recent hospitalization"
+    ],
     "comparator": "between",
     "target_value": "97",
     "target_value_2": "99",
@@ -4728,13 +4816,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "high",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13442", "kind": "measure-vital", "title": "Daily temperature reading" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13443", "kind": "patient-education", "title": "When to call for a fever" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13444", "kind": "internal-task", "title": "Escalate abnormal-temperature alerts" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13445", "kind": "barrier", "title": "No home thermometer" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13446", "kind": "barrier", "title": "Inconsistent self-monitoring" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13442",
+        "kind": "measure-vital",
+        "title": "Daily temperature reading"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13443",
+        "kind": "patient-education",
+        "title": "When to call for a fever"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13444",
+        "kind": "internal-task",
+        "title": "Escalate abnormal-temperature alerts"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13445",
+        "kind": "barrier",
+        "title": "No home thermometer"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13446",
+        "kind": "barrier",
+        "title": "Inconsistent self-monitoring"
+      }
     ]
   },
   {
@@ -4743,7 +4851,10 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Reduce waist circumference toward a healthy target to improve metabolic risk.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Type 2 diabetes mellitus", "Obesity"],
+    "conditions": [
+      "Type 2 diabetes mellitus",
+      "Obesity"
+    ],
     "comparator": "<=",
     "target_value": "35",
     "target_value_2": "",
@@ -4753,13 +4864,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13452", "kind": "measure-vital", "title": "Monthly waist measurement" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13453", "kind": "patient-education", "title": "Why waist size matters" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13454", "kind": "internal-task", "title": "Coach check-in on waist trend" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13455", "kind": "barrier", "title": "Difficulty controlling condition" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13456", "kind": "barrier", "title": "Sedentary lifestyle" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13452",
+        "kind": "measure-vital",
+        "title": "Monthly waist measurement"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13453",
+        "kind": "patient-education",
+        "title": "Why waist size matters"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13454",
+        "kind": "internal-task",
+        "title": "Coach check-in on waist trend"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13455",
+        "kind": "barrier",
+        "title": "Difficulty controlling condition"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13456",
+        "kind": "barrier",
+        "title": "Sedentary lifestyle"
+      }
     ]
   },
   {
@@ -4768,7 +4899,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Complete strength-training sessions per week to preserve muscle mass and metabolic health.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Frailty risk"],
+    "conditions": [
+      "Frailty risk"
+    ],
     "comparator": ">=",
     "target_value": "2",
     "target_value_2": "",
@@ -4778,13 +4911,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Weekly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13462", "kind": "patient-education", "title": "Home strength-training basics" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13463", "kind": "patient-task", "title": "Log strength sessions" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13464", "kind": "internal-task", "title": "Weekly session check-in" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13465", "kind": "barrier", "title": "No safe space to exercise" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13466", "kind": "barrier", "title": "Joint pain limits activity" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13462",
+        "kind": "patient-education",
+        "title": "Home strength-training basics"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13463",
+        "kind": "patient-task",
+        "title": "Log strength sessions"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13464",
+        "kind": "internal-task",
+        "title": "Weekly session check-in"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13465",
+        "kind": "barrier",
+        "title": "No safe space to exercise"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13466",
+        "kind": "barrier",
+        "title": "Joint pain limits activity"
+      }
     ]
   },
   {
@@ -4793,7 +4946,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Complete daily low-impact aerobic activity (cycling / swimming / walking) tuned to member ability.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Cardiovascular disease"],
+    "conditions": [
+      "Cardiovascular disease"
+    ],
     "comparator": ">=",
     "target_value": "30",
     "target_value_2": "",
@@ -4803,13 +4958,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472", "kind": "patient-education", "title": "Choosing low-impact activities" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473", "kind": "patient-task", "title": "Log daily activity minutes" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474", "kind": "internal-task", "title": "Follow-up on activity plan" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475", "kind": "barrier", "title": "Weather limits outdoor activity" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476", "kind": "barrier", "title": "Fatigue reduces activity tolerance" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13472",
+        "kind": "patient-education",
+        "title": "Choosing low-impact activities"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13473",
+        "kind": "patient-task",
+        "title": "Log daily activity minutes"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13474",
+        "kind": "internal-task",
+        "title": "Follow-up on activity plan"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13475",
+        "kind": "barrier",
+        "title": "Weather limits outdoor activity"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13476",
+        "kind": "barrier",
+        "title": "Fatigue reduces activity tolerance"
+      }
     ]
   },
   {
@@ -4818,7 +4993,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Adhere to the DASH eating pattern for blood-pressure control.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Hypertension"],
+    "conditions": [
+      "Hypertension"
+    ],
     "comparator": ">=",
     "target_value": "80",
     "target_value_2": "",
@@ -4828,13 +5005,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13482", "kind": "patient-education", "title": "DASH eating plan overview" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13483", "kind": "patient-task", "title": "Weekly diet self-assessment" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13484", "kind": "internal-task", "title": "Nutrition coaching call" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13485", "kind": "barrier", "title": "Food insecurity" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13486", "kind": "barrier", "title": "Cost of fresh produce" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13482",
+        "kind": "patient-education",
+        "title": "DASH eating plan overview"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13483",
+        "kind": "patient-task",
+        "title": "Weekly diet self-assessment"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13484",
+        "kind": "internal-task",
+        "title": "Nutrition coaching call"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13485",
+        "kind": "barrier",
+        "title": "Food insecurity"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13486",
+        "kind": "barrier",
+        "title": "Cost of fresh produce"
+      }
     ]
   },
   {
@@ -4843,7 +5040,10 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Adhere to Mediterranean eating pattern to reduce cardiometabolic risk.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Cardiovascular disease", "Type 2 diabetes mellitus"],
+    "conditions": [
+      "Cardiovascular disease",
+      "Type 2 diabetes mellitus"
+    ],
     "comparator": ">=",
     "target_value": "80",
     "target_value_2": "",
@@ -4853,13 +5053,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13492", "kind": "patient-education", "title": "Mediterranean eating plan" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13493", "kind": "patient-task", "title": "Log Mediterranean adherence weekly" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13494", "kind": "internal-task", "title": "Nutrition follow-up" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13495", "kind": "barrier", "title": "Limited cooking skills" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13496", "kind": "barrier", "title": "Cost of key ingredients" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13492",
+        "kind": "patient-education",
+        "title": "Mediterranean eating plan"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13493",
+        "kind": "patient-task",
+        "title": "Log Mediterranean adherence weekly"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13494",
+        "kind": "internal-task",
+        "title": "Nutrition follow-up"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13495",
+        "kind": "barrier",
+        "title": "Limited cooking skills"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13496",
+        "kind": "barrier",
+        "title": "Cost of key ingredients"
+      }
     ]
   },
   {
@@ -4868,7 +5088,10 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Keep daily sodium intake at or below the recommended limit to support blood-pressure control.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Hypertension", "Heart failure"],
+    "conditions": [
+      "Hypertension",
+      "Heart failure"
+    ],
     "comparator": "<=",
     "target_value": "2300",
     "target_value_2": "",
@@ -4880,11 +5103,31 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "target_date": "",
     "priority": "medium",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13502", "kind": "patient-education", "title": "Low-sodium shopping guide" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13503", "kind": "patient-task", "title": "Log sodium intake" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13504", "kind": "internal-task", "title": "Nutrition coach follow-up" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13505", "kind": "barrier", "title": "Reliance on processed foods" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13506", "kind": "barrier", "title": "Cost of fresh alternatives" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13502",
+        "kind": "patient-education",
+        "title": "Low-sodium shopping guide"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13503",
+        "kind": "patient-task",
+        "title": "Log sodium intake"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13504",
+        "kind": "internal-task",
+        "title": "Nutrition coach follow-up"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13505",
+        "kind": "barrier",
+        "title": "Reliance on processed foods"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13506",
+        "kind": "barrier",
+        "title": "Cost of fresh alternatives"
+      }
     ]
   },
   {
@@ -4893,7 +5136,10 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Meet daily fiber-intake target to improve glycemic control and digestive health.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Type 2 diabetes mellitus", "Constipation"],
+    "conditions": [
+      "Type 2 diabetes mellitus",
+      "Constipation"
+    ],
     "comparator": ">=",
     "target_value": "25",
     "target_value_2": "",
@@ -4903,13 +5149,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13512", "kind": "patient-education", "title": "High-fiber foods list" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13513", "kind": "patient-task", "title": "Log fiber intake" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13514", "kind": "internal-task", "title": "Nutrition check-in" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13515", "kind": "barrier", "title": "Limited access to whole foods" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13516", "kind": "barrier", "title": "GI intolerance to fiber increase" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13512",
+        "kind": "patient-education",
+        "title": "High-fiber foods list"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13513",
+        "kind": "patient-task",
+        "title": "Log fiber intake"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13514",
+        "kind": "internal-task",
+        "title": "Nutrition check-in"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13515",
+        "kind": "barrier",
+        "title": "Limited access to whole foods"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13516",
+        "kind": "barrier",
+        "title": "GI intolerance to fiber increase"
+      }
     ]
   },
   {
@@ -4918,7 +5184,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Meet daily hydration target to support renal, cardiovascular, and cognitive health.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Chronic kidney disease"],
+    "conditions": [
+      "Chronic kidney disease"
+    ],
     "comparator": ">=",
     "target_value": "64",
     "target_value_2": "",
@@ -4928,13 +5196,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "low",
+    "priority": "medium",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13522", "kind": "patient-education", "title": "Hydration best practices" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13523", "kind": "patient-task", "title": "Log daily water intake" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13524", "kind": "internal-task", "title": "Hydration coaching call" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13525", "kind": "barrier", "title": "Fluid restriction (medical)" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13526", "kind": "barrier", "title": "Limited access to safe water" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13522",
+        "kind": "patient-education",
+        "title": "Hydration best practices"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13523",
+        "kind": "patient-task",
+        "title": "Log daily water intake"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13524",
+        "kind": "internal-task",
+        "title": "Hydration coaching call"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13525",
+        "kind": "barrier",
+        "title": "Fluid restriction (medical)"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13526",
+        "kind": "barrier",
+        "title": "Limited access to safe water"
+      }
     ]
   },
   {
@@ -4943,7 +5231,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Consume the recommended servings of fruits and vegetables daily.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Preventive care"],
+    "conditions": [
+      "Preventive care"
+    ],
     "comparator": ">=",
     "target_value": "5",
     "target_value_2": "",
@@ -4955,11 +5245,31 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "target_date": "",
     "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13532", "kind": "patient-education", "title": "MyPlate produce guide" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13533", "kind": "patient-task", "title": "Log fruit and vegetable servings" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13534", "kind": "internal-task", "title": "Nutrition coach follow-up" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13535", "kind": "barrier", "title": "Food insecurity" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13536", "kind": "barrier", "title": "Cost of fresh produce" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13532",
+        "kind": "patient-education",
+        "title": "MyPlate produce guide"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13533",
+        "kind": "patient-task",
+        "title": "Log fruit and vegetable servings"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13534",
+        "kind": "internal-task",
+        "title": "Nutrition coach follow-up"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13535",
+        "kind": "barrier",
+        "title": "Food insecurity"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13536",
+        "kind": "barrier",
+        "title": "Cost of fresh produce"
+      }
     ]
   },
   {
@@ -4968,7 +5278,10 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Reduce added sugar intake to support glycemic and weight goals.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Type 2 diabetes mellitus", "Obesity"],
+    "conditions": [
+      "Type 2 diabetes mellitus",
+      "Obesity"
+    ],
     "comparator": "<=",
     "target_value": "25",
     "target_value_2": "",
@@ -4980,11 +5293,31 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "target_date": "",
     "priority": "medium",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13542", "kind": "patient-education", "title": "Hidden sources of added sugar" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13543", "kind": "patient-task", "title": "Log added-sugar grams" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13544", "kind": "internal-task", "title": "Nutrition follow-up" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13545", "kind": "barrier", "title": "Craving management difficulty" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13546", "kind": "barrier", "title": "Household food environment" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13542",
+        "kind": "patient-education",
+        "title": "Hidden sources of added sugar"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13543",
+        "kind": "patient-task",
+        "title": "Log added-sugar grams"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13544",
+        "kind": "internal-task",
+        "title": "Nutrition follow-up"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13545",
+        "kind": "barrier",
+        "title": "Craving management difficulty"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13546",
+        "kind": "barrier",
+        "title": "Household food environment"
+      }
     ]
   },
   {
@@ -4993,7 +5326,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Keep daily carbohydrate intake within the individualized target to improve glycemic control.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Type 2 diabetes mellitus"],
+    "conditions": [
+      "Type 2 diabetes mellitus"
+    ],
     "comparator": "<=",
     "target_value": "180",
     "target_value_2": "",
@@ -5003,13 +5338,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "high",
+    "priority": "medium",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13552", "kind": "patient-education", "title": "Carb counting basics" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13553", "kind": "patient-task", "title": "Log daily carbohydrate intake" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13554", "kind": "internal-task", "title": "Diabetes educator follow-up" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13555", "kind": "barrier", "title": "Difficulty controlling condition" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13556", "kind": "barrier", "title": "Household food environment" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13552",
+        "kind": "patient-education",
+        "title": "Carb counting basics"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13553",
+        "kind": "patient-task",
+        "title": "Log daily carbohydrate intake"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13554",
+        "kind": "internal-task",
+        "title": "Diabetes educator follow-up"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13555",
+        "kind": "barrier",
+        "title": "Difficulty controlling condition"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13556",
+        "kind": "barrier",
+        "title": "Household food environment"
+      }
     ]
   },
   {
@@ -5018,7 +5373,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Meet daily protein target for muscle preservation and recovery.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Frailty risk"],
+    "conditions": [
+      "Frailty risk"
+    ],
     "comparator": ">=",
     "target_value": "60",
     "target_value_2": "",
@@ -5030,11 +5387,31 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "target_date": "",
     "priority": "medium",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13562", "kind": "patient-education", "title": "Protein-rich food guide" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13563", "kind": "patient-task", "title": "Log daily protein" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13564", "kind": "internal-task", "title": "Nutrition coach check-in" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13565", "kind": "barrier", "title": "Chewing / swallowing difficulty" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13566", "kind": "barrier", "title": "Cost of protein sources" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13562",
+        "kind": "patient-education",
+        "title": "Protein-rich food guide"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13563",
+        "kind": "patient-task",
+        "title": "Log daily protein"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13564",
+        "kind": "internal-task",
+        "title": "Nutrition coach check-in"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13565",
+        "kind": "barrier",
+        "title": "Chewing / swallowing difficulty"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13566",
+        "kind": "barrier",
+        "title": "Cost of protein sources"
+      }
     ]
   },
   {
@@ -5043,7 +5420,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Keep daily saturated fat within recommended limits to improve lipid profile.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Hyperlipidemia"],
+    "conditions": [
+      "Hyperlipidemia"
+    ],
     "comparator": "<=",
     "target_value": "20",
     "target_value_2": "",
@@ -5053,13 +5432,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13572", "kind": "patient-education", "title": "Saturated vs unsaturated fats" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13573", "kind": "patient-task", "title": "Log saturated-fat grams" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13574", "kind": "internal-task", "title": "Nutrition follow-up" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13575", "kind": "barrier", "title": "Reliance on convenience foods" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13576", "kind": "barrier", "title": "Family food preferences" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13572",
+        "kind": "patient-education",
+        "title": "Saturated vs unsaturated fats"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13573",
+        "kind": "patient-task",
+        "title": "Log saturated-fat grams"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13574",
+        "kind": "internal-task",
+        "title": "Nutrition follow-up"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13575",
+        "kind": "barrier",
+        "title": "Reliance on convenience foods"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13576",
+        "kind": "barrier",
+        "title": "Family food preferences"
+      }
     ]
   },
   {
@@ -5068,7 +5467,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Meet the individualized daily calorie target to support recovery and energy needs.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Malnutrition risk"],
+    "conditions": [
+      "Malnutrition risk"
+    ],
     "comparator": ">=",
     "target_value": "500",
     "target_value_2": "",
@@ -5080,11 +5481,31 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "target_date": "",
     "priority": "medium",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13582", "kind": "patient-education", "title": "Meeting calorie needs" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13583", "kind": "patient-task", "title": "Log daily calories" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13584", "kind": "internal-task", "title": "Nutrition coach check-in" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13585", "kind": "barrier", "title": "Poor appetite" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13586", "kind": "barrier", "title": "Food insecurity" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13582",
+        "kind": "patient-education",
+        "title": "Meeting calorie needs"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13583",
+        "kind": "patient-task",
+        "title": "Log daily calories"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13584",
+        "kind": "internal-task",
+        "title": "Nutrition coach check-in"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13585",
+        "kind": "barrier",
+        "title": "Poor appetite"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13586",
+        "kind": "barrier",
+        "title": "Food insecurity"
+      }
     ]
   },
   {
@@ -5093,7 +5514,10 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Keep BMI within the healthy range through consistent eating and activity patterns.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Obesity", "Preventive care"],
+    "conditions": [
+      "Obesity",
+      "Preventive care"
+    ],
     "comparator": "<",
     "target_value": "25",
     "target_value_2": "",
@@ -5103,13 +5527,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Monthly",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13592", "kind": "patient-education", "title": "BMI and health guide" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13593", "kind": "patient-task", "title": "Log monthly weight" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13594", "kind": "internal-task", "title": "Coach follow-up on BMI trend" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13595", "kind": "barrier", "title": "Sedentary lifestyle" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13596", "kind": "barrier", "title": "Household food environment" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13592",
+        "kind": "patient-education",
+        "title": "BMI and health guide"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13593",
+        "kind": "patient-task",
+        "title": "Log monthly weight"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13594",
+        "kind": "internal-task",
+        "title": "Coach follow-up on BMI trend"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13595",
+        "kind": "barrier",
+        "title": "Sedentary lifestyle"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13596",
+        "kind": "barrier",
+        "title": "Household food environment"
+      }
     ]
   },
   {
@@ -5118,7 +5562,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Reach the individualized target weight through combined diet and activity changes.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Obesity"],
+    "conditions": [
+      "Obesity"
+    ],
     "comparator": "<",
     "target_value": "160",
     "target_value_2": "",
@@ -5130,11 +5576,31 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "target_date": "",
     "priority": "medium",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13602", "kind": "patient-education", "title": "Healthy weight strategies" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13603", "kind": "patient-task", "title": "Log weekly weight" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13604", "kind": "internal-task", "title": "Weight-loss coaching call" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13605", "kind": "barrier", "title": "Emotional eating" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13606", "kind": "barrier", "title": "Limited access to nutritious food" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13602",
+        "kind": "patient-education",
+        "title": "Healthy weight strategies"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13603",
+        "kind": "patient-task",
+        "title": "Log weekly weight"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13604",
+        "kind": "internal-task",
+        "title": "Weight-loss coaching call"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13605",
+        "kind": "barrier",
+        "title": "Emotional eating"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13606",
+        "kind": "barrier",
+        "title": "Limited access to nutritious food"
+      }
     ]
   },
   {
@@ -5143,7 +5609,9 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "description": "Follow a heart-healthy eating pattern (DASH or Mediterranean) tuned to blood-pressure control.",
     "category": "Other",
     "measure": "",
-    "conditions": ["Hypertension"],
+    "conditions": [
+      "Hypertension"
+    ],
     "comparator": "=",
     "target_value": "Adherent",
     "target_value_2": "",
@@ -5153,13 +5621,33 @@ export const CARE_PLAN_GOAL_LIBRARY = [
     "duration_unit": "Month",
     "frequency": "Daily",
     "target_date": "",
-    "priority": "medium",
+    "priority": "low",
     "links": [
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13612", "kind": "patient-education", "title": "Heart-healthy eating basics" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13613", "kind": "patient-task", "title": "Weekly heart-healthy diet self-check" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13614", "kind": "internal-task", "title": "Dietitian follow-up" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13615", "kind": "barrier", "title": "Household food environment" },
-      { "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13616", "kind": "barrier", "title": "Cost of fresh produce" }
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13612",
+        "kind": "patient-education",
+        "title": "Heart-healthy eating basics"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13613",
+        "kind": "patient-task",
+        "title": "Weekly heart-healthy diet self-check"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13614",
+        "kind": "internal-task",
+        "title": "Dietitian follow-up"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13615",
+        "kind": "barrier",
+        "title": "Household food environment"
+      },
+      {
+        "id": "5c1d3f2a-8a1b-4e7e-9f01-1f21a1b13616",
+        "kind": "barrier",
+        "title": "Cost of fresh produce"
+      }
     ]
   }
 ];
@@ -5278,6 +5766,10 @@ export function carePlanGoalLibraryToRow(g) {
 
 // Per-goal care_plan_interventions rows (a goal's linked interventions +
 // barriers, kind === 'barrier' for the latter).
-export function carePlanGoalLibraryLinkRows(g) {
-  return (g.links || []).map((l) => ({ id: l.id, goal_id: g.id, kind: l.kind, title: l.title, config: {} }));
+export function carePlanGoalLibraryLinkRows(g, interventionLibraryById = new Map()) {
+  return (g.links || []).map((l) => {
+    const lib = interventionLibraryById.get(l.id);
+    const config = lib?.config && Object.keys(lib.config).length ? lib.config : {};
+    return { id: l.id, goal_id: g.id, kind: l.kind, title: l.title, config };
+  });
 }

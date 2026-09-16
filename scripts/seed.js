@@ -845,7 +845,10 @@ async function main() {
   } else console.log(`  ✓ ${templateRows.length} care plan templates`);
 
   console.log('Seeding care_plan_interventions (goal GIB links)...');
-  const goalLinkRows = CARE_PLAN_GOAL_LIBRARY.flatMap(carePlanGoalLibraryLinkRows);
+  const carePlanInterventionById = new Map(CARE_PLAN_INTERVENTION_LIBRARY.map((i) => [i.id, i]));
+  const goalLinkRows = CARE_PLAN_GOAL_LIBRARY.flatMap((g) =>
+    carePlanGoalLibraryLinkRows(g, carePlanInterventionById),
+  );
   const { error: cpglErr } = await supabase
     .from('care_plan_interventions')
     .upsert(goalLinkRows, { onConflict: 'id' });

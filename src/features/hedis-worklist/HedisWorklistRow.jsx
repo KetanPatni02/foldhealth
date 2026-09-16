@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
@@ -6,6 +6,7 @@ import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { useAppStore } from '../../store/useAppStore';
+import { worklistMemberCallId } from '../../lib/patientCall';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
@@ -289,6 +290,8 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
   const platformUsers = useAppStore(s => s.platformUsers);
   const updateGapAssignee = useAppStore(s => s.updateGapAssignee);
   const allTasks = useAppStore(s => s.tasks);
+  const openCallPopover = useAppStore(s => s.openCallPopover);
+  const callBtnRef = useRef(null);
   // useState must sit above the early return: a row whose member loses its last
   // gap would otherwise render two hooks where it previously rendered three, and
   // React throws "rendered fewer hooks than expected".
@@ -414,10 +417,14 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
       <td className={`${styles.actionsCell} ${styles.stickyRight}`}>
         <div className={styles.actionsBtns}>
           <ActionButton
+            ref={callBtnRef}
             icon="solar:phone-linear"
             size="L"
-            tooltip="Call"
-            onClick={e => { e.stopPropagation(); showToast('Call — coming soon'); }}
+            tooltip="Call patient"
+            onClick={(e) => {
+              e.stopPropagation();
+              openCallPopover(worklistMemberCallId(member), callBtnRef);
+            }}
           />
           <span className={styles.actionsDivider} />
           <ActionButton

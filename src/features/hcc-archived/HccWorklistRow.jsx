@@ -600,6 +600,8 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
   const [visitsRect, setVisitsRect] = useState(null);
   const [chartRect, setChartRect] = useState(null);
   const [actionsRect, setActionsRect] = useState(null);
+  const actionsBtnRef = useRef(null);
+  const openCallPopover = useAppStore(s => s.openCallPopover);
 
   const openVisits = (e) => {
     e.stopPropagation();
@@ -688,6 +690,7 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
           />
           <span className={styles.actionsDivider} />
           <ActionButton
+            ref={actionsBtnRef}
             icon="solar:menu-dots-linear"
             size="L"
             tooltip="More actions"
@@ -720,7 +723,14 @@ export function HccWorklistRow({ member, hiddenCols, columns }) {
       <ActionsMenuPopover
         anchorRect={actionsRect}
         onClose={() => setActionsRect(null)}
-        onAction={(label) => showToast(`${label} — coming soon`)}
+        onAction={(label) => {
+          if (label === 'Make a Call') {
+            setActionsRect(null);
+            openCallPopover(member.id, actionsBtnRef);
+            return;
+          }
+          showToast(`${label} — coming soon`);
+        }}
       />
     )}
     </>

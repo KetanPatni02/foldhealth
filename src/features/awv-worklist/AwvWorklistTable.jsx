@@ -185,7 +185,6 @@ export function AwvWorklistTable() {
               programCode,
             });
           }}
-          onCall={() => showToast(`Calling ${m.name} — coming soon`)}
           showToast={showToast}
         />
       )}

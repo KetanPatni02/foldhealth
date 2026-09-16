@@ -6,6 +6,7 @@ import { writeFileSync } from 'node:fs';
 import { CARE_PLAN_GOAL_LIBRARY as GOALS } from '../src/features/settings/care-plan-library/data/carePlanGoalLibrarySeed.js';
 import { CARE_PLAN_INTERVENTION_LIBRARY as INTERVENTIONS } from '../src/features/settings/care-plan-library/data/carePlanInterventionLibrarySeed.js';
 import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY as BARRIERS } from '../src/features/settings/care-plan-library/data/carePlanBarrierStructuredSeed.js';
+import { barrierPriority, interventionPriority } from './carePlanPriorityRules.mjs';
 
 // Stable ids so re-running the generator upserts instead of duplicating.
 const uuid = (seed) => {
@@ -99,7 +100,16 @@ const rows = TEMPLATES.map(([name, conditions, keywords]) => {
       if (seen.has(link.id) || seen.has(key)) continue;
       seen.add(link.id);
       seen.add(key);
-      interventions.push({ id: link.id, kind: link.kind, title });
+      const priority = interventionPriority(
+        { kind: link.kind, title },
+        full?.config?.priority || g.priority || 'medium',
+      );
+      interventions.push({
+        id: link.id,
+        kind: link.kind,
+        title,
+        config: { priority },
+      });
       if (interventions.length >= 8) break;
     }
     if (interventions.length >= 8) break;
@@ -116,14 +126,24 @@ const rows = TEMPLATES.map(([name, conditions, keywords]) => {
       if (barrierSeen.has(link.id) || barrierSeen.has(key)) continue;
       barrierSeen.add(link.id);
       barrierSeen.add(key);
-      barriers.push({ id: link.id, title: link.title, description: '' });
+      barriers.push({
+        id: link.id,
+        title: link.title,
+        description: '',
+        priority: barrierPriority(link.title),
+      });
       if (barriers.length >= 6) break;
     }
     if (barriers.length >= 6) break;
   }
   if (!barriers.length) {
     barriers.push(...pick(BARRIERS, keywords, 4)
-      .map(b => ({ id: b.id, title: b.title, description: b.description || '' })));
+      .map(b => ({
+        id: b.id,
+        title: b.title,
+        description: b.description || '',
+        priority: barrierPriority(b.title),
+      })));
   }
   return {
     id: uuid(name),

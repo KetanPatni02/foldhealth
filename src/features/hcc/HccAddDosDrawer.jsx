@@ -510,7 +510,7 @@ export function HccAddDosDrawer() {
         raf={member.raf}
         rafChange={member.rafImpact}
         rafUp={member.ru !== false}
-        onCall={() => showToast?.('Call — coming soon')}
+        patientId={member.id}
       />
 
       <div className={styles.bodyContainer}>

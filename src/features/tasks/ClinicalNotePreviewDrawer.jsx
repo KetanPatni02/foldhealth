@@ -145,7 +145,7 @@ export function ClinicalNotePreviewDrawer({ note, onClose, onEdit }) {
           dob={noteMember.dob}
           memberId={noteMember.memberId}
           hidePatientLabel
-          onCall={() => showToast?.('Call — coming soon')}
+          patientId={noteMember.id}
         />
       ) : undefined}
     >
