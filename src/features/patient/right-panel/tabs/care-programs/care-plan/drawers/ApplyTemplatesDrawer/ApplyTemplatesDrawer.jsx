@@ -23,10 +23,6 @@ import styles from './ApplyTemplatesDrawer.module.css';
 // selected template reads Medium here to match what the care plan shows.
 const PRIORITIES = ['high', 'medium', 'low'];
 const DEFAULT_PRIORITY = 'medium';
-// Stable empty snapshot so the favorites-grouping memo deps don't churn before
-// the frozen set exists.
-const EMPTY_SET = new Set();
-
 // The condition(s) a template addresses, as a single display string. A
 // template with no explicit condition reads as an em-dash placeholder.
 const conditionTextOf = (t) => {
@@ -72,14 +68,13 @@ export function ApplyTemplatesDrawer({
   const libraryLoading = useAppStore(s => s.carePlanLibraryLoading);
   const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
   const favorites = useAppStore(s => s.carePlanFavorites);
-  const carePlanFavoritesLoaded = useAppStore(s => s.carePlanFavoritesLoaded);
   const fetchCarePlanFavorites = useAppStore(s => s.fetchCarePlanFavorites);
   const toggleCarePlanFavorite = useAppStore(s => s.toggleCarePlanFavorite);
 
   useEffect(() => {
     if (!libraryDidFetch) fetchCarePlanLibrary();
-    if (!carePlanFavoritesLoaded) fetchCarePlanFavorites();
-  }, [libraryDidFetch, carePlanFavoritesLoaded, fetchCarePlanLibrary, fetchCarePlanFavorites]);
+    fetchCarePlanFavorites();
+  }, [libraryDidFetch, fetchCarePlanLibrary, fetchCarePlanFavorites]);
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(() => new Set(appliedTemplateIds));
@@ -110,17 +105,8 @@ export function ApplyTemplatesDrawer({
   // Barriers drawer's "Already Added" group.
   const appliedSet = useMemo(() => new Set(appliedTemplateIds), [appliedTemplateIds]);
 
-  // Favorites grouping is a frozen snapshot taken the first render the favorites
-  // are loaded, not the live `favorites`, so starring a row in-session does NOT
-  // make it jump to the Favorites group — it re-buckets only on the next open,
-  // exactly like "Selected". The live `favorites` still drives each row's star
-  // icon. Captured with the "adjust state during render" pattern (React docs)
-  // so it's frozen on the same render the list first paints, once and only once.
-  const [favSnapshotState, setFavSnapshotState] = useState(null);
-  if (favSnapshotState === null && carePlanFavoritesLoaded) {
-    setFavSnapshotState(new Set(favorites));
-  }
-  const favSnapshot = favSnapshotState || EMPTY_SET;
+  // Same per-user favorites as Settings → Care Plan Library (care_plan_template_favorites).
+  const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
   // Every distinct condition across the library, for the filter chip.
   const conditionOptions = useMemo(() => {
@@ -155,10 +141,7 @@ export function ApplyTemplatesDrawer({
     return list;
   }, [templates, query, conditionFilter, sortDir]);
 
-  // Live star state — flips a row's star icon the instant it is toggled. The
-  // GROUPING uses the frozen `favSnapshot` instead, so a freshly starred row
-  // keeps its place until the drawer is re-opened.
-  const isFavorite = (id) => favorites.includes(id);
+  const isFavorite = (id) => favoriteSet.has(id);
 
   // Templates recommended for this patient, mapped to WHY: the active problems
   // (by title) whose condition a template's conditions / name match. Empty when
@@ -171,7 +154,7 @@ export function ApplyTemplatesDrawer({
   const reasonFor = (id) => recommendedMatches.get(id) || null;
 
   // Buckets, in display order: Recommended (matches the patient's conditions) →
-  // Favorites (frozen star snapshot) → Selected (already on the plan) →
+  // Favorites (shared with the library tab) → Selected (already on the plan) →
   // everything else. A template lands in the first bucket it qualifies for, so
   // the order above is also the precedence. Order within each bucket is
   // inherited from `rows` (search / sort applied).
@@ -180,16 +163,16 @@ export function ApplyTemplatesDrawer({
     [rows, recommendedSet],
   );
   const favRows = useMemo(
-    () => rows.filter(t => !recommendedSet.has(t.id) && favSnapshot.has(t.id)),
-    [rows, recommendedSet, favSnapshot],
+    () => rows.filter(t => !recommendedSet.has(t.id) && favoriteSet.has(t.id)),
+    [rows, recommendedSet, favoriteSet],
   );
   const addedRows = useMemo(
-    () => rows.filter(t => !recommendedSet.has(t.id) && !favSnapshot.has(t.id) && appliedSet.has(t.id)),
-    [rows, recommendedSet, favSnapshot, appliedSet],
+    () => rows.filter(t => !recommendedSet.has(t.id) && !favoriteSet.has(t.id) && appliedSet.has(t.id)),
+    [rows, recommendedSet, favoriteSet, appliedSet],
   );
   const restRows = useMemo(
-    () => rows.filter(t => !recommendedSet.has(t.id) && !favSnapshot.has(t.id) && !appliedSet.has(t.id)),
-    [rows, recommendedSet, favSnapshot, appliedSet],
+    () => rows.filter(t => !recommendedSet.has(t.id) && !favoriteSet.has(t.id) && !appliedSet.has(t.id)),
+    [rows, recommendedSet, favoriteSet, appliedSet],
   );
   // When nothing is recommended, starred, or applied there is only one flat
   // list — drop the group labels so the drawer reads as a simple table.

@@ -236,20 +236,12 @@ export function CarePlanLibraryPanel() {
   const toggleCarePlanFavorite = useAppStore(s => s.toggleCarePlanFavorite);
   const isFavorite = (id) => favorites.includes(id);
 
-  const carePlanFavoritesLoaded = useAppStore(s => s.carePlanFavoritesLoaded);
   useEffect(() => {
     if (!libraryDidFetch) fetchCarePlanLibrary();
-    if (!carePlanFavoritesLoaded) fetchCarePlanFavorites();
-  }, [libraryDidFetch, carePlanFavoritesLoaded, fetchCarePlanLibrary, fetchCarePlanFavorites]);
+    fetchCarePlanFavorites();
+  }, [libraryDidFetch, fetchCarePlanLibrary, fetchCarePlanFavorites]);
 
-  // Ordering snapshot: which templates float to the top is frozen at the
-  // moment the list first loads, so starring/unstarring a row updates its icon
-  // without yanking the row up or down. Re-mounting the panel (return to this
-  // screen / reload) re-snapshots, applying the new favourites-at-top order.
-  const [favOrder, setFavOrder] = useState(null);
-  useEffect(() => {
-    if (carePlanFavoritesLoaded && favOrder === null) setFavOrder(new Set(favorites));
-  }, [carePlanFavoritesLoaded]); // eslint-disable-line react-hooks/exhaustive-deps -- snapshot once per mount
+  const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
   // A single draft/delete-target slot, discriminated by `kind` — only one
   // drawer or confirm dialog is ever open at a time regardless of tab.
@@ -284,12 +276,9 @@ export function CarePlanLibraryPanel() {
       templateSort.key === 'updatedAt' ? t.updatedAt :
       t.name
     );
-    // Favorites float to the top by the frozen snapshot (favOrder), not live
-    // `favorites`, so toggling a star doesn't reorder until the next mount. The
-    // chosen column sorts within each group.
-    const orderFav = favOrder || new Set(favorites);
+    // Favorites float to the top — same list as the patient care-plan template picker.
     return base.toSorted((a, b) => {
-      const favDiff = Number(orderFav.has(b.id)) - Number(orderFav.has(a.id));
+      const favDiff = Number(favoriteSet.has(b.id)) - Number(favoriteSet.has(a.id));
       if (favDiff) return favDiff;
       if (!templateSort.key) return 0;
       return valueOf(a).localeCompare(valueOf(b)) * dir;
@@ -298,11 +287,11 @@ export function CarePlanLibraryPanel() {
 
   const filteredTemplates = useMemo(
     () => sortTemplates(publishedTemplates),
-    [publishedTemplates, searchValue, templateSort, favOrder, favorites], // eslint-disable-line react-hooks/exhaustive-deps
+    [publishedTemplates, searchValue, templateSort, favoriteSet],
   );
   const filteredDrafts = useMemo(
     () => sortTemplates(draftTemplates),
-    [draftTemplates, searchValue, templateSort, favOrder, favorites], // eslint-disable-line react-hooks/exhaustive-deps
+    [draftTemplates, searchValue, templateSort, favoriteSet],
   );
 
   const [goalSort, setGoalSort] = useState({ key: 'title', dir: 'asc' });

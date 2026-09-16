@@ -92,9 +92,12 @@ function App() {
       if (event === 'SIGNED_OUT') {
         track('auth.logout');
         setRecoveryMode(false);
+        useAppStore.getState().resetCarePlanFavorites();
       } else if (event === 'SIGNED_IN') {
         track('auth.session_established');
         applyDefaults(s?.user);
+        useAppStore.setState({ carePlanFavoritesLoaded: false, carePlanFavoritesUserId: null });
+        void useAppStore.getState().fetchCarePlanFavorites({ force: true });
         // Invited users arrive here via the confirmation email with a
         // placeholder password. Keep them on ResetPasswordPage so they
         // can set a real one before dropping into the app.
@@ -114,6 +117,9 @@ function App() {
       }
       applyDefaults(s?.user);
       setSession(s);
+      if (s?.user) {
+        void useAppStore.getState().fetchCarePlanFavorites({ force: true });
+      }
     });
 
     return () => subscription.unsubscribe();

@@ -4645,14 +4645,28 @@ export const useAppStore = create((set, get) => ({
   // signed-in user; favorites sort to the top of the library.
   carePlanFavorites: [],
   carePlanFavoritesLoaded: false,
+  carePlanFavoritesUserId: null,
 
-  fetchCarePlanFavorites: async () => {
-    if (get().carePlanFavoritesLoaded) return;
+  resetCarePlanFavorites: () => {
+    set({
+      carePlanFavorites: [],
+      carePlanFavoritesLoaded: false,
+      carePlanFavoritesUserId: null,
+    });
+  },
+
+  fetchCarePlanFavorites: async ({ force = false } = {}) => {
     const userId = await get()._resolveWorklistUser();
+    const sameUser = get().carePlanFavoritesUserId === userId;
+    if (!force && get().carePlanFavoritesLoaded && sameUser) return;
     const { data, error } = await supabase
       .from('care_plan_template_favorites').select('template_id').eq('user_id', userId);
     if (error) console.warn('fetchCarePlanFavorites:', error.message);
-    set({ carePlanFavorites: (data || []).map(r => r.template_id), carePlanFavoritesLoaded: true });
+    set({
+      carePlanFavorites: (data || []).map(r => r.template_id),
+      carePlanFavoritesLoaded: true,
+      carePlanFavoritesUserId: userId,
+    });
   },
 
   toggleCarePlanFavorite: async (templateId) => {
