@@ -534,6 +534,10 @@ const CONFIG_LABEL = {
   description: 'Description', creationTiming: 'Task Creation',
   creationCount: 'Creation Count', creationTrigger: 'Creation Trigger',
   dueOffset: 'Due Offset', dueUnit: 'Due Unit', durationType: 'Duration Type',
+  // dueDateOverride is written when the reviewer picks a concrete date
+  // from the inline DatePickerPopover on the intervention row; log it as
+  // "Due Date" so History carries the same wording the row shows.
+  dueDateOverride: 'Due Date',
   repeat: 'Repeat', repeatCount: 'Repeat Count', repeatEvery: 'Repeats Every',
   repeatEveryUnit: 'Repeat Unit', repeatEnds: 'Repeat Ends',
   repeatEndsUnit: 'Repeat Ends Unit', memberTaskTitle: 'Member Task Title',

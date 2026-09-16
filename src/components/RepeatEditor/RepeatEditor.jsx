@@ -7,7 +7,11 @@ import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import scheduleStyles from '../../features/settings/care-plan-library/interventions/shared/InterventionDrawer.module.css';
 import styles from './RepeatEditor.module.css';
 
-const REPEAT_UNITS = ['Days', 'Weeks', 'Months', 'Years'];
+// Care-plan cadences today only support Days and Weeks; Months / Years
+// were removed because the store, the "next occurrence" calculator, and
+// downstream reminders were never wired for the calendar-month math they
+// would need. Keep this list in sync with the shape doc below.
+const REPEAT_UNITS = ['Days', 'Weeks'];
 
 /**
  * Repeat schedule editor — Figma Care Plan Creation 14599:200235.
@@ -24,9 +28,9 @@ const REPEAT_UNITS = ['Days', 'Weeks', 'Months', 'Years'];
  *     repeat: boolean,
  *     repeatCount: string | number,   // "1", "5" — how many times
  *     repeatEvery: string | number,   // "1", "2" — interval size
- *     repeatEveryUnit: 'Days' | 'Weeks' | 'Months' | 'Years',
+ *     repeatEveryUnit: 'Days' | 'Weeks',
  *     repeatEnds: string | number,    // "0" — extra window after the last run
- *     repeatEndsUnit: 'Days' | 'Weeks' | 'Months' | 'Years',
+ *     repeatEndsUnit: 'Days' | 'Weeks',
  *   }
  *
  * onChange fires with the FULL next shape (never a partial), so callers

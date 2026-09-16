@@ -1,6 +1,7 @@
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { GbiStatusButton } from '../../tables/carePlanTableShared';
+import { GbiLinkButton } from '../../tables/CarePlanLinkedPreview';
 import styles from './GoalPreviewDrawer.module.css';
 
 /**
@@ -52,6 +53,12 @@ export function GoalLinkedBarriersList({
             style={{ gap: 'var(--space-2)' }}
             onClick={(e) => e.stopPropagation()}
           >
+            {(b.linkedPreview?.goals?.length || 0) > 0 && (
+              <>
+                <GbiLinkButton data={b.linkedPreview} />
+                <span className={styles.intvLinkActionsDivider} aria-hidden style={{ margin: 0 }} />
+              </>
+            )}
             <GbiStatusButton
               value={b.status || 'Not Started'}
               disabled={!canEdit}

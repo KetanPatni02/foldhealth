@@ -17,8 +17,16 @@ import { TabStrip } from '../../../../../../../../components/TabStrip/TabStrip';
 import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+} from '../../../../../../../../components/ConfirmDialog/AlertDialogPrimitives';
 import { RadioButton } from '../../../../../../../../components/RadioButton/RadioButton';
-import { createPortal } from 'react-dom';
+// Reuse the RecordsRequestDialog CSS module so this destructive picker
+// carries the same 12px radius shell, header typography, and full-width
+// footer buttons the QA / Compliance role picker uses. Same visual
+// system across every radio-body dialog in the app.
+import dialogStyles from '../../../../../../../hcc/DiagPanel/RecordsRequestDialog.module.css';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { INTERVENTION_EDITORS } from '../../../../../../../settings/care-plan-library/interventions';
 import { AddTaskDrawer } from '../../../../../../../tasks/AddTaskDrawer';
@@ -319,40 +327,24 @@ const SCOPE_OPTIONS = [
   { value: 'everywhere',    label: 'From everywhere in the plan' },
 ];
 
-/** Radio-picker dialog for the "Delete intervention / barrier" scope choice. */
+/** Radio-picker dialog for the "Delete intervention / barrier" scope
+ *  choice. Reuses the AlertDialog primitives that back ConfirmDialog
+ *  (scrim, focus trap, escape-to-close, enter animation) plus the
+ *  RecordsRequestDialog CSS module so this destructive picker reads as
+ *  the same primitive as the QA / Compliance record request modal:
+ *  12px radius shell, 16px padding, header typography, full-width
+ *  Cancel + primary action pair. The primary is `danger` per the
+ *  design system's destructive-primary rule. */
 function IntvDeleteScopePicker({ name, kindLabel = 'intervention', onCancel, onConfirm }) {
   const [scope, setScope] = useState('this-goal');
-  return createPortal(
-    <div
-      aria-hidden="true"
-      onClick={onCancel}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 9400,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={`Delete ${name}`}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: 360,
-          background: 'var(--neutral-0)',
-          borderRadius: 'var(--space-2)',
-          padding: 'var(--space-4)',
-          display: 'flex', flexDirection: 'column', gap: 'var(--space-3)',
-          boxShadow: '0 24px 60px -20px rgba(0,0,0,0.24)',
-        }}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-          <span style={{ fontSize: 'var(--font-md)', fontWeight: 600, color: 'var(--neutral-500)' }}>
-            Delete &ldquo;{name}&rdquo;?
-          </span>
-          <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
+  return (
+    <AlertDialog open onOpenChange={(open) => { if (!open) onCancel?.(); }}>
+      <AlertDialogContent className={dialogStyles.dialog}>
+        <div className={dialogStyles.header}>
+          <h2 className={dialogStyles.title}>Delete &ldquo;{name}&rdquo;?</h2>
+          <p className={dialogStyles.subtitle}>
             Pick where this {kindLabel} should be removed from.
-          </span>
+          </p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
           {SCOPE_OPTIONS.map((opt) => (
@@ -364,13 +356,12 @@ function IntvDeleteScopePicker({ name, kindLabel = 'intervention', onCancel, onC
             />
           ))}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-          <Button variant="secondary" size="M" onClick={onCancel}>Cancel</Button>
-          <Button variant="destructive" size="M" onClick={() => onConfirm(scope)}>Delete</Button>
+        <div className={dialogStyles.actions}>
+          <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
+          <Button variant="danger" size="L" onClick={() => onConfirm(scope)}>Delete</Button>
         </div>
-      </div>
-    </div>,
-    document.body,
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -427,14 +418,45 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   );
 
   const live = (slice?.goals || []).find(g => g.id === goal?.id) || goal;
+
+  // Shared lookup used to enrich each intervention / barrier row with
+  // the goals it's ALSO linked to (excluding this open goal). The
+  // GbiLinkButton on the row rail hides itself when the resulting
+  // "other" list is empty, so interventions (single-goal today) show
+  // nothing while multi-goal barriers surface a link icon with the
+  // count of the OTHER goals they're wired onto.
+  const otherLinkedGoalsFor = (linkedGoalIds) => {
+    const otherIds = (linkedGoalIds || [])
+      .map(String)
+      .filter(id => id !== String(live?.id));
+    if (otherIds.length === 0) return { goals: [] };
+    const byId = new Map((slice?.goals || []).map(g => [String(g.id), g]));
+    return {
+      goals: otherIds
+        .map(id => byId.get(id))
+        .filter(Boolean)
+        .map(g => ({ id: g.id, title: g.title, icon: g.icon })),
+    };
+  };
+
   const interventions = useMemo(
-    () => (slice?.interventions || []).filter(i => String(i.goalId) === String(live?.id)),
+    () => (slice?.interventions || [])
+      .filter(i => String(i.goalId) === String(live?.id))
+      .map(i => ({
+        ...i,
+        // Interventions carry a single goalId today, so this list is
+        // always empty for now. Wiring it here keeps the row rail
+        // parity with barriers when the model grows to many-goals.
+        linkedPreview: otherLinkedGoalsFor(i.goalId ? [i.goalId] : []),
+      })),
     [slice, live],
   );
-  const barriers = useMemo(() => (slice?.barriers || []).filter(b => {
-    const ids = barrierGoalIdsOf(b);
-    return ids.map(String).includes(String(live?.id));
-  }), [slice, live?.id]);
+  const barriers = useMemo(() => (slice?.barriers || [])
+    .filter(b => barrierGoalIdsOf(b).map(String).includes(String(live?.id)))
+    .map(b => ({
+      ...b,
+      linkedPreview: otherLinkedGoalsFor(barrierGoalIdsOf(b)),
+    })), [slice, live?.id]);
 
   // Candidate lists for the multi-select "Link existing" drawer: only
   // items NOT already linked to this goal show up in the picker. This
@@ -608,8 +630,20 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
 
   const activity = useMemo(() => {
+    // Goal activity now folds in the audit trail for every intervention
+    // and barrier currently linked to this goal. Any status / progress /
+    // due-date / recurrence / assignee / link change on those items
+    // shows up in the goal's history too so the reviewer doesn't have
+    // to open each child drawer to see what moved.
+    const linkedIntvIds = new Set(interventions.map(i => String(i.id)));
+    const linkedBarrierIds = new Set(barriers.map(b => String(b.id)));
     const rows = audit
-      .filter(a => String(a.entityId) === String(live?.id))
+      .filter(a => {
+        if (String(a.entityId) === String(live?.id)) return true;
+        if (a.entityType === 'intervention') return linkedIntvIds.has(String(a.entityId));
+        if (a.entityType === 'barrier') return linkedBarrierIds.has(String(a.entityId));
+        return false;
+      })
       .map(mapAuditEntry);
     const sinceCutoff = (() => {
       if (lastVisit) {
@@ -644,7 +678,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       out.push(entry);
     }
     return out;
-  }, [audit, live, activityTab, activityFilter, lastVisit]);
+  }, [audit, live, interventions, barriers, activityTab, activityFilter, lastVisit]);
 
   if (!live) return null;
 
@@ -809,10 +843,29 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
     : (slice?.plan?.conditions || []).map(c => (typeof c === 'string' ? c : c.label)).filter(Boolean)
   ).slice(0, 4);
 
+  // Single hero meta line: Start · Target · Last Updated (with the
+  // "by <name>" attribution when we know who saved it). Legacy goals
+  // persisted before the Target column existed carry no explicit
+  // targetDate, so fall back to createdAt + 90 days — same rule the
+  // plan-level table uses via goalTargetDateOrDefault so both
+  // surfaces show the same date.
+  const targetDateIso = (() => {
+    if (live.targetDate) return live.targetDate;
+    if (!live.createdAt) return null;
+    const anchor = new Date(live.createdAt);
+    if (Number.isNaN(anchor.getTime())) return null;
+    anchor.setDate(anchor.getDate() + 90);
+    return anchor.toISOString();
+  })();
   const metaParts = [
     live.createdAt ? `Start Date : ${fmtDate(live.createdAt)}` : null,
+    targetDateIso ? `Target Date : ${fmtDate(targetDateIso)}` : null,
     live.updatedAt ? `Last Updated : ${fmtDate(live.updatedAt)}${youSuffix(live.updatedBy)}` : null,
   ].filter(Boolean);
+  // Goal type / category (Vitals, Exercise, Diet, Labs, Assessment,
+  // Others) — same field the plan-level Goals table renders as a
+  // right-aligned Type badge. Falls back to `type` for older records.
+  const goalTypeLabel = live.category || live.type || null;
 
   // Edit mode replaces this drawer's surface with the shared Goals Library
   // drawer (rather than stacking a second drawer on top). Cancel/Save both
@@ -920,8 +973,12 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           </div>
           {live.subtitle && <span className={styles.subtitle}>{live.subtitle}</span>}
           {metaParts.length > 0 && <span className={styles.meta}>{metaParts.join(' • ')}</span>}
-          {(programBadges.length > 0 || conditionBadges.length > 0) && (
+          {(goalTypeLabel || programBadges.length > 0 || conditionBadges.length > 0) && (
             <div className={styles.badges}>
+              {goalTypeLabel && <Badge tone="grey" label={goalTypeLabel} />}
+              {goalTypeLabel && (programBadges.length > 0 || conditionBadges.length > 0) && (
+                <span className={styles.badgeDivider} />
+              )}
               {programBadges.map(b => <Badge key={b} tone="grey" label={b} />)}
               {programBadges.length > 0 && conditionBadges.length > 0 && <span className={styles.badgeDivider} />}
               {conditionBadges.map(b => <Badge key={b} tone="grey" label={b} />)}

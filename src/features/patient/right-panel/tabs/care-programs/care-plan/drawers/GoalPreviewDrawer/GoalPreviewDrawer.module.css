@@ -56,10 +56,13 @@
 }
 
 /* ── Hero ── */
+/* Tight 4px stack between title / subtitle / meta / badges so the
+   whole hero reads as one compact identity block, not a spaced-out
+   form. */
 .hero {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
 }
 /* Intervention kind label sits above the title — Figma 2632:81636 (4px stack). */

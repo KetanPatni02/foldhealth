@@ -11,7 +11,7 @@ import styles from './AssigneeChange.module.css';
  * States (per Figma Fold-Pixel-1.0 node 8629:178):
  *   • Assigned  → provider avatar + name (+ optional role). Fixed pill
  *                 width; long names truncate with ellipsis.
- *   • Unassigned → outlined person slot + "Assign User". Width hugs the
+ *   • Unassigned → outlined person slot + "Assign". Width hugs the
  *                  label so short strings don't leave an oversized dead-zone.
  *   • avatarOnly → avatar + chevron, no text (compact cell mode).
  *   • disabled   → greyed, non-interactive.
@@ -35,7 +35,7 @@ export const AssigneeChange = forwardRef(function AssigneeChange({
   role,
   showRole = true,          // toggle the role sub-line on/off independently of the value
   unassigned = false,
-  unassignedLabel = 'Assign User',
+  unassignedLabel = 'Assign',
   size = 'M',              // 'M' | 'S'
   avatarOnly = false,
   // Avatar variant for the leading initials chip in the assigned state.
