@@ -53,7 +53,9 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: {
         message:
-          'GOOGLE_AI_API_KEY is not set. Add it to Vercel env vars and .env for local dev.',
+          'GOOGLE_AI_API_KEY is not available on this deployment. On Vercel (foldhealth project): ' +
+          'Settings → Environment Variables → add GOOGLE_AI_API_KEY with Production enabled, then redeploy. ' +
+          'Local dev uses .env in the repo root (not committed).',
       },
     });
   }
