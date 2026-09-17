@@ -104,10 +104,27 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  min-width: 0;
 }
 .comparator {
   width: 96px;
   flex-shrink: 0;
+}
+/* Tighter comparator for the Vitals two-up: 96px alongside dual
+   Systolic/Diastolic inputs pushes the mmHg trailing off-screen. 72px
+   fits the widest label ("between") without truncation while giving
+   the value inputs room. */
+.comparatorCompact {
+  width: 72px;
+  flex-shrink: 0;
+}
+/* Each Systolic / Diastolic input inside a dual target row shares the
+   remaining space evenly instead of clinging to its intrinsic width.
+   `min-width: 0` lets the shell shrink past its default so the
+   trailing unit ("mmHg") stays inside the column. */
+.dualInput {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .targetSlash {
   font-size: var(--font-base);
@@ -149,6 +166,17 @@
 .targetDate > * {
   width: 100%;
   min-width: 0;
+}
+/* Reads the Target Duration back in plain English so the reviewer
+   sees what "3 months" resolves to once the Care Plan is signed —
+   same idea as the Due Date summary on the intervention row. Sits
+   flush under the input; the surrounding form owns any outer stack. */
+.durationHint {
+  display: block;
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  line-height: var(--leading-normal);
 }
 
 /* "Add Rule" — primary text link closing the goal fields. */
