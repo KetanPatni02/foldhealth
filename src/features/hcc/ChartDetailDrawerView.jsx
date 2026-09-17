@@ -24,10 +24,10 @@ import {
   FailedBadgeWithTooltip,
   InsufficientDosDialog,
 } from './ChartDetailDrawerParts';
-import { CommentsTab, ActivityTab } from './DiagPanel/LeftWorkspace';
+import { CommentsTab, ActivityTab, FilterRow, computeFilterOptions } from './DiagPanel/LeftWorkspace';
 import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { useAppStore } from '../../store/useAppStore';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { ACTIVITY, getActivityFromDb } from './data/activity';
 
 // Status pill palette shared with DocPreviewDrawer so the PDF-pane
@@ -66,6 +66,50 @@ export function ChartDetailDrawerView(props) {
       : [{ t: 'group', label: todayLabel }];
     return [...header, ...liveLog, ...mock];
   }, [liveLog, m?.name, activityFromDb]);
+
+  // Timeline + Comments both filter by DOS / HCC / ICD / Recorded By /
+  // Date. Same shape + helpers the DiagPanel LeftWorkspace uses so a
+  // filter dialled in here reads 1:1 with what the DiagPanel would
+  // show. State is drawer-local; it resets when the drawer unmounts.
+  // Member DOS shape varies (array of { date } in some seeds, keyed
+  // object in others, missing entirely for a freshly-loaded row).
+  // Guard the read so a mismatched shape never crashes the drawer.
+  const memberDosList = useMemo(() => {
+    if (Array.isArray(m?.dos)) {
+      return Array.from(new Set(m.dos.map(d => d?.date || d).filter(Boolean)));
+    }
+    if (m?.dos && typeof m.dos === 'object') {
+      return Array.from(new Set(Object.keys(m.dos)));
+    }
+    return [];
+  }, [m?.dos]);
+  const [chartFilters, setChartFilters] = useState({ dos: [], hcc: [], icd: [], by: [], date: [] });
+  const dbCommentsAll = useAppStore(s => s.hccDiagComments);
+  const dbNotesAll = useAppStore(s => s.hccDiagNotes);
+  const dbDocsAll = useAppStore(s => s.hccDiagDocumentsList);
+  const platformUsersAll = useAppStore(s => s.platformUsers);
+  const filterOptions = useMemo(
+    () => computeFilterOptions(rawActivity, m, {
+      comments: dbCommentsAll,
+      notes: dbNotesAll,
+      docs: dbDocsAll,
+      platformUsers: platformUsersAll,
+    }),
+    [rawActivity, m, dbCommentsAll, dbNotesAll, dbDocsAll, platformUsersAll],
+  );
+  // Seed DOS with the full option list so the default reads as "all
+  // dates" until the reviewer narrows it. Same rule LeftWorkspace uses.
+  const dosSeededRef = useRef(false);
+  useEffect(() => {
+    if (dosSeededRef.current) return;
+    const opts = filterOptions.dos || memberDosList;
+    if (opts.length) {
+      setChartFilters(f => (f.dos.length === 0 ? { ...f, dos: opts } : f));
+      dosSeededRef.current = true;
+    }
+  }, [filterOptions.dos, memberDosList]);
+  const setChartFilter = (key, value) => setChartFilters(f => ({ ...f, [key]: value }));
+  const clearAllChartFilters = () => setChartFilters({ dos: [], hcc: [], icd: [], by: [], date: [] });
 
   return (
     <>
@@ -111,13 +155,23 @@ export function ChartDetailDrawerView(props) {
                   label={leftPanel === 'comments' ? 'Close comments' : 'Close timeline'}
                 />
               </div>
+              {/* Filter row — same DOS / HCC / ICD / Recorded By / Date
+                  chips the DiagPanel LeftWorkspace uses, so a filter
+                  set here narrows both Timeline and Comments the way
+                  it would in the Diagnosis Gap surface. */}
+              <FilterRow
+                filters={chartFilters}
+                options={filterOptions}
+                onChange={setChartFilter}
+                onClearAll={clearAllChartFilters}
+              />
               {leftPanel === 'comments' ? (
                 /* Same tab component the DiagPanel Comments tab uses, so a
                    comment posted here shows up there (and vice-versa) with
                    identical UI. memberOverride scopes the entry to this
                    drawer's patient when the DiagPanel isn't open. */
                 <CommentsTab
-                  filters={{}}
+                  filters={chartFilters}
                   pendingStatusChange={null}
                   onConfirmStatusChange={null}
                   onCancelStatusChange={null}
@@ -128,7 +182,7 @@ export function ChartDetailDrawerView(props) {
                    Feeds the merged live + seed activity log for THIS
                    member; entries logged from either drawer surface in
                    both. */
-                <ActivityTab member={m} rawEntries={rawActivity} filters={{}} />
+                <ActivityTab member={m} rawEntries={rawActivity} filters={chartFilters} />
               )}
             </div>
           )}

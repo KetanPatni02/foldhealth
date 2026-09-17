@@ -368,7 +368,7 @@ const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'This month'];
  * Build the dropdown option lists for each filter chip from the activity
  * entries (plus member.dos_list for the DOS filter).
  */
-function computeFilterOptions(entries, member, extras = {}) {
+export function computeFilterOptions(entries, member, extras = {}) {
   const dos = new Set((member?.dos_list || []).flatMap(d => d.date ? [d.date] : []));
   const hcc = new Set();
   const icd = new Set();
@@ -512,7 +512,7 @@ function matchesDatePreset(d, preset) {
   return true;
 }
 
-function FilterRow({ filters, options, onChange, onClearAll, trailing }) {
+export function FilterRow({ filters, options, onChange, onClearAll, trailing }) {
   const hasAny = FILTER_KEYS.some(k => Array.isArray(filters?.[k]) && filters[k].length > 0);
   return (
     <div className={styles.filterRow}>
