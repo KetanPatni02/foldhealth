@@ -1,4 +1,4 @@
-import { EVENT_TYPES, FIELD_BY_KEY } from './fieldCatalog';
+import { EVENT_TYPES, FIELD_BY_KEY } from './fieldCatalog.js';
 
 const isGroup = (node) => Array.isArray(node?.rules);
 

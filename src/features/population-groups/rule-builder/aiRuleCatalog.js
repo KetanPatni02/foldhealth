@@ -2,7 +2,7 @@
  * Compact field catalog for Gemini prompts (server + client).
  * Keeps keys, labels, value shapes, and allowed operators in sync with fieldCatalog.js.
  */
-import { EVENT_TYPES, RULE_FIELDS } from './fieldCatalog';
+import { EVENT_TYPES, RULE_FIELDS } from './fieldCatalog.js';
 
 export function buildAiFieldCatalog({ compact = false } = {}) {
   return RULE_FIELDS.map((f) => {
