@@ -8,34 +8,13 @@
  * Returns: { rule, summary } or { error: { message } }
  */
 
+import { geminiGenerateContent } from './googleGemini.js';
 import { buildAiFieldCatalog, buildAiRuleInstructions } from '../src/features/population-groups/rule-builder/aiRuleCatalog.js';
+import { AI_RULE_RESPONSE_SCHEMA } from '../src/features/population-groups/rule-builder/aiRuleResponseSchema.js';
 import { normalizeAiRuleQuery } from '../src/features/population-groups/rule-builder/normalizeAiRuleQuery.js';
 
-const MODEL = process.env.GOOGLE_AI_MODEL || 'gemini-3.6-flash';
-const ENDPOINT = (key) =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
-
-const RESPONSE_SCHEMA = {
-  type: 'object',
-  properties: {
-    summary: {
-      type: 'string',
-      description: 'Brief chat reply, max 12 words. No lists. Rule details live on the canvas.',
-    },
-    rule: {
-      type: 'object',
-      properties: {
-        combinator: { type: 'string' },
-        rules: { type: 'array', items: { type: 'object' } },
-      },
-      required: ['combinator', 'rules'],
-    },
-  },
-  required: ['summary', 'rule'],
-};
-
 function buildPrompt({ prompt, messages, currentRule }) {
-  const catalog = buildAiFieldCatalog();
+  const catalog = buildAiFieldCatalog({ compact: true });
   const lines = [
     'You are a clinical population-health rule assistant for Fold Health.',
     'Maintain a multi-turn conversation: each turn outputs an updated rule tree.',
@@ -52,9 +31,10 @@ function buildPrompt({ prompt, messages, currentRule }) {
     lines.push('', 'Current draft rule on canvas (JSON):', JSON.stringify(currentRule));
   }
   const history = Array.isArray(messages) ? messages.filter((m) => m?.role && m?.content) : [];
-  if (history.length) {
-    lines.push('', 'Conversation:');
-    history.forEach((m) => {
+  const recent = history.slice(-8);
+  if (recent.length) {
+    lines.push('', 'Conversation (recent):');
+    recent.forEach((m) => {
       lines.push(`${m.role === 'assistant' ? 'Assistant' : 'User'}: ${String(m.content).trim()}`);
     });
   }
@@ -101,25 +81,20 @@ export default async function handler(req, res) {
     generationConfig: {
       temperature: 0.2,
       responseMimeType: 'application/json',
-      responseSchema: RESPONSE_SCHEMA,
+      responseSchema: AI_RULE_RESPONSE_SCHEMA,
     },
   });
 
   try {
-    let upstream;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      upstream = await fetch(ENDPOINT(key), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: requestBody,
-      });
-      if (upstream.ok || (upstream.status !== 503 && upstream.status !== 429)) break;
-      await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
-    }
+    const { response: upstream, model } = await geminiGenerateContent({
+      apiKey: key,
+      requestBody,
+      logTag: 'pop-group-rule-from-nl',
+    });
 
     if (!upstream.ok) {
       const detail = await upstream.text();
-      console.error('[pop-group-rule-from-nl] gemini error', upstream.status, detail);
+      console.error('[pop-group-rule-from-nl] gemini error', upstream.status, model, detail.slice(0, 400));
       const msg = upstream.status === 503 || upstream.status === 429
         ? 'The AI service is busy right now. Please try again in a moment.'
         : `AI service returned ${upstream.status}. Please try again.`;

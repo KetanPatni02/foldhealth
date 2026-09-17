@@ -10,9 +10,16 @@ export async function fetchRuleFromNaturalLanguage({ prompt, messages, currentRu
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt, messages, currentRule }),
   });
-  const data = await res.json().catch(() => ({}));
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(res.status === 404
+      ? 'Rule assistant API is unavailable. Redeploy or run the app with bun run dev.'
+      : `Could not generate a rule (${res.status}). Please try again.`);
+  }
   if (!res.ok) {
-    const msg = data?.error?.message || 'Could not generate a rule. Please try again.';
+    const msg = data?.error?.message || `Could not generate a rule (${res.status}). Please try again.`;
     const err = new Error(msg);
     err.details = data?.error?.details;
     throw err;

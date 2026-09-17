@@ -13,7 +13,7 @@
  * client can toast; upstream error bodies stay in the server log.
  */
 
-const MODEL = process.env.GOOGLE_AI_MODEL || 'gemini-3.6-flash';
+const MODEL = process.env.GOOGLE_AI_MODEL || 'gemini-3.8-flash';
 const ENDPOINT = (key) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`;
 

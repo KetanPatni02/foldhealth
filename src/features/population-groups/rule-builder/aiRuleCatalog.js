@@ -4,8 +4,22 @@
  */
 import { EVENT_TYPES, RULE_FIELDS } from './fieldCatalog';
 
-export function buildAiFieldCatalog() {
+export function buildAiFieldCatalog({ compact = false } = {}) {
   return RULE_FIELDS.map((f) => {
+    if (compact) {
+      const entry = {
+        key: f.key,
+        t: f.valueType,
+        ops: f.operators.map((o) => o.name),
+      };
+      if (f.options) entry.options = f.options;
+      if (f.supportsAsOf) entry.asOf = true;
+      if (f.terminology) entry.term = f.terminology;
+      if (f.valueType === 'eventCount') {
+        entry.eventTypes = EVENT_TYPES.map((e) => e.value);
+      }
+      return entry;
+    }
     const entry = {
       key: f.key,
       label: f.label,
