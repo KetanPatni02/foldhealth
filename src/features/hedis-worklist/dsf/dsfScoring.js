@@ -79,6 +79,30 @@ export function phq9Branch(total) {
   return 'severe';
 }
 
+// Resolve the 30-day due date for the PHQ-9 (DSF-B) assessment.
+// Anchor priority, per product spec:
+//   1) Fold-native: the paired DSF-A PHQ-2 `savedAt` + 30 days. This is
+//      the moment the Positive result was committed in Fold.
+//   2) Standalone (Astrana ingestion): the DSF-B gap's persisted
+//      `dueDateISO` (seeded/openNativeGap) or `startDate` + 30 days
+//      when the gap has no explicit due date on it.
+//   3) Last-resort fallback: today + 30 days.
+// Returns an ISO string.
+export function computeDsfbDueDateISO({ dsfaSavedAt, dsfbGap } = {}) {
+  const plus30 = (date) => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + 30);
+    return d.toISOString();
+  };
+  if (dsfaSavedAt) return plus30(new Date(dsfaSavedAt));
+  if (dsfbGap?.dueDateISO) return dsfbGap.dueDateISO;
+  if (dsfbGap?.startDate) {
+    const parsed = new Date(dsfbGap.startDate);
+    if (!Number.isNaN(parsed.getTime())) return plus30(parsed);
+  }
+  return plus30(new Date());
+}
+
 // Human-readable band label — matches the scoring reference's
 // vocabulary exactly (Minimal / None, Mild, Moderate, Severe) so the
 // interpretation Badge reads the same as the clinical worksheet.

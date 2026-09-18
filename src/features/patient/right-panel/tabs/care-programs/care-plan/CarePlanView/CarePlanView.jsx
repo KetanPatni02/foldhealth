@@ -1495,6 +1495,7 @@ export function CarePlanView({ patientId, program }) {
           program={program}
           onClose={() => setPreviewGoal(null)}
           onOpenIntervention={setPreviewIntervention}
+          onOpenBarrier={setPreviewBarrier}
         />
       )}
 

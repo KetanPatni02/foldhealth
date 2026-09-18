@@ -563,17 +563,24 @@ function dsfDerivedFlag(field, data, noteContext) {
         || !!noteContext?.audioOnly
         || !!noteContext?.audioVideo;
     case 'phq2ScoreSaved': {
-      // No explicit Save step any more — DSF-A is "scored" once both
-      // PHQ-2 items carry a numeric answer.
+      // Negative PHQ-2 (total < 3) has no explicit Save step so it
+      // counts as scored once both items carry a numeric answer.
+      // Positive PHQ-2 (total >= 3) MUST commit through the Save
+      // Score button so the reviewer can't sign a note that hasn't
+      // opened the paired DSF-B gap yet.
       const p = data.phq2 || {};
-      return p.item1 != null && p.item2 != null;
+      if (p.item1 == null || p.item2 == null) return false;
+      const total = Number(p.item1) + Number(p.item2);
+      return total < 3 || !!p.savedAt;
     }
     case 'phq9ScoreSaved': {
       const items = data.phq9?.items || [];
       return items.length === 9 && items.every(v => v != null);
     }
     case 'carePlanAcknowledged':
-      return !!data.decline || !!data.carePlan?.allCompleted;
+      // Care plan completion is the mandatory ack; Decline follow-up is
+      // an independent optional tick and no longer satisfies the gate.
+      return !!data.carePlan?.allCompleted;
     default:
       return null; // caller falls back to the raw truthy check
   }

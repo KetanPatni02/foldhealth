@@ -10,6 +10,7 @@ import { worklistMemberCallId } from '../../lib/patientCall';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
+import { computeDsfbDueDateISO } from './dsf/dsfScoring';
 import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
 import styles from './HedisWorklistRow.module.css';
 
@@ -229,14 +230,23 @@ export const HEDIS_MIDDLE_COLUMNS = [
           <div key={g.code} className={styles.gapItem}>
             <div className={styles.startDateCell}>
               <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
-              {/* DSF-B carries a 30-day window from the paired DSF-A
-                  Positive-save moment. Surface the remaining time
-                  under the created date so Coordinators can spot the
-                  ones running out (mock uses a fixed "Due in 18d"
-                  copy to match the product spec). */}
-              {g.code === 'DSF-B' && (
-                <span className={styles.startDateDue}>Due in 18d</span>
-              )}
+              {/* DSF-B carries a 30-day window. Anchor is the paired
+                  DSF-A PHQ-2 savedAt when Fold-native, otherwise the
+                  DSF-B ingestion date (Astrana). computeDsfbDueDateISO
+                  centralises the priority so worklist copy and the
+                  in-note guard stay in sync. */}
+              {g.code === 'DSF-B' && (() => {
+                const dueISO = computeDsfbDueDateISO({ dsfbGap: g });
+                const daysLeft = Math.ceil((new Date(dueISO).getTime() - Date.now()) / 86400000);
+                const overdue = daysLeft < 0;
+                const label = daysLeft > 0
+                  ? `Due in ${daysLeft}d`
+                  : daysLeft === 0
+                    ? 'Due today'
+                    : `Overdue by ${Math.abs(daysLeft)}d`;
+                const cls = `${styles.startDateDue}${overdue ? ` ${styles.startDateOverdue}` : ''}`;
+                return <span className={cls}>{label}</span>;
+              })()}
             </div>
           </div>
         ))}

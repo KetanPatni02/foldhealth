@@ -370,7 +370,7 @@ function IntvDeleteScopePicker({ name, kindLabel = 'intervention', onCancel, onC
  * Every edit (status, progress, readings, automations, notes, interventions,
  * barriers) writes through the care-plan store into Supabase.
  */
-export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention, consolidated = false }) {
+export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention, onOpenBarrier, consolidated = false }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
@@ -1209,6 +1209,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                   <GoalLinkedBarriersList
                     barriers={barriers}
                     canEdit={canEdit && !consolidated}
+                    onOpen={onOpenBarrier}
                     onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
                     onRowMenu={consolidated ? undefined : (m) => setRowMenu({ ...m, kind: 'barrier-menu' })}
                   />
@@ -1530,7 +1531,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 key: 'open',
                 icon: 'solar:arrow-right-up-linear',
                 label: `Open ${label}`,
-                disabled: isBarrier,  // barriers have no dedicated open path yet
+                disabled: isBarrier ? !onOpenBarrier : !onOpenIntervention,
               },
               // Unlink moved off the row rail and into this menu so
               // both intervention + barrier rows carry the same
@@ -1554,7 +1555,10 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               const item = rowMenu.item;
               const rowKind = rowMenu.kind;
               setRowMenu(null);
-              if (k === 'open' && !isBarrier) onOpenIntervention?.(item);
+              if (k === 'open') {
+                if (isBarrier) onOpenBarrier?.(item);
+                else onOpenIntervention?.(item);
+              }
               /* Unlink routing mirrors what the row Unlink button used
                  to do: intervention flips its goalId off this goal
                  immediately (single-owner), barrier goes through the

@@ -592,14 +592,14 @@ export const HEDIS_MEMBERS = [
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10010', city: 'Newark', state: 'NJ',
   },
 
-  // ── DSF-B-only seed (5 members) — reviewers who completed the PHQ-2
-  //    virtually and skipped creating a DSF-A care program, leaving only
-  //    the follow-up (PHQ-9) gap in the worklist. These rows carry the
-  //    30-day "Due in 18d" countdown under Start Date.
+  // ── DSF-B-only seed (5 members) — DSF-A (PHQ-2 Positive) completed
+  //    outside Fold, so only the follow-up (PHQ-9) gap is ingested from
+  //    Astrana. Due date anchor here is the DSF-B ingestion date + 30
+  //    days (not the PHQ-2 savedAt, since we never observed one).
   {
     id: 'ap-dsfb-01', in: 'LB', name: 'Linda Becker',
     gender: 'F', age: '64y', memberId: '10301', language: 'en',
-    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/20/2026', source: 'fold-native' }],
+    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/20/2026', source: 'astrana', dueDateISO: '2026-06-19T00:00:00.000Z' }],
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP', startDate: '05/20/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
@@ -609,7 +609,7 @@ export const HEDIS_MEMBERS = [
   {
     id: 'ap-dsfb-02', in: 'GO', name: 'Gustavo Ortiz',
     gender: 'M', age: '59y', memberId: '10302', language: 'es',
-    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/19/2026', source: 'fold-native' }],
+    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/19/2026', source: 'astrana', dueDateISO: '2026-06-18T00:00:00.000Z' }],
     assignee: 'Marcus Chen', assigneeInitials: 'MC', startDate: '05/19/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
@@ -619,7 +619,7 @@ export const HEDIS_MEMBERS = [
   {
     id: 'ap-dsfb-03', in: 'AW', name: 'Aisha Williams',
     gender: 'F', age: '46y', memberId: '10303', language: 'en',
-    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/18/2026', source: 'fold-native' }],
+    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/18/2026', source: 'astrana', dueDateISO: '2026-06-17T00:00:00.000Z' }],
     assignee: null, assigneeInitials: null, startDate: '05/18/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
@@ -629,7 +629,7 @@ export const HEDIS_MEMBERS = [
   {
     id: 'ap-dsfb-04', in: 'PT', name: 'Paul Tanaka',
     gender: 'M', age: '73y', memberId: '10304', language: 'en',
-    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/17/2026', source: 'fold-native' }],
+    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/17/2026', source: 'astrana', dueDateISO: '2026-06-16T00:00:00.000Z' }],
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP', startDate: '05/17/2026',
     advIllness: 1, frailty: 0, riskLevel: '3_Moderate', tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
@@ -639,7 +639,7 @@ export const HEDIS_MEMBERS = [
   {
     id: 'ap-dsfb-05', in: 'NM', name: 'Nadia Mehta',
     gender: 'F', age: '50y', memberId: '10305', language: 'hi',
-    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/15/2026', source: 'fold-native' }],
+    gaps: [{ code: 'DSF-B', status: 'Open', startDate: '05/15/2026', source: 'astrana', dueDateISO: '2026-06-14T00:00:00.000Z' }],
     assignee: 'Marcus Chen', assigneeInitials: 'MC', startDate: '05/15/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,

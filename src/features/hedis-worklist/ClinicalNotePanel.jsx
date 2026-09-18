@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Icon } from '../../components/Icon/Icon';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
@@ -11,10 +12,40 @@ import {
   ConsolidatedNoteBody,
 } from './ClinicalNotePanelParts';
 import { ReviewerPickerPopover } from './ReviewerPickerPopover';
+import { Phq9ExitDialog } from './dsf/Phq9ExitDialog';
+import { computeDsfbDueDateISO } from './dsf/dsfScoring';
 import styles from './ClinicalNotePanel.module.css';
 
 export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskId = null }) {
   const v = useClinicalNotePanel({ member, gapCode, onClose, editingTaskId });
+  // DSF-B guard mirrors CareGapDetailDrawer's Phq9ExitDialog wiring —
+  // Save as Draft on a note that carries DSF-B always warns about the
+  // 30-day sign-off window because a draft leaves the gap Open; Close
+  // only nags when PHQ-9 is partially answered.
+  const [phq9ExitPrompt, setPhq9ExitPrompt] = useState(null);
+  const detectPhq9Incomplete = ({ mode = 'close' } = {}) => {
+    const dsfb = v.gapState?.['DSF-B'];
+    if (!dsfb) return null;
+    const items = dsfb.phq9?.items || [];
+    const answered = items.filter(x => x !== null && x !== undefined).length;
+    if (mode === 'close') {
+      if (dsfb.decline) return null;
+      if (answered === 0 || answered >= 9) return null;
+    }
+    const dsfa = v.gapState?.['DSF-A'];
+    const dsfbGap = (member?.gaps || []).find(g => g.code === 'DSF-B');
+    const dueDateISO = computeDsfbDueDateISO({
+      dsfaSavedAt: dsfa?.phq2?.savedAt,
+      dsfbGap,
+    });
+    return { answered, total: 9, dueDateISO };
+  };
+  const handleGuardedSaveDraft = () => {
+    const guard = detectPhq9Incomplete({ mode: 'save-draft' });
+    if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'save-draft' }); return; }
+    v.handleSaveDraft();
+  };
+  const canSaveDraftEffective = v.hasChanges || !!detectPhq9Incomplete({ mode: 'save-draft' });
   // A sign-off review lands here with a consolidated note that already
   // covers every gap the author submitted — the reviewer's job is to
   // read and revise every section top-to-bottom, not to pick one gap out
@@ -75,12 +106,12 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
         ) : undefined}
         headerRight={
           <HeaderActions
-            onSaveDraft={v.handleSaveDraft}
+            onSaveDraft={handleGuardedSaveDraft}
             onSubmitForReview={v.handleSubmitForReview}
             onSaveAndSign={v.handleSaveAndSign}
             onSignAndPrint={v.handleSignAndPrint}
             primaryLabel={isReviewFlow ? 'Update Note' : 'Sign & Save'}
-            canSaveDraft={v.hasChanges}
+            canSaveDraft={canSaveDraftEffective}
             canSign={isReviewFlow ? v.anyReadyForReview : v.activeMandatoryComplete}
             authorEditingSubmitted={isAuthorEditingSubmitted}
           />
@@ -108,6 +139,19 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
         onClose={() => v.setReviewerPickerOpen(false)}
         onConfirm={(reviewer) => v.handleConfirmSubmitForReview(reviewer)}
       />
+      {phq9ExitPrompt && (
+        <Phq9ExitDialog
+          answered={phq9ExitPrompt.answered}
+          total={phq9ExitPrompt.total}
+          dueDateISO={phq9ExitPrompt.dueDateISO}
+          mode={phq9ExitPrompt.mode}
+          onCompleteNow={() => setPhq9ExitPrompt(null)}
+          onSaveExit={() => {
+            setPhq9ExitPrompt(null);
+            try { v.handleSaveDraft(); } catch { /* best-effort draft */ }
+          }}
+        />
+      )}
     </>
   );
 }

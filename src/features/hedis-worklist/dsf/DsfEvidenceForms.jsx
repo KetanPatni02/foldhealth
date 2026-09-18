@@ -16,18 +16,20 @@ import { useEffect, useMemo } from 'react';
 import { Alert } from '../../../components/Alert/Alert';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
+import { Icon } from '../../../components/Icon/Icon';
 import { InfoBar } from '../../../components/InfoBar/InfoBar';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { CheckboxTick } from '../../../components/CheckboxTick/CheckboxTick';
 import { Select } from '../../../components/Select/Select';
 import { Textarea } from '../../../components/Textarea/Textarea';
+import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { getItems, getResponseScale, isPhq2Positive, phq9Branch, phq9BandLabel, totalScore } from './dsfScoring';
 import { DSF_CARE_PLANS } from './dsfCarePlans';
 import styles from './DsfEvidenceForms.module.css';
 
 // Sample provider roster — production wires this through the tenant's
 // staff directory. Sample names include Dr. Dennis per the story.
-const DSF_PROVIDERS = [
+export const DSF_PROVIDERS = [
   { value: 'dr-dennis',   label: 'Dr. Dennis' },
   { value: 'dr-becerra',  label: 'Dr. Becerra' },
   { value: 'dr-yu',       label: 'Dr. Helen Yu' },
@@ -35,7 +37,7 @@ const DSF_PROVIDERS = [
   { value: 'np-lee',      label: 'Jordan Lee, NP' },
 ];
 
-const LOCATION_OPTIONS = [
+export const LOCATION_OPTIONS = [
   { value: 'telehealth', label: 'Telehealth visit' },
   { value: 'home',       label: 'Home' },
 ];
@@ -102,7 +104,10 @@ function LikertMatrix({ scoreKey, values, onChange, locked }) {
 function CarePlanOutcomePanel({ title, bullets, allCompleted, onAllCompletedChange, outreachNotes, onOutreachNotesChange }) {
   return (
     <div className={styles.carePlanPanel}>
-      <div className={styles.carePlanTitle}>{title}</div>
+      <div className={styles.carePlanTitle}>
+        {title}
+        <span className={styles.required}>•</span>
+      </div>
       <button
         type="button"
         role="checkbox"
@@ -375,7 +380,29 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
 
       <div className={styles.phq2Card}>
         <div className={styles.phq2CardHeader}>
-          <div className={styles.fieldLabel}>Depression Follow-Up : PHQ-9<span className={styles.required}>•</span></div>
+          <div className={styles.fieldLabel}>
+            Depression Follow-Up : PHQ-9
+            <Tooltip
+              variant="light"
+              maxWidth={240}
+              label={
+                <div className={styles.scoreLegend}>
+                  <div className={styles.scoreLegendTitle}>PHQ-9 scoring bands</div>
+                  <ul className={styles.scoreLegendList}>
+                    <li><strong>0–4</strong> Minimal / None</li>
+                    <li><strong>5–9</strong> Mild</li>
+                    <li><strong>10–19</strong> Moderate</li>
+                    <li><strong>20–27</strong> Severe</li>
+                  </ul>
+                </div>
+              }
+            >
+              <button type="button" className={styles.scoreInfoTrigger} aria-label="PHQ-9 scoring bands">
+                <Icon name="solar:info-circle-linear" size={14} color="var(--neutral-300)" />
+              </button>
+            </Tooltip>
+            <span className={styles.required}>•</span>
+          </div>
           {allAnswered && bandLabel && (
             <Badge
               tone={bandTone}
