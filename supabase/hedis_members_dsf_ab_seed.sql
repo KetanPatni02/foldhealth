@@ -102,38 +102,39 @@ SELECT 'ap-dsfa-10', 'CV', 'Carla Vargas', 'F', '69y', '10210', 'es',
 WHERE NOT EXISTS (SELECT 1 FROM public.hedis_members WHERE id = 'ap-dsfa-10');
 
 -- ── DSF-B-only (5 members) ─────────────────────────────────────────
--- `source: fold-native` marks the follow-up as user-created (virtual
--- PHQ-2 pathway) rather than an Astrana ingestion. Standalone DSF-B
--- notes surface their own Location + Performed by fields, and the
--- worklist row shows the 30-day countdown chip ("Due in 18d") under
--- Start Date.
+-- Standalone DSF-B rows come in from Astrana when the PHQ-2 (DSF-A)
+-- was completed outside Fold. `source: astrana` reflects the true
+-- origin, and `dueDateISO` anchors the 30-day sign-off window to the
+-- gap's ingestion date (startDate + 30d) since we never observed a
+-- PHQ-2 savedAt in Fold. Worklist row derives Due in Nd / Overdue by
+-- Nd from that dueDateISO.
 
 INSERT INTO public.hedis_members (id, initials, name, gender, age, member_id, language, gaps, assignee, assignee_initials, start_date, adv_illness, frailty, risk_level, tasks, outreach_dots, outreach_date, member_status, phone, dob, ipa, hp_code, zip, city, state)
 SELECT 'ap-dsfb-01', 'LB', 'Linda Becker', 'F', '64y', '10301', 'en',
-  '[{"code":"DSF-B","status":"Open","startDate":"05/20/2026","source":"fold-native"}]'::jsonb,
+  '[{"code":"DSF-B","status":"Open","startDate":"05/20/2026","source":"astrana","dueDateISO":"2026-06-19T00:00:00.000Z"}]'::jsonb,
   'Isabeth Partida Fra', 'IP', '05/20/2026', 0, 0, NULL, NULL, '["pending","pending","pending"]'::jsonb, NULL, 'Active', '(555) 301-0301', '10/12/1962', 'Astrana', 'HP-001', '10011', 'New York', 'NY'
 WHERE NOT EXISTS (SELECT 1 FROM public.hedis_members WHERE id = 'ap-dsfb-01');
 
 INSERT INTO public.hedis_members (id, initials, name, gender, age, member_id, language, gaps, assignee, assignee_initials, start_date, adv_illness, frailty, risk_level, tasks, outreach_dots, outreach_date, member_status, phone, dob, ipa, hp_code, zip, city, state)
 SELECT 'ap-dsfb-02', 'GO', 'Gustavo Ortiz', 'M', '59y', '10302', 'es',
-  '[{"code":"DSF-B","status":"Open","startDate":"05/19/2026","source":"fold-native"}]'::jsonb,
+  '[{"code":"DSF-B","status":"Open","startDate":"05/19/2026","source":"astrana","dueDateISO":"2026-06-18T00:00:00.000Z"}]'::jsonb,
   'Marcus Chen', 'MC', '05/19/2026', 0, 0, NULL, NULL, '["pending","pending","pending"]'::jsonb, NULL, 'Active', '(555) 302-0302', '05/07/1967', 'Astrana', 'HP-002', '10012', 'Bronx', 'NY'
 WHERE NOT EXISTS (SELECT 1 FROM public.hedis_members WHERE id = 'ap-dsfb-02');
 
 INSERT INTO public.hedis_members (id, initials, name, gender, age, member_id, language, gaps, assignee, assignee_initials, start_date, adv_illness, frailty, risk_level, tasks, outreach_dots, outreach_date, member_status, phone, dob, ipa, hp_code, zip, city, state)
 SELECT 'ap-dsfb-03', 'AW', 'Aisha Williams', 'F', '46y', '10303', 'en',
-  '[{"code":"DSF-B","status":"Open","startDate":"05/18/2026","source":"fold-native"}]'::jsonb,
+  '[{"code":"DSF-B","status":"Open","startDate":"05/18/2026","source":"astrana","dueDateISO":"2026-06-17T00:00:00.000Z"}]'::jsonb,
   NULL, NULL, '05/18/2026', 0, 0, NULL, NULL, '["pending","pending","pending"]'::jsonb, NULL, 'Active', '(555) 303-0303', '02/28/1980', 'Astrana', 'HP-001', '10013', 'Brooklyn', 'NY'
 WHERE NOT EXISTS (SELECT 1 FROM public.hedis_members WHERE id = 'ap-dsfb-03');
 
 INSERT INTO public.hedis_members (id, initials, name, gender, age, member_id, language, gaps, assignee, assignee_initials, start_date, adv_illness, frailty, risk_level, tasks, outreach_dots, outreach_date, member_status, phone, dob, ipa, hp_code, zip, city, state)
 SELECT 'ap-dsfb-04', 'PT', 'Paul Tanaka', 'M', '73y', '10304', 'en',
-  '[{"code":"DSF-B","status":"Open","startDate":"05/17/2026","source":"fold-native"}]'::jsonb,
+  '[{"code":"DSF-B","status":"Open","startDate":"05/17/2026","source":"astrana","dueDateISO":"2026-06-16T00:00:00.000Z"}]'::jsonb,
   'Isabeth Partida Fra', 'IP', '05/17/2026', 1, 0, '3_Moderate', NULL, '["pending","pending","pending"]'::jsonb, NULL, 'Active', '(555) 304-0304', '11/16/1952', 'Astrana', 'HP-002', '10014', 'Queens', 'NY'
 WHERE NOT EXISTS (SELECT 1 FROM public.hedis_members WHERE id = 'ap-dsfb-04');
 
 INSERT INTO public.hedis_members (id, initials, name, gender, age, member_id, language, gaps, assignee, assignee_initials, start_date, adv_illness, frailty, risk_level, tasks, outreach_dots, outreach_date, member_status, phone, dob, ipa, hp_code, zip, city, state)
 SELECT 'ap-dsfb-05', 'NM', 'Nadia Mehta', 'F', '50y', '10305', 'hi',
-  '[{"code":"DSF-B","status":"Open","startDate":"05/15/2026","source":"fold-native"}]'::jsonb,
+  '[{"code":"DSF-B","status":"Open","startDate":"05/15/2026","source":"astrana","dueDateISO":"2026-06-14T00:00:00.000Z"}]'::jsonb,
   'Marcus Chen', 'MC', '05/15/2026', 0, 0, NULL, NULL, '["pending","pending","pending"]'::jsonb, NULL, 'Active', '(555) 305-0305', '07/09/1976', 'Astrana', 'HP-001', '10015', 'Queens', 'NY'
 WHERE NOT EXISTS (SELECT 1 FROM public.hedis_members WHERE id = 'ap-dsfb-05');
