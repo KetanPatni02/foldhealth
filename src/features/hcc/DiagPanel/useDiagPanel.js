@@ -615,9 +615,14 @@ export function useDiagPanel() {
   // Runs the transition after any gating dialogs have resolved. Split out
   // so the "Record Requested" flow can pause on the status-change comment
   // dialog and resume from its onConfirm handler.
-  const applyStatusChange = (next) => {
+  const applyStatusChange = (next, opts = {}) => {
     if (!member || !currentDos) { setDiagDosStatus(next); return; }
     const role = actingRole;
+    // `opts.note` is the composer-note the user typed when this
+    // transition was gated on a comment (Coder → Record Requested).
+    // Thread it into the store engine so it lands on the activity
+    // entry and the timeline's View Note affordance can reveal it.
+    const noteOpts = opts.note ? { note: opts.note } : {};
     switch (next) {
       case 'Completed':
         if (role === 'support') {
@@ -632,11 +637,11 @@ export function useDiagPanel() {
         else if (role === 'coder')    hccCompleteCoder(member.id, currentDos);
         else if (role === 'reviewer') hccCompleteReviewer(member.id, currentDos);
         else if (role === 'reviewer2')hccCompleteReviewer2(member.id, currentDos);
-        else                          hccSetRoleStatus(member.id, currentDos, role, 'Completed');
+        else                          hccSetRoleStatus(member.id, currentDos, role, 'Completed', noteOpts);
         break;
       case 'Record Requested':
-        if (role === 'coder')        hccRequestRecords(member.id, currentDos);
-        else                         hccSetRoleStatus(member.id, currentDos, role, 'Record Requested');
+        if (role === 'coder')        hccRequestRecords(member.id, currentDos, undefined, noteOpts);
+        else                         hccSetRoleStatus(member.id, currentDos, role, 'Record Requested', noteOpts);
         break;
       case 'Insufficient':
         if (role === 'support')      hccMarkInsufficient(member.id, currentDos, 'current-user', 'Docs incomplete');
@@ -850,7 +855,9 @@ export function useDiagPanel() {
       statusTo: to,
     });
     setPendingStatusChange(null);
-    applyStatusChange(to);
+    // Forward the composer body as the note so the activity entry's
+    // View Note affordance can surface it inline.
+    applyStatusChange(to, { note: body });
   };
 
   // ── Card + suspect data assembly (search + DOS filters applied) ──

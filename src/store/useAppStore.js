@@ -10817,7 +10817,12 @@ export const useAppStore = create((set, get) => ({
         // cascades (e.g. Support Completed auto-flipping Coder to In
         // Progress). This is what surfaces the role-pill state changes on
         // the DiagPanel Activity tab.
-        const ROLE_LABEL_C = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
+        // Display label: internal role names stay as-is (Coder, Reviewer,
+        // Reviewer 2, Support), but the activity headline reads QA for the
+        // reviewer roles because that's the shop-floor nomenclature the
+        // Coordinators use. Verb form is plural ("Status Changes") so the
+        // Coder and QA entries read the same way in the timeline.
+        const ROLE_LABEL_C = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'QA 2' };
         const prevMember = s.hccMembers.find(m => m.id === patientId);
         const prevStatusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
         statusChanges.forEach(({ role, status }) => {
@@ -10826,9 +10831,14 @@ export const useAppStore = create((set, get) => ({
             t: 'status_role',
             by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
             dos: dosDate,
-            headline: `${ROLE_LABEL_C[role] || role} Status Changed`,
+            headline: `${ROLE_LABEL_C[role] || role} Status Changes`,
             from: prevMember?.[prevStatusFieldByRole[role]] || '—',
             to: status,
+            // Composer-note copy the user typed when the status change was
+            // gated (e.g. Coder → Record Requested). Rendered inline under
+            // the transition pills so reviewers see the rationale without a
+            // second click.
+            note: payload.note || null,
           });
         });
       });
@@ -10902,9 +10912,9 @@ export const useAppStore = create((set, get) => ({
     track('hcc.coder_completed', { memberId: pid });
     return useAppStore.getState().transitionHccDos(pid, dos, 'completeCoder', { actor });
   },
-  hccRequestRecords: (pid, dos, actor) => {
+  hccRequestRecords: (pid, dos, actor, opts = {}) => {
     track('hcc.records_requested', { memberId: pid });
-    return useAppStore.getState().transitionHccDos(pid, dos, 'requestRecords', { actor });
+    return useAppStore.getState().transitionHccDos(pid, dos, 'requestRecords', { actor, note: opts.note });
   },
   // Role-agnostic Records Requested: QA / Compliance / Coder can request
   // records from Coder or Support Team. `note` is optional context for the
@@ -11049,7 +11059,7 @@ export const useAppStore = create((set, get) => ({
   // starts implicitly on assignment). Patches BOTH the engine's dosState
   // bucket and the legacy member.{role}S field so worklist + DiagPanel
   // agree on the new status.
-  hccSetRoleStatus: async (pid, dos, role, status) => {
+  hccSetRoleStatus: async (pid, dos, role, status, opts = {}) => {
     const fieldByRole       = { support: 'sup',  coder: 'cdr',  reviewer: 'r1',  reviewer2: 'r2'  };
     const statusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
     const f  = fieldByRole[role];
@@ -11081,7 +11091,7 @@ export const useAppStore = create((set, get) => ({
       }));
       return;
     }
-    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', reviewer: 'Reviewer', reviewer2: 'Reviewer 2' };
+    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'QA 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
     const roleLabel = ROLE_LABEL_S[role] || role;
     useAppStore.getState().logHccActivity({
@@ -11103,9 +11113,13 @@ export const useAppStore = create((set, get) => ({
         t: 'status_role',
         by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
         dos,
-        headline: `${roleLabel} Status Changed`,
+        headline: `${roleLabel} Status Changes`,
         from: prevStatus || '—',
         to: status,
+        // Composer-note the user typed when the status change was
+        // gated (e.g. Coder → Record Requested). View Note link on
+        // the timeline entry reveals this inline.
+        note: opts.note || null,
       });
     });
     track('hcc.role_status_set', { memberId: pid, role, status });

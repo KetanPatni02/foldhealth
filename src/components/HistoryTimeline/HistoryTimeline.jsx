@@ -17,6 +17,8 @@ const STATUS_TONE = {
   Submitted:     'warning',
   Pending:       'warning',
   'Pending Review': 'warning',
+  'Record Requested': 'warning',
+  'Record Received': 'warning',
   Completed:     'success',
   Accepted:      'success',
   Dismissed:     'error',
@@ -133,6 +135,10 @@ export function HistoryTimelineEntry({
   children,
 }) {
   const [expanded, setExpanded] = useState(false);
+  // Separate toggle for the composer-note inline expand — status-role
+  // rows that were gated on a note (e.g. Coder → Record Requested)
+  // ship the copy on `item.note` and reveal it under a View Note link.
+  const [noteOpen, setNoteOpen] = useState(false);
   const cfg = iconConfig || ACT_ICON[item.t] || ACT_ICON.accept;
 
   const meta = [
@@ -201,11 +207,32 @@ export function HistoryTimelineEntry({
         )}
 
         {hasTransition && (
-          <div className={styles.transition}>
-            <Badge size="S" tone={toneFor(item.from)} label={item.from} />
-            <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-            <Badge size="S" tone={toneFor(item.to)} label={item.to} />
-          </div>
+          <>
+            <div className={styles.transition}>
+              <Badge size="S" tone={toneFor(item.from)} label={item.from} />
+              <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
+              <Badge size="S" tone={toneFor(item.to)} label={item.to} />
+              {item.note && (
+                <button
+                  type="button"
+                  className={styles.viewNoteBtn}
+                  onClick={() => setNoteOpen(v => !v)}
+                  aria-expanded={noteOpen}
+                >
+                  <span className={styles.dot}>•</span>
+                  <span>View Note</span>
+                  <Icon
+                    name={noteOpen ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+                    size={10}
+                    color="var(--neutral-300)"
+                  />
+                </button>
+              )}
+            </div>
+            {item.note && noteOpen && (
+              <div className={styles.commentBody}>{item.note}</div>
+            )}
+          </>
         )}
         {hasSingleStatus && (
           <div className={styles.transition}>
