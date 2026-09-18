@@ -123,6 +123,24 @@
   color: var(--neutral-200);
 }
 
+/* Inline "View Note" affordance next to a status transition. Reuses the
+   detailsToggle look so a reviewer scanning the timeline reads them as
+   the same primitive. */
+.viewNoteBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+}
+.viewNoteBtn:hover {
+  color: var(--neutral-400);
+}
+
 /* Status transition pills */
 .transition {
   display: flex;

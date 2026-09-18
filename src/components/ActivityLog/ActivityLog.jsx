@@ -93,6 +93,8 @@ const STATUS_TONE = {
   New:                           'warning',
   Pending:                       'warning',
   'Pending Review':              'warning',
+  'Record Requested':            'warning',
+  'Record Received':             'warning',
   Completed:                     'success',
   Signed:                        'success',
   Accepted:                      'success',
