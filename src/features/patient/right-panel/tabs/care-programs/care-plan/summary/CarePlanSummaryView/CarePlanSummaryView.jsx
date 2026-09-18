@@ -1261,6 +1261,7 @@ export function CarePlanSummaryView({
           patientId={patientId}
           program={previewGoal.program}
           onClose={() => setPreviewGoal(null)}
+          onOpenBarrier={(b) => setPreviewBarrier({ barrier: b, program: previewGoal.program })}
           consolidated
         />
       )}

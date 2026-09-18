@@ -266,6 +266,9 @@
   font-weight: 500;
   white-space: nowrap;
 }
+.startDateOverdue {
+  color: var(--status-error);
+}
 
 /* Numeric cells */
 .numText { font-size: var(--font-base); color: var(--neutral-400); font-variant-numeric: tabular-nums; }

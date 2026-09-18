@@ -71,6 +71,25 @@
   word-break: break-word;
 }
 
+/* Stacked variant for long-form questions (PHQ items). The question
+   sits on top in the muted label color, the answer sits beneath in the
+   value color, and both are free to wrap without a nowrap constraint. */
+.rowStacked {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.rowStackedLabel {
+  color: var(--neutral-300);
+  line-height: var(--leading-snug);
+}
+.rowStackedValue {
+  color: var(--neutral-500);
+  font-weight: 500;
+}
+
 .docRow {
   display: flex;
   align-items: center;

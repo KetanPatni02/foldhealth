@@ -537,6 +537,12 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
   // for surfaces without a specific handler.
   const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
   const allTasks = useAppStore(s => s.tasks);
+  // Each activity entry represents an event at a point in time, so the
+  // status badge here mirrors the state the event captured (submit →
+  // Pending Review, sign → Signed). A separate "Clinical Note Signed"
+  // entry logs at sign-time, so both events remain visible in order.
+  const noteStatus = dc?.status;
+  const reviewTaskStatus = dc?.reviewTask?.status;
   const reviewTaskPriority = dc?.reviewTask?.priority
     || (dc?.reviewTask?.taskId && allTasks?.find(t => t.id === dc.reviewTask.taskId)?.priority)
     || 'medium';
@@ -608,17 +614,17 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
         </div>
         <div className={styles.detailCardTrailing}>
           <span className={styles.detailCardStatusSlot}>
-            {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
+            {noteStatus && <Badge tone={statusTone(noteStatus)} size="M" label={noteStatus} />}
           </span>
           <span className={styles.detailCardActionsSlot}>
             <button
               type="button"
               className={styles.detailCardIconBtn}
-              aria-label={dc.status === 'Draft' ? 'Edit' : 'Preview'}
+              aria-label={noteStatus === 'Draft' ? 'Edit' : 'Preview'}
               onClick={handlePrimary}
             >
               <Icon
-                name={dc.status === 'Draft' ? 'solar:pen-linear' : 'solar:eye-linear'}
+                name={noteStatus === 'Draft' ? 'solar:pen-linear' : 'solar:eye-linear'}
                 size={14}
                 color="var(--neutral-300)"
               />
@@ -640,7 +646,7 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
             )}
           </div>
           <div className={styles.detailCardTrailing}>
-            {dc.reviewTask.status && <Badge tone={statusTone(dc.reviewTask.status)} size="M" label={dc.reviewTask.status} />}
+            {reviewTaskStatus && <Badge tone={statusTone(reviewTaskStatus)} size="M" label={reviewTaskStatus} />}
             <span className={styles.detailCardActionsDivider} aria-hidden="true" />
             <button type="button" className={styles.detailCardIconBtn} aria-label="Preview task" onClick={handleOpenTask}>
               <Icon name="solar:eye-linear" size={14} color="var(--neutral-400)" />

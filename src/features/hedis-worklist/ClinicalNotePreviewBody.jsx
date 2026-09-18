@@ -11,6 +11,8 @@ import {
   EED_EVIDENCE_TYPES,
   GAP_TEMPLATES,
 } from './ClinicalNotePanel.utils';
+import { DSF_PROVIDERS, LOCATION_OPTIONS as DSF_LOCATIONS } from './dsf/DsfEvidenceForms';
+import { getItems, getResponseScale, totalScore, isPhq2Positive, phq9Branch, phq9BandLabel } from './dsf/dsfScoring';
 import styles from './ClinicalNotePreviewBody.module.css';
 
 // Platform-wide date display is MM/DD/YYYY. Values come off the form as
@@ -121,7 +123,9 @@ export function ClinicalNotePreviewBody({ memberId, gapCode, noteId }) {
         <Section key={code} title={`${code} - ${MEASURE_NAMES[code] ?? code}`}>
           {code === 'CBP' && <CbpRows data={gapsPayload[code] || {}} />}
           {code === 'EED' && <EedRows data={gapsPayload[code] || {}} />}
-          {code !== 'CBP' && code !== 'EED' && (
+          {code === 'DSF-A' && <DsfaRows data={gapsPayload[code] || {}} />}
+          {code === 'DSF-B' && <DsfbRows data={gapsPayload[code] || {}} />}
+          {code !== 'CBP' && code !== 'EED' && code !== 'DSF-A' && code !== 'DSF-B' && (
             <GenericRows code={code} data={gapsPayload[code] || {}} />
           )}
         </Section>
@@ -155,8 +159,19 @@ function Section({ title, children }) {
   );
 }
 
-function KV({ label, value, wide }) {
+function KV({ label, value, wide, stacked }) {
   const display = value == null || value === '' ? '—' : String(value);
+  if (stacked) {
+    // Long-form questions (PHQ items) render label above answer so
+    // neither has to fight a nowrap constraint. Kept inline in this
+    // file so CBP/EED rows keep their compact side-by-side layout.
+    return (
+      <div className={styles.rowStacked}>
+        <span className={styles.rowStackedLabel}>{label}</span>
+        <span className={styles.rowStackedValue}>{display}</span>
+      </div>
+    );
+  }
   return (
     <div className={wide ? styles.rowWide : styles.row}>
       <span className={styles.rowLabel}>{label}</span>
@@ -261,4 +276,71 @@ const FOLLOW_UP_LABEL = {
   antiVegf: 'Anti-VEGF therapy discussed',
   annualScheduled: 'Annual follow-up scheduled',
 };
+
+// DSF-A (PHQ-2). Reads the persisted `location`, `performedBy`, and
+// nested `phq2 { item1, item2, savedAt }` and prints the per-item answer
+// alongside the total + Positive/Negative label so a reviewer can audit
+// scoring without re-opening the note for edit.
+function DsfaRows({ data }) {
+  const loc = DSF_LOCATIONS.find(o => o.value === data.location)?.label || data.location;
+  const provider = DSF_PROVIDERS.find(o => o.value === data.performedBy)?.label || data.performedBy;
+  const phq2 = data.phq2 || {};
+  const items = getItems('phq2');
+  const scale = getResponseScale('phq2');
+  const answerLabel = (v) => (v == null ? '—' : scale.find(o => o.score === Number(v))?.value ?? String(v));
+  const values = [phq2.item1, phq2.item2];
+  const total = totalScore(values);
+  const scoreLine = total === null
+    ? null
+    : `${total} point${total === 1 ? '' : 's'} (${isPhq2Positive(total) ? 'Positive for Depression' : 'Negative for Depression'})`;
+  return (
+    <>
+      <KV label="Location" value={loc} />
+      <KV label="Performed by" value={provider} />
+      {items.map((it, i) => (
+        <KV key={i} label={`PHQ-2 · ${it.text || `Q${i + 1}`}`} value={answerLabel(values[i])} stacked />
+      ))}
+      <KV label="PHQ-2 Score" value={scoreLine} wide />
+    </>
+  );
+}
+
+// DSF-B (PHQ-9). Mirrors DsfaRows: visit fields (only when the note
+// wasn't already carrying them via DSF-A), all 9 answers, total + band,
+// the Mild sub-question when it applies, care-plan ack + outreach notes,
+// and the standing Decline follow-up flag.
+function DsfbRows({ data }) {
+  const loc = DSF_LOCATIONS.find(o => o.value === data.location)?.label || data.location;
+  const provider = DSF_PROVIDERS.find(o => o.value === data.performedBy)?.label || data.performedBy;
+  const items = getItems('phq9');
+  const scale = getResponseScale('phq9');
+  const answerLabel = (v) => (v == null ? '—' : scale.find(o => o.score === Number(v))?.value ?? String(v));
+  const values = data.phq9?.items || [];
+  const total = totalScore(values.length === 9 ? values : []);
+  const bandLabel = total === null ? null : phq9BandLabel(phq9Branch(total));
+  const scoreLine = total === null ? null : `${total} point${total === 1 ? '' : 's'}${bandLabel ? ` (${bandLabel})` : ''}`;
+  const subMild = data.phq9?.subMildAnswer;
+  const careDone = data.carePlan?.allCompleted ? 'Yes' : 'No';
+  const outreachNotes = data.carePlan?.outreachNotes;
+  return (
+    <>
+      {data.location && <KV label="Location" value={loc} />}
+      {data.performedBy && <KV label="Performed by" value={provider} />}
+      {items.map((it, i) => (
+        <KV key={i} label={`PHQ-9 · ${it.text || `Q${i + 1}`}`} value={answerLabel(values[i])} stacked />
+      ))}
+      <KV label="PHQ-9 Score" value={scoreLine} wide />
+      {subMild && (
+        <KV
+          label="Mild follow-up · Prior episode or symptoms > 3 mo"
+          value={subMild === 'yes' ? 'Yes' : 'No'}
+          wide
+        />
+      )}
+      <KV label="Care plan completed" value={careDone} wide />
+      {outreachNotes && <KV label="Outreach Notes" value={outreachNotes} wide />}
+      {data.decline && <KV label="Decline follow-up" value="Yes" wide />}
+    </>
+  );
+}
 

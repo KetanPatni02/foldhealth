@@ -8471,12 +8471,41 @@ export const useAppStore = create((set, get) => ({
       get().signClinicalNote(linkedNote.id);
     }
     const actor = get().currentActorName?.() || 'Unknown';
+    // Log the sign event with a signed-note detail card so the timeline
+    // shows a distinct "Clinical Note Signed" row alongside the earlier
+    // "Clinical Note Added" (submit-for-review) row. Anchor on the
+    // TASK's hedis metadata so the entry fires even when the linked
+    // clinical_note isn't in the client store (Supabase RLS drops writes
+    // and the fetch after reload returns nothing → optimistic-only
+    // rows disappear).
+    const gapList = task.hedisGapCodes || linkedNote?.gapCodes || [];
+    const multi = gapList.length > 1;
+    const singleCode = gapList[0];
+    const title = multi
+      ? 'Consolidated Clinical Note'
+      : (singleCode ? `${singleCode} Visit Note` : 'Clinical Note');
+    const chip = multi ? `${gapList.length} Gaps` : undefined;
+    const signedDate = new Date().toLocaleString('en-US', {
+      month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
     get().logCareGapActivity(task.hedisMemberId, {
-      title: 'Task completed',
-      detail: `Gaps closed: ${(task.hedisGapCodes || []).join(', ')}`,
+      title: 'Clinical Note Signed',
+      detail: `Sign-off completed · ${gapList.join(', ')}`,
       actor,
-      icon: 'solar:check-circle-linear',
-      gapCodes: task.hedisGapCodes,
+      icon: 'solar:pen-new-square-linear',
+      gapCodes: gapList,
+      t: 'clinical_note',
+      detailCard: {
+        noteId: linkedNote?.id || null,
+        memberId: task.hedisMemberId,
+        gapCode: singleCode,
+        gapCodes: gapList,
+        title,
+        chip,
+        status: 'Signed',
+        subtitle: `Signed by ${actor} · ${signedDate}`,
+        pdfDataUrl: linkedNote?.pdfDataUrl || null,
+      },
     });
     return true;
   },
@@ -15264,13 +15293,67 @@ export const useAppStore = create((set, get) => ({
     // for one linked to this task and flipping it to signed.
     if (prev && updates.status === 'completed' && prev.status !== 'completed') {
       const notesByMember = get().clinicalNotesByMember || {};
-      for (const arr of Object.values(notesByMember)) {
-        const linked = (arr || []).find(n => n.reviewTaskId === id);
-        if (linked && linked.status !== 'signed') {
-          const signerName = get().currentActorName?.() || merged.assigned_to || 'Reviewer';
-          get().signClinicalNote(linked.id, { name: signerName });
-          break;
-        }
+      // First, find a linked clinical note (if it survived in the store)
+      // so we can flip it to signed and pick up its noteId + gap set.
+      let linkedMemberId = null;
+      let linkedNote = null;
+      for (const [memberId, arr] of Object.entries(notesByMember)) {
+        const hit = (arr || []).find(n => n.reviewTaskId === id);
+        if (hit) { linkedMemberId = memberId; linkedNote = hit; break; }
+      }
+      if (linkedNote && linkedNote.status !== 'signed') {
+        const signerName = get().currentActorName?.() || merged.assigned_to || 'Reviewer';
+        get().signClinicalNote(linkedNote.id, { name: signerName });
+      }
+      // Log a "Clinical Note Signed" activity entry off the TASK's own
+      // hedis metadata, not just the linked note. RLS + fetch drops can
+      // leave the note out of the store (only optimistic in-memory), so
+      // relying on the note existing would skip the sign entry on reloads.
+      // The task's hedisMemberId + hedisGapCodes are stamped when the
+      // sign-off task is created, so they're always the ground truth.
+      const memberId = linkedMemberId || prev.hedisMemberId || merged.hedisMemberId;
+      const gapList = prev.hedisGapCodes || merged.hedisGapCodes || linkedNote?.gapCodes || [];
+      // Also flip every gap on the sign-off task to Completed so the
+      // worklist row + Care Gap Details header status pill reflect
+      // sign-off immediately (the inline sign path already does this;
+      // this bridge covers the Provider-completes-task-from-Tasks-page
+      // path).
+      if (memberId && gapList.length > 0) {
+        get().bulkUpdateGapStatuses(
+          memberId,
+          Object.fromEntries(gapList.map(c => [c, 'Completed'])),
+        );
+      }
+      if (memberId && (gapList.length > 0 || linkedNote)) {
+        const signerName = get().currentActorName?.() || merged.assigned_to || 'Reviewer';
+        const multi = gapList.length > 1;
+        const singleCode = gapList[0];
+        const title = multi
+          ? 'Consolidated Clinical Note'
+          : (singleCode ? `${singleCode} Visit Note` : 'Clinical Note');
+        const chip = multi ? `${gapList.length} Gaps` : undefined;
+        const signedDate = new Date().toLocaleString('en-US', {
+          month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+        });
+        get().logCareGapActivity(memberId, {
+          title: 'Clinical Note Signed',
+          detail: `Sign-off completed · ${gapList.join(', ')}`,
+          actor: signerName,
+          icon: 'solar:pen-new-square-linear',
+          gapCodes: gapList,
+          t: 'clinical_note',
+          detailCard: {
+            noteId: linkedNote?.id || null,
+            memberId,
+            gapCode: singleCode,
+            gapCodes: gapList,
+            title,
+            chip,
+            status: 'Signed',
+            subtitle: `Signed by ${signerName} · ${signedDate}`,
+            pdfDataUrl: linkedNote?.pdfDataUrl || null,
+          },
+        });
       }
     }
 

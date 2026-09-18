@@ -10,8 +10,48 @@ function fmtLongDate(iso) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function Phq9ExitDialog({ answered, total = 9, dueDateISO, onCompleteNow, onSaveExit }) {
+function daysUntil(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const ms = d.getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+}
+
+export function Phq9ExitDialog({
+  answered,
+  total = 9,
+  dueDateISO,
+  mode = 'close',
+  onCompleteNow,
+  onSaveExit,
+}) {
   const dueDate = fmtLongDate(dueDateISO);
+  const days = daysUntil(dueDateISO);
+
+  if (mode === 'save-draft') {
+    // Save-as-Draft branch — reached from the header's Save as Draft
+    // button. This is a neutral confirmation (not a warning): the
+    // draft is a safe stopping point. Primary action is Save as Draft
+    // (what the user just asked for); secondary is Keep editing.
+    const dayCopy = days === null
+      ? ''
+      : ` You have ${days} day${days === 1 ? '' : 's'} to complete it${dueDate ? ` (by ${dueDate})` : ''}.`;
+    return (
+      <ConfirmDialog
+        variant="primary"
+        icon="solar:clock-circle-linear"
+        iconColor="var(--primary-300)"
+        title="PHQ-9 is still open"
+        description={`You haven't finished the PHQ-9 assessment (${answered}/${total} answered).${dayCopy}`}
+        confirmLabel="Save as Draft"
+        cancelLabel="Keep editing"
+        onConfirm={onSaveExit}
+        onCancel={onCompleteNow}
+      />
+    );
+  }
+
   const description = dueDate
     ? `You haven't finished the PHQ-9 assessment (${answered}/${total} answered). Complete it now, or you have until ${dueDate} to finish the DSF-B screening if you save and exit.`
     : `You haven't finished the PHQ-9 assessment (${answered}/${total} answered). Complete it now, or save and exit to finish the DSF-B screening later.`;

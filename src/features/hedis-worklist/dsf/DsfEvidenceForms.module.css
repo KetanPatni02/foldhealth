@@ -21,6 +21,50 @@
   gap: var(--space-1);
 }
 .required { color: var(--status-error); }
+
+/* Small hover-only info trigger that sits beside a section title and
+   reveals the scoring bands in a Tooltip. Kept borderless so it reads
+   as a helper glyph rather than a control. */
+.scoreInfoTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: help;
+  color: var(--neutral-300);
+}
+.scoreInfoTrigger:hover { color: var(--neutral-400); }
+
+.scoreLegend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.scoreLegendTitle {
+  font-size: var(--font-sm);
+  font-weight: 600;
+  color: var(--neutral-400);
+}
+.scoreLegendList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.scoreLegendList strong {
+  display: inline-block;
+  min-width: 44px;
+  font-weight: 600;
+  color: var(--neutral-400);
+}
 .fieldError {
   font-size: var(--font-sm);
   color: var(--status-error);

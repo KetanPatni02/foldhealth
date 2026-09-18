@@ -20,6 +20,7 @@ import { ScheduleDrawerBookingBody } from '../../components/ScheduleDrawer/Sched
 import { CloseButton } from '../../components/CloseButton/CloseButton';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { Phq9ExitDialog } from './dsf/Phq9ExitDialog';
+import { computeDsfbDueDateISO } from './dsf/dsfScoring';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
@@ -332,46 +333,77 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   // DSF-B: incomplete-PHQ-9 exit modal. Set when the user tries to
   // leave a clinical-note workspace whose active DSF-B gap has some
   // but not all PHQ-9 items answered and no saved score yet.
-  const [phq9ExitPrompt, setPhq9ExitPrompt] = useState(null); // { answered, total, dueDateISO } | null
+  const [phq9ExitPrompt, setPhq9ExitPrompt] = useState(null); // { answered, total, dueDateISO, mode } | null
   const runLeftClose = () => {
     setLeftClosing(true);
     setTimeout(() => { setLeftWorkspace(null); setLeftClosing(false); setSelectedNoteId(null); setAmendNoteId(null); setInPlaceTaskId(null); }, 250);
   };
-  // Detect a partially-answered PHQ-9 on the active DSF-B gap. Returns
-  // `{ answered, total, dueDateISO }` when the guard should fire, else
-  // null. Only fires for a note actively editing DSF-B; skips when the
-  // score is already saved (locked) or nothing has been answered yet.
-  const detectPhq9Incomplete = () => {
-    if (leftWorkspace !== 'clinical-note') return null;
+  // DSF-B guard used by the Close and Save-as-Draft paths.
+  //
+  // `mode: 'close'` — fires only when PHQ-9 is partially answered.
+  //   Navigating away with nothing typed shouldn't nag the user, and a
+  //   fully-answered PHQ-9 will get signed through the normal flow.
+  //
+  // `mode: 'save-draft'` — fires whenever DSF-B is on this note and
+  //   the user isn't declining follow-up. Save as Draft never signs
+  //   the gap, so the note leaves DSF-B still open regardless of PHQ-9
+  //   completeness. The popup reminds the user of the 30-day window.
+  //
+  // Returns `{ answered, total, dueDateISO }` when the guard should
+  // fire, else null.
+  const detectPhq9Incomplete = ({ mode = 'close' } = {}) => {
+    if (leftWorkspace !== 'clinical-note' && leftWorkspace !== 'clinical-note-consolidated') return null;
     const dsfb = clinicalNote?.gapState?.['DSF-B'];
     if (!dsfb) return null;
-    // Decline short-circuits the sign-off queue; skip the guard entirely.
-    if (dsfb.decline) return null;
     const items = dsfb.phq9?.items || [];
     const answered = items.filter(v => v !== null && v !== undefined).length;
-    if (answered === 0 || answered >= 9) return null;
-    // 30-day window is anchored to when PHQ-2 first landed as Positive
-    // on the paired DSF-A. Falls back to now + 30d if the anchor is
-    // missing (e.g. the note carries DSF-B only).
+    if (mode === 'close') {
+      // Close path: decline short-circuits the sign-off queue, and an
+      // untouched or fully-answered PHQ-9 doesn't warrant a nag.
+      if (dsfb.decline) return null;
+      if (answered === 0 || answered >= 9) return null;
+    }
+    // Save-as-Draft path fires whenever DSF-B is on the note — a draft
+    // leaves the gap Open even when the user has ticked Decline, so the
+    // 30-day sign-off reminder still applies.
+    // 30-day window anchor is centralised in computeDsfbDueDateISO so
+    // the Fold-native (paired DSF-A savedAt) and Astrana (DSF-B gap
+    // ingestion date) branches stay consistent across the app.
     const dsfa = clinicalNote?.gapState?.['DSF-A'];
-    const anchor = dsfa?.phq2?.savedAt ? new Date(dsfa.phq2.savedAt) : new Date();
-    const due = new Date(anchor);
-    due.setDate(due.getDate() + 30);
-    return { answered, total: 9, dueDateISO: due.toISOString() };
+    const dsfbGap = (member?.gaps || []).find(g => g.code === 'DSF-B');
+    const dueDateISO = computeDsfbDueDateISO({
+      dsfaSavedAt: dsfa?.phq2?.savedAt,
+      dsfbGap,
+    });
+    return { answered, total: 9, dueDateISO };
   };
   const closeLeftWorkspace = () => {
     // Task workspace has a "discard unsaved changes?" guard; the scheduler
     // discards silently for parity with its standalone usage.
     if (leftWorkspace === 'task' && addTask.guardClose() === false) return;
     // DSF-B: block close on a partial PHQ-9 and surface the exit modal.
-    const guard = detectPhq9Incomplete();
-    if (guard) { setPhq9ExitPrompt(guard); return; }
+    const guard = detectPhq9Incomplete({ mode: 'close' });
+    if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'close' }); return; }
     // Clear the selected note so the next preview starts from currentCode
     // rather than a stale id.
     setSelectedNoteId(null);
     if (leftWorkspace === 'clinical-note' && amendNoteId) setAmendNoteId(null);
     runLeftClose();
   };
+  // Save-as-Draft wrapper: same PHQ-9 completeness guard the close path
+  // uses, but the modal maps to Keep editing / Save as Draft. The draft
+  // still writes when the user confirms, matching the header button's
+  // implicit contract.
+  const handleGuardedSaveDraft = () => {
+    const guard = detectPhq9Incomplete({ mode: 'save-draft' });
+    if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'save-draft' }); return; }
+    clinicalNote.handleSaveDraft();
+  };
+  // DSF-B on the note keeps Save-as-Draft enabled even without dirty
+  // state — the popup nags the user about the 30-day sign-off window
+  // whenever they try to park DSF-B as a draft.
+  const canSaveDraftEffective = clinicalNote.hasChanges
+    || !!detectPhq9Incomplete({ mode: 'save-draft' });
   const inSplit = !!leftWorkspace || leftClosing;
   const isExpanded = !!leftWorkspace && !leftClosing;
 
@@ -516,15 +548,18 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
           answered={phq9ExitPrompt.answered}
           total={phq9ExitPrompt.total}
           dueDateISO={phq9ExitPrompt.dueDateISO}
+          mode={phq9ExitPrompt.mode}
           onCompleteNow={() => setPhq9ExitPrompt(null)}
           onSaveExit={() => {
+            const wasCloseFlow = phq9ExitPrompt.mode !== 'save-draft';
             setPhq9ExitPrompt(null);
-            // Persist whatever the user has already answered before
-            // dropping the workspace.
+            // Persist whatever the user has already answered. Save-as-Draft
+            // stops here so the drawer stays put; the Close flow keeps
+            // going and unmounts the workspace after the draft lands.
             if (typeof clinicalNote.handleSaveDraft === 'function') {
               try { clinicalNote.handleSaveDraft(); } catch { /* draft best-effort */ }
             }
-            runLeftClose();
+            if (wasCloseFlow) runLeftClose();
           }}
         />
       )}
@@ -664,11 +699,11 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                       && amendNote.authorName === currentActorName();
                     return (
                       <ClinicalNoteHeaderActions
-                        onSaveDraft={clinicalNote.handleSaveDraft}
+                        onSaveDraft={handleGuardedSaveDraft}
                         onSubmitForReview={clinicalNote.handleSubmitForReview}
                         onSaveAndSign={clinicalNote.handleSaveAndSign}
                         onSignAndPrint={clinicalNote.handleSignAndPrint}
-                        canSaveDraft={clinicalNote.hasChanges}
+                        canSaveDraft={canSaveDraftEffective}
                         canSign={clinicalNote.activeMandatoryComplete}
                         authorEditingSubmitted={authorEditingSubmitted}
                       />
@@ -743,11 +778,11 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
                       && amendNote.authorName === currentActorName();
                     return (
                       <ClinicalNoteHeaderActions
-                        onSaveDraft={clinicalNote.handleSaveDraft}
+                        onSaveDraft={handleGuardedSaveDraft}
                         onSubmitForReview={clinicalNote.handleSubmitForReview}
                         onSaveAndSign={clinicalNote.handleSaveAndSign}
                         onSignAndPrint={clinicalNote.handleSignAndPrint}
-                        canSaveDraft={clinicalNote.hasChanges}
+                        canSaveDraft={canSaveDraftEffective}
                         canSign={clinicalNote.anyReadyForReview}
                         authorEditingSubmitted={authorEditingSubmitted}
                       />
