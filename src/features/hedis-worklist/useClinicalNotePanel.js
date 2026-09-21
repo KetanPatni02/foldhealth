@@ -142,10 +142,16 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
 
   // DSF-A calls this from its "Save score" handler when PHQ-2 lands
   // Positive. Opens a DSF-B gap on the same member natively (30-day
-  // due date computed from the save timestamp) and jumps the RHS pane
-  // to it so the Coordinator flows straight into PHQ-9. Idempotent —
-  // subsequent calls no-op via the store's dedup.
-  const openDsfbGap = useCallback(({ savedAt } = {}) => {
+  // due date computed from the save timestamp), then auto-promotes
+  // the workspace to the consolidated view with DSF-B focused so the
+  // Coordinator flows straight into PHQ-9 without hunting for an
+  // Open DSF-B button. Idempotent — subsequent calls no-op via the
+  // store's dedup.
+  // Not memoized on purpose: it closes over openDsfbView (which itself
+  // reads live state like activeGaps + gapState), so it needs to
+  // rebuild with the freshest closure on every render. The child form
+  // isn't React.memo'd, so the extra prop identity churn is free.
+  const openDsfbGap = ({ savedAt } = {}) => {
     if (!member?.id) return;
     const stamp = savedAt ? new Date(savedAt) : new Date();
     const due = new Date(stamp);
@@ -159,11 +165,15 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     });
     if (created) {
       showToast?.('DSF-B opened - continue with PHQ-9');
-      // Note: RHS deliberately stays on DSF-A so the Coordinator sees
-      // the post-save success banner. The banner carries an "Open
-      // DSF-B" action button that flips the RHS to the new gap.
     }
-  }, [member?.id, openNativeGap, showToast]);
+    // Defer the promotion by a microtask so React has flushed the
+    // openNativeGap store write into `member.gaps`; openDsfbView's
+    // multiGap check reads activeGaps (derived from that prop) and
+    // needs the DSF-B row visible before it can fire the promote.
+    queueMicrotask(() => {
+      try { openDsfbView(); } catch { /* best-effort */ }
+    });
+  };
 
   // "Open DSF-B" from the DSF-A success banner. If the drawer is
   // running the single-gap inline workspace and now has more than one
