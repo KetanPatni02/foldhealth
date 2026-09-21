@@ -106,11 +106,15 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const openMoreMenu = () => { const r = moreBtnRef.current?.getBoundingClientRect(); if (r) setMoreMenuRect(r); };
   const closeMoreMenu = () => setMoreMenuRect(null);
   // Route Add Note based on how many gaps are open for this member.
-  //   >1 → consolidated ClinicalNotePanel drawer (stacked-sections layout).
+  //   >1 → inline consolidated workspace (stacked-sections layout on
+  //        the CareGap drawer's left pane). Keeps every entry point
+  //        into a multi-gap note (Add Note / auto-promote from Save
+  //        Score / Edit on draft) landing on the SAME surface so the
+  //        coordinator's mental model doesn't flip between two-pane
+  //        and stacked layouts.
   //    1 → inline single-gap workspace on this drawer's left pane.
-  // Matches Figma 872:76360.
   const openClinicalNoteFlow = () => {
-    if (openGapCount > 1) setShowClinicalNote(true);
+    if (openGapCount > 1) setLeftWorkspace('clinical-note-consolidated');
     else setLeftWorkspace('clinical-note');
   };
   const runMoreAction = (a) => {
@@ -323,19 +327,15 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     selectedNoteId,
     amendNoteId,
     onClose: () => { setAmendNoteId(null); runLeftClose(); },
-    // DSF-A save on a single-gap note opens DSF-B natively. Its
-    // "Open DSF-B" success button then jumps into the consolidated
-    // Clinical Note drawer (multi-gap) so the Coordinator gets the
-    // Visit Notes list + DOS card layout the paired flow expects.
-    // The hook passes the target code so the promoted panel lands on
-    // DSF-B; without setting currentCode first, ClinicalNotePanel
-    // would inherit the outer drawer's gap (DSF-A) and open the wrong
-    // RHS pane.
+    // DSF-A save on a single-gap note opens DSF-B natively, then the
+    // hook auto-promotes into the same inline consolidated workspace
+    // (stacked DOS + DSF-A + DSF-B sections) that Add Note and Edit
+    // on a multi-gap draft both land in. `currentCode` still flips to
+    // DSF-B so the workspace scrolls / focuses that section.
     onPromoteToConsolidated: (targetCode) => {
       if (targetCode) setCurrentCode(targetCode);
-      setLeftWorkspace(null);
       setLeftClosing(false);
-      setShowClinicalNote(true);
+      setLeftWorkspace('clinical-note-consolidated');
     },
   });
 
