@@ -251,20 +251,15 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   void _restored;
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const notes = await fetchClinicalNotesForMember(member.id);
-      if (cancelled || !notes?.length) { setRestored(true); return; }
+
+    const applyFetchedNotes = (notes) => {
+      if (cancelled || !notes?.length) {
+        setRestored(true);
+        return;
+      }
       const idSeed = {};
-      // Keep the newest note per gap (notes are ordered newest first, so
-      // only seed if not already set). Previously this overwrote with the
-      // oldest note covering the gap, causing consolidated-note saves to
-      // update the wrong row when multiple notes shared a gap (e.g., a
-      // 4-gap pending and a 2-gap pending both covering COL).
       notes.forEach(n => (n.gapCodes || []).forEach(c => { if (!(c in idSeed)) idSeed[c] = n.id; }));
       setNoteIdByCode(prev => ({ ...idSeed, ...prev }));
-      // Amend path takes precedence — hydrate from the note being amended
-      // so the form shows the prior signed/submitted state, not just the
-      // latest draft. The DB trigger will snapshot the old row on next save.
       if (amendNoteId) {
         const amended = notes.find(n => n.id === amendNoteId);
         if (amended?.payload) {
@@ -285,19 +280,6 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
           return;
         }
       }
-      // Hydration priority:
-      //  1. selectedNoteId (eye → preview / Edit) — hydrate that exact
-      //     note so the reviewer sees the author's answers verbatim.
-      //  2. editingTaskId (reviewer flow) — hydrate the note linked to
-      //     the sign-off task via reviewTaskId; without this the
-      //     reviewer would fall through to the freshest draft/submitted
-      //     which may belong to a different task or be a stale draft.
-      //  3. Otherwise: hydrate PER-GAP from the freshest note that
-      //     covers each active gap. This handles the common consolidated
-      //     case where a member has multiple notes — e.g. a signed
-      //     DSF-A+DSF-B note plus a fresh DSF-B draft — so opening the
-      //     DSF-A section still surfaces its signed answers instead of
-      //     inheriting a shadow-empty state from the DSF-B draft.
       let target = null;
       if (selectedNoteId) {
         target = notes.find(n => n.id === selectedNoteId) || null;
@@ -354,7 +336,12 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
         }
       }
       setRestored(true);
-    })();
+    };
+
+    fetchClinicalNotesForMember(member.id)
+      .then((notes) => { applyFetchedNotes(notes); })
+      .catch(() => { if (!cancelled) setRestored(true); });
+
     return () => { cancelled = true; };
     // Re-run when the selected note or reviewer task changes so the form
     // re-hydrates to the right note's answers. The panel remounts per

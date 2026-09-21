@@ -77,12 +77,12 @@ function HintCard({ anchorRef, onDismiss }) {
 export function SidebarCollapseHint({ children, enabled = true }) {
   const anchorRef = useRef(null);
   const hoverTimerRef = useRef(null);
+  const pinnedRef = useRef(false);
   const [open, setOpen] = useState(false);
-  const [pinned, setPinned] = useState(false);
 
   const dismiss = useCallback(async () => {
     setOpen(false);
-    setPinned(false);
+    pinnedRef.current = false;
     markLocalTourSeen(TOUR_ID);
     const userId = await getUserId();
     if (userId) markDbTourSeen(userId, TOUR_ID);
@@ -107,7 +107,7 @@ export function SidebarCollapseHint({ children, enabled = true }) {
       }
 
       if (!cancelled) {
-        setPinned(true);
+        pinnedRef.current = true;
         setOpen(true);
       }
     })();
@@ -123,7 +123,7 @@ export function SidebarCollapseHint({ children, enabled = true }) {
   };
 
   const scheduleClose = () => {
-    if (pinned) return;
+    if (pinnedRef.current) return;
     clearHoverTimer();
     hoverTimerRef.current = setTimeout(() => setOpen(false), 120);
   };

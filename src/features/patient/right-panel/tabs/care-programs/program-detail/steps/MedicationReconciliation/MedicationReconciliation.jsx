@@ -61,6 +61,23 @@ function mmddyyyyToISO(str) {
   return m && d && y ? `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` : '';
 }
 
+function CellDateInput({ label, value, onSelect, className }) {
+  const ref = useRef(null);
+  return (
+    <Input
+      ref={ref}
+      type="date"
+      aria-label={label}
+      value={value || ''}
+      onChange={e => onSelect(e.target.value)}
+      trailingAction="solar:calendar-linear"
+      trailingActionLabel={`Open ${label.toLowerCase()} calendar`}
+      onTrailingAction={() => ref.current?.showPicker?.()}
+      className={className}
+    />
+  );
+}
+
 // Empty template for the inline form once a med is picked from OpenFDA.
 const blankDraft = () => ({
   name: '', status: 'Active', start: todayISO(), stopDate: '', stopReason: '',
@@ -748,27 +765,6 @@ export function MedicationReconciliation() {
   const [editingCell, setEditingCell] = useState(null); // { id, field }
   const [cellDraft, setCellDraft] = useState('');
 
-  // Inline date editor — the DS Input rather than a bare <input type="date">,
-  // with a Solar calendar as the trailing action. The field keeps type="date"
-  // so the browser's own picker still drives it; the trailing button calls
-  // showPicker() and the native indicator is hidden in CSS.
-  const CellDateInput = ({ label, value, onSelect }) => {
-    const ref = useRef(null);
-    return (
-      <Input
-        ref={ref}
-        type="date"
-        aria-label={label}
-        value={value || ''}
-        onChange={e => onSelect(e.target.value)}
-        trailingAction="solar:calendar-linear"
-        trailingActionLabel={`Open ${label.toLowerCase()} calendar`}
-        onTrailingAction={() => ref.current?.showPicker?.()}
-        className={styles.cellDateInput}
-      />
-    );
-  };
-
   const isEditingCell = (m, field) => editingCell?.id === m.id && editingCell?.field === field;
 
   const beginCellEdit = (m, field) => {
@@ -1379,6 +1375,7 @@ export function MedicationReconciliation() {
                       label="Start date"
                       value={cellDraft}
                       onSelect={v => commitCell(m, 'start', v)}
+                      className={styles.cellDateInput}
                     />
                   </span>
                 ) : cellTrigger(m, 'start', m.start || '—')}
@@ -1390,6 +1387,7 @@ export function MedicationReconciliation() {
                       label="Stop date"
                       value={cellDraft}
                       onSelect={v => commitCell(m, 'stop', v)}
+                      className={styles.cellDateInput}
                     />
                   </span>
                 ) : cellTrigger(m, 'stop', m.stop || '—')}

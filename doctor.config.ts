@@ -230,6 +230,9 @@ export default {
       //     revokes the previous one before creating a replacement, and revokes
       //     the outstanding one in an unmount effect. Only URLs created there are
       //     revoked, never a stored https path.
+      //   ChartDetailDrawerView PdfPreviewPane revokes blob URLs in blobUrlRef
+      //     on unmount and when the selected doc changes; the rule cannot follow
+      //     ref indirection from createObjectURL in openInNewTab.
       //
       // The EditPatientDrawer pattern was verified in the browser rather than
       // reasoned about: the first URL is fetchable, stops being fetchable once a
@@ -239,6 +242,7 @@ export default {
         files: [
           'src/components/ImagePreviewOverlay/ImagePreviewOverlay.jsx',
           'src/features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer.jsx',
+          'src/features/hcc/ChartDetailDrawerView.jsx',
         ],
         rules: ['react-doctor/no-create-object-url-without-revoke'],
       },
@@ -362,6 +366,7 @@ export default {
           'src/components/PdfPreviewOverlay/PdfPreviewOverlay.jsx',
           'src/features/hcc/DiagPanel/DocEvidenceViewer.jsx',
           'src/features/patient/right-panel/tabs/care-programs/program-detail/letters/AddLetterDrawer/AddLetterDrawer.jsx',
+          'src/features/patient/right-panel/tabs/care-programs/care-plan/drawers/CarePlanShareDrawer/CarePlanPdfPreview.jsx',
         ],
         rules: ['react-doctor/iframe-missing-sandbox'],
       },
@@ -375,8 +380,8 @@ export default {
       // widgets that need their own storage.
       {
         files: [
-          'src/features/settings/panels/ComponentLibraryPanel.jsx',
-          'src/features/settings/panels/ComponentWizardDrawer.jsx',
+          'src/features/settings/embedded-components/ComponentLibraryPanel.jsx',
+          'src/features/settings/embedded-components/ComponentWizardDrawer.jsx',
         ],
         rules: ['react-doctor/iframe-missing-sandbox'],
       },

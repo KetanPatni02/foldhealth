@@ -346,10 +346,29 @@ export function ChartDetailDrawerView(props) {
 // local uploads) so support can view it in their own window.
 function PdfPreviewPane({ selected, member, docStatus, expanded, onToggleExpand }) {
   const status = PDF_STATUS_STYLE[docStatus] || PDF_STATUS_STYLE.Pending;
+  const blobUrlRef = useRef(null);
+
+  useEffect(() => () => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
+    }
+  }, [selected?.id, selected?.pdf, selected?.file]);
 
   const openInNewTab = () => {
-    const url = selected?.pdf
-      || (selected?.file ? URL.createObjectURL(selected.file) : null);
+    let url = selected?.pdf || null;
+    if (!url && selected?.file) {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = URL.createObjectURL(selected.file);
+      url = blobUrlRef.current;
+    }
     if (!url) return;
     window.open(url, '_blank', 'noopener,noreferrer');
   };

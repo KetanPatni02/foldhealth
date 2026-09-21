@@ -21,25 +21,37 @@ export function ChronicConditionSelect({ value, onChange, label = 'Chronic condi
   useEffect(() => {
     const term = query.trim();
     const controller = new AbortController();
-    // Every state write happens inside the timer — setting state synchronously
-    // in an effect body cascades renders.
+
+    if (term.length < 2) {
+      setOptions([]);
+      setLoading(false);
+      return () => controller.abort();
+    }
+
+    setLoading(true);
     const timer = setTimeout(async () => {
-      if (term.length < 2) { setOptions([]); setLoading(false); return; }
-      setLoading(true);
       try {
         const url = `${CONDITIONS_API}?terms=${encodeURIComponent(term)}&maxList=10`;
         const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) {
+          setOptions([]);
+          return;
+        }
         const data = await res.json();
-        // [total, codes[], extraData, displayStrings[][]]
         const names = (data?.[3] || []).map(row => row?.[0]).filter(Boolean);
         setOptions(asOptions([...new Set(names)]));
       } catch (err) {
         if (err.name !== 'AbortError') setOptions([]);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        setLoading(false);
       }
     }, 300);
-    return () => { clearTimeout(timer); controller.abort(); };
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+      setLoading(false);
+    };
   }, [query]);
 
   return (

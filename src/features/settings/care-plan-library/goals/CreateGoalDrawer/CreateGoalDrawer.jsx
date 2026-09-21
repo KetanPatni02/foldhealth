@@ -154,7 +154,7 @@ const PRIORITIES = [
  * picked from a segment inside the title field.
  */
 export function CreateGoalDrawer({ onClose, onSave, goal }) {
-  const [category, setCategory] = useState(normalizeCategory(goal?.category));
+  const [category, setCategory] = useState(() => normalizeCategory(goal?.category));
   const [measure, setMeasure] = useState(goal?.measure || '');
   const [conditions, setConditions] = useState(goal?.conditions || []);
   const [title, setTitle] = useState(goal?.title || '');

@@ -8,6 +8,21 @@ import styles from './CarePlanLinkDrawer.module.css';
 
 const apptLabel = (a) => `${a.appointment_type_name || 'Appointment'}${a.date ? ` · ${new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`;
 
+function CarePlanLinkRow({ type, id, icon, title, meta, linked, onToggle }) {
+  return (
+    <button type="button" className={styles.row} onClick={() => onToggle(type, id, title)}>
+      <span className={styles.rowIcon}><Icon name={icon} size={16} color="var(--neutral-400)" /></span>
+      <span className={styles.rowText}>
+        <span className={styles.rowTitle}>{title}</span>
+        {meta && <span className={styles.rowMeta}>{meta}</span>}
+      </span>
+      {linked
+        ? <Badge tone="green" size="S" label="Linked" />
+        : <span className={styles.addLink}><Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />Link</span>}
+    </button>
+  );
+}
+
 // Link existing tasks & appointments to one goal/intervention/barrier (#11).
 // The owner is { kind: 'goal'|'intervention'|'barrier', item }.
 export function CarePlanLinkDrawer({ patientId, program, patientName, owner, onClose }) {
@@ -46,22 +61,6 @@ export function CarePlanLinkDrawer({ patientId, program, patientName, owner, onC
     }
   };
 
-  const Row = ({ type, id, icon, title, meta }) => {
-    const linked = !!isLinked(type, id);
-    return (
-      <button type="button" className={styles.row} onClick={() => toggle(type, id, title)}>
-        <span className={styles.rowIcon}><Icon name={icon} size={16} color="var(--neutral-400)" /></span>
-        <span className={styles.rowText}>
-          <span className={styles.rowTitle}>{title}</span>
-          {meta && <span className={styles.rowMeta}>{meta}</span>}
-        </span>
-        {linked
-          ? <Badge tone="green" size="S" label="Linked" />
-          : <span className={styles.addLink}><Icon name="solar:add-circle-linear" size={16} color="var(--primary-300)" />Link</span>}
-      </button>
-    );
-  };
-
   return (
     <Drawer title="Link Items" onClose={onClose}>
       <div className={styles.body}>
@@ -75,7 +74,16 @@ export function CarePlanLinkDrawer({ patientId, program, patientName, owner, onC
           {patientTasks.length === 0
             ? <div className={styles.empty}>No tasks for this patient.</div>
             : patientTasks.map(t => (
-              <Row key={`t-${t.id}`} type="task" id={t.id} icon="solar:checklist-minimalistic-linear" title={t.name} meta={t.status} />
+              <CarePlanLinkRow
+                key={`t-${t.id}`}
+                type="task"
+                id={t.id}
+                icon="solar:checklist-minimalistic-linear"
+                title={t.name}
+                meta={t.status}
+                linked={!!isLinked('task', t.id)}
+                onToggle={toggle}
+              />
             ))}
         </div>
 
@@ -84,7 +92,16 @@ export function CarePlanLinkDrawer({ patientId, program, patientName, owner, onC
           {patientAppointments.length === 0
             ? <div className={styles.empty}>No appointments for this patient.</div>
             : patientAppointments.map(a => (
-              <Row key={`a-${a.id}`} type="appointment" id={a.id} icon="solar:calendar-linear" title={apptLabel(a)} meta={a.mode || a.location} />
+              <CarePlanLinkRow
+                key={`a-${a.id}`}
+                type="appointment"
+                id={a.id}
+                icon="solar:calendar-linear"
+                title={apptLabel(a)}
+                meta={a.mode || a.location}
+                linked={!!isLinked('appointment', a.id)}
+                onToggle={toggle}
+              />
             ))}
         </div>
 

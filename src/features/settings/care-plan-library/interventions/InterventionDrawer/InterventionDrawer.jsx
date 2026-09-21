@@ -48,6 +48,7 @@ const DUE_UNITS = ['day', 'week'];
 const REPEAT_UNITS = ['Days', 'Weeks'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
 const TITLE_MAX = 150;
+const EMPTY_AVAILABLE_GOALS = [];
 
 const asOptions = (list) => list.map(v => ({ value: v, label: v }));
 
@@ -92,7 +93,7 @@ export function InterventionDrawer({
   //   • activityEntries: pre-mapped audit rows in the shared
   //     ActivityLog entry shape. Rendered below the form when provided.
   linkToGoalsAllowed = false,
-  availableGoals = [],
+  availableGoals = EMPTY_AVAILABLE_GOALS,
   linkedGoalIds: linkedGoalIdsProp,
   activityEntries,
   // Patient name — surfaces as the read-only "Member" row. Interventions

@@ -39,12 +39,15 @@ function TrendBadge({ trend }) {
   return <Badge tone={tone} size="S" icon={icon} />;
 }
 
+const EMPTY_GOALS = [];
+const EMPTY_MEASUREMENTS = [];
+
 /**
  * Goal Trends — a read-only roll-up of every goal's recorded readings across the
  * plan, so a clinician can scan progress without opening each goal. Readings
  * come from patient_care_plan_goal_measurements (persisted).
  */
-export function CarePlanTrendsDrawer({ goals = [], measurements = [], onClose }) {
+export function CarePlanTrendsDrawer({ goals = EMPTY_GOALS, measurements = EMPTY_MEASUREMENTS, onClose }) {
   const byGoal = useMemo(() => {
     const m = new Map();
     for (const r of measurements) (m.get(r.goalId) || m.set(r.goalId, []).get(r.goalId)).push(r);

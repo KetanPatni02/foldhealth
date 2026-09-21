@@ -9,6 +9,8 @@ import { useAppStore } from '../../../../../store/useAppStore';
 import { CARE_PLAN_TITLE_MAX } from '../../lib/carePlanLimits';
 import styles from './AddBarriersDrawer.module.css';
 
+const EMPTY_EXISTING_BARRIERS = [];
+
 function normTitle(value) {
   return (value || '').trim().toLowerCase();
 }
@@ -26,7 +28,7 @@ function normTitle(value) {
 export function AddBarriersDrawer({
   onClose,
   onAdd,
-  existingBarriers = [],
+  existingBarriers = EMPTY_EXISTING_BARRIERS,
   primaryLabel = 'Add to Plan',
   selectable = true,
 }) {

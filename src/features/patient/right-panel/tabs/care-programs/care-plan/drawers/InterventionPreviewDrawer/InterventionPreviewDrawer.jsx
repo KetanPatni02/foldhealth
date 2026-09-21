@@ -221,13 +221,12 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
     [slice, live],
   );
 
-  const [pct, setPct] = useState(adherenceNum(live?.adherence));
+  const [pct, setPct] = useState(() => adherenceNum(live?.adherence));
   const [pctDragging, setPctDragging] = useState(false);
   const [open, setOpen] = useState({ tasks: true, goals: true, automations: true });
   const [addingAutomation, setAddingAutomation] = useState(false);
   const [automationTitle, setAutomationTitle] = useState('');
   const [note, setNote] = useState('');
-  const [notePlain, setNotePlain] = useState('');
   const [noteEditing, setNoteEditing] = useState(false);
   const [moreMenu, setMoreMenu] = useState(null);
   const [linkGoalOpen, setLinkGoalOpen] = useState(false);
@@ -309,7 +308,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   useEffect(() => {
     const seed = latestInterventionNote?.detail || '';
     setNote(seed);
-    setNotePlain(seed);
     setNoteEditing(false);
   }, [latestInterventionNote?.id]);
 
@@ -350,7 +348,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   };
 
   const submitNote = async () => {
-    const body = (notePlain || note).replace(/<[^>]+>/g, '').trim();
+    const body = note.replace(/<[^>]+>/g, '').trim();
     if (!body) return;
     await addCarePlanNote(patientId, program, body, { entityType: 'intervention', entityId: live.id, summary: `Note on ${live.title}` });
     setNoteEditing(false);
@@ -849,7 +847,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                         });
                         // Drop the seeded text so the editor reopens empty.
                         setNote('');
-                        setNotePlain('');
                         setNoteEditing(true);
                       }}
                     />
@@ -868,7 +865,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                     onChange={(value) => {
                       const v = typeof value === 'string' ? value : '';
                       setNote(v);
-                      setNotePlain(v);
                     }}
                     rows={3}
                   />
@@ -886,7 +882,6 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
                         disabled={!canDiscard}
                         onClick={() => {
                           setNote(baseline);
-                          setNotePlain(baseline);
                           if (latestInterventionNote) setNoteEditing(false);
                         }}
                       >

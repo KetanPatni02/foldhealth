@@ -46,7 +46,12 @@ function formatPreviewDate(iso) {
   return `${mm}/${dd}/${d.getFullYear()}`;
 }
 
-export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
+export function CareGapDetailDrawer(props) {
+  const memberKey = props.member?.id ?? '';
+  return <CareGapDetailDrawerContent key={memberKey} {...props} />;
+}
+
+function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const showToast = useAppStore(s => s.showToast);
   const updateGapStatus = useAppStore(s => s.updateGapStatus);
   const updateGapAssignee = useAppStore(s => s.updateGapAssignee);

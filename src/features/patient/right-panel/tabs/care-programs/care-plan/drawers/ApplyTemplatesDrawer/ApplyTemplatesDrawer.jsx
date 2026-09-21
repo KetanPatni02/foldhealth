@@ -23,6 +23,9 @@ import styles from './ApplyTemplatesDrawer.module.css';
 // selected template reads Medium here to match what the care plan shows.
 const PRIORITIES = ['high', 'medium', 'low'];
 const DEFAULT_PRIORITY = 'medium';
+const EMPTY_TEMPLATE_IDS = [];
+const EMPTY_TEMPLATE_PRIORITIES = {};
+const EMPTY_PATIENT_PROBLEMS = [];
 // The condition(s) a template addresses, as a single display string. A
 // template with no explicit condition reads as an em-dash placeholder.
 const conditionTextOf = (t) => {
@@ -56,9 +59,9 @@ const conditionSortKey = (t) => {
  */
 export function ApplyTemplatesDrawer({
   onClose,
-  appliedTemplateIds = [],
-  appliedTemplatePriorities = {},
-  patientProblems = [],
+  appliedTemplateIds = EMPTY_TEMPLATE_IDS,
+  appliedTemplatePriorities = EMPTY_TEMPLATE_PRIORITIES,
+  patientProblems = EMPTY_PATIENT_PROBLEMS,
   onApply,
   showPriority = true,
   showCreateNew = true,

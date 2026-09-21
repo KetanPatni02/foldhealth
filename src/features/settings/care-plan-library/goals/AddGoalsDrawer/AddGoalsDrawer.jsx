@@ -24,6 +24,9 @@ import styles from './AddGoalsDrawer.module.css';
 // by "Added goals" / "Recommended" instead.
 const RECENT_COUNT = 5;
 
+const EMPTY_GOAL_TITLES = [];
+const EMPTY_PATIENT_PROBLEMS = [];
+
 const normTitle = (v) => (v || '').trim().toLowerCase();
 
 // A library goal's second line: what it measures, then how long for.
@@ -52,8 +55,8 @@ export function AddGoalsDrawer({
   // Patient care-plan context. When either is provided the list groups by
   // "Added goals" (already on this plan, by title) then "Recommended" (matched
   // to the patient's Problems) then the rest, instead of "Recently Used".
-  existingGoalTitles = [],
-  patientProblems = [],
+  existingGoalTitles = EMPTY_GOAL_TITLES,
+  patientProblems = EMPTY_PATIENT_PROBLEMS,
 }) {
   const libraryGoals = useAppStore(s => s.carePlanGoals);
   const libraryDidFetch = useAppStore(s => s.carePlanLibraryDidFetch);
@@ -148,8 +151,8 @@ export function AddGoalsDrawer({
   // "Added" chip is redundant and has been dropped.
   // `divider` draws the Recently-Used hairline after the row.
   const renderRow = (g, { divider = false } = {}) => (
-    <div key={g.id} className={styles.rowWrap}>
-      <label className={styles.row}>
+      <div key={g.id} className={styles.rowWrap}>
+      <div className={styles.row}>
         <Checkbox
           checked={selected.has(g.id)}
           onCheckedChange={() => toggle(g.id)}
@@ -176,7 +179,7 @@ export function AddGoalsDrawer({
           {g.category && <Badge tone="grey" size="S" label={normalizeCategory(g.category)} />}
           <PriorityIcon priority={g.priority} size={16} />
         </span>
-      </label>
+      </div>
       {divider && <span className={styles.groupDivider} />}
     </div>
   );

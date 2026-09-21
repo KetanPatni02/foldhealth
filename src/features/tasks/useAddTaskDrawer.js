@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import {
   STATUS_ORDER, STATUS_LABELS, PRIORITY_OPTIONS, ASSIGNEE_OPTIONS, MEMBER_OPTIONS, TITLE_MAX, todayMMDDYYYY,
@@ -12,15 +12,6 @@ export function useAddTaskDrawer({ defaultStatus, initialMember, initialAssigned
   const [dueDate, setDueDate] = useState('');
   const [assignedTo, setAssignedTo] = useState(initialAssignedTo || '');
   const [member, setMember] = useState(initialMember || '');
-  // The parent may resolve `patientName` async (worklist slice hydrates
-  // after mount), so sync the two defaults down when they arrive. Guard
-  // on empty state so we don't clobber a user's explicit choice.
-  useEffect(() => {
-    if (initialMember && !member) setMember(initialMember);
-  }, [initialMember]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (initialAssignedTo && !assignedTo) setAssignedTo(initialAssignedTo);
-  }, [initialAssignedTo]); // eslint-disable-line react-hooks/exhaustive-deps
   const [pool, setPool] = useState('');
   const [description, setDescription] = useState('');
   const [selectedLabels, setSelectedLabels] = useState([]);

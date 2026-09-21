@@ -553,12 +553,11 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const [pctDragging, setPctDragging] = useState(false);
   const [open, setOpen] = useState(readGoalPreviewSectionsOpen);
   const patchSectionsOpen = useCallback((updater) => {
-    setOpen((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      persistGoalPreviewSectionsOpen(next);
-      return next;
-    });
+    setOpen((prev) => (typeof updater === 'function' ? updater(prev) : updater));
   }, []);
+  useEffect(() => {
+    persistGoalPreviewSectionsOpen(open);
+  }, [open]);
   const [addingReading, setAddingReading] = useState(false);
   const [readingValue, setReadingValue] = useState('');
   const [readingFavorable, setReadingFavorable] = useState(true);

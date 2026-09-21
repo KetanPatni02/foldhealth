@@ -242,7 +242,6 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
     return latestNote;
   }, [auditAll, barrierIdSet]);
   const [note, setNote] = useState(latestBarrierNote?.detail || '');
-  const [notePlain, setNotePlain] = useState(latestBarrierNote?.detail || '');
   const [noteEditing, setNoteEditing] = useState(false);
   // Whenever a new note lands (either the drawer just opened on a
   // different barrier or the user just submitted), re-seed the textarea
@@ -250,7 +249,6 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   useEffect(() => {
     const seed = latestBarrierNote?.detail || '';
     setNote(seed);
-    setNotePlain(seed);
     setNoteEditing(false);
   }, [latestBarrierNote?.id]);
   const submitNote = async () => {
@@ -667,7 +665,6 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                             detail: latestBarrierNote.detail || '',
                           });
                           setNote('');
-                          setNotePlain('');
                           setNoteEditing(true);
                         }}
                       />
@@ -687,7 +684,6 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                     onChange={(value) => {
                       const v = typeof value === 'string' ? value : '';
                       setNote(v);
-                      setNotePlain(v);
                     }}
                     rows={3}
                     disabled={isTerminal}
@@ -706,7 +702,6 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
                         disabled={!canDiscard}
                         onClick={() => {
                           setNote(baseline);
-                          setNotePlain(baseline);
                           if (latestBarrierNote) setNoteEditing(false);
                         }}
                       >

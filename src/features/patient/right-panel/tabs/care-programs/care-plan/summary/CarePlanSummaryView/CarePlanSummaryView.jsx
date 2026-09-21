@@ -65,8 +65,12 @@ async function fetchCarePlanSummary(payload) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+  if (!res.ok) {
+    const errJson = await res.json().catch(() => ({}));
+    throw new Error(errJson?.error?.message || 'Could not generate the summary. Please try again.');
+  }
   const json = await res.json().catch(() => ({}));
-  if (!res.ok || !json.summary) {
+  if (!json.summary) {
     throw new Error(json?.error?.message || 'Could not generate the summary. Please try again.');
   }
   return json.summary;

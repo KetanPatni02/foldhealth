@@ -12,6 +12,7 @@ import {
   caretAfter,
 } from './mentions';
 import styles from './Textarea.module.css';
+import { sanitizeRichText } from '../../lib/sanitizeHtml';
 
 /**
  * Fold Health Textarea (Figma Fold-Pixel 5786:1273 / 25:78337).
@@ -232,8 +233,9 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
   // never touches innerHTML after mount and the field ignores prop updates.
   useEffect(() => {
     if (!richText || !isControlled) return;
-    if (editorRef.current && editorRef.current.innerHTML !== (value ?? '')) {
-      editorRef.current.innerHTML = value ?? '';
+    const safe = sanitizeRichText(value ?? '');
+    if (editorRef.current && editorRef.current.innerHTML !== safe) {
+      editorRef.current.innerHTML = safe;
     }
   }, [richText, isControlled, value]);
 
@@ -271,7 +273,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
     // Enforce maxLength on the serialized plain-text length so the counter
     // and the cap agree (an <b>bold</b> tag doesn't cost characters).
     if (maxLength && plain.length > maxLength) {
-      el.innerHTML = text;
+      el.innerHTML = sanitizeRichText(text);
       return;
     }
     if (!isControlled) setText(html);

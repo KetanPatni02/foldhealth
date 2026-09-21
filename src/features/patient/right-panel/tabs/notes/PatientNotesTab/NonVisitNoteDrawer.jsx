@@ -111,23 +111,26 @@ export function NonVisitNoteDrawer({ patient, onClose }) {
       return;
     }
     setSaving(true);
-    const saved = await upsertClinicalNote({
-      hedisMemberId,
-      patientId: patient?.id,
-      gapCodes: selectedGaps,
-      formType: template ? (templateGapCode ? 'non_visit_note' : 'normal_note') : 'non_visit_note',
-      formId: template?.id || null,
-      status,
-      payload: buildPayload(),
-      originKind: 'patient',
-      originRef: patient?.id ? String(patient.id) : null,
-    });
-    setSaving(false);
-    if (saved) {
-      showToast?.(status === 'signed' ? 'Note signed' : 'Draft saved');
-      onClose?.();
-    } else {
-      showToast?.('Save failed — check console');
+    try {
+      const saved = await upsertClinicalNote({
+        hedisMemberId,
+        patientId: patient?.id,
+        gapCodes: selectedGaps,
+        formType: template ? (templateGapCode ? 'non_visit_note' : 'normal_note') : 'non_visit_note',
+        formId: template?.id || null,
+        status,
+        payload: buildPayload(),
+        originKind: 'patient',
+        originRef: patient?.id ? String(patient.id) : null,
+      });
+      if (saved) {
+        showToast?.(status === 'signed' ? 'Note signed' : 'Draft saved');
+        onClose?.();
+      } else {
+        showToast?.('Save failed — check console');
+      }
+    } finally {
+      setSaving(false);
     }
   };
 

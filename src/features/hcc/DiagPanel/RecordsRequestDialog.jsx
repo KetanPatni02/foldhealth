@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription } from '../../../components/ConfirmDialog/AlertDialogPrimitives';
 import { Button } from '../../../components/Button/Button';
 import { Textarea } from '../../../components/Textarea/Textarea';
@@ -43,8 +43,8 @@ const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0] || '').join
 export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
   const [role, setRole] = useState('coder');
   const [comment, setComment] = useState('');
-  const [mentions, setMentions] = useState([]);
-  const [attachments, setAttachments] = useState([]);
+  const mentionsRef = useRef([]);
+  const attachmentsRef = useRef([]);
   // Assigned-to picker — defaults to the first user we can pick per role
   // (the "last assigned" reviewer once the roster is loaded). The user
   // can swap this if the default reviewer is out; the selected assignee
@@ -226,8 +226,10 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
           mentionUsers={mentionUsers}
           placeholder="Add a Comment"
           onChange={(_html, plain) => setComment(plain ?? '')}
-          onMentionsChange={setMentions}
-          onAttachmentFiles={(files) => setAttachments(prev => [...prev, ...Array.from(files)])}
+          onMentionsChange={(m) => { mentionsRef.current = m; }}
+          onAttachmentFiles={(files) => {
+            attachmentsRef.current = [...attachmentsRef.current, ...Array.from(files)];
+          }}
         />
 
         <div className={styles.actions}>
@@ -241,8 +243,8 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
               destinationRole: role,
               assignee: assignee ? { id: assignee.id, name: assignee.name, initials: assignee.initials } : null,
               note: comment.trim(),
-              mentions,
-              attachments,
+              mentions: mentionsRef.current,
+              attachments: attachmentsRef.current,
             })}
           >
             Request Record

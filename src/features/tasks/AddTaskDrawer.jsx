@@ -4,7 +4,13 @@ import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { useAddTaskDrawer } from './useAddTaskDrawer';
 import { AddTaskDrawerBody } from './AddTaskDrawerBody';
 
-export function AddTaskDrawer({ onClose, defaultStatus, initialMember, initialAssignedTo, onTaskCreated, extraFields, className, availableGoals, onOpenGoal, initialLinkedGoalIds, showScheduleFields = false, taskKind }) {
+export function AddTaskDrawer(props) {
+  const { initialMember, initialAssignedTo } = props;
+  const defaultsKey = `${initialMember ?? ''}:${initialAssignedTo ?? ''}`;
+  return <AddTaskDrawerInner key={defaultsKey} {...props} />;
+}
+
+function AddTaskDrawerInner({ onClose, defaultStatus, initialMember, initialAssignedTo, onTaskCreated, extraFields, className, availableGoals, onOpenGoal, initialLinkedGoalIds, showScheduleFields = false, taskKind }) {
   const drawer = useAddTaskDrawer({ defaultStatus, initialMember, initialAssignedTo, onTaskCreated, extraFields, initialLinkedGoalIds, includeScheduleFields: showScheduleFields });
   const title = taskKind === 'internal-task' ? 'Add Internal Task'
     : taskKind === 'patient-task' ? 'Add Patient Task'
