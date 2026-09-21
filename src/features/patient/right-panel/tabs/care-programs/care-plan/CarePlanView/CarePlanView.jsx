@@ -23,6 +23,11 @@ import {
   SectionEmptyState,
 } from './CarePlanViewSections';
 import { useCarePlanViewData } from './useCarePlanViewData';
+import {
+  linkedForGoal,
+  linkedForChild,
+  interventionActivityEntries,
+} from './carePlanLinkedItems';
 import { ChronicConditionSelect } from '../../../../../../settings/care-plan-library/shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ShadcnDialog/ShadcnDialog';
 import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
@@ -109,33 +114,8 @@ export function CarePlanView({ patientId, program }) {
   // Linked-items preview data (Figma SNP-Story 2632:112808). A goal links its
   // interventions/barriers/automations (by goalId); a child row links its goal.
   const programBadge = program?.name ? [program.name] : (program?.code ? [program.code] : []);
-  // A barrier is many-to-many with goals via `goalIds` (join table); fall
-  // back to the legacy `goalId` column when the array is empty so
-  // pre-migration data still resolves. Interventions and automations are
-  // still 1:1 with a goal.
-  const barrierGoalIds = (b) => {
-    if (Array.isArray(b.goalIds) && b.goalIds.length > 0) return b.goalIds;
-    return b.goalId ? [b.goalId] : [];
-  };
-  const linkedForGoal = (g) => ({
-    programs: programBadge,
-    interventions: (live?.interventions || []).filter(i => i.goalId === g.id).map(i => ({ id: i.id, icon: i.icon, title: i.title })),
-    barriers: (live?.barriers || []).filter(b => barrierGoalIds(b).includes(g.id)).map(b => ({ id: b.id, title: b.title })),
-    automations: (live?.automations || []).filter(a => a.goalId === g.id).map(a => ({ id: a.id, title: a.title })),
-  });
-  const linkedForChild = (item) => {
-    // A barrier can be linked to several goals; interventions /
-    // automations remain single-goal.
-    const parentGoalIds = Array.isArray(item.goalIds) && item.goalIds.length > 0
-      ? item.goalIds
-      : (item.goalId ? [item.goalId] : []);
-    return {
-      programs: programBadge,
-      goals: (live?.goals || [])
-        .filter(g => parentGoalIds.includes(g.id))
-        .map(g => ({ id: g.id, title: g.title, icon: g.icon })),
-    };
-  };
+  const linkedForGoalRow = (g) => linkedForGoal(g, live, programBadge);
+  const linkedForChildRow = (item) => linkedForChild(item, live, programBadge);
 
   useEffect(() => {
     if (patientId && program?.id) {
@@ -1110,7 +1090,7 @@ export function CarePlanView({ patientId, program }) {
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
             onTargetDateChange={(goal, iso) => savePatientCarePlanGoal(patientId, program, { ...goal, targetDate: iso }, goal.id)}
-            linked={linkedForGoal}
+            linked={linkedForGoalRow}
             emptyState={filteredGoals.length === 0 ? <div className={styles.emptyRow}>No goals match the filters.</div> : null}
           />
         ))}
@@ -1179,7 +1159,7 @@ export function CarePlanView({ patientId, program }) {
               ...intv,
               config: { ...(intv.config || {}), ...next },
             }, intv.id)}
-            linked={linkedForChild}
+            linked={linkedForChildRow}
             platformUsers={platformUsers}
             patients={patientName ? [{
               id: patientId,
@@ -1225,7 +1205,7 @@ export function CarePlanView({ patientId, program }) {
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
             onOpenBarrier={setPreviewBarrier}
-            linked={linkedForChild}
+            linked={linkedForChildRow}
             emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the filters.</div> : null}
           />
         ))}
@@ -1423,20 +1403,7 @@ export function CarePlanView({ patientId, program }) {
         const Editor = INTERVENTION_EDITORS[intvSpecialDrawer.kind];
         if (!Editor) return null;
         const intv = intvSpecialDrawer.intervention;
-        const activityEntries = intv?.id ? auditAll
-          .filter(a => a.entityType === 'intervention' && String(a.entityId) === String(intv.id))
-          .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))
-          .map(a => {
-            const created = a.createdAt ? new Date(a.createdAt) : null;
-            return {
-              id: a.id,
-              t: 'status_change',
-              date: created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
-              time: created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
-              by: a.actor || null,
-              title: a.summary || 'Intervention updated',
-            };
-          }) : [];
+        const activityEntries = interventionActivityEntries(auditAll, intv);
         const currentLinked = Array.isArray(intv?.goalIds) && intv.goalIds.length > 0
           ? intv.goalIds
           : (intv?.goalId ? [intv.goalId]
