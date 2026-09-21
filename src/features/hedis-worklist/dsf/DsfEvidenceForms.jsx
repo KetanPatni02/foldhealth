@@ -190,14 +190,22 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
   // are NOT re-rendered here (the shared DOS card owns them).
   const consentSatisfied = isHome || !!v.audioOnly || !!v.audioVideo;
   const bothPhq2Answered = phq2Values.every(v2 => v2 !== null && v2 !== undefined);
-  const phq2Total = totalScore(phq2Values);
-  const positive = isPhq2Positive(phq2Total);
   // DSF-A is only locked once THIS note has committed a Save on a
   // Positive PHQ-2 (which is also the moment DSF-B is created). A
   // fresh note starts unlocked regardless of whether DSF-B may exist
   // for the member from an earlier flow, and Negative scoring keeps
   // the form editable forever (no save step, no lock).
   const phq2Saved = !!data.phq2?.savedAt;
+  // Prefer the persisted totalScore / outcome once saved so the badge
+  // survives a re-open even if items hydrate late. Recompute live
+  // otherwise.
+  const liveTotalPhq2 = totalScore(phq2Values);
+  const phq2Total = phq2Saved && typeof data.phq2?.totalScore === 'number'
+    ? data.phq2.totalScore
+    : liveTotalPhq2;
+  const positive = phq2Saved && data.phq2?.outcome
+    ? data.phq2.outcome === 'positive'
+    : isPhq2Positive(phq2Total);
 
   // Positive PHQ-2 gates DSF-B creation on an explicit Save click so a
   // mis-tick at 3 points doesn't spawn a gap. Negative flows show the
@@ -205,9 +213,18 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
   const handleSavePhq2Score = () => {
     if (!bothPhq2Answered || !positive || phq2Saved) return;
     const savedAt = new Date().toISOString();
-    // Save locks PHQ-2, marks DSF-A Ready for Review (so the note picker
+    // Save locks PHQ-2, stamps the score + outcome for durable reads
+    // on re-open, marks DSF-A Ready for Review (so the note picker
     // includes it automatically), and opens the linked DSF-B gap.
-    onUpdate({ phq2: { ...(data.phq2 || {}), savedAt }, manuallyOff: false });
+    onUpdate({
+      phq2: {
+        ...(data.phq2 || {}),
+        totalScore: phq2Total,
+        outcome: positive ? 'positive' : 'negative',
+        savedAt,
+      },
+      manuallyOff: false,
+    });
     if (typeof onOpenPhq9Gap === 'function') {
       onOpenPhq9Gap({ savedAt });
     }
@@ -275,7 +292,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
                 Negative auto-completes without a gap).
             The scoring-bands info tooltip sits inside the badge itself
             so band context anchors to where the score is read. */}
-        {bothPhq2Answered && (
+        {(bothPhq2Answered || phq2Saved) && (
           <div className={styles.phq2CardFooter}>
             {positive && !phq2Saved && !readOnly && (
               <Button
@@ -318,25 +335,35 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
             Saving this score opens the DSF-B gap for this patient. Once saved, DSF-A cannot be edited.
           </InfoBar>
         )}
-        {phq2Saved && !readOnly && (
-          <InfoBar
-            className={styles.phq2InfoBarAttached}
-            tone="success"
-            icon="solar:check-circle-linear"
-          >
-            <span className={styles.phq2InfoBarSaved}>
-              <span>Score saved, DSF-A locked and DSF-B is created.</span>
-              <Button
-                variant="tertiary"
-                size="S"
-                trailingIcon="solar:arrow-right-linear"
-                onClick={() => (v.openDsfbView ? v.openDsfbView() : v.setActiveGapCode?.('DSF-B'))}
-              >
-                Open DSF-B
-              </Button>
-            </span>
-          </InfoBar>
-        )}
+        {phq2Saved && !readOnly && (() => {
+          // Consolidated view already stacks DSF-B below DSF-A on the
+          // same page, so the "Open DSF-B" jump is redundant there —
+          // scroll does the same job. Only surface the button when
+          // DSF-B is on the note but the current surface can't show
+          // it inline (single-gap inline workspace).
+          const dsfbAlreadyVisible = (v.activeGaps || []).some(g => g.code === 'DSF-B');
+          return (
+            <InfoBar
+              className={styles.phq2InfoBarAttached}
+              tone="success"
+              icon="solar:check-circle-linear"
+            >
+              <span className={styles.phq2InfoBarSaved}>
+                <span>Score saved, DSF-A locked and DSF-B is created.</span>
+                {!dsfbAlreadyVisible && (
+                  <Button
+                    variant="tertiary"
+                    size="S"
+                    trailingIcon="solar:arrow-right-linear"
+                    onClick={() => (v.openDsfbView ? v.openDsfbView() : v.setActiveGapCode?.('DSF-B'))}
+                  >
+                    Open DSF-B
+                  </Button>
+                )}
+              </span>
+            </InfoBar>
+          );
+        })()}
       </div>
 
       {bothPhq2Answered && !positive && (
@@ -372,11 +399,25 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
   const phq9Values = data.phq9?.items || [null, null, null, null, null, null, null, null, null];
   const allAnswered = phq9Values.every(v2 => v2 !== null && v2 !== undefined);
   // Always recompute from the current items — falling back to a stored
-  // `data.phq9.totalScore` would freeze the visible total the first time
-  // the payload savedAt is stamped, so any later edit (change one item's
-  // score) wouldn't show up in the Badge.
-  const phq9Total = totalScore(phq9Values);
-  const branch = phq9Branch(phq9Total);
+  // Save Score gate — mirrors the PHQ-2 pattern. Users answer all 9
+  // items, then commit the score via an explicit Save Score button.
+  // Save stamps `savedAt` (feeds the 30-day due-date math), locks the
+  // Likert matrix, and reveals the band's care plan below.
+  const phq9Saved = !!data.phq9?.savedAt;
+  // Score + band are authoritative from the persisted payload once
+  // the note has been saved — the frozen totalScore / band survive
+  // re-opens even if items happen to hydrate late, and match the row
+  // the review sign-off will commit. While the user is still editing
+  // (pre-save) recompute live from the items array so the badge
+  // reflects each radio click.
+  const liveTotal = totalScore(phq9Values);
+  const liveBranch = phq9Branch(liveTotal);
+  const phq9Total = phq9Saved && typeof data.phq9?.totalScore === 'number'
+    ? data.phq9.totalScore
+    : liveTotal;
+  const branch = phq9Saved && data.phq9?.band
+    ? data.phq9.band
+    : liveBranch;
   // Reference vocabulary — see dsfScoring.phq9BandLabel. Renders as
   // "Minimal / None", "Mild", "Moderate", "Severe" so the DSF-B Badge
   // reads the same as the clinical scoring reference sheet.
@@ -386,12 +427,6 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
     : branch === 'moderate' ? 'secondary'
     : branch === 'severe' ? 'error'
     : 'grey';
-
-  // Save Score gate — mirrors the PHQ-2 pattern. Users answer all 9
-  // items, then commit the score via an explicit Save Score button.
-  // Save stamps `savedAt` (feeds the 30-day due-date math), locks the
-  // Likert matrix, and reveals the band's care plan below.
-  const phq9Saved = !!data.phq9?.savedAt;
   // Save requires: all 9 items answered, not already saved, not
   // declined. Mild bands' sub-question stays available before AND after
   // save; the care plan panel below only surfaces once both the score
@@ -475,14 +510,19 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
           onChange={(next) => onUpdate({ phq9: { ...(data.phq9 || {}), items: next } })}
           locked={data.decline || phq9Saved || readOnly}
         />
-        {/* Footer row surfaces once PHQ-9 is fully answered (and the
-            note isn't Decline follow-up):
-              • !phq9Saved → Save Score button + live badge.
-              • phq9Saved  → badge only (Save is replaced by the success
-                info bar below).
+        {/* Footer row surfaces once PHQ-9 is fully answered OR the
+            score was committed via Save Score (which stamps the band
+            on the payload — that survives a re-open even if items
+            hydrate late):
+              • !phq9Saved && !decline → Save Score button + live badge.
+              • phq9Saved              → badge only.
+              • decline                → badge only (score is still
+                clinically relevant even when the patient declines
+                follow-up; Save Score hides because the decline
+                shortcut supersedes the sign-off queue).
             Scoring-bands info tooltip sits inside the badge so band
             context stays anchored to where the score is read. */}
-        {allAnswered && !data.decline && bandLabel && (
+        {(allAnswered || phq9Saved) && bandLabel && (
           <div className={styles.phq2CardFooter}>
             {canSavePhq9 && !readOnly && (
               <Button

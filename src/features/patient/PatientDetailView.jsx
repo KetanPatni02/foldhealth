@@ -9,6 +9,7 @@ import { OverviewTab } from './right-panel/tabs/overview/OverviewTab/OverviewTab
 import { MonitoringTab } from './right-panel/tabs/monitoring/MonitoringTab';
 import { PatientNotesTab } from './right-panel/tabs/notes/PatientNotesTab';
 import { ClinicalNotePreviewDrawer } from '../tasks/ClinicalNotePreviewDrawer';
+import { ClinicalNotePanel } from '../hedis-worklist/ClinicalNotePanel';
 import { ProfileTab } from './left-panel/tabs/profile/ProfileTab/ProfileTab';
 import { TasksTab } from './left-panel/tabs/tasks/TasksTab/TasksTab';
 import { CcmTimerWidget } from './shell/CcmTimerWidget/CcmTimerWidget';
@@ -355,8 +356,37 @@ export function PatientDetailView() {
 function P360NotePreviewMount() {
   const previewNote = useAppStore(s => s.previewNoteFromHover);
   const closeNotePreview = useAppStore(s => s.closeNotePreview);
-  if (!previewNote) return null;
+  // Same edit-hover slice TasksView uses so the P360 preview's Edit /
+  // Amend button opens the note in a ClinicalNotePanel right here on
+  // the P360 page instead of silently no-op'ing or navigating away.
+  const setEditHoverNote = useAppStore(s => s.setEditHoverNote);
+  const clearEditHoverNote = useAppStore(s => s.clearEditHoverNote);
+  const editHoverNote = useAppStore(s => s.editHoverNote);
+  const hedisMembers = useAppStore(s => s.hedisMembers);
+  const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
+  useEffect(() => { fetchHedisMembers?.(); }, [fetchHedisMembers]);
+  const editHoverMember = editHoverNote?.hedisMemberId
+    ? hedisMembers.find(m => m.id === editHoverNote.hedisMemberId)
+    : null;
+  if (!previewNote && !editHoverNote) return null;
   return (
-    <ClinicalNotePreviewDrawer note={previewNote} onClose={closeNotePreview} />
+    <>
+      {previewNote && (
+        <ClinicalNotePreviewDrawer
+          note={previewNote}
+          onClose={closeNotePreview}
+          onEdit={(note) => setEditHoverNote?.(note)}
+        />
+      )}
+      {editHoverNote && editHoverMember && (
+        <ClinicalNotePanel
+          member={editHoverMember}
+          gapCode={editHoverNote.gapCodes?.[0]}
+          year={new Date().getFullYear()}
+          editingTaskId={editHoverNote.reviewTaskId}
+          onClose={clearEditHoverNote}
+        />
+      )}
+    </>
   );
 }
