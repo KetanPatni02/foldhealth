@@ -308,8 +308,8 @@
   cursor: pointer;
 }
 .dateBtn:hover {
-  background: var(--primary-50);
-  color: var(--primary-300);
+  background: color-mix(in srgb, var(--neutral-500) 8%, transparent);
+  color: var(--neutral-400);
 }
 .dateBtn:focus-visible {
   outline: 2px solid var(--primary-200);
@@ -368,8 +368,21 @@
   width: fit-content;
   background: none;
   border: none;
-  padding: 0;
+  /* Padded + rounded hover target (offset by a negative margin so the pill
+     keeps its position at rest), so the status cell telegraphs its click
+     affordance the same way the row's action button does. */
+  padding: var(--space-1);
+  margin: calc(-1 * var(--space-1));
+  border-radius: var(--space-1);
   cursor: pointer;
+  transition: background 0.15s;
+}
+.statusBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--neutral-500) 8%, transparent);
+}
+.statusBtn:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 1px;
 }
 .statusBtn:disabled { cursor: default; }
 
@@ -380,8 +393,19 @@
   vertical-align: middle;
   background: none;
   border: none;
-  padding: 0;
+  /* Padded + rounded so it reads as a button and shows a hover target the
+     way the row's action button does. */
+  padding: var(--space-1);
+  border-radius: var(--space-1);
   cursor: pointer;
+  transition: background 0.15s;
+}
+.priorityBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--neutral-500) 8%, transparent);
+}
+.priorityBtn:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 1px;
 }
 .priorityBtn:disabled {
   cursor: default;

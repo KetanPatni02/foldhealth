@@ -24,6 +24,8 @@ import {
 } from './CarePlanViewSections';
 import { useCarePlanViewData } from './useCarePlanViewData';
 import { useCarePlanViewFetchEffects } from './useCarePlanViewFetchEffects';
+import { useCarePlanViewPanelRequest } from './useCarePlanViewPanelRequest';
+import { useCarePlanOpenSections } from './useCarePlanOpenSections';
 import {
   linkedForGoal,
   linkedForChild,
@@ -132,19 +134,6 @@ export function CarePlanView({ patientId, program }) {
     clearCarePlanShareRequest,
   });
 
-  useEffect(() => {
-    if (!carePlanPanelRequest) return;
-    if (carePlanPanelRequest === 'versions') setVersionsOpen(true);
-    else if (carePlanPanelRequest === 'template') { setTemplateName(''); setTemplateConditions((live?.plan?.conditions || []).map(c => c.label)); setTemplateOpen(true); }
-    else if (carePlanPanelRequest === 'templates') setTemplatesDrawerOpen(true);
-    else if (carePlanPanelRequest === 'history') setHistoryOpen(true);
-    else if (carePlanPanelRequest === 'filter') setFiltersOpen(true);
-    else if (carePlanPanelRequest === 'note') { openNoteDrawer(); }
-    else if (carePlanPanelRequest === 'sign') { setSignNote(''); setSignOpen(true); }
-    else if (carePlanPanelRequest === 'scan-duplicates') { scanForDuplicates(); }
-    clearCarePlanPanelRequest();
-  }, [carePlanPanelRequest, clearCarePlanPanelRequest]); // eslint-disable-line react-hooks/exhaustive-deps -- request handlers are stable
-
   // No persisted plan yet
   const usingMock = !live;
   const measurements = live?.measurements || [];
@@ -166,19 +155,7 @@ export function CarePlanView({ patientId, program }) {
   const [problemOpen, setProblemOpen] = useState(false);
   const [problemText, setProblemText] = useState('');
   const [trendsOpen, setTrendsOpen] = useState(false);
-  // Collapsible GBI sections (chevron in each section header).
-  // Remember which GBI sections are collapsed across visits (per-device UI pref).
-  const [openSections, setOpenSections] = useState(() => {
-    const fallback = { goals: true, interventions: true, barriers: true, careNote: true };
-    try {
-      const saved = JSON.parse(localStorage.getItem('carePlanOpenSections') || 'null');
-      return saved && typeof saved === 'object' ? { ...fallback, ...saved } : fallback;
-    } catch { return fallback; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem('carePlanOpenSections', JSON.stringify(openSections)); } catch { /* storage unavailable */ }
-  }, [openSections]);
-  const toggleSection = (name) => setOpenSections(s => ({ ...s, [name]: !s[name] }));
+  const { openSections, toggleSection } = useCarePlanOpenSections();
   // Which section's duplicate flags are expanded — { goal: bool, intervention: bool, barrier: bool }.
   // Default collapsed; clicking the section-header duplicates badge toggles the panel.
   const [expandedDuplicates, setExpandedDuplicates] = useState({});
@@ -740,6 +717,24 @@ export function CarePlanView({ patientId, program }) {
     const n = await refreshCarePlanDuplicates(patientId, program, { reset: true });
     showToast(n > 0 ? `Found ${n} possible duplicate${n === 1 ? '' : 's'}` : 'No possible duplicates found');
   };
+
+  const panelActionsRef = useRef(null);
+  panelActionsRef.current = {
+    setVersionsOpen,
+    setTemplateName,
+    setTemplateConditions,
+    setTemplateOpen,
+    setTemplatesDrawerOpen,
+    setHistoryOpen,
+    setFiltersOpen,
+    openNoteDrawer,
+    setSignNote,
+    setSignOpen,
+    scanForDuplicates,
+    planConditions: live?.plan?.conditions || [],
+  };
+  useCarePlanViewPanelRequest(carePlanPanelRequest, clearCarePlanPanelRequest, panelActionsRef);
+
   const handleDuplicateIgnore = (flag) => dismissCarePlanDuplicate(key, flag.flagId);
   const handleDuplicateAcceptExisting = (flag) => {
     deleteGbiById(flag.kind, flag.newItem.id);

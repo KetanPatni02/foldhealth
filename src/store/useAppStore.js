@@ -39,7 +39,7 @@ const FALLBACK_AUDIENCE_SEGMENTS = [
   { id: 'ny-patients',  label: 'New York patients',    resolverKey: 'ny' },
 ];
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
-import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch } from '../lib/worklistDefaults';
+import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch, normalizeWorklistLabel } from '../lib/worklistDefaults';
 import { MONITORING_SEED, mapMonitoringRow } from '../features/patient/right-panel/tabs/monitoring/monitoringData';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
@@ -118,6 +118,7 @@ import {
   persistHccDiagDocument,
 } from './lib/worklistPersist';
 import { fetchAnalyticsTableBatched } from './lib/analyticsTableBatcher';
+import { mapNotificationRow, mergeNotifications } from './lib/notificationStoreLib';
 import { createShellSlice } from './slices/shellSlice';
 
 // Timer handle for the 3-second row-flash on the tasks page.
@@ -146,31 +147,6 @@ function mapInterventionRow(row) {
     createdAt: row.created_at,
   };
 }
-
-function mapNotificationRow(row) {
-  return {
-    id: row.id,
-    type: row.type,
-    title: row.title,
-    body: row.body || '',
-    action: row.action || null,
-    taskId: row.task_id ?? null,
-    read: !!row.read,
-    ts: row.created_at ? Date.parse(row.created_at) : Date.now(),
-    actorName: row.actor_name || null,
-    persisted: true,
-  };
-}
-
-// Merge notification lists newest-first, keeping one entry per id. Incoming
-// rows win over what's already held, so a refetch refreshes read state
-// instead of resurrecting a stale copy.
-function mergeNotifications(incoming, existing) {
-  const byId = new Map();
-  for (const n of [...existing, ...incoming]) byId.set(n.id, n);
-  return [...byId.values()].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
-}
-
 
 // Persist a manually-uploaded chart document: push the file bytes to the
 // `chart-uploads` Storage bucket, then insert the metadata row. Fire-and-forget
@@ -5513,19 +5489,18 @@ export const useAppStore = create((set, get) => ({
     set({ activeFilters: {}, currentPage: 1 });
   },
   setActiveSubnavList: (list) => {
+    const normalized = normalizeWorklistLabel(list);
     const from = get().activeSubnavList;
-    if (from !== list) track('nav.list_changed', { from, to: list });
+    if (from !== normalized) track('nav.list_changed', { from, to: normalized });
     // Any explicit list change pins the session — fetchWorklistOrder's
     // top-of-list auto-landing resets this flag after its own call.
     // TOC is the standalone queue worklist; TCM keeps the Worklist / Queue tabs.
-    const tabPatch = list === 'TOC IP' ? { activeTab: 'toc-queue' }
-      : list === 'TCM' ? { activeTab: 'toc-worklist' }
+    const tabPatch = normalized === 'TOC IP' ? { activeTab: 'toc-queue' }
+      : normalized === 'TCM' ? { activeTab: 'toc-worklist' }
       : {};
-    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true, ...tabPatch });
+    set({ activeSubnavList: normalized, currentPage: 1, _subnavNavigated: true, ...tabPatch });
     updateHash(get);
-    // First time we land on the HCC list with no filters yet, seed the
-    // role-scoped default queue so users don't stare at the full worklist.
-    if (list === 'HCC') {
+    if (normalized === 'HCC') {
       const s = get();
       const hasNoFilters = !s.hccFilters || Object.keys(s.hccFilters).length === 0;
       const hasNoSaved = !s.activeSavedIdByList?.HCC;

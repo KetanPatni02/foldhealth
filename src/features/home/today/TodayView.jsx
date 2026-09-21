@@ -290,27 +290,10 @@ export function TodayView() {
           <span className={styles.date}>{dateLabel}</span>
           <h1 className={styles.greet}>{greeting()}, {greetName}</h1>
         </div>
-        <div className={styles.headStats}>
-          <div className={styles.hStat}>
-            <span className={styles.hLabel}>Touches</span>
-            <span className={styles.hValue}><b>{PANEL_TODAY.touchesDone}</b> of {PANEL_TODAY.touchesPlanned} planned</span>
-          </div>
-          <div className={styles.hStat}>
-            <span className={styles.hLabel}>Minutes today</span>
-            <span className={styles.hValue}>
-              <b>{PANEL_TODAY.minutesTotal}</b> {PANEL_TODAY.minutesByProgram.map(([p, m], i) => (
-                <span key={p}>{i > 0 ? ' · ' : ''}{p} {m}</span>
-              ))}
-            </span>
-          </div>
-          <div className={styles.hStat}>
-            <span className={styles.hLabel}>At threshold</span>
-            <span className={styles.hValue}><b className={styles.good}>{PANEL_TODAY.atThreshold}</b> patients this month</span>
-          </div>
-          <div className={styles.hStat}>
-            <span className={styles.hLabel}>Overdue</span>
-            <span className={styles.hValue}><b className={styles.bad}>{PANEL_TODAY.overdue}</b> TCM contact</span>
-          </div>
+        <div className={styles.headSummary}>
+          <span><b>{PANEL_TODAY.touchesDone}</b> of {PANEL_TODAY.touchesPlanned} touches</span>
+          <span className={styles.headDot} aria-hidden="true">·</span>
+          <span><b>{PANEL_TODAY.minutesTotal}</b> min logged today</span>
         </div>
         {startName && (
           <Button variant="primary" onClick={() => openPatient(startRow)}>

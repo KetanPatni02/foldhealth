@@ -54,42 +54,25 @@
   color: var(--neutral-500);
 }
 
-.headStats {
+/* Compact day summary — the numbers users can't get from Panel Pulse below
+   (touches + minutes). Reads as one line, no eyebrow labels. */
+.headSummary {
   display: flex;
-  align-items: stretch;
-  gap: var(--space-6);
+  align-items: center;
+  gap: var(--space-2);
   padding-left: var(--space-6);
-  border-left: 1px solid var(--neutral-150);
-}
-
-.hStat {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-1) * 0.75);
-}
-
-.hLabel {
-  font-size: var(--font-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  border-left: 0.5px solid var(--neutral-150);
+  font-size: var(--font-sm);
   color: var(--neutral-300);
 }
 
-.hValue {
-  font-size: var(--font-sm);
-  color: var(--neutral-400);
-}
-
-.hValue b {
-  font-size: var(--font-md);
-  font-weight: 700;
+.headSummary b {
+  font-weight: 600;
   color: var(--neutral-500);
   font-variant-numeric: tabular-nums;
 }
 
-.hValue b.good { color: var(--status-success); }
-.hValue b.bad { color: var(--status-error); }
+.headDot { color: var(--neutral-200); }
 
 .header > button { margin-left: auto; flex-shrink: 0; }
 
@@ -108,16 +91,17 @@
   text-align: left;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  border-radius: 12px;
+  border-radius: var(--space-2);
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .pulseCard:hover { background: var(--neutral-50); }
-.pulseActive { border-color: var(--primary-200); box-shadow: 0 0 0 1px var(--primary-200) inset; }
+.pulseActive { border-color: var(--primary-300); background: var(--primary-50); }
 
 .pulseNum {
   font-size: var(--font-xl);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--neutral-500);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -154,7 +138,7 @@
   padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  border-radius: 12px;
+  border-radius: var(--space-2);
 }
 
 .adherenceHead {
