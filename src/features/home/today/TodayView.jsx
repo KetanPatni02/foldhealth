@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
+import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { Icon } from '../../../components/Icon/Icon';
@@ -24,7 +25,7 @@ const TODAY_COLUMNS = [
   { key: 'programs', label: 'Programs', width: 168 },
   { key: 'nba', label: 'Next Best Action' },
   { key: 'status', label: 'Status', width: 120, align: 'left' },
-  { key: 'actions', label: 'Actions', sticky: 'right', width: 176, align: 'left' },
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 124, align: 'left' },
 ];
 
 // The four Panel Pulse buckets, in display order. `match` maps a card to the
@@ -175,8 +176,16 @@ function MemberCell({ item, onOpen, showToast }) {
   );
 }
 
+const ROW_MENU_ITEMS = [
+  { key: 'snooze', icon: 'solar:alarm-linear', label: 'Snooze' },
+  { key: 'reassign', icon: 'solar:users-group-rounded-linear', label: 'Reassign' },
+];
+
 function TodayRow({ item, onSnooze, onSoon, onOpen, showToast }) {
   const open = () => onOpen(item);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const moreRef = useRef(null);
+  const onMenuSelect = (key) => { if (key === 'snooze') onSnooze(item); else onSoon('Reassign'); };
   return (
     <tr className={styles.row} onClick={open}>
       <MemberCell item={item} onOpen={onOpen} showToast={showToast} />
@@ -191,17 +200,12 @@ function TodayRow({ item, onSnooze, onSoon, onOpen, showToast }) {
         <div className={styles.nbaStack}>
           {item.isAgent && (
             <div className={styles.agentChip}>
-              <Icon name="solar:magic-stick-3-linear" size={12} />
               <span className={styles.agentName}>{item.agentName} · Unity agent</span>
               {item.agentStatus && <span className={styles.agentStatus}>· {item.agentStatus}</span>}
             </div>
           )}
-          <div className={styles.reasonLine}>
-            <Icon name={item.reasonIcon || 'solar:info-circle-linear'} size={15} className={styles.reasonIcon} />
-            <span className={styles.reason}>{item.reason}</span>
-          </div>
+          <span className={styles.reason}>{item.reason}</span>
           <Link className={styles.suggestedLink} onClick={(e) => { e.stopPropagation(); open(); }}>
-            <Icon name="solar:arrow-right-linear" size={13} />
             {item.suggestedAction}
           </Link>
         </div>
@@ -214,9 +218,22 @@ function TodayRow({ item, onSnooze, onSoon, onOpen, showToast }) {
       <td className={`${styles.actionsTd} ${styles.stickyRight}`} onClick={e => e.stopPropagation()}>
         <div className={styles.actionsCell}>
           <ActionButton size="S" icon="solar:phone-calling-linear" tooltip="Call" onClick={() => onSoon('Call')} />
+          <span className={styles.actionDivider} />
           <ActionButton size="S" icon="solar:chat-round-linear" tooltip="Text" onClick={() => onSoon('Text')} />
-          <ActionButton size="S" icon="solar:alarm-linear" tooltip="Snooze" onClick={() => onSnooze(item)} />
-          <ActionButton size="S" icon="solar:users-group-rounded-linear" tooltip="Reassign" onClick={() => onSoon('Reassign')} />
+          <span className={styles.actionDivider} />
+          <span style={{ position: 'relative', display: 'inline-flex' }}>
+            <ActionButton ref={moreRef} size="S" icon="solar:menu-dots-linear" tooltip="More" onClick={() => setMenuOpen((v) => !v)} />
+            {menuOpen && (
+              <MenuPopover
+                anchorRef={moreRef}
+                items={ROW_MENU_ITEMS}
+                onSelect={onMenuSelect}
+                onClose={() => setMenuOpen(false)}
+                width={176}
+                ariaLabel="Row actions"
+              />
+            )}
+          </span>
         </div>
       </td>
     </tr>
@@ -290,27 +307,10 @@ export function TodayView() {
           <span className={styles.date}>{dateLabel}</span>
           <h1 className={styles.greet}>{greeting()}, {greetName}</h1>
         </div>
-        <div className={styles.headStats}>
-          <div className={styles.hStat}>
-            <span className={styles.hLabel}>Touches</span>
-            <span className={styles.hValue}><b>{PANEL_TODAY.touchesDone}</b> of {PANEL_TODAY.touchesPlanned} planned</span>
-          </div>
-          <div className={styles.hStat}>
-            <span className={styles.hLabel}>Minutes today</span>
-            <span className={styles.hValue}>
-              <b>{PANEL_TODAY.minutesTotal}</b> {PANEL_TODAY.minutesByProgram.map(([p, m], i) => (
-                <span key={p}>{i > 0 ? ' · ' : ''}{p} {m}</span>
-              ))}
-            </span>
-          </div>
-          <div className={styles.hStat}>
-            <span className={styles.hLabel}>At threshold</span>
-            <span className={styles.hValue}><b className={styles.good}>{PANEL_TODAY.atThreshold}</b> patients this month</span>
-          </div>
-          <div className={styles.hStat}>
-            <span className={styles.hLabel}>Overdue</span>
-            <span className={styles.hValue}><b className={styles.bad}>{PANEL_TODAY.overdue}</b> TCM contact</span>
-          </div>
+        <div className={styles.headSummary}>
+          <span><b>{PANEL_TODAY.touchesDone}</b> of {PANEL_TODAY.touchesPlanned} touches</span>
+          <span className={styles.headDot} aria-hidden="true">·</span>
+          <span><b>{PANEL_TODAY.minutesTotal}</b> min logged today</span>
         </div>
         {startName && (
           <Button variant="primary" onClick={() => openPatient(startRow)}>

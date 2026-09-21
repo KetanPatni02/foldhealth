@@ -76,10 +76,6 @@ const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tab
 const AssessmentDrawer     = lz(() => import('../features/toc-queue/AssessmentDrawer'),                    'AssessmentDrawer');
 const OutreachStatusDrawer = lz(() => import('../features/toc-queue/OutreachStatusDrawer'),                'OutreachStatusDrawer');
 const AiTasksDrawer        = lz(() => import('../features/toc/AiTasksDrawer'),                             'AiTasksDrawer');
-// Archived HCC worklist — a frozen fork of the HCC feature (src/features/
-// hcc-archived) so upstream HCC changes never alter it. Lazy so it stays out
-// of the entry chunk.
-const HccArchivedWorklistTable = lz(() => import('../features/hcc-archived/HccWorklistTable'),             'HccWorklistTable');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.
 const LazyFallback = () => <div style={{ flex: 1 }} />;
@@ -146,18 +142,17 @@ function PopulationView() {
   }
 
   const isHcc = activeSubnavList === 'HCC';
-  const isHccArchived = activeSubnavList === 'HCC (Archived)';
   const isHedis = activeSubnavList === 'HEDIS';
   const isCcm = activeSubnavList === 'CCM';
   const isSnp = activeSubnavList === 'SNP';
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isToc = activeSubnavList === 'TOC IP';
-  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHccArchived && !isHedis && !isCcm && !isAwv && !isJsa && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHedis && !isCcm && !isAwv && !isJsa && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHccArchived || isHedis || isCcm || isSnp || isAwv || isJsa || isComingSoon || isPopulationGroup;
+  const chromeless = isHcc || isHedis || isCcm || isSnp || isAwv || isJsa || isComingSoon || isPopulationGroup;
 
   return (
     <div className={styles.main}>
@@ -174,9 +169,7 @@ function PopulationView() {
             <FilterBar leading={(isToc || (isTcm && activeTab === 'toc-queue')) ? null : undefined} />
           )}
           {isTcm && activeTab === 'toc-queue' && <QueueSummaryBar />}
-          {isHccArchived
-              ? <HccArchivedWorklistTable />
-              : isHcc
+          {isHcc
               ? <HccWorklistTable />
               : isHedis
                 ? <HedisWorklistTable />

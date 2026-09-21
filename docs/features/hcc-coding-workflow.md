@@ -222,6 +222,5 @@ random-pull logic; role-based login personas.
 - Accept/dismiss key on `code` only; per-(code×DOS) decisions layer on top
   via `hccGapDosActions` — a real backend would key rows by (member, code,
   dos) ids.
-- `hcc-archived/` is a frozen fork of the old panel — never edit it.
 - Confidence scores/evidence, sweep entries, and review stages are mock-fed;
   swap `data/*.js` for API calls when the backend lands.

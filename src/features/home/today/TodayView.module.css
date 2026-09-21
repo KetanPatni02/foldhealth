@@ -54,42 +54,23 @@
   color: var(--neutral-500);
 }
 
-.headStats {
+/* Compact day summary — the numbers users can't get from Panel Pulse below
+   (touches + minutes). Reads as one line, no eyebrow labels. */
+.headSummary {
   display: flex;
-  align-items: stretch;
-  gap: var(--space-6);
-  padding-left: var(--space-6);
-  border-left: 1px solid var(--neutral-150);
-}
-
-.hStat {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-1) * 0.75);
-}
-
-.hLabel {
-  font-size: var(--font-xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--neutral-300);
-}
-
-.hValue {
-  font-size: var(--font-sm);
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-base);
   color: var(--neutral-400);
 }
 
-.hValue b {
-  font-size: var(--font-md);
-  font-weight: 700;
+.headSummary b {
+  font-weight: 600;
   color: var(--neutral-500);
   font-variant-numeric: tabular-nums;
 }
 
-.hValue b.good { color: var(--status-success); }
-.hValue b.bad { color: var(--status-error); }
+.headDot { color: var(--neutral-200); }
 
 .header > button { margin-left: auto; flex-shrink: 0; }
 
@@ -108,16 +89,17 @@
   text-align: left;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  border-radius: 12px;
+  border-radius: var(--space-2);
   cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 .pulseCard:hover { background: var(--neutral-50); }
-.pulseActive { border-color: var(--primary-200); box-shadow: 0 0 0 1px var(--primary-200) inset; }
+.pulseActive { border-color: var(--primary-300); background: var(--primary-50); }
 
 .pulseNum {
   font-size: var(--font-xl);
-  font-weight: 700;
+  font-weight: 600;
   color: var(--neutral-500);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -154,7 +136,7 @@
   padding: var(--space-3) calc(var(--space-3) + var(--space-1) / 2);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  border-radius: 12px;
+  border-radius: var(--space-2);
 }
 
 .adherenceHead {
@@ -235,6 +217,7 @@
 .langBadge { composes: langBadge from '../../../components/WorklistShell/WorklistRow.module.css'; }
 .langTooltip { composes: langTooltip from '../../../components/WorklistShell/WorklistRow.module.css'; }
 .actionsCell { composes: actionsCell from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.actionDivider { composes: actionDivider from '../../../components/WorklistShell/WorklistRow.module.css'; }
 
 /* Body cells share the base .td padding/typography; NBA is the one multi-line
    column, so it wraps and top-aligns while the rest stay middle-aligned. */
@@ -266,23 +249,19 @@
   gap: calc(var(--space-1) + var(--space-1) / 4);
   align-self: flex-start;
   padding: calc(var(--space-1) * 0.75) calc(var(--space-2) + var(--space-1) / 4);
-  border-radius: 6px;
+  border-radius: var(--space-1);
   background: var(--accent-light-purple);
   color: var(--accent-purple);
-  font-size: var(--font-xs);
+  font-size: var(--font-sm);
 }
 
 .agentName { font-weight: 600; }
 .agentStatus { font-weight: 500; opacity: 0.85; }
 
-.reasonLine { display: flex; align-items: flex-start; gap: var(--space-2); }
-
-.reasonIcon { color: var(--neutral-400); flex-shrink: 0; margin-top: calc(var(--space-1) / 4); }
-
+/* Body text on the standard row token: 14px / neutral-400 (inherited from
+   the composed .td), only line-height is set for the multi-line reason. */
 .reason {
-  font-size: var(--font-sm);
-  color: var(--neutral-500);
-  line-height: 1.45;
+  line-height: var(--leading-normal);
 }
 
 /* Suggested-action link — layout only; <Link> owns the color + weight. */
@@ -291,7 +270,7 @@
   display: inline-flex;
   align-items: center;
   gap: calc(var(--space-1) + var(--space-1) / 2);
-  font-size: var(--font-sm);
+  font-size: var(--font-base);
   text-align: left;
 }
 
@@ -305,8 +284,8 @@
   color: var(--neutral-400);
 }
 
-.emptyTitle { margin: var(--space-1) 0 0; font-size: var(--font-md); font-weight: 600; color: var(--neutral-500); }
-.emptyBody { margin: 0; font-size: var(--font-sm); color: var(--neutral-400); }
+.emptyTitle { margin: var(--space-1) 0 0; font-size: var(--font-base); font-weight: 600; color: var(--neutral-500); }
+.emptyBody { margin: 0; font-size: var(--font-base); color: var(--neutral-400); }
 
 /* ── Responsive ─────────────────────────────────────────────── */
 
@@ -323,14 +302,6 @@
   .top { padding: var(--space-3); gap: var(--space-3); }
 
   .header { flex-direction: column; align-items: stretch; gap: var(--space-3); }
-  .headStats {
-    border-left: none;
-    border-top: 1px solid var(--neutral-150);
-    padding-left: 0;
-    padding-top: var(--space-3);
-    flex-wrap: wrap;
-    gap: var(--space-3) var(--space-5);
-  }
   .header > button { width: 100%; justify-content: center; }
 
   .pulse { grid-template-columns: repeat(2, minmax(0, 1fr)); }

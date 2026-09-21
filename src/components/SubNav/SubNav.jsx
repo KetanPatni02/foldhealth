@@ -168,13 +168,6 @@ export function SubNav({ collapsed }) {
       ],
     },
     { key: 'leads-contacts', label: 'Leads & Contacts', items: [] },
-    // Archived Worklist — frozen snapshots of worklists, isolated from the
-    // live versions so upstream changes never alter them.
-    {
-      key: 'archived',
-      label: 'Archived Worklist',
-      items: [{ key: 'HCC (Archived)', label: 'HCC', count: hccUniquePatientCount || 0 }],
-    },
   ], [orderedWorklists, getCounts, allPatientsCount, patients.length, hccUniquePatientCount]);
 
   const handleSelect = (key) => {

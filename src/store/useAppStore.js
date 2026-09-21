@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { addedChartToRow, rowToAddedChart } from '../lib/hccAddedChartsMapper';
+import { rowToAddedChart } from '../lib/hccAddedChartsMapper';
 import { goalProgressAuditDetail, computeGoalProgress } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
@@ -10,22 +10,6 @@ import { kpiRowToJs, tsRowToJs, tableRowToJs, barRowToJs, configRowToJs, groupTi
 import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogDbToJs } from '../lib/embedMapper';
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { resolveCampaignAudience, simulateStatus } from '../features/campaign/audienceResolver';
-
-// campaign_sends row → JS shape for the delivery log / summary UI.
-function campaignSendRowToJs(row) {
-  return {
-    id: row.id,
-    campaignId: row.campaign_id,
-    memberId: row.member_id,
-    name: row.recipient_name,
-    email: row.recipient_email,
-    status: row.status,
-    subject: row.subject,
-    sentAt: row.sent_at,
-    openedAt: row.opened_at,
-    error: row.error,
-  };
-}
 
 // Selectable audiences before audience_segments is fetched (or if the table
 // isn't migrated yet). Mirrors supabase/audience_segments_migration.sql.
@@ -39,7 +23,7 @@ const FALLBACK_AUDIENCE_SEGMENTS = [
   { id: 'ny-patients',  label: 'New York patients',    resolverKey: 'ny' },
 ];
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
-import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch } from '../lib/worklistDefaults';
+import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch, normalizeWorklistLabel } from '../lib/worklistDefaults';
 import { MONITORING_SEED, mapMonitoringRow } from '../features/patient/right-panel/tabs/monitoring/monitoringData';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
@@ -67,6 +51,99 @@ import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/t
 import { resolvePatientStoreId } from '../lib/resolvePatientStoreId';
 import { resolvePatientForCall } from '../lib/patientCall';
 
+import { reportPersistFailure } from './lib/reportPersistFailure';
+import { isPastDate, parseDuration, formatDuration } from './lib/taskDateUtils';
+import {
+  campaignSendRowToJs,
+  campaignRowToJs,
+  campaignPatchToDb,
+} from './lib/campaignStoreMappers';
+import {
+  formRowToJs,
+  clinicalNoteRowToJs,
+  clinicalNoteVersionRowToJs,
+} from './lib/contentStoreMappers';
+import {
+  defaultTargetDateIso,
+  mapCarePlanGoalRow,
+  mapPatientProblemRow,
+  carePlanGoalToRow,
+  mapCarePlanBarrierRow,
+  mapCarePlanTemplateRow,
+  mapCarePlanInterventionTemplateRow,
+  mapInterventionRow,
+  mapPatientCarePlanGoalRow,
+  patientCarePlanGoalToRow,
+  mapGoalMeasurementRow,
+  mapCarePlanAutomationRow,
+  mapPatientCarePlanInterventionRow,
+  patientCarePlanInterventionToRow,
+  mapPatientCarePlanBarrierRow,
+  patientCarePlanBarrierToRow,
+  linkBarrierGoals,
+  mapPatientCarePlanRow,
+  carePlanKey,
+  templateContents,
+  templatesAtLastSignature,
+  auditForSave,
+  mapCarePlanAuditRow,
+  applyTemplateToPlan,
+} from './lib/carePlanStoreLib';
+import {
+  caregapRowToEntry,
+  persistCaregapActivityInsert,
+  persistHedisGaps,
+  persistSnpMemberUpdate,
+  projectSnpProgramState,
+  writeSnpProgramField,
+  persistHccGapDosAction,
+  persistHccGapDosActionDelete,
+  persistHccGapDosActionDeleteAll,
+  persistHccGapUpdate,
+  persistHccGapInsert,
+  persistHccGapDelete,
+  persistHccMemberInsert,
+  persistHccMemberDetails,
+  persistHccMemberRoleStatus,
+  persistHccActivityRow,
+  snpAssigneeFromProgram,
+  persistHccDiagComment,
+  persistHccDiagCommentUpdate,
+  persistHccDiagCommentDelete,
+  persistHccDiagNote,
+  persistHccDiagDocument,
+} from './lib/worklistPersist';
+import { fetchAnalyticsTableBatched } from './lib/analyticsTableBatcher';
+import { mapNotificationRow, mergeNotifications } from './lib/notificationStoreLib';
+import { persistHccAddedChart, persistProgramDocument } from './lib/documentUploadPersist';
+import {
+  LIST_FILTER_KEY,
+  detachSaved,
+  readSavedFiltersByList,
+  readActiveSavedIdByList,
+  hydrateListFilters,
+} from './lib/worklistListFilters';
+import { readSessionJson } from './lib/sessionJson';
+import { careTeamRowToJs, careTeamJsToDb } from './lib/careTeamMappers';
+import {
+  contentEmailsCache,
+  CONTENT_EMAILS_TTL_MS,
+  invalidateContentEmailsCache,
+  contentFormsCache,
+  CONTENT_FORMS_TTL_MS,
+  invalidateContentFormsCache,
+  scheduleCampaignSave,
+  cancelScheduledCampaignSave,
+  queueHccExtractToast,
+} from './lib/contentStoreCache';
+import { HCC_TRANSITION_LABEL } from '../features/hcc/hccTransitionLabels';
+import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActivityFeed';
+import { createShellSlice } from './slices/shellSlice';
+import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
+
+// Timer handle for the 3-second row-flash on the tasks page.
+let _flashTaskTimer = null;
+
 // Central failure reporter for every persistHccXxx helper. Historically
 // each of these was fire-and-forget with only console.warn on error — so
 // when RLS blocked a write, or an UPDATE matched 0 rows (spawned row
@@ -78,1282 +155,7 @@ import { resolvePatientForCall } from '../lib/patientCall';
 //   2. an event lands in tracking (production observability),
 //   3. a single user-visible toast surfaces (debounced 3s so a burst of
 //      failures doesn't stack toasts).
-let _lastPersistToastAt = 0;
-// Timer handle for the 3-second row-flash on the tasks page. Module-level
-// so a second flashTaskRow call clears the previous timer before starting
-// a new one.
-let _flashTaskTimer = null;
-function reportPersistFailure(op, error) {
-  const msg = (error && error.message) || 'unknown error';
-  console.warn(`${op} failed:`, msg);
-  try { track('persist.failed', { op, message: msg }); } catch { /* ignore */ }
-  const now = Date.now();
-  if (now - _lastPersistToastAt > 3000) {
-    _lastPersistToastAt = now;
-    try { toast.error?.("Couldn't save changes — refresh to see the last saved state."); } catch { /* ignore */ }
-  }
-}
 
-// Seed default ISO date `days` after `anchorIso`. Falls back to `days`
-// after today when the anchor is missing/invalid. Used by the care plan
-// save handlers so every Goal has a Target date and every Intervention
-// has a Due date persisted to the DB from the moment the row is saved.
-function defaultTargetDateIso(anchorIso, days) {
-  const base = anchorIso ? new Date(anchorIso) : null;
-  const start = (base && !Number.isNaN(base.getTime())) ? base : new Date();
-  const out = new Date(start);
-  out.setDate(out.getDate() + Math.max(1, Number(days) || 30));
-  const y = out.getFullYear();
-  const m = String(out.getMonth() + 1).padStart(2, '0');
-  const d = String(out.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-// public.notifications row → the shape the bell popover already renders.
-// `persisted: true` is what separates a DB-backed notification from a local
-// ephemeral one, which decides whether read/dismiss also writes to Supabase.
-/* ── Care Plan Library row ⇄ object mapping ──
-   The drawer edits camelCase fields; the table is snake_case. Kept beside
-   each other so a column rename can't drift from its reader. */
-function mapCarePlanGoalRow(row, interventions = []) {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description || '',
-    category: row.category || '',
-    // The Type column predates `category`; both name the same thing.
-    type: row.category || '',
-    measure: row.measure || '',
-    conditions: row.conditions || [],
-    comparator: row.comparator || '=',
-    targetValue: row.target_value || '',
-    targetValue2: row.target_value_2 || '',
-    customUnit: row.custom_unit || '',
-    setTarget: row.set_target !== false,
-    duration: row.duration || '',
-    durationUnit: row.duration_unit || '',
-    frequency: row.frequency || '',
-    targetDate: row.target_date || '',
-    priority: row.priority || 'medium',
-    interventions,
-    createdBy: row.created_by || '',
-    updatedBy: row.updated_by || '',
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-// Patient problem-list row (PAMI/Hx "Problems") ⇄ object.
-function mapPatientProblemRow(row) {
-  return {
-    id: row.id,
-    title: row.title,
-    code: row.code || '',
-    type: row.problem_type || '',
-    severity: row.severity || '',
-    status: row.status || 'Active',
-    onsetLabel: row.onset_label || '',
-    sortOrder: row.sort_order ?? 0,
-  };
-}
-
-function carePlanGoalToRow(g) {
-  return {
-    title: (g.title || '').trim(),
-    description: g.description || '',
-    category: g.category || '',
-    measure: g.measure || '',
-    conditions: g.conditions || [],
-    comparator: g.comparator || '=',
-    target_value: g.targetValue || '',
-    target_value_2: g.targetValue2 || '',
-    custom_unit: g.customUnit || '',
-    set_target: g.setTarget !== false,
-    duration: g.duration || '',
-    duration_unit: g.durationUnit || '',
-    frequency: g.frequency || '',
-    target_date: g.targetDate || '',
-    priority: g.priority || 'medium',
-  };
-}
-
-function mapCarePlanBarrierRow(row) {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description || '',
-    createdBy: row.created_by || '',
-    updatedBy: row.updated_by || '',
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function mapCarePlanTemplateRow(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    // Rows written before the status column existed are published.
-    status: row.status || 'published',
-    conditions: row.conditions || [],
-    goals: row.goals || [],
-    interventions: row.interventions || [],
-    barriers: row.barriers || [],
-    createdBy: row.created_by || '',
-    updatedBy: row.updated_by || '',
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-// Standalone (goal-independent) reusable intervention — the Interventions
-// Library tab. Distinct from the goal-linked care_plan_interventions rows.
-function mapCarePlanInterventionTemplateRow(row) {
-  return {
-    id: row.id,
-    kind: row.kind || 'internal-task',
-    title: row.title,
-    description: row.description || '',
-    config: row.config || {},
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-/* ── Patient Care Plan row ⇄ object mapping ──
-   The per-patient, per-program plan behind the Care Plan step. Goals mirror
-   the library goal shape (so a template instantiates cleanly) plus the fields
-   the patient view shows and edits: currentValue, trend, status. Kept beside
-   the library mappers so a shared column rename can't drift. */
-function mapPatientCarePlanGoalRow(row) {
-  return {
-    id: row.id,
-    title: row.title,
-    subtitle: row.subtitle || '',
-    icon: row.icon || 'solar:flag-linear',
-    priority: row.priority || 'medium',
-    category: row.category || '',
-    measure: row.measure || '',
-    conditions: row.conditions || [],
-    comparator: row.comparator || '=',
-    targetValue: row.target_value || '',
-    targetValue2: row.target_value_2 || '',
-    customUnit: row.custom_unit || '',
-    setTarget: row.set_target !== false,
-    duration: row.duration || '',
-    durationUnit: row.duration_unit || '',
-    frequency: row.frequency || '',
-    targetDate: row.target_date || '',
-    currentValue: row.current_value || '',
-    trend: row.trend || '-',
-    status: row.status || 'Not Started',
-    progress: row.progress ?? 0,
-    updatedBy: row.updated_by || '',
-    links: 0,
-    sortOrder: row.sort_order ?? 0,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function patientCarePlanGoalToRow(g, planId) {
-  return {
-    plan_id: planId,
-    title: (g.title || '').trim(),
-    subtitle: g.subtitle || '',
-    icon: g.icon || 'solar:flag-linear',
-    priority: g.priority || 'medium',
-    category: g.category || '',
-    measure: g.measure || '',
-    conditions: g.conditions || [],
-    comparator: g.comparator || '=',
-    target_value: g.targetValue || '',
-    target_value_2: g.targetValue2 || '',
-    custom_unit: g.customUnit || '',
-    set_target: g.setTarget !== false,
-    duration: g.duration || '',
-    duration_unit: g.durationUnit || '',
-    frequency: g.frequency || '',
-    target_date: g.targetDate || '',
-    current_value: g.currentValue || '',
-    trend: g.trend || '-',
-    status: g.status || 'Not Started',
-    progress: Number.isFinite(g.progress) ? g.progress : 0,
-    updated_by: g.updatedBy || null,
-    sort_order: g.sortOrder ?? 0,
-  };
-}
-
-function mapGoalMeasurementRow(row) {
-  return {
-    id: row.id,
-    goalId: row.goal_id,
-    value: row.value || '',
-    unit: row.unit || '',
-    favorable: row.favorable !== false,
-    takenAt: row.taken_at,
-    sortOrder: row.sort_order ?? 0,
-  };
-}
-
-function mapCarePlanAutomationRow(row) {
-  return {
-    id: row.id,
-    goalId: row.goal_id || null,
-    title: row.title || '',
-    icon: row.icon || 'solar:bolt-linear',
-    enabled: row.enabled !== false,
-    sortOrder: row.sort_order ?? 0,
-  };
-}
-
-function mapPatientCarePlanInterventionRow(row) {
-  // `taskId` is the FK to the paired tasks row that owns assignee, due
-  // date, recurrence, and completion state (care_plan_intervention_task_link
-  // migration). Falls back to the legacy `config.taskId` for pre-migration
-  // rows so the UI can still find the paired task while the column is
-  // rolling out.
-  const taskId = row.task_id
-    || (row.config && typeof row.config === 'object' ? row.config.taskId : null)
-    || null;
-  return {
-    id: row.id,
-    goalId: row.goal_id || null,
-    taskId,
-    kind: row.kind || '',
-    title: row.title || '',
-    icon: row.icon || 'solar:clipboard-list-linear',
-    priority: row.priority || 'medium',
-    duration: row.duration || null,
-    config: row.config || {},
-    assignee: { name: row.assignee_name || 'Unassigned', initials: row.assignee_initials || '' },
-    status: row.status || 'Not Started',
-    adherence: row.adherence || '-',
-    links: 0,
-    sortOrder: row.sort_order ?? 0,
-    updatedBy: row.updated_by || '',
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function patientCarePlanInterventionToRow(i, planId) {
-  return {
-    plan_id: planId,
-    goal_id: i.goalId || null,
-    task_id: i.taskId || null,
-    kind: i.kind || '',
-    title: (i.title || '').trim(),
-    icon: i.icon || 'solar:clipboard-list-linear',
-    priority: i.priority || 'medium',
-    duration: i.duration || null,
-    config: i.config || {},
-    assignee_name: i.assignee?.name || 'Unassigned',
-    assignee_initials: i.assignee?.initials || '',
-    status: i.status || 'Not Started',
-    adherence: i.adherence || '-',
-    updated_by: i.updatedBy || null,
-    sort_order: i.sortOrder ?? 0,
-  };
-}
-
-function mapPatientCarePlanBarrierRow(row, goalIdsFromJoin = null) {
-  // `goalIds` is the many-to-many set of goal ids linked to this barrier
-  // (Figma / spec: patient_care_plan_barrier_goals migration). We prefer
-  // the join-table set when provided; before the migration runs we fall
-  // back to the legacy 1:1 goal_id column so the UI never renders empty.
-  const legacyGoal = row.goal_id || null;
-  const goalIds = Array.isArray(goalIdsFromJoin) && goalIdsFromJoin.length > 0
-    ? [...new Set(goalIdsFromJoin.filter(Boolean))]
-    : (legacyGoal ? [legacyGoal] : []);
-  return {
-    id: row.id,
-    goalId: legacyGoal,
-    goalIds,
-    title: row.title || '',
-    description: row.description || '',
-    status: row.status || 'Not Started',
-    priority: row.priority || 'medium',
-    sortOrder: row.sort_order ?? 0,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-}
-
-function patientCarePlanBarrierToRow(b, planId) {
-  return {
-    plan_id: planId,
-    goal_id: b.goalId || null,
-    title: (b.title || '').trim(),
-    description: b.description || '',
-    status: b.status || 'Not Started',
-    priority: b.priority || 'medium',
-    sort_order: b.sortOrder ?? 0,
-  };
-}
-
-// Sync a barrier's goal set in the join table. Returns the goal ids that ended
-// up recorded — before the join-table migration that is the legacy column only.
-async function linkBarrierGoals(barrierId, goalIds) {
-  const del = await supabase.from('patient_care_plan_barrier_goals').delete().eq('barrier_id', barrierId);
-  const missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
-  if (missingJoin) return goalIds.slice(0, 1);
-  if (!goalIds.length) return [];
-  const ins = await supabase.from('patient_care_plan_barrier_goals')
-    .insert(goalIds.map(gid => ({ barrier_id: barrierId, goal_id: gid })));
-  if (!ins.error) return goalIds;
-  if (ins.error.code !== '42P01' && ins.error.code !== 'PGRST205') {
-    console.warn('linkBarrierGoals:', ins.error.message);
-  }
-  return goalIds.slice(0, 1);
-}
-
-function mapPatientCarePlanRow(row) {
-  return {
-    id: row.id,
-    patientId: row.patient_id,
-    programId: row.program_id,
-    programCode: row.program_code || '',
-    createdBy: row.created_by || '',
-    conditions: (row.conditions || []).map(label => ({ label })),
-    conditionTotal: row.condition_total ?? (row.conditions || []).length,
-    appliedTemplateIds: row.applied_template_ids || [],
-    // { [templateId]: 'low' | 'medium' | 'high' } — categorizes the applied
-    // templates on the sticky-top strip. Empty until Alok Kumar runs the
-    // care_plan_applied_template_priorities migration.
-    appliedTemplatePriorities: row.applied_template_priorities && typeof row.applied_template_priorities === 'object'
-      ? row.applied_template_priorities
-      : {},
-    createdDate: row.created_at,
-    updatedAt: row.updated_at || null,
-    signedBy: row.signed_by || null,
-    signedAt: row.signed_at || null,
-  };
-}
-
-// State key for a patient's plan on one program.
-function carePlanKey(patientId, programId) {
-  return `${patientId}::${programId}`;
-}
-
-// `progressBandLabel` / `goalProgressAuditDetail` moved to
-// `features/.../care-plan/lib/goalMetrics.js` as `goalProgressBand` /
-// `goalProgressAuditDetail` so the audit-log detail string and the drawer
-// readout share one source of truth.
-
-// Derive an audit entry from a goal/intervention save by diffing against its
-// previous state — a create, a status change, a progress change, a rename,
-// or a generic edit. Progress is its own action so the Goal Details activity
-// feed can render the "changed the Progress" row with from → to badges.
-// A template's contents as they sit on the plan. There is no template_id on
-// goal / intervention / barrier rows, so the link back is the title, exactly
-// as the applied-templates strip resolves it.
-function templateContents(template, slice, libraryGoals) {
-  const norm = v => (v || '').trim().toLowerCase();
-  const titlesOf = (list, isGoal) => new Set((list || []).map(e => {
-    if (isGoal && e?.id) {
-      const lib = (libraryGoals || []).find(g => g.id === e.id);
-      if (lib?.title) return norm(lib.title);
-    }
-    return norm(e?.title || '');
-  }).filter(Boolean));
-  const goalTitles = titlesOf(template.goals, true);
-  const goals = (slice?.goals || []).filter(g => goalTitles.has(norm(g.title)));
-  const goalIds = new Set(goals.map(g => g.id));
-  const intvTitles = titlesOf(template.interventions);
-  const barrierTitles = titlesOf(template.barriers);
-  // Interventions match on title only, as the applied-templates strip does; a
-  // later intervention hung off a template goal is not the template's.
-  const interventions = (slice?.interventions || [])
-    .filter(i => intvTitles.has(norm(i.title)));
-  const barriers = (slice?.barriers || [])
-    .filter(b => barrierTitles.has(norm(b.title))
-      || (b.goalIds || []).some(id => goalIds.has(id))
-      || goalIds.has(b.goalId));
-  const barrierGoals = b => (b.goalIds?.length ? b.goalIds : [b.goalId]).filter(Boolean);
-  // Goals carry what hangs off them, so History can show the linkage rather
-  // than three unrelated lists.
-  return {
-    goals: goals.map(g => ({
-      title: g.title,
-      interventions: interventions.filter(i => i.goalId === g.id).map(i => i.title),
-      barriers: barriers.filter(b => barrierGoals(b).includes(g.id)).map(b => b.title),
-    })),
-    // Whatever the template brought that hangs off no goal of its own.
-    interventions: interventions.filter(i => !goalIds.has(i.goalId)).map(i => i.title),
-    barriers: barriers.filter(b => !barrierGoals(b).some(id => goalIds.has(id))).map(b => b.title),
-  };
-}
-
-// Templates recorded by earlier signatures, replayed oldest-first so the set
-// reflects what the previous version carried.
-function templatesAtLastSignature(auditEntries) {
-  const ids = new Set();
-  for (const e of [...(auditEntries || [])].reverse()) {
-    if (e.entityType !== 'template') continue;
-    if (e.action === 'created') ids.add(String(e.entityId));
-    else if (e.action === 'deleted') ids.delete(String(e.entityId));
-  }
-  return ids;
-}
-
-// Fields that earn their own history line, beyond the status / progress /
-// title cases handled below. Each one records a `from → to` detail so the
-// History drawer can render the change instead of a bare "Edited".
-const capitalize = v => (v ? String(v).charAt(0).toUpperCase() + String(v).slice(1) : '');
-const AUDIT_FIELDS = {
-  common: [
-    { action: 'priority_changed', read: e => e.priority, format: capitalize },
-  ],
-  goal: [
-    { action: 'category_changed', read: g => g.category },
-    { action: 'measure_changed', read: g => g.measure },
-    { action: 'target_changed', read: g => [g.comparator, g.targetValue, g.targetValue2].filter(Boolean).join(' ') },
-    { action: 'target_date_changed', read: g => g.targetDate },
-    { action: 'duration_changed', read: g => [g.duration, g.durationUnit].filter(Boolean).join(' ') },
-    { action: 'frequency_changed', read: g => g.frequency },
-    { action: 'value_changed', read: g => g.currentValue },
-    { action: 'conditions_changed', read: g => (g.conditions || []).join(', ') },
-  ],
-  intervention: [
-    { action: 'type_changed', read: i => i.kind },
-    { action: 'duration_changed', read: i => i.duration },
-    { action: 'assignee_changed', read: i => i.assignee?.name },
-    { action: 'goal_link_changed', read: i => i.goalId },
-  ],
-  barrier: [
-    { action: 'description_changed', read: b => b.description },
-    { action: 'goal_link_changed', read: b => (b.goalIds || []).join(', ') },
-  ],
-};
-
-// An intervention's kind-specific settings live in a free-form `config` blob,
-// so it is diffed key by key. The detail is written as "Label: from → to";
-// History reads that label as the caption.
-const CONFIG_LABEL = {
-  form: 'Form', content: 'Content', vital: 'Vital', note: 'Note',
-  description: 'Description', creationTiming: 'Task Creation',
-  creationCount: 'Creation Count', creationTrigger: 'Creation Trigger',
-  dueOffset: 'Due Offset', dueUnit: 'Due Unit', durationType: 'Duration Type',
-  // dueDateOverride is written when the reviewer picks a concrete date
-  // from the inline DatePickerPopover on the intervention row; log it as
-  // "Due Date" so History carries the same wording the row shows.
-  dueDateOverride: 'Due Date',
-  repeat: 'Repeat', repeatCount: 'Repeat Count', repeatEvery: 'Repeats Every',
-  repeatEveryUnit: 'Repeat Unit', repeatEnds: 'Repeat Ends',
-  repeatEndsUnit: 'Repeat Ends Unit', memberTaskTitle: 'Member Task Title',
-  startDate: 'Start Date', endDate: 'End Date',
-};
-function configValue(v) {
-  if (v == null || v === '') return '';
-  if (Array.isArray(v)) return v.join(', ');
-  if (typeof v === 'object') return JSON.stringify(v);
-  if (typeof v === 'boolean') return v ? 'On' : 'Off';
-  return String(v);
-}
-function configChanges(base, prevConfig, nextConfig) {
-  const a = prevConfig || {};
-  const b = nextConfig || {};
-  return [...new Set([...Object.keys(a), ...Object.keys(b)])]
-    .filter(k => CONFIG_LABEL[k] && configValue(a[k]) !== configValue(b[k]))
-    .map(k => ({
-      ...base,
-      action: 'updated',
-      detail: `${CONFIG_LABEL[k]}: ${configValue(a[k]) || '—'} → ${configValue(b[k]) || '—'}`,
-    }));
-}
-
-// Returns every change a save made, so editing two fields writes two rows
-// rather than collapsing to whichever the cascade checked first.
-function auditForSave(entityType, next, prev) {
-  if (!prev) return { entityType, entityId: next.id, action: 'created', summary: next.title };
-  const base = { entityType, entityId: next.id, summary: next.title };
-  const changes = [];
-  if (prev.status !== next.status) {
-    changes.push({ ...base, action: 'status_changed', detail: `${prev.status} → ${next.status}` });
-  }
-  if ((prev.progress ?? 0) !== (next.progress ?? 0)) {
-    changes.push({ ...base, action: 'progress_changed', detail: `${goalProgressAuditDetail(prev.progress)} → ${goalProgressAuditDetail(next.progress)}` });
-  }
-  if (entityType === 'intervention' && String(prev.adherence ?? '-') !== String(next.adherence ?? '-')) {
-    const from = Number(prev.adherence) || 0;
-    const to = Number(next.adherence) || 0;
-    changes.push({ ...base, action: 'progress_changed', detail: `${goalProgressAuditDetail(from)} → ${goalProgressAuditDetail(to)}` });
-  }
-  if (prev.title !== next.title) {
-    changes.push({ ...base, action: 'updated', detail: `Renamed from "${prev.title}"` });
-  }
-  for (const field of [...AUDIT_FIELDS.common, ...(AUDIT_FIELDS[entityType] || [])]) {
-    const from = field.read(prev) ?? '';
-    const to = field.read(next) ?? '';
-    if (String(from) === String(to)) continue;
-    const fmt = field.format || (v => String(v ?? ''));
-    changes.push({ ...base, action: field.action, detail: `${fmt(from) || '—'} → ${fmt(to) || '—'}` });
-  }
-  changes.push(...configChanges(base, prev.config, next.config));
-  // A save that changed nothing we can name leaves no history line: an
-  // "Edited" row with no detail tells the reader nothing.
-  return changes;
-}
-
-function mapCarePlanAuditRow(row) {
-  return {
-    id: row.id,
-    entityType: row.entity_type,
-    entityId: row.entity_id,
-    action: row.action,
-    summary: row.summary || '',
-    detail: row.detail || '',
-    actor: row.actor || '',
-    programCode: row.program_code || '',
-    createdAt: row.created_at,
-  };
-}
-
-function mapInterventionRow(row) {
-  return {
-    id: row.id,
-    goalId: row.goal_id,
-    kind: row.kind,
-    title: row.title || '',
-    config: row.config || {},
-    createdAt: row.created_at,
-  };
-}
-
-function mapNotificationRow(row) {
-  return {
-    id: row.id,
-    type: row.type,
-    title: row.title,
-    body: row.body || '',
-    action: row.action || null,
-    taskId: row.task_id ?? null,
-    read: !!row.read,
-    ts: row.created_at ? Date.parse(row.created_at) : Date.now(),
-    actorName: row.actor_name || null,
-    persisted: true,
-  };
-}
-
-// Merge notification lists newest-first, keeping one entry per id. Incoming
-// rows win over what's already held, so a refetch refreshes read state
-// instead of resurrecting a stale copy.
-function mergeNotifications(incoming, existing) {
-  const byId = new Map();
-  for (const n of [...existing, ...incoming]) byId.set(n.id, n);
-  return [...byId.values()].sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 50);
-}
-
-// Persist a per-(ICD × DOS) coder action to hcc_gap_dos_actions. The
-// row key is deterministic (`${member}|${code}|${dos}`) so the same
-// helper handles both first-write inserts and subsequent updates via
-// upsert. Fire-and-forget — the store already updated optimistically.
-function dosActionRowKey(memberName, code, dos) {
-  return `${memberName}|${code}|${dos}`;
-}
-function persistHccGapDosAction(memberName, code, dos, patch) {
-  if (!memberName || !code || !dos) return;
-  const id = dosActionRowKey(memberName, code, dos);
-  const row = {
-    id, member_name: memberName, code, dos,
-    action: null, dismiss_reason: null, dismiss_note: null, removed: false,
-    ...patch,
-    updated_at: new Date().toISOString(),
-  };
-  supabase
-    .from('hcc_gap_dos_actions')
-    .upsert(row, { onConflict: 'id' })
-    .select('id')
-    .then(({ data, error }) => {
-      if (error) return reportPersistFailure(`persistHccGapDosAction(${code}|${dos})`, error);
-      if (!data || data.length === 0) reportPersistFailure(`persistHccGapDosAction(${code}|${dos})`, { message: 'affected 0 rows' });
-    });
-}
-// Clear a DOS-action row entirely — used when the user toggles the same
-// action off (undo) or after a manual ICD is deleted (its DOS rows go
-// with it).
-function persistHccGapDosActionDelete(memberName, code, dos) {
-  if (!memberName || !code || !dos) return;
-  supabase
-    .from('hcc_gap_dos_actions')
-    .delete()
-    .eq('id', dosActionRowKey(memberName, code, dos))
-    .then(({ error }) => {
-      // No .select() here — deleting a row that doesn't exist is a no-op,
-      // not a failure (undo of an action never persisted).
-      if (error) reportPersistFailure(`persistHccGapDosActionDelete(${code}|${dos})`, error);
-    });
-}
-// Wipe every DOS-action row scoped to a deleted manual ICD — mirrors the
-// in-memory cleanup in deleteHccGap.
-function persistHccGapDosActionDeleteAll(memberName, code) {
-  if (!memberName || !code) return;
-  supabase
-    .from('hcc_gap_dos_actions')
-    .delete()
-    .eq('member_name', memberName)
-    .eq('code', code)
-    .then(({ error }) => {
-      if (error) reportPersistFailure(`persistHccGapDosActionDeleteAll(${code})`, error);
-    });
-}
-
-// Persist an ICD-level state change to hcc_diagnosis_gaps by code + member.
-// The store mutates optimistically; this fire-and-forget round-trip keeps
-// the DB in sync so the change survives reload. Scoped by (code, member_name)
-// to prevent cross-tenant mutation when two tenants share an ICD code.
-function persistHccGapUpdate(code, memberName, patch) {
-  if (!code || !memberName) return;
-  supabase.from('hcc_diagnosis_gaps').update(patch)
-    .eq('code', code)
-    .eq('member_name', memberName)
-    .select('code')
-    .then(({ data, error }) => {
-      if (error) return reportPersistFailure(`persistHccGapUpdate(${code})`, error);
-      if (!data || data.length === 0) reportPersistFailure(`persistHccGapUpdate(${code})`, { message: 'affected 0 rows' });
-    });
-}
-function persistHccGapInsert(row) {
-  if (!row?.code) return;
-  supabase.from('hcc_diagnosis_gaps').insert(row).then(({ error }) => {
-    if (error) reportPersistFailure(`persistHccGapInsert(${row.code})`, error);
-  });
-}
-// ── caregap_activity row mapping ──
-// Common columns are lifted out; everything variant-specific (callDetails,
-// detailCard, fromAssignee, commentBody, file, …) rides in `payload` jsonb so
-// new ActivityLog variants never need a schema change.
-function caregapActivityToRow(memberId, entry) {
-  const { id, when, at, actor, t, title, ...payload } = entry;
-  return {
-    id: String(id),
-    member_id: memberId,
-    at: when ?? at ?? new Date().toISOString(),
-    actor: actor ?? null,
-    t: t ?? null,
-    title: title ?? null,
-    payload,
-  };
-}
-function caregapRowToEntry(row) {
-  return {
-    id: row.id,
-    when: row.at,
-    actor: row.actor ?? undefined,
-    t: row.t ?? undefined,
-    title: row.title ?? undefined,
-    ...(row.payload || {}),
-  };
-}
-// Fire-and-forget insert — the local state is already updated optimistically;
-// a failed write is surfaced through the shared persist-failure toast.
-function persistCaregapActivityInsert(memberId, entry) {
-  if (!memberId || !entry?.id) return;
-  supabase.from('caregap_activity').insert(caregapActivityToRow(memberId, entry)).then(({ error }) => {
-    if (error) reportPersistFailure(`persistCaregapActivityInsert(${entry.id})`, error);
-  });
-}
-// Write the member's whole gaps array back to hedis_members.gaps after a
-// local gap mutation (status / assignee). Replace-whole mirrors the local
-// shape — gap objects carry {code,status,assignee,…}. Fire-and-forget; the
-// affected-rows check catches mock-fallback members that were never in the DB.
-function persistHedisGaps(memberId) {
-  if (!memberId) return;
-  const m = useAppStore.getState().hedisMembers.find(x => x.id === memberId);
-  if (!m) return;
-  supabase
-    .from('hedis_members')
-    .update({ gaps: m.gaps || [] })
-    .eq('id', memberId)
-    .select('id')
-    .then(({ data, error }) => {
-      if (error) return reportPersistFailure(`persistHedisGaps(${memberId})`, error);
-      if (!data || data.length === 0) reportPersistFailure(`persistHedisGaps(${memberId})`, { message: 'affected 0 rows (member not in Supabase — mock fallback?)' });
-    });
-}
-// SNP worklist row updates — one helper for both mutation paths (status +
-// assignee). Fire-and-forget; the local state is updated optimistically
-// before we call this, and a failed write reports through the shared toast.
-// The affected-rows sanity check catches an id that isn't in Supabase yet
-// (e.g. the mock-fallback path where the store never fetched from the DB).
-function persistSnpMemberUpdate(id, patch) {
-  if (!id || !patch || Object.keys(patch).length === 0) return;
-  supabase
-    .from('snp_worklist_members')
-    .update(patch)
-    .eq('id', id)
-    .select('id')
-    .then(({ data, error }) => {
-      if (error) return reportPersistFailure(`persistSnpMemberUpdate(${id})`, error);
-      if (!data || data.length === 0) {
-        reportPersistFailure(`persistSnpMemberUpdate(${id})`, { message: 'affected 0 rows' });
-      }
-    });
-}
-
-// The SNP program + care plan are the single source of truth for the worklist's
-// Program Sub Status, Care Plan Status, and Assignee columns. These helpers
-// derive the worklist labels from that source so the two never drift.
-//
-// Care Plan Status is derived from the plan row alone (cheap enough for the
-// bulk worklist projection). "In Review", which needs the plan's audit log,
-// stays a program-view-only distinction.
-function snpCarePlanStatusLabel(plan) {
-  if (!plan) return 'No Care Plan';
-  return plan.signed_at ? 'Signed' : 'Draft';
-}
-const snpInitialsFromName = (name) =>
-  (name || '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-// A program assignee is a plain name string ("Unassigned" when none). Normalize
-// it to the worklist's { name, initials } shape (null when unassigned).
-function snpAssigneeFromProgram(assignee) {
-  const name = assignee && assignee !== 'Unassigned' ? assignee : null;
-  return { assigneeName: name, assigneeInitials: name ? snpInitialsFromName(name) : null };
-}
-
-// Overlay each worklist row with its SNP program + care plan status, so those
-// three columns project the single source of truth. Two bulk queries keyed by
-// patient_id / program_id; rows without a resolvable SNP program keep the
-// snapshot they came in with. `programId` is stamped on so worklist-side edits
-// know which program row to write back to.
-async function projectSnpProgramState(rows) {
-  const patientIds = [...new Set(rows.map(r => r.patientId).filter(Boolean))];
-  if (!patientIds.length) return rows;
-  const { data: progs, error: progErr } = await supabase
-    .from('patient_care_programs')
-    .select('id, patient_id, status, assignee, created_at')
-    .eq('code', 'SNP')
-    .in('patient_id', patientIds)
-    .order('created_at', { ascending: true });
-  if (progErr || !progs?.length) return rows;
-
-  // Latest SNP enrollment per patient (rows are created_at-ascending, so the
-  // last one seen wins).
-  const progByPatient = new Map();
-  progs.forEach(p => progByPatient.set(p.patient_id, p));
-  const progIds = [...progByPatient.values()].map(p => p.id);
-
-  const planByProgram = new Map();
-  if (progIds.length) {
-    const { data: plans } = await supabase
-      .from('patient_care_plans')
-      .select('program_id, signed_at')
-      .in('program_id', progIds);
-    (plans || []).forEach(pl => planByProgram.set(pl.program_id, pl));
-  }
-
-  // Tasks created inside the SNP program, tallied per patient. `tasks` are
-  // tagged by program_code (not a specific enrollment), so this is the count
-  // for the patient's SNP program as a whole — what the Tasks column shows.
-  const taskCountByPatient = new Map();
-  const { data: taskRows } = await supabase
-    .from('tasks')
-    .select('patient_id')
-    .eq('program_code', 'SNP')
-    .in('patient_id', patientIds);
-  (taskRows || []).forEach(t => {
-    taskCountByPatient.set(t.patient_id, (taskCountByPatient.get(t.patient_id) || 0) + 1);
-  });
-
-  return rows.map(row => {
-    const prog = row.patientId ? progByPatient.get(row.patientId) : null;
-    if (!prog) return row;
-    return {
-      ...row,
-      programId:        prog.id,
-      programSubStatus: prog.status || row.programSubStatus,
-      carePlanStatus:   snpCarePlanStatusLabel(planByProgram.get(prog.id)),
-      taskCount:        taskCountByPatient.get(row.patientId) || 0,
-      assigneeId:       null,
-      assigneeRole:     null,
-      ...snpAssigneeFromProgram(prog.assignee),
-    };
-  });
-}
-
-// Write a worklist-initiated status/assignee edit through to the SNP care
-// program (the source of truth), and mirror it into a loaded program slice so
-// an open program view reflects it immediately. `patch` keys (status, assignee)
-// match both the in-memory program shape and the DB columns.
-function writeSnpProgramField(get, set, member, patch) {
-  const { programId, patientId } = member;
-  if (!programId) return;
-  const now = new Date();
-  const stamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
-  if (patientId && get().careProgramsByPatient[patientId]) {
-    set(s => ({
-      careProgramsByPatient: {
-        ...s.careProgramsByPatient,
-        [patientId]: (s.careProgramsByPatient[patientId] || []).map(p =>
-          p.id === programId ? { ...p, ...patch, lastUpdated: stamp } : p,
-        ),
-      },
-    }));
-  }
-  supabase.from('patient_care_programs')
-    .update({ ...patch, last_updated: stamp })
-    .eq('id', programId)
-    .then(({ error }) => { if (error) reportPersistFailure(`writeSnpProgramField(${programId})`, error); });
-}
-function persistHccGapDelete(code, memberName) {
-  if (!code) return;
-  let q = supabase.from('hcc_diagnosis_gaps').delete().eq('code', code);
-  if (memberName) q = q.eq('member_name', memberName);
-  q.then(({ error }) => {
-    // 0-row delete is fine (already gone / never persisted) — don't flag it.
-    if (error) reportPersistFailure(`persistHccGapDelete(${code})`, error);
-  });
-}
-
-// Insert a spawned hcc_members row. Called from addHccGapNewRow when a
-// New Diagnosis Gap picks a DOS that doesn't exist for the patient — the
-// app materializes the encounter as its own worklist row so the DOS can
-// carry its own workflow state, and this makes the row survive reload.
-// Fire-and-forget; failures log a warning without rolling back the state
-// change (the row still shows in-session).
-//
-// The app reads hcc_members plus its normalized child tables
-// (hcc_member_visits / hcc_member_documents) and rebuilds the legacy
-// fat-row shape in fetchHccMembers. The base table has no age,
-// dos_list, or doc_status columns — writing those here failed outright
-// (PGRST204), so spawned rows never persisted. Scalar fields go to
-// hcc_members; DOS entries are seeded into hcc_member_visits.
-function persistHccMemberInsert(m) {
-  if (!m?.id) return;
-  const dbRow = {
-    id: m.id,
-    // id and member_id are the same Fold ID now (unified identity scheme —
-    // see supabase/patient_id_unification_migration.sql), not the source
-    // patient's old payer id.
-    member_id: m.id,
-    name: m.name,
-    initials: m.in,
-    gender: m.g,
-    current_visit: m.cv,
-    total_visits: m.tv,
-    visit_type: m.visitType || m.vt,
-    rendering_provider: m.rp,
-    open_icds: m.open,
-    chart_count: m.ch,
-    create_date: m.date,
-    due_label: m.due,
-    due_color: m.dueCol,
-    support_name: m.sup, support_status: m.supS,
-    coder_name: m.cdr, coder_status: m.cdrS,
-    reviewer1_name: m.r1, reviewer1_status: m.r1s,
-    reviewer2_name: m.r2, reviewer2_status: m.r2s,
-    raf_score: m.raf,
-    raf_impact: m.ri,
-    risk_utilization: m.ru,
-    ipa: m.ipa,
-    health_plan: m.hp,
-    pcp: m.pcp,
-    decile: m.dec,
-    cohort: m.coh,
-    risk_level: m.rl,
-    advillness: m.ad,
-    frailty: m.fr,
-    language: m.language || 'en',
-    is_spawned: true,
-  };
-  supabase.from('hcc_members').insert(dbRow).then(({ error }) => {
-    if (error) return reportPersistFailure(`persistHccMemberInsert(${m.id})`, error);
-    // Seed the normalized DOS rows so fetchHccMembers rebuilds dos_list
-    // after a reload.
-    const visits = (m.dos_list || []).map((d, i) => ({
-      member_id: m.id,
-      dos_date: toPgDate(d.date),
-      status_label: d.label ?? null,
-      status_color: d.labelColor ?? null,
-      visit_index: i,
-    }));
-    if (!visits.length) return;
-    supabase.from('hcc_member_visits').insert(visits).then(({ error: vErr }) => {
-      if (vErr) reportPersistFailure(`persistHccMemberInsert.visits(${m.id})`, vErr);
-    });
-  });
-}
-
-// Accepts 'YYYY-MM-DD' (what SelectNewDosPopover emits) or 'MM/DD/YYYY'
-// (legacy in-memory dos entries) and returns a Postgres date literal.
-function toPgDate(d) {
-  const s = String(d || '');
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
-  if (!m) return null;
-  const [, mm, dd, yyyy] = m;
-  return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
-}
-
-// Persist a member's dos_list / docStatus / chart_count mutations to
-// Supabase. hccCreateOrMergeFromEncounter appends new DOS rows and stamps
-// other member-level metadata; without this write those mutations reverted
-// on reload. Fire-and-forget.
-//
-// Reads assemble dos_list from hcc_member_visits and doc_status from
-// hcc_member_documents (see fetchHccMembers) — the base table has no such
-// columns, so each shape is synced into its child table
-// (replace-all per member; entries carry no identity beyond position).
-//
-// Operations are chained sequentially so a failure in one phase (e.g.
-// insert after delete committed) is detected and surfaced via
-// reportPersistFailure instead of silently orphaning the row.
-function persistHccMemberDetails(memberId) {
-  if (!memberId) return;
-  const m = useAppStore.getState().hccMembers.find(x => x.id === memberId);
-  if (!m) return;
-
-  // 1) Base row counters
-  supabase
-    .from('hcc_members')
-    .update({ chart_count: m.ch ?? null, open_icds: m.open ?? null })
-    .eq('id', memberId)
-    .select('id')
-    .then(({ data, error }) => {
-      if (error) return reportPersistFailure(`persistHccMemberDetails(${memberId})`, error);
-      if (!data || data.length === 0) {
-        reportPersistFailure(`persistHccMemberDetails(${memberId})`, { message: 'affected 0 rows (spawned row never persisted?)' });
-        return;
-      }
-
-      // 2) DOS list → hcc_member_visits (replace-all, sequential after base succeeds)
-      supabase
-        .from('hcc_member_visits')
-        .delete()
-        .eq('member_id', memberId)
-        .then(({ error: delErr }) => {
-          if (delErr) return reportPersistFailure(`persistHccMemberDetails.visits.delete(${memberId})`, delErr);
-          const visits = (m.dos_list || []).map((d, i) => ({
-            member_id: memberId,
-            dos_date: toPgDate(d.date),
-            status_label: d.label ?? null,
-            status_color: d.labelColor ?? null,
-            visit_index: i,
-          }));
-          if (!visits.length) return syncDocs();
-          supabase.from('hcc_member_visits').insert(visits).then(({ error: insErr }) => {
-            if (insErr) reportPersistFailure(`persistHccMemberDetails.visits.insert(${memberId})`, insErr);
-            syncDocs();
-          });
-        });
-    });
-
-  // 3) Doc status → hcc_member_documents (replace-all).
-  // Called after visits settle so any earlier failure is already surfaced.
-  function syncDocs() {
-    supabase
-      .from('hcc_member_documents')
-      .delete()
-      .eq('member_id', memberId)
-      .then(({ error }) => {
-        if (error) return reportPersistFailure(`persistHccMemberDetails.docs.delete(${memberId})`, error);
-        const docs = (m.docStatus || []).map((status, i) => ({
-          member_id: memberId,
-          doc_index: i,
-          status,
-        }));
-        if (!docs.length) return;
-        supabase.from('hcc_member_documents').insert(docs).then(({ error: insErr }) => {
-          if (insErr) reportPersistFailure(`persistHccMemberDetails.docs.insert(${memberId})`, insErr);
-        });
-      });
-  }
-}
-
-// Persist a single HCC role's status (and optionally name) to Supabase.
-// Fire-and-forget — failures log a warning without rolling back the
-// optimistic in-memory update. Used by every HCC status mutation in this
-// slice (transitionHccDos, hccSetRoleStatus, hccReassignRole) so the
-// worklist row survives reload.
-function persistHccMemberRoleStatus(memberId, role, status, name) {
-  const colsByRole = {
-    support:   { name: 'support_name',   status: 'support_status'   },
-    coder:     { name: 'coder_name',     status: 'coder_status'     },
-    reviewer:  { name: 'reviewer1_name', status: 'reviewer1_status' },
-    reviewer2: { name: 'reviewer2_name', status: 'reviewer2_status' },
-  };
-  const cols = colsByRole[role];
-  if (!cols || !memberId) return Promise.resolve({ error: { message: 'invalid role or memberId' } });
-  const patch = {};
-  if (status !== undefined) patch[cols.status] = status;
-  if (name !== undefined && name !== null) patch[cols.name] = name;
-  if (Object.keys(patch).length === 0) return Promise.resolve({ error: null });
-  // Returns the Supabase result so callers can await + surface failure. A
-  // silent fire-and-forget lets successful toasts mask writes that never
-  // reach the DB (RLS, unreachable, missing row), so the assignment
-  // "vanishes" on the next reload with no user-visible signal.
-  return supabase
-    .from('hcc_members')
-    .update(patch)
-    .eq('id', memberId)
-    .select('id')
-    .then(({ data, error }) => {
-      if (error) {
-        console.warn(`persistHccMemberRoleStatus(${memberId}, ${role}) failed:`, error.message);
-        return { error };
-      }
-      if (!data || data.length === 0) {
-        const err = { message: `no hcc_members row for id=${memberId}` };
-        console.warn(`persistHccMemberRoleStatus(${memberId}, ${role}) affected 0 rows`);
-        return { error: err };
-      }
-      return { error: null };
-    });
-}
-
-// Append-only HCC activity log writer. Fire-and-forget: the optimistic
-// in-memory append (handled by the caller via set()) is what the timeline
-// renders; the Supabase insert is for durability. Caller passes the same
-// shape as makeActivityRow() — see src/features/hcc/activityLog.js.
-function persistHccActivityRow(row) {
-  if (!row || !row.event_name) return;
-  supabase
-    .from('hcc_activity_log')
-    .insert(row)
-    .then(({ error }) => {
-      if (error) reportPersistFailure(`persistHccActivityRow(${row.event_name})`, error);
-    });
-}
-
-// ── Analytics table batcher ───────────────────────────────────────────
-// Coalesce same-tick analytics_tables lookups into ONE request. Views fire
-// up to a dozen fetchViewTable calls on mount (FinancialView alone has 12);
-// one GET per table_key tripped Sentry's N+1-API-call detector
-// (FOLDHEALTH-2). Calls landing within the same 10ms window share a single
-// `.in('table_key', [...])` query, fanned back out per key.
-const _analyticsTableBatches = new Map(); // `${tenant}|${period}` → { keys:Set, promise }
-function fetchAnalyticsTableBatched(tenant, period, tableKey) {
-  const batchId = `${tenant}|${period}`;
-  let batch = _analyticsTableBatches.get(batchId);
-  if (!batch) {
-    batch = { keys: new Set() };
-    batch.promise = new Promise((resolve, reject) => {
-      setTimeout(() => {
-        _analyticsTableBatches.delete(batchId);
-        supabase
-          .from('analytics_tables').select('*')
-          .eq('tenant_id', tenant).eq('period', period)
-          .in('table_key', [...batch.keys])
-          .then(({ data, error }) => {
-            if (error) return reject(new Error(error.message));
-            resolve(new Map((data || []).map(r => [r.table_key, r])));
-          });
-      }, 10);
-    });
-    _analyticsTableBatches.set(batchId, batch);
-  }
-  batch.keys.add(tableKey);
-  return batch.promise.then(rowsByKey => rowsByKey.get(tableKey) || null);
-}
-
-// ── DiagPanel ancillary tab writes ────────────────────────────────────
-// Comments / Notes / Documents composers post to Supabase org-wide tables
-// so a refresh (or another reviewer) sees the same content. Fire-and-forget
-// — the composer already updated local state optimistically.
-function persistHccDiagComment(row) {
-  if (!row?.id) return;
-  supabase
-    .from('hcc_diag_comments')
-    .insert({
-      id: row.id,
-      author: row.author,
-      role: row.role,
-      date: row.date,
-      time: row.time,
-      edited: !!row.edited,
-      body: row.body,
-      // Scope columns added in supabase/hcc_diag_comment_scope_migration.sql.
-      // If the migration hasn't run yet, Supabase will reject the insert with
-      // "column ... does not exist" — the warning below surfaces that.
-      icd: row.icd ?? null,
-      dos: row.dos ?? null,
-      // Status-transition context — added in
-      // supabase/hcc_diag_comment_status_migration.sql. Set when a coder
-      // flips a DOS to a status that requires a mandatory comment
-      // (currently "Record Requested").
-      status_from: row.statusFrom ?? null,
-      status_to:   row.statusTo   ?? null,
-    })
-    .then(({ error }) => {
-      if (error) reportPersistFailure(`persistHccDiagComment(${row.id})`, error);
-    });
-}
-
-function persistHccDiagCommentUpdate(row) {
-  if (!row?.id) return;
-  supabase
-    .from('hcc_diag_comments')
-    .update({ body: row.body, edited: true })
-    .eq('id', row.id)
-    .select('id')
-    .then(({ data, error }) => {
-      if (error) return reportPersistFailure(`persistHccDiagCommentUpdate(${row.id})`, error);
-      if (!data || data.length === 0) reportPersistFailure(`persistHccDiagCommentUpdate(${row.id})`, { message: 'affected 0 rows' });
-    });
-}
-
-function persistHccDiagCommentDelete(id) {
-  if (!id) return;
-  supabase
-    .from('hcc_diag_comments')
-    .delete()
-    .eq('id', id)
-    .then(({ error }) => {
-      if (error) reportPersistFailure(`persistHccDiagCommentDelete(${id})`, error);
-    });
-}
-
-function persistHccDiagNote(row) {
-  if (!row?.id) return;
-  supabase
-    .from('hcc_diag_notes')
-    .insert({
-      id: row.id,
-      title: row.title || row.body?.slice(0, 60) || 'Untitled note',
-      author: row.author,
-      role: row.role,
-      date: row.date,
-      time: row.time,
-      signed: row.signed ?? true,
-      body: row.body,
-    })
-    .then(({ error }) => {
-      if (error) reportPersistFailure(`persistHccDiagNote(${row.id})`, error);
-    });
-}
-
-function persistHccDiagDocument(row) {
-  if (!row?.id) return;
-  supabase
-    .from('hcc_diag_documents')
-    .insert({
-      id: row.id,
-      name: row.name,
-      ext: row.ext,
-      doc_type: row.type || row.docType || 'Other',
-      uploaded_by: row.uploadedBy || 'You',
-      role: row.role || 'Coder',
-      date: row.date,
-      time: row.time,
-      status: row.status || 'pending',
-    })
-    .then(({ error }) => {
-      if (error) reportPersistFailure(`persistHccDiagDocument(${row.id})`, error);
-    });
-}
-
-// Persist a manually-uploaded chart document: push the file bytes to the
-// `chart-uploads` Storage bucket, then insert the metadata row. Fire-and-forget
-// (the store updated optimistically); a missing table/bucket just warns so the
-// doc still works for the session.
-async function persistHccAddedChart(memberId, doc, file) {
-  if (!memberId || !doc) return;
-  let pdfUrl = doc.pdf && /^https?:/i.test(doc.pdf) ? doc.pdf : null;
-  let storagePath = null;
-  try {
-    if (file) {
-      const path = `${memberId}/${doc.id}-${file.name}`;
-      const { error: upErr } = await supabase.storage
-        .from('chart-uploads')
-        .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
-      if (upErr) {
-        reportPersistFailure(`persistHccAddedChart.upload(${doc.id})`, upErr);
-      } else {
-        storagePath = path;
-        pdfUrl = supabase.storage.from('chart-uploads').getPublicUrl(path).data.publicUrl;
-      }
-    }
-    const { error } = await supabase
-      .from('hcc_added_charts')
-      .insert(addedChartToRow(memberId, { ...doc, pdf: pdfUrl, storagePath }));
-    if (error) reportPersistFailure(`persistHccAddedChart.insert(${doc.id})`, error);
-  } catch (e) {
-    reportPersistFailure(`persistHccAddedChart(${doc.id})`, e || { message: 'unknown' });
-  }
-}
-
-function extOf(filename) {
-  const m = /\.([a-z0-9]+)$/i.exec(filename || '');
-  return m ? m[1].toLowerCase() : null;
-}
-
-// Persist a Program Documents upload: push the file bytes to the
-// `program-documents` Storage bucket, then insert the metadata row.
-// Fire-and-forget (the store already updated optimistically) — a missing
-// bucket/table just warns so the doc still works for the session via the
-// in-memory `file` kept on the row.
-async function persistProgramDocument(doc, file) {
-  if (!doc?.id) return;
-  let fileUrl = null;
-  let storagePath = null;
-  try {
-    if (file) {
-      const path = `${doc.programCode || 'unscoped'}/${doc.patientId || 'unscoped'}/${doc.id}-${file.name}`;
-      const { error: upErr } = await supabase.storage
-        .from('program-documents')
-        .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
-      if (upErr) {
-        reportPersistFailure(`persistProgramDocument.upload(${doc.id})`, upErr);
-      } else {
-        storagePath = path;
-        fileUrl = supabase.storage.from('program-documents').getPublicUrl(path).data.publicUrl;
-      }
-    }
-    const { error } = await supabase.from('program_documents').insert({
-      id:           doc.id,
-      program_code: doc.programCode,
-      patient_id:   doc.patientId,
-      name:         doc.name,
-      type:         doc.type,
-      status:       doc.status,
-      size_bytes:   doc.sizeBytes,
-      updated_by:   doc.updatedBy,
-      updated_date: doc.updatedDate,
-      file_url:     fileUrl,
-      storage_path: storagePath,
-      ext:          extOf(file?.name || doc.name),
-    });
-    if (error) reportPersistFailure(`persistProgramDocument.insert(${doc.id})`, error);
-  } catch (e) {
-    reportPersistFailure(`persistProgramDocument(${doc.id})`, e || { message: 'unknown' });
-  }
-}
-
-// Accept both the canonical MM-DD-YYYY and legacy ISO YYYY-MM-DD (and
-// MM/DD/YYYY) so isPastDate flags overdue rows regardless of stored shape.
-function parseTaskDateStr(str) {
-  if (!str || typeof str !== 'string') return null;
-  let y, m, d;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    [y, m, d] = str.split('-').map(Number);
-  } else if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(str)) {
-    [m, d, y] = str.split(/[-/]/).map(Number);
-  } else {
-    return null;
-  }
-  if ([y, m, d].some(n => Number.isNaN(n))) return null;
-  const date = new Date(y, m - 1, d);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function isPastDate(str) {
-  const d = parseTaskDateStr(str);
-  if (!d) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d < today;
-}
-
-function parseDuration(str) {
-  const parts = (str || '00:00').split(':').map(Number);
-  return parts[0] * 60 + (parts[1] || 0);
-}
-function formatDuration(secs) {
-  const m = Math.floor(secs / 60), s = secs % 60;
-  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-}
 
 // Restore navigation state from sessionStorage on reload
 const _savedPage = sessionStorage.getItem('activePage') || 'population';
@@ -1361,630 +163,9 @@ const _cachedWorklistOrder = readCachedWorklistOrder();
 const _savedTab = sessionStorage.getItem('activeTab') || 'toc-worklist';
 const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 
-// Hydrate theme from localStorage so the store agrees with what the
-// index.html blocking script already applied to <html>.
-const _initialThemeSetting = getStoredTheme();
-const _initialResolvedTheme = getResolvedTheme(_initialThemeSetting);
-const _initialNavStyle = getStoredNavStyle();
-const _initialContrast = getStoredContrast();
-const _initialFontScale = getStoredFontScale();
-// Apply nav style, contrast, and font scale at module load so they land before
-// React mounts (the index.html blocking script handles the color theme but not
-// these yet).
-applyNavStyle(_initialNavStyle);
-applyContrast(_initialContrast);
-applyFontScale(_initialFontScale);
-
-// ── Settings → Content → Emails: SWR cache ────────────────────────────────
-// Keyed by `${page}|${perPage}|${searchLowercased}|${status}`. Lives at
-// module scope so cache survives store rebuilds during HMR. Cleared by any
-// campaign mutation (delete / bulk delete / duplicate / draft insert).
-const _contentEmailsCache = new Map();
-const CONTENT_EMAILS_TTL_MS = 60_000;
-function _invalidateContentEmailsCache() {
-  _contentEmailsCache.clear();
-}
-
-// ── Settings → Content → Forms: SWR cache ─────────────────────────────────
-// Same shape/strategy as the emails cache above. Keyed by
-// `${page}|${perPage}|${searchLowercased}|${status}`; cleared by any form
-// mutation (create draft / duplicate / delete / save).
-const _contentFormsCache = new Map();
-const CONTENT_FORMS_TTL_MS = 60_000;
-function _invalidateContentFormsCache() {
-  _contentFormsCache.clear();
-}
-
-// ── Form row mapper ──
-// Translates a Supabase `forms` row into the JS shape the UI consumes. List
-// fetches omit the heavy `schema`/`scoring` JSONB; the builder pulls the full
-// row via fetchFormById so those land as the saved objects, not defaults.
-function formRowToJs(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description || null,
-    category: row.category || null,
-    formType: row.form_type || 'Other',
-    status: row.status || 'draft',
-    // Present only on the full-row fetch; undefined on slim list rows so the
-    // builder knows it still needs to hydrate.
-    schema: row.schema,
-    scoring: row.scoring,
-    settings: row.settings || {},
-    responseCount: row.response_count || 0,
-    updatedAt: row.updated_at || null,
-    updatedBy: row.updated_by || null,
-    updatedByName: row.updated_by_profile?.full_name || null,
-  };
-}
-
-// ── Clinical Note row mapper ──
-// public.clinical_notes → the JS shape the Care Gap Drawer + P360 Notes tab
-// consume. Kept next to formRowToJs so the two note-adjacent mappers live
-// together. `payload` is the note's form-state snapshot as authored — the
-// caller (useClinicalNotePanel) is responsible for its shape.
-function clinicalNoteRowToJs(row) {
-  return {
-    id: row.id,
-    patientId: row.patient_id,
-    hedisMemberId: row.hedis_member_id,
-    gapCodes: row.gap_codes || [],
-    formType: row.form_type || 'cbp_visit_note',
-    formId: row.form_id ?? null,
-    status: row.status,
-    payload: row.payload || {},
-    pdfFilename: row.pdf_filename || null,
-    pdfDataUrl: row.pdf_data_url || null,
-    reviewTaskId: row.review_task_id || null,
-    authorId: row.author_id || null,
-    authorName: row.author_name || null,
-    reviewerId: row.reviewer_id || null,
-    reviewerName: row.reviewer_name || null,
-    signedById: row.signed_by_id || null,
-    signedByName: row.signed_by_name || null,
-    signedAt: row.signed_at || null,
-    createdAt: row.created_at || null,
-    updatedAt: row.updated_at || null,
-    // clinical_notes_origin_migration.sql
-    originKind: row.origin_kind || null,
-    originRef: row.origin_ref || null,
-  };
-}
-
-function clinicalNoteVersionRowToJs(row) {
-  return {
-    id: row.id,
-    noteId: row.note_id,
-    version: row.version,
-    status: row.status,
-    payload: row.payload || {},
-    pdfFilename: row.pdf_filename || null,
-    pdfDataUrl: row.pdf_data_url || null,
-    authorId: row.author_id || null,
-    authorName: row.author_name || null,
-    reviewerId: row.reviewer_id || null,
-    reviewerName: row.reviewer_name || null,
-    signedById: row.signed_by_id || null,
-    signedByName: row.signed_by_name || null,
-    signedAt: row.signed_at || null,
-    createdAt: row.created_at || null,
-  };
-}
-
-// ── Campaign row mapper ──
-// Single source of truth for translating Supabase campaigns rows into the JS
-// shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
-// CampaignBuilder (after an INSERT / UPDATE returns the row).
-function campaignRowToJs(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    channel: row.channel || 'email',
-    section: row.section || 'scheduled',
-    audience: row.audience || 0,
-    dynamic: row.dynamic || false,
-    health: row.health,
-    delivered: row.delivered,
-    opened: row.opened,
-    startDate: row.start_date,
-    duration: row.duration,
-    progress: row.progress || 0,
-    executesIn: row.executes_in,
-    enabled: row.enabled || false,
-    emailTemplate: row.email_template,
-    colorVariables: row.color_variables,
-    // New Campaign builder fields ───────────────────────────────
-    audienceInclude: row.audience_include || [],
-    audienceExclude: row.audience_exclude || [],
-    sendVia: row.send_via || ['email'],
-    startMode: row.start_mode || 'immediately',
-    startAt: row.start_at,
-    endDate: row.end_date,
-    campaignType: row.campaign_type || 'one_time',
-    senderName: row.sender_name || '',
-    sendFrom: row.send_from || '',
-    subjectLine: row.subject_line || '',
-    // Content → Emails surfaces these in the list table.
-    category: row.category || null,
-    updatedAt: row.updated_at || null,
-    updatedBy: row.updated_by || null,
-    // Joined user display name when the fetch selects it via FK
-    // (campaigns.updated_by → profiles.id). campaignRowToJs collapses the
-    // nested object so the UI just reads .updatedByName.
-    updatedByName: row.updated_by_profile?.full_name || null,
-  };
-}
-
-// Reverse: JS-shape patch → DB-shape patch. Only includes keys present in the
-// patch so we never overwrite columns with `undefined`.
-const CAMPAIGN_FIELD_MAP = {
-  name: 'name',
-  description: 'description',
-  channel: 'channel',
-  section: 'section',
-  audience: 'audience',
-  enabled: 'enabled',
-  audienceInclude: 'audience_include',
-  audienceExclude: 'audience_exclude',
-  sendVia: 'send_via',
-  startMode: 'start_mode',
-  startAt: 'start_at',
-  endDate: 'end_date',
-  campaignType: 'campaign_type',
-  senderName: 'sender_name',
-  sendFrom: 'send_from',
-  subjectLine: 'subject_line',
-  category: 'category',
-};
-function campaignPatchToDb(patch) {
-  const out = {};
-  for (const [jsKey, value] of Object.entries(patch)) {
-    const dbKey = CAMPAIGN_FIELD_MAP[jsKey];
-    if (dbKey) out[dbKey] = value;
-  }
-  return out;
-}
-
-// Debounced auto-save for the Campaign builder. We coalesce rapid field edits
-// (typing, slider drags) into one PATCH per 600ms window per campaign id.
-const _campaignSaveTimers = new Map();
-
-// ── HCC upload: batched "extracting" toast ────────────────────────────
-// queueHccDocumentForOcr is called once per file, so a 20-file drop used to
-// fire 20 back-to-back toasts. Accumulate filenames pushed within a short
-// window and flush a single combined toast instead.
-const _hccExtractQueue = { names: [], timer: null };
-function _flushHccExtractToast() {
-  const { names } = _hccExtractQueue;
-  _hccExtractQueue.names = [];
-  _hccExtractQueue.timer = null;
-  if (names.length === 0) return;
-  const toast = useAppStore.getState().showToast;
-  if (!toast) return;
-  if (names.length === 1) {
-    toast(`${names[0]} — extracting in the background`);
-  } else {
-    toast(`${names.length} files — extracting in the background`);
-  }
-}
-function _queueHccExtractToast(fileName) {
-  _hccExtractQueue.names.push(fileName);
-  if (_hccExtractQueue.timer) return;
-  _hccExtractQueue.timer = setTimeout(_flushHccExtractToast, 150);
-}
-function scheduleCampaignSave(id, fn) {
-  const existing = _campaignSaveTimers.get(id);
-  if (existing) clearTimeout(existing);
-  _campaignSaveTimers.set(id, setTimeout(() => {
-    _campaignSaveTimers.delete(id);
-    fn();
-  }, 600));
-}
-
-// Human-readable labels for HCC DOS lifecycle transitions, used by the
-// Activity Log to format "DOS 07/04/2024 — Support Completed" style entries.
-const HCC_TRANSITION_LABEL = {
-  markSupportInProgress: 'Support In Progress',
-  completeSupport:       'Support Completed',
-  markInsufficient:      'Marked Insufficient',
-  rejectDos:             'DOS Rejected',
-  completeCoder:         'Coding Completed',
-  requestRecords:        'Records Requested',
-  requestRecordsFrom:    'Records Requested',
-  recordsReceived:       'Records Received',
-  recordsReceivedFor:    'Records Received',
-  completeReviewer:      'QA Completed',
-  completeReviewer2:     'Compliance Completed',
-  returnDos:             'DOS Returned',
-  reassignRole:          'Role Reassigned',
-};
-
-// Maps a shared-list label to the store-state key that holds its active
-// filter selections. Used by the generic saved-filter actions below so that
-// saving / applying a filter on any list writes to the right slice.
-// Lists not listed here fall back to `activeFilters` (the TCM / TOC default).
-const LIST_FILTER_KEY = {
-  HCC:   'hccFilters',
-  HEDIS: 'hedisFilters',
-  SNP:   'snpFilters',
-  AWV:   'awvFilters',
-  JSA:   'jsaFilters',
-};
-
-// Remove a list's active saved-filter selection and persist the change.
-// Used when the user edits/clears filters (which detaches the saved view).
-function detachSaved(activeSavedIdByList, list) {
-  if (!activeSavedIdByList || !(list in activeSavedIdByList)) return activeSavedIdByList;
-  const next = { ...activeSavedIdByList };
-  delete next[list];
-  try { localStorage.setItem('activeSavedIdByList', JSON.stringify(next)); } catch {/* */}
-  return next;
-}
-
-// Read the persisted saved-filter definitions (falls back to the legacy key,
-// then to sensible defaults).
-function readSavedFiltersByList() {
-  try {
-    const raw = localStorage.getItem('savedFiltersByList');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
-    }
-  } catch {/* fall through */}
-  try {
-    const legacy = localStorage.getItem('hccSavedFilters');
-    if (legacy) {
-      const parsed = JSON.parse(legacy);
-      if (Array.isArray(parsed)) return { HCC: parsed };
-    }
-  } catch {/* */}
-  return {
-    HCC: [
-      { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
-      { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
-    ],
-  };
-}
-
-// Read the persisted active saved-filter id per list (falls back to legacy key).
-function readActiveSavedIdByList() {
-  try {
-    const raw = localStorage.getItem('activeSavedIdByList');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
-    }
-  } catch {/* */}
-  const legacy = localStorage.getItem('hccActiveSavedId');
-  return legacy ? { HCC: legacy } : {};
-}
-
-// Hydrate a list's filter slice from its active saved filter at boot. Only
-// `activeSavedIdByList` is persisted (not the filter slice), so without this a
-// reload would show the SavedFiltersChip as active with no filters applied.
-function hydrateListFilters(list) {
-  const active = readActiveSavedIdByList()[list];
-  if (!active) return {};
-  const f = (readSavedFiltersByList()[list] || []).find(x => x.id === active);
-  return f ? { ...f.filters } : {};
-}
-
-// Safe JSON read from sessionStorage — returns fallback on missing/parse error.
-function _readJson(key, fallback) {
-  try {
-    const raw = sessionStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-// ── Care team row mapper ──
-// Translates a Supabase `care_teams` row to/from the JS shape the
-// ConfigureTeamDrawer + Care Team table consume (see hccCareTeams below).
-function careTeamRowToJs(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    kind: row.kind,
-    teamType: row.team_type,
-    allocatedTins: row.allocated_tins || [],
-    createdAt: row.created_label,
-    createdBy: row.created_by,
-    lastModifiedAt: row.modified_label,
-    lastModifiedBy: row.modified_by,
-    members: row.members || [],
-  };
-}
-function careTeamJsToDb(t) {
-  return {
-    id: t.id,
-    name: t.name,
-    kind: t.kind,
-    team_type: t.teamType,
-    allocated_tins: t.allocatedTins || [],
-    created_label: t.createdAt,
-    created_by: t.createdBy,
-    modified_label: t.lastModifiedAt,
-    modified_by: t.lastModifiedBy,
-    members: t.members || [],
-    updated_at: new Date().toISOString(),
-  };
-}
-
-/**
- * Seed historical document-upload batches into the HCC activity feed so
- * the History drawer's Documents tab has realistic content out of the
- * box. Each batch reads as a completed upload: a `batch.created`,
- * `file.uploaded`, `ocr.completed`, and `batch.processing_completed`
- * row stamped with believable counts and timestamps in the recent
- * past. Real backend wipes this once Supabase returns rows.
- */
-function buildSeedHccActivityFeed() {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  // Older first — we reverse at the end so newest sorts to the top.
-  const batches = [
-    { id: 'seed-b1', file: 'progress-notes-week-of-04-14.pdf', actor: 'Dr. Sarah Connor',
-      approved: 8, rejected: 0, encounters: 8, source: 'manual', daysAgo: 0.2,
-      rejectedList: [] },
-    { id: 'seed-b2', file: 'sftp-overnight-2026-04-12.pdf', actor: 'SFTP',
-      approved: 12, rejected: 3, encounters: 15, source: 'sftp', daysAgo: 1.4,
-      rejectedList: [
-        { patientName: 'Patricia Moore', dos: '04/10/2026' },
-        { patientName: 'Robert Kim', dos: '04/09/2026' },
-        { patientName: 'James Walker', dos: '04/09/2026' },
-      ]},
-    { id: 'seed-b3', file: 'annual-wellness-bulk.pdf', actor: 'You',
-      approved: 5, rejected: 1, encounters: 6, source: 'manual', daysAgo: 3.0,
-      rejectedList: [{ patientName: 'Jane Doe', dos: '04/08/2026' }] },
-    { id: 'seed-b4', file: 'discharge-summaries-april.pdf', actor: 'Dr. Helen Yu',
-      approved: 4, rejected: 0, encounters: 4, source: 'manual', daysAgo: 5.5,
-      rejectedList: [] },
-    { id: 'seed-b5', file: 'multi-patient-chart-batch.pdf', actor: 'M. Singh',
-      approved: 0, rejected: 0, encounters: 0, source: 'sftp', daysAgo: 7.0,
-      rejectedList: [],
-      // Failed extraction — surfaces as Processing/Failed status in the tab.
-      failed: true },
-  ];
-  const rows = [];
-  batches.forEach(b => {
-    const baseTs = new Date(now - b.daysAgo * day);
-    const iso = (offsetMin) => new Date(baseTs.getTime() + offsetMin * 60_000).toISOString();
-    const scope = { batchId: b.id, fileId: b.file, source: b.source };
-    rows.push({
-      id: `${b.id}-c`, ts: iso(0), event_name: 'batch.created',
-      batch_id: b.id, category: 'intake', severity: 'info',
-      actor_name: b.actor,
-      headline: `Batch ${b.id} created — 1 file queued.`,
-      scope,
-      payload: { batchId: b.id, fileCount: 1, fileName: b.file, actor: b.actor },
-    });
-    rows.push({
-      id: `${b.id}-u`, ts: iso(1), event_name: 'file.uploaded',
-      batch_id: b.id, category: 'intake', severity: 'info',
-      actor_name: b.actor,
-      headline: `${b.actor} uploaded ${b.file}.`,
-      scope,
-      payload: { actor: b.actor, fileName: b.file, pageCount: Math.max(1, Math.ceil(b.encounters / 2)) },
-    });
-    if (b.failed) {
-      rows.push({
-        id: `${b.id}-fail`, ts: iso(2), event_name: 'ocr.failed',
-        batch_id: b.id, category: 'ocr', severity: 'error',
-        actor_name: 'System',
-        headline: `OCR failed on ${b.file}.`,
-        scope,
-        payload: { fileName: b.file, reason: 'Could not read PDF — likely corrupt or password-protected.' },
-      });
-    } else {
-      rows.push({
-        id: `${b.id}-oc`, ts: iso(2), event_name: 'ocr.completed',
-        batch_id: b.id, category: 'ocr', severity: 'success',
-        actor_name: 'System',
-        headline: `OCR completed on ${b.file} — ${b.encounters} encounters extracted.`,
-        scope,
-        payload: {
-          fileName: b.file,
-          encounterCount: b.encounters,
-          pageCount: Math.max(1, Math.ceil(b.encounters / 2)),
-        },
-      });
-      rows.push({
-        id: `${b.id}-pc`, ts: iso(3), event_name: 'batch.processing_completed',
-        batch_id: b.id, category: 'intake', severity: 'success',
-        actor_name: b.actor,
-        headline: `Batch ${b.id} complete — ${b.approved} approved, ${b.rejected} rejected.`,
-        scope,
-        payload: {
-          batchId: b.id,
-          fileName: b.file,
-          approvedCount: b.approved,
-          rejectedCount: b.rejected,
-          pendingCount: 0,
-          acceptedList: [],
-          rejectedList: b.rejectedList,
-          actor: b.actor,
-        },
-      });
-    }
-  });
-  // Newest-first.
-  return rows.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
-}
-
-/**
- * Put one template's goals, interventions and barriers onto a patient's plan.
- *
- * Deduped by title, so it is safe to run against a plan that already holds
- * some of them: applying a template and reconciling a template that was
- * applied earlier are the same operation, and share this code.
- */
-async function applyTemplateToPlan(get, patientId, program, template, libraryGoals) {
-  const key = carePlanKey(patientId, program.id);
-  const norm = v => (v || '').trim().toLowerCase();
-  const slice = () => get().patientCarePlans[key];
-  const existingGoalTitles = new Set((slice()?.goals || []).map(g => norm(g.title)));
-  const existingIntvTitles = new Set((slice()?.interventions || []).map(i => norm(i.title)));
-  const existingBarrierTitles = new Set((slice()?.barriers || []).map(b => norm(b.title)));
-
-  for (const entry of template.goals || []) {
-    const payload = goalPayloadFromTemplateEntry(entry, libraryGoals);
-    const titleKey = norm(payload.title);
-    if (!payload.title || existingGoalTitles.has(titleKey)) continue;
-    const saved = await get().savePatientCarePlanGoal(patientId, program, payload);
-    if (saved) existingGoalTitles.add(titleKey);
-  }
-
-  // Interventions and barriers come after the goals so the goal they belong to
-  // is already on the plan and resolves to a real id. The link itself lives on
-  // the library goal, not on the template row. Anything whose goal isn't on the
-  // plan is still added, unlinked, rather than dropped.
-  const owners = templateLinkOwners(template, libraryGoals);
-  const planGoalIdByTitle = new Map((slice()?.goals || []).map(g => [norm(g.title), g.id]));
-  const goalIdsFor = (map, title) => (map.get(title) || [])
-    .map(t => planGoalIdByTitle.get(norm(t)))
-    .filter(Boolean);
-
-  for (const entry of template.interventions || []) {
-    const titleKey = norm(entry?.title);
-    if (!titleKey || existingIntvTitles.has(titleKey)) continue;
-    // An intervention is 1:1 with a goal, so it takes the first owner.
-    const payload = interventionPayloadFromTemplateEntry(
-      entry, goalIdsFor(owners.intervention, titleKey)[0] || null,
-    );
-    const saved = await get().savePatientCarePlanIntervention(patientId, program, payload);
-    if (saved) existingIntvTitles.add(titleKey);
-  }
-
-  for (const entry of template.barriers || []) {
-    const titleKey = norm(entry?.title);
-    if (!titleKey || existingBarrierTitles.has(titleKey)) continue;
-    const saved = await get().savePatientCarePlanBarrier(
-      patientId, program,
-      barrierPayloadFromTemplateEntry(entry, goalIdsFor(owners.barrier, titleKey)),
-    );
-    if (saved) existingBarrierTitles.add(titleKey);
-  }
-}
-
 export const useAppStore = create((set, get) => ({
-  // ─── Theme ───────────────────────────────────────────────────────────
-  // `theme` is the user's chosen setting: 'light' | 'dark' | 'system'
-  // `resolvedTheme` is what's actually rendered: 'light' | 'dark'
-  // (these diverge when theme === 'system' and OS preference is dark)
-  theme: _initialThemeSetting,
-  resolvedTheme: _initialResolvedTheme,
-  setTheme: (next) => {
-    const from = get().theme;
-    track('theme.changed', { from, to: next });
-    const resolved = applyTheme(next);
-    set({ theme: next, resolvedTheme: resolved });
-  },
-  // Called once from main.jsx — wires the OS preference listener
-  // so 'system' theme follows live OS dark-mode toggles.
-  _initThemeSubscriptions: () => {
-    if (get()._themeSubscribed) return;
-    set({ _themeSubscribed: true });
-    subscribeToSystem(
-      () => get().theme,
-      (resolved) => set({ resolvedTheme: resolved })
-    );
-  },
-  _themeSubscribed: false,
-
-  // ─── Nav style ───────────────────────────────────────────────────────
-  // 'default' = per-theme dark-purple chrome (existing behavior)
-  // 'light'   = light sidebar (white surface, primary purple accent),
-  //             applied consistently across all color themes
-  navStyle: _initialNavStyle,
-  setNavStyle: (next) => {
-    const from = get().navStyle;
-    track('nav.style_changed', { from, to: next });
-    const applied = applyNavStyle(next);
-    set({ navStyle: applied });
-  },
-
-  // ─── Contrast ────────────────────────────────────────────────────────
-  // 'default' = normal neutral scale.
-  // 'high'    = boosts muted text + border tokens for easier reading.
-  contrast: _initialContrast,
-  setContrast: (next) => {
-    const from = get().contrast;
-    track('contrast.changed', { from, to: next });
-    const applied = applyContrast(next);
-    set({ contrast: applied });
-  },
-
-  // ─── Font scale ─────────────────────────────────────────────────────
-  // 5 accessibility levels: smaller / small / default / large / larger.
-  // Adjusts root font-size; all rem-based tokens scale proportionally.
-  fontScale: _initialFontScale,
-  setFontScale: (next) => {
-    const from = get().fontScale;
-    track('fontScale.changed', { from, to: next });
-    const applied = applyFontScale(next);
-    set({ fontScale: applied });
-  },
-
-  // ─── Featurebase (Help → Give Feedback) ─────────────────────────────
-  // Identity-verification JWT minted by the featurebase-jwt Edge Function.
-  // Used to build the portal SSO link so users land on feedback.foldhealth
-  // signed in. Null for dev-bypass sessions.
-  //
-  // Minted when the user reaches for Help, NOT at login. It used to be an
-  // Edge Function invocation on every page load in the app — 0.5–4.1 s in
-  // measurement — for a link most sessions never click.
-  featurebaseJwt: null,
-  _featurebaseJwtPending: false,
-  setFeaturebaseJwt: (jwt) => set({ featurebaseJwt: jwt }),
-  // Dropped on every auth change (App.jsx) so a JWT can never outlive the
-  // session that minted it, or follow a user switch. Clearing `pending` too
-  // means a mint still in flight across the change cannot land on the new
-  // session — its `set` is the last thing it does, and the next reach for
-  // Help re-mints from scratch.
-  resetFeaturebaseJwt: () => set({ featurebaseJwt: null, _featurebaseJwtPending: false }),
-  ensureFeaturebaseJwt: async () => {
-    if (get().featurebaseJwt || get()._featurebaseJwtPending) return;
-    // getSession() is local — no round trip just to find out we are in a
-    // dev-bypass session and should stay anonymous.
-    const { data } = await supabase.auth.getSession();
-    if (!data?.session?.user) return;
-    set({ _featurebaseJwtPending: true });
-    const { data: minted, error } = await supabase.functions.invoke('featurebase-jwt');
-    if (error) console.warn('[featurebase] jwt mint failed:', error.message);
-    // On failure this leaves the JWT null with `pending` released, so the next
-    // time the user opens Help it tries again — the old login-time mint had
-    // exactly one attempt per session.
-    set({ featurebaseJwt: minted?.jwt || null, _featurebaseJwtPending: false });
-  },
-
-  // ─── Changelog (Help → What's New) ──────────────────────────────────
-  // Rows are inserted by .github/workflows/changelog.yml on each push to
-  // main; the app only reads. `changelogSeenAt` drives the unread badge and
-  // persists per-browser so the count survives reloads.
-  changelogEntries: [],
-  changelogLoading: false,
-  _changelogFetched: false,
-  changelogSeenAt: (() => { try { return localStorage.getItem('changelogSeenAt'); } catch { return null; } })(),
-  fetchChangelog: async () => {
-    if (get()._changelogFetched) return;
-    set({ _changelogFetched: true, changelogLoading: true });
-    const { data, error } = await supabase
-      .from('changelog_entries')
-      .select('id, title, kind, compare_url, created_at')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    if (error) console.warn('[store] changelog fetch failed:', error.message);
-    set({ changelogEntries: data || [], changelogLoading: false });
-  },
-  markChangelogSeen: () => {
-    const now = new Date().toISOString();
-    try { localStorage.setItem('changelogSeenAt', now); } catch { /* private mode */ }
-    set({ changelogSeenAt: now });
-  },
+  ...createShellSlice(set, get),
+  ...createHccWorklistFiltersSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
@@ -2700,11 +881,12 @@ export const useAppStore = create((set, get) => ({
         )
       ),
     }));
-    persistHccMemberDetails(memberId);
-    useAppStore.getState().addActivityEntry({
+    const updatedMember = get().hccMembers.find(m => m.id === memberId);
+    persistHccMemberDetails(memberId, updatedMember);
+    get().addActivityEntry({
       _memberId: memberId,
       t: 'delete_dos',
-      by: 'You', role: useAppStore.getState().hccUserRole || 'Support',
+      by: 'You', role: get().hccUserRole || 'Support',
       dos: dosDate,
       headline: `Deleted DOS ${dosDate}`,
     });
@@ -6764,19 +4946,18 @@ export const useAppStore = create((set, get) => ({
     set({ activeFilters: {}, currentPage: 1 });
   },
   setActiveSubnavList: (list) => {
+    const normalized = normalizeWorklistLabel(list);
     const from = get().activeSubnavList;
-    if (from !== list) track('nav.list_changed', { from, to: list });
+    if (from !== normalized) track('nav.list_changed', { from, to: normalized });
     // Any explicit list change pins the session — fetchWorklistOrder's
     // top-of-list auto-landing resets this flag after its own call.
     // TOC is the standalone queue worklist; TCM keeps the Worklist / Queue tabs.
-    const tabPatch = list === 'TOC IP' ? { activeTab: 'toc-queue' }
-      : list === 'TCM' ? { activeTab: 'toc-worklist' }
+    const tabPatch = normalized === 'TOC IP' ? { activeTab: 'toc-queue' }
+      : normalized === 'TCM' ? { activeTab: 'toc-worklist' }
       : {};
-    set({ activeSubnavList: list, currentPage: 1, _subnavNavigated: true, ...tabPatch });
+    set({ activeSubnavList: normalized, currentPage: 1, _subnavNavigated: true, ...tabPatch });
     updateHash(get);
-    // First time we land on the HCC list with no filters yet, seed the
-    // role-scoped default queue so users don't stare at the full worklist.
-    if (list === 'HCC') {
+    if (normalized === 'HCC') {
       const s = get();
       const hasNoFilters = !s.hccFilters || Object.keys(s.hccFilters).length === 0;
       const hasNoSaved = !s.activeSavedIdByList?.HCC;
@@ -7736,7 +5917,7 @@ export const useAppStore = create((set, get) => ({
         [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
       },
     }));
-    persistHedisGaps(memberId);
+    persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
     persistCaregapActivityInsert(memberId, entry);
   },
   updateGapAssignee: (memberId, gapCode, nextAssignee) => {
@@ -7769,7 +5950,7 @@ export const useAppStore = create((set, get) => ({
         [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
       },
     }));
-    persistHedisGaps(memberId);
+    persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
     persistCaregapActivityInsert(memberId, entry);
   },
   bulkUpdateGapStatuses: (memberId, updates, { assignee } = {}) => {
@@ -7785,7 +5966,7 @@ export const useAppStore = create((set, get) => ({
         }
       ),
     }));
-    persistHedisGaps(memberId);
+    persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
   },
 
   // Open a NEW HEDIS gap on a member natively inside Fold, distinct
@@ -7823,7 +6004,7 @@ export const useAppStore = create((set, get) => ({
       }),
     }));
     if (created) {
-      persistHedisGaps(memberId);
+      persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
       const entry = {
         id: Date.now(),
         at: new Date().toISOString(),
@@ -10234,49 +8415,7 @@ export const useAppStore = create((set, get) => ({
   selectAllHcc: (ids) => set({ selectedHccIds: ids }),
   clearHccSelected: () => set({ selectedHccIds: [] }),
 
-  // ─── HCC worklist sub-header state ───
-  // (list title is no longer stored — the tab bar derives it from
-  //  activeSubnavList so it always matches the SubNav worklist name)
-  hccDueDateFilter: null, // null | 'Overdue' | 'Due Today' | 'Due This Week' | 'Due Next Week' | 'Due More Than 2 Weeks'
-  setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat, currentPage: 1 }),
-
-  // ─── HCC worklist filter state ───
-  // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
-  // Hydrated from the active saved filter so a reload keeps the applied view.
-  hccFilters: hydrateListFilters('HCC'),
-  setHccFilter: (k, vals) => {
-    track('hcc.filter_applied', { filterKey: k, filterValue: Array.isArray(vals) ? vals.join(',') : vals });
-    set(s => {
-      const next = { ...s.hccFilters };
-      if (!vals || !vals.length) delete next[k];
-      else next[k] = vals;
-      // Changing a filter detaches us from any "applied saved filter" highlight
-      // and jumps back to page 1 in the same atomic set() — the previous
-      // useEffect-in-HccWorklistTable pattern raced with the user's own
-      // pagination clicks (see docs comment there).
-      return { hccFilters: next, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC'), currentPage: 1 };
-    });
-  },
-  clearHccFilters: () => {
-    track('hcc.filters_cleared_all');
-    set(s => ({ hccFilters: {}, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC'), currentPage: 1 }));
-  },
-
-  // Which filter chip keys appear in the chip row. The MoreFiltersPopover
-  // toggles entries in this set. Initialized to the primary keys on first read.
-  hccVisibleFilterKeys: null, // null → auto-fit one row from PRIMARY (FilterChipBar)
-  toggleHccVisibleFilter: (k) => set(s => {
-    const current = s.hccVisibleFilterKeys
-      ? new Set(s.hccVisibleFilterKeys)
-      : new Set(['my','rl','coh','g','open','chart','supS','cdrS','r1s','dec']);
-    if (current.has(k)) current.delete(k); else current.add(k);
-    return { hccVisibleFilterKeys: [...current] };
-  }),
-  // Explicit setter — FilterChipBar computes the next visible set from the
-  // current *effective* (auto-fit) set so toggling from More Filters is
-  // consistent whether or not the user has customized before.
-  setHccVisibleFilterKeys: (list) => set({ hccVisibleFilterKeys: [...list] }),
-  clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
+  // HCC worklist filter / column prefs → hccWorklistFiltersSlice.js
 
   // ─── HEDIS worklist filter state ───
   // Same shape as hccFilters — `{ [filterKey]: string[] }`. The store's
@@ -10318,7 +8457,7 @@ export const useAppStore = create((set, get) => ({
   // HEDIS, High Utilizers, DM). Each entry: { id, name, filters }. Persisted
   // to localStorage so users keep their saved views across reloads.
   //
-  // The per-list filter STATE lives elsewhere (hccFilters for HCC,
+  // The per-list filter STATE lives elsewhere (hccFilters in hccWorklistFiltersSlice,
   // activeFilters for TOC and other generic lists). LIST_FILTER_KEY below
   // tells the store which slice to read/write for each list.
   savedFiltersByList: readSavedFiltersByList(),
@@ -10380,67 +8519,6 @@ export const useAppStore = create((set, get) => ({
       try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
       return { [key]: { ...f.filters }, activeSavedIdByList: nextActive };
     });
-  },
-
-  // Thin HCC-specific aliases so the existing FilterChipBar's "Save Filter"
-  // button and any other HCC-only callers keep working without rewrites.
-  // (Getters on the state object are not reactive in Zustand — components
-  // that need to subscribe should read `savedFiltersByList.HCC` directly.)
-  saveHccFilter: (name) => useAppStore.getState().saveSavedFilter('HCC', name),
-  renameHccSavedFilter: (id, name) => useAppStore.getState().renameSavedFilter('HCC', id, name),
-  deleteHccSavedFilter: (id) => useAppStore.getState().deleteSavedFilter('HCC', id),
-  applyHccSavedFilter: (id) => useAppStore.getState().applySavedFilter('HCC', id),
-
-  // Column visibility — array of column keys that are hidden. Sticky Member/Actions
-  // columns are not toggleable so they never appear here. Persisted to
-  // localStorage so the user's column config survives reload (matches the
-  // savedFiltersByList / activeSavedIdByList pattern already used in this store).
-  hccHiddenCols: _readJson('hccHiddenCols', []),
-  toggleHccColumn: (k) => {
-    track('hcc.column_toggled', { column: k });
-    set(s => {
-      const next = new Set(s.hccHiddenCols);
-      if (next.has(k)) next.delete(k); else next.add(k);
-      const arr = [...next];
-      try { localStorage.setItem('hccHiddenCols', JSON.stringify(arr)); } catch {/* */}
-      return { hccHiddenCols: arr };
-    });
-  },
-  clearHccHiddenCols: () => {
-    try { localStorage.setItem('hccHiddenCols', JSON.stringify([])); } catch {/* */}
-    set({ hccHiddenCols: [] });
-  },
-
-  // Column ordering — array of column keys in the user's preferred order.
-  // Empty array means "use HCC_COLUMNS default order". Drag-to-reorder in the
-  // Show Columns popover writes here; HccWorklistTable + ColumnConfigPopover
-  // apply this order via `orderColumns(HCC_COLUMNS, hccColumnOrder)`. Also
-  // persisted to localStorage.
-  hccColumnOrder: _readJson('hccColumnOrder', []),
-  reorderHccColumns: (fromKey, toKey) => set(s => {
-    if (!fromKey || !toKey || fromKey === toKey) return {};
-    track('hcc.columns_reordered', { from: fromKey, to: toKey });
-    // Seed the order from the static default the first time we move anything.
-    const base = s.hccColumnOrder.length
-      ? [...s.hccColumnOrder]
-      : (s._hccDefaultColumnKeys || []);
-    if (!base.length) return {};
-    const from = base.indexOf(fromKey);
-    const to = base.indexOf(toKey);
-    if (from < 0 || to < 0) return {};
-    base.splice(to, 0, base.splice(from, 1)[0]);
-    try { localStorage.setItem('hccColumnOrder', JSON.stringify(base)); } catch {/* */}
-    return { hccColumnOrder: base };
-  }),
-  // Stash the default key order once at app boot so reorderHccColumns can seed
-  // itself without importing columns.js (avoids a circular dep).
-  _hccDefaultColumnKeys: [],
-  setHccDefaultColumnKeys: (keys) => set(s => (
-    s._hccDefaultColumnKeys.length ? {} : { _hccDefaultColumnKeys: keys }
-  )),
-  clearHccColumnOrder: () => {
-    try { localStorage.setItem('hccColumnOrder', JSON.stringify([])); } catch {/* */}
-    set({ hccColumnOrder: [] });
   },
 
   // ── Generic per-worklist column prefs (Supabase + localStorage) ──
@@ -11564,7 +9642,7 @@ export const useAppStore = create((set, get) => ({
   // Batches created during the CURRENT ICD-Creation session so the right
   // panel's "Records" list only shows what this user just added — not
   // every historical batch from prior reloads.
-  icdCreationSessionBatchIds: _readJson('icdCreationSessionBatchIds', []),
+  icdCreationSessionBatchIds: readSessionJson('icdCreationSessionBatchIds', []),
   openIcdCreation: () => {
     sessionStorage.setItem('icdCreationOpen', '1');
     sessionStorage.setItem('icdCreationSessionBatchIds', '[]');
@@ -11721,7 +9799,7 @@ export const useAppStore = create((set, get) => ({
     };
     set(s => ({ hccSftpBatches: [...(s.hccSftpBatches || []), entry] }));
     // Debounced: fires one combined toast per burst instead of one per file.
-    _queueHccExtractToast(fileName);
+    queueHccExtractToast(fileName, () => get().showToast);
 
     // Activity log: stamp the intake + OCR-start events so the History
     // drawer's Documents tab can surface this batch even while OCR is
@@ -11856,7 +9934,7 @@ export const useAppStore = create((set, get) => ({
   // When set, the review drawer aggregates pending encounters across ALL
   // listed batches and paginates by patient across them (ICD Creation
   // "Review" flow). null → single-batch mode (SFTP bell-notification flow).
-  hccReviewSourceBatchIds: _readJson('hccReviewSourceBatchIds', null),
+  hccReviewSourceBatchIds: readSessionJson('hccReviewSourceBatchIds', null),
   openHccSftpReview: () => set(s => {
     const activeId = s.hccSftpActiveBatchId
       || (s.hccSftpBatches || []).find(b => b.status === 'done')?.id
@@ -12605,7 +10683,7 @@ export const useAppStore = create((set, get) => ({
           reason: 'prior DOS already completed',
         },
       });
-      persistHccMemberDetails(memberId);
+      persistHccMemberDetails(memberId, get().hccMembers.find(m => m.id === memberId));
       return { kind: 'relatedNew', memberId, dosDate: newDosDate };
     }
 
@@ -12660,7 +10738,7 @@ export const useAppStore = create((set, get) => ({
           payload:   { icd, dos: enc.dos, patientName: member.name },
         });
       });
-      persistHccMemberDetails(memberId);
+      persistHccMemberDetails(memberId, get().hccMembers.find(m => m.id === memberId));
       return { kind: 'updated', memberId, dosDate: enc.dos };
     }
 
@@ -12716,7 +10794,7 @@ export const useAppStore = create((set, get) => ({
       scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
       payload:   { patientName: member.name, dos: enc.dos },
     });
-    persistHccMemberDetails(memberId);
+    persistHccMemberDetails(memberId, get().hccMembers.find(m => m.id === memberId));
     return { kind: 'created', memberId, dosDate: enc.dos };
   },
 
@@ -13453,8 +11531,7 @@ export const useAppStore = create((set, get) => ({
     track('campaign.run_now', { campaignId: id });
     // Flush pending debounced save synchronously so we don't lose the latest
     // field edit racing with this request.
-    const pending = _campaignSaveTimers.get(id);
-    if (pending) { clearTimeout(pending); _campaignSaveTimers.delete(id); }
+    cancelScheduledCampaignSave(id);
     const { error } = await supabase
       .from('campaigns')
       .update({ section: 'running', enabled: true })
@@ -13523,8 +11600,7 @@ export const useAppStore = create((set, get) => ({
 
     // Flush any pending debounced field save so the audience we resolve
     // reflects the latest edit.
-    const pending = _campaignSaveTimers.get(id);
-    if (pending) { clearTimeout(pending); _campaignSaveTimers.delete(id); }
+    cancelScheduledCampaignSave(id);
 
     let recipients = [];
     try {
@@ -13635,7 +11711,7 @@ export const useAppStore = create((set, get) => ({
     // by deleteCampaign / deleteCampaignsBulk / duplicateCampaign /
     // openContentEmailBuilder(null).
     const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
-    const cached = _contentEmailsCache.get(cacheKey);
+    const cached = contentEmailsCache.get(cacheKey);
     const now = Date.now();
 
     if (cached) {
@@ -13727,7 +11803,7 @@ export const useAppStore = create((set, get) => ({
     const total = count || 0;
     // Store the freshly-revalidated data in the cache so the next visit at
     // this same key returns immediately.
-    _contentEmailsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    contentEmailsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
     set({
       contentEmails: rows,
       contentEmailsTotal: total,
@@ -13772,7 +11848,7 @@ export const useAppStore = create((set, get) => ({
       }
       campaign = campaignRowToJs(data);
       set(s => ({ campaigns: [...s.campaigns, campaign] }));
-      _invalidateContentEmailsCache();
+      invalidateContentEmailsCache();
     }
     // Clear any stale campaign-builder takeover so the URL routes through
     // settings/content and closeEmailBuilder lands back on the email list.
@@ -13814,7 +11890,7 @@ export const useAppStore = create((set, get) => ({
     }
     const fresh = campaignRowToJs(copy);
     set(s => ({ campaigns: [...s.campaigns, fresh] }));
-    _invalidateContentEmailsCache();
+    invalidateContentEmailsCache();
     get().showToast?.('Email duplicated');
     return fresh;
   },
@@ -13841,7 +11917,7 @@ export const useAppStore = create((set, get) => ({
         contentEmailsTotal: Math.max(0, s.contentEmailsTotal - removed),
       };
     });
-    _invalidateContentEmailsCache();
+    invalidateContentEmailsCache();
     get().showToast?.(`${ids.length} email${ids.length === 1 ? '' : 's'} deleted`);
     return true;
   },
@@ -13862,7 +11938,7 @@ export const useAppStore = create((set, get) => ({
         contentEmailsTotal: Math.max(0, s.contentEmailsTotal - (wasListed ? 1 : 0)),
       };
     });
-    _invalidateContentEmailsCache();
+    invalidateContentEmailsCache();
     get().showToast?.('Email deleted');
     return true;
   },
@@ -13891,7 +11967,7 @@ export const useAppStore = create((set, get) => ({
 
   fetchContentForms: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
     const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
-    const cached = _contentFormsCache.get(cacheKey);
+    const cached = contentFormsCache.get(cacheKey);
     const now = Date.now();
     if (cached) {
       set({ contentForms: cached.rows, contentFormsTotal: cached.total, contentFormsLoading: false });
@@ -13934,7 +12010,7 @@ export const useAppStore = create((set, get) => ({
     // against a local draft.
     if (error && (error.code === '42P01' || error.code === 'PGRST205' || error.code === '42703')) {
       console.warn('[fetchContentForms] forms table missing — run supabase/forms_migration.sql');
-      _contentFormsCache.set(cacheKey, { rows: [], total: 0, fetchedAt: Date.now() });
+      contentFormsCache.set(cacheKey, { rows: [], total: 0, fetchedAt: Date.now() });
       set({ contentForms: [], contentFormsTotal: 0, contentFormsLoading: false });
       return;
     }
@@ -13945,7 +12021,7 @@ export const useAppStore = create((set, get) => ({
     }
     const rows = (data || []).map(formRowToJs);
     const total = count || 0;
-    _contentFormsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    contentFormsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
     set({ contentForms: rows, contentFormsTotal: total, contentFormsLoading: false });
   },
 
@@ -14038,7 +12114,7 @@ export const useAppStore = create((set, get) => ({
         }
       } else {
         form = formRowToJs(data);
-        _invalidateContentFormsCache();
+        invalidateContentFormsCache();
       }
     }
     // Always open on the Edit tab; a refresh into a specific tab is applied
@@ -14194,7 +12270,7 @@ export const useAppStore = create((set, get) => ({
       get().showToast?.('Could not save form');
       return false;
     }
-    _invalidateContentFormsCache();
+    invalidateContentFormsCache();
     set({ formBuilderForm: formRowToJs(data) });
     if (!opts.silent) get().showToast?.('Form saved');
     return true;
@@ -14220,7 +12296,7 @@ export const useAppStore = create((set, get) => ({
       get().showToast?.('Could not duplicate form');
       return null;
     }
-    _invalidateContentFormsCache();
+    invalidateContentFormsCache();
     get().showToast?.('Form duplicated');
     return formRowToJs(copy);
   },
@@ -14240,7 +12316,7 @@ export const useAppStore = create((set, get) => ({
         contentFormsTotal: Math.max(0, s.contentFormsTotal - (wasListed ? 1 : 0)),
       };
     });
-    _invalidateContentFormsCache();
+    invalidateContentFormsCache();
     get().showToast?.('Form deleted');
     return true;
   },
@@ -14264,7 +12340,7 @@ export const useAppStore = create((set, get) => ({
         contentFormsTotal: Math.max(0, s.contentFormsTotal - removed),
       };
     });
-    _invalidateContentFormsCache();
+    invalidateContentFormsCache();
     get().showToast?.(`${ids.length} form${ids.length === 1 ? '' : 's'} deleted`);
     return true;
   },

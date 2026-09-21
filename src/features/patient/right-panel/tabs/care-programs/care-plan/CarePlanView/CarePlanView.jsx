@@ -1,303 +1,115 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon } from '../../../../../../../components/Icon/Icon';
-import { AddIconMinimalist } from '../../../../../../../components/Icon/AddIconMinimalist';
-import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
-import { ActivityLog } from '../../../../../../../components/ActivityLog/ActivityLog';
-import { Button } from '../../../../../../../components/Button/Button';
-import { Input } from '../../../../../../../components/Input/Input';
-import { Textarea } from '../../../../../../../components/Textarea/Textarea';
-import { Drawer } from '../../../../../../../components/Drawer/Drawer';
-import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPopover';
-import { SelectAssigneeModal } from '../../../../../../../components/SelectAssigneeModal/SelectAssigneeModal';
-import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
-import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { Icon } from '@/components/Icon/Icon';
+import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
+import { ActionButton } from '@/components/ActionButton/ActionButton';
+import { MenuPopover } from '@/components/MenuPopover/MenuPopover';
 import { goalCascade, barrierGoalIdsOf } from '../lib/carePlanGoalCascade';
-import { RemoveGoalDialog } from '../drawers/RemoveGoalDialog';
-import { Select } from '../../../../../../../components/Select/Select';
-import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
-import { useAppStore } from '../../../../../../../store/useAppStore';
-import { ChronicConditionSelect } from '../../../../../../settings/care-plan-library/shared';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../../../../components/ShadcnDialog/ShadcnDialog';
-import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
-import { AddBarriersDrawer } from '../../../../../../settings/care-plan-library/barriers/AddBarriersDrawer/AddBarriersDrawer';
-import { BarrierDrawer } from '../../../../../../settings/care-plan-library/barriers/BarrierDrawer/BarrierDrawer';
-import { BarrierDetailDrawer } from '../drawers/BarrierDetailDrawer/BarrierDetailDrawer';
-import { AddInterventionDrawer } from '../drawers/AddInterventionDrawer/AddInterventionDrawer';
-import { INTERVENTION_EDITORS } from '../../../../../../settings/care-plan-library/interventions';
-import { AddTaskDrawer } from '../../../../../../tasks/AddTaskDrawer';
+import { Select } from '@/components/Select/Select';
+import { FilterChip } from '@/components/FilterChip/FilterChip';
+import {
+  GBI_STATUSES,
+  PRIORITY_LABELS,
+  GbiSectionHead,
+  SectionEmptyState,
+} from './CarePlanViewSections';
+import { useCarePlanViewData } from './useCarePlanViewData';
+import { useCarePlanViewFetchEffects } from './useCarePlanViewFetchEffects';
+import { useCarePlanViewPanelRequest } from './useCarePlanViewPanelRequest';
+import { useCarePlanOpenSections } from './useCarePlanOpenSections';
+import { useCarePlanNoteDrawer } from './useCarePlanNoteDrawer';
+import { useCarePlanViewFilters } from './useCarePlanViewFilters';
+import { linkedForGoal, linkedForChild } from './carePlanLinkedItems';
 import {
   CARE_PLAN_INTERVENTION_MENU,
   buildInterventionRecordFromConfig,
 } from '../lib/carePlanInterventionMenu';
-import { CarePlanShareDrawer } from '../drawers/CarePlanShareDrawer/CarePlanShareDrawer';
-import { CarePlanHistoryDrawer } from '../drawers/CarePlanHistoryDrawer/CarePlanHistoryDrawer';
-import { CarePlanVersionsDrawer } from '../drawers/CarePlanVersionsDrawer/CarePlanVersionsDrawer';
-import { CarePlanLinkDrawer } from '../drawers/CarePlanLinkDrawer/CarePlanLinkDrawer';
-import { CarePlanTrendsDrawer } from '../drawers/CarePlanTrendsDrawer/CarePlanTrendsDrawer';
-import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawer';
-import { LinkExistingItemsPopover } from '../drawers/GoalPreviewDrawer/LinkExistingItemsPopover';
-import { InterventionPreviewDrawer } from '../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { deriveGoalTableFields } from '../lib/goalMetrics';
 import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
-import { GBI_STATUS_TONE } from '../tables/carePlanTableShared';
-import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
-import { SimpleTableSkeleton } from '../../../../../../../components/SimpleTableSkeleton/SimpleTableSkeleton';
-import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
-import { BulkBar } from '../../../../../../../components/BulkBar/BulkBar';
-import { Badge } from '../../../../../../../components/Badge/Badge';
-import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
+import { RingEmptyState } from '@/components/RingEmptyState/RingEmptyState';
+import { SimpleTableSkeleton } from '@/components/SimpleTableSkeleton/SimpleTableSkeleton';
+import { DownChevronIcon } from '@/components/Icon/DownChevronIcon';
+import { BulkBar } from '@/components/BulkBar/BulkBar';
+import { Badge } from '@/components/Badge/Badge';
 import { CarePlanDuplicateGroup } from '../DuplicateFlag/CarePlanDuplicateGroup';
+import { CarePlanViewDrawers } from './CarePlanViewDrawers';
+import { CarePlanViewOverlays } from './CarePlanViewOverlays';
 import { AppliedTemplateStrip } from './AppliedTemplateStrip';
+import { addGoalsFromPicker, addBarriersFromPicker } from './carePlanPickerHandlers';
 import {
-  barrierPayloadFromTemplateEntry,
-  goalPayloadFromTemplateEntry,
-  interventionPayloadFromTemplateEntry,
-} from '../lib/carePlanTemplateApply';
+  createUndoGoalCascadeAction,
+  createUndoToastAction,
+  deleteGbiById as deleteGbiByIdAction,
+  saveGbiPriority,
+  saveGbiStatus,
+} from './carePlanGbiActions';
+import { useCarePlanBulkSelection } from './useCarePlanBulkSelection';
 import styles from './CarePlanView.module.css';
 
-const EMPTY_ARR = [];
-
-// The statuses a goal or intervention can move through. Kept flat and shared so
-// the pill menu and the intervention drawer offer the same vocabulary.
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
-const PRIORITIES = ['high', 'medium', 'low'];
-// Capitalized labels for the priority filter chip (values compare case-insensitively).
-const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
-
-/** Collapsible GBI section header: title · divider · add action · [right cluster].
- *  `rightAccessory` and `trailingEnd` share the right-aligned slot: accessory
- *  first (used by Goals/Interventions/Barriers for the "N possible duplicates"
- *  badge), then trailing content (Trends button on Goals). */
-function GbiSectionHead({ title, count, open, onToggle, addButton, trailingEnd, rightAccessory }) {
-  const hasRight = !!rightAccessory || !!trailingEnd;
-  return (
-    <div className={`${styles.sectionHead} ${styles.gbiSectionHead}`}>
-      <SectionTitle label={title} count={count} open={open} onToggle={onToggle} />
-      <span className={styles.sectionActionDivider} aria-hidden="true" />
-      {addButton}
-      {hasRight ? (
-        <div className={styles.gbiSectionHeadEnd}>
-          {rightAccessory}
-          {trailingEnd}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-function SectionTitle({ label, count, open, onToggle }) {
-  return (
-    <button type="button" className={styles.sectionToggle} onClick={onToggle} aria-expanded={open}>
-      <DownChevronIcon
-        size={16}
-        color="var(--neutral-400)"
-        className={`${styles.sectionChevron} ${open ? '' : styles.sectionChevronClosed}`}
-      />
-      <span className={styles.sectionTitle}>{label}</span>
-      {count > 0 ? <span className={styles.sectionCount}>{count}</span> : null}
-    </button>
-  );
-}
-
-/** Per-section dashed empty card (Figma SNP-Story 8430:288488). */
-function SectionEmptyState({ icon, label, onAdd }) {
-  return (
-    <div className={styles.sectionEmpty}>
-      <RingEmptyState icon={icon} label={label} iconSize={31} />
-      <div className={styles.sectionEmptyActions}>
-        <Button
-          variant="tertiary"
-          size="L"
-          leadingIconElement={<AddIconMinimalist size={16} />}
-          onClick={onAdd}
-        >
-          Add New
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function CarePlanView({ patientId, program }) {
-  const fetchPatientCarePlan = useAppStore(s => s.fetchPatientCarePlan);
-  const savePatientCarePlanGoal = useAppStore(s => s.savePatientCarePlanGoal);
-  const deletePatientCarePlanGoal = useAppStore(s => s.deletePatientCarePlanGoal);
-  const savePatientCarePlanIntervention = useAppStore(s => s.savePatientCarePlanIntervention);
-  const deletePatientCarePlanIntervention = useAppStore(s => s.deletePatientCarePlanIntervention);
-  const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
-  const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
-  const refreshCarePlanDuplicates = useAppStore(s => s.refreshCarePlanDuplicates);
-  const dismissCarePlanDuplicate = useAppStore(s => s.dismissCarePlanDuplicate);
-  const savePatientCarePlanAsTemplate = useAppStore(s => s.savePatientCarePlanAsTemplate);
-  const signCarePlan = useAppStore(s => s.signCarePlan);
-  const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
-  const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
-  const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
-  const showToast = useAppStore(s => s.showToast);
-  // A patient loaded via a worklist deep link may live in a member slice
-  // (hcc / awv / ccm / snp / hedis) rather than in the plain patients array,
-  // so fall through every slice the outer PatientDetailView also checks.
-  const patientName = useAppStore(s => {
-    const match = m => m && (m.id === patientId || String(m.memberId) === String(patientId));
-    const src = (s.patients || []).find(match)
-      || (s.hccMembers || []).find(match)
-      || (s.awvMembers || []).find(match)
-      || (s.ccmWorklistMembers || []).find(match)
-      || (s.snpWorklistMembers || []).find(match)
-      || (s.hedisMembers || []).find(match)
-      || (s.allPatients || []).find(match);
-    return src?.name;
-  });
-  const platformUsers = useAppStore(s => s.platformUsers);
-  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
-  useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
-
-  // Patient problem list drives the Add Goals drawer's condition-based
-  // recommendations (and its "Added goals" group reads the plan's own goals).
-  const patientProblems = useAppStore(s => s.patientProblems[patientId] || EMPTY_ARR);
-  const fetchPatientProblems = useAppStore(s => s.fetchPatientProblems);
-  useEffect(() => { if (patientId) fetchPatientProblems(patientId); }, [patientId, fetchPatientProblems]);
-  const carePlanShareRequest = useAppStore(s => s.carePlanShareRequest);
-  const clearCarePlanShareRequest = useAppStore(s => s.clearCarePlanShareRequest);
-  // Bulk-select mode is toggled from the program-detail content header.
-  const bulkMode = useAppStore(s => s.carePlanBulkMode);
-  const setCarePlanBulkMode = useAppStore(s => s.setCarePlanBulkMode);
-  const carePlanPanelRequest = useAppStore(s => s.carePlanPanelRequest);
-  const clearCarePlanPanelRequest = useAppStore(s => s.clearCarePlanPanelRequest);
-  const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
-  const carePlanGoals = useAppStore(s => s.carePlanGoals);
-  const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
-  const libraryGoals = useAppStore(s => s.carePlanGoals);
-  const repairCarePlanGoalLinks = useAppStore(s => s.repairCarePlanGoalLinks);
-  const syncAppliedCarePlanTemplates = useAppStore(s => s.syncAppliedCarePlanTemplates);
-  const applyPatientCarePlanTemplates = useAppStore(s => s.applyPatientCarePlanTemplates);
-  const savePatientCarePlanConditions = useAppStore(s => s.savePatientCarePlanConditions);
-
-  const key = patientId && program ? `${patientId}::${program.id}` : null;
-  const live = useAppStore(s => (key ? s.patientCarePlans[key] : null));
-  const auditAll = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
-  useEffect(() => {
-    if (patientId && program?.id) fetchCarePlanAudit?.(patientId, program.id);
-  }, [patientId, program?.id, fetchCarePlanAudit]);
-  // Latest plan-level note (Figma 2562:60104): sorted by createdAt desc, we
-  // show only the newest one on the plan surface; every prior note stays in
-  // the audit log as the change history.
-  const planNoteHistory = useMemo(() => (
-    auditAll
-      .filter(a => a.action === 'note' && (a.entityType === 'plan' || !a.entityType))
-      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))
-  ), [auditAll]);
-  // If the most-recent plan-note lifecycle event is a "clear", we suppress
-  // the card until the user adds a new note. The full history — including
-  // every past note and every clear — stays in the audit log.
-  const latestClearAt = useMemo(() => {
-    const clears = auditAll
-      .filter(a => a.action === 'note_cleared' && (a.entityType === 'plan' || !a.entityType))
-      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
-    return clears[0]?.createdAt || null;
-  }, [auditAll]);
-  const rawLatestNote = planNoteHistory[0] || null;
-  const latestPlanNote = (rawLatestNote && latestClearAt && new Date(latestClearAt) > new Date(rawLatestNote.createdAt))
-    ? null
-    : rawLatestNote;
-  // Shape care-plan notes for the shared ActivityLog primitive — the
-  // "comment" variant renders the author + timestamp meta line and a
-  // pre-wrap body, which matches the Figma note-timeline treatment.
-  const noteTimelineEntries = useMemo(() => (
-    planNoteHistory.map(a => {
-      const created = a.createdAt ? new Date(a.createdAt) : null;
-      return {
-        id: a.id,
-        t: 'comment',
-        date: created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
-        time: created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
-        by: a.actor || 'Unknown',
-        title: 'Added a Note',
-        commentBody: a.detail || '',
-      };
-    })
-  ), [planNoteHistory]);
-  const duplicateFlags = useAppStore(s => (key ? s.carePlanDuplicateFlags[key] : null)) || EMPTY_ARR;
-  // First-load skeleton: true while the initial fetch is in flight (before the
-  // plan resolves), false once loaded.
-  const carePlanLoading = useAppStore(s => (key ? !!s.patientCarePlanLoading[key] : false));
-
-  const fetchCarePlanLinks = useAppStore(s => s.fetchCarePlanLinks);
+  const {
+    key,
+    live,
+    auditAll,
+    duplicateFlags,
+    carePlanLoading,
+    latestPlanNote,
+    noteTimelineEntries,
+    patientName,
+    patientProblems,
+    platformUsers,
+    bulkMode,
+    setCarePlanBulkMode,
+    carePlanShareRequest,
+    clearCarePlanShareRequest,
+    carePlanPanelRequest,
+    clearCarePlanPanelRequest,
+    carePlanTemplates,
+    libraryGoals,
+    fetchPatientCarePlan,
+    fetchCarePlanLinks,
+    fetchCarePlanLibrary,
+    refreshCarePlanDuplicates,
+    dismissCarePlanDuplicate,
+    savePatientCarePlanAsTemplate,
+    signCarePlan,
+    addCarePlanNote,
+    logCarePlanAudit,
+    showToast,
+    savePatientCarePlanGoal,
+    deletePatientCarePlanGoal,
+    savePatientCarePlanIntervention,
+    deletePatientCarePlanIntervention,
+    savePatientCarePlanBarrier,
+    deletePatientCarePlanBarrier,
+    repairCarePlanGoalLinks,
+    syncAppliedCarePlanTemplates,
+    applyPatientCarePlanTemplates,
+    savePatientCarePlanConditions,
+  } = useCarePlanViewData(patientId, program);
   const [linkOwner, setLinkOwner] = useState(null); // null | { kind, item }
   // Linked-items preview data (Figma SNP-Story 2632:112808). A goal links its
   // interventions/barriers/automations (by goalId); a child row links its goal.
   const programBadge = program?.name ? [program.name] : (program?.code ? [program.code] : []);
-  // A barrier is many-to-many with goals via `goalIds` (join table); fall
-  // back to the legacy `goalId` column when the array is empty so
-  // pre-migration data still resolves. Interventions and automations are
-  // still 1:1 with a goal.
-  const barrierGoalIds = (b) => {
-    if (Array.isArray(b.goalIds) && b.goalIds.length > 0) return b.goalIds;
-    return b.goalId ? [b.goalId] : [];
-  };
-  const linkedForGoal = (g) => ({
-    programs: programBadge,
-    interventions: (live?.interventions || []).filter(i => i.goalId === g.id).map(i => ({ id: i.id, icon: i.icon, title: i.title })),
-    barriers: (live?.barriers || []).filter(b => barrierGoalIds(b).includes(g.id)).map(b => ({ id: b.id, title: b.title })),
-    automations: (live?.automations || []).filter(a => a.goalId === g.id).map(a => ({ id: a.id, title: a.title })),
+  const linkedForGoalRow = (g) => linkedForGoal(g, live, programBadge);
+  const linkedForChildRow = (item) => linkedForChild(item, live, programBadge);
+
+  useCarePlanViewFetchEffects({
+    patientId,
+    program,
+    live,
+    libraryGoals,
+    fetchPatientCarePlan,
+    fetchCarePlanLinks,
+    refreshCarePlanDuplicates,
+    fetchCarePlanLibrary,
+    syncAppliedCarePlanTemplates,
+    repairCarePlanGoalLinks,
+    clearCarePlanShareRequest,
   });
-  const linkedForChild = (item) => {
-    // A barrier can be linked to several goals; interventions /
-    // automations remain single-goal.
-    const parentGoalIds = Array.isArray(item.goalIds) && item.goalIds.length > 0
-      ? item.goalIds
-      : (item.goalId ? [item.goalId] : []);
-    return {
-      programs: programBadge,
-      goals: (live?.goals || [])
-        .filter(g => parentGoalIds.includes(g.id))
-        .map(g => ({ id: g.id, title: g.title, icon: g.icon })),
-    };
-  };
 
-  useEffect(() => {
-    if (patientId && program?.id) {
-      fetchPatientCarePlan(patientId, program.id);
-      fetchCarePlanLinks(patientId, program.id);
-      // Surface duplicates already sitting on this (and other) plans on load.
-      refreshCarePlanDuplicates(patientId, program);
-    }
-  }, [patientId, program?.id, fetchPatientCarePlan, fetchCarePlanLinks, refreshCarePlanDuplicates]); // eslint-disable-line react-hooks/exhaustive-deps -- program object is stable by id
-
-  useEffect(() => { fetchCarePlanLibrary?.(); }, [fetchCarePlanLibrary]);
-
-  // Reconcile the plan with what it says it carries, once both it and the
-  // library are loaded: first bring in the content of templates applied before
-  // apply carried it, then reattach any loose interventions and barriers.
-  useEffect(() => {
-    if (!patientId || !program?.id || !live?.plan || !libraryGoals?.length) return;
-    (async () => {
-      await syncAppliedCarePlanTemplates(patientId, program);
-      await repairCarePlanGoalLinks(patientId, program);
-    })();
-  }, [patientId, program?.id, live?.plan?.id, libraryGoals?.length]); // eslint-disable-line react-hooks/exhaustive-deps -- runs once per plan, guarded in the store
-
-
-  useEffect(() => {
-    if (!carePlanPanelRequest) return;
-    if (carePlanPanelRequest === 'versions') setVersionsOpen(true);
-    else if (carePlanPanelRequest === 'template') { setTemplateName(''); setTemplateConditions((live?.plan?.conditions || []).map(c => c.label)); setTemplateOpen(true); }
-    else if (carePlanPanelRequest === 'templates') setTemplatesDrawerOpen(true);
-    else if (carePlanPanelRequest === 'history') setHistoryOpen(true);
-    else if (carePlanPanelRequest === 'filter') setFiltersOpen(true);
-    else if (carePlanPanelRequest === 'note') { openNoteDrawer(); }
-    else if (carePlanPanelRequest === 'sign') { setSignNote(''); setSignOpen(true); }
-    else if (carePlanPanelRequest === 'scan-duplicates') { scanForDuplicates(); }
-    clearCarePlanPanelRequest();
-  }, [carePlanPanelRequest, clearCarePlanPanelRequest]); // eslint-disable-line react-hooks/exhaustive-deps -- request handlers are stable
-
-  // A share request that was never opened/closed (e.g. the program was closed
-  // with the flag still set) must not linger and auto-open the drawer next time.
-  useEffect(() => () => clearCarePlanShareRequest(), [clearCarePlanShareRequest]);
-
-  // No persisted plan yet — GBI lists start empty (Figma SNP-Story 8430:288488)
-  // instead of the old local mock preview.
+  // No persisted plan yet
   const usingMock = !live;
   const measurements = live?.measurements || [];
   const data = useMemo(() => (live ? {
@@ -318,19 +130,7 @@ export function CarePlanView({ patientId, program }) {
   const [problemOpen, setProblemOpen] = useState(false);
   const [problemText, setProblemText] = useState('');
   const [trendsOpen, setTrendsOpen] = useState(false);
-  // Collapsible GBI sections (chevron in each section header).
-  // Remember which GBI sections are collapsed across visits (per-device UI pref).
-  const [openSections, setOpenSections] = useState(() => {
-    const fallback = { goals: true, interventions: true, barriers: true, careNote: true };
-    try {
-      const saved = JSON.parse(localStorage.getItem('carePlanOpenSections') || 'null');
-      return saved && typeof saved === 'object' ? { ...fallback, ...saved } : fallback;
-    } catch { return fallback; }
-  });
-  useEffect(() => {
-    try { localStorage.setItem('carePlanOpenSections', JSON.stringify(openSections)); } catch { /* storage unavailable */ }
-  }, [openSections]);
-  const toggleSection = (name) => setOpenSections(s => ({ ...s, [name]: !s[name] }));
+  const { openSections, toggleSection } = useCarePlanOpenSections();
   // Which section's duplicate flags are expanded — { goal: bool, intervention: bool, barrier: bool }.
   // Default collapsed; clicking the section-header duplicates badge toggles the panel.
   const [expandedDuplicates, setExpandedDuplicates] = useState({});
@@ -366,6 +166,74 @@ export function CarePlanView({ patientId, program }) {
   // template. Click again (or another badge) to swap; the "+N more" chip
   // clears it. Null means show everything.
   const [templateFilterId, setTemplateFilterId] = useState(null);
+  const {
+    noteOpen,
+    noteText,
+    setNoteText,
+    noteDiscardOpen,
+    setNoteDiscardOpen,
+    noteDeleteOpen,
+    setNoteDeleteOpen,
+    noteDirty,
+    openNoteDrawer,
+    closeNoteDrawer,
+  } = useCarePlanNoteDrawer(latestPlanNote);
+  const {
+    filtersOpen,
+    setFiltersOpen,
+    filters,
+    setFilter,
+    clearFilters,
+    filtersActive,
+    assigneeOptions,
+    filteredGoals,
+    filteredBarriers,
+    filteredInterventions,
+    planStats,
+    templateGoalCounts,
+  } = useCarePlanViewFilters({
+    data,
+    templateFilterId,
+    carePlanTemplates,
+    libraryGoals,
+  });
+
+  const canEdit = !!(patientId && program);
+  const {
+    selected,
+    bulkMenu,
+    setBulkMenu,
+    bulkDeleteOpen,
+    setBulkDeleteOpen,
+    bulkAssignOpen,
+    setBulkAssignOpen,
+    selectedCount,
+    toggleSelect,
+    clearSelection,
+    selectAllKind,
+    bulkSetStatus,
+    bulkSetPriority,
+    bulkAssign,
+    bulkDelete,
+    gbiCtx,
+  } = useCarePlanBulkSelection({
+    bulkMode,
+    setCarePlanBulkMode,
+    filteredGoals,
+    filteredInterventions,
+    filteredBarriers,
+    patientId,
+    program,
+    savePatientCarePlanGoal,
+    savePatientCarePlanIntervention,
+    savePatientCarePlanBarrier,
+    deletePatientCarePlanGoal,
+    deletePatientCarePlanIntervention,
+    deletePatientCarePlanBarrier,
+    refreshCarePlanDuplicates,
+    showToast,
+  });
+
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateConditions, setTemplateConditions] = useState([]);
@@ -374,142 +242,7 @@ export function CarePlanView({ patientId, program }) {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [signNote, setSignNote] = useState('');
-  const [noteOpen, setNoteOpen] = useState(false);
-  const [noteText, setNoteText] = useState('');
-  // Baseline the textarea against when the drawer opened so we can tell if
-  // the user actually edited before offering the discard confirmation.
-  const [noteBaseline, setNoteBaseline] = useState('');
-  const [noteDiscardOpen, setNoteDiscardOpen] = useState(false);
-  const [noteDeleteOpen, setNoteDeleteOpen] = useState(false);
-  const noteDirty = noteText.trim() !== (noteBaseline || '').trim();
-  const openNoteDrawer = () => {
-    const seed = latestPlanNote?.detail || '';
-    setNoteText(seed);
-    setNoteBaseline(seed);
-    setNoteOpen(true);
-  };
-  const closeNoteDrawer = ({ force = false } = {}) => {
-    if (!force && noteDirty) { setNoteDiscardOpen(true); return; }
-    setNoteOpen(false);
-    setNoteText('');
-    setNoteBaseline('');
-  };
-  // Role/status/priority filter (#39). Goals & barriers have no assignee, so the
-  // assignee filter narrows only interventions; status/priority apply to all.
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState({ status: [], priority: [], assignee: [] });
 
-  const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
-  const clearFilters = () => setFilters({ status: [], priority: [], assignee: [] });
-  const filtersActive = filters.status.length || filters.priority.length || filters.assignee.length;
-
-  const selectAllKind = (kind, rows, checked) => setSelected(prev => ({
-    ...prev,
-    [kind]: checked ? new Set(rows.map(r => r.id)) : new Set(),
-  }));
-
-  const canEdit = !!(patientId && program);
-
-  const assigneeOptions = useMemo(
-    () => [...new Set((data.interventions || []).map(i => i.assignee?.name).filter(Boolean))],
-    [data.interventions],
-  );
-  const matchesSP = (item) =>
-    (!filters.status.length || filters.status.includes(item.status)) &&
-    (!filters.priority.length || filters.priority.map(p => p.toLowerCase()).includes((item.priority || '').toLowerCase()));
-
-  // A goal/intervention/barrier "belongs" to a template when its title
-  // matches one the template seeded — the apply flow dedupes by title, so
-  // the same key is a reliable link back (no persistent template_id
-  // column on the row). Barriers are cloned per-goal, so a barrier
-  // belongs to the template when its goalId points at one of the
-  // template's goals — this covers barriers added later against those
-  // goals too, not just the ones the template itself seeded.
-  const norm = (s) => (s || '').trim().toLowerCase();
-  const templateScope = useMemo(() => {
-    if (!templateFilterId) return null;
-    const t = carePlanTemplates.find(x => x.id === templateFilterId);
-    if (!t) return null;
-    const titlesOf = (list, kind) => new Set((list || []).map(e => {
-      if (kind === 'goals') {
-        const lib = e?.id ? carePlanGoals.find(g => g.id === e.id) : null;
-        return norm(lib?.title || e?.title || '');
-      }
-      return norm(e?.title || '');
-    }).filter(Boolean));
-    const goalTitles = titlesOf(t.goals, 'goals');
-    const goalIdSet = new Set(
-      data.goals.filter(g => goalTitles.has(norm(g.title))).map(g => g.id)
-    );
-    return {
-      goalTitles,
-      interventionTitles: titlesOf(t.interventions),
-      barrierTitles: titlesOf(t.barriers),
-      goalIdSet,
-    };
-  }, [templateFilterId, carePlanTemplates, carePlanGoals, data.goals]);
-  const matchesTemplate = (item, kind) => {
-    if (!templateScope) return true;
-    if (kind === 'barriers') {
-      return templateScope.goalIdSet.has(item.goalId)
-        || templateScope.barrierTitles.has(norm(item.title));
-    }
-    const set = kind === 'goals' ? templateScope.goalTitles : templateScope.interventionTitles;
-    return set.size > 0 && set.has(norm(item.title));
-  };
-
-  const filteredGoals = useMemo(() => data.goals.filter(g => matchesSP(g) && matchesTemplate(g, 'goals')), [data.goals, filters, templateScope]); // eslint-disable-line react-hooks/exhaustive-deps
-  const filteredBarriers = useMemo(() => (data.barriers || []).filter(b => matchesSP(b) && matchesTemplate(b, 'barriers')), [data.barriers, filters, templateScope]); // eslint-disable-line react-hooks/exhaustive-deps
-  const filteredInterventions = useMemo(
-    () => data.interventions.filter(i => matchesSP(i) && matchesTemplate(i, 'interventions') && (!filters.assignee.length || filters.assignee.includes(i.assignee?.name))),
-    [data.interventions, filters, templateScope], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
-  // Rollup for the summary strip: counts, status mix, avg goal progress. Reads
-  // the filtered lists, so picking a template chip (or any filter) restates the
-  // line for what is actually on screen rather than the whole plan.
-  const planStats = useMemo(() => {
-    const goals = filteredGoals, iv = filteredInterventions, br = filteredBarriers;
-    const all = [...goals, ...iv, ...br];
-    const avgProgress = goals.length
-      ? Math.round(goals.reduce((sum, g) => sum + (Number(g.progress) || 0), 0) / goals.length)
-      : 0;
-    // One badge per status actually present, in the table's own order and
-    // tone, rather than a hardcoded Met / In Progress / Overdue trio that hides
-    // everything else on the plan.
-    const counts = new Map();
-    for (const item of all) {
-      if (!item.status) continue;
-      counts.set(item.status, (counts.get(item.status) || 0) + 1);
-    }
-    const statuses = Object.keys(GBI_STATUS_TONE)
-      .filter(status => counts.get(status))
-      .map(status => ({ status, count: counts.get(status), tone: GBI_STATUS_TONE[status] }));
-    return {
-      goals: goals.length,
-      iv: iv.length,
-      br: br.length,
-      total: all.length,
-      statuses,
-      avgProgress,
-    };
-  }, [filteredGoals, filteredInterventions, filteredBarriers]);
-
-  // Badge count: how many of a template's goals are actually on this plan, not
-  // how many its library definition lists. The two differ while a template is
-  // still being reconciled, or when a goal it brought was removed since.
-  const templateGoalCounts = useMemo(() => {
-    const planTitles = new Set(data.goals.map(g => norm(g.title)));
-    const counts = new Map();
-    for (const t of carePlanTemplates) {
-      const titles = new Set((t.goals || []).map((e) => {
-        const lib = e?.id ? carePlanGoals.find(g => g.id === e.id) : null;
-        return norm(lib?.title || e?.title || '');
-      }).filter(Boolean));
-      counts.set(t.id, [...titles].filter(title => planTitles.has(title)).length);
-    }
-    return counts;
-  }, [carePlanTemplates, carePlanGoals, data.goals]);
   const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
   const appliedTemplatePriorities = live?.plan?.appliedTemplatePriorities || {};
   const appliedTemplates = useMemo(() => {
@@ -538,98 +271,6 @@ export function CarePlanView({ patientId, program }) {
     await applyPatientCarePlanTemplates(patientId, program, nextIds);
   };
 
-  // Bulk selection (#7). Selection is per section, over the visible (filtered)
-  // rows; a bulk status change loops the normal save path so each write audits.
-  const [selected, setSelected] = useState({ goal: new Set(), intv: new Set(), barrier: new Set() });
-  const [bulkMenu, setBulkMenu] = useState(null); // { rect, type }
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
-  const selectedCount = selected.goal.size + selected.intv.size + selected.barrier.size;
-  const toggleSelect = (kind, id) => setSelected(prev => {
-    const next = new Set(prev[kind]);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return { ...prev, [kind]: next };
-  });
-  const clearSelection = () => setSelected({ goal: new Set(), intv: new Set(), barrier: new Set() });
-
-  // Leaving bulk mode drops any pending selection; unmounting resets the shared
-  // flag so bulk mode never persists across care plans.
-  useEffect(() => { if (!bulkMode) setSelected({ goal: new Set(), intv: new Set(), barrier: new Set() }); }, [bulkMode]);
-  useEffect(() => () => setCarePlanBulkMode(false), [setCarePlanBulkMode]);
-
-  const bulkSetStatus = async (status) => {
-    setBulkMenu(null);
-    const g = filteredGoals.filter(x => selected.goal.has(x.id));
-    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
-    const br = filteredBarriers.filter(x => selected.barrier.has(x.id));
-    for (const x of g) await savePatientCarePlanGoal(patientId, program, { ...x, status }, x.id);
-    for (const x of iv) await savePatientCarePlanIntervention(patientId, program, { ...x, status }, x.id);
-    for (const x of br) await savePatientCarePlanBarrier(patientId, program, { ...x, status }, x.id);
-    const n = g.length + iv.length + br.length;
-    clearSelection();
-    if (n) showToast(`Updated ${n} item${n === 1 ? '' : 's'} to "${status}"`);
-  };
-
-  const bulkSetPriority = async (priority) => {
-    setBulkMenu(null);
-    const g = filteredGoals.filter(x => selected.goal.has(x.id));
-    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
-    const br = filteredBarriers.filter(x => selected.barrier.has(x.id));
-    for (const x of g) await savePatientCarePlanGoal(patientId, program, { ...x, priority }, x.id);
-    for (const x of iv) await savePatientCarePlanIntervention(patientId, program, { ...x, priority }, x.id);
-    for (const x of br) await savePatientCarePlanBarrier(patientId, program, { ...x, priority }, x.id);
-    const n = g.length + iv.length + br.length;
-    clearSelection();
-    if (n) showToast(`Set ${n} item${n === 1 ? '' : 's'} to ${priority.charAt(0).toUpperCase() + priority.slice(1)} priority`);
-  };
-
-  // Bulk assign applies to selected interventions only (goals/barriers have no assignee).
-  const bulkAssign = async (user) => {
-    setBulkAssignOpen(false);
-    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
-    if (!iv.length) { showToast('Select one or more interventions to assign'); return; }
-    for (const x of iv) await savePatientCarePlanIntervention(patientId, program, { ...x, assignee: { name: user.name, initials: user.initials } }, x.id);
-    clearSelection();
-    showToast(`Assigned ${iv.length} intervention${iv.length === 1 ? '' : 's'} to ${user.name}`);
-  };
-
-  // Re-insert a removed goal/intervention/barrier (undo). Drops the old id so it
-  // saves as a fresh row; derived fields are ignored by the row mappers.
-  const restoreGbi = ({ kind, item }) => {
-    const { id, ...values } = item; // eslint-disable-line no-unused-vars
-    if (kind === 'goal') return savePatientCarePlanGoal(patientId, program, values);
-    if (kind === 'barrier') return savePatientCarePlanBarrier(patientId, program, values);
-    return savePatientCarePlanIntervention(patientId, program, values);
-  };
-  const undoAction = (removed) => ({
-    label: 'Undo',
-    onClick: async () => {
-      for (const r of removed) await restoreGbi(r);
-      refreshCarePlanDuplicates(patientId, program);
-    },
-  });
-
-  const bulkDelete = async () => {
-    setBulkDeleteOpen(false);
-    const g = filteredGoals.filter(x => selected.goal.has(x.id));
-    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
-    const br = filteredBarriers.filter(x => selected.barrier.has(x.id));
-    for (const x of g) await deletePatientCarePlanGoal(patientId, program.id, x.id);
-    for (const x of iv) await deletePatientCarePlanIntervention(patientId, program.id, x.id);
-    for (const x of br) await deletePatientCarePlanBarrier(patientId, program.id, x.id);
-    const n = g.length + iv.length + br.length;
-    clearSelection();
-    if (n) {
-      const removed = [
-        ...g.map(item => ({ kind: 'goal', item })),
-        ...iv.map(item => ({ kind: 'intervention', item })),
-        ...br.map(item => ({ kind: 'barrier', item })),
-      ];
-      showToast(`Removed ${n} item${n === 1 ? '' : 's'}`, { action: undoAction(removed), duration: 6000 });
-      refreshCarePlanDuplicates(patientId, program);
-    }
-  };
-
   const doSign = async () => {
     setSignOpen(false);
     const v = await signCarePlan(patientId, program, signNote.trim());
@@ -653,9 +294,7 @@ export function CarePlanView({ patientId, program }) {
   const doAddNote = async () => {
     const body = noteText.trim();
     if (!body) return;
-    setNoteOpen(false);
-    setNoteText('');
-    setNoteBaseline('');
+    closeNoteDrawer({ force: true });
     await addCarePlanNote(patientId, program, body);
   };
   // The drawer is driven entirely by the store flag — the toolbar button and
@@ -667,17 +306,31 @@ export function CarePlanView({ patientId, program }) {
   const changeStatus = (status) => {
     const { kind, item } = statusMenu;
     setStatusMenu(null);
-    if (kind === 'goal') savePatientCarePlanGoal(patientId, program, { ...item, status }, item.id);
-    else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, { ...item, status }, item.id);
-    else savePatientCarePlanIntervention(patientId, program, { ...item, status }, item.id);
+    saveGbiStatus({
+      kind,
+      item,
+      status,
+      patientId,
+      program,
+      savePatientCarePlanGoal,
+      savePatientCarePlanBarrier,
+      savePatientCarePlanIntervention,
+    });
   };
 
   const changePriority = (priority) => {
     const { kind, item } = priorityMenu;
     setPriorityMenu(null);
-    if (kind === 'goal') savePatientCarePlanGoal(patientId, program, { ...item, priority }, item.id);
-    else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, { ...item, priority }, item.id);
-    else savePatientCarePlanIntervention(patientId, program, { ...item, priority }, item.id);
+    saveGbiPriority({
+      kind,
+      item,
+      priority,
+      patientId,
+      program,
+      savePatientCarePlanGoal,
+      savePatientCarePlanBarrier,
+      savePatientCarePlanIntervention,
+    });
   };
 
   const renameBarrier = (barrier, title) => savePatientCarePlanBarrier(patientId, program, { ...barrier, title }, barrier.id);
@@ -687,61 +340,19 @@ export function CarePlanView({ patientId, program }) {
   // one arriving through a template.
   const handleAddGoalsFromPicker = async (picked, removed = []) => {
     setAddGoalsDrawerOpen(false);
-    if (!picked?.length && !removed?.length) return;
-    const norm = v => (v || '').trim().toLowerCase();
-
-    // Removals first: an "Added goal" the user unchecked. Map it to the plan
-    // goal by title and delete it (which logs a "deleted" audit entry and
-    // leaves its prior activity-log entries in place).
-    let removedCount = 0;
-    if (removed?.length) {
-      const planGoalByTitle = new Map(data.goals.map(g => [norm(g.title), g]));
-      for (const g of removed) {
-        const planGoal = planGoalByTitle.get(norm(g.title));
-        if (planGoal) { await deletePatientCarePlanGoal(patientId, program.id, planGoal.id, { cascade: true }); removedCount += 1; }
-      }
-    }
-
-    const existingTitles = new Set(data.goals.map(g => norm(g.title)));
-    const existingIntvTitles = new Set((data.interventions || []).map(i => norm(i.title)));
-    const existingBarrierTitles = new Set((data.barriers || []).map(b => norm(b.title)));
-    let added = 0;
-    let linked = 0;
-    for (const g of picked) {
-      const titleKey = norm(g.title);
-      if (existingTitles.has(titleKey)) continue;
-      const goal = await savePatientCarePlanGoal(
-        patientId, program,
-        goalPayloadFromTemplateEntry({ id: g.id, title: g.title, subtitle: g.detail }, [g]),
-      );
-      if (!goal) continue;
-      added += 1;
-      existingTitles.add(titleKey);
-      for (const link of g.interventions || []) {
-        const linkKey = norm(link.title);
-        if (!linkKey) continue;
-        if (link.kind === 'barrier') {
-          if (existingBarrierTitles.has(linkKey)) continue;
-          const saved = await savePatientCarePlanBarrier(
-            patientId, program, barrierPayloadFromTemplateEntry(link, [goal.id]),
-          );
-          if (saved) { existingBarrierTitles.add(linkKey); linked += 1; }
-        } else {
-          if (existingIntvTitles.has(linkKey)) continue;
-          const saved = await savePatientCarePlanIntervention(
-            patientId, program, interventionPayloadFromTemplateEntry(link, goal.id),
-          );
-          if (saved) { existingIntvTitles.add(linkKey); linked += 1; }
-        }
-      }
-    }
-    if (added || removedCount) {
-      const parts = [];
-      if (added) parts.push(`Added ${added} goal${added === 1 ? '' : 's'}${linked ? ` with ${linked} linked item${linked === 1 ? '' : 's'}` : ''}`);
-      if (removedCount) parts.push(`removed ${removedCount} goal${removedCount === 1 ? '' : 's'}`);
-      showToast(parts.join(', '));
-      refreshCarePlanDuplicates(patientId, program);
-    } else showToast('No changes to the plan goals');
+    await addGoalsFromPicker({
+      picked,
+      removed,
+      data,
+      patientId,
+      program,
+      savePatientCarePlanGoal,
+      deletePatientCarePlanGoal,
+      savePatientCarePlanBarrier,
+      savePatientCarePlanIntervention,
+      refreshCarePlanDuplicates,
+      showToast,
+    });
   };
 
   const handleAddIntervention = async (values) => {
@@ -777,50 +388,19 @@ export function CarePlanView({ patientId, program }) {
 
   const handleAddBarriersFromPicker = async (picked, opts = {}) => {
     setAddBarriersDrawerOpen(false);
-    // When the drawer was opened from a goal row, every new barrier links
-    // straight to that goal and the scope selector is bypassed.
     const linkGoalId = barrierAddGoalIdRef.current;
     barrierAddGoalIdRef.current = null;
-    if (!picked?.length) return;
-    // Broad-scope targets need cross-plan / all-goal fan-out we haven't
-    // shipped yet — the picker fires them, we acknowledge and fall back to
-    // adding to this plan so nothing is lost. Real routing lands with the
-    // follow-up backend work.
-    const target = opts.target || 'thisPlan';
-    const existingTitles = new Set((data.barriers || []).map(b => b.title.trim().toLowerCase()));
-    let added = 0;
-    for (const b of picked) {
-      const titleKey = b.title.trim().toLowerCase();
-      if (existingTitles.has(titleKey)) continue;
-      const goalIdsForBarrier = linkGoalId
-        ? [linkGoalId]
-        : target === 'thisPlanAllGoals'
-          ? (data.goals || []).map(g => g.id)
-          : [];
-      const saved = await savePatientCarePlanBarrier(patientId, program, {
-        title: b.title,
-        description: b.description || '',
-        status: 'Not Started',
-        priority: 'medium',
-        goalIds: goalIdsForBarrier,
-      });
-      if (saved) {
-        added += 1;
-        existingTitles.add(titleKey);
-      }
-    }
-    if (added) {
-      const scopeCopy = {
-        thisPlan: `Added ${added} barrier${added === 1 ? '' : 's'} to this plan`,
-        thisPlanAllGoals: `Added ${added} barrier${added === 1 ? '' : 's'} to every goal on this plan`,
-        allPlans: `Added ${added} barrier${added === 1 ? '' : 's'} — cross-plan fan-out is pending, saved to this plan for now`,
-        allPlansAllGoals: `Added ${added} barrier${added === 1 ? '' : 's'} — cross-plan fan-out is pending, saved to every goal on this plan`,
-      };
-      showToast(scopeCopy[target] || scopeCopy.thisPlan);
-      refreshCarePlanDuplicates(patientId, program);
-    } else {
-      showToast('Selected barriers are already on this plan');
-    }
+    await addBarriersFromPicker({
+      picked,
+      opts,
+      linkGoalId,
+      data,
+      patientId,
+      program,
+      savePatientCarePlanBarrier,
+      refreshCarePlanDuplicates,
+      showToast,
+    });
   };
 
   const handleAddBarrier = async (values) => {
@@ -835,22 +415,7 @@ export function CarePlanView({ patientId, program }) {
 
   // Undoing a cascade puts the goal back first, then re-links its children to
   // the new row — restoring them in any other order returns them loose.
-  const undoGoalCascade = (goal, cascade) => ({
-    label: 'Undo',
-    onClick: async () => {
-      const { id: goalId, ...goalValues } = goal; // eslint-disable-line no-unused-vars
-      const restored = await savePatientCarePlanGoal(patientId, program, goalValues);
-      for (const intv of cascade.interventions) {
-        const { id: intvId, ...values } = intv; // eslint-disable-line no-unused-vars
-        await savePatientCarePlanIntervention(patientId, program, { ...values, goalId: restored?.id || null });
-      }
-      for (const barrier of cascade.barriers) {
-        const { id: barrierId, ...values } = barrier; // eslint-disable-line no-unused-vars
-        await savePatientCarePlanBarrier(patientId, program, { ...values, goalId: restored?.id || null, goalIds: restored ? [restored.id] : [] });
-      }
-      refreshCarePlanDuplicates(patientId, program);
-    },
-  });
+  const undoGoalCascade = (goal, cascade) => createUndoGoalCascadeAction(goal, cascade, gbiCtx);
 
   // `withLinked` false leaves the goal's interventions and barriers on the plan.
   const removeGoal = async (withLinked) => {
@@ -871,16 +436,14 @@ export function CarePlanView({ patientId, program }) {
     setDeleteTarget(null);
     if (kind === 'barrier') deletePatientCarePlanBarrier(patientId, program.id, id);
     else deletePatientCarePlanIntervention(patientId, program.id, id);
-    showToast(`"${name}" removed`, item ? { action: undoAction([{ kind: kind === 'intv' ? 'intervention' : kind, item }]), duration: 6000 } : undefined);
+    const undoKind = kind === 'intv' ? 'intervention' : kind;
+    showToast(`"${name}" removed`, item ? {
+      action: createUndoToastAction([{ kind: undoKind, item }], gbiCtx),
+      duration: 6000,
+    } : undefined);
   };
 
-  // ── Possible-duplicate resolution (Figma SNP-Story 8464:289403) ──
-  // Every action only mutates THIS plan's item (never another program's plan).
-  const deleteGbiById = (kind, id) => {
-    if (kind === 'goal') deletePatientCarePlanGoal(patientId, program.id, id);
-    else if (kind === 'barrier') deletePatientCarePlanBarrier(patientId, program.id, id);
-    else deletePatientCarePlanIntervention(patientId, program.id, id);
-  };
+  const deleteGbiById = (kind, id) => deleteGbiByIdAction(kind, id, gbiCtx);
   const openGbiEditor = (kind, item) => {
     if (kind === 'goal') setPreviewGoal(item);
     else if (kind === 'barrier') setBarrierDrawer({ barrier: item });
@@ -892,6 +455,24 @@ export function CarePlanView({ patientId, program }) {
     const n = await refreshCarePlanDuplicates(patientId, program, { reset: true });
     showToast(n > 0 ? `Found ${n} possible duplicate${n === 1 ? '' : 's'}` : 'No possible duplicates found');
   };
+
+  const panelActionsRef = useRef(null);
+  panelActionsRef.current = {
+    setVersionsOpen,
+    setTemplateName,
+    setTemplateConditions,
+    setTemplateOpen,
+    setTemplatesDrawerOpen,
+    setHistoryOpen,
+    setFiltersOpen,
+    openNoteDrawer,
+    setSignNote,
+    setSignOpen,
+    scanForDuplicates,
+    planConditions: live?.plan?.conditions || [],
+  };
+  useCarePlanViewPanelRequest(carePlanPanelRequest, clearCarePlanPanelRequest, panelActionsRef);
+
   const handleDuplicateIgnore = (flag) => dismissCarePlanDuplicate(key, flag.flagId);
   const handleDuplicateAcceptExisting = (flag) => {
     deleteGbiById(flag.kind, flag.newItem.id);
@@ -1044,6 +625,35 @@ export function CarePlanView({ patientId, program }) {
       }));
     }
     showToast(`Linked ${ids.length} ${kind}${ids.length === 1 ? '' : 's'} to the goal`);
+  };
+
+  const overlayProps = {
+    statusMenu, changeStatus, setStatusMenu,
+    bulkMenu, bulkSetPriority, bulkSetStatus, setBulkMenu,
+    linkOwner, patientId, program, patientName, setLinkOwner,
+    rowMenuItems, intvTypeMenu, setIntvTypeMenu, setTaskGoalId, setTaskDrawerOpen, setIntvSpecialDrawer,
+    linkPopover, linkCandidates, setLinkPopover, confirmLinkExisting,
+    priorityMenu, changePriority, setPriorityMenu,
+    barrierAddGoalIdRef, setAddBarriersDrawerOpen, setDeleteTarget, setBarrierDrawer, showToast,
+  };
+
+  const drawerProps = {
+    addGoalsDrawerOpen, setAddGoalsDrawerOpen, handleAddGoalsFromPicker, data, patientProblems,
+    previewGoal, setPreviewGoal, patientId, program, previewBarrier, setPreviewBarrier,
+    previewIntervention, setPreviewIntervention, intvDrawer, setIntvDrawer, handleAddIntervention,
+    intvSpecialDrawer, setIntvSpecialDrawer, auditAll, saveInterventionFromConfig,
+    taskDrawerOpen, setTaskDrawerOpen, taskGoalId, setTaskGoalId, patientName,
+    addBarriersDrawerOpen, setAddBarriersDrawerOpen, barrierAddGoalIdRef, handleAddBarriersFromPicker,
+    barrierDrawer, setBarrierDrawer, handleAddBarrier, shareOpen, clearCarePlanShareRequest, canEdit,
+    historyOpen, setHistoryOpen, versionsOpen, setVersionsOpen, signOpen, setSignOpen, doSign, signNote, setSignNote,
+    noteOpen, closeNoteDrawer, doAddNote, noteText, setNoteText, noteDirty, latestPlanNote, noteTimelineEntries,
+    noteDiscardOpen, setNoteDiscardOpen, noteDeleteOpen, setNoteDeleteOpen, doClearCareNote,
+    problemOpen, setProblemOpen, doAddProblem, problemText, setProblemText,
+    trendsOpen, setTrendsOpen, measurements,
+    templatesDrawerOpen, setTemplatesDrawerOpen, appliedTemplateIds, appliedTemplatePriorities, handleApplyTemplates,
+    templateOpen, setTemplateOpen, templateName, setTemplateName, templateConditions, setTemplateConditions, saveTemplate,
+    deleteTarget, setDeleteTarget, live, removeGoal, confirmDelete,
+    bulkAssignOpen, setBulkAssignOpen, bulkAssign, bulkDeleteOpen, setBulkDeleteOpen, bulkDelete, selectedCount,
   };
 
   return (
@@ -1229,7 +839,7 @@ export function CarePlanView({ patientId, program }) {
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
             onTargetDateChange={(goal, iso) => savePatientCarePlanGoal(patientId, program, { ...goal, targetDate: iso }, goal.id)}
-            linked={linkedForGoal}
+            linked={linkedForGoalRow}
             emptyState={filteredGoals.length === 0 ? <div className={styles.emptyRow}>No goals match the filters.</div> : null}
           />
         ))}
@@ -1298,7 +908,7 @@ export function CarePlanView({ patientId, program }) {
               ...intv,
               config: { ...(intv.config || {}), ...next },
             }, intv.id)}
-            linked={linkedForChild}
+            linked={linkedForChildRow}
             platformUsers={platformUsers}
             patients={patientName ? [{
               id: patientId,
@@ -1344,7 +954,7 @@ export function CarePlanView({ patientId, program }) {
             onStatusMenu={setStatusMenu}
             onRowMenu={setStatusMenu}
             onOpenBarrier={setPreviewBarrier}
-            linked={linkedForChild}
+            linked={linkedForChildRow}
             emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the filters.</div> : null}
           />
         ))}
@@ -1352,499 +962,9 @@ export function CarePlanView({ patientId, program }) {
       </div>
       </div>
 
-      {/* Status change menu (goals + interventions + barriers) */}
-      {statusMenu && (statusMenu.kind === 'goal' || statusMenu.kind === 'intv' || statusMenu.kind === 'barrier') && (
-        <MenuPopover
-          anchorRect={statusMenu.rect}
-          align="left"
-          width={160}
-          ariaLabel="Change status"
-          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
-          onSelect={changeStatus}
-          onClose={() => setStatusMenu(null)}
-        />
-      )}
+      <CarePlanViewOverlays o={overlayProps} />
 
-      {bulkMenu && (
-        <MenuPopover
-          anchorRect={bulkMenu.rect}
-          align="left"
-          width={180}
-          ariaLabel={bulkMenu.type === 'priority' ? 'Set priority for selected' : 'Set status for selected'}
-          items={bulkMenu.type === 'priority'
-            ? PRIORITIES.map(p => ({ key: p, label: p.charAt(0).toUpperCase() + p.slice(1), iconElement: <PriorityIcon priority={p} size={16} /> }))
-            : GBI_STATUSES.map(s => ({ key: s, label: s }))}
-          onSelect={bulkMenu.type === 'priority' ? bulkSetPriority : bulkSetStatus}
-          onClose={() => setBulkMenu(null)}
-        />
-      )}
-
-      {linkOwner && (
-        <CarePlanLinkDrawer
-          patientId={patientId}
-          program={program}
-          patientName={patientName}
-          owner={linkOwner}
-          onClose={() => setLinkOwner(null)}
-        />
-      )}
-
-      {/* Row overflow menu (rename / remove) */}
-      {statusMenu && (statusMenu.kind === 'goal-menu' || statusMenu.kind === 'intv-menu' || statusMenu.kind === 'barrier-menu') && (
-        <MenuPopover
-          anchorRect={statusMenu.rect}
-          width={statusMenu.kind === 'goal-menu' ? 232 : 160}
-          ariaLabel="Row actions"
-          items={rowMenuItems(statusMenu.kind)}
-          onSelect={(k) => {
-            const kind = statusMenu.kind;
-            const isGoal = kind === 'goal-menu';
-            const isBarrier = kind === 'barrier-menu';
-            const item = statusMenu.item;
-            const rect = statusMenu.rect;
-            setStatusMenu(null);
-            if (k === 'add-intv') { setIntvTypeMenu({ rect, goalId: item.id }); return; }
-            if (k === 'link-intv') { setLinkPopover({ kind: 'intervention', goalId: item.id, rect, selected: new Set() }); return; }
-            if (k === 'add-barrier') { barrierAddGoalIdRef.current = item.id; setAddBarriersDrawerOpen(true); return; }
-            if (k === 'link-barrier') { setLinkPopover({ kind: 'barrier', goalId: item.id, rect, selected: new Set() }); return; }
-            if (k === 'delete') setDeleteTarget({ kind: isGoal ? 'goal' : isBarrier ? 'barrier' : 'intv', id: item.id, name: item.title, item });
-            else if (k === 'rename' && isBarrier) setBarrierDrawer({ barrier: item });
-            // Intervention "Edit" goes straight to the kind-specific
-            // editor, skipping the Preview drawer. No `previewOnClose`
-            // is set here — closing the editor returns to the plan
-            // screen, matching what the user picked from the menu.
-            else if (k === 'rename' && !isGoal) setIntvSpecialDrawer({ kind: item.kind, intervention: item });
-            // Goal rename happens inline via EditableTitle; nudge the user there.
-            else if (k === 'rename' && isGoal) showToast('Open the goal to review details — use Remove to delete it.');
-          }}
-          onClose={() => setStatusMenu(null)}
-        />
-      )}
-
-      {/* Row-menu "Add Intervention": pick a type, then open its editor
-          pre-linked to the goal the row belongs to. */}
-      {intvTypeMenu && (
-        <MenuPopover
-          anchorRect={intvTypeMenu.rect}
-          align="right"
-          width={200}
-          ariaLabel="Add intervention"
-          items={CARE_PLAN_INTERVENTION_MENU}
-          onSelect={(key) => {
-            const goalId = intvTypeMenu.goalId;
-            setIntvTypeMenu(null);
-            if (key === 'patient-task' || key === 'internal-task') { setTaskGoalId(goalId); setTaskDrawerOpen(key); }
-            else setIntvSpecialDrawer({ kind: key, presetGoalId: goalId });
-          }}
-          onClose={() => setIntvTypeMenu(null)}
-        />
-      )}
-
-      {/* Row-menu "Link existing intervention / barrier": staged checkbox
-          list, committed with the Link button. */}
-      {linkPopover && (() => {
-        const items = linkCandidates(linkPopover.kind, linkPopover.goalId)
-          .map(it => ({ ...it, checked: linkPopover.selected.has(it.id) }));
-        return (
-          <LinkExistingItemsPopover
-            anchorRect={linkPopover.rect}
-            width={280}
-            ariaLabel={`Link existing ${linkPopover.kind}`}
-            title={`Link existing ${linkPopover.kind === 'intervention' ? 'interventions' : 'barriers'}`}
-            items={items}
-            emptyLabel={`No ${linkPopover.kind === 'intervention' ? 'interventions' : 'barriers'} to link.`}
-            onToggle={(id, checked) => setLinkPopover(p => {
-              const selected = new Set(p.selected);
-              if (checked) selected.add(id); else selected.delete(id);
-              return { ...p, selected };
-            })}
-            confirmLabel="Link"
-            confirmDisabled={linkPopover.selected.size === 0}
-            onConfirm={confirmLinkExisting}
-            onClose={() => setLinkPopover(null)}
-          />
-        );
-      })()}
-
-      {/* Priority change menu (goals / barriers / interventions) */}
-      {priorityMenu && (
-        <MenuPopover
-          anchorRect={priorityMenu.rect}
-          align="left"
-          width={160}
-          ariaLabel="Change priority"
-          items={PRIORITIES.map(p => ({ key: p, label: p.charAt(0).toUpperCase() + p.slice(1), iconElement: <PriorityIcon priority={p} size={16} /> }))}
-          onSelect={changePriority}
-          onClose={() => setPriorityMenu(null)}
-        />
-      )}
-
-      {addGoalsDrawerOpen && (
-        <AddGoalsDrawer
-          onClose={() => setAddGoalsDrawerOpen(false)}
-          onAdd={handleAddGoalsFromPicker}
-          existingGoalTitles={data.goals.map(g => g.title)}
-          patientProblems={patientProblems}
-        />
-      )}
-
-      {previewGoal && (
-        <GoalPreviewDrawer
-          goal={previewGoal}
-          patientId={patientId}
-          program={program}
-          onClose={() => setPreviewGoal(null)}
-          onOpenIntervention={setPreviewIntervention}
-          onOpenBarrier={setPreviewBarrier}
-        />
-      )}
-
-      {previewBarrier && (
-        <BarrierDetailDrawer
-          barrier={previewBarrier}
-          patientId={patientId}
-          program={program}
-          onClose={() => setPreviewBarrier(null)}
-          onOpenGoal={(g) => { setPreviewBarrier(null); setPreviewGoal(g); }}
-        />
-      )}
-
-      {previewIntervention && (
-        <InterventionPreviewDrawer
-          intervention={previewIntervention}
-          patientId={patientId}
-          program={program}
-          onClose={() => setPreviewIntervention(null)}
-          onEdit={(intv) => {
-            // Open the full intervention edit drawer for this kind so the
-            // user can edit fields beyond just the title (Send Form,
-            // Patient Education, Patient Task, Measure Vital, Internal
-            // Task). Close preview first, then open the special editor.
-            // `previewOnClose` tells the editor to reopen the preview
-            // when the user closes or updates it, so they land back on
-            // the intervention detail instead of the plan screen.
-            setPreviewIntervention(null);
-            setIntvSpecialDrawer({ kind: intv.kind, intervention: intv, previewOnClose: intv });
-          }}
-          onOpenGoal={(g) => { setPreviewIntervention(null); setPreviewGoal(g); }}
-        />
-      )}
-
-      {intvDrawer && (
-        <AddInterventionDrawer
-          intervention={intvDrawer.intervention}
-          onClose={() => setIntvDrawer(false)}
-          onSave={handleAddIntervention}
-        />
-      )}
-
-      {intvSpecialDrawer && (() => {
-        const Editor = INTERVENTION_EDITORS[intvSpecialDrawer.kind];
-        if (!Editor) return null;
-        const intv = intvSpecialDrawer.intervention;
-        const activityEntries = intv?.id ? auditAll
-          .filter(a => a.entityType === 'intervention' && String(a.entityId) === String(intv.id))
-          .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))
-          .map(a => {
-            const created = a.createdAt ? new Date(a.createdAt) : null;
-            return {
-              id: a.id,
-              t: 'status_change',
-              date: created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
-              time: created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
-              by: a.actor || null,
-              title: a.summary || 'Intervention updated',
-            };
-          }) : [];
-        const currentLinked = Array.isArray(intv?.goalIds) && intv.goalIds.length > 0
-          ? intv.goalIds
-          : (intv?.goalId ? [intv.goalId]
-            : (intvSpecialDrawer.presetGoalId ? [intvSpecialDrawer.presetGoalId] : []));
-        // Merge the intervention row's top-level columns into the config
-        // blob before handing it to the editor. Legacy rows either only
-        // stored `title` / `priority` / `assignee` at the top level, or
-        // stored empty strings inside config; without this, opening the
-        // edit drawer showed empty fields. Uses `||` (not `??`) so an
-        // empty-string in the config falls through to the top-level
-        // column.
-        const editorIntervention = intv ? {
-          ...(intv.config || {}),
-          id: intv.id,
-          title: (intv.config && intv.config.title) || intv.title || '',
-          priority: (intv.config && intv.config.priority) || intv.priority || 'Medium',
-          assignedTo: (intv.config && intv.config.assignedTo)
-            || (intv.assignee && intv.assignee.name && intv.assignee.name !== 'Unassigned' ? intv.assignee.name : '')
-            || '',
-        } : null;
-        return (
-          <Editor
-            kind={intvSpecialDrawer.kind}
-            intervention={editorIntervention}
-            linkToGoalsAllowed
-            availableGoals={data.goals}
-            linkedGoalIds={currentLinked}
-            activityEntries={activityEntries}
-            memberName={patientName}
-            onOpenGoal={(g) => { setIntvSpecialDrawer(null); setPreviewGoal(g); }}
-            onClose={() => {
-              // Reopen the preview drawer the editor was launched from so
-              // the user lands back on the intervention detail instead of
-              // the plan screen. `previewOnClose` is only set when the
-              // editor was opened via the preview's edit affordance.
-              const restore = intvSpecialDrawer.previewOnClose;
-              setIntvSpecialDrawer(null);
-              if (restore) setPreviewIntervention(restore);
-            }}
-            onSave={async (config) => {
-              await saveInterventionFromConfig(
-                intvSpecialDrawer.kind,
-                config,
-                intv?.id || null,
-                intvSpecialDrawer.presetGoalId || null,
-              );
-              const restore = intvSpecialDrawer.previewOnClose;
-              setIntvSpecialDrawer(null);
-              if (restore) setPreviewIntervention(restore);
-            }}
-          />
-        );
-      })()}
-
-      {taskDrawerOpen && (
-        <AddTaskDrawer
-          taskKind={taskDrawerOpen}
-          initialMember={patientName}
-          initialAssignedTo={taskDrawerOpen === 'internal-task' ? '' : patientName}
-          showScheduleFields
-          availableGoals={data.goals}
-          initialLinkedGoalIds={taskGoalId ? [taskGoalId] : []}
-          onOpenGoal={(g) => { setTaskDrawerOpen(null); setPreviewGoal(g); }}
-          onClose={() => { setTaskDrawerOpen(null); setTaskGoalId(null); }}
-          onTaskCreated={async (t) => {
-            await saveInterventionFromConfig(taskDrawerOpen, { title: t?.name || '', taskId: t?.id }, null, taskGoalId);
-            setTaskDrawerOpen(null);
-            setTaskGoalId(null);
-          }}
-        />
-      )}
-
-      {addBarriersDrawerOpen && (
-        <AddBarriersDrawer
-          onClose={() => { setAddBarriersDrawerOpen(false); barrierAddGoalIdRef.current = null; }}
-          onAdd={handleAddBarriersFromPicker}
-          existingBarriers={data.barriers || []}
-        />
-      )}
-
-      {barrierDrawer?.barrier && (
-        <BarrierDrawer
-          barrier={barrierDrawer.barrier}
-          onClose={() => setBarrierDrawer(null)}
-          onSave={({ title, description }) => handleAddBarrier({
-            title,
-            description,
-            status: barrierDrawer.barrier?.status || 'Not Started',
-            priority: barrierDrawer.barrier?.priority || 'medium',
-          })}
-        />
-      )}
-
-      {shareOpen && (
-        <CarePlanShareDrawer
-          patientId={patientId}
-          program={program}
-          data={data}
-          patientName={patientName}
-          canShare={canEdit}
-          onClose={clearCarePlanShareRequest}
-        />
-      )}
-
-      {historyOpen && (
-        <CarePlanHistoryDrawer patientId={patientId} program={program} onClose={() => setHistoryOpen(false)} />
-      )}
-
-      {versionsOpen && (
-        <CarePlanVersionsDrawer patientId={patientId} program={program} onClose={() => setVersionsOpen(false)} />
-      )}
-
-      {signOpen && (
-        <Drawer
-          title="Sign Care Plan"
-          onClose={() => setSignOpen(false)}
-          secondaryAction={<Button variant="secondary" size="L" onClick={() => setSignOpen(false)}>Cancel</Button>}
-          primaryAction={<Button variant="primary" size="L" onClick={doSign}>Sign</Button>}
-        >
-          <div className={styles.drawerBody}>
-            <p className={styles.drawerHint}>Signing saves a version snapshot of the plan and records who signed it. You can still add notes and change statuses afterwards.</p>
-            <div className={styles.drawerField}>
-              <span className={styles.drawerLabel}>Note <span className={styles.optional}>(optional)</span></span>
-              <Textarea value={signNote} onChange={e => setSignNote(e.target.value)} placeholder="Add a sign-off note" rows={3} />
-            </div>
-          </div>
-        </Drawer>
-      )}
-
-      {noteOpen && (
-        <Drawer
-          title={latestPlanNote ? 'Update Note' : 'Add Note'}
-          onClose={() => closeNoteDrawer()}
-          primaryAction={
-            <Button
-              variant="primary"
-              size="L"
-              onClick={doAddNote}
-              disabled={!noteText.trim() || !noteDirty}
-            >
-              {latestPlanNote ? 'Update Note' : 'Add Note'}
-            </Button>
-          }
-        >
-          <div className={styles.drawerBody}>
-            <p className={styles.drawerHint}>Records a maintenance note on the signed plan without editing it — it appears in the plan's History.</p>
-            <div className={styles.drawerField}>
-              <span className={styles.drawerLabel}>Note <span className={styles.required}>*</span></span>
-              <Textarea autoFocus value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="e.g. Reviewed with patient; no changes needed." rows={3} />
-            </div>
-            {noteTimelineEntries.length > 0 && (
-              <div className={styles.noteTimeline}>
-                <span className={styles.noteTimelineLabel}>Change log</span>
-                <ActivityLog entries={noteTimelineEntries} hideCommentTitle />
-              </div>
-            )}
-          </div>
-        </Drawer>
-      )}
-      {noteDiscardOpen && (
-        <ConfirmDialog
-          variant="destructive"
-          title="Discard unsaved changes?"
-          description="You'll lose the edits you just made to this note."
-          confirmLabel="Discard"
-          cancelLabel="Keep editing"
-          onCancel={() => setNoteDiscardOpen(false)}
-          onConfirm={() => { setNoteDiscardOpen(false); closeNoteDrawer({ force: true }); }}
-        />
-      )}
-      {noteDeleteOpen && (
-        <ConfirmDialog
-          variant="destructive"
-          title="Delete this care note?"
-          description="The note is removed from the plan surface, but every past note stays in the plan's history."
-          confirmLabel="Delete"
-          cancelLabel="Cancel"
-          onCancel={() => setNoteDeleteOpen(false)}
-          onConfirm={doClearCareNote}
-        />
-      )}
-
-      {problemOpen && (
-        <Drawer
-          title="Add Problem"
-          onClose={() => setProblemOpen(false)}
-          secondaryAction={<Button variant="secondary" size="L" onClick={() => setProblemOpen(false)}>Cancel</Button>}
-          primaryAction={<Button variant="primary" size="L" onClick={doAddProblem} disabled={!problemText.trim()}>Add</Button>}
-        >
-          <div className={styles.drawerBody}>
-            <p className={styles.drawerHint}>Adds a problem/condition to this care plan. It shows in the problems bar and groups the goals, interventions, and barriers that address it.</p>
-            <div className={styles.drawerField}>
-              <span className={styles.drawerLabel}>Problem <span className={styles.required}>*</span></span>
-              <Input
-                autoFocus
-                value={problemText}
-                onChange={e => setProblemText(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && problemText.trim()) { e.preventDefault(); doAddProblem(); } }}
-                placeholder="e.g. Chronic Kidney Disease"
-                aria-label="Problem"
-              />
-            </div>
-          </div>
-        </Drawer>
-      )}
-
-      {trendsOpen && (
-        <CarePlanTrendsDrawer
-          goals={data.goals}
-          measurements={measurements}
-          onClose={() => setTrendsOpen(false)}
-        />
-      )}
-
-      {templatesDrawerOpen && (
-        <ApplyTemplatesDrawer
-          appliedTemplateIds={appliedTemplateIds}
-          appliedTemplatePriorities={appliedTemplatePriorities}
-          patientProblems={patientProblems}
-          onClose={() => setTemplatesDrawerOpen(false)}
-          onApply={handleApplyTemplates}
-        />
-      )}
-
-      <Dialog open={templateOpen} onOpenChange={open => !open && setTemplateOpen(false)}>
-        <DialogContent className={styles.templateDialog}>
-          <DialogHeader>
-            <DialogTitle>Save as Template</DialogTitle>
-          </DialogHeader>
-          <DialogDescription>
-            Saves this plan's goals and interventions to the Care Plan Library so it can be reused for similar patients.
-          </DialogDescription>
-          <div className={styles.templateForm}>
-            <div className={styles.drawerField}>
-              <span className={styles.drawerLabel}>Template Name <span className={styles.required}>*</span></span>
-              <Input autoFocus value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. Type 2 Diabetes — Standard" aria-label="Template name" />
-            </div>
-            <ChronicConditionSelect value={templateConditions} onChange={setTemplateConditions} label="Conditions" />
-          </div>
-          <div className={styles.templateDialogFooter}>
-            <Button variant="primary" size="L" onClick={saveTemplate} disabled={!templateName.trim()}>Save</Button>
-            <Button variant="secondary" size="L" onClick={() => setTemplateOpen(false)}>Cancel</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {deleteTarget?.kind === 'goal' && (
-        <RemoveGoalDialog
-          goalTitle={deleteTarget.name}
-          cascade={goalCascade(live, deleteTarget.id)}
-          onRemoveAll={() => removeGoal(true)}
-          onRemoveGoalOnly={() => removeGoal(false)}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      )}
-
-      {deleteTarget && deleteTarget.kind !== 'goal' && (
-        <ConfirmDialog
-          icon="solar:danger-triangle-linear"
-          iconColor="var(--status-error)"
-          title={`Remove "${deleteTarget.name}"?`}
-          description="This removes it from the patient's care plan. This action cannot be undone."
-          confirmLabel="Remove"
-          variant="error"
-          onCancel={() => setDeleteTarget(null)}
-          onConfirm={confirmDelete}
-        />
-      )}
-
-      <SelectAssigneeModal
-        open={bulkAssignOpen}
-        onClose={() => setBulkAssignOpen(false)}
-        onConfirm={bulkAssign}
-        title="Assign interventions"
-        confirmLabel="Assign"
-      />
-
-      {bulkDeleteOpen && (
-        <ConfirmDialog
-          icon="solar:danger-triangle-linear"
-          iconColor="var(--status-error)"
-          title={`Remove ${selectedCount} item${selectedCount === 1 ? '' : 's'}?`}
-          description="This removes the selected goals, interventions, and barriers from the patient's care plan. This action cannot be undone."
-          confirmLabel="Remove"
-          variant="error"
-          onCancel={() => setBulkDeleteOpen(false)}
-          onConfirm={bulkDelete}
-        />
-      )}
+      <CarePlanViewDrawers d={drawerProps} />
     </div>
   );
 }

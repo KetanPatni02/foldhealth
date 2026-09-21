@@ -1,0 +1,58 @@
+import { Button } from '@/components/Button/Button';
+import { RingEmptyState } from '@/components/RingEmptyState/RingEmptyState';
+import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
+import { DownChevronIcon } from '@/components/Icon/DownChevronIcon';
+import styles from './CarePlanView.module.css';
+
+export const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+export const PRIORITIES = ['high', 'medium', 'low'];
+export const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
+
+export function GbiSectionHead({ title, count, open, onToggle, addButton, trailingEnd, rightAccessory }) {
+  const hasRight = !!rightAccessory || !!trailingEnd;
+  return (
+    <div className={`${styles.sectionHead} ${styles.gbiSectionHead}`}>
+      <SectionTitle label={title} count={count} open={open} onToggle={onToggle} />
+      <span className={styles.sectionActionDivider} aria-hidden="true" />
+      {addButton}
+      {hasRight ? (
+        <div className={styles.gbiSectionHeadEnd}>
+          {rightAccessory}
+          {trailingEnd}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export function SectionTitle({ label, count, open, onToggle }) {
+  return (
+    <button type="button" className={styles.sectionToggle} onClick={onToggle} aria-expanded={open}>
+      <DownChevronIcon
+        size={16}
+        color="var(--neutral-400)"
+        className={`${styles.sectionChevron} ${open ? '' : styles.sectionChevronClosed}`}
+      />
+      <span className={styles.sectionTitle}>{label}</span>
+      {count > 0 ? <span className={styles.sectionCount}>{count}</span> : null}
+    </button>
+  );
+}
+
+export function SectionEmptyState({ icon, label, onAdd }) {
+  return (
+    <div className={styles.sectionEmpty}>
+      <RingEmptyState icon={icon} label={label} iconSize={31} />
+      <div className={styles.sectionEmptyActions}>
+        <Button
+          variant="tertiary"
+          size="L"
+          leadingIconElement={<AddIconMinimalist size={16} />}
+          onClick={onAdd}
+        >
+          Add New
+        </Button>
+      </div>
+    </div>
+  );
+}
