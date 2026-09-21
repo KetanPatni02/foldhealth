@@ -837,5 +837,10 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     // native "open DSF-B" trigger on PHQ-2 Positive.
     openDsfbGap,
     openDsfbView,
+    // True when this hook is driving the reviewer's sign-off drawer
+    // (editingTaskId set). Downstream forms use it to switch into
+    // read-only mode and hide author-only actions (Save Score, Open
+    // DSF-B, Sub-question interactivity, Decline toggle).
+    isReviewFlow: !!editingTaskId,
   };
 }

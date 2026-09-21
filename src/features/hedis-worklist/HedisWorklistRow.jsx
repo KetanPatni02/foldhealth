@@ -235,7 +235,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                   DSF-B ingestion date (Astrana). computeDsfbDueDateISO
                   centralises the priority so worklist copy and the
                   in-note guard stay in sync. */}
-              {g.code === 'DSF-B' && (() => {
+              {g.code === 'DSF-B' && g.status !== 'Completed' && !String(g.status).startsWith('Closed') && (() => {
                 const dueISO = computeDsfbDueDateISO({ dsfbGap: g });
                 const daysLeft = Math.ceil((new Date(dueISO).getTime() - Date.now()) / 86400000);
                 const overdue = daysLeft < 0;

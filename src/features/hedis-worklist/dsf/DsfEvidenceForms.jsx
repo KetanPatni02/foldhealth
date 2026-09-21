@@ -128,7 +128,12 @@ function CarePlanOutcomePanel({ title, bullets, outreachNotes, onOutreachNotesCh
 // ── DSF-A (PHQ-2) ───────────────────────────────────────────────────
 
 export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
-  const onUpdate = (patch) => v.updateGap('DSF-A', patch);
+  // Reviewer flow (opened from a sign-off task) is strictly read-only:
+  // no updateGap writes, radios/select locked, author-only affordances
+  // (Save Score, Open DSF-B, success bar) hidden. Author flows keep
+  // the full interactive surface.
+  const readOnly = !!v.isReviewFlow;
+  const onUpdate = readOnly ? () => {} : (patch) => v.updateGap('DSF-A', patch);
   const err = (field) => submitted && !data[field];
   const phq2Values = useMemo(() => {
     const items = getItems('phq2');
@@ -178,6 +183,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
               checked={data.location === opt.value}
               onChange={() => onUpdate({ location: opt.value })}
               label={opt.label}
+              disabled={readOnly}
             />
           ))}
         </div>
@@ -199,6 +205,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
           onChange={(v2) => onUpdate({ performedBy: v2 })}
           placeholder="Select Provider"
           variant={err('performedBy') ? 'error' : 'default'}
+          disabled={readOnly}
         />
         {err('performedBy') && <FieldError>Provider is required</FieldError>}
       </FieldStack>
@@ -213,7 +220,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
           onChange={(next) => onUpdate({
             phq2: { ...(data.phq2 || {}), item1: next[0], item2: next[1] },
           })}
-          locked={phq2Saved}
+          locked={phq2Saved || readOnly}
         />
         {/* Footer row surfaces once both PHQ-2 items are answered:
               • Positive + !saved → Save Score button + live badge.
@@ -225,7 +232,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
             so band context anchors to where the score is read. */}
         {bothPhq2Answered && (
           <div className={styles.phq2CardFooter}>
-            {positive && !phq2Saved && (
+            {positive && !phq2Saved && !readOnly && (
               <Button
                 variant="primary"
                 size="M"
@@ -261,12 +268,12 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
             />
           </div>
         )}
-        {bothPhq2Answered && positive && !phq2Saved && (
+        {bothPhq2Answered && positive && !phq2Saved && !readOnly && (
           <InfoBar className={styles.phq2InfoBarAttached}>
             Saving this score opens the DSF-B gap for this patient. Once saved, DSF-A cannot be edited.
           </InfoBar>
         )}
-        {phq2Saved && (
+        {phq2Saved && !readOnly && (
           <InfoBar
             className={styles.phq2InfoBarAttached}
             tone="success"
@@ -304,7 +311,11 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
 // ── DSF-B (PHQ-9) ───────────────────────────────────────────────────
 
 export function DsfbEvidenceForm({ v, data, submitted }) {
-  const onUpdate = (patch) => v.updateGap('DSF-B', patch);
+  // Reviewer flow (opened from a sign-off task) is strictly read-only.
+  // updateGap becomes a no-op, radios/select/matrix lock, Save Score
+  // and its info bars hide. Author flows are unchanged.
+  const readOnly = !!v.isReviewFlow;
+  const onUpdate = readOnly ? () => {} : (patch) => v.updateGap('DSF-B', patch);
   const err = (field) => submitted && !data[field];
   // When the note has no paired DSF-A, DSF-B is standalone — the
   // reviewer completed the PHQ-2 virtually and skipped creating the
@@ -382,6 +393,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
                   checked={data.location === opt.value}
                   onChange={() => onUpdate({ location: opt.value })}
                   label={opt.label}
+                  disabled={readOnly}
                 />
               ))}
             </div>
@@ -395,6 +407,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
               onChange={(v2) => onUpdate({ performedBy: v2 })}
               placeholder="Select Provider"
               variant={err('performedBy') ? 'error' : 'default'}
+              disabled={readOnly}
             />
             {err('performedBy') && <FieldError>Provider is required</FieldError>}
           </FieldStack>
@@ -412,7 +425,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
           scoreKey="phq9"
           values={phq9Values}
           onChange={(next) => onUpdate({ phq9: { ...(data.phq9 || {}), items: next } })}
-          locked={data.decline || phq9Saved}
+          locked={data.decline || phq9Saved || readOnly}
         />
         {/* Footer row surfaces once PHQ-9 is fully answered (and the
             note isn't Decline follow-up):
@@ -423,7 +436,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
             context stays anchored to where the score is read. */}
         {allAnswered && !data.decline && bandLabel && (
           <div className={styles.phq2CardFooter}>
-            {canSavePhq9 && (
+            {canSavePhq9 && !readOnly && (
               <Button
                 variant="primary"
                 size="M"
@@ -461,12 +474,12 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
             />
           </div>
         )}
-        {canSavePhq9 && (
+        {canSavePhq9 && !readOnly && (
           <InfoBar className={styles.phq2InfoBarAttached}>
             Saving this score commits the PHQ-9 result. Once saved, the assessment cannot be edited.
           </InfoBar>
         )}
-        {phq9Saved && (
+        {phq9Saved && !readOnly && (
           <InfoBar
             className={styles.phq2InfoBarAttached}
             tone="success"
@@ -494,11 +507,13 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
               checked={data.phq9?.subMildAnswer === 'yes'}
               onChange={() => onUpdate({ phq9: { ...(data.phq9 || {}), subMildAnswer: 'yes' } })}
               label="Yes"
+              disabled={readOnly}
             />
             <RadioButton
               checked={data.phq9?.subMildAnswer === 'no'}
               onChange={() => onUpdate({ phq9: { ...(data.phq9 || {}), subMildAnswer: 'no' } })}
               label="No"
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -521,6 +536,8 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
         aria-checked={!!data.decline}
         className={styles.declineRow}
         onClick={() => onUpdate({ decline: !data.decline })}
+        disabled={readOnly}
+        style={readOnly ? { cursor: 'default', opacity: 0.7 } : undefined}
       >
         <CheckboxTick checked={!!data.decline} size={16} />
         <span className={styles.declineLabel}>
