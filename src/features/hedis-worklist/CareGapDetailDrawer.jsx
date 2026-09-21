@@ -106,15 +106,14 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const openMoreMenu = () => { const r = moreBtnRef.current?.getBoundingClientRect(); if (r) setMoreMenuRect(r); };
   const closeMoreMenu = () => setMoreMenuRect(null);
   // Route Add Note based on how many gaps are open for this member.
-  //   >1 → inline consolidated workspace (stacked-sections layout on
-  //        the CareGap drawer's left pane). Keeps every entry point
-  //        into a multi-gap note (Add Note / auto-promote from Save
-  //        Score / Edit on draft) landing on the SAME surface so the
-  //        coordinator's mental model doesn't flip between two-pane
-  //        and stacked layouts.
+  //   >1 → standalone consolidated Clinical Note drawer (two-pane
+  //        layout: Visit Notes list on the left, focused gap's
+  //        evidence on the right). Add Note, the Save-Score auto-
+  //        promote, and Edit on a multi-gap draft all land here so
+  //        the coordinator sees the same surface every time.
   //    1 → inline single-gap workspace on this drawer's left pane.
   const openClinicalNoteFlow = () => {
-    if (openGapCount > 1) setLeftWorkspace('clinical-note-consolidated');
+    if (openGapCount > 1) setShowClinicalNote(true);
     else setLeftWorkspace('clinical-note');
   };
   const runMoreAction = (a) => {
@@ -179,13 +178,16 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     //                                        path.
     if (dc.status === 'Draft') {
       setAmendNoteId(dc.noteId || null);
-      // Consolidated view fires when EITHER the draft itself already
+      // Multi-gap edit fires when EITHER the draft itself already
       // covers multiple gaps OR the member has more than one open gap
-      // on the worklist — the coordinator needs every open gap
+      // on the worklist. The coordinator needs every open gap
       // editable at once so DSF-A + DSF-B (or any pair) can be
-      // authored together, not one at a time. Falls back to the
-      // single-gap inline workspace only when the whole member has
-      // just this one gap in play.
+      // authored together, not one at a time. Route into the
+      // standalone two-pane Clinical Note drawer (Visit Notes list on
+      // the left, focused gap's evidence on the right) so Add Note,
+      // the Save-Score auto-promote, and Edit-on-draft all land on
+      // the same surface. Falls back to the single-gap inline
+      // workspace only when the whole member has just this one gap.
       const noteForClick = dc.noteId
         ? memberNotes.find(n => n.id === dc.noteId)
         : null;
@@ -193,7 +195,12 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
         ? dc.gapCodes
         : (noteForClick?.gapCodes || []);
       const goConsolidated = scopeCodes.length > 1 || openGapCount > 1;
-      setLeftWorkspace(goConsolidated ? 'clinical-note-consolidated' : 'clinical-note');
+      if (goConsolidated) {
+        setLeftWorkspace(null);
+        setShowClinicalNote(true);
+      } else {
+        setLeftWorkspace('clinical-note');
+      }
       return;
     }
     if (dc.status === 'Pending Review' || dc.status === 'Submitted') {
@@ -328,14 +335,16 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     amendNoteId,
     onClose: () => { setAmendNoteId(null); runLeftClose(); },
     // DSF-A save on a single-gap note opens DSF-B natively, then the
-    // hook auto-promotes into the same inline consolidated workspace
-    // (stacked DOS + DSF-A + DSF-B sections) that Add Note and Edit
-    // on a multi-gap draft both land in. `currentCode` still flips to
-    // DSF-B so the workspace scrolls / focuses that section.
+    // hook auto-promotes into the standalone two-pane Clinical Note
+    // drawer (Visit Notes list on the left, focused gap's evidence on
+    // the right). Add Note and Edit-on-multi-gap-draft both land here
+    // too. `currentCode` flips to DSF-B first so the RHS pane opens
+    // focused on the new gap.
     onPromoteToConsolidated: (targetCode) => {
       if (targetCode) setCurrentCode(targetCode);
+      setLeftWorkspace(null);
       setLeftClosing(false);
-      setLeftWorkspace('clinical-note-consolidated');
+      setShowClinicalNote(true);
     },
   });
 
