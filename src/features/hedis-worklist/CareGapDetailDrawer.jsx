@@ -175,7 +175,18 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     //                                        path.
     if (dc.status === 'Draft') {
       setAmendNoteId(dc.noteId || null);
-      setLeftWorkspace('clinical-note');
+      // A multi-gap draft has to open in the consolidated view so
+      // every gap's evidence is editable at once. Single-gap drafts
+      // keep the compact inline workspace. Prefer the click payload's
+      // own gap set, but fall back to the persisted note in case dc
+      // arrived without gapCodes attached (older activity entries).
+      const noteForClick = dc.noteId
+        ? memberNotes.find(n => n.id === dc.noteId)
+        : null;
+      const scopeCodes = (dc.gapCodes && dc.gapCodes.length)
+        ? dc.gapCodes
+        : (noteForClick?.gapCodes || []);
+      setLeftWorkspace(scopeCodes.length > 1 ? 'clinical-note-consolidated' : 'clinical-note');
       return;
     }
     if (dc.status === 'Pending Review' || dc.status === 'Submitted') {
