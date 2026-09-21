@@ -66,6 +66,22 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     activeGaps.forEach(g => {
       init[g.code] = { manuallyOff: false, ...defaultGapData(g.code), ...(g.draft ?? {}) };
     });
+    // Seed from the store's cached notes (newest-first) so the first
+    // render already carries any answers persisted by a prior surface —
+    // e.g. the DSF-A auto-promote draft written seconds before this
+    // panel mounted. Without this, a Save-as-Draft racing the async
+    // fetch effect would overwrite the DB row with the empty defaults.
+    const gapsSeen = new Set();
+    for (const n of (notesForMember || [])) {
+      const gapsPayload = n?.payload?.gaps;
+      if (!gapsPayload) continue;
+      for (const [code, data] of Object.entries(gapsPayload)) {
+        if (gapsSeen.has(code)) continue;
+        gapsSeen.add(code);
+        if (init[code]) init[code] = { ...init[code], ...data };
+        else init[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+      }
+    }
     return init;
   });
 
@@ -201,14 +217,26 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
         : gapState['DSF-A'];
       if (mergedDsfa?.phq2?.savedAt) {
         try {
-          const codes = ['DSF-A'];
+          // Write the draft as a CONSOLIDATED DSF-A + DSF-B row from the
+          // start, since the pair is authored together. DSF-B seeds with
+          // default (empty) evidence; the consolidated panel will fill
+          // it in as the coordinator works through PHQ-9. Subsequent
+          // Save-as-Draft clicks (handled by handleSaveDraft's DSF-pair
+          // rule) reuse the same row via noteIdByCode.
+          const codes = ['DSF-A', 'DSF-B'];
           const primary = 'DSF-A';
-          const effectiveId = selectedNoteId || noteIdByCode[primary];
+          const effectiveId = selectedNoteId
+            || noteIdByCode[primary]
+            || noteIdByCode['DSF-B'];
+          const dsfbSeed = stripUiFlags(gapState['DSF-B'] || { ...defaultGapData('DSF-B') });
           const payload = {
             dateOfService,
             audioOnly,
             audioVideo,
-            gaps: { 'DSF-A': stripUiFlags(mergedDsfa) },
+            gaps: {
+              'DSF-A': stripUiFlags(mergedDsfa),
+              'DSF-B': dsfbSeed,
+            },
           };
           const note = await upsertClinicalNote({
             id: effectiveId,
@@ -511,10 +539,26 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     // back to the active gap when nothing is dirty (button should already
     // be disabled in that case; the guard here is belt + braces).
     const dirty = [...dirtyCodes];
-    const codes = dirty.length ? dirty : (activeGapCode ? [activeGapCode] : []);
+    let codes = dirty.length ? dirty : (activeGapCode ? [activeGapCode] : []);
+    // DSF-A / DSF-B are authored together on a single member call, so a
+    // draft that touches either one is always saved as a consolidated
+    // row carrying BOTH codes. This keeps the pair as a single entity
+    // (one row in Visit Notes / P360 Notes), and Edit lands the user
+    // back in the consolidated view instead of the single-gap workspace.
+    const dsfPair = ['DSF-A', 'DSF-B'];
+    const memberHasBothDsf = dsfPair.every(c => (member?.gaps || []).some(g => g.code === c));
+    const touchesDsf = codes.some(c => dsfPair.includes(c));
+    if (memberHasBothDsf && touchesDsf) {
+      codes = dsfPair;
+    }
     const primary = codes[0];
     if (!primary) { showToast('Nothing to save'); return; }
-    const effectiveId = selectedNoteId || noteIdByCode[primary];
+    // For the DSF pair, prefer whichever row already exists (the auto-
+    // promote path writes DSF-A first) so the second save updates the
+    // same row instead of spawning a duplicate draft.
+    const effectiveId = selectedNoteId
+      || noteIdByCode[primary]
+      || (codes.length > 1 ? codes.map(c => noteIdByCode[c]).find(Boolean) : undefined);
     const note = await upsertClinicalNote({
       id: effectiveId,
       hedisMemberId: member.id,
