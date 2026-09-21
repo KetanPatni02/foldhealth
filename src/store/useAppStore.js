@@ -116,6 +116,15 @@ import {
 import { fetchAnalyticsTableBatched } from './lib/analyticsTableBatcher';
 import { mapNotificationRow, mergeNotifications } from './lib/notificationStoreLib';
 import { persistHccAddedChart, persistProgramDocument } from './lib/documentUploadPersist';
+import {
+  LIST_FILTER_KEY,
+  detachSaved,
+  readSavedFiltersByList,
+  readActiveSavedIdByList,
+  hydrateListFilters,
+} from './lib/worklistListFilters';
+import { readSessionJson } from './lib/sessionJson';
+import { careTeamRowToJs, careTeamJsToDb } from './lib/careTeamMappers';
 import { createShellSlice } from './slices/shellSlice';
 
 // Timer handle for the 3-second row-flash on the tasks page.
@@ -214,119 +223,6 @@ const HCC_TRANSITION_LABEL = {
   returnDos:             'DOS Returned',
   reassignRole:          'Role Reassigned',
 };
-
-// Maps a shared-list label to the store-state key that holds its active
-// filter selections. Used by the generic saved-filter actions below so that
-// saving / applying a filter on any list writes to the right slice.
-// Lists not listed here fall back to `activeFilters` (the TCM / TOC default).
-const LIST_FILTER_KEY = {
-  HCC:   'hccFilters',
-  HEDIS: 'hedisFilters',
-  SNP:   'snpFilters',
-  AWV:   'awvFilters',
-  JSA:   'jsaFilters',
-};
-
-// Remove a list's active saved-filter selection and persist the change.
-// Used when the user edits/clears filters (which detaches the saved view).
-function detachSaved(activeSavedIdByList, list) {
-  if (!activeSavedIdByList || !(list in activeSavedIdByList)) return activeSavedIdByList;
-  const next = { ...activeSavedIdByList };
-  delete next[list];
-  try { localStorage.setItem('activeSavedIdByList', JSON.stringify(next)); } catch {/* */}
-  return next;
-}
-
-// Read the persisted saved-filter definitions (falls back to the legacy key,
-// then to sensible defaults).
-function readSavedFiltersByList() {
-  try {
-    const raw = localStorage.getItem('savedFiltersByList');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
-    }
-  } catch {/* fall through */}
-  try {
-    const legacy = localStorage.getItem('hccSavedFilters');
-    if (legacy) {
-      const parsed = JSON.parse(legacy);
-      if (Array.isArray(parsed)) return { HCC: parsed };
-    }
-  } catch {/* */}
-  return {
-    HCC: [
-      { id: 'sf1', name: 'High Risk Members',  filters: { rl: ['High'] } },
-      { id: 'sf2', name: 'Overdue Incomplete', filters: { supS: ['Assign'], cdrS: ['Assign'] } },
-    ],
-  };
-}
-
-// Read the persisted active saved-filter id per list (falls back to legacy key).
-function readActiveSavedIdByList() {
-  try {
-    const raw = localStorage.getItem('activeSavedIdByList');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object') return parsed;
-    }
-  } catch {/* */}
-  const legacy = localStorage.getItem('hccActiveSavedId');
-  return legacy ? { HCC: legacy } : {};
-}
-
-// Hydrate a list's filter slice from its active saved filter at boot. Only
-// `activeSavedIdByList` is persisted (not the filter slice), so without this a
-// reload would show the SavedFiltersChip as active with no filters applied.
-function hydrateListFilters(list) {
-  const active = readActiveSavedIdByList()[list];
-  if (!active) return {};
-  const f = (readSavedFiltersByList()[list] || []).find(x => x.id === active);
-  return f ? { ...f.filters } : {};
-}
-
-// Safe JSON read from sessionStorage — returns fallback on missing/parse error.
-function _readJson(key, fallback) {
-  try {
-    const raw = sessionStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-// ── Care team row mapper ──
-// Translates a Supabase `care_teams` row to/from the JS shape the
-// ConfigureTeamDrawer + Care Team table consume (see hccCareTeams below).
-function careTeamRowToJs(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    kind: row.kind,
-    teamType: row.team_type,
-    allocatedTins: row.allocated_tins || [],
-    createdAt: row.created_label,
-    createdBy: row.created_by,
-    lastModifiedAt: row.modified_label,
-    lastModifiedBy: row.modified_by,
-    members: row.members || [],
-  };
-}
-function careTeamJsToDb(t) {
-  return {
-    id: t.id,
-    name: t.name,
-    kind: t.kind,
-    team_type: t.teamType,
-    allocated_tins: t.allocatedTins || [],
-    created_label: t.createdAt,
-    created_by: t.createdBy,
-    modified_label: t.lastModifiedAt,
-    modified_by: t.lastModifiedBy,
-    members: t.members || [],
-    updated_at: new Date().toISOString(),
-  };
-}
 
 /**
  * Seed historical document-upload batches into the HCC activity feed so
@@ -8841,7 +8737,7 @@ export const useAppStore = create((set, get) => ({
   // columns are not toggleable so they never appear here. Persisted to
   // localStorage so the user's column config survives reload (matches the
   // savedFiltersByList / activeSavedIdByList pattern already used in this store).
-  hccHiddenCols: _readJson('hccHiddenCols', []),
+  hccHiddenCols: readSessionJson('hccHiddenCols', []),
   toggleHccColumn: (k) => {
     track('hcc.column_toggled', { column: k });
     set(s => {
@@ -8862,7 +8758,7 @@ export const useAppStore = create((set, get) => ({
   // Show Columns popover writes here; HccWorklistTable + ColumnConfigPopover
   // apply this order via `orderColumns(HCC_COLUMNS, hccColumnOrder)`. Also
   // persisted to localStorage.
-  hccColumnOrder: _readJson('hccColumnOrder', []),
+  hccColumnOrder: readSessionJson('hccColumnOrder', []),
   reorderHccColumns: (fromKey, toKey) => set(s => {
     if (!fromKey || !toKey || fromKey === toKey) return {};
     track('hcc.columns_reordered', { from: fromKey, to: toKey });
@@ -9996,7 +9892,7 @@ export const useAppStore = create((set, get) => ({
   // Batches created during the CURRENT ICD-Creation session so the right
   // panel's "Records" list only shows what this user just added — not
   // every historical batch from prior reloads.
-  icdCreationSessionBatchIds: _readJson('icdCreationSessionBatchIds', []),
+  icdCreationSessionBatchIds: readSessionJson('icdCreationSessionBatchIds', []),
   openIcdCreation: () => {
     sessionStorage.setItem('icdCreationOpen', '1');
     sessionStorage.setItem('icdCreationSessionBatchIds', '[]');
@@ -10288,7 +10184,7 @@ export const useAppStore = create((set, get) => ({
   // When set, the review drawer aggregates pending encounters across ALL
   // listed batches and paginates by patient across them (ICD Creation
   // "Review" flow). null → single-batch mode (SFTP bell-notification flow).
-  hccReviewSourceBatchIds: _readJson('hccReviewSourceBatchIds', null),
+  hccReviewSourceBatchIds: readSessionJson('hccReviewSourceBatchIds', null),
   openHccSftpReview: () => set(s => {
     const activeId = s.hccSftpActiveBatchId
       || (s.hccSftpBatches || []).find(b => b.status === 'done')?.id

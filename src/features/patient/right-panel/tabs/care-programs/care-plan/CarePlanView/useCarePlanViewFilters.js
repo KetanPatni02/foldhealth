@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { GBI_STATUS_TONE } from '../tables/carePlanTableShared';
-
-const norm = (s) => (s || '').trim().toLowerCase();
+import { norm } from './carePlanViewNorm';
 
 /**
  * Status/priority/assignee filters plus template-scoped list filtering and summary stats.
