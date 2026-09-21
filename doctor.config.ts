@@ -74,6 +74,16 @@ export default {
       // (support_name, coder_status, …), not auth profile roles.
       { files: ['src/store/lib/worklistPersist.js'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
 
+      // Anonymous patient form submission requires anon INSERT on form_responses;
+      // auth.uid() is null for anon, so WITH CHECK (true) is intentional here.
+      {
+        files: [
+          'supabase/forms_rls_lockdown_migration.sql',
+          'supabase/react_doctor_rls_forward_migration.sql',
+        ],
+        rules: ['react-doctor/supabase-rls-policy-risk'],
+      },
+
       // ProductTour reads/writes its own row keyed by a `user_id` taken from
       // supabase.auth.getUser() — there is no client-side change that makes a
       // client filter into a security boundary. Enforcement lives in the

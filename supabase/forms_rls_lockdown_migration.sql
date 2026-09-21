@@ -83,7 +83,7 @@ create policy "form_responses_select_authenticated"
 
 create policy "form_responses_insert_anon"
   on public.form_responses for insert to anon
-  with check ((select auth.uid()) is not null);
+  with check (true);
 
 -- Autosave upsert writes status='in_progress'; the submit upsert flips the
 -- same session row to 'completed'. Both must pass WITH CHECK.
