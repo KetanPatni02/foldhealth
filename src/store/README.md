@@ -17,6 +17,7 @@
 | `lib/worklistListFilters.js` | Saved worklist filters (localStorage hydrate) |
 | `lib/sessionJson.js` | sessionStorage JSON reads for HCC UI prefs |
 | `lib/careTeamMappers.js` | care_teams row ⇄ JS mappers |
+| `lib/contentStoreCache.js` | Content emails/forms SWR caches, campaign save debounce, HCC extract toast batching |
 | `lib/analyticsTableBatcher.js` | Batched analytics_tables reads for dashboard views |
 | `slices/shellSlice.js` | Theme, nav chrome, Featurebase JWT, changelog |
 | `shellInitial.js` | One-time shell hydration (theme, contrast, font scale) |

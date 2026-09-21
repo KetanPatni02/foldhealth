@@ -67,6 +67,14 @@ import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTempl
 import { CarePlanDuplicateGroup } from '../DuplicateFlag/CarePlanDuplicateGroup';
 import { AppliedTemplateStrip } from './AppliedTemplateStrip';
 import { addGoalsFromPicker, addBarriersFromPicker } from './carePlanPickerHandlers';
+import {
+  createUndoGoalCascadeAction,
+  createUndoToastAction,
+  deleteGbiById as deleteGbiByIdAction,
+  saveGbiPriority,
+  saveGbiStatus,
+} from './carePlanGbiActions';
+import { useCarePlanBulkSelection } from './useCarePlanBulkSelection';
 import styles from './CarePlanView.module.css';
 
 export function CarePlanView({ patientId, program }) {
@@ -219,6 +227,43 @@ export function CarePlanView({ patientId, program }) {
     carePlanTemplates,
     libraryGoals,
   });
+
+  const canEdit = !!(patientId && program);
+  const {
+    selected,
+    bulkMenu,
+    setBulkMenu,
+    bulkDeleteOpen,
+    setBulkDeleteOpen,
+    bulkAssignOpen,
+    setBulkAssignOpen,
+    selectedCount,
+    toggleSelect,
+    clearSelection,
+    selectAllKind,
+    bulkSetStatus,
+    bulkSetPriority,
+    bulkAssign,
+    bulkDelete,
+    gbiCtx,
+  } = useCarePlanBulkSelection({
+    bulkMode,
+    setCarePlanBulkMode,
+    filteredGoals,
+    filteredInterventions,
+    filteredBarriers,
+    patientId,
+    program,
+    savePatientCarePlanGoal,
+    savePatientCarePlanIntervention,
+    savePatientCarePlanBarrier,
+    deletePatientCarePlanGoal,
+    deletePatientCarePlanIntervention,
+    deletePatientCarePlanBarrier,
+    refreshCarePlanDuplicates,
+    showToast,
+  });
+
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateConditions, setTemplateConditions] = useState([]);
@@ -227,12 +272,6 @@ export function CarePlanView({ patientId, program }) {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [signNote, setSignNote] = useState('');
-  const selectAllKind = (kind, rows, checked) => setSelected(prev => ({
-    ...prev,
-    [kind]: checked ? new Set(rows.map(r => r.id)) : new Set(),
-  }));
-
-  const canEdit = !!(patientId && program);
 
   const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
   const appliedTemplatePriorities = live?.plan?.appliedTemplatePriorities || {};
@@ -260,98 +299,6 @@ export function CarePlanView({ patientId, program }) {
     const nextIds = appliedTemplateIds.filter(id => id !== templateId);
     if (templateFilterId === templateId) setTemplateFilterId(null);
     await applyPatientCarePlanTemplates(patientId, program, nextIds);
-  };
-
-  // Bulk selection (#7). Selection is per section, over the visible (filtered)
-  // rows; a bulk status change loops the normal save path so each write audits.
-  const [selected, setSelected] = useState({ goal: new Set(), intv: new Set(), barrier: new Set() });
-  const [bulkMenu, setBulkMenu] = useState(null); // { rect, type }
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkAssignOpen, setBulkAssignOpen] = useState(false);
-  const selectedCount = selected.goal.size + selected.intv.size + selected.barrier.size;
-  const toggleSelect = (kind, id) => setSelected(prev => {
-    const next = new Set(prev[kind]);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return { ...prev, [kind]: next };
-  });
-  const clearSelection = () => setSelected({ goal: new Set(), intv: new Set(), barrier: new Set() });
-
-  // Leaving bulk mode drops any pending selection; unmounting resets the shared
-  // flag so bulk mode never persists across care plans.
-  useEffect(() => { if (!bulkMode) setSelected({ goal: new Set(), intv: new Set(), barrier: new Set() }); }, [bulkMode]);
-  useEffect(() => () => setCarePlanBulkMode(false), [setCarePlanBulkMode]);
-
-  const bulkSetStatus = async (status) => {
-    setBulkMenu(null);
-    const g = filteredGoals.filter(x => selected.goal.has(x.id));
-    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
-    const br = filteredBarriers.filter(x => selected.barrier.has(x.id));
-    for (const x of g) await savePatientCarePlanGoal(patientId, program, { ...x, status }, x.id);
-    for (const x of iv) await savePatientCarePlanIntervention(patientId, program, { ...x, status }, x.id);
-    for (const x of br) await savePatientCarePlanBarrier(patientId, program, { ...x, status }, x.id);
-    const n = g.length + iv.length + br.length;
-    clearSelection();
-    if (n) showToast(`Updated ${n} item${n === 1 ? '' : 's'} to "${status}"`);
-  };
-
-  const bulkSetPriority = async (priority) => {
-    setBulkMenu(null);
-    const g = filteredGoals.filter(x => selected.goal.has(x.id));
-    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
-    const br = filteredBarriers.filter(x => selected.barrier.has(x.id));
-    for (const x of g) await savePatientCarePlanGoal(patientId, program, { ...x, priority }, x.id);
-    for (const x of iv) await savePatientCarePlanIntervention(patientId, program, { ...x, priority }, x.id);
-    for (const x of br) await savePatientCarePlanBarrier(patientId, program, { ...x, priority }, x.id);
-    const n = g.length + iv.length + br.length;
-    clearSelection();
-    if (n) showToast(`Set ${n} item${n === 1 ? '' : 's'} to ${priority.charAt(0).toUpperCase() + priority.slice(1)} priority`);
-  };
-
-  // Bulk assign applies to selected interventions only (goals/barriers have no assignee).
-  const bulkAssign = async (user) => {
-    setBulkAssignOpen(false);
-    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
-    if (!iv.length) { showToast('Select one or more interventions to assign'); return; }
-    for (const x of iv) await savePatientCarePlanIntervention(patientId, program, { ...x, assignee: { name: user.name, initials: user.initials } }, x.id);
-    clearSelection();
-    showToast(`Assigned ${iv.length} intervention${iv.length === 1 ? '' : 's'} to ${user.name}`);
-  };
-
-  // Re-insert a removed goal/intervention/barrier (undo). Drops the old id so it
-  // saves as a fresh row; derived fields are ignored by the row mappers.
-  const restoreGbi = ({ kind, item }) => {
-    const { id, ...values } = item; // eslint-disable-line no-unused-vars
-    if (kind === 'goal') return savePatientCarePlanGoal(patientId, program, values);
-    if (kind === 'barrier') return savePatientCarePlanBarrier(patientId, program, values);
-    return savePatientCarePlanIntervention(patientId, program, values);
-  };
-  const undoAction = (removed) => ({
-    label: 'Undo',
-    onClick: async () => {
-      for (const r of removed) await restoreGbi(r);
-      refreshCarePlanDuplicates(patientId, program);
-    },
-  });
-
-  const bulkDelete = async () => {
-    setBulkDeleteOpen(false);
-    const g = filteredGoals.filter(x => selected.goal.has(x.id));
-    const iv = filteredInterventions.filter(x => selected.intv.has(x.id));
-    const br = filteredBarriers.filter(x => selected.barrier.has(x.id));
-    for (const x of g) await deletePatientCarePlanGoal(patientId, program.id, x.id);
-    for (const x of iv) await deletePatientCarePlanIntervention(patientId, program.id, x.id);
-    for (const x of br) await deletePatientCarePlanBarrier(patientId, program.id, x.id);
-    const n = g.length + iv.length + br.length;
-    clearSelection();
-    if (n) {
-      const removed = [
-        ...g.map(item => ({ kind: 'goal', item })),
-        ...iv.map(item => ({ kind: 'intervention', item })),
-        ...br.map(item => ({ kind: 'barrier', item })),
-      ];
-      showToast(`Removed ${n} item${n === 1 ? '' : 's'}`, { action: undoAction(removed), duration: 6000 });
-      refreshCarePlanDuplicates(patientId, program);
-    }
   };
 
   const doSign = async () => {
@@ -389,17 +336,31 @@ export function CarePlanView({ patientId, program }) {
   const changeStatus = (status) => {
     const { kind, item } = statusMenu;
     setStatusMenu(null);
-    if (kind === 'goal') savePatientCarePlanGoal(patientId, program, { ...item, status }, item.id);
-    else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, { ...item, status }, item.id);
-    else savePatientCarePlanIntervention(patientId, program, { ...item, status }, item.id);
+    saveGbiStatus({
+      kind,
+      item,
+      status,
+      patientId,
+      program,
+      savePatientCarePlanGoal,
+      savePatientCarePlanBarrier,
+      savePatientCarePlanIntervention,
+    });
   };
 
   const changePriority = (priority) => {
     const { kind, item } = priorityMenu;
     setPriorityMenu(null);
-    if (kind === 'goal') savePatientCarePlanGoal(patientId, program, { ...item, priority }, item.id);
-    else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, { ...item, priority }, item.id);
-    else savePatientCarePlanIntervention(patientId, program, { ...item, priority }, item.id);
+    saveGbiPriority({
+      kind,
+      item,
+      priority,
+      patientId,
+      program,
+      savePatientCarePlanGoal,
+      savePatientCarePlanBarrier,
+      savePatientCarePlanIntervention,
+    });
   };
 
   const renameBarrier = (barrier, title) => savePatientCarePlanBarrier(patientId, program, { ...barrier, title }, barrier.id);
@@ -484,22 +445,7 @@ export function CarePlanView({ patientId, program }) {
 
   // Undoing a cascade puts the goal back first, then re-links its children to
   // the new row — restoring them in any other order returns them loose.
-  const undoGoalCascade = (goal, cascade) => ({
-    label: 'Undo',
-    onClick: async () => {
-      const { id: goalId, ...goalValues } = goal; // eslint-disable-line no-unused-vars
-      const restored = await savePatientCarePlanGoal(patientId, program, goalValues);
-      for (const intv of cascade.interventions) {
-        const { id: intvId, ...values } = intv; // eslint-disable-line no-unused-vars
-        await savePatientCarePlanIntervention(patientId, program, { ...values, goalId: restored?.id || null });
-      }
-      for (const barrier of cascade.barriers) {
-        const { id: barrierId, ...values } = barrier; // eslint-disable-line no-unused-vars
-        await savePatientCarePlanBarrier(patientId, program, { ...values, goalId: restored?.id || null, goalIds: restored ? [restored.id] : [] });
-      }
-      refreshCarePlanDuplicates(patientId, program);
-    },
-  });
+  const undoGoalCascade = (goal, cascade) => createUndoGoalCascadeAction(goal, cascade, gbiCtx);
 
   // `withLinked` false leaves the goal's interventions and barriers on the plan.
   const removeGoal = async (withLinked) => {
@@ -520,16 +466,14 @@ export function CarePlanView({ patientId, program }) {
     setDeleteTarget(null);
     if (kind === 'barrier') deletePatientCarePlanBarrier(patientId, program.id, id);
     else deletePatientCarePlanIntervention(patientId, program.id, id);
-    showToast(`"${name}" removed`, item ? { action: undoAction([{ kind: kind === 'intv' ? 'intervention' : kind, item }]), duration: 6000 } : undefined);
+    const undoKind = kind === 'intv' ? 'intervention' : kind;
+    showToast(`"${name}" removed`, item ? {
+      action: createUndoToastAction([{ kind: undoKind, item }], gbiCtx),
+      duration: 6000,
+    } : undefined);
   };
 
-  // ── Possible-duplicate resolution (Figma SNP-Story 8464:289403) ──
-  // Every action only mutates THIS plan's item (never another program's plan).
-  const deleteGbiById = (kind, id) => {
-    if (kind === 'goal') deletePatientCarePlanGoal(patientId, program.id, id);
-    else if (kind === 'barrier') deletePatientCarePlanBarrier(patientId, program.id, id);
-    else deletePatientCarePlanIntervention(patientId, program.id, id);
-  };
+  const deleteGbiById = (kind, id) => deleteGbiByIdAction(kind, id, gbiCtx);
   const openGbiEditor = (kind, item) => {
     if (kind === 'goal') setPreviewGoal(item);
     else if (kind === 'barrier') setBarrierDrawer({ barrier: item });

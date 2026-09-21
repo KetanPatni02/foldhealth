@@ -125,6 +125,19 @@ import {
 } from './lib/worklistListFilters';
 import { readSessionJson } from './lib/sessionJson';
 import { careTeamRowToJs, careTeamJsToDb } from './lib/careTeamMappers';
+import {
+  contentEmailsCache,
+  CONTENT_EMAILS_TTL_MS,
+  invalidateContentEmailsCache,
+  contentFormsCache,
+  CONTENT_FORMS_TTL_MS,
+  invalidateContentFormsCache,
+  scheduleCampaignSave,
+  cancelScheduledCampaignSave,
+  queueHccExtractToast,
+} from './lib/contentStoreCache';
+import { HCC_TRANSITION_LABEL } from '../features/hcc/hccTransitionLabels';
+import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActivityFeed';
 import { createShellSlice } from './slices/shellSlice';
 
 // Timer handle for the 3-second row-flash on the tasks page.
@@ -148,183 +161,6 @@ const _savedPage = sessionStorage.getItem('activePage') || 'population';
 const _cachedWorklistOrder = readCachedWorklistOrder();
 const _savedTab = sessionStorage.getItem('activeTab') || 'toc-worklist';
 const _savedSettingsTab = sessionStorage.getItem('settingsTab');
-
-
-// ── Settings → Content → Emails: SWR cache ────────────────────────────────
-// Keyed by `${page}|${perPage}|${searchLowercased}|${status}`. Lives at
-// module scope so cache survives store rebuilds during HMR. Cleared by any
-// campaign mutation (delete / bulk delete / duplicate / draft insert).
-const _contentEmailsCache = new Map();
-const CONTENT_EMAILS_TTL_MS = 60_000;
-function _invalidateContentEmailsCache() {
-  _contentEmailsCache.clear();
-}
-
-// ── Settings → Content → Forms: SWR cache ─────────────────────────────────
-// Same shape/strategy as the emails cache above. Keyed by
-// `${page}|${perPage}|${searchLowercased}|${status}`; cleared by any form
-// mutation (create draft / duplicate / delete / save).
-const _contentFormsCache = new Map();
-const CONTENT_FORMS_TTL_MS = 60_000;
-function _invalidateContentFormsCache() {
-  _contentFormsCache.clear();
-}
-
-// Debounced auto-save for the Campaign builder. We coalesce rapid field edits
-// (typing, slider drags) into one PATCH per 600ms window per campaign id.
-const _campaignSaveTimers = new Map();
-
-// ── HCC upload: batched "extracting" toast ────────────────────────────
-// queueHccDocumentForOcr is called once per file, so a 20-file drop used to
-// fire 20 back-to-back toasts. Accumulate filenames pushed within a short
-// window and flush a single combined toast instead.
-const _hccExtractQueue = { names: [], timer: null };
-function _flushHccExtractToast() {
-  const { names } = _hccExtractQueue;
-  _hccExtractQueue.names = [];
-  _hccExtractQueue.timer = null;
-  if (names.length === 0) return;
-  const toast = useAppStore.getState().showToast;
-  if (!toast) return;
-  if (names.length === 1) {
-    toast(`${names[0]} — extracting in the background`);
-  } else {
-    toast(`${names.length} files — extracting in the background`);
-  }
-}
-function _queueHccExtractToast(fileName) {
-  _hccExtractQueue.names.push(fileName);
-  if (_hccExtractQueue.timer) return;
-  _hccExtractQueue.timer = setTimeout(_flushHccExtractToast, 150);
-}
-function scheduleCampaignSave(id, fn) {
-  const existing = _campaignSaveTimers.get(id);
-  if (existing) clearTimeout(existing);
-  _campaignSaveTimers.set(id, setTimeout(() => {
-    _campaignSaveTimers.delete(id);
-    fn();
-  }, 600));
-}
-
-// Human-readable labels for HCC DOS lifecycle transitions, used by the
-// Activity Log to format "DOS 07/04/2024 — Support Completed" style entries.
-const HCC_TRANSITION_LABEL = {
-  markSupportInProgress: 'Support In Progress',
-  completeSupport:       'Support Completed',
-  markInsufficient:      'Marked Insufficient',
-  rejectDos:             'DOS Rejected',
-  completeCoder:         'Coding Completed',
-  requestRecords:        'Records Requested',
-  requestRecordsFrom:    'Records Requested',
-  recordsReceived:       'Records Received',
-  recordsReceivedFor:    'Records Received',
-  completeReviewer:      'QA Completed',
-  completeReviewer2:     'Compliance Completed',
-  returnDos:             'DOS Returned',
-  reassignRole:          'Role Reassigned',
-};
-
-/**
- * Seed historical document-upload batches into the HCC activity feed so
- * the History drawer's Documents tab has realistic content out of the
- * box. Each batch reads as a completed upload: a `batch.created`,
- * `file.uploaded`, `ocr.completed`, and `batch.processing_completed`
- * row stamped with believable counts and timestamps in the recent
- * past. Real backend wipes this once Supabase returns rows.
- */
-function buildSeedHccActivityFeed() {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  // Older first — we reverse at the end so newest sorts to the top.
-  const batches = [
-    { id: 'seed-b1', file: 'progress-notes-week-of-04-14.pdf', actor: 'Dr. Sarah Connor',
-      approved: 8, rejected: 0, encounters: 8, source: 'manual', daysAgo: 0.2,
-      rejectedList: [] },
-    { id: 'seed-b2', file: 'sftp-overnight-2026-04-12.pdf', actor: 'SFTP',
-      approved: 12, rejected: 3, encounters: 15, source: 'sftp', daysAgo: 1.4,
-      rejectedList: [
-        { patientName: 'Patricia Moore', dos: '04/10/2026' },
-        { patientName: 'Robert Kim', dos: '04/09/2026' },
-        { patientName: 'James Walker', dos: '04/09/2026' },
-      ]},
-    { id: 'seed-b3', file: 'annual-wellness-bulk.pdf', actor: 'You',
-      approved: 5, rejected: 1, encounters: 6, source: 'manual', daysAgo: 3.0,
-      rejectedList: [{ patientName: 'Jane Doe', dos: '04/08/2026' }] },
-    { id: 'seed-b4', file: 'discharge-summaries-april.pdf', actor: 'Dr. Helen Yu',
-      approved: 4, rejected: 0, encounters: 4, source: 'manual', daysAgo: 5.5,
-      rejectedList: [] },
-    { id: 'seed-b5', file: 'multi-patient-chart-batch.pdf', actor: 'M. Singh',
-      approved: 0, rejected: 0, encounters: 0, source: 'sftp', daysAgo: 7.0,
-      rejectedList: [],
-      // Failed extraction — surfaces as Processing/Failed status in the tab.
-      failed: true },
-  ];
-  const rows = [];
-  batches.forEach(b => {
-    const baseTs = new Date(now - b.daysAgo * day);
-    const iso = (offsetMin) => new Date(baseTs.getTime() + offsetMin * 60_000).toISOString();
-    const scope = { batchId: b.id, fileId: b.file, source: b.source };
-    rows.push({
-      id: `${b.id}-c`, ts: iso(0), event_name: 'batch.created',
-      batch_id: b.id, category: 'intake', severity: 'info',
-      actor_name: b.actor,
-      headline: `Batch ${b.id} created — 1 file queued.`,
-      scope,
-      payload: { batchId: b.id, fileCount: 1, fileName: b.file, actor: b.actor },
-    });
-    rows.push({
-      id: `${b.id}-u`, ts: iso(1), event_name: 'file.uploaded',
-      batch_id: b.id, category: 'intake', severity: 'info',
-      actor_name: b.actor,
-      headline: `${b.actor} uploaded ${b.file}.`,
-      scope,
-      payload: { actor: b.actor, fileName: b.file, pageCount: Math.max(1, Math.ceil(b.encounters / 2)) },
-    });
-    if (b.failed) {
-      rows.push({
-        id: `${b.id}-fail`, ts: iso(2), event_name: 'ocr.failed',
-        batch_id: b.id, category: 'ocr', severity: 'error',
-        actor_name: 'System',
-        headline: `OCR failed on ${b.file}.`,
-        scope,
-        payload: { fileName: b.file, reason: 'Could not read PDF — likely corrupt or password-protected.' },
-      });
-    } else {
-      rows.push({
-        id: `${b.id}-oc`, ts: iso(2), event_name: 'ocr.completed',
-        batch_id: b.id, category: 'ocr', severity: 'success',
-        actor_name: 'System',
-        headline: `OCR completed on ${b.file} — ${b.encounters} encounters extracted.`,
-        scope,
-        payload: {
-          fileName: b.file,
-          encounterCount: b.encounters,
-          pageCount: Math.max(1, Math.ceil(b.encounters / 2)),
-        },
-      });
-      rows.push({
-        id: `${b.id}-pc`, ts: iso(3), event_name: 'batch.processing_completed',
-        batch_id: b.id, category: 'intake', severity: 'success',
-        actor_name: b.actor,
-        headline: `Batch ${b.id} complete — ${b.approved} approved, ${b.rejected} rejected.`,
-        scope,
-        payload: {
-          batchId: b.id,
-          fileName: b.file,
-          approvedCount: b.approved,
-          rejectedCount: b.rejected,
-          pendingCount: 0,
-          acceptedList: [],
-          rejectedList: b.rejectedList,
-          actor: b.actor,
-        },
-      });
-    }
-  });
-  // Newest-first.
-  return rows.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
-}
-
 
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
@@ -10049,7 +9885,7 @@ export const useAppStore = create((set, get) => ({
     };
     set(s => ({ hccSftpBatches: [...(s.hccSftpBatches || []), entry] }));
     // Debounced: fires one combined toast per burst instead of one per file.
-    _queueHccExtractToast(fileName);
+    queueHccExtractToast(fileName, () => get().showToast);
 
     // Activity log: stamp the intake + OCR-start events so the History
     // drawer's Documents tab can surface this batch even while OCR is
@@ -11781,8 +11617,7 @@ export const useAppStore = create((set, get) => ({
     track('campaign.run_now', { campaignId: id });
     // Flush pending debounced save synchronously so we don't lose the latest
     // field edit racing with this request.
-    const pending = _campaignSaveTimers.get(id);
-    if (pending) { clearTimeout(pending); _campaignSaveTimers.delete(id); }
+    cancelScheduledCampaignSave(id);
     const { error } = await supabase
       .from('campaigns')
       .update({ section: 'running', enabled: true })
@@ -11851,8 +11686,7 @@ export const useAppStore = create((set, get) => ({
 
     // Flush any pending debounced field save so the audience we resolve
     // reflects the latest edit.
-    const pending = _campaignSaveTimers.get(id);
-    if (pending) { clearTimeout(pending); _campaignSaveTimers.delete(id); }
+    cancelScheduledCampaignSave(id);
 
     let recipients = [];
     try {
@@ -11963,7 +11797,7 @@ export const useAppStore = create((set, get) => ({
     // by deleteCampaign / deleteCampaignsBulk / duplicateCampaign /
     // openContentEmailBuilder(null).
     const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
-    const cached = _contentEmailsCache.get(cacheKey);
+    const cached = contentEmailsCache.get(cacheKey);
     const now = Date.now();
 
     if (cached) {
@@ -12055,7 +11889,7 @@ export const useAppStore = create((set, get) => ({
     const total = count || 0;
     // Store the freshly-revalidated data in the cache so the next visit at
     // this same key returns immediately.
-    _contentEmailsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    contentEmailsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
     set({
       contentEmails: rows,
       contentEmailsTotal: total,
@@ -12100,7 +11934,7 @@ export const useAppStore = create((set, get) => ({
       }
       campaign = campaignRowToJs(data);
       set(s => ({ campaigns: [...s.campaigns, campaign] }));
-      _invalidateContentEmailsCache();
+      invalidateContentEmailsCache();
     }
     // Clear any stale campaign-builder takeover so the URL routes through
     // settings/content and closeEmailBuilder lands back on the email list.
@@ -12142,7 +11976,7 @@ export const useAppStore = create((set, get) => ({
     }
     const fresh = campaignRowToJs(copy);
     set(s => ({ campaigns: [...s.campaigns, fresh] }));
-    _invalidateContentEmailsCache();
+    invalidateContentEmailsCache();
     get().showToast?.('Email duplicated');
     return fresh;
   },
@@ -12169,7 +12003,7 @@ export const useAppStore = create((set, get) => ({
         contentEmailsTotal: Math.max(0, s.contentEmailsTotal - removed),
       };
     });
-    _invalidateContentEmailsCache();
+    invalidateContentEmailsCache();
     get().showToast?.(`${ids.length} email${ids.length === 1 ? '' : 's'} deleted`);
     return true;
   },
@@ -12190,7 +12024,7 @@ export const useAppStore = create((set, get) => ({
         contentEmailsTotal: Math.max(0, s.contentEmailsTotal - (wasListed ? 1 : 0)),
       };
     });
-    _invalidateContentEmailsCache();
+    invalidateContentEmailsCache();
     get().showToast?.('Email deleted');
     return true;
   },
@@ -12219,7 +12053,7 @@ export const useAppStore = create((set, get) => ({
 
   fetchContentForms: async ({ page = 1, perPage = 10, search = '', status = 'all', force = false } = {}) => {
     const cacheKey = `${page}|${perPage}|${(search || '').toLowerCase().trim()}|${status || 'all'}`;
-    const cached = _contentFormsCache.get(cacheKey);
+    const cached = contentFormsCache.get(cacheKey);
     const now = Date.now();
     if (cached) {
       set({ contentForms: cached.rows, contentFormsTotal: cached.total, contentFormsLoading: false });
@@ -12262,7 +12096,7 @@ export const useAppStore = create((set, get) => ({
     // against a local draft.
     if (error && (error.code === '42P01' || error.code === 'PGRST205' || error.code === '42703')) {
       console.warn('[fetchContentForms] forms table missing — run supabase/forms_migration.sql');
-      _contentFormsCache.set(cacheKey, { rows: [], total: 0, fetchedAt: Date.now() });
+      contentFormsCache.set(cacheKey, { rows: [], total: 0, fetchedAt: Date.now() });
       set({ contentForms: [], contentFormsTotal: 0, contentFormsLoading: false });
       return;
     }
@@ -12273,7 +12107,7 @@ export const useAppStore = create((set, get) => ({
     }
     const rows = (data || []).map(formRowToJs);
     const total = count || 0;
-    _contentFormsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
+    contentFormsCache.set(cacheKey, { rows, total, fetchedAt: Date.now() });
     set({ contentForms: rows, contentFormsTotal: total, contentFormsLoading: false });
   },
 
@@ -12366,7 +12200,7 @@ export const useAppStore = create((set, get) => ({
         }
       } else {
         form = formRowToJs(data);
-        _invalidateContentFormsCache();
+        invalidateContentFormsCache();
       }
     }
     // Always open on the Edit tab; a refresh into a specific tab is applied
@@ -12522,7 +12356,7 @@ export const useAppStore = create((set, get) => ({
       get().showToast?.('Could not save form');
       return false;
     }
-    _invalidateContentFormsCache();
+    invalidateContentFormsCache();
     set({ formBuilderForm: formRowToJs(data) });
     if (!opts.silent) get().showToast?.('Form saved');
     return true;
@@ -12548,7 +12382,7 @@ export const useAppStore = create((set, get) => ({
       get().showToast?.('Could not duplicate form');
       return null;
     }
-    _invalidateContentFormsCache();
+    invalidateContentFormsCache();
     get().showToast?.('Form duplicated');
     return formRowToJs(copy);
   },
@@ -12568,7 +12402,7 @@ export const useAppStore = create((set, get) => ({
         contentFormsTotal: Math.max(0, s.contentFormsTotal - (wasListed ? 1 : 0)),
       };
     });
-    _invalidateContentFormsCache();
+    invalidateContentFormsCache();
     get().showToast?.('Form deleted');
     return true;
   },
@@ -12592,7 +12426,7 @@ export const useAppStore = create((set, get) => ({
         contentFormsTotal: Math.max(0, s.contentFormsTotal - removed),
       };
     });
-    _invalidateContentFormsCache();
+    invalidateContentFormsCache();
     get().showToast?.(`${ids.length} form${ids.length === 1 ? '' : 's'} deleted`);
     return true;
   },
