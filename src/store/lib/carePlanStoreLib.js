@@ -66,6 +66,7 @@ function mapPatientProblemRow(row) {
     severity: row.severity || '',
     status: row.status || 'Active',
     onsetLabel: row.onset_label || '',
+    note: row.note || '',
     sortOrder: row.sort_order ?? 0,
   };
 }

@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react';
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { StickyNoteIcon } from '../Icon/StickyNoteIcon';
+import { CloseIcon } from '../Icon/CloseIcon';
+import { CheckIcon } from '../Icon/CheckIcon';
 import styles from './StickyNote.module.css';
 
 function formatStickyNoteDate(dateStr) {
@@ -104,12 +106,12 @@ export function StickyNote({ notes = [], onSave, onCreate, onDelete, onAuditLog,
           <ActionButton icon="solar:clock-circle-linear" size="S" tooltip="Audit Log" onClick={onAuditLog} />
           {editing ? (
             <>
-              <button className={styles.cancelBtn} aria-label="Cancel edit" onClick={handleCancelEdit}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--neutral-300)" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
-              </button>
-              <button className={styles.saveBtn} aria-label="Save note" onClick={handleSaveEdit}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary-300)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12.9l3.143 3.6L15 7.5" /></svg>
-              </button>
+              <ActionButton size="S" tooltip="Cancel" aria-label="Cancel edit" onClick={handleCancelEdit}>
+                <CloseIcon size={16} color="var(--neutral-300)" />
+              </ActionButton>
+              <ActionButton size="S" tooltip="Save" aria-label="Save note" onClick={handleSaveEdit}>
+                <CheckIcon size={16} color="var(--neutral-300)" />
+              </ActionButton>
             </>
           ) : (
             <>

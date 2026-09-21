@@ -6,7 +6,9 @@
   background: var(--accent-light-amber); border-bottom: 0.5px solid var(--neutral-100);
   cursor: pointer; min-height: 36px;
 }
-.collapsed:hover { background: color-mix(in srgb, var(--accent-light-amber) 88%, var(--neutral-500)); }
+/* Deepen within the amber itself: mixing in --neutral-500 turned the hover
+   grey-beige instead of a warmer version of the resting colour. */
+.collapsed:hover { background: color-mix(in srgb, var(--accent-light-amber) 92%, var(--accent-amber)); }
 .collapsedText { font-size: var(--font-base); color: var(--neutral-400); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .collapsedActions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.12s; }
 .collapsed:hover .collapsedActions { opacity: 1; }
@@ -22,9 +24,6 @@
 .headerTitle { font-size: var(--font-base); color: var(--neutral-300); flex: 1; }
 .headerActions { display: flex; align-items: center; gap: 2px; }
 
-.cancelBtn, .saveBtn { background: none; border: none; cursor: pointer; padding: 4px; display: flex; align-items: center; border-radius: 4px; }
-.cancelBtn:hover { background: rgba(0,0,0,0.05); }
-.saveBtn:hover { background: var(--primary-50); }
 
 /* Body */
 .body { padding: 8px 12px; min-height: 60px; }

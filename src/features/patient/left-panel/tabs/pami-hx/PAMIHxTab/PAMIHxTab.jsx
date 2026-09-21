@@ -3,6 +3,8 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { IcdSearch } from '../../../../../../components/IcdSearch/IcdSearch';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
+import { AddProblemsDrawer } from '../AddProblemsDrawer';
+import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
 import { useAppStore } from '../../../../../../store/useAppStore';
@@ -17,12 +19,6 @@ const CLINICAL_EVENTS = [
   { id: 'ce2', title: 'Patient reported data found', reportedOn: '09/11/2024', meta: '2 items', action: 'Reconcile' },
   { id: 'ce3', title: 'New Lab Report', reportedOn: '09/11/2024', meta: 'Elation Montrose', action: 'View' },
   { id: 'ce4', title: 'New Imaging Report', reportedOn: '09/11/2024', meta: null, action: 'View' },
-];
-
-// Fallback shown only for patients with no problem rows in the DB yet.
-const PROBLEMS_MOCK = [
-  { id: 'p1', title: 'Diabetes Mellitus Type 2', code: 'E11.9', onsetLabel: '11/18/23 (1 Year)', type: 'Chronic', severity: 'Mild', status: 'Active' },
-  { id: 'p2', title: 'Asthma', code: 'J45', onsetLabel: '11/18/23 (1 Year)', type: 'Acute', severity: 'Mild', status: 'Active' },
 ];
 
 const ALLERGIES = [
@@ -359,6 +355,7 @@ function RecentClinicalEvents() {
 function ProblemsSection({ patientId }) {
   const [collapsed, setCollapsed] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const storeProblems = useAppStore(s => (patientId ? s.patientProblems[patientId] : null));
   const loadedFor = useAppStore(s => (patientId ? s.patientProblemsLoadedFor[patientId] : false));
   const fetchPatientProblems = useAppStore(s => s.fetchPatientProblems);
@@ -368,12 +365,11 @@ function ProblemsSection({ patientId }) {
 
   useEffect(() => { if (patientId) fetchPatientProblems(patientId); }, [patientId, fetchPatientProblems]);
 
-  // DB rows when the patient has any; otherwise fall back to the mock so the
-  // section is never blank. Only DB rows are removable.
-  const fromDb = !!(storeProblems && storeProblems.length);
-  const problems = fromDb ? storeProblems : PROBLEMS_MOCK;
-  const active = problems.filter(p => (p.status || 'Active') !== 'Resolved');
-  const resolvedCount = problems.filter(p => p.status === 'Resolved').length;
+  const problems = useMemo(() => storeProblems || [], [storeProblems]);
+  // Resolved and Historical are both closed out — see the Add Problems drawer.
+  const closed = p => p.status === 'Resolved' || p.status === 'Historical';
+  const active = problems.filter(p => !closed(p));
+  const resolvedCount = problems.filter(closed).length;
   const loading = !!patientId && !loadedFor;
   const existingCodes = useMemo(
     () => problems.map(p => p.code).filter(Boolean),
@@ -382,8 +378,7 @@ function ProblemsSection({ patientId }) {
 
   const startAdd = () => {
     if (!patientId) return;
-    setCollapsed(false);
-    setAdding(true);
+    setDrawerOpen(true);
   };
 
   const handleSelectProblem = async (icd) => {
@@ -410,6 +405,11 @@ function ProblemsSection({ patientId }) {
         onToggle={() => setCollapsed(v => !v)}
       />
       <CollapseWrapper collapsed={collapsed}>
+        {!loading && active.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <RingEmptyState icon="solar:health-linear" label="No Active Problems" iconSize={31} />
+          </div>
+        ) : (
         <div className={styles.card}>
           <ColHeader />
           {adding && (
@@ -433,13 +433,17 @@ function ProblemsSection({ patientId }) {
               <ProblemRow
                 key={item.id}
                 item={item}
-                onRemove={fromDb ? (p => removePatientProblem(patientId, p.id)) : undefined}
+                onRemove={p => removePatientProblem(patientId, p.id)}
               />
             ))
           )}
           {resolvedCount > 0 && <FooterLink label={`Resolved (${resolvedCount})`} />}
         </div>
+        )}
       </CollapseWrapper>
+      {drawerOpen && (
+        <AddProblemsDrawer patientId={patientId} onClose={() => setDrawerOpen(false)} />
+      )}
     </div>
   );
 }

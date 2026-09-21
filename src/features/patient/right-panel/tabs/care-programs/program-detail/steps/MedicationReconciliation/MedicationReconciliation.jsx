@@ -35,7 +35,6 @@ import styles from './MedicationReconciliation.module.css';
 const STATUS_OPTIONS = [
   { value: 'Active', label: 'Active' },
   { value: 'Stopped', label: 'Stopped' },
-  { value: 'On Hold', label: 'On Hold' },
 ];
 
 const STOP_REASON_OPTIONS = [

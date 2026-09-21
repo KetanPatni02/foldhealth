@@ -1,0 +1,151 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.addBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.addLabel {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  padding-left: var(--space-1);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.sectionTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.sectionCount {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+/* Collapsed points at the section, open points down into it. */
+.chevronClosed { transform: rotate(-90deg); }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: var(--space-1) 0;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.rowMain {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.rowTitle {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rowMeta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  line-height: 1.2;
+}
+.dot { padding-right: var(--space-1); }
+
+.statusSelect {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-3) 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+/* Draft card: the picked condition being described before it joins the list. */
+.draft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--primary-200);
+  border-radius: var(--space-2);
+  box-shadow: var(--shadow-card);
+}
+.draftTitle {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  line-height: 1.2;
+}
+.draftFields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.draftNote {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.draftNoteHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.draftNoteLabel {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.draftActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.draftDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+
+/* While a draft is open the saved list steps back rather than competing. */
+.listDimmed { opacity: 0.3; pointer-events: none; }
+
+@media (max-width: 40rem) {
+  .draftFields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Closed note state: the card stays compact until a note is wanted. */
+.draftAddNote {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+}
