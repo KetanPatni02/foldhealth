@@ -139,13 +139,12 @@ export function PatientDetailView() {
   // Toggling the panel flows the left tabs back to the left panel; the right
   // panel returns to its own active tab, and the choice is persisted per user.
   const toggleLeft = useCallback(() => {
-    setLeftCollapsed(c => {
-      const next = !c;
-      writeCollapse(currentUserId || 'anon', next);
-      if (c) setShowingLeftContent(false); // expanding → right panel shows a right tab
-      return next;
-    });
-  }, [currentUserId]);
+    const wasCollapsed = leftCollapsed;
+    const next = !leftCollapsed;
+    writeCollapse(currentUserId || 'anon', next);
+    setLeftCollapsed(next);
+    if (wasCollapsed) setShowingLeftContent(false);
+  }, [currentUserId, leftCollapsed]);
 
   // While collapsed and viewing a flowed-in left tab, the tab bar's active key
   // is that left tab; otherwise it's the right tab.

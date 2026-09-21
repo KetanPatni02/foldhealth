@@ -70,6 +70,9 @@ export default {
       { files: ['src/features/messages/ChatArea.jsx'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
       { files: ['src/features/settings/account/AccountPanel.jsx'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
       { files: ['src/store/useAppStore.js'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
+      // persistHccMemberRoleStatus writes HCC workflow assignee columns
+      // (support_name, coder_status, …), not auth profile roles.
+      { files: ['src/store/lib/worklistPersist.js'], rules: ['react-doctor/supabase-client-owned-authz-field'] },
 
       // ProductTour reads/writes its own row keyed by a `user_id` taken from
       // supabase.auth.getUser() — there is no client-side change that makes a
@@ -398,6 +401,7 @@ export default {
           'src/features/patient/shared/widgets/HealthMapWidget/HealthMapWidget.jsx',
           'src/features/population-groups/PopulationGroupsView.jsx',
           'src/features/settings/CreateAgentDrawer.jsx',
+          'src/features/settings/agents/CreateAgentDrawer.jsx',
         ],
         rules: ['react-doctor/effect-needs-cleanup'],
       },

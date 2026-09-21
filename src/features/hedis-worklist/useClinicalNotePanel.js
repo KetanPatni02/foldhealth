@@ -320,15 +320,21 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
           });
         }
       } else {
-        // Per-gap merge across all notes for this member. `notes` comes
-        // back newest-first from the store, so we walk in order and
-        // take the FIRST payload that carries each gap. Also stamp the
-        // note-level DOS / consent from that same freshest source so
-        // the header card doesn't fall out of sync with the answers.
-        const gapsSeen = new Set();
-        let dosSeeded = false;
+        let dosSeed = null;
+        for (const n of notes) {
+          if (!n.payload?.gaps) continue;
+          if (n.payload.dateOfService) {
+            dosSeed = {
+              dateOfService: n.payload.dateOfService,
+              audioOnly: n.payload.audioOnly,
+              audioVideo: n.payload.audioVideo,
+            };
+            break;
+          }
+        }
         setGapState(prev => {
           const next = { ...prev };
+          const gapsSeen = new Set();
           for (const n of notes) {
             const gapsPayload = n.payload?.gaps;
             if (!gapsPayload) continue;
@@ -338,15 +344,14 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
               if (next[code]) next[code] = { ...next[code], ...data };
               else next[code] = { ...defaultGapData(code), ...data };
             }
-            if (!dosSeeded && n.payload?.dateOfService) {
-              setDateOfService(n.payload.dateOfService);
-              if (n.payload.audioOnly !== undefined) setAudioOnly(!!n.payload.audioOnly);
-              if (n.payload.audioVideo !== undefined) setAudioVideo(!!n.payload.audioVideo);
-              dosSeeded = true;
-            }
           }
           return next;
         });
+        if (dosSeed) {
+          setDateOfService(dosSeed.dateOfService);
+          if (dosSeed.audioOnly !== undefined) setAudioOnly(!!dosSeed.audioOnly);
+          if (dosSeed.audioVideo !== undefined) setAudioVideo(!!dosSeed.audioVideo);
+        }
       }
       setRestored(true);
     })();

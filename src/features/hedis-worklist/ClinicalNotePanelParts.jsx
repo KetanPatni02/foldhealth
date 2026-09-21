@@ -151,20 +151,16 @@ export function TitleBlock({ title, statusLabel = 'In Progress', stacked = false
    UploadDropField already handles that. */
 function MultiUploadDropField({ onFile }) {
   const [slots, setSlots] = useState([{ id: 0, hasFile: false }]);
-  const nextIdRef = useRef(1);
   const handleChange = (slotId) => (file) => {
     setSlots((prev) => {
       const idx = prev.findIndex((s) => s.id === slotId);
       if (idx < 0) return prev;
       const willHaveFile = !!file;
-      // No-op if the slot's has-file flag isn't changing (the shared
-      // component fires onChange(null) mid-upload too).
       if (prev[idx].hasFile === willHaveFile) return prev;
       const next = prev.map((s, i) => (i === idx ? { ...s, hasFile: willHaveFile } : s));
-      // When the LAST slot receives a file, append a fresh empty slot so
-      // the dropzone stays reachable for the next document.
       if (willHaveFile && idx === prev.length - 1) {
-        next.push({ id: nextIdRef.current++, hasFile: false });
+        const newId = Math.max(...prev.map((s) => s.id), 0) + 1;
+        next.push({ id: newId, hasFile: false });
       }
       return next;
     });

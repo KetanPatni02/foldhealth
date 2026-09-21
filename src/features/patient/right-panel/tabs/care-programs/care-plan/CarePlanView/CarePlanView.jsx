@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/Icon/Icon';
 import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
 import { ActionButton } from '@/components/ActionButton/ActionButton';
@@ -457,20 +457,22 @@ export function CarePlanView({ patientId, program }) {
   };
 
   const panelActionsRef = useRef(null);
-  panelActionsRef.current = {
-    setVersionsOpen,
-    setTemplateName,
-    setTemplateConditions,
-    setTemplateOpen,
-    setTemplatesDrawerOpen,
-    setHistoryOpen,
-    setFiltersOpen,
-    openNoteDrawer,
-    setSignNote,
-    setSignOpen,
-    scanForDuplicates,
-    planConditions: live?.plan?.conditions || [],
-  };
+  useLayoutEffect(() => {
+    panelActionsRef.current = {
+      setVersionsOpen,
+      setTemplateName,
+      setTemplateConditions,
+      setTemplateOpen,
+      setTemplatesDrawerOpen,
+      setHistoryOpen,
+      setFiltersOpen,
+      openNoteDrawer,
+      setSignNote,
+      setSignOpen,
+      scanForDuplicates,
+      planConditions: live?.plan?.conditions || [],
+    };
+  });
   useCarePlanViewPanelRequest(carePlanPanelRequest, clearCarePlanPanelRequest, panelActionsRef);
 
   const handleDuplicateIgnore = (flag) => dismissCarePlanDuplicate(key, flag.flagId);

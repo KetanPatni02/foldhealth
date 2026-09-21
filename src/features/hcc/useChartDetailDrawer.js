@@ -145,15 +145,14 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
   // 'preview' with no selection re-selects the first doc so the PDF
   // pane isn't blank.
   const setLeftPanel = (nextOrFn) => {
-    setLeftPanelRaw(prev => {
-      const next = typeof nextOrFn === 'function' ? nextOrFn(prev) : nextOrFn;
-      if (next === 'comments' || next === 'activity') {
-        setSelectedId(null);
-      } else if (next === 'preview') {
-        setSelectedId(curr => curr || (docs.find(d => !isAddressed(d))?.id || docs[0]?.id || null));
-      }
-      return next;
-    });
+    const next = typeof nextOrFn === 'function' ? nextOrFn(leftPanel) : nextOrFn;
+    setLeftPanelRaw(next);
+    if (next === 'comments' || next === 'activity') {
+      setSelectedId(null);
+    } else if (next === 'preview') {
+      const fallbackId = docs.find(d => !isAddressed(d))?.id || docs[0]?.id || null;
+      setSelectedId(curr => curr || fallbackId);
+    }
   };
 
   // Support-scoped toolbar state — search over the doc list, filter row

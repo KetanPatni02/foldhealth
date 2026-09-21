@@ -140,6 +140,7 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
   const promptRef = useRef(prompt);
   const tzRef = useRef(null);
   const fileInputRef = useRef(null);
+  const varOutsideClickHandlerRef = useRef(null);
 
   // Keep promptRef in sync
   useEffect(() => { promptRef.current = prompt; }, [prompt]);
@@ -285,8 +286,18 @@ function StepPrompt({ agentName, setAgentName, onBack, prompt, setPrompt }) {
   useEffect(() => {
     if (!showVarDropdown) return;
     const handler = () => setShowVarDropdown(false);
-    const timer = setTimeout(() => document.addEventListener('mousedown', handler), 100);
-    return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler); };
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handler);
+      varOutsideClickHandlerRef.current = handler;
+    }, 100);
+    return () => {
+      clearTimeout(timer);
+      const active = varOutsideClickHandlerRef.current;
+      if (active) {
+        document.removeEventListener('mousedown', active);
+        varOutsideClickHandlerRef.current = null;
+      }
+    };
   }, [showVarDropdown]);
 
   return (

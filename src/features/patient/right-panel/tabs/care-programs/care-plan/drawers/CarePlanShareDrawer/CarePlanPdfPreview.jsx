@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { generateCarePlanPdf } from '../../lib/carePlanExport';
 import styles from './CarePlanShareDrawer.module.css';
@@ -25,9 +25,11 @@ export function CarePlanPdfPreview({ docMeta, selection, nothingSelected }) {
   const frontRef = useRef(front);
   const fadeTimerRef = useRef(null);
 
-  slotARef.current = slotA;
-  slotBRef.current = slotB;
-  frontRef.current = front;
+  useLayoutEffect(() => {
+    slotARef.current = slotA;
+    slotBRef.current = slotB;
+    frontRef.current = front;
+  }, [slotA, slotB, front]);
 
   const revoke = (url) => {
     if (url) URL.revokeObjectURL(url);
