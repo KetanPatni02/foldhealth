@@ -45,8 +45,8 @@ begin
     create policy auth_full on public.patient_care_plan_barrier_goals
       for all
       to authenticated
-      using (true)
-      with check (true);
+      using ((select auth.uid()) is not null)
+      with check ((select auth.uid()) is not null);
   end if;
 end $$;
 

@@ -44,4 +44,4 @@ ALTER TABLE public.patient_care_plan_versions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Staff manage patient_care_plan_versions" ON public.patient_care_plan_versions;
 CREATE POLICY "Staff manage patient_care_plan_versions"
   ON public.patient_care_plan_versions
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);

@@ -68,7 +68,7 @@ BEGIN
   ] LOOP
     EXECUTE format('DROP POLICY IF EXISTS "Staff manage %1$s" ON public.%1$I', t);
     EXECUTE format(
-      'CREATE POLICY "Staff manage %1$s" ON public.%1$I FOR ALL TO authenticated USING (true) WITH CHECK (true)',
+      'CREATE POLICY "Staff manage %1$s" ON public.%1$I FOR ALL TO authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null)',
       t);
   END LOOP;
 END $$;

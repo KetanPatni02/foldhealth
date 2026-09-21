@@ -23,8 +23,8 @@ create policy "email_compliance_settings_authenticated_all"
   on public.email_compliance_settings
   for all
   to authenticated
-  using (true)
-  with check (true);
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
 
 insert into public.email_compliance_settings (id, clinic_name, physical_address, unsubscribe_url)
 values (

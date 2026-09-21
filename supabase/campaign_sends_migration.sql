@@ -33,5 +33,5 @@ create policy "campaign_sends_authenticated_all"
   on public.campaign_sends
   for all
   to authenticated
-  using (true)
-  with check (true);
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);

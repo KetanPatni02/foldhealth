@@ -31,3 +31,5 @@ HCC seed data for the activity feed lives in `src/features/hcc/seed/buildSeedHcc
 Care Plan view orchestration is split under `CarePlanView/` (`useCarePlanViewData`, filters, bulk selection, picker handlers, GBI actions).
 
 Feature code should expose narrow facades under `features/*/store/` or `lib/services/`; the store slice should call those, not import deep feature internals when avoidable.
+
+**React Doctor RLS (2026-09):** Historical `supabase/*_migration.sql` policies that used bare `USING (true)` were tightened to `TO authenticated` + `(select auth.uid()) is not null` where flagged by `supabase-rls-policy-risk`. Ask **Alok Kumar** to apply any new forward migrations on the Supabase project before relying on prod behavior.

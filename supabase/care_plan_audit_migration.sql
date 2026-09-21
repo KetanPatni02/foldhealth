@@ -42,4 +42,4 @@ ALTER TABLE public.care_plan_audit ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Staff manage care_plan_audit" ON public.care_plan_audit;
 CREATE POLICY "Staff manage care_plan_audit"
   ON public.care_plan_audit
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);

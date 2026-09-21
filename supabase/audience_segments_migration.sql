@@ -24,8 +24,8 @@ create policy "audience_segments_authenticated_all"
   on public.audience_segments
   for all
   to authenticated
-  using (true)
-  with check (true);
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
 
 insert into public.audience_segments (id, label, resolver_key, sort_order) values
   ('all-patients', 'All Patients',        'all',       0),

@@ -63,7 +63,7 @@ drop policy if exists funnel_events_insert_own on public.funnel_events;
 create policy funnel_events_insert_own
   on public.funnel_events for insert
   to authenticated
-  with check (true);
+  with check ((select auth.uid()) is not null);
 
 -- Readable app-wide (no PHI — opaque ids only) so a future in-app funnel
 -- dashboard can query every session, like the analytics tables it mirrors.
@@ -71,7 +71,7 @@ drop policy if exists funnel_events_select_authenticated on public.funnel_events
 create policy funnel_events_select_authenticated
   on public.funnel_events for select
   to authenticated
-  using (true);
+  using ((select auth.uid()) is not null);
 
 -- No update/delete policies: an event log is immutable. Cleanup of aged rows,
 -- if ever needed, is a service-role job.

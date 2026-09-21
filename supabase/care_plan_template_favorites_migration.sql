@@ -35,4 +35,4 @@ ALTER TABLE public.care_plan_template_favorites ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Staff manage care_plan_template_favorites" ON public.care_plan_template_favorites;
 CREATE POLICY "Staff manage care_plan_template_favorites"
   ON public.care_plan_template_favorites
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);

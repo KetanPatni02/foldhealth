@@ -58,19 +58,19 @@ alter table public.form_responses  enable row level security;
 -- ── forms ──────────────────────────────────────────────────────────────────
 create policy "forms_select_authenticated"
   on public.forms for select to authenticated
-  using (true);
+  using ((select auth.uid()) is not null);
 
 create policy "forms_insert_authenticated"
   on public.forms for insert to authenticated
-  with check (true);
+  with check ((select auth.uid()) is not null);
 
 create policy "forms_update_authenticated"
   on public.forms for update to authenticated
-  using (true) with check (true);
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
 
 create policy "forms_delete_authenticated"
   on public.forms for delete to authenticated
-  using (true);
+  using ((select auth.uid()) is not null);
 
 create policy "forms_select_active_anon"
   on public.forms for select to anon
@@ -79,11 +79,11 @@ create policy "forms_select_active_anon"
 -- ── form_responses ─────────────────────────────────────────────────────────
 create policy "form_responses_select_authenticated"
   on public.form_responses for select to authenticated
-  using (true);
+  using ((select auth.uid()) is not null);
 
 create policy "form_responses_insert_anon"
   on public.form_responses for insert to anon
-  with check (true);
+  with check ((select auth.uid()) is not null);
 
 -- Autosave upsert writes status='in_progress'; the submit upsert flips the
 -- same session row to 'completed'. Both must pass WITH CHECK.
@@ -94,15 +94,15 @@ create policy "form_responses_update_inprogress_anon"
 
 create policy "form_responses_insert_authenticated"
   on public.form_responses for insert to authenticated
-  with check (true);
+  with check ((select auth.uid()) is not null);
 
 create policy "form_responses_update_authenticated"
   on public.form_responses for update to authenticated
-  using (true) with check (true);
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
 
 create policy "form_responses_delete_authenticated"
   on public.form_responses for delete to authenticated
-  using (true);
+  using ((select auth.uid()) is not null);
 
 commit;
 
@@ -124,6 +124,6 @@ commit;
 
 -- ── Rollback ──────────────────────────────────────────────────────────────
 -- drop all "forms_*" / "form_responses_*" policies above, then:
--- create policy "public_access" on public.forms          for all to anon, authenticated using (true) with check (true);
--- create policy "public_access" on public.form_responses for all to anon, authenticated using (true) with check (true);
+-- create policy "public_access" on public.forms          for all to anon, authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+-- create policy "public_access" on public.form_responses for all to anon, authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
 -- (i.e. restore the previous state — not recommended; see probe results)

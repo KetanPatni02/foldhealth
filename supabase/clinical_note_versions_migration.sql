@@ -72,7 +72,7 @@ CREATE POLICY "clinical_note_versions: authenticated read"
   ON public.clinical_note_versions
   FOR SELECT
   TO authenticated
-  USING (true);
+  using ((select auth.uid()) is not null);
 
 -- Writes are trigger-driven (no direct INSERT from client needed), but
 -- allow service_role / authenticated insert for backfill or manual amend
@@ -82,4 +82,4 @@ CREATE POLICY "clinical_note_versions: authenticated insert"
   ON public.clinical_note_versions
   FOR INSERT
   TO authenticated
-  WITH CHECK (true);
+  with check ((select auth.uid()) is not null);

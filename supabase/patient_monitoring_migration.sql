@@ -54,4 +54,4 @@ ALTER TABLE public.patient_monitoring ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Staff manage patient_monitoring" ON public.patient_monitoring;
 CREATE POLICY "Staff manage patient_monitoring"
-  ON public.patient_monitoring FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  ON public.patient_monitoring FOR ALL TO authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);

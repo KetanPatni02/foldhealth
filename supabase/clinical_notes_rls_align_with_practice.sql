@@ -23,7 +23,7 @@
 -- Why the strict policies are wrong for THIS codebase
 -- RLS_POSTURE.md records the deliberate practice-wide model: one practice,
 -- every signed-in staff member sees everything. Every hot table in the schema
--- carries `USING (true) WITH CHECK (true) TO authenticated`. Access control
+-- carries `using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null) TO authenticated`. Access control
 -- is a UI concern (surface the right notes to the right role), not an RLS
 -- concern. clinical_notes is the outlier and needs to match.
 --
@@ -34,7 +34,7 @@
 --
 -- WHAT THIS DOES
 -- Drops the three legacy clinical_notes policies and replaces them with a
--- single `FOR ALL TO authenticated USING (true) WITH CHECK (true)` policy,
+-- single `FOR ALL TO authenticated using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null)` policy,
 -- matching every other public table in the schema.
 --
 -- WHAT THIS DOES NOT DO
@@ -60,8 +60,8 @@ create policy "clinical_notes: authenticated full access"
   on public.clinical_notes
   for all
   to authenticated
-  using (true)
-  with check (true);
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
 
 commit;
 
@@ -81,7 +81,7 @@ commit;
 -- Rollback (restores the previous stricter policies)
 --   drop policy "clinical_notes: authenticated full access" on public.clinical_notes;
 --   create policy "clinical_notes: authenticated read" on public.clinical_notes
---     for select to authenticated using (true);
+--     for select to authenticated using ((select auth.uid()) is not null);
 --   create policy "clinical_notes: author or reviewer insert" on public.clinical_notes
 --     for insert to authenticated
 --     with check ((author_id = auth.uid()) or (reviewer_id = auth.uid()));
