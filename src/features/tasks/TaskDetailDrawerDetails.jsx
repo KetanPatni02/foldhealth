@@ -42,15 +42,52 @@ export function TaskDetailDrawerDetails({
     if (resolvedHedisMemberId) fetchClinicalNotesForMember?.(resolvedHedisMemberId);
   }, [resolvedHedisMemberId, fetchClinicalNotesForMember]);
   const linkedNote = useAppStore(s => {
+    const isSignOffTask = task?.pool === 'HEDIS Sign-Off';
+    // Sign-off tasks are only ever created when a note is submitted
+    // for review — a draft cannot own a sign-off task. Filter drafts
+    // out of the pool so a stale single-gap draft can't shadow the
+    // consolidated submitted note this task actually represents.
+    const eligible = (list) => (isSignOffTask
+      ? (list || []).filter(n => n.status !== 'draft')
+      : (list || []));
+
     // Fast path: the task carries the member id already (CareGap flow).
     if (resolvedHedisMemberId) {
-      const list = s.clinicalNotesByMember?.[resolvedHedisMemberId] || [];
+      const list = eligible(s.clinicalNotesByMember?.[resolvedHedisMemberId]);
       const byLink = list.find(n => String(n.reviewTaskId) === String(task.id));
       if (byLink) return byLink;
       const gaps = task.hedisGapCodes || task.labels || [];
       if (gaps.length) {
-        const hit = list.find(n => (n.gapCodes || []).some(c => gaps.includes(c)));
-        if (hit) return hit;
+        // Prefer a note whose gap set MATCHES the task exactly
+        // (consolidated task → consolidated note; single-gap task →
+        // single-gap note). Falls through to broader overlap so a
+        // partially-matching submitted note still wins over nothing.
+        const gapSet = new Set(gaps);
+        const matchesAll = (n) => {
+          const nGaps = n.gapCodes || [];
+          if (nGaps.length !== gapSet.size) return false;
+          return nGaps.every(c => gapSet.has(c));
+        };
+        const overlaps = (n) => (n.gapCodes || []).some(c => gapSet.has(c));
+        const taskDone = String(task.status || '').toLowerCase() === 'completed';
+        // Sign-off tasks: draft is already filtered out above, so the
+        // preferred lifecycle for a pending task is submitted, and for
+        // a completed task it's signed. Non-sign-off tasks keep the
+        // three-tier preference as before.
+        const preferOrder = isSignOffTask
+          ? (taskDone ? ['signed', 'submitted'] : ['submitted', 'signed'])
+          : (taskDone ? ['signed', 'submitted', 'draft'] : ['submitted', 'draft', 'signed']);
+        for (const st of preferOrder) {
+          const exact = list.find(n => n.status === st && matchesAll(n));
+          if (exact) return exact;
+        }
+        for (const st of preferOrder) {
+          const hit = list.find(n => n.status === st && overlaps(n));
+          if (hit) return hit;
+        }
+        // Any overlapping eligible note as a last resort.
+        const anyHit = list.find(overlaps);
+        if (anyHit) return anyHit;
       }
     }
     // Fallback: scan every fetched member slice for a note linked to this
@@ -58,7 +95,7 @@ export function TaskDetailDrawerDetails({
     // session, even when we couldn't resolve the member id up front.
     const all = s.clinicalNotesByMember || {};
     for (const list of Object.values(all)) {
-      const byLink = (list || []).find(n => String(n.reviewTaskId) === String(task.id));
+      const byLink = eligible(list).find(n => String(n.reviewTaskId) === String(task.id));
       if (byLink) return byLink;
     }
     return null;

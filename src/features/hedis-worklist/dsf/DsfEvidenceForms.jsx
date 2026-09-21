@@ -98,28 +98,17 @@ function LikertMatrix({ scoreKey, values, onChange, locked }) {
   );
 }
 
-// The Care Plan outcome panel — reused for every DSF branch so the
-// bulleted text + "All components of care plan completed" + Outreach
-// notes shape is identical everywhere.
-function CarePlanOutcomePanel({ title, bullets, allCompleted, onAllCompletedChange, outreachNotes, onOutreachNotesChange }) {
+// The Care Plan outcome panel — reused for every DSF branch. The
+// bulleted body is static clinical guidance the reviewer follows in
+// the encounter; commit lives on the note-level Sign & Save (and the
+// PHQ-2 / PHQ-9 Save Score on their own cards). No per-panel checkbox
+// — an all-or-nothing tick on top of static reference text reads as
+// clickwrap rather than a real attestation. Optional Outreach Notes
+// textarea captures any per-encounter commentary.
+function CarePlanOutcomePanel({ title, bullets, outreachNotes, onOutreachNotesChange }) {
   return (
     <div className={styles.carePlanPanel}>
-      <div className={styles.carePlanTitle}>
-        {title}
-        <span className={styles.required}>•</span>
-      </div>
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={!!allCompleted}
-        className={styles.carePlanCheckboxRow}
-        onClick={() => onAllCompletedChange(!allCompleted)}
-      >
-        <CheckboxTick checked={!!allCompleted} size={16} />
-        <span className={styles.carePlanCheckboxLabel}>
-          All components of care plan completed
-        </span>
-      </button>
+      <div className={styles.carePlanTitle}>{title}</div>
       <ul className={styles.carePlanBullets}>
         {bullets.map((b, i) => <li key={i}>{b}</li>)}
       </ul>
@@ -217,13 +206,6 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
       <div className={styles.phq2Card}>
         <div className={styles.phq2CardHeader}>
           <div className={styles.fieldLabel}>Depression Screening : PHQ-2<span className={styles.required}>•</span></div>
-          {bothPhq2Answered && (
-            <Badge
-              tone={positive ? 'warning' : 'success'}
-              size="S"
-              label={`Score : ${phq2Total} Point${phq2Total === 1 ? '' : 's'} (${positive ? 'Positive for Depression' : 'Negative for Depression'})`}
-            />
-          )}
         </div>
         <LikertMatrix
           scoreKey="phq2"
@@ -233,19 +215,50 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
           })}
           locked={phq2Saved}
         />
-        {/* Positive PHQ-2 (total 3 or higher) surfaces a Save button
-            that opens DSF-B on click. Negative auto-completes without a
-            gap, so no explicit save step is needed there. */}
-        {bothPhq2Answered && positive && !phq2Saved && (
+        {/* Footer row surfaces once both PHQ-2 items are answered:
+              • Positive + !saved → Save Score button + live badge.
+              • Positive + saved  → badge only (Save is replaced by the
+                success info bar below).
+              • Negative          → badge only (no explicit save step —
+                Negative auto-completes without a gap).
+            The scoring-bands info tooltip sits inside the badge itself
+            so band context anchors to where the score is read. */}
+        {bothPhq2Answered && (
           <div className={styles.phq2CardFooter}>
-            <Button
-              variant="primary"
+            {positive && !phq2Saved && (
+              <Button
+                variant="primary"
+                size="M"
+                leadingIcon="solar:check-circle-linear"
+                onClick={handleSavePhq2Score}
+              >
+                Save score
+              </Button>
+            )}
+            <Badge
+              tone={positive ? 'warning' : 'success'}
               size="M"
-              leadingIcon="solar:check-circle-linear"
-              onClick={handleSavePhq2Score}
-            >
-              Save score
-            </Button>
+              label={`Score : ${phq2Total} Point${phq2Total === 1 ? '' : 's'} (${positive ? 'Positive for Depression' : 'Negative for Depression'})`}
+              trailingIconElement={
+                <Tooltip
+                  variant="light"
+                  maxWidth={240}
+                  label={
+                    <div className={styles.scoreLegend}>
+                      <div className={styles.scoreLegendTitle}>PHQ-2 scoring bands</div>
+                      <ul className={styles.scoreLegendList}>
+                        <li><strong>0–2</strong> Negative for Depression</li>
+                        <li><strong>3–6</strong> Positive for Depression</li>
+                      </ul>
+                    </div>
+                  }
+                >
+                  <span className={styles.scoreBadgeInfo} aria-label="PHQ-2 scoring bands">
+                    <Icon name="solar:info-circle-linear" size={14} color="currentColor" />
+                  </span>
+                </Tooltip>
+              }
+            />
           </div>
         )}
         {bothPhq2Answered && positive && !phq2Saved && (
@@ -278,10 +291,6 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
         <CarePlanOutcomePanel
           title={DSF_CARE_PLANS.phq2Negative.title}
           bullets={DSF_CARE_PLANS.phq2Negative.bullets}
-          allCompleted={data.carePlan?.allCompleted}
-          onAllCompletedChange={(next) => onUpdate({
-            carePlan: { ...(data.carePlan || {}), allCompleted: next },
-          })}
           outreachNotes={data.carePlan?.outreachNotes}
           onOutreachNotesChange={(next) => onUpdate({
             carePlan: { ...(data.carePlan || {}), outreachNotes: next },
@@ -345,17 +354,17 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
   };
 
   // Which care plan block is visible right now. Decline always wins;
-  // band-driven plans only surface once the score is saved so the flow
-  // reads as Answer → Save → Care plan.
+  // band-driven plans surface as soon as the questionnaire is complete
+  // so the reviewer can preview the recommendation before committing.
+  // Save Score is still a separate commit that locks the score, but it
+  // is no longer a gate for the care-plan preview.
   let planKey = null;
   if (data.decline) planKey = 'decline';
-  else if (phq9Saved && branch === 'minimal') planKey = 'phq9Minimal';
-  else if (phq9Saved && branch === 'mild' && data.phq9?.subMildAnswer === 'yes') planKey = 'phq9MildYes';
-  else if (phq9Saved && branch === 'mild' && data.phq9?.subMildAnswer === 'no') planKey = 'phq9MildNo';
-  else if (phq9Saved && branch === 'moderate') planKey = 'phq9Moderate';
-  else if (phq9Saved && branch === 'severe') planKey = 'phq9Severe';
-
-  const acknowledged = data.decline || !!data.carePlan?.allCompleted;
+  else if (allAnswered && branch === 'minimal') planKey = 'phq9Minimal';
+  else if (allAnswered && branch === 'mild' && data.phq9?.subMildAnswer === 'yes') planKey = 'phq9MildYes';
+  else if (allAnswered && branch === 'mild' && data.phq9?.subMildAnswer === 'no') planKey = 'phq9MildNo';
+  else if (allAnswered && branch === 'moderate') planKey = 'phq9Moderate';
+  else if (allAnswered && branch === 'severe') planKey = 'phq9Severe';
 
   return (
     <div className={styles.form}>
@@ -396,34 +405,8 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
         <div className={styles.phq2CardHeader}>
           <div className={styles.fieldLabel}>
             Depression Follow-Up : PHQ-9
-            <Tooltip
-              variant="light"
-              maxWidth={240}
-              label={
-                <div className={styles.scoreLegend}>
-                  <div className={styles.scoreLegendTitle}>PHQ-9 scoring bands</div>
-                  <ul className={styles.scoreLegendList}>
-                    <li><strong>0–4</strong> Minimal / None</li>
-                    <li><strong>5–9</strong> Mild</li>
-                    <li><strong>10–19</strong> Moderate</li>
-                    <li><strong>20–27</strong> Severe</li>
-                  </ul>
-                </div>
-              }
-            >
-              <button type="button" className={styles.scoreInfoTrigger} aria-label="PHQ-9 scoring bands">
-                <Icon name="solar:info-circle-linear" size={14} color="var(--neutral-300)" />
-              </button>
-            </Tooltip>
             <span className={styles.required}>•</span>
           </div>
-          {allAnswered && bandLabel && (
-            <Badge
-              tone={bandTone}
-              size="S"
-              label={`Score : ${phq9Total} Point${phq9Total === 1 ? '' : 's'} (${bandLabel})`}
-            />
-          )}
         </div>
         <LikertMatrix
           scoreKey="phq9"
@@ -431,26 +414,56 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
           onChange={(next) => onUpdate({ phq9: { ...(data.phq9 || {}), items: next } })}
           locked={data.decline || phq9Saved}
         />
-        {/* Save Score button — parallels PHQ-2. Shown once all 9 items
-            (and the Mild sub-question, when applicable) are answered and
-            the note isn't marked as Decline follow-up. Clicking commits
-            the savedAt stamp, locks the matrix, and reveals the band's
-            care plan below. */}
-        {canSavePhq9 && (
+        {/* Footer row surfaces once PHQ-9 is fully answered (and the
+            note isn't Decline follow-up):
+              • !phq9Saved → Save Score button + live badge.
+              • phq9Saved  → badge only (Save is replaced by the success
+                info bar below).
+            Scoring-bands info tooltip sits inside the badge so band
+            context stays anchored to where the score is read. */}
+        {allAnswered && !data.decline && bandLabel && (
           <div className={styles.phq2CardFooter}>
-            <Button
-              variant="primary"
+            {canSavePhq9 && (
+              <Button
+                variant="primary"
+                size="M"
+                leadingIcon="solar:check-circle-linear"
+                onClick={handleSavePhq9Score}
+              >
+                Save score
+              </Button>
+            )}
+            <Badge
+              tone={bandTone}
               size="M"
-              leadingIcon="solar:check-circle-linear"
-              onClick={handleSavePhq9Score}
-            >
-              Save score
-            </Button>
+              label={`Score : ${phq9Total} Point${phq9Total === 1 ? '' : 's'} (${bandLabel})`}
+              trailingIconElement={
+                <Tooltip
+                  variant="light"
+                  maxWidth={240}
+                  label={
+                    <div className={styles.scoreLegend}>
+                      <div className={styles.scoreLegendTitle}>PHQ-9 scoring bands</div>
+                      <ul className={styles.scoreLegendList}>
+                        <li><strong>0–4</strong> Minimal / None</li>
+                        <li><strong>5–9</strong> Mild</li>
+                        <li><strong>10–19</strong> Moderate</li>
+                        <li><strong>20–27</strong> Severe</li>
+                      </ul>
+                    </div>
+                  }
+                >
+                  <span className={styles.scoreBadgeInfo} aria-label="PHQ-9 scoring bands">
+                    <Icon name="solar:info-circle-linear" size={14} color="currentColor" />
+                  </span>
+                </Tooltip>
+              }
+            />
           </div>
         )}
         {canSavePhq9 && (
           <InfoBar className={styles.phq2InfoBarAttached}>
-            Saving this score commits the PHQ-9 result and reveals the recommended care plan. Once saved, the assessment cannot be edited.
+            Saving this score commits the PHQ-9 result. Once saved, the assessment cannot be edited.
           </InfoBar>
         )}
         {phq9Saved && (
@@ -468,11 +481,14 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
 
       {allAnswered && !data.decline && branch === 'mild' && (
         <div className={styles.subQuestion}>
-          <span className={styles.subQuestionText}>
+          <div className={styles.subQuestionText}>
             Are any of the following present?
-            <br />
-            Hx of prior depressive episodes, and/or symptoms greater than 3 months
-          </span>
+            <span className={styles.required}>•</span>
+          </div>
+          <ul className={styles.subQuestionBullets}>
+            <li>History of prior depressive episodes, and/or</li>
+            <li>Symptoms lasting more than 3 months</li>
+          </ul>
           <div className={styles.subQuestionRadios}>
             <RadioButton
               checked={data.phq9?.subMildAnswer === 'yes'}
@@ -492,11 +508,6 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
         <CarePlanOutcomePanel
           title={DSF_CARE_PLANS[planKey].title}
           bullets={DSF_CARE_PLANS[planKey].bullets}
-          allCompleted={data.carePlan?.allCompleted}
-          onAllCompletedChange={(next) => onUpdate({
-            carePlan: { ...(data.carePlan || {}), allCompleted: next },
-            carePlanAcknowledged: data.decline || next,
-          })}
           outreachNotes={data.carePlan?.outreachNotes}
           onOutreachNotesChange={(next) => onUpdate({
             carePlan: { ...(data.carePlan || {}), outreachNotes: next },
@@ -519,10 +530,6 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
           </span>
         </span>
       </button>
-
-      {submitted && !acknowledged && (
-        <FieldError>Acknowledge the care plan or mark Decline follow-up to submit.</FieldError>
-      )}
     </div>
   );
 }

@@ -320,7 +320,6 @@ function DsfbRows({ data }) {
   const bandLabel = total === null ? null : phq9BandLabel(phq9Branch(total));
   const scoreLine = total === null ? null : `${total} point${total === 1 ? '' : 's'}${bandLabel ? ` (${bandLabel})` : ''}`;
   const subMild = data.phq9?.subMildAnswer;
-  const careDone = data.carePlan?.allCompleted ? 'Yes' : 'No';
   const outreachNotes = data.carePlan?.outreachNotes;
   return (
     <>
@@ -337,7 +336,6 @@ function DsfbRows({ data }) {
           wide
         />
       )}
-      <KV label="Care plan completed" value={careDone} wide />
       {outreachNotes && <KV label="Outreach Notes" value={outreachNotes} wide />}
       {data.decline && <KV label="Decline follow-up" value="Yes" wide />}
     </>

@@ -22,6 +22,18 @@
 }
 .required { color: var(--status-error); }
 
+/* Trailing info glyph rendered inside the score Badge via its
+   `trailingIconElement` slot. Inherits the badge's currentColor so
+   the icon matches the band tint; only the cursor changes to signal
+   the tooltip affordance. */
+.scoreBadgeInfo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  color: currentColor;
+}
+
 /* Small hover-only info trigger that sits beside a section title and
    reveals the scoring bands in a Tooltip. Kept borderless so it reads
    as a helper glyph rather than a control. */
@@ -102,7 +114,10 @@
 }
 .phq2CardFooter {
   display: flex;
+  align-items: center;
   justify-content: flex-start;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 /* InfoBar sits INSIDE the PHQ-2 card as a full-bleed footer strip.
    Negative left/right/bottom margins pull it through the card's 12px
@@ -259,8 +274,24 @@
   background: var(--neutral-0);
 }
 .subQuestionText {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-md);
-  color: var(--neutral-500);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+/* Bulleted body — mirrors the care-plan card list: soft indent, muted
+   text, tight leading so the two clinical criteria read as one prompt. */
+.subQuestionBullets {
+  margin: 0;
+  padding-left: var(--space-4);
+  list-style: disc;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  font-size: var(--font-md);
+  color: var(--neutral-300);
 }
 .subQuestionRadios {
   display: flex;
