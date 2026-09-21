@@ -50,26 +50,42 @@ export function HeaderActions({
   // to the same reviewer via `onSubmitForReview` (which re-notifies) —
   // and the chevron replaces "Submit for Review" (redundant, already
   // submitted) with the two sign-off escape hatches. Reviewers keep
-  // their `primaryLabel` ("Update Note") and every other status keeps
+  // their `primaryLabel` ("Sign & Save") and every other status keeps
   // the default Sign & Save primary.
   authorEditingSubmitted = false,
+  // True when the reviewer is signing off a submitted note. Trims the
+  // chevron menu to reviewer-appropriate actions only (Sign and Print)
+  // and drops the "Submit for Review" author action — the note is
+  // already in review, the reviewer's job is to sign it.
+  reviewerFlow = false,
 }) {
-  const menuItems = authorEditingSubmitted
+  const menuItems = reviewerFlow
     ? [
-        { key: 'sign',  label: 'Sign & Save',    icon: 'solar:check-circle-linear' },
         { key: 'print', label: 'Sign and Print', icon: 'solar:printer-linear' },
       ]
-    : [
-        { key: 'submit', label: 'Submit for Review', icon: 'solar:upload-square-linear' },
-        { key: 'print',  label: 'Sign and Print',    icon: 'solar:printer-linear' },
-      ];
+    : authorEditingSubmitted
+      ? [
+          { key: 'sign',  label: 'Sign & Save',    icon: 'solar:check-circle-linear' },
+          { key: 'print', label: 'Sign and Print', icon: 'solar:printer-linear' },
+        ]
+      : [
+          { key: 'submit', label: 'Submit for Review', icon: 'solar:upload-square-linear' },
+          { key: 'print',  label: 'Sign and Print',    icon: 'solar:printer-linear' },
+        ];
   const runMenu = (key) => {
     if (key === 'submit') onSubmitForReview();
     else if (key === 'sign') onSaveAndSign();
     else if (key === 'print') onSignAndPrint();
   };
-  const effectivePrimaryLabel = authorEditingSubmitted ? 'Update and Save' : primaryLabel;
-  const primaryOnClick = authorEditingSubmitted ? onSubmitForReview : onSaveAndSign;
+  // Reviewer primary is always Sign & Save → onSaveAndSign. Author
+  // editing a submitted note routes primary to onSubmitForReview so
+  // the reviewer is re-notified.
+  const effectivePrimaryLabel = reviewerFlow
+    ? 'Sign & Save'
+    : authorEditingSubmitted ? 'Update and Save' : primaryLabel;
+  const primaryOnClick = reviewerFlow
+    ? onSaveAndSign
+    : authorEditingSubmitted ? onSubmitForReview : onSaveAndSign;
   return (
     <>
       <Button

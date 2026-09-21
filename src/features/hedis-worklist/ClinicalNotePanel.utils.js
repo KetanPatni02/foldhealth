@@ -472,9 +472,11 @@ export const MANDATORY_FIELDS = {
   'DSF-A': ['location', 'telehealthConsent', 'performedBy', 'phq2ScoreSaved'],
   // DSF-B inherits visit context (Location / consent / provider) from
   // the paired DSF-A note that opened it, so those fields aren't asked
-  // twice on the DSF-B surface. Only PHQ-9 completeness + acknowledged
-  // care plan (or Decline) gate the sign-off queue for DSF-B.
-  'DSF-B': ['phq9ScoreSaved', 'carePlanAcknowledged'],
+  // twice on the DSF-B surface. PHQ-9 completeness alone gates the
+  // sign-off queue — the care plan panel is static reference text with
+  // an optional Outreach Notes textarea, so it doesn't need its own
+  // acknowledgement tick.
+  'DSF-B': ['phq9ScoreSaved'],
 };
 
 function mandatoryFieldsFor(code) {
@@ -577,10 +579,6 @@ function dsfDerivedFlag(field, data, noteContext) {
       const items = data.phq9?.items || [];
       return items.length === 9 && items.every(v => v != null);
     }
-    case 'carePlanAcknowledged':
-      // Care plan completion is the mandatory ack; Decline follow-up is
-      // an independent optional tick and no longer satisfies the gate.
-      return !!data.carePlan?.allCompleted;
     default:
       return null; // caller falls back to the raw truthy check
   }

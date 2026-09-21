@@ -11,7 +11,7 @@ import {
   EED_EVIDENCE_TYPES,
   GAP_TEMPLATES,
 } from './ClinicalNotePanel.utils';
-import { DSF_PROVIDERS, LOCATION_OPTIONS as DSF_LOCATIONS } from './dsf/DsfEvidenceForms';
+import { resolvePerformedByLabel, LOCATION_OPTIONS as DSF_LOCATIONS } from './dsf/DsfEvidenceForms';
 import { getItems, getResponseScale, totalScore, isPhq2Positive, phq9Branch, phq9BandLabel } from './dsf/dsfScoring';
 import styles from './ClinicalNotePreviewBody.module.css';
 
@@ -282,8 +282,9 @@ const FOLLOW_UP_LABEL = {
 // alongside the total + Positive/Negative label so a reviewer can audit
 // scoring without re-opening the note for edit.
 function DsfaRows({ data }) {
+  const users = useAppStore(s => s.platformUsers);
   const loc = DSF_LOCATIONS.find(o => o.value === data.location)?.label || data.location;
-  const provider = DSF_PROVIDERS.find(o => o.value === data.performedBy)?.label || data.performedBy;
+  const provider = resolvePerformedByLabel(data.performedBy, users);
   const phq2 = data.phq2 || {};
   const items = getItems('phq2');
   const scale = getResponseScale('phq2');
@@ -310,8 +311,9 @@ function DsfaRows({ data }) {
 // the Mild sub-question when it applies, care-plan ack + outreach notes,
 // and the standing Decline follow-up flag.
 function DsfbRows({ data }) {
+  const users = useAppStore(s => s.platformUsers);
   const loc = DSF_LOCATIONS.find(o => o.value === data.location)?.label || data.location;
-  const provider = DSF_PROVIDERS.find(o => o.value === data.performedBy)?.label || data.performedBy;
+  const provider = resolvePerformedByLabel(data.performedBy, users);
   const items = getItems('phq9');
   const scale = getResponseScale('phq9');
   const answerLabel = (v) => (v == null ? '—' : scale.find(o => o.score === Number(v))?.value ?? String(v));
@@ -320,7 +322,6 @@ function DsfbRows({ data }) {
   const bandLabel = total === null ? null : phq9BandLabel(phq9Branch(total));
   const scoreLine = total === null ? null : `${total} point${total === 1 ? '' : 's'}${bandLabel ? ` (${bandLabel})` : ''}`;
   const subMild = data.phq9?.subMildAnswer;
-  const careDone = data.carePlan?.allCompleted ? 'Yes' : 'No';
   const outreachNotes = data.carePlan?.outreachNotes;
   return (
     <>
@@ -337,7 +338,6 @@ function DsfbRows({ data }) {
           wide
         />
       )}
-      <KV label="Care plan completed" value={careDone} wide />
       {outreachNotes && <KV label="Outreach Notes" value={outreachNotes} wide />}
       {data.decline && <KV label="Decline follow-up" value="Yes" wide />}
     </>
