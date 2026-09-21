@@ -1,7 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { addedChartToRow } from '../../lib/hccAddedChartsMapper';
 import { reportPersistFailure } from './reportPersistFailure';
-import { useAppStore } from '../useAppStore';
 
 // Persist a per-(ICD × DOS) coder action to hcc_gap_dos_actions. The
 // row key is deterministic (`${member}|${code}|${dos}`) so the same
@@ -116,13 +115,11 @@ function persistCaregapActivityInsert(memberId, entry) {
 // local gap mutation (status / assignee). Replace-whole mirrors the local
 // shape — gap objects carry {code,status,assignee,…}. Fire-and-forget; the
 // affected-rows check catches mock-fallback members that were never in the DB.
-function persistHedisGaps(memberId) {
+function persistHedisGaps(memberId, gaps) {
   if (!memberId) return;
-  const m = useAppStore.getState().hedisMembers.find(x => x.id === memberId);
-  if (!m) return;
   supabase
     .from('hedis_members')
-    .update({ gaps: m.gaps || [] })
+    .update({ gaps: gaps || [] })
     .eq('id', memberId)
     .select('id')
     .then(({ data, error }) => {
@@ -357,10 +354,9 @@ function toPgDate(d) {
 // Operations are chained sequentially so a failure in one phase (e.g.
 // insert after delete committed) is detected and surfaced via
 // reportPersistFailure instead of silently orphaning the row.
-function persistHccMemberDetails(memberId) {
-  if (!memberId) return;
-  const m = useAppStore.getState().hccMembers.find(x => x.id === memberId);
-  if (!m) return;
+function persistHccMemberDetails(memberId, member) {
+  if (!memberId || !member) return;
+  const m = member;
 
   // 1) Base row counters
   supabase

@@ -879,11 +879,12 @@ export const useAppStore = create((set, get) => ({
         )
       ),
     }));
-    persistHccMemberDetails(memberId);
-    useAppStore.getState().addActivityEntry({
+    const updatedMember = get().hccMembers.find(m => m.id === memberId);
+    persistHccMemberDetails(memberId, updatedMember);
+    get().addActivityEntry({
       _memberId: memberId,
       t: 'delete_dos',
-      by: 'You', role: useAppStore.getState().hccUserRole || 'Support',
+      by: 'You', role: get().hccUserRole || 'Support',
       dos: dosDate,
       headline: `Deleted DOS ${dosDate}`,
     });
@@ -5914,7 +5915,7 @@ export const useAppStore = create((set, get) => ({
         [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
       },
     }));
-    persistHedisGaps(memberId);
+    persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
     persistCaregapActivityInsert(memberId, entry);
   },
   updateGapAssignee: (memberId, gapCode, nextAssignee) => {
@@ -5947,7 +5948,7 @@ export const useAppStore = create((set, get) => ({
         [memberId]: [entry, ...(s.caregapActivity[memberId] || [])],
       },
     }));
-    persistHedisGaps(memberId);
+    persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
     persistCaregapActivityInsert(memberId, entry);
   },
   bulkUpdateGapStatuses: (memberId, updates, { assignee } = {}) => {
@@ -5963,7 +5964,7 @@ export const useAppStore = create((set, get) => ({
         }
       ),
     }));
-    persistHedisGaps(memberId);
+    persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
   },
 
   // Open a NEW HEDIS gap on a member natively inside Fold, distinct
@@ -6001,7 +6002,7 @@ export const useAppStore = create((set, get) => ({
       }),
     }));
     if (created) {
-      persistHedisGaps(memberId);
+      persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
       const entry = {
         id: Date.now(),
         at: new Date().toISOString(),
@@ -10769,7 +10770,7 @@ export const useAppStore = create((set, get) => ({
           reason: 'prior DOS already completed',
         },
       });
-      persistHccMemberDetails(memberId);
+      persistHccMemberDetails(memberId, get().hccMembers.find(m => m.id === memberId));
       return { kind: 'relatedNew', memberId, dosDate: newDosDate };
     }
 
@@ -10824,7 +10825,7 @@ export const useAppStore = create((set, get) => ({
           payload:   { icd, dos: enc.dos, patientName: member.name },
         });
       });
-      persistHccMemberDetails(memberId);
+      persistHccMemberDetails(memberId, get().hccMembers.find(m => m.id === memberId));
       return { kind: 'updated', memberId, dosDate: enc.dos };
     }
 
@@ -10880,7 +10881,7 @@ export const useAppStore = create((set, get) => ({
       scope:     { patientId: memberId, dos: enc.dos, source: 'manual' },
       payload:   { patientName: member.name, dos: enc.dos },
     });
-    persistHccMemberDetails(memberId);
+    persistHccMemberDetails(memberId, get().hccMembers.find(m => m.id === memberId));
     return { kind: 'created', memberId, dosDate: enc.dos };
   },
 
