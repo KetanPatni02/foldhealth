@@ -55,16 +55,29 @@ export function deleteGbiById(kind, id, ctx) {
   else ctx.deletePatientCarePlanIntervention(ctx.patientId, ctx.program.id, id);
 }
 
+export function saveGbiPatch(kind, item, patch, ctx) {
+  const merged = { ...item, ...patch };
+  if (kind === 'goal') ctx.savePatientCarePlanGoal(ctx.patientId, ctx.program, merged, item.id);
+  else if (kind === 'barrier') ctx.savePatientCarePlanBarrier(ctx.patientId, ctx.program, merged, item.id);
+  else ctx.savePatientCarePlanIntervention(ctx.patientId, ctx.program, merged, item.id);
+}
+
 export function saveGbiStatus({ kind, item, status, patientId, program, savePatientCarePlanGoal, savePatientCarePlanBarrier, savePatientCarePlanIntervention }) {
-  const patch = { ...item, status };
-  if (kind === 'goal') savePatientCarePlanGoal(patientId, program, patch, item.id);
-  else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, patch, item.id);
-  else savePatientCarePlanIntervention(patientId, program, patch, item.id);
+  saveGbiPatch(kind, item, { status }, {
+    patientId,
+    program,
+    savePatientCarePlanGoal,
+    savePatientCarePlanBarrier,
+    savePatientCarePlanIntervention,
+  });
 }
 
 export function saveGbiPriority({ kind, item, priority, patientId, program, savePatientCarePlanGoal, savePatientCarePlanBarrier, savePatientCarePlanIntervention }) {
-  const patch = { ...item, priority };
-  if (kind === 'goal') savePatientCarePlanGoal(patientId, program, patch, item.id);
-  else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, patch, item.id);
-  else savePatientCarePlanIntervention(patientId, program, patch, item.id);
+  saveGbiPatch(kind, item, { priority }, {
+    patientId,
+    program,
+    savePatientCarePlanGoal,
+    savePatientCarePlanBarrier,
+    savePatientCarePlanIntervention,
+  });
 }

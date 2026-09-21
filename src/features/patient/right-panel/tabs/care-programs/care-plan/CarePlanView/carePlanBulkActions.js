@@ -1,3 +1,5 @@
+import { saveGbiPatch } from './carePlanGbiActions';
+
 function selectedRows(filteredGoals, filteredInterventions, filteredBarriers, selected) {
   return {
     g: filteredGoals.filter(x => selected.goal.has(x.id)),
@@ -8,9 +10,9 @@ function selectedRows(filteredGoals, filteredInterventions, filteredBarriers, se
 
 export async function bulkSetStatus(status, { selected, filteredGoals, filteredInterventions, filteredBarriers, ctx, clearSelection }) {
   const { g, iv, br } = selectedRows(filteredGoals, filteredInterventions, filteredBarriers, selected);
-  for (const x of g) await ctx.savePatientCarePlanGoal(ctx.patientId, ctx.program, { ...x, status }, x.id);
-  for (const x of iv) await ctx.savePatientCarePlanIntervention(ctx.patientId, ctx.program, { ...x, status }, x.id);
-  for (const x of br) await ctx.savePatientCarePlanBarrier(ctx.patientId, ctx.program, { ...x, status }, x.id);
+  for (const x of g) await saveGbiPatch('goal', x, { status }, ctx);
+  for (const x of iv) await saveGbiPatch('intervention', x, { status }, ctx);
+  for (const x of br) await saveGbiPatch('barrier', x, { status }, ctx);
   const n = g.length + iv.length + br.length;
   clearSelection();
   if (n) ctx.showToast(`Updated ${n} item${n === 1 ? '' : 's'} to "${status}"`);
@@ -19,9 +21,9 @@ export async function bulkSetStatus(status, { selected, filteredGoals, filteredI
 export async function bulkSetPriority(priority, args) {
   const { selected, filteredGoals, filteredInterventions, filteredBarriers, ctx, clearSelection } = args;
   const { g, iv, br } = selectedRows(filteredGoals, filteredInterventions, filteredBarriers, selected);
-  for (const x of g) await ctx.savePatientCarePlanGoal(ctx.patientId, ctx.program, { ...x, priority }, x.id);
-  for (const x of iv) await ctx.savePatientCarePlanIntervention(ctx.patientId, ctx.program, { ...x, priority }, x.id);
-  for (const x of br) await ctx.savePatientCarePlanBarrier(ctx.patientId, ctx.program, { ...x, priority }, x.id);
+  for (const x of g) await saveGbiPatch('goal', x, { priority }, ctx);
+  for (const x of iv) await saveGbiPatch('intervention', x, { priority }, ctx);
+  for (const x of br) await saveGbiPatch('barrier', x, { priority }, ctx);
   const n = g.length + iv.length + br.length;
   clearSelection();
   if (n) {
@@ -36,10 +38,9 @@ export async function bulkAssign(user, { selected, filteredInterventions, ctx, c
     return;
   }
   for (const x of iv) {
-    await ctx.savePatientCarePlanIntervention(ctx.patientId, ctx.program, {
-      ...x,
+    await saveGbiPatch('intervention', x, {
       assignee: { name: user.name, initials: user.initials },
-    }, x.id);
+    }, ctx);
   }
   clearSelection();
   ctx.showToast(`Assigned ${iv.length} intervention${iv.length === 1 ? '' : 's'} to ${user.name}`);
