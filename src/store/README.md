@@ -8,7 +8,7 @@
 |------|------|
 | `lib/reportPersistFailure.js` | Shared toast + tracking for failed Supabase writes |
 | `lib/carePlanStoreLib.js` | Care-plan row mappers, audit diff helpers, template apply |
-| `lib/worklistPersist.js` | HCC gap/member persist, HEDIS/SNP worklist writes, DiagPanel tab inserts |
+| `lib/worklistPersist.js` | HCC gap/member persist, HEDIS/SNP worklist writes, DiagPanel tab inserts (callers pass member/gap snapshots; no `useAppStore` import) |
 | `lib/notificationStoreLib.js` | Bell notification row mapping and merge |
 | `lib/documentUploadPersist.js` | HCC chart + program document Storage upload and DB insert |
 | `lib/taskDateUtils.js` | Task due-date parsing and call duration formatting |
@@ -25,5 +25,9 @@
 ## Next slices (planned)
 
 Extract in this order to limit merge risk: HCC worklist **state/actions** (in-store slice), patient/care-program navigation, tasks, settings/content.
+
+HCC seed data for the activity feed lives in `src/features/hcc/seed/buildSeedHccActivityFeed.js`; transition labels in `src/features/hcc/hccTransitionLabels.js`.
+
+Care Plan view orchestration is split under `CarePlanView/` (`useCarePlanViewData`, filters, bulk selection, picker handlers, GBI actions).
 
 Feature code should expose narrow facades under `features/*/store/` or `lib/services/`; the store slice should call those, not import deep feature internals when avoidable.

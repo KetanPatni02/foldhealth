@@ -139,6 +139,7 @@ import {
 import { HCC_TRANSITION_LABEL } from '../features/hcc/hccTransitionLabels';
 import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActivityFeed';
 import { createShellSlice } from './slices/shellSlice';
+import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
 
 // Timer handle for the 3-second row-flash on the tasks page.
 let _flashTaskTimer = null;
@@ -164,6 +165,7 @@ const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
+  ...createHccWorklistFiltersSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
@@ -8413,49 +8415,7 @@ export const useAppStore = create((set, get) => ({
   selectAllHcc: (ids) => set({ selectedHccIds: ids }),
   clearHccSelected: () => set({ selectedHccIds: [] }),
 
-  // ─── HCC worklist sub-header state ───
-  // (list title is no longer stored — the tab bar derives it from
-  //  activeSubnavList so it always matches the SubNav worklist name)
-  hccDueDateFilter: null, // null | 'Overdue' | 'Due Today' | 'Due This Week' | 'Due Next Week' | 'Due More Than 2 Weeks'
-  setHccDueDateFilter: (cat) => set({ hccDueDateFilter: cat, currentPage: 1 }),
-
-  // ─── HCC worklist filter state ───
-  // hccFilters: { [filterKey]: string[] } — empty object = no filters applied.
-  // Hydrated from the active saved filter so a reload keeps the applied view.
-  hccFilters: hydrateListFilters('HCC'),
-  setHccFilter: (k, vals) => {
-    track('hcc.filter_applied', { filterKey: k, filterValue: Array.isArray(vals) ? vals.join(',') : vals });
-    set(s => {
-      const next = { ...s.hccFilters };
-      if (!vals || !vals.length) delete next[k];
-      else next[k] = vals;
-      // Changing a filter detaches us from any "applied saved filter" highlight
-      // and jumps back to page 1 in the same atomic set() — the previous
-      // useEffect-in-HccWorklistTable pattern raced with the user's own
-      // pagination clicks (see docs comment there).
-      return { hccFilters: next, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC'), currentPage: 1 };
-    });
-  },
-  clearHccFilters: () => {
-    track('hcc.filters_cleared_all');
-    set(s => ({ hccFilters: {}, hccActiveSavedId: null, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC'), currentPage: 1 }));
-  },
-
-  // Which filter chip keys appear in the chip row. The MoreFiltersPopover
-  // toggles entries in this set. Initialized to the primary keys on first read.
-  hccVisibleFilterKeys: null, // null → auto-fit one row from PRIMARY (FilterChipBar)
-  toggleHccVisibleFilter: (k) => set(s => {
-    const current = s.hccVisibleFilterKeys
-      ? new Set(s.hccVisibleFilterKeys)
-      : new Set(['my','rl','coh','g','open','chart','supS','cdrS','r1s','dec']);
-    if (current.has(k)) current.delete(k); else current.add(k);
-    return { hccVisibleFilterKeys: [...current] };
-  }),
-  // Explicit setter — FilterChipBar computes the next visible set from the
-  // current *effective* (auto-fit) set so toggling from More Filters is
-  // consistent whether or not the user has customized before.
-  setHccVisibleFilterKeys: (list) => set({ hccVisibleFilterKeys: [...list] }),
-  clearHccVisibleFilters: () => set({ hccVisibleFilterKeys: [] }),
+  // HCC worklist filter / column prefs → hccWorklistFiltersSlice.js
 
   // ─── HEDIS worklist filter state ───
   // Same shape as hccFilters — `{ [filterKey]: string[] }`. The store's
@@ -8497,7 +8457,7 @@ export const useAppStore = create((set, get) => ({
   // HEDIS, High Utilizers, DM). Each entry: { id, name, filters }. Persisted
   // to localStorage so users keep their saved views across reloads.
   //
-  // The per-list filter STATE lives elsewhere (hccFilters for HCC,
+  // The per-list filter STATE lives elsewhere (hccFilters in hccWorklistFiltersSlice,
   // activeFilters for TOC and other generic lists). LIST_FILTER_KEY below
   // tells the store which slice to read/write for each list.
   savedFiltersByList: readSavedFiltersByList(),
@@ -8559,67 +8519,6 @@ export const useAppStore = create((set, get) => ({
       try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
       return { [key]: { ...f.filters }, activeSavedIdByList: nextActive };
     });
-  },
-
-  // Thin HCC-specific aliases so the existing FilterChipBar's "Save Filter"
-  // button and any other HCC-only callers keep working without rewrites.
-  // (Getters on the state object are not reactive in Zustand — components
-  // that need to subscribe should read `savedFiltersByList.HCC` directly.)
-  saveHccFilter: (name) => useAppStore.getState().saveSavedFilter('HCC', name),
-  renameHccSavedFilter: (id, name) => useAppStore.getState().renameSavedFilter('HCC', id, name),
-  deleteHccSavedFilter: (id) => useAppStore.getState().deleteSavedFilter('HCC', id),
-  applyHccSavedFilter: (id) => useAppStore.getState().applySavedFilter('HCC', id),
-
-  // Column visibility — array of column keys that are hidden. Sticky Member/Actions
-  // columns are not toggleable so they never appear here. Persisted to
-  // localStorage so the user's column config survives reload (matches the
-  // savedFiltersByList / activeSavedIdByList pattern already used in this store).
-  hccHiddenCols: readSessionJson('hccHiddenCols', []),
-  toggleHccColumn: (k) => {
-    track('hcc.column_toggled', { column: k });
-    set(s => {
-      const next = new Set(s.hccHiddenCols);
-      if (next.has(k)) next.delete(k); else next.add(k);
-      const arr = [...next];
-      try { localStorage.setItem('hccHiddenCols', JSON.stringify(arr)); } catch {/* */}
-      return { hccHiddenCols: arr };
-    });
-  },
-  clearHccHiddenCols: () => {
-    try { localStorage.setItem('hccHiddenCols', JSON.stringify([])); } catch {/* */}
-    set({ hccHiddenCols: [] });
-  },
-
-  // Column ordering — array of column keys in the user's preferred order.
-  // Empty array means "use HCC_COLUMNS default order". Drag-to-reorder in the
-  // Show Columns popover writes here; HccWorklistTable + ColumnConfigPopover
-  // apply this order via `orderColumns(HCC_COLUMNS, hccColumnOrder)`. Also
-  // persisted to localStorage.
-  hccColumnOrder: readSessionJson('hccColumnOrder', []),
-  reorderHccColumns: (fromKey, toKey) => set(s => {
-    if (!fromKey || !toKey || fromKey === toKey) return {};
-    track('hcc.columns_reordered', { from: fromKey, to: toKey });
-    // Seed the order from the static default the first time we move anything.
-    const base = s.hccColumnOrder.length
-      ? [...s.hccColumnOrder]
-      : (s._hccDefaultColumnKeys || []);
-    if (!base.length) return {};
-    const from = base.indexOf(fromKey);
-    const to = base.indexOf(toKey);
-    if (from < 0 || to < 0) return {};
-    base.splice(to, 0, base.splice(from, 1)[0]);
-    try { localStorage.setItem('hccColumnOrder', JSON.stringify(base)); } catch {/* */}
-    return { hccColumnOrder: base };
-  }),
-  // Stash the default key order once at app boot so reorderHccColumns can seed
-  // itself without importing columns.js (avoids a circular dep).
-  _hccDefaultColumnKeys: [],
-  setHccDefaultColumnKeys: (keys) => set(s => (
-    s._hccDefaultColumnKeys.length ? {} : { _hccDefaultColumnKeys: keys }
-  )),
-  clearHccColumnOrder: () => {
-    try { localStorage.setItem('hccColumnOrder', JSON.stringify([])); } catch {/* */}
-    set({ hccColumnOrder: [] });
   },
 
   // ── Generic per-worklist column prefs (Supabase + localStorage) ──
