@@ -175,18 +175,21 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
     //                                        path.
     if (dc.status === 'Draft') {
       setAmendNoteId(dc.noteId || null);
-      // A multi-gap draft has to open in the consolidated view so
-      // every gap's evidence is editable at once. Single-gap drafts
-      // keep the compact inline workspace. Prefer the click payload's
-      // own gap set, but fall back to the persisted note in case dc
-      // arrived without gapCodes attached (older activity entries).
+      // Consolidated view fires when EITHER the draft itself already
+      // covers multiple gaps OR the member has more than one open gap
+      // on the worklist — the coordinator needs every open gap
+      // editable at once so DSF-A + DSF-B (or any pair) can be
+      // authored together, not one at a time. Falls back to the
+      // single-gap inline workspace only when the whole member has
+      // just this one gap in play.
       const noteForClick = dc.noteId
         ? memberNotes.find(n => n.id === dc.noteId)
         : null;
       const scopeCodes = (dc.gapCodes && dc.gapCodes.length)
         ? dc.gapCodes
         : (noteForClick?.gapCodes || []);
-      setLeftWorkspace(scopeCodes.length > 1 ? 'clinical-note-consolidated' : 'clinical-note');
+      const goConsolidated = scopeCodes.length > 1 || openGapCount > 1;
+      setLeftWorkspace(goConsolidated ? 'clinical-note-consolidated' : 'clinical-note');
       return;
     }
     if (dc.status === 'Pending Review' || dc.status === 'Submitted') {
