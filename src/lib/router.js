@@ -518,6 +518,7 @@ export function hashToState(route, state = null) {
     'snp': 'SNP',
     'awv': 'Annual Visit',
     'hcc': 'HCC',
+    'hcc-archived': 'HCC',
     'hedis': 'HEDIS',
     'ccm': 'CCM',
     'jsa': 'JSA',

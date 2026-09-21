@@ -9,6 +9,7 @@
 | `lib/reportPersistFailure.js` | Shared toast + tracking for failed Supabase writes |
 | `lib/carePlanStoreLib.js` | Care-plan row mappers, audit diff helpers, template apply |
 | `lib/worklistPersist.js` | HCC gap/member persist, HEDIS/SNP worklist writes, DiagPanel tab inserts |
+| `lib/analyticsTableBatcher.js` | Batched analytics_tables reads for dashboard views |
 | `slices/shellSlice.js` | Theme, nav chrome, Featurebase JWT, changelog |
 | `shellInitial.js` | One-time shell hydration (theme, contrast, font scale) |
 

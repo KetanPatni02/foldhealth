@@ -110,7 +110,6 @@ import {
   persistHccMemberDetails,
   persistHccMemberRoleStatus,
   persistHccActivityRow,
-  fetchAnalyticsTableBatched,
   snpAssigneeFromProgram,
   persistHccDiagComment,
   persistHccDiagCommentUpdate,
@@ -118,6 +117,7 @@ import {
   persistHccDiagNote,
   persistHccDiagDocument,
 } from './lib/worklistPersist';
+import { fetchAnalyticsTableBatched } from './lib/analyticsTableBatcher';
 import { createShellSlice } from './slices/shellSlice';
 
 // Timer handle for the 3-second row-flash on the tasks page.
