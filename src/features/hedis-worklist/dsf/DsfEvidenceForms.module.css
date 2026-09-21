@@ -22,6 +22,36 @@
 }
 .required { color: var(--status-error); }
 
+/* "Performed by" option row — avatar + name + optional clinical role
+   subline. Used inside Select's option label so the trigger and menu
+   items render identically. */
+.performedByOption {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.performedByText {
+  display: inline-flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: var(--leading-tight);
+}
+.performedByName {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.performedByRole {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Trailing info glyph rendered inside the score Badge via its
    `trailingIconElement` slot. Inherits the badge's currentColor so
    the icon matches the band tint; only the cursor changes to signal

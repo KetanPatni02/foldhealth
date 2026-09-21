@@ -14,6 +14,7 @@ import { useEffect, useMemo } from 'react';
 // computed on the read side inside isMandatoryComplete instead of being
 // mirrored into the payload.)
 import { Alert } from '../../../components/Alert/Alert';
+import { Avatar } from '../../../components/Avatar/Avatar';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
 import { Icon } from '../../../components/Icon/Icon';
@@ -28,6 +29,23 @@ import { getItems, getResponseScale, isPhq2Positive, phq9Branch, phq9BandLabel, 
 import { DSF_CARE_PLANS } from './dsfCarePlans';
 import styles from './DsfEvidenceForms.module.css';
 
+// "Performed by" option row — Avatar + name + clinical role, so the
+// dropdown reads the same way as every other people-picker in the app.
+// Trigger and menu items share the same label render (Select prints
+// `opt.label` for both) so the selected user's avatar + name follow
+// through to the trigger without any extra wiring.
+function PerformedByRow({ initials, name, role }) {
+  return (
+    <span className={styles.performedByOption}>
+      <Avatar variant="staff" size="XS" initials={initials || (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()} />
+      <span className={styles.performedByText}>
+        <span className={styles.performedByName}>{name}</span>
+        {role && <span className={styles.performedByRole}>{role}</span>}
+      </span>
+    </span>
+  );
+}
+
 // "Performed by" is the real system-user roster from platformUsers
 // (Supabase `profiles`). Fetched once per session via
 // fetchPlatformUsers; a per-caller useEffect kicks it off when this
@@ -37,7 +55,16 @@ function usePerformedByOptions() {
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
   return useMemo(
-    () => (users || []).map(u => ({ value: u.id, label: u.name })),
+    () => (users || []).map(u => {
+      const role = (u.clinicalRoles || []).join(', ');
+      return {
+        value: u.id,
+        label: <PerformedByRow initials={u.initials} name={u.name} role={role} />,
+        // Plain-text alias so Select's client-side search matches on
+        // both the user's name and their clinical role.
+        searchText: `${u.name} ${role}`.trim(),
+      };
+    }),
     [users],
   );
 }
@@ -220,6 +247,8 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
           value={data.performedBy}
           onChange={(v2) => onUpdate({ performedBy: v2 })}
           placeholder="Select Provider"
+          searchable
+          searchPlaceholder="Search users…"
           variant={err('performedBy') ? 'error' : 'default'}
           disabled={readOnly}
         />
@@ -423,6 +452,8 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
               value={data.performedBy}
               onChange={(v2) => onUpdate({ performedBy: v2 })}
               placeholder="Select Provider"
+          searchable
+          searchPlaceholder="Search users…"
               variant={err('performedBy') ? 'error' : 'default'}
               disabled={readOnly}
             />
