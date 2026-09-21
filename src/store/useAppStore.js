@@ -11,22 +11,6 @@ import { domainDbToJs, domainJsToDb, componentDbToJs, componentJsToDb, auditLogD
 import { popGroupRowToJs, popGroupJsToDb } from '../lib/popGroupMapper';
 import { resolveCampaignAudience, simulateStatus } from '../features/campaign/audienceResolver';
 
-// campaign_sends row → JS shape for the delivery log / summary UI.
-function campaignSendRowToJs(row) {
-  return {
-    id: row.id,
-    campaignId: row.campaign_id,
-    memberId: row.member_id,
-    name: row.recipient_name,
-    email: row.recipient_email,
-    status: row.status,
-    subject: row.subject,
-    sentAt: row.sent_at,
-    openedAt: row.opened_at,
-    error: row.error,
-  };
-}
-
 // Selectable audiences before audience_segments is fetched (or if the table
 // isn't migrated yet). Mirrors supabase/audience_segments_migration.sql.
 const FALLBACK_AUDIENCE_SEGMENTS = [
@@ -68,6 +52,12 @@ import { resolvePatientStoreId } from '../lib/resolvePatientStoreId';
 import { resolvePatientForCall } from '../lib/patientCall';
 
 import { reportPersistFailure } from './lib/reportPersistFailure';
+import { isPastDate, parseDuration, formatDuration } from './lib/taskDateUtils';
+import {
+  campaignSendRowToJs,
+  campaignRowToJs,
+  campaignPatchToDb,
+} from './lib/campaignStoreMappers';
 import {
   defaultTargetDateIso,
   mapCarePlanGoalRow,
@@ -76,6 +66,7 @@ import {
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
   mapCarePlanInterventionTemplateRow,
+  mapInterventionRow,
   mapPatientCarePlanGoalRow,
   patientCarePlanGoalToRow,
   mapGoalMeasurementRow,
@@ -137,52 +128,6 @@ let _flashTaskTimer = null;
 //   3. a single user-visible toast surfaces (debounced 3s so a burst of
 //      failures doesn't stack toasts).
 
-
-function mapInterventionRow(row) {
-  return {
-    id: row.id,
-    goalId: row.goal_id,
-    kind: row.kind,
-    title: row.title || '',
-    config: row.config || {},
-    createdAt: row.created_at,
-  };
-}
-
-// Accept both the canonical MM-DD-YYYY and legacy ISO YYYY-MM-DD (and
-// MM/DD/YYYY) so isPastDate flags overdue rows regardless of stored shape.
-function parseTaskDateStr(str) {
-  if (!str || typeof str !== 'string') return null;
-  let y, m, d;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    [y, m, d] = str.split('-').map(Number);
-  } else if (/^\d{2}[-/]\d{2}[-/]\d{4}$/.test(str)) {
-    [m, d, y] = str.split(/[-/]/).map(Number);
-  } else {
-    return null;
-  }
-  if ([y, m, d].some(n => Number.isNaN(n))) return null;
-  const date = new Date(y, m - 1, d);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function isPastDate(str) {
-  const d = parseTaskDateStr(str);
-  if (!d) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return d < today;
-}
-
-function parseDuration(str) {
-  const parts = (str || '00:00').split(':').map(Number);
-  return parts[0] * 60 + (parts[1] || 0);
-}
-function formatDuration(secs) {
-  const m = Math.floor(secs / 60), s = secs % 60;
-  return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
-}
 
 // Restore navigation state from sessionStorage on reload
 const _savedPage = sessionStorage.getItem('activePage') || 'population';
@@ -286,81 +231,6 @@ function clinicalNoteVersionRowToJs(row) {
     signedAt: row.signed_at || null,
     createdAt: row.created_at || null,
   };
-}
-
-// ── Campaign row mapper ──
-// Single source of truth for translating Supabase campaigns rows into the JS
-// shape the UI consumes. Used by both fetchCampaigns (bulk load) and the
-// CampaignBuilder (after an INSERT / UPDATE returns the row).
-function campaignRowToJs(row) {
-  return {
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    channel: row.channel || 'email',
-    section: row.section || 'scheduled',
-    audience: row.audience || 0,
-    dynamic: row.dynamic || false,
-    health: row.health,
-    delivered: row.delivered,
-    opened: row.opened,
-    startDate: row.start_date,
-    duration: row.duration,
-    progress: row.progress || 0,
-    executesIn: row.executes_in,
-    enabled: row.enabled || false,
-    emailTemplate: row.email_template,
-    colorVariables: row.color_variables,
-    // New Campaign builder fields ───────────────────────────────
-    audienceInclude: row.audience_include || [],
-    audienceExclude: row.audience_exclude || [],
-    sendVia: row.send_via || ['email'],
-    startMode: row.start_mode || 'immediately',
-    startAt: row.start_at,
-    endDate: row.end_date,
-    campaignType: row.campaign_type || 'one_time',
-    senderName: row.sender_name || '',
-    sendFrom: row.send_from || '',
-    subjectLine: row.subject_line || '',
-    // Content → Emails surfaces these in the list table.
-    category: row.category || null,
-    updatedAt: row.updated_at || null,
-    updatedBy: row.updated_by || null,
-    // Joined user display name when the fetch selects it via FK
-    // (campaigns.updated_by → profiles.id). campaignRowToJs collapses the
-    // nested object so the UI just reads .updatedByName.
-    updatedByName: row.updated_by_profile?.full_name || null,
-  };
-}
-
-// Reverse: JS-shape patch → DB-shape patch. Only includes keys present in the
-// patch so we never overwrite columns with `undefined`.
-const CAMPAIGN_FIELD_MAP = {
-  name: 'name',
-  description: 'description',
-  channel: 'channel',
-  section: 'section',
-  audience: 'audience',
-  enabled: 'enabled',
-  audienceInclude: 'audience_include',
-  audienceExclude: 'audience_exclude',
-  sendVia: 'send_via',
-  startMode: 'start_mode',
-  startAt: 'start_at',
-  endDate: 'end_date',
-  campaignType: 'campaign_type',
-  senderName: 'sender_name',
-  sendFrom: 'send_from',
-  subjectLine: 'subject_line',
-  category: 'category',
-};
-function campaignPatchToDb(patch) {
-  const out = {};
-  for (const [jsKey, value] of Object.entries(patch)) {
-    const dbKey = CAMPAIGN_FIELD_MAP[jsKey];
-    if (dbKey) out[dbKey] = value;
-  }
-  return out;
 }
 
 // Debounced auto-save for the Campaign builder. We coalesce rapid field edits

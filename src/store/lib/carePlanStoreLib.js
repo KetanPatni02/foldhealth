@@ -133,6 +133,18 @@ function mapCarePlanInterventionTemplateRow(row) {
   };
 }
 
+/** Goal-linked care_plan_interventions row (library goal drawer). */
+function mapInterventionRow(row) {
+  return {
+    id: row.id,
+    goalId: row.goal_id,
+    kind: row.kind,
+    title: row.title || '',
+    config: row.config || {},
+    createdAt: row.created_at,
+  };
+}
+
 /* ── Patient Care Plan row ⇄ object mapping ──
    The per-patient, per-program plan behind the Care Plan step. Goals mirror
    the library goal shape (so a template instantiates cleanly) plus the fields
@@ -586,6 +598,7 @@ export {
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
   mapCarePlanInterventionTemplateRow,
+  mapInterventionRow,
   mapPatientCarePlanGoalRow,
   patientCarePlanGoalToRow,
   mapGoalMeasurementRow,

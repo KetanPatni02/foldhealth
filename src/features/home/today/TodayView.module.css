@@ -305,14 +305,6 @@
   .top { padding: var(--space-3); gap: var(--space-3); }
 
   .header { flex-direction: column; align-items: stretch; gap: var(--space-3); }
-  .headStats {
-    border-left: none;
-    border-top: 1px solid var(--neutral-150);
-    padding-left: 0;
-    padding-top: var(--space-3);
-    flex-wrap: wrap;
-    gap: var(--space-3) var(--space-5);
-  }
   .header > button { width: 100%; justify-content: center; }
 
   .pulse { grid-template-columns: repeat(2, minmax(0, 1fr)); }

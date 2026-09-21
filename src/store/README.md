@@ -11,6 +11,8 @@
 | `lib/worklistPersist.js` | HCC gap/member persist, HEDIS/SNP worklist writes, DiagPanel tab inserts |
 | `lib/notificationStoreLib.js` | Bell notification row mapping and merge |
 | `lib/documentUploadPersist.js` | HCC chart + program document Storage upload and DB insert |
+| `lib/taskDateUtils.js` | Task due-date parsing and call duration formatting |
+| `lib/campaignStoreMappers.js` | Campaign + campaign_sends row ⇄ JS mappers |
 | `lib/analyticsTableBatcher.js` | Batched analytics_tables reads for dashboard views |
 | `slices/shellSlice.js` | Theme, nav chrome, Featurebase JWT, changelog |
 | `shellInitial.js` | One-time shell hydration (theme, contrast, font scale) |
