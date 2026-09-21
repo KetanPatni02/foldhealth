@@ -68,10 +68,6 @@ function LogEntry({ log, isLast, onEdit, onDelete }) {
 
       <div
         className={`${styles.logCard} ${expanded ? styles.logCardExpanded : ''}`}
-        onClick={e => { e.stopPropagation(); if (expandable) setExpanded(v => !v); }}
-        role="button"
-        tabIndex={0}
-        onKeyDown={expandable ? e => e.key === 'Enter' && setExpanded(v => !v) : undefined}
       >
         <div className={styles.logBody}>
           <div className={styles.logMeta}>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useNativeDialog } from '../../../hooks/useNativeDialog';
 import { Icon } from '../../../components/Icon/Icon';
 import { Badge } from '../../../components/Badge/Badge';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
@@ -890,6 +891,7 @@ function NoteRowActions({
  * fine-grained diffs.
  */
 function NoteTemplateActivityDrawer({ template, onClose }) {
+  const dialogRef = useNativeDialog();
   // Two lifecycle events for now, month-grouped by the same helper the
   // Care Gap Detail Drawer uses so the timeline reads identically. When
   // a real form_template_versions table lands, we can push more entries
@@ -917,9 +919,12 @@ function NoteTemplateActivityDrawer({ template, onClose }) {
   }
   const entries = toActivityLogEntries(raw);
   return createPortal(
-    <>
-      <div className={styles.inspectorOverlay} onClick={onClose} aria-hidden />
-      <aside className={styles.inspectorPanel} role="dialog" aria-label={`${template.name} activity log`}>
+      <dialog
+        ref={dialogRef}
+        className={styles.inspectorPanel}
+        aria-label={`${template.name} activity log`}
+        onCancel={(e) => { e.preventDefault(); onClose(); }}
+      >
         <header className={styles.inspectorHeader}>
           <div>
             <div className={styles.inspectorTitle}>Activity Log</div>
@@ -934,13 +939,13 @@ function NoteTemplateActivityDrawer({ template, onClose }) {
             versions.
           </p>
         </div>
-      </aside>
-    </>,
+      </dialog>,
     document.body,
   );
 }
 
 function NoteTemplateInspector({ template, onClose, onEditFields, onSetDefault, onArchive }) {
+  const dialogRef = useNativeDialog();
   const items = Array.isArray(template.schema?.items) ? template.schema.items : [];
   const isCareGap = !!template.gap_code;
   const contextLabel = template.context === 'non_visit' ? 'Non-Visit' : template.context === 'visit' ? 'Visit' : null;
@@ -948,9 +953,12 @@ function NoteTemplateInspector({ template, onClose, onEditFields, onSetDefault, 
   const isArchived = template.status === 'archived';
   const gapName = template.gap_code ? MEASURE_NAMES?.[template.gap_code] : null;
   return createPortal(
-    <>
-      <div className={styles.inspectorOverlay} onClick={onClose} aria-hidden />
-      <aside className={styles.inspectorPanel} role="dialog" aria-label={`${template.name} inspector`}>
+      <dialog
+        ref={dialogRef}
+        className={styles.inspectorPanel}
+        aria-label={`${template.name} inspector`}
+        onCancel={(e) => { e.preventDefault(); onClose(); }}
+      >
         <header className={styles.inspectorHeader}>
           <div>
             <div className={styles.inspectorTitle}>{template.name}</div>
@@ -1014,8 +1022,7 @@ function NoteTemplateInspector({ template, onClose, onEditFields, onSetDefault, 
             </ol>
           )}
         </div>
-      </aside>
-    </>,
+      </dialog>,
     document.body,
   );
 }

@@ -1,6 +1,13 @@
 .backdrop {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
   background: var(--surface-overlay-heavy);
   z-index: 10000;
   display: flex;

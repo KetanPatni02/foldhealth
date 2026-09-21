@@ -83,9 +83,11 @@ export function ThemePicker() {
             {OPTIONS.map(opt => {
               const active = theme === opt.value;
               return (
-                <li key={opt.value} role="option" aria-selected={active}>
+                <li key={opt.value} role="none">
                   <button
                     type="button"
+                    role="option"
+                    aria-selected={active}
                     className={`${styles.item} ${active ? styles.itemActive : ''}`}
                     onClick={() => { setTheme(opt.value); setOpen(false); }}
                   >

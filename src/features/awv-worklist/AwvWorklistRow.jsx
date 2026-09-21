@@ -257,17 +257,13 @@ export function AwvWorklistRow({ member, columns, hiddenSet, selected, onToggle,
       <td
         className={`${styles.membersTd} ${styles.stickyLeft}`}
         style={{ left: 36, cursor: 'pointer' }}
-        onClick={handleMemberCellClick}
-        role="button"
-        tabIndex={0}
         title="Open patient quick view"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
       >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} />
           <div>
             <div className={styles.patientName}>
-              <button type="button" className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{member.name}</button>{' '}
+              <button type="button" className={styles.patientNameLink} onClick={handleMemberCellClick}>{member.name}</button>{' '}
               {(() => {
                 const dobLabel = formatDobDisplay(member.dob) || deriveDob(member.age, member.name);
                 return (
@@ -281,7 +277,7 @@ export function AwvWorklistRow({ member, columns, hiddenSet, selected, onToggle,
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
+              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
                 {language.toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[language] || 'English'}</span>
               </button>

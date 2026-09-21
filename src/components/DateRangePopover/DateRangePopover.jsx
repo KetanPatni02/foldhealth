@@ -110,7 +110,7 @@ export function DateRangePopover({
         className={styles.popover}
         style={{ top, left: Math.max(12, left), width }}
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="group"
         aria-label={`Select ${label}`}
       >
         <div className={styles.heading}>Select {label}</div>

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useNativeDialog } from '../../../hooks/useNativeDialog';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
@@ -58,6 +59,7 @@ const ACCEPT_MIME = new Set([
 
 export function IcdCreationScreen() {
   const open = useAppStore(s => s.icdCreationOpen);
+  const dialogRef = useNativeDialog(open);
   const close = useAppStore(s => s.closeIcdCreation);
   const queueOcr = useAppStore(s => s.queueHccDocumentForOcr);
   const simulateSftp = useAppStore(s => s.simulateSftpIngest);
@@ -174,9 +176,12 @@ export function IcdCreationScreen() {
   };
 
   return createPortal(
-    <>
-      <div className={styles.overlay} onClick={close} />
-      <div className={styles.panel} role="dialog" aria-label="ICD Creation" aria-modal="true">
+      <dialog
+        ref={dialogRef}
+        className={styles.panel}
+        aria-label="ICD Creation"
+        onCancel={(e) => { e.preventDefault(); close?.(); }}
+      >
         {/* Title bar */}
         <header className={styles.titleBar}>
           <h2 className={styles.title}>ICD Creation</h2>
@@ -233,8 +238,7 @@ export function IcdCreationScreen() {
           />
         </div>
         )}
-      </div>
-    </>,
+      </dialog>,
     document.body,
   );
 }

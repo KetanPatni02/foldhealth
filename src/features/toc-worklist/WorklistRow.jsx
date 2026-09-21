@@ -316,23 +316,19 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
         <td
           className={`${styles.membersTd} ${styles.stickyLeft}`}
           style={{ left: 36, cursor: 'pointer' }}
-          onClick={handleMemberCellClick}
-          role="button"
-          tabIndex={0}
           title="Open patient quick view"
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
         >
           <div className={styles.patientCell}>
             <Avatar variant="patient" initials={p.initials} />
             <div>
               <div className={styles.patientName}>
-                <button className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{p.name}</button> {(() => { const dobLabel = formatDobDisplay(p.dob) || deriveDob(p.age, p.name); return (<Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom"><span className={styles.patientDemo}>({p.gender}•{p.age})</span></Tooltip>); })()}
+                <button className={styles.patientNameLink} onClick={handleMemberCellClick}>{p.name}</button> {(() => { const dobLabel = formatDobDisplay(p.dob) || deriveDob(p.age, p.name); return (<Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom"><span className={styles.patientDemo}>({p.gender}•{p.age})</span></Tooltip>); })()}
               </div>
               <div className={styles.patientMeta}>
                 <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                   <FoldIdTag id={p.memberId} className={styles.foldId} showToast={showToast} />
                 </span>{' '}•{' '}
-                <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
+                <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
                   {(p.language || 'en').toUpperCase()}
                   <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
                 </button>

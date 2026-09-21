@@ -62,21 +62,14 @@ export function GoalLinkedInterventionsList({
           <li
             key={i.id}
             className={styles.intvLinkRow}
-            role="button"
-            tabIndex={0}
-            onClick={() => onOpen?.(i)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                onOpen?.(i);
-              }
-            }}
           >
             <span className={styles.intvLinkIcon}>
               <Icon name={i.icon || 'solar:clipboard-list-linear'} size={16} color="var(--neutral-400)" />
             </span>
             <div className={styles.intvLinkStack}>
-              <span className={styles.intvLinkTitle}>{i.title}</span>
+              <button type="button" className={styles.intvLinkTitle} onClick={() => onOpen?.(i)}>
+                {i.title}
+              </button>
               <span
                 className={styles.intvLinkSubtitle}
                 onClick={(e) => e.stopPropagation()}

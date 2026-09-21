@@ -450,13 +450,6 @@
 .bulkClose:hover { background: var(--neutral-50); }
 
 /* ─── Notes tab — template inspector drawer (P2-1) ─────────────── */
-.inspectorOverlay {
-  position: fixed;
-  inset: 0;
-  background: var(--surface-overlay);
-  z-index: 400;
-  animation: fadeIn 120ms ease-out;
-}
 .inspectorPanel {
   position: fixed;
   top: var(--space-2);
@@ -464,6 +457,9 @@
   bottom: var(--space-2);
   width: 480px;
   max-width: calc(100vw - var(--space-4));
+  max-height: none;
+  margin: 0;
+  padding: 0;
   z-index: 401;
   background: var(--neutral-0);
   border-radius: var(--space-3);
@@ -472,6 +468,10 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+.inspectorPanel::backdrop {
+  background: var(--surface-overlay);
+  animation: fadeIn 120ms ease-out;
 }
 .inspectorHeader {
   display: flex;

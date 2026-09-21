@@ -82,15 +82,6 @@ export function MonitoringRailGoals({ patient }) {
             <div
               key={`${g.programCode}-${g.id}`}
               className={styles.row}
-              onClick={() => setPreviewGoal({ goal: g, program: g.program })}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setPreviewGoal({ goal: g, program: g.program });
-                }
-              }}
             >
               <div className={styles.pCell} onClick={(e) => e.stopPropagation()}>
                 <button
@@ -102,14 +93,18 @@ export function MonitoringRailGoals({ patient }) {
                   <PriorityIcon priority={g.priority} size={16} />
                 </button>
               </div>
-              <div className={styles.titleCell}>
+              <button
+                type="button"
+                className={styles.titleCell}
+                onClick={() => setPreviewGoal({ goal: g, program: g.program })}
+              >
                 <GbiNameCell
                   icon={g.icon || 'solar:flag-linear'}
                   iconTitle={g.category ? normalizeCategory(g.category) : 'Goal'}
                   title={g.title}
                   layout="inline"
                 />
-              </div>
+              </button>
               <div className={styles.statusCell} onClick={(e) => e.stopPropagation()}>
                 <GbiStatusButton
                   value={g.status}

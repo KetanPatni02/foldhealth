@@ -134,20 +134,12 @@ export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selec
   return (
     <div
       ref={cardRef}
-      role="button"
-      tabIndex={0}
       className={[
         styles.card,
         isActive ? styles.cardSelected : '',
         isCompleted ? styles.cardCompleted : '',
         isJustAdded ? styles.cardJustAdded : '',
       ].filter(Boolean).join(' ')}
-      // Whole-card click opens the source document for this ICD. Inner
-      // interactive elements (DOS action buttons, checkboxes, counters, ⋯
-      // menus, dismiss form) stop propagation so they don't also fire this.
-      onClick={toggleSelect}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSelect(); } }}
-      title={isSelected ? 'Deselect' : `Open source document for ${icd.code}`}
     >
       <div className={styles.head}>
         <div className={styles.headMain}>

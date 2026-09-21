@@ -105,7 +105,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   };
 
   return (
-    <div ref={ref} className={styles.popover} role="dialog" aria-label="Notifications">
+    <div ref={ref} className={styles.popover} role="region" aria-label="Notifications">
       <div className={styles.header}>
         <span className={styles.title}>Notifications</span>
         {notifications.some(n => !n.read) && (

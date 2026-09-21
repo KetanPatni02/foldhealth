@@ -146,43 +146,35 @@ export function TasksCard({ dragHandleClassName }) {
             homeTasks.map(task => {
               const completed = task.status === 'completed';
               return (
-                <button
+                <div
                   key={task.id}
-                  type="button"
                   className={styles.taskRowBtn}
-                  onClick={() => setSelectedTask(task)}
                 >
-                  <span
-                    role="checkbox"
-                    aria-checked={completed}
+                  <button
+                    type="button"
+                    aria-pressed={completed}
                     aria-label={completed ? 'Mark incomplete' : 'Mark complete'}
                     className={[styles.taskCheck, completed ? styles.taskCheckDone : ''].filter(Boolean).join(' ')}
                     onClick={(e) => handleToggle(e, task)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleToggle(e, task);
-                      }
-                    }}
-                    tabIndex={0}
                   >
                     {completed && <CheckIcon size={10} />}
-                  </span>
-                  <div className={styles.taskBody}>
-                    <div className={[styles.taskTitle, completed ? styles.taskTitleDone : ''].filter(Boolean).join(' ')}>
-                      {task.name}
+                  </button>
+                  <button type="button" className={styles.taskRowMain} onClick={() => setSelectedTask(task)}>
+                    <div className={styles.taskBody}>
+                      <div className={[styles.taskTitle, completed ? styles.taskTitleDone : ''].filter(Boolean).join(' ')}>
+                        {task.name}
+                      </div>
+                      <div className={styles.taskMeta}>
+                        <PriorityIcon priority={task.priority} size={11} />
+                        <span>{formatTaskDateLabel(task.due_date)}</span>
+                        <span>•</span>
+                        <span className={[styles.taskDue, styles[dueTone(task)]].filter(Boolean).join(' ')}>
+                          {buildDueLabel(task)}
+                        </span>
+                      </div>
                     </div>
-                    <div className={styles.taskMeta}>
-                      <PriorityIcon priority={task.priority} size={11} />
-                      <span>{formatTaskDateLabel(task.due_date)}</span>
-                      <span>•</span>
-                      <span className={[styles.taskDue, styles[dueTone(task)]].filter(Boolean).join(' ')}>
-                        {buildDueLabel(task)}
-                      </span>
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                </div>
               );
             })
           )}

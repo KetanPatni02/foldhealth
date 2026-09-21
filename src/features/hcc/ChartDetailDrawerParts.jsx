@@ -186,7 +186,6 @@ export function EditDocInline({ doc, onCancel, onSave }) {
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           placeholder="Document caption"
-          autoFocus
         />
         <div className={styles.editFieldRow}>
           <div className={styles.editField}>

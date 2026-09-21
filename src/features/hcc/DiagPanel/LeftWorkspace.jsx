@@ -1221,17 +1221,19 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
               return (
                 <div
                   key={d.id}
-                  role="button"
-                  tabIndex={0}
                   className={[styles.docsBrowserTab, isOpen ? styles.docsBrowserTabActive : ''].filter(Boolean).join(' ')}
-                  onClick={() => setOpenDocId(d.id)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenDocId(d.id); } }}
                   title={`${d.name} — ${statusIcon.label}`}
                 >
-                  <span className={styles.docsBrowserTabStatus} aria-hidden="true">
-                    <Icon name={statusIcon.name} size={14} color={statusIcon.color} />
-                  </span>
-                  <span className={styles.docsBrowserTabName}>{d.name}</span>
+                  <button
+                    type="button"
+                    className={styles.docsBrowserTabMain}
+                    onClick={() => setOpenDocId(d.id)}
+                  >
+                    <span className={styles.docsBrowserTabStatus} aria-hidden="true">
+                      <Icon name={statusIcon.name} size={14} color={statusIcon.color} />
+                    </span>
+                    <span className={styles.docsBrowserTabName}>{d.name}</span>
+                  </button>
                   {d.pdf && (
                     <a
                       href={d.pdf}

@@ -418,8 +418,13 @@
   min-width: 0;
 }
 .intvLinkTitle {
+  padding: 0;
+  border: 0;
+  background: transparent;
   font-size: var(--font-base);
   color: var(--neutral-500);
+  text-align: left;
+  cursor: pointer;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

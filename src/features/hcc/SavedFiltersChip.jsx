@@ -131,7 +131,6 @@ function SavedFiltersPopover({ pos, savedFilters, activeId, onSelect, onClear, o
             placeholder="Search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            autoFocus
           />
         </div>
         <div className={styles.optionList}>

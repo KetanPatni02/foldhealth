@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNativeDialog } from '../../hooks/useNativeDialog';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Button } from '../../components/Button/Button';
@@ -59,6 +60,7 @@ const STATUS_FIELD_BY_ROLE = {
 };
 
 export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplied }) {
+  const dialogRef = useNativeDialog(open);
   const hccMembers = useAppStore(s => s.hccMembers);
   const hccCareTeams = useAppStore(s => s.hccCareTeams);
   const hccDosAssignments = useAppStore(s => s.hccDosAssignments);
@@ -80,14 +82,6 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
       setPickedId(null);
     }
   }, [open]);
-
-  // Escape closes.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
 
   // Candidate pool — platform users (Settings → Users / profiles) whose
   // clinical_roles include the selected role's HCC clinical role. Mirrors
@@ -205,13 +199,11 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
   const roleOptions = ROLES.map(r => ({ value: r, label: ROLE_LABEL[r] }));
 
   return createPortal(
-    <>
-      <div aria-hidden="true" className={styles.overlay} onClick={onClose} />
-      <div
+      <dialog
+        ref={dialogRef}
         className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="bulk-change-title"
+        onCancel={(e) => { e.preventDefault(); onClose?.(); }}
       >
         <div className={styles.header}>
           <h2 id="bulk-change-title" className={styles.title}>Bulk Change Assignees</h2>
@@ -293,8 +285,7 @@ export function BulkChangeAssigneesDialog({ open, selectedIds, onClose, onApplie
             Apply Changes
           </Button>
         </div>
-      </div>
-    </>,
+      </dialog>,
     document.body,
   );
 }

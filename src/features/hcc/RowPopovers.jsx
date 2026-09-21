@@ -142,7 +142,7 @@ export function VisitsPopover({ anchorRect, name, visits, onClose, onSelect }) {
         className={styles.popover}
         style={{ top, left, width: W }}
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="group"
         aria-label={`All DOS for ${name}`}
       >
         <div className={styles.header}>
@@ -227,7 +227,7 @@ export function ChartPopover({ anchorRect, member, charts, onClose, onEnter, onL
         onClick={(e) => e.stopPropagation()}
         onMouseEnter={onEnter}
         onMouseLeave={onLeave}
-        role="dialog"
+        role="group"
         aria-label="Document Available"
       >
         <div className={styles.chartHeader}>

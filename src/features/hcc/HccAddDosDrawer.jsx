@@ -127,7 +127,7 @@ function DocViewerPanel({ extracted, highlightCode, onClose }) {
   }, [onClose]);
 
   return createPortal(
-    <div className={styles.docPanel} role="dialog" aria-label={extracted.fileName}>
+    <div className={styles.docPanel} role="region" aria-label={extracted.fileName}>
       <div className={styles.docToolbar}>
         <Icon name="solar:hamburger-menu-linear" size={16} className={styles.docToolbarMuted} />
         <span className={styles.docToolbarTitle}>{extracted.fileName}</span>

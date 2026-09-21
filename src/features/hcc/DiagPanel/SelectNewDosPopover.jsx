@@ -93,7 +93,7 @@ export function SelectNewDosPopover({ open, anchorRect, onBack, onSelect, max })
       ref={cardRef}
       className={styles.card}
       style={{ top: placement.top, left: placement.left, width: placement.width }}
-      role="dialog"
+      role="group"
       aria-label="Select New DOS"
     >
       <div className={styles.header}>

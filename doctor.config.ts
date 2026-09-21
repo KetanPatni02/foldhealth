@@ -28,6 +28,16 @@ export default {
       // payload shape change degrades to defaults instead of crashing —
       // version envelopes would add migration risk for no real safety gain.
       'react-doctor/client-localstorage-no-version',
+      // ── Deferred maintainability (2026-09, react-doctor@latest) ─────────
+      // Full-repo counts on main: ~155 high-complexity functions, ~40 giant
+      // components, ~52 only-export-components, ~20 duplicate JSX subtrees.
+      // Fixing blind would reshuffle large drawers, worklist rows, and DS
+      // primitives without changing behavior. Re-enable one rule at a time in
+      // a dedicated refactor PR (same policy as no-array-index-as-key).
+      'react-doctor/no-high-complexity-react-function',
+      'react-doctor/no-giant-component',
+      'react-doctor/only-export-components',
+      'react-doctor/duplicate-jsx-subtree',
     ],
     // Non-source paths that inflate the scan. `.claude/worktrees/**` holds
     // full duplicate copies of the repo (incl. raw supabase SQL), which is

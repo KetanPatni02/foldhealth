@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useNativeDialog } from '../../hooks/useNativeDialog';
 import { Icon } from '../Icon/Icon';
 import { FilePreview } from '../FilePreview/FilePreview';
 import { resolveFileKind } from '../FilePreview/FilePreview.utils';
@@ -18,16 +19,11 @@ const ZOOM_STEP = 0.25;
  * @param {() => void}  props.onClose
  */
 export function ImagePreviewOverlay({ doc, onClose }) {
+  const dialogRef = useNativeDialog(!!doc);
   const [zoom, setZoom] = useState(1);
   const { name, ext, fileUrl, file } = doc || {};
   const kind = resolveFileKind({ src: fileUrl, name, ext });
   const isImage = kind === 'image';
-
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const zoomOut = () => setZoom(z => Math.max(ZOOM_MIN, z - ZOOM_STEP));
   const zoomIn = () => setZoom(z => Math.min(ZOOM_MAX, z + ZOOM_STEP));
@@ -47,7 +43,12 @@ export function ImagePreviewOverlay({ doc, onClose }) {
   if (!doc) return null;
 
   return (
-    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label={name} onClick={onClose}>
+    <dialog
+      ref={dialogRef}
+      className={styles.backdrop}
+      aria-label={name}
+      onCancel={(e) => { e.preventDefault(); onClose?.(); }}
+    >
       <div className={styles.header} onClick={(e) => e.stopPropagation()}>
         <span className={styles.title}>{name}</span>
         <div className={styles.headerActions}>
@@ -75,6 +76,6 @@ export function ImagePreviewOverlay({ doc, onClose }) {
           <FilePreview src={fileUrl} file={file} name={name} ext={ext} className={styles.media} />
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

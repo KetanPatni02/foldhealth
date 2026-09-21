@@ -68,7 +68,7 @@ export function MoreFiltersPopover({ anchorRect, visibleKeys, onToggle, onClear,
         className={styles.popover}
         style={{ top, right, width: W }}
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="group"
         aria-label="More filters"
       >
         {/* Search */}

@@ -70,7 +70,7 @@ export function LinkExistingItemsPopover({
         ref={popRef}
         className={styles.menu}
         style={style}
-        role="dialog"
+        role="group"
         aria-label={ariaLabel}
         onClick={(e) => e.stopPropagation()}
       >

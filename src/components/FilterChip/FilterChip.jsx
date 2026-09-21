@@ -101,7 +101,14 @@ export function FilterChip({
           active && noClear && noClearNeutral ? styles.chipNeutral : '',
           size === 'S' ? styles.sizeS : '',
         ].filter(Boolean).join(' ')}
-        onClick={(e) => setRect(rect ? null : e.currentTarget.getBoundingClientRect())}
+        aria-description={info || undefined}
+        onClick={(e) => {
+          if (e.target.closest('[data-filter-clear]')) {
+            handleClear(e);
+            return;
+          }
+          setRect(rect ? null : e.currentTarget.getBoundingClientRect());
+        }}
       >
         {label && <span className={styles.chipLabel}>{label}</span>}
         {active ? (
@@ -120,10 +127,8 @@ export function FilterChip({
                 <Tooltip label={info} placement="bottom" maxWidth={280}>
                   <span
                     className={styles.infoIcon}
-                    tabIndex={0}
                     role="img"
                     aria-label="More information"
-                    onClick={(e) => e.stopPropagation()}
                   >
                     <Icon name="solar:info-circle-linear" size={iconSize} color="var(--neutral-300)" />
                   </span>
@@ -147,11 +152,8 @@ export function FilterChip({
                  nested interactive elements are invalid HTML. */
               <span
                 className={styles.clearIcon}
-                role="button"
-                tabIndex={0}
+                data-filter-clear
                 aria-label={`Clear ${label} filter`}
-                onClick={handleClear}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClear(e); } }}
               >
                 <svg width={iconSize} height={iconSize} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                   <path d="M12.495 4.5C12.77 4.22 12.77 3.78 12.495 3.51C12.22 3.23 11.78 3.23 11.505 3.51L12 4L12.495 4.5ZM3.51 11.505C3.23 11.78 3.23 12.22 3.51 12.495C3.78 12.77 4.22 12.77 4.5 12.495L4 12L3.51 11.505ZM4.49 3.51C4.22 3.23 3.78 3.23 3.51 3.51C3.23 3.78 3.23 4.22 3.51 4.49L4 4L4.49 3.51ZM11.505 12.49C11.78 12.77 12.22 12.77 12.49 12.49C12.77 12.22 12.77 11.78 12.49 11.505L12 12L11.505 12.49ZM12 4L11.505 3.51L7.51 7.51L8 8L8.49 8.49L12.495 4.5L12 4ZM8 8L7.51 7.51L3.51 11.505L4 12L4.5 12.495L8.49 8.49L8 8ZM4 4L3.51 4.49L7.51 8.49L8 8L8.49 7.51L4.49 3.51L4 4ZM8 8L7.51 8.49L11.505 12.49L12 12L12.49 11.505L8.49 7.51L8 8Z" fill="var(--primary-300)" />

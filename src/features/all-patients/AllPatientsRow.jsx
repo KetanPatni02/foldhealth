@@ -288,17 +288,13 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
       <td
         className={`${rowStyles.membersTd} ${rowStyles.stickyLeft}`}
         style={{ left: 36, cursor: 'pointer' }}
-        onClick={handleMemberCellClick}
-        role="button"
-        tabIndex={0}
         title="Open patient quick view"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
       >
         <div className={rowStyles.patientCell}>
           <Avatar variant="patient" initials={row.initials} />
           <div>
             <div className={rowStyles.patientName}>
-              <button className={rowStyles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{row.name}</button>
+              <button className={rowStyles.patientNameLink} onClick={handleMemberCellClick}>{row.name}</button>
               {row.gender && ageDisplay && (() => {
                 // DOB tooltip mirrors WorklistRow: stored dob wins, else a
                 // deterministic derivation from the displayed age + name so
@@ -315,7 +311,7 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={row.memberId || row.id} className={rowStyles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
+              <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()}>
                 {(row.language || 'en').toUpperCase()}
                 <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[row.language] || 'English'}</span>
               </button>

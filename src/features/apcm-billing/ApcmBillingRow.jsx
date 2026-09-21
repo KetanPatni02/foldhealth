@@ -175,24 +175,20 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
       {/* Member — entire cell clickable for patient quick view */}
       <td
         className={`${styles.stickyLeft} ${styles.stickyMember} ${styles.memberTd}`}
-        onClick={handleMemberCellClick}
-        role="button"
-        tabIndex={0}
         title="Open patient quick view"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
         style={{ cursor: 'pointer' }}
       >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={patientInitials} />
           <div className={styles.patientInfo}>
-            <button type="button" className={styles.patientName} onClick={handleMemberCellClick} tabIndex={-1} title="View patient">
+            <button type="button" className={styles.patientName} onClick={handleMemberCellClick} title="View patient">
               {patient.name}
             </button>
             <div className={styles.patientMeta}>
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={patient.memberId} display={patient.memberId || '—'} className={styles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
+              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
                 {langCode}
                 <span className={styles.langTooltip}>Preferred Language: {langFull}</span>
               </button>

@@ -2,16 +2,16 @@
  * Portal-rendered, full-viewport modal styled after Figma 1:12719.
  */
 
-.overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  z-index: 8998;
-}
-
 .panel {
   position: fixed;
   inset: 8px;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
   z-index: 8999;
   background: var(--neutral-0);
   border-radius: 16px;
@@ -22,6 +22,10 @@
   flex-direction: column;
   overflow: hidden;
   animation: icdCreationIn 0.22s ease;
+}
+
+.panel::backdrop {
+  background: var(--surface-overlay);
 }
 
 @keyframes icdCreationIn {

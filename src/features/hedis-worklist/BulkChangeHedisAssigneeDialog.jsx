@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNativeDialog } from '../../hooks/useNativeDialog';
 import { Icon } from '../../components/Icon/Icon';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Button } from '../../components/Button/Button';
@@ -36,6 +37,7 @@ function isGapReassignable(gap) {
 }
 
 export function BulkChangeHedisAssigneeDialog({ open, selectedIds, onClose, onApplied }) {
+  const dialogRef = useNativeDialog(open);
   const hedisMembers = useAppStore(s => s.hedisMembers);
   const updateGapAssignee = useAppStore(s => s.updateGapAssignee);
   const showToast = useAppStore(s => s.showToast);
@@ -49,13 +51,6 @@ export function BulkChangeHedisAssigneeDialog({ open, selectedIds, onClose, onAp
   useEffect(() => {
     if (open) { setSearch(''); setPickedId(null); }
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
 
   const candidates = useMemo(() => (
     (platformUsers || []).map(u => ({ id: u.id, name: u.name, initials: u.initials }))
@@ -100,13 +95,11 @@ export function BulkChangeHedisAssigneeDialog({ open, selectedIds, onClose, onAp
   if (!open) return null;
 
   return createPortal(
-    <>
-      <div aria-hidden="true" className={styles.overlay} onClick={onClose} />
-      <div
+      <dialog
+        ref={dialogRef}
         className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
         aria-labelledby="bulk-hedis-assignee-title"
+        onCancel={(e) => { e.preventDefault(); onClose?.(); }}
       >
         <div className={styles.header}>
           <h2 id="bulk-hedis-assignee-title" className={styles.title}>Bulk Change Assignee</h2>
@@ -170,8 +163,7 @@ export function BulkChangeHedisAssigneeDialog({ open, selectedIds, onClose, onAp
             Apply Changes
           </Button>
         </div>
-      </div>
-    </>,
+      </dialog>,
     document.body,
   );
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNativeDialog } from '../../hooks/useNativeDialog';
 import { useAppStore } from '../../store/useAppStore';
 import { Button } from '../../components/Button/Button';
 import { Select } from '../../components/Select/Select';
@@ -14,6 +15,7 @@ import { applyFontMappings } from './htmlToDocument';
 export function FontSubstitutionDialog() {
   const pendingFontDoc = useAppStore(s => s.pendingFontDoc);
   const pendingUnknownFonts = useAppStore(s => s.pendingUnknownFonts);
+  const dialogRef = useNativeDialog(!!pendingFontDoc && pendingUnknownFonts.length > 0);
   const closeFontSubstitutionDialog = useAppStore(s => s.closeFontSubstitutionDialog);
   const setEmailDocument = useAppStore(s => s.setEmailDocument);
 
@@ -39,17 +41,18 @@ export function FontSubstitutionDialog() {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <dialog
+      ref={dialogRef}
       aria-label="Font substitution"
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
+        width: '100%', height: '100%', maxWidth: 'none', maxHeight: 'none',
+        margin: 0, border: 0,
         background: 'rgba(15, 23, 42, 0.4)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 24,
       }}
-      onClick={(e) => { if (e.target === e.currentTarget) closeFontSubstitutionDialog(); }}
+      onCancel={(e) => { e.preventDefault(); closeFontSubstitutionDialog(); }}
     >
       <div style={{
         background: '#fff', borderRadius: 12, width: 480, maxWidth: '100%',
@@ -102,6 +105,6 @@ export function FontSubstitutionDialog() {
           <Button variant="primary" size="L" onClick={commit}>Apply substitutions</Button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }

@@ -234,25 +234,18 @@ export function AlertsMonitoringCard({ dragHandleClassName }) {
           {!loading && worklistRows.map(row => (
             <div
               key={row.key}
-              role="button"
-              tabIndex={0}
               className={styles.patientRowBtn}
-              onClick={() => handleRowClick(row)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleRowClick(row);
-                }
-              }}
             >
-              <span className={styles.checkbox} aria-hidden="true" />
-              <Avatar variant="patient" initials={row.initials} />
-              <div className={styles.patientInfo}>
-                <div className={styles.patientName}>
-                  {row.name} <span className={styles.chevron}>›</span>
+              <button type="button" className={styles.patientRowMain} onClick={() => handleRowClick(row)}>
+                <span className={styles.checkbox} aria-hidden="true" />
+                <Avatar variant="patient" initials={row.initials} />
+                <div className={styles.patientInfo}>
+                  <div className={styles.patientName}>
+                    {row.name} <span className={styles.chevron}>›</span>
+                  </div>
+                  <div className={styles.patientMeta}>{formatPatientMeta(row)}</div>
                 </div>
-                <div className={styles.patientMeta}>{formatPatientMeta(row)}</div>
-              </div>
+              </button>
               {row.myTaskCount > 0 && (
                 <button
                   type="button"

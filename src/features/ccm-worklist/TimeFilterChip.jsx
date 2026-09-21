@@ -38,7 +38,7 @@ export function TimeFilterPopover({
 
   return createPortal(
     <div className={styles.overlay}>
-      <div ref={popRef} className={styles.popover} style={style} role="dialog" aria-label={label}>
+      <div ref={popRef} className={styles.popover} style={style} role="group" aria-label={label}>
         <div className={styles.header}>{label}</div>
         <div className={styles.userRow}>
           <Icon name="solar:users-group-two-rounded-linear" size={16} color="var(--neutral-300)" />

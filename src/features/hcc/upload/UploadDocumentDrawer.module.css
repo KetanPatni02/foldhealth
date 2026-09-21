@@ -3319,6 +3319,12 @@
 .previewOverlay {
   position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
   background: rgba(15, 18, 27, 0.45);
   z-index: 4000;
   display: flex;

@@ -44,7 +44,7 @@ function HintCard({ anchorRef, onDismiss }) {
       ref={cardRef}
       className={styles.card}
       style={{ top: pos.top, left: pos.left }}
-      role="dialog"
+      role="group"
       aria-labelledby="sidebar-collapse-hint-title"
       aria-describedby="sidebar-collapse-hint-desc"
     >

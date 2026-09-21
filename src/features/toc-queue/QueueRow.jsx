@@ -483,24 +483,20 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
       <td
         className={`${rowStyles.membersTd} ${rowStyles.stickyLeft}`}
         style={{ left: 36, cursor: 'pointer' }}
-        onClick={handleMemberCellClick}
-        role="button"
-        tabIndex={0}
         title="Open patient quick view"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
       >
         <div className={rowStyles.patientCell}>
           <Avatar variant="patient" initials={p.initials} />
           <div>
             <div className={rowStyles.patientName}>
-              <button type="button" className={rowStyles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{p.name}</button>{' '}
+              <button type="button" className={rowStyles.patientNameLink} onClick={handleMemberCellClick}>{p.name}</button>{' '}
               <span className={rowStyles.patientDemo}>({p.gender}•{p.age})</span>
             </div>
             <div className={rowStyles.patientMeta}>
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={p.memberId} className={rowStyles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()} tabIndex={-1}>
+              <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()}>
                 {(p.language || 'en').toUpperCase()}
                 <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
               </button>

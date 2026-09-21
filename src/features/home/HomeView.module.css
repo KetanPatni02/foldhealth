@@ -374,6 +374,20 @@
   background: var(--neutral-50);
 }
 
+.patientRowMain {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
 .patientRow {
   display: flex;
   align-items: center;
@@ -671,6 +685,17 @@
 
 .taskRowBtn:hover { background: var(--neutral-50); }
 
+.taskRowMain {
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
 .taskRow {
   display: flex;
   align-items: flex-start;
@@ -691,6 +716,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  background: var(--neutral-0);
+  cursor: pointer;
 }
 
 .taskCheckDone {

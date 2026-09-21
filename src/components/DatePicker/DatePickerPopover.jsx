@@ -309,7 +309,7 @@ export function DatePickerPopover({
         !isRange && footer ? styles.cardWithFooter : '',
       ].filter(Boolean).join(' ')}
       style={{ top: placement.top, left: placement.left }}
-      role="dialog"
+      role="group"
       aria-label="Choose a date"
     >
       {header}

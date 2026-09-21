@@ -189,18 +189,14 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
 
       <td
         className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}
-        onClick={handleMemberCellClick}
-        role="button"
-        tabIndex={0}
         title="Open patient quick view"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
         style={{ cursor: 'pointer' }}
       >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} locked={isRecordRejected} billed={isRecordBilled} />
           <div>
             <div className={styles.patientName}>
-              <button className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{member.name}</button>{' '}
+              <button className={styles.patientNameLink} onClick={handleMemberCellClick}>{member.name}</button>{' '}
               {(() => {
                 const dobLabel = formatDobDisplay(member.dob) || deriveDob(member.age, member.name);
                 return (
@@ -214,7 +210,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />
               </span>{' '}&bull;{' '}
-              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()} tabIndex={-1}>
+              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
                 {(member.language || 'en').toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: English</span>
               </button>
@@ -407,25 +403,21 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns, staggerIndex = 0
 
       <td
         className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember} ${styles.colMember}`}
-        onClick={handleMemberCellClick}
-        role="button"
-        tabIndex={0}
         title="Open patient quick view"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
         style={{ cursor: 'pointer' }}
       >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={patient.initials} />
           <div>
             <div className={styles.patientName}>
-              <button className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{patient.name}</button>{' '}
+              <button className={styles.patientNameLink} onClick={handleMemberCellClick}>{patient.name}</button>{' '}
               <span className={styles.patientDemo}>({patient.gender}&bull;{patient.age})</span>
             </div>
             <div className={styles.patientMeta}>
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={patient.memberId || patient.id} className={styles.foldId} showToast={showToast} />
               </span>{' '}&bull;{' '}
-              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()} tabIndex={-1}>
+              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
                 {(patient.language || 'en').toUpperCase()}
                 <span className={styles.langTooltip}>Preferred Language: English</span>
               </button>

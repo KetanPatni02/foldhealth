@@ -38,7 +38,7 @@ export function AddConditionPopover({ anchorRect, inline = false, onSelect, onCl
       ref={popRef}
       className={inline ? styles.popoverInline : styles.popover}
       style={inline ? undefined : { top, left }}
-      role="dialog"
+      role="group"
       aria-label="Add Condition"
     >
         <div className={styles.popoverHeader}>

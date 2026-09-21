@@ -58,11 +58,10 @@ export function SearchListPopover({
   return createPortal(
     <>
       <div className={styles.overlay} onClick={onClose} aria-hidden="true" />
-      <div className={styles.popover} style={style} onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Search">
+      <div className={styles.popover} style={style} onClick={(e) => e.stopPropagation()} role="group" aria-label="Search">
         <div className={styles.searchRow}>
           <Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" />
           <input
-            autoFocus
             type="text"
             className={styles.searchInput}
             placeholder={searchPlaceholder}

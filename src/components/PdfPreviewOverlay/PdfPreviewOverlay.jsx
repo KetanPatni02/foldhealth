@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNativeDialog } from '../../hooks/useNativeDialog';
 import { Icon } from '../Icon/Icon';
 import styles from './PdfPreviewOverlay.module.css';
 
@@ -15,6 +16,7 @@ import styles from './PdfPreviewOverlay.module.css';
  * @param {() => void}  props.onClose   – Called when the user dismisses the overlay
  */
 export function PdfPreviewOverlay({ blob, filename = 'document.pdf', onClose }) {
+  const dialogRef = useNativeDialog();
   const [url, setUrl] = useState(null);
 
   // Manage the blob URL lifecycle. createObjectURL leaks if not revoked.
@@ -24,13 +26,6 @@ export function PdfPreviewOverlay({ blob, filename = 'document.pdf', onClose }) 
     setUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
   }, [blob]);
-
-  // ESC dismisses.
-  useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
 
   const handleDownload = () => {
     if (!url) return;
@@ -43,7 +38,12 @@ export function PdfPreviewOverlay({ blob, filename = 'document.pdf', onClose }) 
   };
 
   return (
-    <div className={styles.backdrop} role="dialog" aria-modal="true" aria-label={filename} onClick={onClose}>
+    <dialog
+      ref={dialogRef}
+      className={styles.backdrop}
+      aria-label={filename}
+      onCancel={(e) => { e.preventDefault(); onClose?.(); }}
+    >
       <div className={styles.frame} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <Icon name="solar:document-linear" size={16} color="var(--neutral-300)" />
@@ -63,6 +63,6 @@ export function PdfPreviewOverlay({ blob, filename = 'document.pdf', onClose }) 
           <div className={styles.empty}>Loading preview…</div>
         )}
       </div>
-    </div>
+    </dialog>
   );
 }

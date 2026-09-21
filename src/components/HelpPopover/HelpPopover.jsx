@@ -304,7 +304,7 @@ export function HelpPopover({ onClose, onOpenFeedback, onOpenChangelog, changelo
   };
 
   return (
-    <div ref={ref} className={styles.popover} onClick={e => e.stopPropagation()} role="dialog" aria-label="Platform features">
+    <nav ref={ref} className={styles.popover} onClick={e => e.stopPropagation()} aria-label="Platform features">
       <div className={styles.header}>
         <div className={styles.headerTitle}>
           <Icon name="solar:compass-linear" size={16} color="var(--primary-300)" />
@@ -388,6 +388,6 @@ export function HelpPopover({ onClose, onOpenFeedback, onOpenChangelog, changelo
           </div>
         ))}
       </div>
-    </div>
+    </nav>
   );
 }

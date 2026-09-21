@@ -369,11 +369,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
       {/* Member — entire cell clickable for patient quick view */}
       <td
         className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember}`}
-        onClick={handleMemberCellClick}
-        role="button"
-        tabIndex={0}
         title="Open patient quick view"
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMemberCellClick(e); } }}
         style={{ cursor: 'pointer' }}
       >
         <div className={styles.patientCell}>
@@ -383,7 +379,6 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
               <button
                 className={styles.patientNameLink}
                 onClick={handleMemberCellClick}
-                tabIndex={-1}
               >
                 {member.name}
               </button>{' '}

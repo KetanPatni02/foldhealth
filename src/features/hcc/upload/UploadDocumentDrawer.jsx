@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useNativeDialog } from '../../../hooks/useNativeDialog';
 import { ACCEPT_EXT, ACCEPT_MIME, CHOOSER_OPTIONS } from './UploadDocumentDrawerPicker.utils';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { Button } from '../../../components/Button/Button';
@@ -2184,9 +2185,9 @@ function Field({ label, value, onChange, error, required, placeholder, hint }) {
  * believable visual.
  */
 function PagePreviewModal({ page, maxPage, fileName, onChangePage, onClose }) {
+  const dialogRef = useNativeDialog();
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose?.();
       if (e.key === 'ArrowLeft' && page > 1) onChangePage(page - 1);
       if (e.key === 'ArrowRight' && page < maxPage) onChangePage(page + 1);
     };
@@ -2195,7 +2196,12 @@ function PagePreviewModal({ page, maxPage, fileName, onChangePage, onClose }) {
   }, [page, maxPage, onChangePage, onClose]);
 
   return (
-    <div className={styles.previewOverlay} onClick={onClose} role="dialog" aria-modal="true" aria-label="Document preview">
+    <dialog
+      ref={dialogRef}
+      className={styles.previewOverlay}
+      aria-label="Document preview"
+      onCancel={(e) => { e.preventDefault(); onClose?.(); }}
+    >
       <div className={styles.previewShell} onClick={(e) => e.stopPropagation()}>
         <div className={styles.previewHeader}>
           <div className={styles.previewHeaderTitle}>
@@ -2231,7 +2237,7 @@ function PagePreviewModal({ page, maxPage, fileName, onChangePage, onClose }) {
           <DummyPage page={page} fileName={fileName} />
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
 

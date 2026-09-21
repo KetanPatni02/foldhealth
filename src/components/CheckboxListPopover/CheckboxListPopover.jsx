@@ -83,7 +83,7 @@ export function CheckboxListPopover({
         className={styles.popover}
         style={{ top: pos.top, left: pos.left, width }}
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="group"
         aria-label={label}
       >
         {label && <div className={styles.header}>{label}</div>}
@@ -124,7 +124,6 @@ export function CheckboxListPopover({
             aria-label={label ? `Search ${label}` : 'Search options'}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            autoFocus
           />
         )}
 

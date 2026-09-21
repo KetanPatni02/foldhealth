@@ -47,7 +47,7 @@ export function RadioListPopover({
         className={styles.popover}
         style={{ top: pos.top, left: pos.left, width }}
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="group"
         aria-label={label}
       >
         {label && <div className={styles.header}>{label}</div>}

@@ -59,7 +59,7 @@ export function SortPopover({
         className={styles.popover}
         style={{ top: pos.top, left: pos.left, width }}
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="group"
         aria-label="Sort by"
       >
         <div className={styles.heading}>Sort by</div>

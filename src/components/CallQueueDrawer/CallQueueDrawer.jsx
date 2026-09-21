@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { Drawer } from '../Drawer/Drawer';
 import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
@@ -125,7 +125,6 @@ function SearchBar({ value, onChange, onClose }) {
     <div className={styles.searchBar}>
       <Icon name="solar:magnifer-linear" size={15} color="var(--neutral-300)" />
       <input
-        autoFocus
         type="text"
         placeholder="Search…"
         aria-label="Search calls"

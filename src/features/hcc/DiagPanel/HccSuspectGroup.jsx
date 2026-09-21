@@ -158,27 +158,7 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
   return (
     <div
       className={[styles.card, isSelected ? styles.cardSelected : '', bulkDisabled ? styles.cardBulkDisabled : ''].filter(Boolean).join(' ')}
-      role="button"
-      tabIndex={bulkDisabled ? -1 : 0}
-      aria-disabled={bulkDisabled || undefined}
-      // Card-level click opens the source document. Every inner button /
-      // combobox / dropdown still functions — we only fire the toggle when
-      // the click landed on non-interactive card chrome.
-      onClick={(e) => {
-        if (bulkDisabled) return;
-        if (e.target.closest?.('button, input, [role="listbox"], [role="option"], [role="dialog"]')) return;
-        toggleSelect();
-      }}
-      onKeyDown={(e) => {
-        if (bulkDisabled) return;
-        if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
-          e.preventDefault();
-          toggleSelect();
-        }
-      }}
-      title={bulkDisabled
-        ? 'Bulk actions don’t apply to Suspects and Recaptures'
-        : (isSelected ? 'Deselect' : `Open source document for ${code}`)}>
+      title={bulkDisabled ? 'Bulk actions don’t apply to Suspects and Recaptures' : undefined}>
       <div className={styles.head}>
         <div className={styles.headMain}>
           <IcdCombobox
@@ -192,6 +172,12 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
           )}
         </div>
         <span className={styles.counters}>
+          <Tooltip label={isSelected ? 'Close source document' : 'Open source document'}>
+            <button type="button" className={styles.counter} onClick={toggleSelect} disabled={bulkDisabled}>
+              <Icon name="solar:document-text-linear" size={14} />
+            </button>
+          </Tooltip>
+          <span className={styles.counterDivider} />
           <Tooltip label="Comments">
             <button type="button" className={styles.counter} onClick={() => openIcdPanel('comments', code)}>
               <Icon name="solar:chat-round-line-linear" size={14} />
@@ -443,7 +429,6 @@ function IcdComboPopover({ anchorRef, currentCode, currentDesc, onSelect, onClos
         <div className={styles.comboSearch}>
           <Icon name="solar:magnifer-linear" size={13} color="var(--neutral-300)" />
           <input aria-label="Search ICD code or description"
-            autoFocus
             type="text"
             placeholder="Search ICD code or description…"
             value={query}

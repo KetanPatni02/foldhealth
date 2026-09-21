@@ -95,7 +95,7 @@ export function ColumnConfigPopover({
         className={styles.popover}
         style={{ top, right, width }}
         onClick={(e) => e.stopPropagation()}
-        role="dialog"
+        role="group"
         aria-label="Show columns"
       >
         <div className={styles.header}>
