@@ -337,14 +337,30 @@ export const useAppStore = create((set, get) => ({
       code: values.code || null,
       problem_type: values.type || 'Chronic',
       severity: values.severity || 'Mild',
-      status: 'Active',
+      status: values.status || 'Active',
       onset_label: values.onsetLabel || new Date().toLocaleDateString('en-US'),
+      note: values.note || '',
       sort_order: 999,
     };
-    const { error } = await supabase.from('patient_problems').insert(row);
+    let { error } = await supabase.from('patient_problems').insert(row);
+    // Schema-tolerant: `note` arrives with patient_problems_note_migration.
+    // Until that runs, the problem still saves, just without its note.
+    if (error && /column .*note.* does not exist/i.test(error.message || '')) {
+      const { note: _dropped, ...rowWithoutNote } = row;
+      ({ error } = await supabase.from('patient_problems').insert(rowWithoutNote));
+    }
     if (error) { console.warn('addPatientProblem:', error.message); get().showToast?.('Could not add problem'); return false; }
     await get().fetchPatientProblems(patientId);
     get().showToast?.(`Added "${row.title}"`);
+    return true;
+  },
+  // Status is the only field the Add Problems drawer edits; resolving a
+  // problem moves it between that drawer's two sections.
+  updatePatientProblemStatus: async (patientId, id, status) => {
+    const { error } = await supabase.from('patient_problems')
+      .update({ status, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { console.warn('updatePatientProblemStatus:', error.message); get().showToast?.('Could not update problem'); return false; }
+    await get().fetchPatientProblems(patientId);
     return true;
   },
   removePatientProblem: async (patientId, id) => {

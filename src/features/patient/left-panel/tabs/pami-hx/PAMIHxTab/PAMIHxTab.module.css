@@ -411,3 +411,13 @@
   color: var(--neutral-300);
   line-height: 1.4;
 }
+
+/* Empty section: the dashed card the other empty states in the app use. */
+.emptyCard {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) var(--space-3);
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: var(--space-3);
+  background: var(--neutral-0);
+}

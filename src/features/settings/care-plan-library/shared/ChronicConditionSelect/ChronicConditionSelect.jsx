@@ -11,7 +11,7 @@ const asOptions = (list) => (list || []).map(v => ({ value: v, label: v }));
  * backed by the NLM clinical-tables lookup. Shared so the goal drawer, New
  * Care Plan and the template editor all pick conditions the same way.
  */
-export function ChronicConditionSelect({ value, onChange, label = 'Chronic condition' }) {
+export function ChronicConditionSelect({ value, onChange, label = 'Chronic condition', multiple = true }) {
   // Remote lookup. Debounced, and each request aborts the one before it so a
   // slow early response can't overwrite a newer one.
   const [query, setQuery] = useState('');
@@ -48,10 +48,10 @@ export function ChronicConditionSelect({ value, onChange, label = 'Chronic condi
       options={options}
       value={value}
       onChange={onChange}
-      multiple
-      checkboxes
-      badges
-      placeholder="Select chronic conditions"
+      multiple={multiple}
+      checkboxes={multiple}
+      badges={multiple}
+      placeholder={multiple ? 'Select chronic conditions' : 'Search And Add Problems'}
       searchable
       searchPlaceholder="Search conditions…"
       query={query}
