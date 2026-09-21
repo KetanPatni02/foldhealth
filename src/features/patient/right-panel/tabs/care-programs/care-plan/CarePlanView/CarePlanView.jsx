@@ -26,6 +26,8 @@ import { useCarePlanViewData } from './useCarePlanViewData';
 import { useCarePlanViewFetchEffects } from './useCarePlanViewFetchEffects';
 import { useCarePlanViewPanelRequest } from './useCarePlanViewPanelRequest';
 import { useCarePlanOpenSections } from './useCarePlanOpenSections';
+import { useCarePlanNoteDrawer } from './useCarePlanNoteDrawer';
+import { useCarePlanViewFilters } from './useCarePlanViewFilters';
 import {
   linkedForGoal,
   linkedForChild,
@@ -56,7 +58,6 @@ import { deriveGoalTableFields } from '../lib/goalMetrics';
 import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
-import { GBI_STATUS_TONE } from '../tables/carePlanTableShared';
 import { RingEmptyState } from '@/components/RingEmptyState/RingEmptyState';
 import { SimpleTableSkeleton } from '@/components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { DownChevronIcon } from '@/components/Icon/DownChevronIcon';
@@ -191,6 +192,38 @@ export function CarePlanView({ patientId, program }) {
   // template. Click again (or another badge) to swap; the "+N more" chip
   // clears it. Null means show everything.
   const [templateFilterId, setTemplateFilterId] = useState(null);
+  const {
+    noteOpen,
+    noteText,
+    setNoteText,
+    noteDiscardOpen,
+    setNoteDiscardOpen,
+    noteDeleteOpen,
+    setNoteDeleteOpen,
+    noteDirty,
+    openNoteDrawer,
+    closeNoteDrawer,
+  } = useCarePlanNoteDrawer(latestPlanNote);
+  const {
+    filtersOpen,
+    setFiltersOpen,
+    filters,
+    setFilter,
+    clearFilters,
+    filtersActive,
+    assigneeOptions,
+    filteredGoals,
+    filteredBarriers,
+    filteredInterventions,
+    planStats,
+    templateGoalCounts,
+    norm,
+  } = useCarePlanViewFilters({
+    data,
+    templateFilterId,
+    carePlanTemplates,
+    libraryGoals,
+  });
   const [templateOpen, setTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
   const [templateConditions, setTemplateConditions] = useState([]);
@@ -199,35 +232,6 @@ export function CarePlanView({ patientId, program }) {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [signNote, setSignNote] = useState('');
-  const [noteOpen, setNoteOpen] = useState(false);
-  const [noteText, setNoteText] = useState('');
-  // Baseline the textarea against when the drawer opened so we can tell if
-  // the user actually edited before offering the discard confirmation.
-  const [noteBaseline, setNoteBaseline] = useState('');
-  const [noteDiscardOpen, setNoteDiscardOpen] = useState(false);
-  const [noteDeleteOpen, setNoteDeleteOpen] = useState(false);
-  const noteDirty = noteText.trim() !== (noteBaseline || '').trim();
-  const openNoteDrawer = () => {
-    const seed = latestPlanNote?.detail || '';
-    setNoteText(seed);
-    setNoteBaseline(seed);
-    setNoteOpen(true);
-  };
-  const closeNoteDrawer = ({ force = false } = {}) => {
-    if (!force && noteDirty) { setNoteDiscardOpen(true); return; }
-    setNoteOpen(false);
-    setNoteText('');
-    setNoteBaseline('');
-  };
-  // Role/status/priority filter (#39). Goals & barriers have no assignee, so the
-  // assignee filter narrows only interventions; status/priority apply to all.
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [filters, setFilters] = useState({ status: [], priority: [], assignee: [] });
-
-  const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
-  const clearFilters = () => setFilters({ status: [], priority: [], assignee: [] });
-  const filtersActive = filters.status.length || filters.priority.length || filters.assignee.length;
-
   const selectAllKind = (kind, rows, checked) => setSelected(prev => ({
     ...prev,
     [kind]: checked ? new Set(rows.map(r => r.id)) : new Set(),
@@ -235,106 +239,6 @@ export function CarePlanView({ patientId, program }) {
 
   const canEdit = !!(patientId && program);
 
-  const assigneeOptions = useMemo(
-    () => [...new Set((data.interventions || []).map(i => i.assignee?.name).filter(Boolean))],
-    [data.interventions],
-  );
-  const matchesSP = (item) =>
-    (!filters.status.length || filters.status.includes(item.status)) &&
-    (!filters.priority.length || filters.priority.map(p => p.toLowerCase()).includes((item.priority || '').toLowerCase()));
-
-  // A goal/intervention/barrier "belongs" to a template when its title
-  // matches one the template seeded — the apply flow dedupes by title, so
-  // the same key is a reliable link back (no persistent template_id
-  // column on the row). Barriers are cloned per-goal, so a barrier
-  // belongs to the template when its goalId points at one of the
-  // template's goals — this covers barriers added later against those
-  // goals too, not just the ones the template itself seeded.
-  const norm = (s) => (s || '').trim().toLowerCase();
-  const templateScope = useMemo(() => {
-    if (!templateFilterId) return null;
-    const t = carePlanTemplates.find(x => x.id === templateFilterId);
-    if (!t) return null;
-    const titlesOf = (list, kind) => new Set((list || []).map(e => {
-      if (kind === 'goals') {
-        const lib = e?.id ? libraryGoals.find(g => g.id === e.id) : null;
-        return norm(lib?.title || e?.title || '');
-      }
-      return norm(e?.title || '');
-    }).filter(Boolean));
-    const goalTitles = titlesOf(t.goals, 'goals');
-    const goalIdSet = new Set(
-      data.goals.filter(g => goalTitles.has(norm(g.title))).map(g => g.id)
-    );
-    return {
-      goalTitles,
-      interventionTitles: titlesOf(t.interventions),
-      barrierTitles: titlesOf(t.barriers),
-      goalIdSet,
-    };
-  }, [templateFilterId, carePlanTemplates, libraryGoals, data.goals]);
-  const matchesTemplate = (item, kind) => {
-    if (!templateScope) return true;
-    if (kind === 'barriers') {
-      return templateScope.goalIdSet.has(item.goalId)
-        || templateScope.barrierTitles.has(norm(item.title));
-    }
-    const set = kind === 'goals' ? templateScope.goalTitles : templateScope.interventionTitles;
-    return set.size > 0 && set.has(norm(item.title));
-  };
-
-  const filteredGoals = useMemo(() => data.goals.filter(g => matchesSP(g) && matchesTemplate(g, 'goals')), [data.goals, filters, templateScope]); // eslint-disable-line react-hooks/exhaustive-deps
-  const filteredBarriers = useMemo(() => (data.barriers || []).filter(b => matchesSP(b) && matchesTemplate(b, 'barriers')), [data.barriers, filters, templateScope]); // eslint-disable-line react-hooks/exhaustive-deps
-  const filteredInterventions = useMemo(
-    () => data.interventions.filter(i => matchesSP(i) && matchesTemplate(i, 'interventions') && (!filters.assignee.length || filters.assignee.includes(i.assignee?.name))),
-    [data.interventions, filters, templateScope], // eslint-disable-line react-hooks/exhaustive-deps
-  );
-
-  // Rollup for the summary strip: counts, status mix, avg goal progress. Reads
-  // the filtered lists, so picking a template chip (or any filter) restates the
-  // line for what is actually on screen rather than the whole plan.
-  const planStats = useMemo(() => {
-    const goals = filteredGoals, iv = filteredInterventions, br = filteredBarriers;
-    const all = [...goals, ...iv, ...br];
-    const avgProgress = goals.length
-      ? Math.round(goals.reduce((sum, g) => sum + (Number(g.progress) || 0), 0) / goals.length)
-      : 0;
-    // One badge per status actually present, in the table's own order and
-    // tone, rather than a hardcoded Met / In Progress / Overdue trio that hides
-    // everything else on the plan.
-    const counts = new Map();
-    for (const item of all) {
-      if (!item.status) continue;
-      counts.set(item.status, (counts.get(item.status) || 0) + 1);
-    }
-    const statuses = Object.keys(GBI_STATUS_TONE)
-      .filter(status => counts.get(status))
-      .map(status => ({ status, count: counts.get(status), tone: GBI_STATUS_TONE[status] }));
-    return {
-      goals: goals.length,
-      iv: iv.length,
-      br: br.length,
-      total: all.length,
-      statuses,
-      avgProgress,
-    };
-  }, [filteredGoals, filteredInterventions, filteredBarriers]);
-
-  // Badge count: how many of a template's goals are actually on this plan, not
-  // how many its library definition lists. The two differ while a template is
-  // still being reconciled, or when a goal it brought was removed since.
-  const templateGoalCounts = useMemo(() => {
-    const planTitles = new Set(data.goals.map(g => norm(g.title)));
-    const counts = new Map();
-    for (const t of carePlanTemplates) {
-      const titles = new Set((t.goals || []).map((e) => {
-        const lib = e?.id ? libraryGoals.find(g => g.id === e.id) : null;
-        return norm(lib?.title || e?.title || '');
-      }).filter(Boolean));
-      counts.set(t.id, [...titles].filter(title => planTitles.has(title)).length);
-    }
-    return counts;
-  }, [carePlanTemplates, libraryGoals, data.goals]);
   const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
   const appliedTemplatePriorities = live?.plan?.appliedTemplatePriorities || {};
   const appliedTemplates = useMemo(() => {
@@ -478,9 +382,7 @@ export function CarePlanView({ patientId, program }) {
   const doAddNote = async () => {
     const body = noteText.trim();
     if (!body) return;
-    setNoteOpen(false);
-    setNoteText('');
-    setNoteBaseline('');
+    closeNoteDrawer({ force: true });
     await addCarePlanNote(patientId, program, body);
   };
   // The drawer is driven entirely by the store flag — the toolbar button and
