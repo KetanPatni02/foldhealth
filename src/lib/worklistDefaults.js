@@ -19,9 +19,11 @@ export function readCachedWorklistOrder() {
     if (!Array.isArray(cached) || cached.length === 0) return null;
     if (cached.includes('TOC')) {
       const hasTcm = cached.includes('TCM');
-      return cached.map((l) => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l));
+      return cached
+        .map((l) => (l === 'TOC' ? (hasTcm ? 'TOC IP' : 'TCM') : l))
+        .filter((l) => l !== 'HCC (Archived)');
     }
-    return cached;
+    return cached.filter((l) => l !== 'HCC (Archived)');
   } catch {
     return null;
   }

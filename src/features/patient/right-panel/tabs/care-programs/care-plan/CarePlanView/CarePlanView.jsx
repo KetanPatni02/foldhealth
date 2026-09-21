@@ -23,6 +23,7 @@ import {
   SectionEmptyState,
 } from './CarePlanViewSections';
 import { useCarePlanViewData } from './useCarePlanViewData';
+import { useCarePlanViewFetchEffects } from './useCarePlanViewFetchEffects';
 import {
   linkedForGoal,
   linkedForChild,
@@ -117,28 +118,19 @@ export function CarePlanView({ patientId, program }) {
   const linkedForGoalRow = (g) => linkedForGoal(g, live, programBadge);
   const linkedForChildRow = (item) => linkedForChild(item, live, programBadge);
 
-  useEffect(() => {
-    if (patientId && program?.id) {
-      fetchPatientCarePlan(patientId, program.id);
-      fetchCarePlanLinks(patientId, program.id);
-      // Surface duplicates already sitting on this (and other) plans on load.
-      refreshCarePlanDuplicates(patientId, program);
-    }
-  }, [patientId, program?.id, fetchPatientCarePlan, fetchCarePlanLinks, refreshCarePlanDuplicates]); // eslint-disable-line react-hooks/exhaustive-deps -- program object is stable by id
-
-  useEffect(() => { fetchCarePlanLibrary?.(); }, [fetchCarePlanLibrary]);
-
-  // Reconcile the plan with what it says it carries, once both it and the
-  // library are loaded: first bring in the content of templates applied before
-  // apply carried it, then reattach any loose interventions and barriers.
-  useEffect(() => {
-    if (!patientId || !program?.id || !live?.plan || !libraryGoals?.length) return;
-    (async () => {
-      await syncAppliedCarePlanTemplates(patientId, program);
-      await repairCarePlanGoalLinks(patientId, program);
-    })();
-  }, [patientId, program?.id, live?.plan?.id, libraryGoals?.length]); // eslint-disable-line react-hooks/exhaustive-deps -- runs once per plan, guarded in the store
-
+  useCarePlanViewFetchEffects({
+    patientId,
+    program,
+    live,
+    libraryGoals,
+    fetchPatientCarePlan,
+    fetchCarePlanLinks,
+    refreshCarePlanDuplicates,
+    fetchCarePlanLibrary,
+    syncAppliedCarePlanTemplates,
+    repairCarePlanGoalLinks,
+    clearCarePlanShareRequest,
+  });
 
   useEffect(() => {
     if (!carePlanPanelRequest) return;
@@ -153,12 +145,7 @@ export function CarePlanView({ patientId, program }) {
     clearCarePlanPanelRequest();
   }, [carePlanPanelRequest, clearCarePlanPanelRequest]); // eslint-disable-line react-hooks/exhaustive-deps -- request handlers are stable
 
-  // A share request that was never opened/closed (e.g. the program was closed
-  // with the flag still set) must not linger and auto-open the drawer next time.
-  useEffect(() => () => clearCarePlanShareRequest(), [clearCarePlanShareRequest]);
-
-  // No persisted plan yet — GBI lists start empty (Figma SNP-Story 8430:288488)
-  // instead of the old local mock preview.
+  // No persisted plan yet
   const usingMock = !live;
   const measurements = live?.measurements || [];
   const data = useMemo(() => (live ? {
