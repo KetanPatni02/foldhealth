@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import { addedChartToRow, rowToAddedChart } from '../lib/hccAddedChartsMapper';
+import { rowToAddedChart } from '../lib/hccAddedChartsMapper';
 import { goalProgressAuditDetail, computeGoalProgress } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { dbToJs, updatesToDb } from '../lib/patientMapper';
 import { callDetailDbToJs, callDetailJsToDb } from '../lib/callDetailsMapper';
@@ -119,6 +119,7 @@ import {
 } from './lib/worklistPersist';
 import { fetchAnalyticsTableBatched } from './lib/analyticsTableBatcher';
 import { mapNotificationRow, mergeNotifications } from './lib/notificationStoreLib';
+import { persistHccAddedChart, persistProgramDocument } from './lib/documentUploadPersist';
 import { createShellSlice } from './slices/shellSlice';
 
 // Timer handle for the 3-second row-flash on the tasks page.
@@ -146,83 +147,6 @@ function mapInterventionRow(row) {
     config: row.config || {},
     createdAt: row.created_at,
   };
-}
-
-// Persist a manually-uploaded chart document: push the file bytes to the
-// `chart-uploads` Storage bucket, then insert the metadata row. Fire-and-forget
-// (the store updated optimistically); a missing table/bucket just warns so the
-// doc still works for the session.
-async function persistHccAddedChart(memberId, doc, file) {
-  if (!memberId || !doc) return;
-  let pdfUrl = doc.pdf && /^https?:/i.test(doc.pdf) ? doc.pdf : null;
-  let storagePath = null;
-  try {
-    if (file) {
-      const path = `${memberId}/${doc.id}-${file.name}`;
-      const { error: upErr } = await supabase.storage
-        .from('chart-uploads')
-        .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
-      if (upErr) {
-        reportPersistFailure(`persistHccAddedChart.upload(${doc.id})`, upErr);
-      } else {
-        storagePath = path;
-        pdfUrl = supabase.storage.from('chart-uploads').getPublicUrl(path).data.publicUrl;
-      }
-    }
-    const { error } = await supabase
-      .from('hcc_added_charts')
-      .insert(addedChartToRow(memberId, { ...doc, pdf: pdfUrl, storagePath }));
-    if (error) reportPersistFailure(`persistHccAddedChart.insert(${doc.id})`, error);
-  } catch (e) {
-    reportPersistFailure(`persistHccAddedChart(${doc.id})`, e || { message: 'unknown' });
-  }
-}
-
-function extOf(filename) {
-  const m = /\.([a-z0-9]+)$/i.exec(filename || '');
-  return m ? m[1].toLowerCase() : null;
-}
-
-// Persist a Program Documents upload: push the file bytes to the
-// `program-documents` Storage bucket, then insert the metadata row.
-// Fire-and-forget (the store already updated optimistically) — a missing
-// bucket/table just warns so the doc still works for the session via the
-// in-memory `file` kept on the row.
-async function persistProgramDocument(doc, file) {
-  if (!doc?.id) return;
-  let fileUrl = null;
-  let storagePath = null;
-  try {
-    if (file) {
-      const path = `${doc.programCode || 'unscoped'}/${doc.patientId || 'unscoped'}/${doc.id}-${file.name}`;
-      const { error: upErr } = await supabase.storage
-        .from('program-documents')
-        .upload(path, file, { contentType: file.type || 'application/octet-stream', upsert: true });
-      if (upErr) {
-        reportPersistFailure(`persistProgramDocument.upload(${doc.id})`, upErr);
-      } else {
-        storagePath = path;
-        fileUrl = supabase.storage.from('program-documents').getPublicUrl(path).data.publicUrl;
-      }
-    }
-    const { error } = await supabase.from('program_documents').insert({
-      id:           doc.id,
-      program_code: doc.programCode,
-      patient_id:   doc.patientId,
-      name:         doc.name,
-      type:         doc.type,
-      status:       doc.status,
-      size_bytes:   doc.sizeBytes,
-      updated_by:   doc.updatedBy,
-      updated_date: doc.updatedDate,
-      file_url:     fileUrl,
-      storage_path: storagePath,
-      ext:          extOf(file?.name || doc.name),
-    });
-    if (error) reportPersistFailure(`persistProgramDocument.insert(${doc.id})`, error);
-  } catch (e) {
-    reportPersistFailure(`persistProgramDocument(${doc.id})`, e || { message: 'unknown' });
-  }
 }
 
 // Accept both the canonical MM-DD-YYYY and legacy ISO YYYY-MM-DD (and
