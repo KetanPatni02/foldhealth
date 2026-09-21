@@ -1,23 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Icon } from '../../../../../../../components/Icon/Icon';
-import { AddIconMinimalist } from '../../../../../../../components/Icon/AddIconMinimalist';
-import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
-import { ActivityLog } from '../../../../../../../components/ActivityLog/ActivityLog';
-import { Button } from '../../../../../../../components/Button/Button';
-import { Input } from '../../../../../../../components/Input/Input';
-import { Textarea } from '../../../../../../../components/Textarea/Textarea';
-import { Drawer } from '../../../../../../../components/Drawer/Drawer';
-import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPopover';
-import { SelectAssigneeModal } from '../../../../../../../components/SelectAssigneeModal/SelectAssigneeModal';
-import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
-import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { Icon } from '@/components/Icon/Icon';
+import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
+import { ActionButton } from '@/components/ActionButton/ActionButton';
+import { ActivityLog } from '@/components/ActivityLog/ActivityLog';
+import { Button } from '@/components/Button/Button';
+import { Input } from '@/components/Input/Input';
+import { Textarea } from '@/components/Textarea/Textarea';
+import { Drawer } from '@/components/Drawer/Drawer';
+import { MenuPopover } from '@/components/MenuPopover/MenuPopover';
+import { SelectAssigneeModal } from '@/components/SelectAssigneeModal/SelectAssigneeModal';
+import { PriorityIcon } from '@/components/PriorityIcon/PriorityIcon';
+import { ConfirmDialog } from '@/components/ConfirmDialog/ConfirmDialog';
 import { goalCascade, barrierGoalIdsOf } from '../lib/carePlanGoalCascade';
 import { RemoveGoalDialog } from '../drawers/RemoveGoalDialog';
-import { Select } from '../../../../../../../components/Select/Select';
-import { FilterChip } from '../../../../../../../components/FilterChip/FilterChip';
-import { useAppStore } from '../../../../../../../store/useAppStore';
+import { Select } from '@/components/Select/Select';
+import { FilterChip } from '@/components/FilterChip/FilterChip';
+import {
+  GBI_STATUSES,
+  PRIORITIES,
+  PRIORITY_LABELS,
+  GbiSectionHead,
+  SectionEmptyState,
+} from './CarePlanViewSections';
+import { useCarePlanViewData } from './useCarePlanViewData';
 import { ChronicConditionSelect } from '../../../../../../settings/care-plan-library/shared';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../../../../components/ShadcnDialog/ShadcnDialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ShadcnDialog/ShadcnDialog';
 import { AddGoalsDrawer } from '../../../../../../settings/care-plan-library/goals/AddGoalsDrawer/AddGoalsDrawer';
 import { AddBarriersDrawer } from '../../../../../../settings/care-plan-library/barriers/AddBarriersDrawer/AddBarriersDrawer';
 import { BarrierDrawer } from '../../../../../../settings/care-plan-library/barriers/BarrierDrawer/BarrierDrawer';
@@ -42,11 +49,11 @@ import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
 import { GBI_STATUS_TONE } from '../tables/carePlanTableShared';
-import { RingEmptyState } from '../../../../../../../components/RingEmptyState/RingEmptyState';
-import { SimpleTableSkeleton } from '../../../../../../../components/SimpleTableSkeleton/SimpleTableSkeleton';
-import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
-import { BulkBar } from '../../../../../../../components/BulkBar/BulkBar';
-import { Badge } from '../../../../../../../components/Badge/Badge';
+import { RingEmptyState } from '@/components/RingEmptyState/RingEmptyState';
+import { SimpleTableSkeleton } from '@/components/SimpleTableSkeleton/SimpleTableSkeleton';
+import { DownChevronIcon } from '@/components/Icon/DownChevronIcon';
+import { BulkBar } from '@/components/BulkBar/BulkBar';
+import { Badge } from '@/components/Badge/Badge';
 import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
 import { CarePlanDuplicateGroup } from '../DuplicateFlag/CarePlanDuplicateGroup';
 import { AppliedTemplateStrip } from './AppliedTemplateStrip';
@@ -57,173 +64,47 @@ import {
 } from '../lib/carePlanTemplateApply';
 import styles from './CarePlanView.module.css';
 
-const EMPTY_ARR = [];
-
-// The statuses a goal or intervention can move through. Kept flat and shared so
-// the pill menu and the intervention drawer offer the same vocabulary.
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
-const PRIORITIES = ['high', 'medium', 'low'];
-// Capitalized labels for the priority filter chip (values compare case-insensitively).
-const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
-
-/** Collapsible GBI section header: title · divider · add action · [right cluster].
- *  `rightAccessory` and `trailingEnd` share the right-aligned slot: accessory
- *  first (used by Goals/Interventions/Barriers for the "N possible duplicates"
- *  badge), then trailing content (Trends button on Goals). */
-function GbiSectionHead({ title, count, open, onToggle, addButton, trailingEnd, rightAccessory }) {
-  const hasRight = !!rightAccessory || !!trailingEnd;
-  return (
-    <div className={`${styles.sectionHead} ${styles.gbiSectionHead}`}>
-      <SectionTitle label={title} count={count} open={open} onToggle={onToggle} />
-      <span className={styles.sectionActionDivider} aria-hidden="true" />
-      {addButton}
-      {hasRight ? (
-        <div className={styles.gbiSectionHeadEnd}>
-          {rightAccessory}
-          {trailingEnd}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-function SectionTitle({ label, count, open, onToggle }) {
-  return (
-    <button type="button" className={styles.sectionToggle} onClick={onToggle} aria-expanded={open}>
-      <DownChevronIcon
-        size={16}
-        color="var(--neutral-400)"
-        className={`${styles.sectionChevron} ${open ? '' : styles.sectionChevronClosed}`}
-      />
-      <span className={styles.sectionTitle}>{label}</span>
-      {count > 0 ? <span className={styles.sectionCount}>{count}</span> : null}
-    </button>
-  );
-}
-
-/** Per-section dashed empty card (Figma SNP-Story 8430:288488). */
-function SectionEmptyState({ icon, label, onAdd }) {
-  return (
-    <div className={styles.sectionEmpty}>
-      <RingEmptyState icon={icon} label={label} iconSize={31} />
-      <div className={styles.sectionEmptyActions}>
-        <Button
-          variant="tertiary"
-          size="L"
-          leadingIconElement={<AddIconMinimalist size={16} />}
-          onClick={onAdd}
-        >
-          Add New
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 export function CarePlanView({ patientId, program }) {
-  const fetchPatientCarePlan = useAppStore(s => s.fetchPatientCarePlan);
-  const savePatientCarePlanGoal = useAppStore(s => s.savePatientCarePlanGoal);
-  const deletePatientCarePlanGoal = useAppStore(s => s.deletePatientCarePlanGoal);
-  const savePatientCarePlanIntervention = useAppStore(s => s.savePatientCarePlanIntervention);
-  const deletePatientCarePlanIntervention = useAppStore(s => s.deletePatientCarePlanIntervention);
-  const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
-  const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
-  const refreshCarePlanDuplicates = useAppStore(s => s.refreshCarePlanDuplicates);
-  const dismissCarePlanDuplicate = useAppStore(s => s.dismissCarePlanDuplicate);
-  const savePatientCarePlanAsTemplate = useAppStore(s => s.savePatientCarePlanAsTemplate);
-  const signCarePlan = useAppStore(s => s.signCarePlan);
-  const addCarePlanNote = useAppStore(s => s.addCarePlanNote);
-  const logCarePlanAudit = useAppStore(s => s.logCarePlanAudit);
-  const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
-  const showToast = useAppStore(s => s.showToast);
-  // A patient loaded via a worklist deep link may live in a member slice
-  // (hcc / awv / ccm / snp / hedis) rather than in the plain patients array,
-  // so fall through every slice the outer PatientDetailView also checks.
-  const patientName = useAppStore(s => {
-    const match = m => m && (m.id === patientId || String(m.memberId) === String(patientId));
-    const src = (s.patients || []).find(match)
-      || (s.hccMembers || []).find(match)
-      || (s.awvMembers || []).find(match)
-      || (s.ccmWorklistMembers || []).find(match)
-      || (s.snpWorklistMembers || []).find(match)
-      || (s.hedisMembers || []).find(match)
-      || (s.allPatients || []).find(match);
-    return src?.name;
-  });
-  const platformUsers = useAppStore(s => s.platformUsers);
-  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
-  useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
-
-  // Patient problem list drives the Add Goals drawer's condition-based
-  // recommendations (and its "Added goals" group reads the plan's own goals).
-  const patientProblems = useAppStore(s => s.patientProblems[patientId] || EMPTY_ARR);
-  const fetchPatientProblems = useAppStore(s => s.fetchPatientProblems);
-  useEffect(() => { if (patientId) fetchPatientProblems(patientId); }, [patientId, fetchPatientProblems]);
-  const carePlanShareRequest = useAppStore(s => s.carePlanShareRequest);
-  const clearCarePlanShareRequest = useAppStore(s => s.clearCarePlanShareRequest);
-  // Bulk-select mode is toggled from the program-detail content header.
-  const bulkMode = useAppStore(s => s.carePlanBulkMode);
-  const setCarePlanBulkMode = useAppStore(s => s.setCarePlanBulkMode);
-  const carePlanPanelRequest = useAppStore(s => s.carePlanPanelRequest);
-  const clearCarePlanPanelRequest = useAppStore(s => s.clearCarePlanPanelRequest);
-  const carePlanTemplates = useAppStore(s => s.carePlanTemplates);
-  const carePlanGoals = useAppStore(s => s.carePlanGoals);
-  const fetchCarePlanLibrary = useAppStore(s => s.fetchCarePlanLibrary);
-  const libraryGoals = useAppStore(s => s.carePlanGoals);
-  const repairCarePlanGoalLinks = useAppStore(s => s.repairCarePlanGoalLinks);
-  const syncAppliedCarePlanTemplates = useAppStore(s => s.syncAppliedCarePlanTemplates);
-  const applyPatientCarePlanTemplates = useAppStore(s => s.applyPatientCarePlanTemplates);
-  const savePatientCarePlanConditions = useAppStore(s => s.savePatientCarePlanConditions);
-
-  const key = patientId && program ? `${patientId}::${program.id}` : null;
-  const live = useAppStore(s => (key ? s.patientCarePlans[key] : null));
-  const auditAll = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
-  useEffect(() => {
-    if (patientId && program?.id) fetchCarePlanAudit?.(patientId, program.id);
-  }, [patientId, program?.id, fetchCarePlanAudit]);
-  // Latest plan-level note (Figma 2562:60104): sorted by createdAt desc, we
-  // show only the newest one on the plan surface; every prior note stays in
-  // the audit log as the change history.
-  const planNoteHistory = useMemo(() => (
-    auditAll
-      .filter(a => a.action === 'note' && (a.entityType === 'plan' || !a.entityType))
-      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt))
-  ), [auditAll]);
-  // If the most-recent plan-note lifecycle event is a "clear", we suppress
-  // the card until the user adds a new note. The full history — including
-  // every past note and every clear — stays in the audit log.
-  const latestClearAt = useMemo(() => {
-    const clears = auditAll
-      .filter(a => a.action === 'note_cleared' && (a.entityType === 'plan' || !a.entityType))
-      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
-    return clears[0]?.createdAt || null;
-  }, [auditAll]);
-  const rawLatestNote = planNoteHistory[0] || null;
-  const latestPlanNote = (rawLatestNote && latestClearAt && new Date(latestClearAt) > new Date(rawLatestNote.createdAt))
-    ? null
-    : rawLatestNote;
-  // Shape care-plan notes for the shared ActivityLog primitive — the
-  // "comment" variant renders the author + timestamp meta line and a
-  // pre-wrap body, which matches the Figma note-timeline treatment.
-  const noteTimelineEntries = useMemo(() => (
-    planNoteHistory.map(a => {
-      const created = a.createdAt ? new Date(a.createdAt) : null;
-      return {
-        id: a.id,
-        t: 'comment',
-        date: created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null,
-        time: created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null,
-        by: a.actor || 'Unknown',
-        title: 'Added a Note',
-        commentBody: a.detail || '',
-      };
-    })
-  ), [planNoteHistory]);
-  const duplicateFlags = useAppStore(s => (key ? s.carePlanDuplicateFlags[key] : null)) || EMPTY_ARR;
-  // First-load skeleton: true while the initial fetch is in flight (before the
-  // plan resolves), false once loaded.
-  const carePlanLoading = useAppStore(s => (key ? !!s.patientCarePlanLoading[key] : false));
-
-  const fetchCarePlanLinks = useAppStore(s => s.fetchCarePlanLinks);
+  const {
+    key,
+    live,
+    auditAll,
+    duplicateFlags,
+    carePlanLoading,
+    latestPlanNote,
+    noteTimelineEntries,
+    patientName,
+    patientProblems,
+    platformUsers,
+    bulkMode,
+    setCarePlanBulkMode,
+    carePlanShareRequest,
+    clearCarePlanShareRequest,
+    carePlanPanelRequest,
+    clearCarePlanPanelRequest,
+    carePlanTemplates,
+    libraryGoals,
+    fetchPatientCarePlan,
+    fetchCarePlanLinks,
+    fetchCarePlanLibrary,
+    refreshCarePlanDuplicates,
+    dismissCarePlanDuplicate,
+    savePatientCarePlanAsTemplate,
+    signCarePlan,
+    addCarePlanNote,
+    logCarePlanAudit,
+    showToast,
+    savePatientCarePlanGoal,
+    deletePatientCarePlanGoal,
+    savePatientCarePlanIntervention,
+    deletePatientCarePlanIntervention,
+    savePatientCarePlanBarrier,
+    deletePatientCarePlanBarrier,
+    repairCarePlanGoalLinks,
+    syncAppliedCarePlanTemplates,
+    applyPatientCarePlanTemplates,
+    savePatientCarePlanConditions,
+  } = useCarePlanViewData(patientId, program);
   const [linkOwner, setLinkOwner] = useState(null); // null | { kind, item }
   // Linked-items preview data (Figma SNP-Story 2632:112808). A goal links its
   // interventions/barriers/automations (by goalId); a child row links its goal.
@@ -432,7 +313,7 @@ export function CarePlanView({ patientId, program }) {
     if (!t) return null;
     const titlesOf = (list, kind) => new Set((list || []).map(e => {
       if (kind === 'goals') {
-        const lib = e?.id ? carePlanGoals.find(g => g.id === e.id) : null;
+        const lib = e?.id ? libraryGoals.find(g => g.id === e.id) : null;
         return norm(lib?.title || e?.title || '');
       }
       return norm(e?.title || '');
@@ -447,7 +328,7 @@ export function CarePlanView({ patientId, program }) {
       barrierTitles: titlesOf(t.barriers),
       goalIdSet,
     };
-  }, [templateFilterId, carePlanTemplates, carePlanGoals, data.goals]);
+  }, [templateFilterId, carePlanTemplates, libraryGoals, data.goals]);
   const matchesTemplate = (item, kind) => {
     if (!templateScope) return true;
     if (kind === 'barriers') {
@@ -503,13 +384,13 @@ export function CarePlanView({ patientId, program }) {
     const counts = new Map();
     for (const t of carePlanTemplates) {
       const titles = new Set((t.goals || []).map((e) => {
-        const lib = e?.id ? carePlanGoals.find(g => g.id === e.id) : null;
+        const lib = e?.id ? libraryGoals.find(g => g.id === e.id) : null;
         return norm(lib?.title || e?.title || '');
       }).filter(Boolean));
       counts.set(t.id, [...titles].filter(title => planTitles.has(title)).length);
     }
     return counts;
-  }, [carePlanTemplates, carePlanGoals, data.goals]);
+  }, [carePlanTemplates, libraryGoals, data.goals]);
   const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
   const appliedTemplatePriorities = live?.plan?.appliedTemplatePriorities || {};
   const appliedTemplates = useMemo(() => {

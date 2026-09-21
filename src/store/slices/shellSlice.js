@@ -1,0 +1,99 @@
+import { supabase } from '../../lib/supabase';
+import { track } from '../../lib/tracking';
+import {
+  applyTheme,
+  subscribeToSystem,
+  applyNavStyle,
+  applyContrast,
+  applyFontScale,
+} from '../../lib/theme';
+import {
+  initialThemeSetting,
+  initialResolvedTheme,
+  initialNavStyle,
+  initialContrast,
+  initialFontScale,
+  readChangelogSeenAt,
+} from '../shellInitial';
+
+/** Theme, chrome preferences, Featurebase JWT, and changelog — shell concerns only. */
+export function createShellSlice(set, get) {
+  return {
+    theme: initialThemeSetting,
+    resolvedTheme: initialResolvedTheme,
+    setTheme: (next) => {
+      const from = get().theme;
+      track('theme.changed', { from, to: next });
+      const resolved = applyTheme(next);
+      set({ theme: next, resolvedTheme: resolved });
+    },
+    _initThemeSubscriptions: () => {
+      if (get()._themeSubscribed) return;
+      set({ _themeSubscribed: true });
+      subscribeToSystem(
+        () => get().theme,
+        (resolved) => set({ resolvedTheme: resolved })
+      );
+    },
+    _themeSubscribed: false,
+
+    navStyle: initialNavStyle,
+    setNavStyle: (next) => {
+      const from = get().navStyle;
+      track('nav.style_changed', { from, to: next });
+      const applied = applyNavStyle(next);
+      set({ navStyle: applied });
+    },
+
+    contrast: initialContrast,
+    setContrast: (next) => {
+      const from = get().contrast;
+      track('contrast.changed', { from, to: next });
+      const applied = applyContrast(next);
+      set({ contrast: applied });
+    },
+
+    fontScale: initialFontScale,
+    setFontScale: (next) => {
+      const from = get().fontScale;
+      track('fontScale.changed', { from, to: next });
+      const applied = applyFontScale(next);
+      set({ fontScale: applied });
+    },
+
+    featurebaseJwt: null,
+    _featurebaseJwtPending: false,
+    setFeaturebaseJwt: (jwt) => set({ featurebaseJwt: jwt }),
+    resetFeaturebaseJwt: () => set({ featurebaseJwt: null, _featurebaseJwtPending: false }),
+    ensureFeaturebaseJwt: async () => {
+      if (get().featurebaseJwt || get()._featurebaseJwtPending) return;
+      const { data } = await supabase.auth.getSession();
+      if (!data?.session?.user) return;
+      set({ _featurebaseJwtPending: true });
+      const { data: minted, error } = await supabase.functions.invoke('featurebase-jwt');
+      if (error) console.warn('[featurebase] jwt mint failed:', error.message);
+      set({ featurebaseJwt: minted?.jwt || null, _featurebaseJwtPending: false });
+    },
+
+    changelogEntries: [],
+    changelogLoading: false,
+    _changelogFetched: false,
+    changelogSeenAt: readChangelogSeenAt(),
+    fetchChangelog: async () => {
+      if (get()._changelogFetched) return;
+      set({ _changelogFetched: true, changelogLoading: true });
+      const { data, error } = await supabase
+        .from('changelog_entries')
+        .select('id, title, kind, compare_url, created_at')
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) console.warn('[store] changelog fetch failed:', error.message);
+      set({ changelogEntries: data || [], changelogLoading: false });
+    },
+    markChangelogSeen: () => {
+      const now = new Date().toISOString();
+      try { localStorage.setItem('changelogSeenAt', now); } catch { /* private mode */ }
+      set({ changelogSeenAt: now });
+    },
+  };
+}
