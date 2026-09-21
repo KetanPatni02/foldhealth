@@ -151,7 +151,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   // reads live state like activeGaps + gapState), so it needs to
   // rebuild with the freshest closure on every render. The child form
   // isn't React.memo'd, so the extra prop identity churn is free.
-  const openDsfbGap = ({ savedAt } = {}) => {
+  const openDsfbGap = ({ savedAt, phq2 } = {}) => {
     if (!member?.id) return;
     const stamp = savedAt ? new Date(savedAt) : new Date();
     const due = new Date(stamp);
@@ -166,13 +166,14 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     if (created) {
       showToast?.('DSF-B opened - continue with PHQ-9');
     }
-    // Defer the promotion by a microtask so React has flushed the
-    // openNativeGap store write into `member.gaps`; openDsfbView's
-    // multiGap check reads activeGaps (derived from that prop) and
-    // needs the DSF-B row visible before it can fire the promote.
-    queueMicrotask(() => {
-      try { openDsfbView(); } catch { /* best-effort */ }
-    });
+    // Promote straight to the consolidated view. `force: true` skips
+    // the multiGap staleness check inside openDsfbView, which would
+    // otherwise miss the DSF-B row we just wrote (Zustand hasn't
+    // triggered a re-render into this closure yet, so member.gaps and
+    // activeGaps are still the pre-openNativeGap snapshot).
+    // `dsfaOverride.phq2` gives the persist step the fresh score even
+    // though gapState here is still pre-setState.
+    openDsfbView({ force: true, dsfaOverride: phq2 ? { phq2 } : null });
   };
 
   // "Open DSF-B" from the DSF-A success banner. If the drawer is
@@ -186,16 +187,29 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   // its own local gapState, so the saved PHQ-2 answers here would be
   // lost. Persist a draft of DSF-A first so the consolidated panel's
   // fetch-clinical-notes hydrate restores the locked, filled state.
-  const openDsfbView = async () => {
-    const multiGap = activeGaps.length > 1
+  const openDsfbView = async ({ force = false, dsfaOverride = null } = {}) => {
+    const multiGap = force
+      || activeGaps.length > 1
       || member?.gaps?.some(g => g.code === 'DSF-B');
     if (multiGap && typeof onPromoteToConsolidated === 'function') {
-      const dsfaData = gapState['DSF-A'];
-      if (dsfaData?.phq2?.savedAt) {
+      // Merge the override on top of the closure's gapState so the
+      // Save-Score entry point can hand in freshly-computed phq2 data
+      // (setState hasn't flushed yet). Manual "Open DSF-B" clicks read
+      // gapState directly since state has already settled by then.
+      const mergedDsfa = dsfaOverride
+        ? { ...(gapState['DSF-A'] || {}), ...dsfaOverride }
+        : gapState['DSF-A'];
+      if (mergedDsfa?.phq2?.savedAt) {
         try {
           const codes = ['DSF-A'];
           const primary = 'DSF-A';
           const effectiveId = selectedNoteId || noteIdByCode[primary];
+          const payload = {
+            dateOfService,
+            audioOnly,
+            audioVideo,
+            gaps: { 'DSF-A': stripUiFlags(mergedDsfa) },
+          };
           const note = await upsertClinicalNote({
             id: effectiveId,
             hedisMemberId: member.id,
@@ -203,7 +217,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
             gapCodes: codes,
             formType: formTypeForCodes(codes),
             status: 'draft',
-            payload: buildNotePayload(codes),
+            payload,
           });
           if (note?.id) codes.forEach(c => rememberNoteId(c, note.id));
           clearDirty(codes);
