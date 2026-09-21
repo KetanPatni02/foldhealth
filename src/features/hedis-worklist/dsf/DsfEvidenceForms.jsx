@@ -9,7 +9,7 @@
 // shared validated-instruments module through ./dsfScoring so the
 // clinical content stays in one source of truth. Verbatim care-plan
 // bullets come from ./dsfCarePlans.
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 // (No side effects here — derived flags like carePlanAcknowledged are
 // computed on the read side inside isMandatoryComplete instead of being
 // mirrored into the payload.)
@@ -23,19 +23,34 @@ import { CheckboxTick } from '../../../components/CheckboxTick/CheckboxTick';
 import { Select } from '../../../components/Select/Select';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
+import { useAppStore } from '../../../store/useAppStore';
 import { getItems, getResponseScale, isPhq2Positive, phq9Branch, phq9BandLabel, totalScore } from './dsfScoring';
 import { DSF_CARE_PLANS } from './dsfCarePlans';
 import styles from './DsfEvidenceForms.module.css';
 
-// Sample provider roster — production wires this through the tenant's
-// staff directory. Sample names include Dr. Dennis per the story.
-export const DSF_PROVIDERS = [
-  { value: 'dr-dennis',   label: 'Dr. Dennis' },
-  { value: 'dr-becerra',  label: 'Dr. Becerra' },
-  { value: 'dr-yu',       label: 'Dr. Helen Yu' },
-  { value: 'np-priya',    label: 'Priya Shah, NP' },
-  { value: 'np-lee',      label: 'Jordan Lee, NP' },
-];
+// "Performed by" is the real system-user roster from platformUsers
+// (Supabase `profiles`). Fetched once per session via
+// fetchPlatformUsers; a per-caller useEffect kicks it off when this
+// form mounts so a fresh drawer doesn't render an empty select.
+function usePerformedByOptions() {
+  const users = useAppStore(s => s.platformUsers);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
+  return useMemo(
+    () => (users || []).map(u => ({ value: u.id, label: u.name })),
+    [users],
+  );
+}
+
+// Look up a stored `performedBy` value against the live platformUsers
+// so signed / submitted notes render the human name. Falls back to the
+// raw value (typically the user id) so an unresolved lookup is visible
+// rather than blank.
+export function resolvePerformedByLabel(value, users) {
+  if (!value) return '';
+  const hit = (users || []).find(u => String(u.id) === String(value));
+  return hit?.name || String(value);
+}
 
 export const LOCATION_OPTIONS = [
   { value: 'telehealth', label: 'Telehealth visit' },
@@ -135,6 +150,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
   const readOnly = !!v.isReviewFlow;
   const onUpdate = readOnly ? () => {} : (patch) => v.updateGap('DSF-A', patch);
   const err = (field) => submitted && !data[field];
+  const performedByOptions = usePerformedByOptions();
   const phq2Values = useMemo(() => {
     const items = getItems('phq2');
     const stored = data.phq2 || {};
@@ -200,7 +216,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
       <FieldStack>
         <FieldLabel required>Performed by</FieldLabel>
         <Select
-          options={DSF_PROVIDERS}
+          options={performedByOptions}
           value={data.performedBy}
           onChange={(v2) => onUpdate({ performedBy: v2 })}
           placeholder="Select Provider"
@@ -317,6 +333,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
   const readOnly = !!v.isReviewFlow;
   const onUpdate = readOnly ? () => {} : (patch) => v.updateGap('DSF-B', patch);
   const err = (field) => submitted && !data[field];
+  const performedByOptions = usePerformedByOptions();
   // When the note has no paired DSF-A, DSF-B is standalone — the
   // reviewer completed the PHQ-2 virtually and skipped creating the
   // Depression Screening care program. DSF-B has to collect its own
@@ -402,7 +419,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
           <FieldStack>
             <FieldLabel required>Performed by</FieldLabel>
             <Select
-              options={DSF_PROVIDERS}
+              options={performedByOptions}
               value={data.performedBy}
               onChange={(v2) => onUpdate({ performedBy: v2 })}
               placeholder="Select Provider"
