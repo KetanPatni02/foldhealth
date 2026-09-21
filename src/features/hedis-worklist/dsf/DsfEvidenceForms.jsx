@@ -335,25 +335,35 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
             Saving this score opens the DSF-B gap for this patient. Once saved, DSF-A cannot be edited.
           </InfoBar>
         )}
-        {phq2Saved && !readOnly && (
-          <InfoBar
-            className={styles.phq2InfoBarAttached}
-            tone="success"
-            icon="solar:check-circle-linear"
-          >
-            <span className={styles.phq2InfoBarSaved}>
-              <span>Score saved, DSF-A locked and DSF-B is created.</span>
-              <Button
-                variant="tertiary"
-                size="S"
-                trailingIcon="solar:arrow-right-linear"
-                onClick={() => (v.openDsfbView ? v.openDsfbView() : v.setActiveGapCode?.('DSF-B'))}
-              >
-                Open DSF-B
-              </Button>
-            </span>
-          </InfoBar>
-        )}
+        {phq2Saved && !readOnly && (() => {
+          // Consolidated view already stacks DSF-B below DSF-A on the
+          // same page, so the "Open DSF-B" jump is redundant there —
+          // scroll does the same job. Only surface the button when
+          // DSF-B is on the note but the current surface can't show
+          // it inline (single-gap inline workspace).
+          const dsfbAlreadyVisible = (v.activeGaps || []).some(g => g.code === 'DSF-B');
+          return (
+            <InfoBar
+              className={styles.phq2InfoBarAttached}
+              tone="success"
+              icon="solar:check-circle-linear"
+            >
+              <span className={styles.phq2InfoBarSaved}>
+                <span>Score saved, DSF-A locked and DSF-B is created.</span>
+                {!dsfbAlreadyVisible && (
+                  <Button
+                    variant="tertiary"
+                    size="S"
+                    trailingIcon="solar:arrow-right-linear"
+                    onClick={() => (v.openDsfbView ? v.openDsfbView() : v.setActiveGapCode?.('DSF-B'))}
+                  >
+                    Open DSF-B
+                  </Button>
+                )}
+              </span>
+            </InfoBar>
+          );
+        })()}
       </div>
 
       {bothPhq2Answered && !positive && (
