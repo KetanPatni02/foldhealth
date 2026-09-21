@@ -491,24 +491,26 @@ export function ConsolidatedNoteBody({ v }) {
           </div>
         </div>
 
-        {/* Only gaps the user has BOTH completed (mandatory fields filled)
-            AND flagged as Ready for Review make it into the consolidated
-            note. Gaps that aren't ready are intentionally omitted — they
-            do not render as empty or "pending" sections. */}
+        {/* Consolidated view surfaces every active (non-Completed) gap
+            on the note so the coordinator can author them all at once.
+            Ready-for-Review status still gates what the review picker
+            includes on submit; here it just controls the section
+            state, not visibility. Empty state only fires when the
+            member truly has no active gaps in scope. */}
         {(() => {
-          const readyGaps = v.activeGaps.filter(g => v.isReadyForReview(g.code));
-          if (readyGaps.length === 0) {
+          const sections = v.activeGaps || [];
+          if (sections.length === 0) {
             return (
               <div className={styles.consolidatedEmpty}>
                 <Icon name="solar:clipboard-list-linear" size={36} color="var(--neutral-200)" />
-                <p className={styles.consolidatedEmptyTitle}>No gaps ready for review yet</p>
+                <p className={styles.consolidatedEmptyTitle}>No open care gaps on this note</p>
                 <p className={styles.consolidatedEmptyBody}>
-                  Complete a care gap's note and toggle Ready for Review to include it here.
+                  Every gap on this note has been signed off. Open a fresh gap on the worklist to start a new one.
                 </p>
               </div>
             );
           }
-          return readyGaps.map((gap) => <GapSection key={gap.code} v={v} gap={gap} />);
+          return sections.map((gap) => <GapSection key={gap.code} v={v} gap={gap} />);
         })()}
       </div>
     </div>
