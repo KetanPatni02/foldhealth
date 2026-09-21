@@ -9,7 +9,7 @@
 // shared validated-instruments module through ./dsfScoring so the
 // clinical content stays in one source of truth. Verbatim care-plan
 // bullets come from ./dsfCarePlans.
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 // (No side effects here — derived flags like carePlanAcknowledged are
 // computed on the read side inside isMandatoryComplete instead of being
 // mirrored into the payload.)
@@ -321,25 +321,39 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
     : branch === 'severe' ? 'error'
     : 'grey';
 
-  // Timestamp the first "all answered" moment so the note payload has a
-  // stable savedAt for downstream analytics + the 30-day due-date math.
-  // Idempotent — writes once when the item vector first completes.
-  useEffect(() => {
-    if (!allAnswered) return;
-    if (data.phq9?.savedAt) return;
-    onUpdate({ phq9: { ...(data.phq9 || {}), totalScore: phq9Total, band: branch, savedAt: new Date().toISOString() } });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allAnswered]);
+  // Save Score gate — mirrors the PHQ-2 pattern. Users answer all 9
+  // items, then commit the score via an explicit Save Score button.
+  // Save stamps `savedAt` (feeds the 30-day due-date math), locks the
+  // Likert matrix, and reveals the band's care plan below.
+  const phq9Saved = !!data.phq9?.savedAt;
+  // Save requires: all 9 items answered, not already saved, not
+  // declined. Mild bands' sub-question stays available before AND after
+  // save; the care plan panel below only surfaces once both the score
+  // is saved AND the sub-question is answered.
+  const canSavePhq9 = allAnswered && !phq9Saved && !data.decline;
+  const handleSavePhq9Score = () => {
+    if (!canSavePhq9) return;
+    onUpdate({
+      phq9: {
+        ...(data.phq9 || {}),
+        totalScore: phq9Total,
+        band: branch,
+        savedAt: new Date().toISOString(),
+      },
+      manuallyOff: false,
+    });
+  };
 
-  // Which care plan block is visible right now, given band + Mild
-  // sub-question + Decline standing checkbox. Decline always wins.
+  // Which care plan block is visible right now. Decline always wins;
+  // band-driven plans only surface once the score is saved so the flow
+  // reads as Answer → Save → Care plan.
   let planKey = null;
   if (data.decline) planKey = 'decline';
-  else if (allAnswered && branch === 'minimal') planKey = 'phq9Minimal';
-  else if (allAnswered && branch === 'mild' && data.phq9?.subMildAnswer === 'yes') planKey = 'phq9MildYes';
-  else if (allAnswered && branch === 'mild' && data.phq9?.subMildAnswer === 'no') planKey = 'phq9MildNo';
-  else if (allAnswered && branch === 'moderate') planKey = 'phq9Moderate';
-  else if (allAnswered && branch === 'severe') planKey = 'phq9Severe';
+  else if (phq9Saved && branch === 'minimal') planKey = 'phq9Minimal';
+  else if (phq9Saved && branch === 'mild' && data.phq9?.subMildAnswer === 'yes') planKey = 'phq9MildYes';
+  else if (phq9Saved && branch === 'mild' && data.phq9?.subMildAnswer === 'no') planKey = 'phq9MildNo';
+  else if (phq9Saved && branch === 'moderate') planKey = 'phq9Moderate';
+  else if (phq9Saved && branch === 'severe') planKey = 'phq9Severe';
 
   const acknowledged = data.decline || !!data.carePlan?.allCompleted;
 
@@ -415,8 +429,41 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
           scoreKey="phq9"
           values={phq9Values}
           onChange={(next) => onUpdate({ phq9: { ...(data.phq9 || {}), items: next } })}
-          locked={data.decline}
+          locked={data.decline || phq9Saved}
         />
+        {/* Save Score button — parallels PHQ-2. Shown once all 9 items
+            (and the Mild sub-question, when applicable) are answered and
+            the note isn't marked as Decline follow-up. Clicking commits
+            the savedAt stamp, locks the matrix, and reveals the band's
+            care plan below. */}
+        {canSavePhq9 && (
+          <div className={styles.phq2CardFooter}>
+            <Button
+              variant="primary"
+              size="M"
+              leadingIcon="solar:check-circle-linear"
+              onClick={handleSavePhq9Score}
+            >
+              Save score
+            </Button>
+          </div>
+        )}
+        {canSavePhq9 && (
+          <InfoBar className={styles.phq2InfoBarAttached}>
+            Saving this score commits the PHQ-9 result and reveals the recommended care plan. Once saved, the assessment cannot be edited.
+          </InfoBar>
+        )}
+        {phq9Saved && (
+          <InfoBar
+            className={styles.phq2InfoBarAttached}
+            tone="success"
+            icon="solar:check-circle-linear"
+          >
+            <span className={styles.phq2InfoBarSaved}>
+              <span>Score saved, PHQ-9 locked{bandLabel ? ` (${bandLabel})` : ''}.</span>
+            </span>
+          </InfoBar>
+        )}
       </div>
 
       {allAnswered && !data.decline && branch === 'mild' && (

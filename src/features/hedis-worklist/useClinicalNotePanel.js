@@ -285,20 +285,25 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
           return;
         }
       }
-      // If a specific note was selected (eye → preview), hydrate from that
-      // note so the reviewer sees the exact answers the author filled,
-      // regardless of status (draft / submitted / signed). Otherwise fall
-      // back to the freshest DRAFT (author's in-progress edits) then the
-      // freshest SUBMITTED (pending review) so the Edit-from-preview flow
-      // lands with the last-sent-for-review values pre-populated.
+      // Hydration priority:
+      //  1. selectedNoteId (eye → preview / Edit) — hydrate that exact
+      //     note so the reviewer sees the author's answers verbatim.
+      //  2. editingTaskId (reviewer flow) — hydrate the note linked to
+      //     the sign-off task via reviewTaskId; without this the
+      //     reviewer would fall through to the freshest draft/submitted
+      //     which may belong to a different task or be a stale draft.
+      //  3. Otherwise: hydrate PER-GAP from the freshest note that
+      //     covers each active gap. This handles the common consolidated
+      //     case where a member has multiple notes — e.g. a signed
+      //     DSF-A+DSF-B note plus a fresh DSF-B draft — so opening the
+      //     DSF-A section still surfaces its signed answers instead of
+      //     inheriting a shadow-empty state from the DSF-B draft.
       let target = null;
       if (selectedNoteId) {
         target = notes.find(n => n.id === selectedNoteId) || null;
       }
-      if (!target) {
-        target = notes.find(n => n.status === 'draft')
-              || notes.find(n => n.status === 'submitted')
-              || null;
+      if (!target && editingTaskId) {
+        target = notes.find(n => String(n.reviewTaskId) === String(editingTaskId)) || null;
       }
       if (target?.payload) {
         if (target.payload.dateOfService) setDateOfService(target.payload.dateOfService);
@@ -314,15 +319,44 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
             return next;
           });
         }
+      } else {
+        // Per-gap merge across all notes for this member. `notes` comes
+        // back newest-first from the store, so we walk in order and
+        // take the FIRST payload that carries each gap. Also stamp the
+        // note-level DOS / consent from that same freshest source so
+        // the header card doesn't fall out of sync with the answers.
+        const gapsSeen = new Set();
+        let dosSeeded = false;
+        setGapState(prev => {
+          const next = { ...prev };
+          for (const n of notes) {
+            const gapsPayload = n.payload?.gaps;
+            if (!gapsPayload) continue;
+            for (const [code, data] of Object.entries(gapsPayload)) {
+              if (gapsSeen.has(code)) continue;
+              gapsSeen.add(code);
+              if (next[code]) next[code] = { ...next[code], ...data };
+              else next[code] = { ...defaultGapData(code), ...data };
+            }
+            if (!dosSeeded && n.payload?.dateOfService) {
+              setDateOfService(n.payload.dateOfService);
+              if (n.payload.audioOnly !== undefined) setAudioOnly(!!n.payload.audioOnly);
+              if (n.payload.audioVideo !== undefined) setAudioVideo(!!n.payload.audioVideo);
+              dosSeeded = true;
+            }
+          }
+          return next;
+        });
       }
       setRestored(true);
     })();
     return () => { cancelled = true; };
-    // Re-run when the selected note changes (eye → Edit) so the form
-    // re-hydrates to that note's answers. The panel remounts per member,
-    // but selectedNoteId can change without remounting.
+    // Re-run when the selected note or reviewer task changes so the form
+    // re-hydrates to the right note's answers. The panel remounts per
+    // member, but selectedNoteId / editingTaskId can change without
+    // remounting.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member.id, selectedNoteId, amendNoteId]);
+  }, [member.id, selectedNoteId, amendNoteId, editingTaskId]);
 
   // When Amend is clicked after the initial fetch, notes are already cached
   // but gapState was initialized from the draft. Rehydrate from the amended
