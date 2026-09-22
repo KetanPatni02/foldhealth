@@ -254,6 +254,11 @@
 .itemActive {
   background: var(--primary-50);
   color: var(--primary-400, #5020A0);
+  /* Hairline stroke on the current pick so the selected row is
+     legible even when the menu opens on the same primary-50 tint the
+     hover state uses; inset so the border doesn't shift the row's
+     padding. */
+  box-shadow: inset 0 0 0 0.5px var(--primary-200);
 }
 
 .itemDisabled {
