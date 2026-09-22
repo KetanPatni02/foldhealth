@@ -34,6 +34,8 @@ export function Phq9ExitDialog({
     // button. This is a neutral confirmation (not a warning): the
     // draft is a safe stopping point. Primary action is Save as Draft
     // (what the user just asked for); secondary is Keep editing.
+    // Copy names the DSF-B measure (not the PHQ-9 instrument) so it
+    // matches the gap chip / worklist row the coordinator opened.
     const dayCopy = days === null
       ? ''
       : ` You have ${days} day${days === 1 ? '' : 's'} to complete it${dueDate ? ` (by ${dueDate})` : ''}.`;
@@ -42,8 +44,8 @@ export function Phq9ExitDialog({
         variant="primary"
         icon="solar:clock-circle-linear"
         iconColor="var(--primary-300)"
-        title="PHQ-9 is still open"
-        description={`You haven't finished the PHQ-9 assessment (${answered}/${total} answered).${dayCopy}`}
+        title="DSF-B is still open"
+        description={`You haven't finished the DSF-B assessment (${answered}/${total} answered).${dayCopy}`}
         confirmLabel="Save as Draft"
         cancelLabel="Keep editing"
         onConfirm={onSaveExit}
@@ -53,13 +55,13 @@ export function Phq9ExitDialog({
   }
 
   const description = dueDate
-    ? `You haven't finished the PHQ-9 assessment (${answered}/${total} answered). Complete it now, or you have until ${dueDate} to finish the DSF-B screening if you save and exit.`
-    : `You haven't finished the PHQ-9 assessment (${answered}/${total} answered). Complete it now, or save and exit to finish the DSF-B screening later.`;
+    ? `You haven't finished the DSF-B assessment (${answered}/${total} answered). Complete it now, or you have until ${dueDate} to finish the DSF-B screening if you save and exit.`
+    : `You haven't finished the DSF-B assessment (${answered}/${total} answered). Complete it now, or save and exit to finish the DSF-B screening later.`;
   return (
     <ConfirmDialog
       variant="warning"
       icon="solar:clock-circle-linear"
-      title="PHQ-9 not complete"
+      title="DSF-B not complete"
       description={description}
       confirmLabel="Complete now"
       cancelLabel="Save & exit"
