@@ -141,23 +141,24 @@
 }
 
 /* Inline note pane — replaces the notes table when a row is opened
-   inline. Runs edge-to-edge (no outer padding) so the header, info
-   banner, and ConsolidatedNoteBody / PreviewBody each own their own
-   inset. */
+   inline. The pane runs edge-to-edge inside the card; header owns
+   its own padding + a hairline divider, and the body's scroll runs
+   below the info banner. Matches the reviewer-flow header layout the
+   standalone Drawer uses. */
 .inlinePane {
   display: flex;
   flex-direction: column;
   min-height: 0;
   flex: 1;
 }
-/* One-row header: back arrow + stacked title/subtitle on the left,
-   reviewer action buttons (Save as Draft / Sign & Save) on the
-   right. No padding — the shared inset lives on the card margin. */
+/* Two-half header row: back arrow + stacked title/subtitle on the
+   left, reviewer action buttons on the right. */
 .inlineHeader {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: 0;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-100);
 }
 .inlineBackBtn {
   width: 28px;
@@ -180,8 +181,8 @@
   flex: 1;
 }
 .inlineTitle {
-  font-size: var(--font-base);
-  font-weight: 500;
+  font-size: var(--font-lg);
+  font-weight: 600;
   color: var(--neutral-500);
   line-height: 1.2;
 }
@@ -196,11 +197,14 @@
   gap: var(--space-2);
   flex-shrink: 0;
 }
+/* Tinted info strip pinned under the header, edge-to-edge, matching
+   the standalone reviewer drawer's banner styling. */
 .inlineInfoBanner {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--status-info-light);
   color: var(--neutral-400);
   font-size: var(--font-sm);
   flex-shrink: 0;
