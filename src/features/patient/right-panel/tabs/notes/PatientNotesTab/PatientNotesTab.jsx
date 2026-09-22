@@ -9,6 +9,8 @@ import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
 import { useClinicalNotePanel } from '../../../../../hedis-worklist/useClinicalNotePanel';
 import { ConsolidatedNoteBody, HeaderActions as ClinicalNoteHeaderActions } from '../../../../../hedis-worklist/ClinicalNotePanelParts';
 import { ClinicalNotePreviewBody } from '../../../../../hedis-worklist/ClinicalNotePreviewBody';
+import { HeaderCell } from '../../../../../../components/HeaderCell/HeaderCell';
+import { useTableSort } from '../../../../../../components/HeaderCell/useTableSort';
 import styles from './PatientNotesTab.module.css';
 
 /**
@@ -96,14 +98,43 @@ export function PatientNotesTab({ patient }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uniqueIds.join('|'), fetchClinicalNotesForPatient, fetchClinicalNotesForMember]);
 
-  const sorted = useMemo(
-    () => [...notes].sort((a, b) => {
-      const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
-      const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
-      return bt - at;
-    }),
-    [notes],
-  );
+  // Enrich each row with the derived fields the HeaderCell sort keys
+  // read against. Keeps useTableSort's generic comparator simple —
+  // "sortTitle" is the same string the row renders, so the sort
+  // matches what the reviewer sees.
+  const templatesById = useAppStore(s => s.noteTemplatesById);
+  const rows = useMemo(() => (notes || []).map(n => {
+    const codes = n.gapCodes || [];
+    const template = n.formId ? templatesById?.[n.formId] : null;
+    const isNormal = n.formType === 'normal_note';
+    const isNonVisit = n.formType === 'non_visit_note' || isNormal;
+    const isTemplateDriven = !!template && n.payload?.answers && typeof n.payload.answers === 'object';
+    const title = isTemplateDriven
+      ? template.name
+      : isNonVisit
+        ? (n.payload?.title || (isNormal ? 'Clinical Note' : 'Non-Visit Note'))
+        : codes.length > 1
+          ? 'Consolidated Clinical Note'
+          : codes[0]
+            ? `${codes[0]} Visit Note`
+            : 'Clinical Note';
+    const templateName = template?.name
+      || (isNormal ? 'Clinical Note' : isNonVisit
+        ? 'Non-Visit Note'
+        : (n.formType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+          || (codes[0] ? `${codes[0]} Visit Note` : 'Clinical Note'));
+    // useTableSort's ISO-date detector wants YYYY-MM-DD, so we hand
+    // over the raw ISO strings for Last Updated / Created By dates.
+    return {
+      ...n,
+      sortTitle: title,
+      sortStatus: n.status || '',
+      sortAuthor: n.authorName || '',
+      sortUpdated: n.updatedAt || n.createdAt || '',
+      sortTemplate: templateName,
+    };
+  }), [notes, templatesById]);
+  const { sorted, sortKey, sortDir, requestSort } = useTableSort(rows, 'sortUpdated', 'desc');
 
   const [showNonVisitDrawer, setShowNonVisitDrawer] = useState(false);
   // Inline note view — set to a note when the user clicks a row so the
@@ -177,11 +208,46 @@ export function PatientNotesTab({ patient }) {
             <thead>
               <tr>
                 <th className={styles.checkCol} />
-                <th>Note Title</th>
-                <th>Status</th>
-                <th>Created By</th>
-                <th>Last Updated</th>
-                <th>Template Name</th>
+                <HeaderCell
+                  label="Note Title"
+                  sortField="sortTitle"
+                  sortType="alpha"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Status"
+                  sortField="sortStatus"
+                  sortType="alpha"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Created By"
+                  sortField="sortAuthor"
+                  sortType="alpha"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Last Updated"
+                  sortField="sortUpdated"
+                  sortType="date"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Template Name"
+                  sortField="sortTemplate"
+                  sortType="alpha"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
               </tr>
             </thead>
             <tbody>
