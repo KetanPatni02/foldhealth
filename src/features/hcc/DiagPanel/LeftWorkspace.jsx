@@ -891,6 +891,8 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
   const role = normalizeRole(item.role);
   const platformUsers = useAppStore(s => s.platformUsers);
   const usersForMentions = platformUsers?.length ? platformUsers : SYSTEM_USERS;
+  const kebabRef = useRef(null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
   const commit = () => {
     const next = draft.trim();
     if (!next || next === item.body) { setEditing(false); return; }
@@ -912,30 +914,42 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
       <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
         <div className={styles.commentMetaRow}>
           <div className={styles.tlMeta}>
-            {item.date} • {item.time} • {item.author}({role})
+            {item.date} • {item.time} • {item.author} ({role})
             {item.icd && <> • ICD {item.icd}</>}
-            {item.edited && <span className={styles.commentEditedBadge}>Edited</span>}
+            {item.edited && <> • <span className={styles.commentEditedBadge}>Edited</span></>}
           </div>
           {isMine && !editing && (
-            <div className={styles.commentActions}>
+            <div className={[styles.commentActions, menuAnchor ? styles.commentActionsOpen : ''].filter(Boolean).join(' ')}>
               <button
+                ref={kebabRef}
                 type="button"
                 className={styles.commentActionBtn}
-                aria-label="Edit comment"
-                title="Edit"
-                onClick={() => setEditing(true)}
+                aria-label="Comment actions"
+                title="More"
+                onClick={() => {
+                  const r = kebabRef.current?.getBoundingClientRect();
+                  if (r) setMenuAnchor(r);
+                }}
               >
-                <Icon name="solar:pen-linear" size={13} color="currentColor" />
+                <Icon name="solar:menu-dots-linear" size={14} color="currentColor" />
               </button>
-              <button
-                type="button"
-                className={styles.commentActionBtn}
-                aria-label="Delete comment"
-                title="Delete"
-                onClick={() => onDelete?.(item.id, item.body)}
-              >
-                <Icon name="solar:trash-bin-2-linear" size={13} color="currentColor" />
-              </button>
+              {menuAnchor && (
+                <MenuPopover
+                  anchorRect={menuAnchor}
+                  width={168}
+                  align="right"
+                  items={[
+                    { key: 'edit',   icon: 'solar:pen-linear', label: 'Edit' },
+                    { key: 'delete', icon: 'solar:trash-bin-2-linear', label: 'Delete', danger: true },
+                  ]}
+                  onClose={() => setMenuAnchor(null)}
+                  onSelect={(key) => {
+                    setMenuAnchor(null);
+                    if (key === 'edit') setEditing(true);
+                    else if (key === 'delete') onDelete?.(item.id, item.body);
+                  }}
+                />
+              )}
             </div>
           )}
         </div>
