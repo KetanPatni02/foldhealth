@@ -12,6 +12,7 @@ import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
 import { useClinicalNotePanel } from '../../../../../hedis-worklist/useClinicalNotePanel';
 import { ConsolidatedNoteBody, HeaderActions as ClinicalNoteHeaderActions } from '../../../../../hedis-worklist/ClinicalNotePanelParts';
 import { ClinicalNotePreviewBody } from '../../../../../hedis-worklist/ClinicalNotePreviewBody';
+import { TaskDetailDrawer } from '../../../../../tasks/TaskDetailDrawer';
 import { HeaderCell } from '../../../../../../components/HeaderCell/HeaderCell';
 import { useTableSort } from '../../../../../../components/HeaderCell/useTableSort';
 import styles from './PatientNotesTab.module.css';
@@ -178,6 +179,9 @@ export function PatientNotesTab({ patient }) {
   // reviewer mock) rather than the shared preview overlay. Cleared by
   // the inline pane's back button.
   const [inlineNoteId, setInlineNoteId] = useState(null);
+  // Linked task drawer — clicking a Linked Task badge sets this and
+  // TaskDetailDrawer mounts alongside the notes list.
+  const [selectedTask, setSelectedTask] = useState(null);
   const inlineNote = useMemo(
     () => (inlineNoteId ? sorted.find(n => n.id === inlineNoteId) || null : null),
     [inlineNoteId, sorted],
@@ -304,6 +308,7 @@ export function PatientNotesTab({ patient }) {
                   key={note.id}
                   note={note}
                   onOpen={() => setInlineNoteId(note.id)}
+                  onOpenTask={setSelectedTask}
                 />
               ))}
             </tbody>
@@ -313,6 +318,13 @@ export function PatientNotesTab({ patient }) {
 
       {showNonVisitDrawer && (
         <NonVisitNoteDrawer patient={patient} onClose={() => setShowNonVisitDrawer(false)} />
+      )}
+      {selectedTask && (
+        <TaskDetailDrawer
+          task={(allTasks || []).find(t => t.id === selectedTask.id) || selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onSelectTask={setSelectedTask}
+        />
       )}
     </div>
   );
@@ -328,7 +340,7 @@ const ORIGIN_LABEL = {
   patient: 'Patient',
 };
 
-function NoteRow({ note, onOpen }) {
+function NoteRow({ note, onOpen, onOpenTask }) {
   const openNotePreview = useAppStore(s => s.openNotePreview);
   const deleteClinicalNote = useAppStore(s => s.deleteClinicalNote);
   const templatesById = useAppStore(s => s.noteTemplatesById);
@@ -414,8 +426,8 @@ function NoteRow({ note, onOpen }) {
         <div>{note.signedByName || note.reviewerName || note.authorName || '—'}</div>
         <div className={styles.dateText}>{formatDate(note.updatedAt || note.createdAt)}</div>
       </td>
-      <td>
-        <LinkedTasksCell tasks={note.linkedTasks || []} />
+      <td onClick={(e) => e.stopPropagation()}>
+        <LinkedTasksCell tasks={note.linkedTasks || []} onOpenTask={onOpenTask} />
       </td>
       <td className={styles.templateCell}>
         <span className={styles.templateText}>{templateName}</span>
@@ -473,7 +485,7 @@ function NoteRow({ note, onOpen }) {
 // with each task's title, due date, and assignee — the same info the
 // Kanban card carries — so a reviewer doesn't have to click through
 // to the Tasks page just to see who owes what.
-function LinkedTasksCell({ tasks }) {
+function LinkedTasksCell({ tasks, onOpenTask }) {
   if (!tasks?.length) {
     return <span style={{ color: 'var(--neutral-300)' }}>—</span>;
   }
@@ -496,9 +508,20 @@ function LinkedTasksCell({ tasks }) {
       variant="light"
       maxWidth={460}
     >
-      <span style={{ display: 'inline-flex' }}>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onOpenTask?.(tasks[0]); }}
+        style={{
+          display: 'inline-flex',
+          border: 'none',
+          background: 'transparent',
+          padding: 0,
+          cursor: onOpenTask ? 'pointer' : 'default',
+        }}
+        aria-label={`Open linked task${tasks.length > 1 ? 's' : ''}`}
+      >
         <Badge tone={tone} size="M" label={String(tasks.length)} icon={icon} />
-      </span>
+      </button>
     </Tooltip>
   );
 }
