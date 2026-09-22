@@ -305,7 +305,7 @@ function NoteRow({ note, onOpen }) {
         <span className={styles.rowKebab}>
           <ActionButton
             ref={menuBtnRef}
-            icon="solar:menu-dots-bold"
+            icon="solar:menu-dots-linear"
             size="L"
             tooltip="Note actions"
             onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
