@@ -48,7 +48,11 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  /* table-layout: auto lets a column marked with `width: 1%` shrink
+     to its content width, which the Status cell relies on so a small
+     "Draft" chip and a wider "Pending Review" chip each get exactly
+     the space their Badge needs. */
+  table-layout: auto;
 }
 .table th {
   text-align: left;
@@ -106,14 +110,18 @@
 .checkCol {
   width: var(--space-8);
 }
-/* Column widths. Layout: 1 = checkbox, 2 = Note Title (fluid), 3–5 =
-   Status / Created By / Last Updated at 120px each, 6 = Linked Task
-   at 96px (badge + tooltip trigger only), 7 = Template Name / kebab
-   (fluid, absorbs the leftover width). */
+/* Column widths. Layout: 1 = checkbox, 2 = Note Title (fluid), 3 =
+   Status (auto — shrinks to the Badge's own width so "Draft" is a
+   tiny chip and "Pending Review" gets the room it needs without
+   wrapping), 4–5 = Created By / Last Updated at 120px each, 6 =
+   Linked Task at 96px, 7 = Template Name / kebab (fluid). */
 .table th:nth-child(3),
+.table td:nth-child(3) {
+  width: 1%;
+  white-space: nowrap;
+}
 .table th:nth-child(4),
 .table th:nth-child(5),
-.table td:nth-child(3),
 .table td:nth-child(4),
 .table td:nth-child(5) {
   width: 120px;
