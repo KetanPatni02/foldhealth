@@ -41,18 +41,55 @@
   gap: var(--space-2);
 }
 
-/* Table — the outer card sets the width; the table never introduces a
-   horizontal scrollbar of its own. Long note titles wrap, the Template
-   Name column truncates around the kebab. */
-.tableWrap { overflow-x: hidden; }
+/* Table — outer wrap scrolls horizontally so the metadata columns
+   (Status / Created By / Last Updated / Linked Task) can spill past
+   the card edge while the Note Title column stays pinned on the left
+   and the Template Name / kebab column stays pinned on the right. */
+.tableWrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
 .table {
   width: 100%;
-  border-collapse: collapse;
-  /* table-layout: auto lets a column marked with `width: 1%` shrink
-     to its content width, which the Status cell relies on so a small
-     "Draft" chip and a wider "Pending Review" chip each get exactly
-     the space their Badge needs. */
+  border-collapse: separate;
+  border-spacing: 0;
+  /* Content-driven widths so the sticky columns and status Badge each
+     take exactly the room they need. */
   table-layout: auto;
+}
+/* Sticky Note Title (checkbox + title cell). White background covers
+   the scrolling middle columns; a hairline right border reads as the
+   column boundary once the row has scrolled. */
+.table th:nth-child(1),
+.table td:nth-child(1) {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--neutral-0);
+}
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  position: sticky;
+  left: var(--space-8);
+  z-index: 2;
+  background: var(--neutral-0);
+  border-right: 0.5px solid var(--neutral-150);
+}
+/* Sticky Template Name / kebab column, mirrored on the right edge. */
+.table th:last-child,
+.table td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: var(--neutral-0);
+  border-left: 0.5px solid var(--neutral-150);
+}
+/* Row hover has to override the sticky columns too, otherwise the
+   pinned cells stay white while the middle stripe tints. */
+.tr:hover td:nth-child(1),
+.tr:hover td:nth-child(2),
+.tr:hover td:last-child {
+  background: var(--neutral-25);
 }
 .table th {
   text-align: left;
@@ -110,25 +147,38 @@
 .checkCol {
   width: var(--space-8);
 }
-/* Column widths. Layout: 1 = checkbox, 2 = Note Title (fluid), 3 =
-   Status (auto — shrinks to the Badge's own width so "Draft" is a
-   tiny chip and "Pending Review" gets the room it needs without
-   wrapping), 4–5 = Created By / Last Updated at 120px each, 6 =
-   Linked Task at 96px, 7 = Template Name / kebab (fluid). */
+/* Column widths. Layout: 1 = checkbox (sticky left), 2 = Note Title
+   (sticky left, min-width 240px), 3 = Status (auto — shrinks to the
+   Badge's own width so "Draft" is a tiny chip and "Pending Review"
+   gets the room it needs), 4–5 = Created By / Last Updated at 140px
+   each, 6 = Linked Task at 100px, 7 = Template Name / kebab (sticky
+   right, min-width 200px). The 240 + 140 + 140 + 100 + 200 = 820px
+   of fixed widths + Status auto + checkbox 32px overflows the P360
+   right pane at narrow widths, so the middle columns scroll while
+   the pinned columns stay put. */
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  min-width: 240px;
+}
 .table th:nth-child(3),
 .table td:nth-child(3) {
   width: 1%;
   white-space: nowrap;
+  min-width: 120px;
 }
 .table th:nth-child(4),
 .table th:nth-child(5),
 .table td:nth-child(4),
 .table td:nth-child(5) {
-  width: 120px;
+  min-width: 140px;
 }
 .table th:nth-child(6),
 .table td:nth-child(6) {
-  width: 96px;
+  min-width: 100px;
+}
+.table th:last-child,
+.table td:last-child {
+  min-width: 200px;
 }
 .checkbox {
   accent-color: var(--primary-300);
