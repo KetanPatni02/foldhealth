@@ -35,6 +35,10 @@ import styles from './DsfEvidenceForms.module.css';
 function PerformedByRow({ initials, name, role }) {
   return (
     <span className={styles.performedByOption}>
+      {/* Radio glyph inherits its checked style from the option's
+          aria-selected attribute (set by Select on the active row) so
+          the picker doesn't need to thread a "selected" prop down. */}
+      <span aria-hidden="true" className={styles.performedByRadio} />
       <Avatar variant="staff" size="XS" initials={initials || (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()} />
       <span className={styles.performedByText}>
         <span className={styles.performedByName}>{name}</span>

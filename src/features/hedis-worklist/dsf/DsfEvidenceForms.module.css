@@ -31,6 +31,24 @@
   gap: var(--space-2);
   min-width: 0;
 }
+/* Radio glyph inside each Performed by option. Empty circle by
+   default; when the parent <li> carries aria-selected="true" (Select
+   sets it on the current pick), the border thickens to a filled
+   primary-300 dot — matching the SelectAssigneeModal picker's radio
+   pattern so the two people-pickers read the same way. */
+.performedByRadio {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--neutral-200);
+  border-radius: 999px;
+  background: var(--neutral-0);
+  box-sizing: border-box;
+  flex-shrink: 0;
+  transition: border var(--duration-fast, 120ms) var(--ease-hover, ease-out);
+}
+:global([aria-selected="true"]) .performedByRadio {
+  border: 5px solid var(--primary-300);
+}
 .performedByText {
   display: inline-flex;
   flex-direction: column;
