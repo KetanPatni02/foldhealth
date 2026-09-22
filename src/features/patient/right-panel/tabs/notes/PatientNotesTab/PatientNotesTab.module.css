@@ -160,13 +160,19 @@
   flex: 1;
 }
 /* Two-half header row: back arrow + stacked title/subtitle on the
-   left, reviewer action buttons on the right. */
+   left, reviewer action buttons on the right. Capped at 48px so the
+   pane keeps its lift on tab surfaces without an oversized band up
+   top. Line-heights on the title / subtitle stay tight so the stack
+   still clears within that height. */
 .inlineHeader {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  height: 48px;
+  flex-shrink: 0;
   border-bottom: 0.5px solid var(--neutral-100);
+  box-sizing: border-box;
 }
 .inlineBackBtn {
   width: 28px;
@@ -188,16 +194,19 @@
   min-width: 0;
   flex: 1;
 }
+/* Line-heights are tight (1) so the title + subtitle + 2px gap stack
+   fits inside the 48px capped header (title 16 + subtitle 12 + 2 gap
+   = 30px < 32px available). */
 .inlineTitle {
-  font-size: var(--font-lg);
+  font-size: var(--font-base);
   font-weight: 600;
   color: var(--neutral-500);
-  line-height: 1.2;
+  line-height: 1;
 }
 .inlineSubtitle {
   font-size: var(--font-sm);
   color: var(--neutral-300);
-  line-height: 1.2;
+  line-height: 1;
 }
 .inlineHeaderActions {
   display: inline-flex;
