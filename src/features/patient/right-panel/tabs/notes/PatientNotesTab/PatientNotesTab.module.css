@@ -57,32 +57,25 @@
      take exactly the room they need. */
   table-layout: auto;
 }
-/* Sticky Note Title (checkbox + title cell). White background covers
-   the scrolling middle columns so text doesn't ghost through. Bottom
-   stroke stays on because these cells inherit the shared
-   `.table th`/`.table td` border-bottom rule below (background sits
-   above the row content but under the border layer). */
+/* Sticky Note Title cell (first column now that the bulk-select
+   checkbox is gone). White background covers the scrolling middle
+   columns so text doesn't ghost through. Bottom stroke stays on
+   because this cell inherits the shared `.table th`/`.table td`
+   border-bottom rule below (background sits above the row content
+   but under the border layer). */
 .table th:nth-child(1),
 .table td:nth-child(1) {
   position: sticky;
   left: 0;
   z-index: 2;
   background: var(--neutral-0);
-}
-.table th:nth-child(2),
-.table td:nth-child(2) {
-  position: sticky;
-  left: var(--space-8);
-  z-index: 2;
-  background: var(--neutral-0);
   /* Right hairline reads as the column boundary once the middle
      columns have scrolled underneath. */
   box-shadow: inset -0.5px 0 0 var(--neutral-150);
 }
-/* Row hover has to override the sticky columns too, otherwise the
-   pinned cells stay white while the middle stripe tints. */
-.tr:hover td:nth-child(1),
-.tr:hover td:nth-child(2) {
+/* Row hover has to override the sticky column too, otherwise the
+   pinned cell stays white while the middle stripe tints. */
+.tr:hover td:nth-child(1) {
   background: var(--neutral-25);
 }
 .table th {
@@ -145,46 +138,34 @@
   opacity: 1;
 }
 
-.checkCol {
-  width: var(--space-8);
-}
-/* Column widths. Layout: 1 = checkbox (sticky left, 32px), 2 = Note
-   Title (sticky left, min 200px), 3 = Status (auto — shrinks to the
-   Badge's own width so "Draft" is a tiny chip and "Pending Review"
-   gets the room it needs), 4–5 = Created By / Last Updated at 130px
-   each, 6 = Linked Task at 96px, 7 = Template Name — no width so it
-   absorbs the leftover pane width, keeps the table flush against
-   the right edge instead of leaving a white strip. Table still
-   overflows horizontally on narrow panes; the middle columns scroll
-   under the pinned Note Title. */
-.table th:nth-child(2),
-.table td:nth-child(2) {
+/* Column widths (bulk-select checkbox column removed). Layout:
+   1 = Note Title (sticky left, min 200px), 2 = Status (auto —
+   shrinks to the Badge's own width so "Draft" is a tiny chip and
+   "Pending Review" gets the room it needs), 3–4 = Created By /
+   Last Updated at 130px each, 5 = Linked Task at 96px, 6 = Template
+   Name (absorbs leftover width), 7 = Actions (32px kebab slot). */
+.table th:nth-child(1),
+.table td:nth-child(1) {
   min-width: 200px;
 }
-.table th:nth-child(3),
-.table td:nth-child(3) {
+.table th:nth-child(2),
+.table td:nth-child(2) {
   width: 1%;
   white-space: nowrap;
   min-width: 120px;
 }
+.table th:nth-child(3),
 .table th:nth-child(4),
-.table th:nth-child(5),
-.table td:nth-child(4),
-.table td:nth-child(5) {
+.table td:nth-child(3),
+.table td:nth-child(4) {
   min-width: 130px;
 }
-.table th:nth-child(6),
-.table td:nth-child(6) {
+.table th:nth-child(5),
+.table td:nth-child(5) {
   min-width: 96px;
 }
-/* Template Name: no width / min-width so it consumes whatever's
-   left over. Ensures the table is exactly the wrap's width when the
-   pane is wide, and just overflows cleanly when the pane is narrow. */
-.checkbox {
-  accent-color: var(--primary-300);
-  width: var(--space-4);
-  height: var(--space-4);
-}
+/* Template Name (col 6): no width / min-width so it consumes
+   whatever's left over. */
 
 .noteTitle {
   font-size: var(--font-base);

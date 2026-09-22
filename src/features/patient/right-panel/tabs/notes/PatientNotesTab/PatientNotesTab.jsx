@@ -247,7 +247,6 @@ export function PatientNotesTab({ patient }) {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.checkCol} />
                 <HeaderCell
                   label="Note Title"
                   sortField="sortTitle"
@@ -408,9 +407,6 @@ function NoteRow({ note, onOpen, onOpenTask }) {
 
   return (
     <tr className={styles.tr} onClick={handlePreview}>
-      <td className={styles.checkCol} onClick={(e) => e.stopPropagation()}>
-        <input type="checkbox" className={styles.checkbox} aria-label={`Select ${title}`} />
-      </td>
       <td>
         <div className={styles.noteTitle}>{title}</div>
         <div className={styles.noteSub}>{subtitle}</div>
