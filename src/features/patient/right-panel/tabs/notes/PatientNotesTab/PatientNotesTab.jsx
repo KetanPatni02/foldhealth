@@ -5,6 +5,7 @@ import { Button } from '../../../../../../components/Button/Button';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { Badge } from '../../../../../../components/Badge/Badge';
 import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
+import { KanbanCardContent } from '../../../../../tasks/TasksViewKanban';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
@@ -481,7 +482,7 @@ function LinkedTasksCell({ tasks }) {
       label={<LinkedTasksTooltip tasks={tasks} />}
       placement="top"
       variant="light"
-      maxWidth={320}
+      maxWidth={460}
     >
       <span style={{ display: 'inline-flex' }}>
         <Badge tone={tone} size="M" label={String(tasks.length)} icon={icon} />
@@ -490,34 +491,18 @@ function LinkedTasksCell({ tasks }) {
   );
 }
 
-// Rich tooltip body: one card per linked task. Compact version of the
-// Kanban card — status dot + due date, title, assignee — no drag or
-// checkbox affordances (tooltip is read-only).
+// Rich hover body: renders the same KanbanCardContent the Tasks page
+// uses so the reviewer sees the full card (priority + due, title,
+// gap chips, member link, assignee, By: + attachments) exactly as it
+// would appear on the Tasks board. `onToggle` is a no-op — hovering
+// is a read; nothing mutates. When more than one task is linked, we
+// stack the cards with a small gap so each stands on its own.
 function LinkedTasksTooltip({ tasks }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', textAlign: 'left' }}>
-      {tasks.map(t => {
-        const done = String(t.status || '').toLowerCase() === 'completed';
-        const overdue = isTaskOverdue(t) && !done;
-        const statusLabel = done ? 'Completed' : overdue ? 'Missed' : 'Pending';
-        const statusColor = done ? 'var(--status-success)' : overdue ? 'var(--status-error)' : 'var(--status-warning)';
-        return (
-          <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-1) / 2)' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--font-sm)', color: statusColor, fontWeight: 500 }}>
-              <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor', flexShrink: 0 }} />
-              {statusLabel} · Due {formatDate(t.due_date) || '—'}
-            </div>
-            <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-500)', fontWeight: 500 }}>
-              {t.title || 'Untitled task'}
-            </div>
-            {t.assigneeName && (
-              <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
-                Assigned to {t.assigneeName}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {tasks.map(t => (
+        <KanbanCardContent key={t.id} task={t} onToggle={() => {}} />
+      ))}
     </div>
   );
 }
