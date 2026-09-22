@@ -141,19 +141,18 @@
 .checkCol {
   width: var(--space-8);
 }
-/* Column widths. Layout: 1 = checkbox (sticky left), 2 = Note Title
-   (sticky left, min-width 240px), 3 = Status (auto — shrinks to the
+/* Column widths. Layout: 1 = checkbox (sticky left, 32px), 2 = Note
+   Title (sticky left, min 200px), 3 = Status (auto — shrinks to the
    Badge's own width so "Draft" is a tiny chip and "Pending Review"
-   gets the room it needs), 4–5 = Created By / Last Updated at 140px
-   each, 6 = Linked Task at 100px, 7 = Template Name / kebab (a plain
-   trailing column that scrolls along with the middle metadata; the
-   Note Title on the left is the only pinned anchor). Total 240 + 140
-   + 140 + 100 + 200 = 820px + Status auto + checkbox 32px overflows
-   the P360 right pane at narrow widths so the middle columns scroll
-   with Note Title pinned. */
+   gets the room it needs), 4–5 = Created By / Last Updated at 130px
+   each, 6 = Linked Task at 96px, 7 = Template Name — no width so it
+   absorbs the leftover pane width, keeps the table flush against
+   the right edge instead of leaving a white strip. Table still
+   overflows horizontally on narrow panes; the middle columns scroll
+   under the pinned Note Title. */
 .table th:nth-child(2),
 .table td:nth-child(2) {
-  min-width: 240px;
+  min-width: 200px;
 }
 .table th:nth-child(3),
 .table td:nth-child(3) {
@@ -165,16 +164,15 @@
 .table th:nth-child(5),
 .table td:nth-child(4),
 .table td:nth-child(5) {
-  min-width: 140px;
+  min-width: 130px;
 }
 .table th:nth-child(6),
 .table td:nth-child(6) {
-  min-width: 100px;
+  min-width: 96px;
 }
-.table th:last-child,
-.table td:last-child {
-  min-width: 200px;
-}
+/* Template Name: no width / min-width so it consumes whatever's
+   left over. Ensures the table is exactly the wrap's width when the
+   pane is wide, and just overflows cleanly when the pane is narrow. */
 .checkbox {
   accent-color: var(--primary-300);
   width: var(--space-4);
