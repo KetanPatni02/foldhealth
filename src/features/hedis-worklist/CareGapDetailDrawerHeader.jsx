@@ -144,6 +144,7 @@ export function CareGapDetailDrawerHeader({
                   items={STATUSES.map(s => ({
                     key: s,
                     label: s,
+                    selected: s === status,
                     iconElement: (
                       <span
                         aria-hidden="true"
