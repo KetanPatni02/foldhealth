@@ -174,19 +174,6 @@
   border-bottom: 0.5px solid var(--neutral-100);
   box-sizing: border-box;
 }
-.inlineBackBtn {
-  width: 28px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.inlineBackBtn:hover { background: var(--neutral-50); }
 .inlineTitleBlock {
   display: flex;
   flex-direction: column;

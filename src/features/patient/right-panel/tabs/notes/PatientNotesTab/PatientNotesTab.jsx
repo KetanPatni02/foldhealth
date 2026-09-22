@@ -413,14 +413,12 @@ function InlineNoteView({ note, member, onBack }) {
 function InlineNoteHeader({ note, onBack, actions }) {
   return (
     <div className={styles.inlineHeader}>
-      <button
-        type="button"
-        className={styles.inlineBackBtn}
+      <ActionButton
+        icon="solar:arrow-left-linear"
+        size="S"
+        tooltip="Back to notes list"
         onClick={onBack}
-        aria-label="Back to notes list"
-      >
-        <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-400)" />
-      </button>
+      />
       <div className={styles.inlineTitleBlock}>
         <span className={styles.inlineTitle}>
           {(note.gapCodes || []).length > 1
