@@ -12,6 +12,12 @@
      breathing room between them (DOS, DSF-A, DSF-B). Row density
      inside a section stays tight via .sectionBody's own gap. */
   gap: var(--space-6);
+  /* Own the pane's inset so the scrollbar sits flush with the drawer's
+     right edge (the outer .leftPaneBody drops its padding for the
+     preview view). Content still reads with the same 12px/16px inset
+     it had when the pane owned the padding; the scrollbar is what
+     changes position, not the text. */
+  padding: var(--space-3) var(--space-4);
 }
 
 .headerSubtitleRow {

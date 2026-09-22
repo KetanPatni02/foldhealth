@@ -151,6 +151,17 @@
   flex-direction: column;
   padding: 0;
 }
+/* Preview mode owns its own scroll on ClinicalNotePreviewBody's .wrap
+   so the scrollbar can sit flush with the drawer's right edge instead
+   of tucked 16px inside the pane padding. This container just becomes
+   a full-height, no-padding shell; the preview body applies its own
+   inset to keep content off the edges. */
+.leftPaneBodyClinicalNotePreview {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
 .headerDivider {
   width: 1px; height: 16px; background: var(--neutral-150);
   margin: 0 4px; flex-shrink: 0;

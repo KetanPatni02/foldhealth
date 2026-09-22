@@ -859,7 +859,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 <span>All signed notes sync to the patient's EHR.</span>
               </div>
             )}
-            <div className={`${styles.leftPaneBody} ${leftWorkspace === 'clinical-note' ? styles.leftPaneBodyClinicalNote : ''}`}>
+            <div className={`${styles.leftPaneBody} ${leftWorkspace === 'clinical-note' ? styles.leftPaneBodyClinicalNote : ''} ${leftWorkspace === 'clinical-note-preview' ? styles.leftPaneBodyClinicalNotePreview : ''}`}>
               {leftWorkspace === 'schedule' ? (
                 <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
               ) : leftWorkspace === 'clinical-note' ? (
