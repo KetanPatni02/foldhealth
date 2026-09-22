@@ -208,11 +208,16 @@ function NoteRow({ note }) {
       : codes.length
         ? codes.join(' · ')
         : (ORIGIN_LABEL[note.originKind] || 'Clinical Note');
+  // Match the HEDIS Care Gap drawer's status vocabulary + color tokens
+  // (Draft = neutral, Pending Review = warning, Signed = success). Using
+  // "In Progress" here was a divergent label that made the P360 Notes
+  // tab look like it tracked a different lifecycle than the rest of
+  // the app.
   const status = note.status === 'signed'
     ? { label: 'Signed', color: 'var(--status-success)' }
     : note.status === 'submitted'
       ? { label: 'Pending Review', color: 'var(--status-warning)' }
-      : { label: 'In Progress', color: 'var(--status-warning)' };
+      : { label: 'Draft', color: 'var(--neutral-300)' };
   const templateName = template?.name
     || (isNormal ? 'Clinical Note' : isNonVisit
       ? 'Non-Visit Note'

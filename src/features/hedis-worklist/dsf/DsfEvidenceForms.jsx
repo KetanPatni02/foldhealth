@@ -213,20 +213,21 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
   const handleSavePhq2Score = () => {
     if (!bothPhq2Answered || !positive || phq2Saved) return;
     const savedAt = new Date().toISOString();
+    const nextPhq2 = {
+      ...(data.phq2 || {}),
+      totalScore: phq2Total,
+      outcome: positive ? 'positive' : 'negative',
+      savedAt,
+    };
     // Save locks PHQ-2, stamps the score + outcome for durable reads
     // on re-open, marks DSF-A Ready for Review (so the note picker
     // includes it automatically), and opens the linked DSF-B gap.
-    onUpdate({
-      phq2: {
-        ...(data.phq2 || {}),
-        totalScore: phq2Total,
-        outcome: positive ? 'positive' : 'negative',
-        savedAt,
-      },
-      manuallyOff: false,
-    });
+    onUpdate({ phq2: nextPhq2, manuallyOff: false });
     if (typeof onOpenPhq9Gap === 'function') {
-      onOpenPhq9Gap({ savedAt });
+      // Hand the fresh phq2 through so openDsfbGap can persist the
+      // draft immediately. Reading it from the hook's gapState here
+      // would come back stale (onUpdate's setState hasn't flushed yet).
+      onOpenPhq9Gap({ savedAt, phq2: nextPhq2 });
     }
   };
 

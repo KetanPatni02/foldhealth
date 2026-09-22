@@ -66,6 +66,22 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     activeGaps.forEach(g => {
       init[g.code] = { manuallyOff: false, ...defaultGapData(g.code), ...(g.draft ?? {}) };
     });
+    // Seed from the store's cached notes (newest-first) so the first
+    // render already carries any answers persisted by a prior surface —
+    // e.g. the DSF-A auto-promote draft written seconds before this
+    // panel mounted. Without this, a Save-as-Draft racing the async
+    // fetch effect would overwrite the DB row with the empty defaults.
+    const gapsSeen = new Set();
+    for (const n of (notesForMember || [])) {
+      const gapsPayload = n?.payload?.gaps;
+      if (!gapsPayload) continue;
+      for (const [code, data] of Object.entries(gapsPayload)) {
+        if (gapsSeen.has(code)) continue;
+        gapsSeen.add(code);
+        if (init[code]) init[code] = { ...init[code], ...data };
+        else init[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+      }
+    }
     return init;
   });
 
@@ -142,10 +158,16 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
 
   // DSF-A calls this from its "Save score" handler when PHQ-2 lands
   // Positive. Opens a DSF-B gap on the same member natively (30-day
-  // due date computed from the save timestamp) and jumps the RHS pane
-  // to it so the Coordinator flows straight into PHQ-9. Idempotent —
-  // subsequent calls no-op via the store's dedup.
-  const openDsfbGap = useCallback(({ savedAt } = {}) => {
+  // due date computed from the save timestamp), then auto-promotes
+  // the workspace to the consolidated view with DSF-B focused so the
+  // Coordinator flows straight into PHQ-9 without hunting for an
+  // Open DSF-B button. Idempotent — subsequent calls no-op via the
+  // store's dedup.
+  // Not memoized on purpose: it closes over openDsfbView (which itself
+  // reads live state like activeGaps + gapState), so it needs to
+  // rebuild with the freshest closure on every render. The child form
+  // isn't React.memo'd, so the extra prop identity churn is free.
+  const openDsfbGap = ({ savedAt, phq2 } = {}) => {
     if (!member?.id) return;
     const stamp = savedAt ? new Date(savedAt) : new Date();
     const due = new Date(stamp);
@@ -159,11 +181,16 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     });
     if (created) {
       showToast?.('DSF-B opened - continue with PHQ-9');
-      // Note: RHS deliberately stays on DSF-A so the Coordinator sees
-      // the post-save success banner. The banner carries an "Open
-      // DSF-B" action button that flips the RHS to the new gap.
     }
-  }, [member?.id, openNativeGap, showToast]);
+    // Promote straight to the consolidated view. `force: true` skips
+    // the multiGap staleness check inside openDsfbView, which would
+    // otherwise miss the DSF-B row we just wrote (Zustand hasn't
+    // triggered a re-render into this closure yet, so member.gaps and
+    // activeGaps are still the pre-openNativeGap snapshot).
+    // `dsfaOverride.phq2` gives the persist step the fresh score even
+    // though gapState here is still pre-setState.
+    openDsfbView({ force: true, dsfaOverride: phq2 ? { phq2 } : null });
+  };
 
   // "Open DSF-B" from the DSF-A success banner. If the drawer is
   // running the single-gap inline workspace and now has more than one
@@ -176,16 +203,41 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   // its own local gapState, so the saved PHQ-2 answers here would be
   // lost. Persist a draft of DSF-A first so the consolidated panel's
   // fetch-clinical-notes hydrate restores the locked, filled state.
-  const openDsfbView = async () => {
-    const multiGap = activeGaps.length > 1
+  const openDsfbView = async ({ force = false, dsfaOverride = null } = {}) => {
+    const multiGap = force
+      || activeGaps.length > 1
       || member?.gaps?.some(g => g.code === 'DSF-B');
     if (multiGap && typeof onPromoteToConsolidated === 'function') {
-      const dsfaData = gapState['DSF-A'];
-      if (dsfaData?.phq2?.savedAt) {
+      // Merge the override on top of the closure's gapState so the
+      // Save-Score entry point can hand in freshly-computed phq2 data
+      // (setState hasn't flushed yet). Manual "Open DSF-B" clicks read
+      // gapState directly since state has already settled by then.
+      const mergedDsfa = dsfaOverride
+        ? { ...(gapState['DSF-A'] || {}), ...dsfaOverride }
+        : gapState['DSF-A'];
+      if (mergedDsfa?.phq2?.savedAt) {
         try {
-          const codes = ['DSF-A'];
+          // Write the draft as a CONSOLIDATED DSF-A + DSF-B row from the
+          // start, since the pair is authored together. DSF-B seeds with
+          // default (empty) evidence; the consolidated panel will fill
+          // it in as the coordinator works through PHQ-9. Subsequent
+          // Save-as-Draft clicks (handled by handleSaveDraft's DSF-pair
+          // rule) reuse the same row via noteIdByCode.
+          const codes = ['DSF-A', 'DSF-B'];
           const primary = 'DSF-A';
-          const effectiveId = selectedNoteId || noteIdByCode[primary];
+          const effectiveId = selectedNoteId
+            || noteIdByCode[primary]
+            || noteIdByCode['DSF-B'];
+          const dsfbSeed = stripUiFlags(gapState['DSF-B'] || { ...defaultGapData('DSF-B') });
+          const payload = {
+            dateOfService,
+            audioOnly,
+            audioVideo,
+            gaps: {
+              'DSF-A': stripUiFlags(mergedDsfa),
+              'DSF-B': dsfbSeed,
+            },
+          };
           const note = await upsertClinicalNote({
             id: effectiveId,
             hedisMemberId: member.id,
@@ -193,7 +245,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
             gapCodes: codes,
             formType: formTypeForCodes(codes),
             status: 'draft',
-            payload: buildNotePayload(codes),
+            payload,
           });
           if (note?.id) codes.forEach(c => rememberNoteId(c, note.id));
           clearDirty(codes);
@@ -479,10 +531,26 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     // back to the active gap when nothing is dirty (button should already
     // be disabled in that case; the guard here is belt + braces).
     const dirty = [...dirtyCodes];
-    const codes = dirty.length ? dirty : (activeGapCode ? [activeGapCode] : []);
+    let codes = dirty.length ? dirty : (activeGapCode ? [activeGapCode] : []);
+    // DSF-A / DSF-B are authored together on a single member call, so a
+    // draft that touches either one is always saved as a consolidated
+    // row carrying BOTH codes. This keeps the pair as a single entity
+    // (one row in Visit Notes / P360 Notes), and Edit lands the user
+    // back in the consolidated view instead of the single-gap workspace.
+    const dsfPair = ['DSF-A', 'DSF-B'];
+    const memberHasBothDsf = dsfPair.every(c => (member?.gaps || []).some(g => g.code === c));
+    const touchesDsf = codes.some(c => dsfPair.includes(c));
+    if (memberHasBothDsf && touchesDsf) {
+      codes = dsfPair;
+    }
     const primary = codes[0];
     if (!primary) { showToast('Nothing to save'); return; }
-    const effectiveId = selectedNoteId || noteIdByCode[primary];
+    // For the DSF pair, prefer whichever row already exists (the auto-
+    // promote path writes DSF-A first) so the second save updates the
+    // same row instead of spawning a duplicate draft.
+    const effectiveId = selectedNoteId
+      || noteIdByCode[primary]
+      || (codes.length > 1 ? codes.map(c => noteIdByCode[c]).find(Boolean) : undefined);
     const note = await upsertClinicalNote({
       id: effectiveId,
       hedisMemberId: member.id,
