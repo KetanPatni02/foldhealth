@@ -386,73 +386,91 @@ function InlineNoteView({ note, member, onBack }) {
     && !!note.reviewTaskId
     && !!member;
 
+  // Reviewer flow needs one useClinicalNotePanel instance shared by
+  // both the header's action buttons and the body's ConsolidatedNote-
+  // Body, so save/sign edits the same gapState the reviewer sees. Non-
+  // reviewer path can skip the hook entirely (no editable state).
+  if (isReviewerForThis) {
+    return <InlineReviewerPane member={member} note={note} onBack={onBack} />;
+  }
   return (
     <div className={styles.inlinePane}>
-      <div className={styles.inlineHeader}>
-        <button
-          type="button"
-          className={styles.inlineBackBtn}
-          onClick={onBack}
-          aria-label="Back to notes list"
-        >
-          <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-400)" />
-        </button>
-        <div className={styles.inlineTitleBlock}>
-          <span className={styles.inlineTitle}>
-            {(note.gapCodes || []).length > 1
-              ? 'Consolidated Clinical Note'
-              : (note.gapCodes?.[0] ? `${note.gapCodes[0]} Visit Note` : 'Clinical Note')}
-          </span>
-          <span className={styles.inlineSubtitle}>
-            {note.status === 'signed'
-              ? `Signed by ${note.signedByName || note.authorName || '—'} · ${formatDate(note.updatedAt || note.createdAt)}`
-              : note.status === 'submitted'
-                ? `Submitted for Review to ${note.reviewerName || '—'} · ${formatDate(note.updatedAt || note.createdAt)}`
-                : `Draft · ${formatDate(note.updatedAt || note.createdAt)}`}
-          </span>
-        </div>
+      <InlineNoteHeader note={note} onBack={onBack} />
+      <div className={styles.inlinePreviewBody}>
+        <ClinicalNotePreviewBody
+          memberId={note.hedisMemberId || note.patientId}
+          gapCode={note.gapCodes?.[0]}
+          noteId={note.id}
+        />
       </div>
-      {isReviewerForThis ? (
-        <InlineReviewerEditor member={member} note={note} onDone={onBack} />
-      ) : (
-        <div className={styles.inlinePreviewBody}>
-          <ClinicalNotePreviewBody
-            memberId={note.hedisMemberId || note.patientId}
-            gapCode={note.gapCodes?.[0]}
-            noteId={note.id}
-          />
-        </div>
-      )}
     </div>
   );
 }
 
-// Reviewer-editable inline body — reuses useClinicalNotePanel with the
-// review-flow marker (editingTaskId) so the header actions and
-// ConsolidatedNoteBody behave the same as the standalone reviewer
-// drawer. Kept as a nested component so the hooks only mount when a
-// note is actually opened inline.
-function InlineReviewerEditor({ member, note, onDone }) {
+// Shared header block for the inline note view — back arrow + stacked
+// title/subtitle. Reviewer flow drops action buttons alongside it via
+// the parent InlineReviewerPane.
+function InlineNoteHeader({ note, onBack, actions }) {
+  return (
+    <div className={styles.inlineHeader}>
+      <button
+        type="button"
+        className={styles.inlineBackBtn}
+        onClick={onBack}
+        aria-label="Back to notes list"
+      >
+        <Icon name="solar:alt-arrow-left-linear" size={16} color="var(--neutral-400)" />
+      </button>
+      <div className={styles.inlineTitleBlock}>
+        <span className={styles.inlineTitle}>
+          {(note.gapCodes || []).length > 1
+            ? 'Consolidated Clinical Note'
+            : (note.gapCodes?.[0] ? `${note.gapCodes[0]} Visit Note` : 'Clinical Note')}
+        </span>
+        <span className={styles.inlineSubtitle}>
+          {note.status === 'signed'
+            ? `Signed by ${note.signedByName || note.authorName || '—'} · ${formatDate(note.updatedAt || note.createdAt)}`
+            : note.status === 'submitted'
+              ? `Submitted for Review to ${note.reviewerName || '—'} · ${formatDate(note.updatedAt || note.createdAt)}`
+              : `Draft · ${formatDate(note.updatedAt || note.createdAt)}`}
+        </span>
+      </div>
+      {actions && <div className={styles.inlineHeaderActions}>{actions}</div>}
+    </div>
+  );
+}
+
+// Reviewer-editable inline pane — mounts useClinicalNotePanel once
+// and passes the same `v` handle to the header's action buttons and
+// to ConsolidatedNoteBody, so a save from the header commits the
+// edits shown in the body. The header structure (back arrow + title
+// + actions) is threaded through via `header` so the two halves share
+// a row.
+function InlineReviewerPane({ member, note, onBack }) {
   const v = useClinicalNotePanel({
     member,
     gapCode: note.gapCodes?.[0],
-    onClose: onDone,
+    onClose: onBack,
     editingTaskId: note.reviewTaskId,
   });
   return (
-    <>
-      <div className={styles.inlineActionsRow}>
-        <ClinicalNoteHeaderActions
-          onSaveDraft={v.handleSaveDraft}
-          onSubmitForReview={v.handleSubmitForReview}
-          onSaveAndSign={v.handleSaveAndSign}
-          onSignAndPrint={v.handleSignAndPrint}
-          primaryLabel="Sign & Save"
-          reviewerFlow
-          canSaveDraft={v.hasChanges}
-          canSign={v.anyReadyForReview}
-        />
-      </div>
+    <div className={styles.inlinePane}>
+      <InlineNoteHeader
+        note={note}
+        onBack={onBack}
+        actions={(
+          <ClinicalNoteHeaderActions
+            onSaveDraft={v.handleSaveDraft}
+            onSubmitForReview={v.handleSubmitForReview}
+            onSaveAndSign={v.handleSaveAndSign}
+            onSignAndPrint={v.handleSignAndPrint}
+            primaryLabel="Sign & Save"
+            reviewerFlow
+            canSaveDraft={v.hasChanges}
+            canSign={v.anyReadyForReview}
+          />
+        )}
+      />
       <div className={styles.inlineInfoBanner}>
         <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
         <span>All signed notes sync to the patient&apos;s EHR record.</span>
@@ -460,6 +478,6 @@ function InlineReviewerEditor({ member, note, onDone }) {
       <div className={styles.inlineEditorBody}>
         <ConsolidatedNoteBody v={v} />
       </div>
-    </>
+    </div>
   );
 }

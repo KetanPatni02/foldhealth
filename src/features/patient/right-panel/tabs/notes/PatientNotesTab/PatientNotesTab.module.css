@@ -141,21 +141,23 @@
 }
 
 /* Inline note pane — replaces the notes table when a row is opened
-   inline. Header runs edge-to-edge like the section header above the
-   table; body flexes to fill the card so ConsolidatedNoteBody's own
-   scroll takes over. */
+   inline. Runs edge-to-edge (no outer padding) so the header, info
+   banner, and ConsolidatedNoteBody / PreviewBody each own their own
+   inset. */
 .inlinePane {
   display: flex;
   flex-direction: column;
   min-height: 0;
   flex: 1;
 }
+/* One-row header: back arrow + stacked title/subtitle on the left,
+   reviewer action buttons (Save as Draft / Sign & Save) on the
+   right. No padding — the shared inset lives on the card margin. */
 .inlineHeader {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 0.5px solid var(--neutral-100);
+  padding: 0;
 }
 .inlineBackBtn {
   width: 28px;
@@ -188,19 +190,17 @@
   color: var(--neutral-300);
   line-height: 1.2;
 }
-.inlineActionsRow {
-  display: flex;
-  justify-content: flex-end;
+.inlineHeaderActions {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border-bottom: 0.5px solid var(--neutral-100);
+  flex-shrink: 0;
 }
 .inlineInfoBanner {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  background: var(--status-info-light);
+  padding: var(--space-2) 0;
   color: var(--neutral-400);
   font-size: var(--font-sm);
   flex-shrink: 0;
