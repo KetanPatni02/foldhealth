@@ -82,7 +82,29 @@ export function PatientBanner({
         <div className={styles.info}>
           <div className={styles.avatar}>{initials}</div>
           <div className={styles.details}>
-            <div className={styles.name}>{name}</div>
+            <div className={styles.name}>
+              {name}
+              {/* External-tab jump to the patient's P360. Hash-router
+                  path is `#/<list>/patient/<memberId>` — HEDIS is a
+                  safe default list since every P360 route just uses
+                  it as a URL bucket; the patient page itself is the
+                  same regardless of which list opened it. */}
+              {memberId && (
+                <button
+                  type="button"
+                  aria-label={`Open ${name || 'patient'} profile in a new tab`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const url = `${window.location.origin}${window.location.pathname}#/hedis/patient/${memberId}`;
+                    const w = window.open(url, '_blank');
+                    try { w?.focus(); } catch { /* noop */ }
+                  }}
+                  className={styles.openInNewTab}
+                >
+                  <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-300)" />
+                </button>
+              )}
+            </div>
             <div className={styles.meta}>
               {metaParts.map((part, i) => (
                 <Fragment key={i}>
