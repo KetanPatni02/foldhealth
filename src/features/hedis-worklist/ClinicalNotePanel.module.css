@@ -167,8 +167,12 @@
   /* 12px/16px inset so the DOS card and gap sections don't sit flush
      against the drawer edges. The reviewer flow (opened from a sign-
      off task) mounts this body inside a plain Drawer with no outer
-     pane padding of its own, so the inset lives here. */
+     pane padding of its own, so the inset lives here. Extra
+     padding-bottom leaves room for the floating SectionJumper pill
+     (~28px tall + its 24px bottom offset + breathing) so the last
+     section can scroll fully into view instead of tucking under it. */
   padding: var(--space-3) var(--space-4);
+  padding-bottom: calc(var(--space-8) + var(--space-6));
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -725,7 +729,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: var(--space-4);
+  bottom: var(--space-6);
   display: flex;
   justify-content: center;
   pointer-events: none;
@@ -738,8 +742,11 @@
   padding: calc(var(--space-1) / 2);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
-  border-radius: 999px;
-  box-shadow: var(--shadow-popover);
+  /* 8px radius + the same drop-shadow token the bulk-action bar uses,
+     so the pill reads as a proper floating chip against the scrolling
+     content behind it. */
+  border-radius: var(--space-2);
+  box-shadow: var(--shadow-bulk-bar);
   pointer-events: auto;
 }
 .sectionJumperArrow {
