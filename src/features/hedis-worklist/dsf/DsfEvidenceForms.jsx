@@ -29,11 +29,9 @@ import { getItems, getResponseScale, isPhq2Positive, phq9Branch, phq9BandLabel, 
 import { DSF_CARE_PLANS } from './dsfCarePlans';
 import styles from './DsfEvidenceForms.module.css';
 
-// "Performed by" option row — Avatar + name + clinical role, so the
-// dropdown reads the same way as every other people-picker in the app.
-// Trigger and menu items share the same label render (Select prints
-// `opt.label` for both) so the selected user's avatar + name follow
-// through to the trigger without any extra wiring.
+// "Performed by" option row — Avatar + name + clinical role stacked
+// beneath, so the dropdown reads the same way as every other people-
+// picker in the app.
 function PerformedByRow({ initials, name, role }) {
   return (
     <span className={styles.performedByOption}>
@@ -41,6 +39,24 @@ function PerformedByRow({ initials, name, role }) {
       <span className={styles.performedByText}>
         <span className={styles.performedByName}>{name}</span>
         {role && <span className={styles.performedByRole}>{role}</span>}
+      </span>
+    </span>
+  );
+}
+
+// Trigger-only render for the selected user. The dropdown's stacked
+// two-line row doesn't fit the trigger's single-line control (the
+// role wrapped onto its own line beneath the name and pushed the
+// select outline down). Collapse it into "Name (Role)" so the
+// selected value reads as one line while the picker options keep
+// their richer stacked layout.
+function PerformedByTrigger({ initials, name, role }) {
+  return (
+    <span className={styles.performedByOption}>
+      <Avatar variant="staff" size="XS" initials={initials || (name || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()} />
+      <span className={styles.performedByTrigger}>
+        <span className={styles.performedByName}>{name}</span>
+        {role && <span className={styles.performedByRoleInline}>({role})</span>}
       </span>
     </span>
   );
@@ -60,6 +76,11 @@ function usePerformedByOptions() {
       return {
         value: u.id,
         label: <PerformedByRow initials={u.initials} name={u.name} role={role} />,
+        // Compact trigger render: the stacked row breaks the single-
+        // line Select control, so the selected value collapses to
+        // "Name (Role)" inline. Dropdown options still use `label`
+        // (stacked) via Select's triggerLabel-then-label fallback.
+        triggerLabel: <PerformedByTrigger initials={u.initials} name={u.name} role={role} />,
         // Plain-text alias so Select's client-side search matches on
         // both the user's name and their clinical role.
         searchText: `${u.name} ${role}`.trim(),

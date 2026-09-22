@@ -52,6 +52,27 @@
   text-overflow: ellipsis;
 }
 
+/* Trigger-only single-line variant: name and role sit inline, role
+   in parentheses, both truncating on a single row so the Select
+   control stays 32px tall regardless of role length. */
+.performedByTrigger {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  min-width: 0;
+  line-height: var(--leading-tight);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.performedByRoleInline {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
 /* Trailing info glyph rendered inside the score Badge via its
    `trailingIconElement` slot. Inherits the badge's currentColor so
    the icon matches the band tint; only the cursor changes to signal
