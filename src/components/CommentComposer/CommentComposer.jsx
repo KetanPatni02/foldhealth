@@ -88,7 +88,11 @@ function createMentionChip(user) {
   if (user.realProfile && user.id) chip.dataset.mentionId = user.id;
   const badge = document.createElement('span');
   badge.className = `${badgeStyles.badge} ${badgeStyles.mention}`;
-  badge.textContent = `@${user.name}`;
+  // Display drops the leading "@" so the mention reads as an inline link
+  // rather than a Twitter-style handle. Serialization still stamps "@Name"
+  // via dataset.mentionName, so downstream parsing (bell notifications,
+  // read-only rendering) stays intact.
+  badge.textContent = user.name;
   chip.appendChild(badge);
   return chip;
 }

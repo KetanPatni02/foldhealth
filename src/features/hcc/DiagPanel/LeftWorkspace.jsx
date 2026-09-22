@@ -875,7 +875,7 @@ function renderCommentBody(body, users) {
   while ((match = re.exec(body)) !== null) {
     if (match.index > lastIdx) nodes.push(body.slice(lastIdx, match.index));
     nodes.push(
-      <Badge key={`m-${key++}`} variant="mention" label={`@${match[1]}`} />,
+      <Badge key={`m-${key++}`} variant="mention" label={match[1]} />,
     );
     lastIdx = match.index + match[0].length;
   }
