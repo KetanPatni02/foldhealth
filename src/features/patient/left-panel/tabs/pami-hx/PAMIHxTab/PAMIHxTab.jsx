@@ -4,6 +4,8 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { IcdSearch } from '../../../../../../components/IcdSearch/IcdSearch';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { AddProblemsDrawer } from '../AddProblemsDrawer';
+import { AddMedicationsDrawer } from '../AddMedicationsDrawer';
+import { AddAllergiesDrawer } from '../AddAllergiesDrawer';
 import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
@@ -21,16 +23,7 @@ const CLINICAL_EVENTS = [
   { id: 'ce4', title: 'New Imaging Report', reportedOn: '09/11/2024', meta: null, action: 'View' },
 ];
 
-const ALLERGIES = [
-  { id: 'al1', title: 'Hypersensitivity disposition', type: 'Allergy', date: '11/18/23', severity: 'Low', status: 'Active' },
-  { id: 'al2', title: 'Saltwater Taffy', type: 'Allergy', date: '11/18/23', severity: 'Low', status: 'Active' },
-];
 
-const MEDICATIONS = [
-  { id: 'm1', title: 'Symbicort', startDate: '11/18/23', stopDate: '11/24/23', dosage: '1 tab, Once daily at Bedtime', status: 'Active' },
-  { id: 'm2', title: 'Ozomet VG 1', startDate: '11/18/23', stopDate: null, dosage: '1 pill, 4 times a day, After Meal', status: 'Active' },
-  { id: 'm3', title: 'Tenihpo M 500', startDate: '11/18/23', stopDate: '11/24/23', dosage: '1 pill, 4 times a day, Without food', status: 'Active' },
-];
 
 const IMMUNIZATIONS = [
   { id: 'im1', title: 'SARS-COV-2 COVID-19 Inactivated Virus Non-US Vaccine Product (BIBP, Sinopharm) (Sinopharm-Biotech)', dateAdministered: '06/30/2023', dose: '1 Dose', status: 'Not Done' },
@@ -80,10 +73,10 @@ function ColHeader({ nameLabel = 'Name', statusLabel = 'Status' }) {
   );
 }
 
-function FooterLink({ label }) {
+function FooterLink({ label, onClick }) {
   return (
     <div className={styles.footerRow}>
-      <button className={styles.footerLink}>
+      <button type="button" className={styles.footerLink} onClick={onClick}>
         {label}
         <Icon name="solar:alt-arrow-right-linear" size={10} color="var(--primary-300)" />
       </button>
@@ -167,15 +160,20 @@ function ClinicalEventRow({ event }) {
 
 function ProblemRow({ item, onRemove }) {
   const [menuRect, setMenuRect] = useState(null);
-  const onset = item.onsetLabel || item.date;
+  // Same meta line as the Add Problems drawer: plain text throughout, joined
+  // by bullets, with no trailing separator.
+  const meta = [item.onsetLabel || item.date, item.type, item.severity].filter(Boolean);
   return (
     <div className={styles.row}>
       <div className={styles.nameCell}>
-        <span className={styles.name}>{item.title}{item.code ? ` (${item.code})` : ''}</span>
+        <span className={styles.name}>{item.title}</span>
         <div className={styles.metaRow}>
-          {onset && <><span className={styles.meta}>{onset}</span><span className={styles.metaDot}>•</span></>}
-          {item.type && <><span className={styles.meta}>{item.type}</span><span className={styles.metaDot}>•</span></>}
-          {item.severity && <Badge label={item.severity} />}
+          {meta.map((part, i) => (
+            <span key={part} className={styles.meta}>
+              {i > 0 && <span className={styles.metaDot}>•</span>}
+              {part}
+            </span>
+          ))}
         </div>
       </div>
       <div className={styles.statusCell}>
@@ -207,20 +205,22 @@ function ProblemRow({ item, onRemove }) {
 }
 
 function AllergyRow({ item }) {
+  const meta = [item.reactionType, item.sinceDate ? `Since ${item.sinceDate}` : ''].filter(Boolean);
   return (
-    <DataRow key={item.id} showMore>
+    <DataRow key={item.id}>
       <div className={styles.nameCell}>
         <span className={styles.name}>{item.title}</span>
         <div className={styles.metaRow}>
-          <span className={styles.meta}>{item.type}</span>
-          <span className={styles.metaDot}>•</span>
-          <span className={styles.meta}>{item.date}</span>
-          <span className={styles.metaDot}>•</span>
-          <Badge label={item.severity} />
+          {meta.map((part, i) => (
+            <span key={part} className={styles.meta}>
+              {i > 0 && <span className={styles.metaDot}>•</span>}
+              {part}
+            </span>
+          ))}
         </div>
       </div>
       <div className={styles.statusCell}>
-        <span className={styles.statusActive}>{item.status}</span>
+        <span className={styles.statusNeutral}>{item.criticality || item.status}</span>
       </div>
     </DataRow>
   );
@@ -230,11 +230,11 @@ function MedicationRow({ item }) {
   return (
     <DataRow key={item.id} showMore>
       <div className={styles.nameCell}>
-        <span className={styles.name}>{item.title}</span>
+        <span className={styles.name}>{item.name}</span>
         <span className={styles.meta}>
-          Start: {item.startDate}{item.stopDate ? ` • Stop: ${item.stopDate}` : ''}
+          {item.start ? `Start: ${item.start}` : ''}{item.stop ? ` • Stop: ${item.stop}` : ''}
         </span>
-        <span className={styles.meta}>{item.dosage}</span>
+        {item.sig && <span className={styles.meta}>{item.sig}</span>}
       </div>
       <div className={styles.statusCell}>
         <span className={styles.statusNeutral}>{item.status}</span>
@@ -366,10 +366,9 @@ function ProblemsSection({ patientId }) {
   useEffect(() => { if (patientId) fetchPatientProblems(patientId); }, [patientId, fetchPatientProblems]);
 
   const problems = useMemo(() => storeProblems || [], [storeProblems]);
-  // Resolved and Historical are both closed out — see the Add Problems drawer.
-  const closed = p => p.status === 'Resolved' || p.status === 'Historical';
-  const active = problems.filter(p => !closed(p));
-  const resolvedCount = problems.filter(closed).length;
+  // Controlled stays on the active list — see the Add Problems drawer.
+  const active = problems.filter(p => p.status !== 'Resolved');
+  const resolvedCount = problems.filter(p => p.status === 'Resolved').length;
   const loading = !!patientId && !loadedFor;
   const existingCodes = useMemo(
     () => problems.map(p => p.code).filter(Boolean),
@@ -437,45 +436,128 @@ function ProblemsSection({ patientId }) {
               />
             ))
           )}
-          {resolvedCount > 0 && <FooterLink label={`Resolved (${resolvedCount})`} />}
+          {resolvedCount > 0 && (
+            <FooterLink
+              label={`Resolved (${resolvedCount})`}
+              onClick={() => setDrawerOpen('resolved')}
+            />
+          )}
         </div>
         )}
       </CollapseWrapper>
       {drawerOpen && (
-        <AddProblemsDrawer patientId={patientId} onClose={() => setDrawerOpen(false)} />
+        <AddProblemsDrawer
+          patientId={patientId}
+          focus={drawerOpen === 'resolved' ? 'resolved' : undefined}
+          onClose={() => setDrawerOpen(false)}
+        />
       )}
     </div>
   );
 }
 
-function AllergiesSection() {
+function AllergiesSection({ patientId }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const stored = useAppStore(s => (patientId ? s.patientAllergies[patientId] : null));
+  const loadedFor = useAppStore(s => (patientId ? s.patientAllergiesLoadedFor[patientId] : false));
+  const fetchPatientAllergies = useAppStore(s => s.fetchPatientAllergies);
+
+  useEffect(() => { if (patientId) fetchPatientAllergies(patientId); }, [patientId, fetchPatientAllergies]);
+
+  const allergies = useMemo(() => stored || [], [stored]);
+  const active = allergies.filter(a => (a.status || 'Active') !== 'Inactive');
+  const inactiveCount = allergies.filter(a => a.status === 'Inactive').length;
+  const loading = !!patientId && !loadedFor;
+
   return (
     <div className={styles.section}>
-      <SectionHeader title="Allergies" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <SectionHeader
+        title="Allergies"
+        actions={<AddBtn onClick={() => setDrawerOpen(true)} disabled={!patientId} />}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed(v => !v)}
+      />
       <CollapseWrapper collapsed={collapsed}>
+        {!loading && active.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <RingEmptyState icon="custom:allergy" label="No Active Allergies" iconSize={31} />
+          </div>
+        ) : (
         <div className={styles.card}>
           <ColHeader />
-          {ALLERGIES.map(item => <AllergyRow key={item.id} item={item} />)}
-          <FooterLink label="Resolved (1)" />
+          {loading
+            ? <CardSkeleton rows={3} />
+            : active.map(item => <AllergyRow key={item.id} item={item} />)}
+          {inactiveCount > 0 && (
+            <FooterLink
+              label={`Inactive (${inactiveCount})`}
+              onClick={() => setDrawerOpen('inactive')}
+            />
+          )}
         </div>
+        )}
       </CollapseWrapper>
+      {drawerOpen && (
+        <AddAllergiesDrawer
+          patientId={patientId}
+          focus={drawerOpen === 'inactive' ? 'inactive' : undefined}
+          onClose={() => setDrawerOpen(false)}
+        />
+      )}
     </div>
   );
 }
 
-function MedicationsSection() {
+function MedicationsSection({ patientId }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const storeMeds = useAppStore(s => (patientId ? s.patientMedications[patientId] : null));
+  const loadedFor = useAppStore(s => (patientId ? s.patientMedicationsLoadedFor[patientId] : false));
+  const fetchPatientMedications = useAppStore(s => s.fetchPatientMedications);
+
+  useEffect(() => { if (patientId) fetchPatientMedications(patientId); }, [patientId, fetchPatientMedications]);
+
+  const meds = useMemo(() => storeMeds || [], [storeMeds]);
+  const active = meds.filter(m => (m.status || 'Active') !== 'Stopped');
+  const stoppedCount = meds.filter(m => m.status === 'Stopped').length;
+  const loading = !!patientId && !loadedFor;
+
   return (
     <div className={styles.section}>
-      <SectionHeader title="Medications" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <SectionHeader
+        title="Medications"
+        actions={<AddBtn onClick={() => setDrawerOpen(true)} disabled={!patientId} />}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed(v => !v)}
+      />
       <CollapseWrapper collapsed={collapsed}>
+        {!loading && active.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <RingEmptyState icon="solar:pill-linear" label="No Active Medications" iconSize={31} />
+          </div>
+        ) : (
         <div className={styles.card}>
           <ColHeader />
-          {MEDICATIONS.map(item => <MedicationRow key={item.id} item={item} />)}
-          <FooterLink label="Discontinued (4)" />
+          {loading
+            ? <CardSkeleton rows={3} />
+            : active.map(item => <MedicationRow key={item.id} item={item} />)}
+          {stoppedCount > 0 && (
+            <FooterLink
+              label={`Stopped (${stoppedCount})`}
+              onClick={() => setDrawerOpen('stopped')}
+            />
+          )}
         </div>
+        )}
       </CollapseWrapper>
+      {drawerOpen && (
+        <AddMedicationsDrawer
+          patientId={patientId}
+          focus={drawerOpen === 'stopped' ? 'stopped' : undefined}
+          onClose={() => setDrawerOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -602,8 +684,8 @@ export function PAMIHxTab({ patientId }) {
     <div className={styles.wrapper}>
       <RecentClinicalEvents />
       <ProblemsSection patientId={patientId} />
-      <AllergiesSection />
-      <MedicationsSection />
+      <AllergiesSection patientId={patientId} />
+      <MedicationsSection patientId={patientId} />
       <ImmunizationsSection />
       <HistorySection />
       <LabReportsSection />

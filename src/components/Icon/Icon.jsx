@@ -27,6 +27,7 @@ import { CarePlanIcon } from './CarePlanIcon';
 import { SubtaskIcon } from './SubtaskIcon';
 import { MemberConsentIcon } from './MemberConsentIcon';
 import { LinkIcon } from './LinkIcon';
+import { AllergyIcon } from './AllergyIcon';
 import { DownChevronIcon } from './DownChevronIcon';
 
 const DOWN_CHEVRON_NAMES = new Set([
@@ -72,6 +73,7 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:subtask') return <SubtaskIcon size={size} color={color} />;
   if (name === 'custom:member-consent') return <MemberConsentIcon size={size} color={color} />;
   if (name === 'custom:link') return <LinkIcon size={size} color={color} />;
+  if (name === 'custom:allergy') return <AllergyIcon size={size} color={color} />;
   if (name === 'custom:sms') return <SmsIcon size={size} color={color} />;
   if (name === 'custom:expand-drawer') return <ExpandDrawerIcon size={size} />;
   if (name === 'custom:call-pcp') return <CallPcpIcon size={size} color={color} />;
