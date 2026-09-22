@@ -67,6 +67,7 @@ import {
   defaultTargetDateIso,
   mapCarePlanGoalRow,
   mapPatientProblemRow,
+  mapPatientAllergyRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
@@ -351,15 +352,27 @@ export const useAppStore = create((set, get) => ({
     }
     if (error) { console.warn('addPatientProblem:', error.message); get().showToast?.('Could not add problem'); return false; }
     await get().fetchPatientProblems(patientId);
-    get().showToast?.(`Added "${row.title}"`);
+    toast.success('Problem added successfully');
     return true;
   },
-  // Status is the only field the Add Problems drawer edits; resolving a
-  // problem moves it between that drawer's two sections.
-  updatePatientProblemStatus: async (patientId, id, status) => {
-    const { error } = await supabase.from('patient_problems')
-      .update({ status, updated_at: new Date().toISOString() }).eq('id', id);
-    if (error) { console.warn('updatePatientProblemStatus:', error.message); get().showToast?.('Could not update problem'); return false; }
+  // Patch a problem: the row's status dropdown sends one field, the Add
+  // Problems drawer's edit card sends the lot.
+  updatePatientProblem: async (patientId, id, values) => {
+    const row = { updated_at: new Date().toISOString() };
+    if (values.title != null) row.title = values.title.trim();
+    if (values.type != null) row.problem_type = values.type;
+    if (values.severity != null) row.severity = values.severity;
+    if (values.status != null) row.status = values.status;
+    if (values.onsetLabel != null) row.onset_label = values.onsetLabel;
+    if (values.note != null) row.note = values.note;
+    let { error } = await supabase.from('patient_problems').update(row).eq('id', id);
+    // `note` arrives with patient_problems_note_migration; until it runs the
+    // rest of the edit still saves.
+    if (error && /column .*note.* does not exist/i.test(error.message || '')) {
+      const { note: _dropped, ...rowWithoutNote } = row;
+      ({ error } = await supabase.from('patient_problems').update(rowWithoutNote).eq('id', id));
+    }
+    if (error) { console.warn('updatePatientProblem:', error.message); get().showToast?.('Could not update problem'); return false; }
     await get().fetchPatientProblems(patientId);
     return true;
   },
@@ -367,6 +380,66 @@ export const useAppStore = create((set, get) => ({
     const { error } = await supabase.from('patient_problems').delete().eq('id', id);
     if (error) { console.warn('removePatientProblem:', error.message); get().showToast?.('Could not remove problem'); return false; }
     await get().fetchPatientProblems(patientId);
+    return true;
+  },
+
+  // ── Patient allergies (PAMI/Hx → Allergies) ──
+  patientAllergies: {},           // { [patientId]: Allergy[] }
+  patientAllergiesLoadedFor: {},  // { [patientId]: true } — gates the skeleton
+  fetchPatientAllergies: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_allergies')
+      .select('*').eq('patient_id', String(patientId)).order('sort_order');
+    if (error) console.warn('fetchPatientAllergies:', error.message);
+    set(s => ({
+      patientAllergies: { ...s.patientAllergies, [patientId]: (data || []).map(mapPatientAllergyRow) },
+      patientAllergiesLoadedFor: { ...s.patientAllergiesLoadedFor, [patientId]: true },
+    }));
+  },
+  addPatientAllergy: async (patientId, values) => {
+    if (!patientId || !values?.title?.trim()) return false;
+    const row = {
+      id: `pa-${patientId}-${Date.now()}`,
+      patient_id: String(patientId),
+      title: values.title.trim(),
+      code: values.code || null,
+      code_system: values.codeSystem || null,
+      reaction_type: values.reactionType || 'Allergy',
+      criticality: values.criticality || 'Low',
+      since_date: values.sinceDate || null,
+      reactions: values.reactions || [],
+      status: values.status || 'Active',
+      note: values.note || '',
+      sort_order: 999,
+    };
+    const { error } = await supabase.from('patient_allergies').insert(row);
+    if (error) { console.warn('addPatientAllergy:', error.message); get().showToast?.('Could not add allergy'); return false; }
+    await get().fetchPatientAllergies(patientId);
+    toast.success('Allergy added successfully');
+    return true;
+  },
+  // Patch an allergy: the row's status dropdown sends one field, the drawer's
+  // edit card sends the lot.
+  updatePatientAllergy: async (patientId, id, values) => {
+    const row = { updated_at: new Date().toISOString() };
+    if (values.title != null) row.title = values.title.trim();
+    if (values.code != null) row.code = values.code;
+    if (values.codeSystem != null) row.code_system = values.codeSystem;
+    if (values.reactionType != null) row.reaction_type = values.reactionType;
+    if (values.criticality != null) row.criticality = values.criticality;
+    if (values.sinceDate != null) row.since_date = values.sinceDate;
+    if (values.reactions != null) row.reactions = values.reactions;
+    if (values.status != null) row.status = values.status;
+    if (values.note != null) row.note = values.note;
+    const { error } = await supabase.from('patient_allergies').update(row).eq('id', id);
+    if (error) { console.warn('updatePatientAllergy:', error.message); get().showToast?.('Could not update allergy'); return false; }
+    await get().fetchPatientAllergies(patientId);
+    return true;
+  },
+  removePatientAllergy: async (patientId, id) => {
+    const { error } = await supabase.from('patient_allergies').delete().eq('id', id);
+    if (error) { console.warn('removePatientAllergy:', error.message); get().showToast?.('Could not remove allergy'); return false; }
+    await get().fetchPatientAllergies(patientId);
     return true;
   },
 
