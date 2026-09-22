@@ -21,6 +21,14 @@ import styles from './ReasonDialog.module.css';
  * @param {string}   props.description     – One-line context (e.g. check name)
  * @param {'pass'|'fail'} props.decision   – Which action triggered the dialog
  * @param {string[]} props.standardReasons – Per-check list of canonical reasons
+ * @param {string}   props.confirmLabel     – Overrides the decision's label
+ * @param {string}   props.confirmVariant   – Overrides the decision's button variant
+ * @param {boolean}  props.confirmDisabled  – A gate the caller owns, on top of
+ *   the reason being filled in (e.g. one of `children` is invalid)
+ * @param {boolean}  props.notes            – Set false where a canonical reason
+ *   is the whole record and free text has nothing to add; the standard reason
+ *   then becomes mandatory, since it is the only input left
+ * @param {node}     props.children         – Extra fields, above the reason
  * @param {function} props.onCancel
  * @param {function} props.onSubmit        – Called with ({ code, freeText })
  */
@@ -29,6 +37,11 @@ export function ReasonDialog({
   description,
   decision = 'fail',
   standardReasons = [],
+  confirmLabel,
+  confirmVariant,
+  confirmDisabled = false,
+  notes = true,
+  children,
   onCancel,
   onSubmit,
 }) {
@@ -36,7 +49,7 @@ export function ReasonDialog({
   const [code, setCode] = useState('');
   const [freeText, setFreeText] = useState('');
 
-  const valid = !!code || freeText.trim().length > 0;
+  const valid = (!!code || (notes && freeText.trim().length > 0)) && !confirmDisabled;
 
   const submit = () => {
     if (!valid) return;
@@ -46,7 +59,8 @@ export function ReasonDialog({
   const options = [
     { value: '', label: 'Select a reason…' },
     ...standardReasons.map((r) => ({ value: r, label: r })),
-    { value: '__other__', label: 'Other (free text only)' },
+    // "Other" only means something when there is a note to carry it.
+    ...(notes ? [{ value: '__other__', label: 'Other (free text only)' }] : []),
   ];
 
   return (
@@ -56,41 +70,45 @@ export function ReasonDialog({
           <h3 className={styles.title}>{title}</h3>
           {description && <p className={styles.description}>{description}</p>}
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor={`${uid}-reason-code`}>Standard reason</label>
-            <Select
-              id={`${uid}-reason-code`}
-              options={options}
-              value={code === null ? '' : code}
-              onChange={(v) => setCode(v === '__other__' ? '' : v)}
-              placeholder="Select a reason…"
-            />
-          </div>
+          {children}
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor={`${uid}-reason-notes`}>
-              Additional notes {code ? '(optional)' : <span className={styles.required}>*</span>}
-            </label>
-            <Textarea
-              id={`${uid}-reason-notes`}
-              value={freeText}
-              onChange={(e) => setFreeText(e.target.value)}
-              placeholder={code
-                ? 'Add any context the next reviewer should see…'
-                : 'Explain why you\'re overriding this check…'}
-              rows={3}
-            />
-          </div>
+          <Select
+            id={`${uid}-reason-code`}
+            label="Standard reason"
+            required={!notes}
+            options={options}
+            value={code === null ? '' : code}
+            onChange={(v) => setCode(v === '__other__' ? '' : v)}
+            placeholder="Select a reason…"
+          />
+
+          {notes && (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor={`${uid}-reason-notes`}>
+                <span>Additional notes{code ? ' (optional)' : ''}</span>
+                {!code && <span className={styles.required} aria-hidden="true" />}
+              </label>
+              <Textarea
+                id={`${uid}-reason-notes`}
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                placeholder={code
+                  ? 'Add any context the next reviewer should see…'
+                  : 'Explain why you\'re overriding this check…'}
+                rows={3}
+              />
+            </div>
+          )}
 
           <div className={styles.footer}>
             <Button variant="secondary" size="L" onClick={onCancel}>Cancel</Button>
             <Button
-              variant={decision === 'fail' ? 'danger' : 'primary'}
+              variant={confirmVariant || (decision === 'fail' ? 'danger' : 'primary')}
               size="L"
               disabled={!valid}
               onClick={submit}
             >
-              {decision === 'fail' ? 'Mark Failed' : 'Mark Passed'}
+              {confirmLabel || (decision === 'fail' ? 'Mark Failed' : 'Mark Passed')}
             </Button>
           </div>
         </div>

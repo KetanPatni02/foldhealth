@@ -1,0 +1,57 @@
+name: CVX Sync
+
+# Keeps the cached CDC CVX code set current.
+#
+# /api/reference/immunizations answers entirely from
+# api/_lib/cvxCodes.generated.js — no API key, no upstream call at request
+# time. That makes the endpoint dependable but means the data is only as fresh
+# as the last sync, and CVX does move: vaccines are added, and codes flip to
+# Inactive when a product is withdrawn. Rather than depend on someone
+# remembering to re-run a script before a deploy, this refreshes it weekly and
+# commits the result when the CDC file has actually changed.
+#
+# The date in the generated header is ignored when deciding whether anything
+# changed, so a quiet week produces no commit.
+
+on:
+  schedule:
+    # Mondays, 07:00 UTC. The CDC publishes on no fixed cadence, so the day is
+    # arbitrary — early in the week just means a change is noticed on a workday.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: cvx-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Refresh CVX codes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          # Keep in step with `packageManager` in package.json and the other
+          # workflows.
+          bun-version: 1.4.0
+
+      - name: Sync CVX from the CDC
+        run: node scripts/sync-cvx.mjs
+
+      - name: Commit if the code set changed
+        run: |
+          if [ -z "$(git status --porcelain api/_lib/cvxCodes.generated.js)" ]; then
+            echo "CVX code set unchanged."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add api/_lib/cvxCodes.generated.js
+          git commit -m "chore(cvx): refresh cached CVX code set from the CDC"
+          git push

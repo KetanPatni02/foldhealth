@@ -6,6 +6,7 @@ import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkel
 import { AddProblemsDrawer } from '../AddProblemsDrawer';
 import { AddMedicationsDrawer } from '../AddMedicationsDrawer';
 import { AddAllergiesDrawer } from '../AddAllergiesDrawer';
+import { AddImmunizationsDrawer } from '../AddImmunizationsDrawer';
 import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIcon';
@@ -24,10 +25,6 @@ const CLINICAL_EVENTS = [
 ];
 
 
-
-const IMMUNIZATIONS = [
-  { id: 'im1', title: 'SARS-COV-2 COVID-19 Inactivated Virus Non-US Vaccine Product (BIBP, Sinopharm) (Sinopharm-Biotech)', dateAdministered: '06/30/2023', dose: '1 Dose', status: 'Not Done' },
-];
 
 const MEDICAL_HISTORY = [
   { id: 'mh1', title: 'Hypertension', date: '6 Month Ago' },
@@ -88,10 +85,12 @@ function DataRow({ children, showMore = false }) {
   return (
     <div className={styles.row}>
       {children}
-      {showMore && (
+      {showMore ? (
         <div className={styles.moreBtn}>
           <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
         </div>
+      ) : (
+        <span className={styles.actionsSpacer} aria-hidden="true" />
       )}
     </div>
   );
@@ -179,6 +178,7 @@ function ProblemRow({ item, onRemove }) {
       <div className={styles.statusCell}>
         <span className={styles.statusActive}>{item.status}</span>
       </div>
+      {!onRemove && <span className={styles.actionsSpacer} aria-hidden="true" />}
       {onRemove && (
         <div className={styles.moreBtn}>
           <ActionButton
@@ -244,14 +244,22 @@ function MedicationRow({ item }) {
 }
 
 function ImmunizationRow({ item }) {
+  const dose = [item.doseQuantity && `${item.doseQuantity} Dose`, item.doseUnits].filter(Boolean).join(' • ');
+  const meta = [
+    item.dateAdministered ? `Date Administered: ${item.dateAdministered}` : '',
+    dose,
+  ].filter(Boolean);
   return (
     <DataRow key={item.id} showMore>
       <div className={styles.nameCell}>
         <span className={styles.name}>{item.title}</span>
         <div className={styles.metaRow}>
-          <span className={styles.meta}>Date Administered: {item.dateAdministered}</span>
-          <span className={styles.metaDot}>•</span>
-          <span className={styles.meta}>{item.dose}</span>
+          {meta.map((part, i) => (
+            <span key={part} className={styles.meta}>
+              {i > 0 && <span className={styles.metaDot}>•</span>}
+              {part}
+            </span>
+          ))}
         </div>
       </div>
       <div className={styles.statusCell}>
@@ -466,8 +474,8 @@ function AllergiesSection({ patientId }) {
   useEffect(() => { if (patientId) fetchPatientAllergies(patientId); }, [patientId, fetchPatientAllergies]);
 
   const allergies = useMemo(() => stored || [], [stored]);
-  const active = allergies.filter(a => (a.status || 'Active') !== 'Inactive');
-  const inactiveCount = allergies.filter(a => a.status === 'Inactive').length;
+  const active = allergies.filter(a => (a.status || 'Active') !== 'Past');
+  const pastCount = allergies.filter(a => a.status === 'Past').length;
   const loading = !!patientId && !loadedFor;
 
   return (
@@ -489,10 +497,10 @@ function AllergiesSection({ patientId }) {
           {loading
             ? <CardSkeleton rows={3} />
             : active.map(item => <AllergyRow key={item.id} item={item} />)}
-          {inactiveCount > 0 && (
+          {pastCount > 0 && (
             <FooterLink
-              label={`Inactive (${inactiveCount})`}
-              onClick={() => setDrawerOpen('inactive')}
+              label={`Past (${pastCount})`}
+              onClick={() => setDrawerOpen('past')}
             />
           )}
         </div>
@@ -501,7 +509,7 @@ function AllergiesSection({ patientId }) {
       {drawerOpen && (
         <AddAllergiesDrawer
           patientId={patientId}
-          focus={drawerOpen === 'inactive' ? 'inactive' : undefined}
+          focus={drawerOpen === 'past' ? 'past' : undefined}
           onClose={() => setDrawerOpen(false)}
         />
       )}
@@ -562,17 +570,55 @@ function MedicationsSection({ patientId }) {
   );
 }
 
-function ImmunizationsSection() {
+function ImmunizationsSection({ patientId }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const stored = useAppStore(s => (patientId ? s.patientImmunizations[patientId] : null));
+  const loadedFor = useAppStore(s => (patientId ? s.patientImmunizationsLoadedFor[patientId] : false));
+  const fetchPatientImmunizations = useAppStore(s => s.fetchPatientImmunizations);
+
+  useEffect(() => { if (patientId) fetchPatientImmunizations(patientId); }, [patientId, fetchPatientImmunizations]);
+
+  const immunizations = useMemo(() => stored || [], [stored]);
+  const active = immunizations.filter(i => (i.status || 'Active') !== 'Completed');
+  const completedCount = immunizations.filter(i => i.status === 'Completed').length;
+  const loading = !!patientId && !loadedFor;
+
   return (
     <div className={styles.section}>
-      <SectionHeader title="Immunizations" actions={<AddBtn />} collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
+      <SectionHeader
+        title="Immunizations"
+        actions={<AddBtn onClick={() => setDrawerOpen(true)} disabled={!patientId} />}
+        collapsed={collapsed}
+        onToggle={() => setCollapsed(v => !v)}
+      />
       <CollapseWrapper collapsed={collapsed}>
+        {!loading && active.length === 0 ? (
+          <div className={styles.emptyCard}>
+            <RingEmptyState icon="solar:syringe-linear" label="No Active Immunizations" iconSize={31} />
+          </div>
+        ) : (
         <div className={styles.card}>
           <ColHeader />
-          {IMMUNIZATIONS.map(item => <ImmunizationRow key={item.id} item={item} />)}
+          {loading
+            ? <CardSkeleton rows={3} />
+            : active.map(item => <ImmunizationRow key={item.id} item={item} />)}
+          {completedCount > 0 && (
+            <FooterLink
+              label={`Completed (${completedCount})`}
+              onClick={() => setDrawerOpen('completed')}
+            />
+          )}
         </div>
+        )}
       </CollapseWrapper>
+      {drawerOpen && (
+        <AddImmunizationsDrawer
+          patientId={patientId}
+          focus={drawerOpen === 'completed' ? 'completed' : undefined}
+          onClose={() => setDrawerOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -686,7 +732,7 @@ export function PAMIHxTab({ patientId }) {
       <ProblemsSection patientId={patientId} />
       <AllergiesSection patientId={patientId} />
       <MedicationsSection patientId={patientId} />
-      <ImmunizationsSection />
+      <ImmunizationsSection patientId={patientId} />
       <HistorySection />
       <LabReportsSection />
       <ImagingReportsSection />

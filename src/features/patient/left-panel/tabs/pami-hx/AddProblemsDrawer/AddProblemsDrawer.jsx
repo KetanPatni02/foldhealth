@@ -94,11 +94,11 @@ function ProblemDraft({ title, eyebrow, initial, onSave, onCancel }) {
   );
 }
 
-function ProblemRow({ problem, onStatusChange, onEdit }) {
+function ProblemRow({ problem, onStatusChange, onEdit, dimmed }) {
   const meta = [problem.onsetLabel, problem.type, problem.severity].filter(Boolean);
   const [noteOpen, setNoteOpen] = useState(false);
   return (
-    <div className={styles.row}>
+    <div className={[styles.row, dimmed ? styles.dimmed : ''].filter(Boolean).join(' ')}>
       <div className={styles.rowTop}>
       <div className={styles.rowMain}>
         <span className={styles.rowTitle}>{problem.title}</span>
@@ -147,10 +147,12 @@ function ProblemRow({ problem, onStatusChange, onEdit }) {
   );
 }
 
-const Section = forwardRef(function Section({ title, count, open, onToggle, children }, ref) {
+const Section = forwardRef(function Section({ title, count, open, onToggle, children, dimmed }, ref) {
   return (
     <div className={styles.section} ref={ref}>
-      <button type="button" className={styles.sectionHead} onClick={onToggle} aria-expanded={open}>
+      <button
+        type="button"
+        className={[styles.sectionHead, dimmed ? styles.dimmed : ''].filter(Boolean).join(' ')} onClick={onToggle} aria-expanded={open}>
         <span className={styles.sectionTitle}>{title}</span>
         {count > 0 && <Badge tone="grey" size="S" label={String(count)} className={styles.countBadge} />}
         <DownChevronIcon size={14} className={open ? styles.chevron : styles.chevronClosed} />
@@ -251,7 +253,7 @@ export function AddProblemsDrawer({ patientId, focus, onClose }) {
       onCancel={() => setDraft(null)}
     />
   ) : (
-    <ProblemRow key={p.id} problem={p} onStatusChange={handleStatusChange} onEdit={startEdit} />
+    <ProblemRow key={p.id} problem={p} onStatusChange={handleStatusChange} onEdit={startEdit} dimmed={!!draft?.editing} />
   ));
 
   const handleStatusChange = async (problem, status) => {
@@ -265,7 +267,7 @@ export function AddProblemsDrawer({ patientId, focus, onClose }) {
   return (
     <Drawer title="Add Problems" onClose={onClose}>
       <div className={styles.body}>
-        <div className={styles.addBlock}>
+        <div className={[styles.addBlock, draft?.editing ? styles.dimmed : ''].filter(Boolean).join(' ')}>
           <span className={styles.addLabel}>Add New Problems</span>
           <ChronicConditionSelect
             label=""
@@ -290,6 +292,7 @@ export function AddProblemsDrawer({ patientId, focus, onClose }) {
         ) : (
           <div className={[styles.list, draft && !draft.editing ? styles.listDimmed : ''].filter(Boolean).join(' ')}>
             <Section
+              dimmed={!!draft?.editing}
               title="Active Problems"
               count={active.length}
               open={activeOpen}
@@ -304,6 +307,7 @@ export function AddProblemsDrawer({ patientId, focus, onClose }) {
 
             {resolved.length > 0 && (
               <Section
+                dimmed={!!draft?.editing}
                 ref={resolvedRef}
                 title="Resolved Problems"
                 count={resolved.length}

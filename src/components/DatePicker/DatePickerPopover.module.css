@@ -5,7 +5,10 @@
 
 .card {
   position: fixed;
-  z-index: 1000;
+  /* Portaled to body, so it must clear the modal layer (ShadcnDialog sits at
+     9999) or a date field inside a dialog opens its calendar underneath it.
+     Same layer the app's other portaled floating surfaces use. */
+  z-index: 10000;
   width: 282px;
   padding: var(--space-3) var(--space-4) var(--space-2);
   background: var(--neutral-0);

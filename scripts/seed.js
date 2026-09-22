@@ -175,6 +175,28 @@ DROP POLICY IF EXISTS "Allow all on patient_allergies" ON patient_allergies;
 CREATE POLICY "Allow all on patient_allergies" ON patient_allergies FOR ALL USING (true) WITH CHECK (true);
 `;
 
+const PATIENT_IMMUNIZATIONS_DDL = `
+CREATE TABLE IF NOT EXISTS patient_immunizations (
+  id                text PRIMARY KEY,
+  patient_id        text NOT NULL,
+  title             text NOT NULL,
+  code              text,
+  code_system       text,
+  date_administered text,
+  dose_quantity     text,
+  dose_units        text,
+  status            text NOT NULL DEFAULT 'Active',
+  note              text NOT NULL DEFAULT '',
+  sort_order        integer NOT NULL DEFAULT 0,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS patient_immunizations_patient_id_idx ON patient_immunizations (patient_id);
+ALTER TABLE patient_immunizations ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on patient_immunizations" ON patient_immunizations;
+CREATE POLICY "Allow all on patient_immunizations" ON patient_immunizations FOR ALL USING (true) WITH CHECK (true);
+`;
+
 
 
 // Annette Brave's (11089) problem list — mirrors her care-plan conditions.
@@ -701,8 +723,10 @@ async function main() {
     console.log('  ✓ apcm_patients — created / already exists');
     await db.query(PATIENT_PROBLEMS_DDL);
     await db.query(PATIENT_ALLERGIES_DDL);
+    await db.query(PATIENT_IMMUNIZATIONS_DDL);
     console.log('  ✓ patient_problems — created / already exists');
     console.log('  ✓ patient_allergies — created / already exists');
+    console.log('  ✓ patient_immunizations — created / already exists');
     await db.query(ICD_DDL);
     console.log('  ✓ icd_codes — created / already exists');
     await db.query(POS_DDL);

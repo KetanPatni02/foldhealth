@@ -76,17 +76,19 @@
   border-bottom: 0.5px solid var(--neutral-100);
 }
 
-/* ── Column header ── */
+/* ── Column header ──
+   The header carries no padding of its own: each heading is padded like the
+   cell it labels, so headings and values share one vertical line. */
 .colHeader {
   display: flex;
   align-items: center;
   height: 32px;
-  padding: 0 8px;
   border-bottom: 0.5px solid var(--neutral-150);
 }
 
 .colName {
   flex: 1;
+  padding-left: var(--space-2);
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
@@ -95,10 +97,10 @@
 .colStatus {
   width: 100px;
   flex-shrink: 0;
+  padding: 0 var(--space-2);
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-300);
-  padding-left: 16px;
 }
 
 .colActions {
@@ -179,6 +181,13 @@
   font-size: var(--font-base);
   color: var(--neutral-300);
   line-height: 1.2;
+}
+
+/* Holds the actions column open on rows that have no menu, so every section's
+   Status column lands on the same vertical line. */
+.actionsSpacer {
+  width: 40px;
+  flex-shrink: 0;
 }
 
 .moreBtn {
@@ -276,6 +285,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  padding-right: var(--space-2);
 }
 
 .reportActionsCell {
