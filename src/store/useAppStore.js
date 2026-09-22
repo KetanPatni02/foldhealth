@@ -9573,18 +9573,37 @@ export const useAppStore = create((set, get) => ({
     });
     // Bell notification: mirror the comment globally so it shows up in
     // the topbar bell for a reviewer who isn't currently on this patient.
+    // If the comment body @-mentions the current user, elevate to a
+    // dedicated "You were mentioned" entry so the tag stands out in the
+    // bell list.
     const memberName = row.patientName
       || useAppStore.getState().hccMembers?.find(m => m.id === row.memberId)?.name
       || null;
-    useAppStore.getState().addNotification?.({
-      type: 'hcc.comment_added',
-      title: 'New comment',
-      body: memberName
-        ? `${row.author || 'A teammate'} added a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
-        : `${row.author || 'A teammate'} added a comment${row.icd ? ` on ${row.icd}` : ''}.`,
-      action: 'openDiagPanel',
-      hccMemberId: row.memberId || null,
-    });
+    const me = useAppStore.getState().currentUserProfile?.name || null;
+    const mentionsMe = !!(me && row.body && new RegExp(
+      `@${me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`,
+    ).test(row.body));
+    if (mentionsMe) {
+      useAppStore.getState().addNotification?.({
+        type: 'hcc.comment_mention',
+        title: 'You were mentioned in a comment',
+        body: memberName
+          ? `${row.author || 'A teammate'} mentioned you in a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
+          : `${row.author || 'A teammate'} mentioned you in a comment${row.icd ? ` on ${row.icd}` : ''}.`,
+        action: 'openDiagPanel',
+        hccMemberId: row.memberId || null,
+      });
+    } else {
+      useAppStore.getState().addNotification?.({
+        type: 'hcc.comment_added',
+        title: 'New comment',
+        body: memberName
+          ? `${row.author || 'A teammate'} added a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
+          : `${row.author || 'A teammate'} added a comment${row.icd ? ` on ${row.icd}` : ''}.`,
+        action: 'openDiagPanel',
+        hccMemberId: row.memberId || null,
+      });
+    }
   },
 
   // Edit an existing comment's body. `edited: true` stamps the row so the

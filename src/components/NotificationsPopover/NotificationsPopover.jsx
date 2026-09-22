@@ -188,6 +188,9 @@ function iconForType(type) {
   if (type === 'appointment.assigned') return 'solar:calendar-linear';
   if (type === 'message.received') return 'solar:chat-round-linear';
   if (type === 'hcc.extraction_complete') return 'solar:document-text-linear';
+  if (type === 'hcc.document_uploaded') return 'solar:file-text-linear';
+  if (type === 'hcc.comment_added') return 'solar:chat-round-line-linear';
+  if (type === 'hcc.comment_mention') return 'solar:mention-square-linear';
   if (type === 'profile.name_incomplete') return 'solar:user-id-linear';
   return 'solar:bell-linear';
 }

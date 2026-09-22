@@ -495,8 +495,14 @@ export function useDiagPanel() {
       markHccDiagSeen(member.id, 'documents', docsCount);
     }
   }, [diagLeftPanel, diagActivityIcd, member?.id, commentsCount, docsCount, seenComments, seenDocs, markHccDiagSeen]);
-  const commentsUnread = typeof seenComments === 'number' && commentsCount > seenComments;
-  const docsUnread = typeof seenDocs === 'number' && docsCount > seenDocs;
+  const commentsUnreadCount = typeof seenComments === 'number'
+    ? Math.max(0, commentsCount - seenComments)
+    : 0;
+  const docsUnreadCount = typeof seenDocs === 'number'
+    ? Math.max(0, docsCount - seenDocs)
+    : 0;
+  const commentsUnread = commentsUnreadCount > 0;
+  const docsUnread = docsUnreadCount > 0;
 
   // Toolbar Documents click: open the preview (first doc) rather than the list.
   // Clicking again while it's open closes the panel.
@@ -1207,6 +1213,7 @@ export function useDiagPanel() {
     closedICDs,
     commentsCount,
     commentsUnread,
+    commentsUnreadCount,
     openCommentsFromToolbar,
     confirmPendingStatusChange,
     confirmReject,
@@ -1219,6 +1226,7 @@ export function useDiagPanel() {
     dismissNewRowNotice,
     docsCount,
     docsUnread,
+    docsUnreadCount,
     dosExpanded,
     dosList,
     dosState,
