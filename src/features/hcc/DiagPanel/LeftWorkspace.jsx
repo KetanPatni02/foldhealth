@@ -935,22 +935,18 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
         </div>
         {editing ? (
           <div className={styles.commentEditor}>
-            <input
+            <CommentComposer
               autoFocus
-              type="text"
-              className={styles.commentComposer}
-              aria-label="Edit comment"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commit();
-                else if (e.key === 'Escape') { setDraft(item.body || ''); setEditing(false); }
+              initialValue={item.body || ''}
+              submitLabel="Save"
+              cancelLabel="Cancel"
+              onSubmit={(text) => {
+                setDraft(text);
+                onEdit?.(item.id, text);
+                setEditing(false);
               }}
+              onCancel={() => { setDraft(item.body || ''); setEditing(false); }}
             />
-            <div className={styles.commentEditorActions}>
-              <button type="button" className={styles.commentSaveBtn} onClick={commit} disabled={!draft.trim() || draft.trim() === item.body}>Save</button>
-              <button type="button" className={styles.commentGhostBtn} onClick={() => { setDraft(item.body || ''); setEditing(false); }}>Cancel</button>
-            </div>
           </div>
         ) : (
           <>

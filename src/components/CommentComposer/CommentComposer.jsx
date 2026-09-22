@@ -166,6 +166,20 @@ export function CommentComposer({
   // (via `beforeinput`) and the parent can render a counter using
   // onChange's text length.
   maxLength,
+  // Optional seed text (e.g. when the composer is reused for the "Edit
+  // comment" flow). Rendered into the contenteditable on mount with
+  // `@Name` fragments re-hydrated into real mention chips so the
+  // reader sees the same orange pill they saw in the read-only view.
+  // Later prop changes are ignored — this is a one-shot mount seed;
+  // key the component off the comment id if you want a fresh seed.
+  initialValue,
+  // Copy overrides for the Comment / Cancel actions, so the same
+  // composer can label its primary CTA as "Save" in the edit flow.
+  submitLabel,
+  cancelLabel,
+  // Fires when the Cancel button is clicked — parent can use this to
+  // close the composer (e.g. leaving the "Edit comment" state).
+  onCancel,
 }) {
   const inStatusMode = !!statusChange;
   const editorRef = useRef(null);
@@ -216,6 +230,50 @@ export function CommentComposer({
       editorRef.current.focus();
     }
   }, [autoFocus, inStatusMode]);
+
+  // Seed the editor with `initialValue` on mount — split by mention
+  // regex, wrap `@Name` fragments in real chips so the edit view
+  // matches the read-only rendering. Deliberately one-shot: later
+  // prop changes are ignored (edit sessions get re-seeded by keying
+  // the composer off the comment id upstream).
+  useEffect(() => {
+    if (!initialValue) return;
+    const editor = editorRef.current;
+    if (!editor || !users?.length) return;
+    // Empty first so a re-mount with fresh initialValue doesn't stack.
+    editor.innerHTML = '';
+    const names = users.map(u => u.name).filter(Boolean);
+    // Longest-first so a full-name match wins over a shorter prefix.
+    const sortedNames = names.slice().sort((a, b) => b.length - a.length);
+    if (!sortedNames.length) {
+      editor.appendChild(document.createTextNode(initialValue));
+    } else {
+      const escaped = sortedNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      const re = new RegExp(`@(${escaped.join('|')})`, 'g');
+      let lastIdx = 0;
+      let match;
+      while ((match = re.exec(initialValue)) !== null) {
+        if (match.index > lastIdx) {
+          editor.appendChild(document.createTextNode(initialValue.slice(lastIdx, match.index)));
+        }
+        const user = users.find(u => u.name === match[1]);
+        if (user) {
+          editor.appendChild(createMentionChip(user));
+          // Trailing space so caret escapes the chip cleanly.
+          editor.appendChild(document.createTextNode(' '));
+        } else {
+          editor.appendChild(document.createTextNode(match[0]));
+        }
+        lastIdx = match.index + match[0].length;
+      }
+      if (lastIdx < initialValue.length) {
+        editor.appendChild(document.createTextNode(initialValue.slice(lastIdx)));
+      }
+    }
+    setText(serialize(editor));
+    setExpanded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users.length]);
 
   const refresh = useCallback(() => {
     const editor = editorRef.current;
@@ -286,6 +344,7 @@ export function CommentComposer({
     // In status-change mode, Cancel also aborts the pending transition
     // upstream (parent clears the pending state).
     statusChange?.onCancel?.();
+    onCancel?.();
   };
 
   const handleKeyDown = (e) => {
@@ -367,10 +426,10 @@ export function CommentComposer({
       {expanded && !hideActions && (
         <div className={styles.actions}>
           <Button variant="primary" size="S" disabled={!text.trim()} onClick={submit}>
-            Comment
+            {submitLabel || 'Comment'}
           </Button>
           <Button variant="secondary" size="S" onClick={cancel}>
-            Cancel
+            {cancelLabel || 'Cancel'}
           </Button>
         </div>
       )}
