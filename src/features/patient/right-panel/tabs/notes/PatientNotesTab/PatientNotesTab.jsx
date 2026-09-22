@@ -3,6 +3,7 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { Button } from '../../../../../../components/Button/Button';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { Badge } from '../../../../../../components/Badge/Badge';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
@@ -309,16 +310,16 @@ function NoteRow({ note, onOpen }) {
       : codes.length
         ? codes.join(' · ')
         : (ORIGIN_LABEL[note.originKind] || 'Clinical Note');
-  // Match the HEDIS Care Gap drawer's status vocabulary + color tokens
-  // (Draft = neutral, Pending Review = warning, Signed = success). Using
+  // Match the HEDIS Care Gap drawer's status vocabulary + tone tokens
+  // (Draft = grey, Pending Review = warning, Signed = success). Using
   // "In Progress" here was a divergent label that made the P360 Notes
   // tab look like it tracked a different lifecycle than the rest of
   // the app.
   const status = note.status === 'signed'
-    ? { label: 'Signed', color: 'var(--status-success)' }
+    ? { label: 'Signed', tone: 'success' }
     : note.status === 'submitted'
-      ? { label: 'Pending Review', color: 'var(--status-warning)' }
-      : { label: 'Draft', color: 'var(--neutral-300)' };
+      ? { label: 'Pending Review', tone: 'warning' }
+      : { label: 'Draft', tone: 'grey' };
   const templateName = template?.name
     || (isNormal ? 'Clinical Note' : isNonVisit
       ? 'Non-Visit Note'
@@ -356,7 +357,7 @@ function NoteRow({ note, onOpen }) {
         <div className={styles.noteSub}>{subtitle}</div>
       </td>
       <td>
-        <span style={{ color: status.color }}>{status.label}</span>
+        <Badge tone={status.tone} size="M" label={status.label} />
       </td>
       <td>
         <div>{note.authorName || '—'}</div>
