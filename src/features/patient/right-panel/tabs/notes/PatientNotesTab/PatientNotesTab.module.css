@@ -5,6 +5,14 @@
   border-radius: var(--space-2);
   background: var(--neutral-0);
   margin: var(--space-3);
+  /* Column flex so the inline note pane (rendered instead of the
+     notes table when a row is opened inline) can flex to fill the
+     available height and let ConsolidatedNoteBody / PreviewBody own
+     their own scroll. Doesn't affect the default table layout. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
 }
 
 /* Section header — title left, "+" and (future) View All right */
@@ -130,4 +138,78 @@
   color: var(--neutral-300);
   max-width: 340px;
   line-height: var(--leading-normal, 1.4);
+}
+
+/* Inline note pane — replaces the notes table when a row is opened
+   inline. Header runs edge-to-edge like the section header above the
+   table; body flexes to fill the card so ConsolidatedNoteBody's own
+   scroll takes over. */
+.inlinePane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.inlineHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.inlineBackBtn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.inlineBackBtn:hover { background: var(--neutral-50); }
+.inlineTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+  flex: 1;
+}
+.inlineTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  line-height: 1.2;
+}
+.inlineSubtitle {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  line-height: 1.2;
+}
+.inlineActionsRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.inlineInfoBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--status-info-light);
+  color: var(--neutral-400);
+  font-size: var(--font-sm);
+  flex-shrink: 0;
+}
+.inlineEditorBody,
+.inlinePreviewBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
