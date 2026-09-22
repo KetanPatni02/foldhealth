@@ -58,8 +58,10 @@
   table-layout: auto;
 }
 /* Sticky Note Title (checkbox + title cell). White background covers
-   the scrolling middle columns; a hairline right border reads as the
-   column boundary once the row has scrolled. */
+   the scrolling middle columns so text doesn't ghost through. Bottom
+   stroke stays on because these cells inherit the shared
+   `.table th`/`.table td` border-bottom rule below (background sits
+   above the row content but under the border layer). */
 .table th:nth-child(1),
 .table td:nth-child(1) {
   position: sticky;
@@ -73,22 +75,14 @@
   left: var(--space-8);
   z-index: 2;
   background: var(--neutral-0);
-  border-right: 0.5px solid var(--neutral-150);
-}
-/* Sticky Template Name / kebab column, mirrored on the right edge. */
-.table th:last-child,
-.table td:last-child {
-  position: sticky;
-  right: 0;
-  z-index: 2;
-  background: var(--neutral-0);
-  border-left: 0.5px solid var(--neutral-150);
+  /* Right hairline reads as the column boundary once the middle
+     columns have scrolled underneath. */
+  box-shadow: inset -0.5px 0 0 var(--neutral-150);
 }
 /* Row hover has to override the sticky columns too, otherwise the
    pinned cells stay white while the middle stripe tints. */
 .tr:hover td:nth-child(1),
-.tr:hover td:nth-child(2),
-.tr:hover td:last-child {
+.tr:hover td:nth-child(2) {
   background: var(--neutral-25);
 }
 .table th {
@@ -151,11 +145,12 @@
    (sticky left, min-width 240px), 3 = Status (auto — shrinks to the
    Badge's own width so "Draft" is a tiny chip and "Pending Review"
    gets the room it needs), 4–5 = Created By / Last Updated at 140px
-   each, 6 = Linked Task at 100px, 7 = Template Name / kebab (sticky
-   right, min-width 200px). The 240 + 140 + 140 + 100 + 200 = 820px
-   of fixed widths + Status auto + checkbox 32px overflows the P360
-   right pane at narrow widths, so the middle columns scroll while
-   the pinned columns stay put. */
+   each, 6 = Linked Task at 100px, 7 = Template Name / kebab (a plain
+   trailing column that scrolls along with the middle metadata; the
+   Note Title on the left is the only pinned anchor). Total 240 + 140
+   + 140 + 100 + 200 = 820px + Status auto + checkbox 32px overflows
+   the P360 right pane at narrow widths so the middle columns scroll
+   with Note Title pinned. */
 .table th:nth-child(2),
 .table td:nth-child(2) {
   min-width: 240px;
