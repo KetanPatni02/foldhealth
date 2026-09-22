@@ -172,6 +172,16 @@
   flex-direction: column;
   padding: 0;
 }
+/* Schedule Appointment ships its own inset on ScheduleDrawerBookingBody's
+   .content (16px/24px), so the pane's default 12/16 padding stacked
+   two horizontal insets. Drop the outer padding and let the schedule
+   body own the whole surface. */
+.leftPaneBodySchedule {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
 .headerDivider {
   width: 1px; height: 16px; background: var(--neutral-150);
   margin: 0 4px; flex-shrink: 0;
