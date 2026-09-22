@@ -136,10 +136,30 @@ export function CareGapDetailDrawerHeader({
               {statusOpen && !statusLocked && statusAnchorRect && (
                 <MenuPopover
                   anchorRect={statusAnchorRect}
+                  // Radio glyph in the icon slot mirrors the Performed by
+                  // dropdown pattern: empty neutral-200 circle by default,
+                  // 5px primary-300 fill on the current status. Reads at a
+                  // glance without the shared double-check icon (which
+                  // looked like "read receipt" more than "selected").
                   items={STATUSES.map(s => ({
                     key: s,
                     label: s,
-                    icon: s === status ? 'solar:check-read-linear' : undefined,
+                    iconElement: (
+                      <span
+                        aria-hidden="true"
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: 999,
+                          background: 'var(--neutral-0)',
+                          boxSizing: 'border-box',
+                          flexShrink: 0,
+                          border: s === status
+                            ? '5px solid var(--primary-300)'
+                            : '1px solid var(--neutral-200)',
+                        }}
+                      />
+                    ),
                   }))}
                   onSelect={(key) => { updateGapStatus(member.id, gap.code, key); setStatusOpen(false); setStatusAnchorRect(null); }}
                   onClose={() => { setStatusOpen(false); setStatusAnchorRect(null); }}
