@@ -898,14 +898,14 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
     setEditing(false);
   };
   return (
-    <div className={styles.tlRow}>
-      <div className={styles.tlRail}>
+    <div className={[styles.tlRow, styles.commentTlRow, isFirst ? styles.tlRowFirst : ''].filter(Boolean).join(' ')}>
+      <div className={[styles.tlRail, styles.commentTlRail].join(' ')}>
         {!isFirst && <span className={styles.tlConnectorTop} />}
         <span
-          className={styles.tlIcon}
+          className={[styles.tlIcon, styles.commentIcon].join(' ')}
           style={{ background: 'var(--neutral-0)', borderColor: 'var(--neutral-150)' }}
         >
-          <Icon name="solar:chat-round-linear" size={14} color="var(--neutral-300)" />
+          <Icon name="solar:chat-round-linear" size={12} color="var(--neutral-300)" />
         </span>
         {!isLast && <span className={styles.tlConnectorBottom} />}
       </div>

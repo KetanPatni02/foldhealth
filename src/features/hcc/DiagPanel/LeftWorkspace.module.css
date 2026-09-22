@@ -476,6 +476,13 @@
   display: flex;
   gap: 8px;
 }
+/* First entry in a timeline group: 4px top pad on the ROW so rail (icon)
+   and body (meta line) start from the same content edge, keeping their
+   tops aligned. Non-first rows get their top edge from the rail's 14px
+   .tlConnectorTop matched by .tlBody's 14px padding-top. */
+.tlRowFirst {
+  padding-top: var(--space-1);
+}
 
 /* Left rail — top connector + icon + bottom connector */
 .tlRail {
@@ -511,6 +518,25 @@
   justify-content: center;
   flex-shrink: 0;
 }
+/* Comment-specific icon: shrunk so its box matches the meta line's visual
+   height (12px font at line-height 1.4 = ~17px). The 18px box lets the
+   icon glyph read as a peer of the timestamp text on the same line rather
+   than a fat 24px chip that towers over it. */
+.commentIcon {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+}
+/* Comment rail matches the smaller icon width so the leading gap between
+   icon and meta doesn't grow. */
+.commentTlRail {
+  width: 18px;
+}
+/* Row alignment for comments: flex-start pins rail and body to the top,
+   so the icon and the timestamp share a top edge regardless of body height. */
+.commentTlRow {
+  align-items: flex-start;
+}
 /* Body — meta + headline + supporting blocks */
 .tlBody {
   flex: 1;
@@ -519,7 +545,7 @@
   padding-bottom: 20px;
 }
 .tlBodyFirst {
-  padding-top: 2px;
+  padding-top: 0;
 }
 .tlBodyLast {
   padding-bottom: 4px;
@@ -655,12 +681,28 @@
    own comments (edit / delete). Hidden by default, revealed on tlRow hover
    or when keyboard focus lands inside the row. */
 .commentMetaRow {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   justify-content: space-between;
 }
+/* CommentEntry sits body flush under the meta line: drop the shared
+   tlMeta 3px bottom margin (Activity log uses it for spacing to a
+   description block; comments render body directly beneath). */
+.commentMetaRow .tlMeta {
+  margin-bottom: 0;
+}
+/* Absolute-position the action buttons so they don't stretch the
+   metaRow past the meta text height. Without this the buttons' 22px
+   height forces a 3px phantom gap under the timestamp, and the
+   subsequent .commentBody margin-top of 4px lands 7px below the meta
+   text instead of the intended 4px. */
 .commentActions {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   gap: 2px;
