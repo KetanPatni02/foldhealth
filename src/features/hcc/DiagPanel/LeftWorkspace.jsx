@@ -900,16 +900,20 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
     setEditing(false);
   };
   return (
-    <div className={[styles.tlRow, styles.commentTlRow, isFirst ? styles.tlRowFirst : ''].filter(Boolean).join(' ')}>
-      <div className={[styles.tlRail, styles.commentTlRail].join(' ')}>
-        {!isFirst && <span className={styles.tlConnectorTop} />}
+    <div className={styles.tlRow}>
+      <div className={styles.tlRail}>
+        {isFirst
+          ? <span className={styles.tlConnectorTopFirst} />
+          : <span className={styles.tlConnectorTop} />}
         <span
-          className={[styles.tlIcon, styles.commentIcon].join(' ')}
+          className={styles.tlIcon}
           style={{ background: 'var(--neutral-0)', borderColor: 'var(--neutral-150)' }}
         >
-          <Icon name="solar:chat-round-linear" size={12} color="var(--neutral-300)" />
+          <Icon name="solar:chat-round-linear" size={14} color="var(--neutral-300)" />
         </span>
-        {!isLast && <span className={styles.tlConnectorBottom} />}
+        {isLast
+          ? <span className={styles.tlConnectorBottomLast} />
+          : <span className={styles.tlConnectorBottom} />}
       </div>
       <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
         <div className={styles.commentMetaRow}>

@@ -476,13 +476,6 @@
   display: flex;
   gap: 8px;
 }
-/* First entry in a timeline group: 4px top pad on the ROW so rail (icon)
-   and body (meta line) start from the same content edge, keeping their
-   tops aligned. Non-first rows get their top edge from the rail's 14px
-   .tlConnectorTop matched by .tlBody's 14px padding-top. */
-.tlRowFirst {
-  padding-top: var(--space-1);
-}
 
 /* Left rail — top connector + icon + bottom connector */
 .tlRail {
@@ -499,12 +492,32 @@
   background: var(--neutral-150);
   flex-shrink: 0;
 }
+/* First-row stub, a short hairline above the very first icon so the
+   timeline reads as a bounded strand starting from the top. Mirrors the
+   HistoryTimeline pattern so Comment and Activity rails look identical.
+   Height matches .tlBodyFirst padding-top so icon top aligns with meta
+   text top. */
+.tlConnectorTopFirst {
+  width: 0.5px;
+  height: calc(var(--space-1) + calc(var(--space-1) / 2));
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
 
 /* Bottom connector flows from the icon directly into the next row — no
    top margin so the line reads continuous between entries. */
 .tlConnectorBottom {
   width: 0.5px;
   flex: 1;
+  background: var(--neutral-150);
+}
+/* Last-row stub mirrors .tlConnectorTopFirst so the trail line has a
+   clear terminating tick below the final icon (matches Figma /
+   HistoryTimeline). */
+.tlConnectorBottomLast {
+  width: 0.5px;
+  flex: 0 0 auto;
+  height: 6px;
   background: var(--neutral-150);
 }
 
@@ -518,25 +531,6 @@
   justify-content: center;
   flex-shrink: 0;
 }
-/* Comment-specific icon: shrunk so its box matches the meta line's visual
-   height (12px font at line-height 1.4 = ~17px). The 18px box lets the
-   icon glyph read as a peer of the timestamp text on the same line rather
-   than a fat 24px chip that towers over it. */
-.commentIcon {
-  width: 18px;
-  height: 18px;
-  border-radius: 4px;
-}
-/* Comment rail matches the smaller icon width so the leading gap between
-   icon and meta doesn't grow. */
-.commentTlRail {
-  width: 18px;
-}
-/* Row alignment for comments: flex-start pins rail and body to the top,
-   so the icon and the timestamp share a top edge regardless of body height. */
-.commentTlRow {
-  align-items: flex-start;
-}
 /* Body — meta + headline + supporting blocks */
 .tlBody {
   flex: 1;
@@ -544,8 +538,10 @@
   padding-top: 14px;
   padding-bottom: 20px;
 }
+/* Matches .tlConnectorTopFirst so the meta text top edge lines up with
+   the first icon's top edge (same rule HistoryTimeline uses). */
 .tlBodyFirst {
-  padding-top: 0;
+  padding-top: calc(var(--space-1) + calc(var(--space-1) / 2));
 }
 .tlBodyLast {
   padding-bottom: 4px;
