@@ -126,9 +126,10 @@ export function CareGapDetailDrawerHeader({
               >
                 <Badge
                   size="M"
-                  tone={statusLocked ? 'disabled' : (STATUS_TONE[status] || 'grey')}
+                  tone={STATUS_TONE[status] || 'grey'}
                   label={status}
                   chevron={!statusLocked}
+                  icon={status === 'Completed' ? 'solar:check-circle-linear' : undefined}
                   style={{ height: 28 }}
                 />
               </button>
