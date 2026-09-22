@@ -70,28 +70,48 @@ function PerformedByTrigger({ initials, name, role }) {
 // (Supabase `profiles`). Fetched once per session via
 // fetchPlatformUsers; a per-caller useEffect kicks it off when this
 // form mounts so a fresh drawer doesn't render an empty select.
-function usePerformedByOptions() {
+//
+// When `selectedValue` matches a user, that user is pinned to the top
+// of the list with a hairline separator underneath (a Select header
+// row with an empty label), and the rest of the roster follows in its
+// original order. Keeps the current pick reachable without scrolling
+// on a long roster.
+function usePerformedByOptions(selectedValue) {
   const users = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
-  return useMemo(
-    () => (users || []).map(u => {
-      const role = (u.clinicalRoles || []).join(', ');
-      return {
-        value: u.id,
-        label: <PerformedByRow initials={u.initials} name={u.name} role={role} />,
-        // Compact trigger render: the stacked row breaks the single-
-        // line Select control, so the selected value collapses to
-        // "Name (Role)" inline. Dropdown options still use `label`
-        // (stacked) via Select's triggerLabel-then-label fallback.
-        triggerLabel: <PerformedByTrigger initials={u.initials} name={u.name} role={role} />,
-        // Plain-text alias so Select's client-side search matches on
-        // both the user's name and their clinical role.
-        searchText: `${u.name} ${role}`.trim(),
-      };
-    }),
-    [users],
-  );
+  const buildOption = (u) => {
+    const role = (u.clinicalRoles || []).join(', ');
+    return {
+      value: u.id,
+      label: <PerformedByRow initials={u.initials} name={u.name} role={role} />,
+      // Compact trigger render: the stacked row breaks the single-
+      // line Select control, so the selected value collapses to
+      // "Name (Role)" inline. Dropdown options still use `label`
+      // (stacked) via Select's triggerLabel-then-label fallback.
+      triggerLabel: <PerformedByTrigger initials={u.initials} name={u.name} role={role} />,
+      // Plain-text alias so Select's client-side search matches on
+      // both the user's name and their clinical role.
+      searchText: `${u.name} ${role}`.trim(),
+    };
+  };
+  return useMemo(() => {
+    const roster = users || [];
+    const selectedUser = selectedValue
+      ? roster.find(u => String(u.id) === String(selectedValue))
+      : null;
+    if (!selectedUser) return roster.map(buildOption);
+    const rest = roster.filter(u => u !== selectedUser).map(buildOption);
+    return [
+      buildOption(selectedUser),
+      // Empty-label header row → hairline separator via Select's
+      // .groupHeader border-top. `value` must be unique among options
+      // so React's list key stays stable.
+      { type: 'header', value: '__performed-by-divider', label: '' },
+      ...rest,
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users, selectedValue]);
 }
 
 // Look up a stored `performedBy` value against the live platformUsers
@@ -202,7 +222,7 @@ export function DsfaEvidenceForm({ v, data, submitted, onOpenPhq9Gap }) {
   const readOnly = !!v.isReviewFlow;
   const onUpdate = readOnly ? () => {} : (patch) => v.updateGap('DSF-A', patch);
   const err = (field) => submitted && !data[field];
-  const performedByOptions = usePerformedByOptions();
+  const performedByOptions = usePerformedByOptions(data.performedBy);
   const phq2Values = useMemo(() => {
     const items = getItems('phq2');
     const stored = data.phq2 || {};
@@ -415,7 +435,7 @@ export function DsfbEvidenceForm({ v, data, submitted }) {
   const readOnly = !!v.isReviewFlow;
   const onUpdate = readOnly ? () => {} : (patch) => v.updateGap('DSF-B', patch);
   const err = (field) => submitted && !data[field];
-  const performedByOptions = usePerformedByOptions();
+  const performedByOptions = usePerformedByOptions(data.performedBy);
   // When the note has no paired DSF-A, DSF-B is standalone — the
   // reviewer completed the PHQ-2 virtually and skipped creating the
   // Depression Screening care program. DSF-B has to collect its own
