@@ -286,6 +286,10 @@ export function PatientNotesTab({ patient }) {
                   activeDir={sortDir}
                   onSort={requestSort}
                 />
+                {/* Empty header — the trailing actions column is a
+                    fixed-width slot for the row kebab; nothing to
+                    sort on. Keeps the row height matched via .th. */}
+                <th className={styles.actionsCol} aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
@@ -409,6 +413,8 @@ function NoteRow({ note, onOpen }) {
       </td>
       <td className={styles.templateCell}>
         <span className={styles.templateText}>{templateName}</span>
+      </td>
+      <td className={styles.actionsCell} onClick={(e) => e.stopPropagation()}>
         <span className={styles.rowKebab}>
           <ActionButton
             ref={menuBtnRef}
