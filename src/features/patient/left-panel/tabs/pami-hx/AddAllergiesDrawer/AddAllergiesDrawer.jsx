@@ -19,7 +19,7 @@ import { ALLERGY_REACTIONS, REACTION_SYSTEM } from '../../../../../../reference-
 import { toast } from '../../../../../../components/Toast/sonnerToast';
 import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 
-const STATUS_OPTIONS = ['Active', 'Inactive'].map(v => ({ value: v, label: v }));
+const STATUS_OPTIONS = ['Active', 'Past'].map(v => ({ value: v, label: v }));
 const REACTION_TYPE_OPTIONS = ['Adverse Reaction', 'Allergy', 'Intolerance']
   .map(v => ({ value: v, label: v }));
 // Criticality drives the badge tone: High is the one that changes care.
@@ -35,7 +35,7 @@ const REACTION_SEVERITY_OPTIONS = ['Severe', 'Moderate', 'Mild']
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-US') : '');
 
-function AllergyRow({ allergy, onStatusChange, onEdit }) {
+function AllergyRow({ allergy, onStatusChange, onEdit, dimmed }) {
   const [open, setOpen] = useState(false);
   const meta = [
     allergy.reactionType,
@@ -44,7 +44,7 @@ function AllergyRow({ allergy, onStatusChange, onEdit }) {
   const hasDetails = allergy.reactions?.length > 0 || !!allergy.note;
 
   return (
-    <div className={styles.row}>
+    <div className={[styles.row, dimmed ? styles.dimmed : ''].filter(Boolean).join(' ')}>
       <div className={styles.rowTop}>
         <div className={styles.rowMain}>
           <span className={styles.rowTitleRow}>
@@ -234,10 +234,12 @@ function AllergyDraft({ title, eyebrow, initial, onSave, onCancel }) {
   );
 }
 
-const Section = forwardRef(function Section({ title, count, open, onToggle, children }, ref) {
+const Section = forwardRef(function Section({ title, count, open, onToggle, children, dimmed }, ref) {
   return (
     <div className={styles.section} ref={ref}>
-      <button type="button" className={styles.sectionHead} onClick={onToggle} aria-expanded={open}>
+      <button
+        type="button"
+        className={[styles.sectionHead, dimmed ? styles.dimmed : ''].filter(Boolean).join(' ')} onClick={onToggle} aria-expanded={open}>
         <span className={styles.sectionTitle}>{title}</span>
         {count > 0 && <Badge tone="grey" size="S" label={String(count)} className={styles.countBadge} />}
         <DownChevronIcon size={14} className={open ? styles.chevron : styles.chevronClosed} />
@@ -263,20 +265,20 @@ export function AddAllergiesDrawer({ patientId, focus, onClose }) {
   const updatePatientAllergy = useAppStore(s => s.updatePatientAllergy);
   const showToast = useAppStore(s => s.showToast);
   const [activeOpen, setActiveOpen] = useState(true);
-  const [inactiveOpen, setInactiveOpen] = useState(focus === 'inactive');
-  const inactiveRef = useRef(null);
+  const [pastOpen, setPastOpen] = useState(focus === 'past');
+  const pastRef = useRef(null);
   const [draft, setDraft] = useState(null);
 
   useEffect(() => { if (patientId) fetchPatientAllergies(patientId); }, [patientId, fetchPatientAllergies]);
 
-  const active = useMemo(() => allergies.filter(a => (a.status || 'Active') !== 'Inactive'), [allergies]);
-  const inactive = useMemo(() => allergies.filter(a => a.status === 'Inactive'), [allergies]);
+  const active = useMemo(() => allergies.filter(a => (a.status || 'Active') !== 'Past'), [allergies]);
+  const past = useMemo(() => allergies.filter(a => a.status === 'Past'), [allergies]);
   const loading = !!patientId && !loadedFor;
 
   useEffect(() => {
-    if (focus !== 'inactive' || loading) return undefined;
+    if (focus !== 'past' || loading) return undefined;
     const id = requestAnimationFrame(() => {
-      inactiveRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+      pastRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
     });
     return () => cancelAnimationFrame(id);
   }, [focus, loading]);
@@ -321,7 +323,7 @@ export function AddAllergiesDrawer({ patientId, focus, onClose }) {
   const handleStatusChange = async (allergy, status) => {
     if (status === (allergy.status || 'Active')) return;
     const ok = await updatePatientAllergy(patientId, allergy.id, { status });
-    if (ok && status === 'Inactive') toast.success('Allergy marked inactive');
+    if (ok && status === 'Past') toast.success('Allergy moved to past allergies');
   };
 
   const renderRow = (a) => (draft?.editing?.id === a.id ? (
@@ -334,13 +336,13 @@ export function AddAllergiesDrawer({ patientId, focus, onClose }) {
       onCancel={() => setDraft(null)}
     />
   ) : (
-    <AllergyRow key={a.id} allergy={a} onStatusChange={handleStatusChange} onEdit={startEdit} />
+    <AllergyRow key={a.id} allergy={a} onStatusChange={handleStatusChange} onEdit={startEdit} dimmed={!!draft?.editing} />
   ));
 
   return (
     <Drawer title="Add Allergies" onClose={onClose}>
       <div className={styles.body}>
-        <div className={styles.addBlock}>
+        <div className={[styles.addBlock, draft?.editing ? styles.dimmed : ''].filter(Boolean).join(' ')}>
           <span className={styles.addLabel}>Add New Allergies</span>
           <AllergySelect
             leadingIcon="solar:magnifer-linear"
@@ -363,6 +365,7 @@ export function AddAllergiesDrawer({ patientId, focus, onClose }) {
         ) : (
           <div className={[styles.list, draft && !draft.editing ? styles.listDimmed : ''].filter(Boolean).join(' ')}>
             <Section
+              dimmed={!!draft?.editing}
               title="Active Allergies"
               count={active.length}
               open={activeOpen}
@@ -375,15 +378,16 @@ export function AddAllergiesDrawer({ patientId, focus, onClose }) {
               ) : active.map(a => renderRow(a))}
             </Section>
 
-            {inactive.length > 0 && (
+            {past.length > 0 && (
               <Section
-                ref={inactiveRef}
-                title="Inactive Allergies"
-                count={inactive.length}
-                open={inactiveOpen}
-                onToggle={() => setInactiveOpen(v => !v)}
+                dimmed={!!draft?.editing}
+                ref={pastRef}
+                title="Past Allergies"
+                count={past.length}
+                open={pastOpen}
+                onToggle={() => setPastOpen(v => !v)}
               >
-                {inactive.map(a => renderRow(a))}
+                {past.map(a => renderRow(a))}
               </Section>
             )}
           </div>

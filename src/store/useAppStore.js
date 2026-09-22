@@ -68,6 +68,7 @@ import {
   mapCarePlanGoalRow,
   mapPatientProblemRow,
   mapPatientAllergyRow,
+  mapPatientImmunizationRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
@@ -440,6 +441,64 @@ export const useAppStore = create((set, get) => ({
     const { error } = await supabase.from('patient_allergies').delete().eq('id', id);
     if (error) { console.warn('removePatientAllergy:', error.message); get().showToast?.('Could not remove allergy'); return false; }
     await get().fetchPatientAllergies(patientId);
+    return true;
+  },
+
+  // ── Patient immunizations (PAMI/Hx → Immunizations) ──
+  patientImmunizations: {},           // { [patientId]: Immunization[] }
+  patientImmunizationsLoadedFor: {},  // { [patientId]: true } — gates the skeleton
+  fetchPatientImmunizations: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_immunizations')
+      .select('*').eq('patient_id', String(patientId)).order('sort_order');
+    if (error) console.warn('fetchPatientImmunizations:', error.message);
+    set(s => ({
+      patientImmunizations: { ...s.patientImmunizations, [patientId]: (data || []).map(mapPatientImmunizationRow) },
+      patientImmunizationsLoadedFor: { ...s.patientImmunizationsLoadedFor, [patientId]: true },
+    }));
+  },
+  addPatientImmunization: async (patientId, values) => {
+    if (!patientId || !values?.title?.trim()) return false;
+    const row = {
+      id: `pi-${patientId}-${Date.now()}`,
+      patient_id: String(patientId),
+      title: values.title.trim(),
+      code: values.code || null,
+      code_system: values.codeSystem || null,
+      date_administered: values.dateAdministered || null,
+      dose_quantity: values.doseQuantity || '',
+      dose_units: values.doseUnits || '',
+      status: values.status || 'Active',
+      note: values.note || '',
+      sort_order: 999,
+    };
+    const { error } = await supabase.from('patient_immunizations').insert(row);
+    if (error) { console.warn('addPatientImmunization:', error.message); get().showToast?.('Could not add immunization'); return false; }
+    await get().fetchPatientImmunizations(patientId);
+    toast.success('Immunization added successfully');
+    return true;
+  },
+  // Patch an immunization: the row's status dropdown sends one field, the
+  // drawer's edit card sends the lot.
+  updatePatientImmunization: async (patientId, id, values) => {
+    const row = { updated_at: new Date().toISOString() };
+    if (values.title != null) row.title = values.title.trim();
+    if (values.code != null) row.code = values.code;
+    if (values.codeSystem != null) row.code_system = values.codeSystem;
+    if (values.dateAdministered != null) row.date_administered = values.dateAdministered;
+    if (values.doseQuantity != null) row.dose_quantity = values.doseQuantity;
+    if (values.doseUnits != null) row.dose_units = values.doseUnits;
+    if (values.status != null) row.status = values.status;
+    if (values.note != null) row.note = values.note;
+    const { error } = await supabase.from('patient_immunizations').update(row).eq('id', id);
+    if (error) { console.warn('updatePatientImmunization:', error.message); get().showToast?.('Could not update immunization'); return false; }
+    await get().fetchPatientImmunizations(patientId);
+    return true;
+  },
+  removePatientImmunization: async (patientId, id) => {
+    const { error } = await supabase.from('patient_immunizations').delete().eq('id', id);
+    if (error) { console.warn('removePatientImmunization:', error.message); get().showToast?.('Could not remove immunization'); return false; }
+    await get().fetchPatientImmunizations(patientId);
     return true;
   },
 

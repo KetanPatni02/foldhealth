@@ -28,7 +28,7 @@ const STOP_REASON_OPTIONS = MEDICATION_STOP_REASONS.map(v => ({ value: v, label:
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
-function MedicationRow({ med, onStatusChange, onEdit }) {
+function MedicationRow({ med, onStatusChange, onEdit, dimmed }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const meta = [med.start ? `Started: ${med.start}` : '', med.sig].filter(Boolean);
   // Why a medication was stopped rides inside the status trigger, so the
@@ -49,7 +49,7 @@ function MedicationRow({ med, onStatusChange, onEdit }) {
     }))
     : STATUS_OPTIONS), [med.stopReason]);
   return (
-    <div className={styles.row}>
+    <div className={[styles.row, dimmed ? styles.dimmed : ''].filter(Boolean).join(' ')}>
       <div className={styles.rowTop}>
         <div className={styles.rowMain}>
           <span className={styles.rowTitle}>{med.name}</span>
@@ -194,10 +194,12 @@ function MedicationDraft({ title, eyebrow, initial, onSave, onCancel }) {
   );
 }
 
-const Section = forwardRef(function Section({ title, count, open, onToggle, children }, ref) {
+const Section = forwardRef(function Section({ title, count, open, onToggle, children, dimmed }, ref) {
   return (
     <div className={styles.section} ref={ref}>
-      <button type="button" className={styles.sectionHead} onClick={onToggle} aria-expanded={open}>
+      <button
+        type="button"
+        className={[styles.sectionHead, dimmed ? styles.dimmed : ''].filter(Boolean).join(' ')} onClick={onToggle} aria-expanded={open}>
         <span className={styles.sectionTitle}>{title}</span>
         {count > 0 && <Badge tone="grey" size="S" label={String(count)} className={styles.countBadge} />}
         <DownChevronIcon size={14} className={open ? styles.chevron : styles.chevronClosed} />
@@ -299,13 +301,13 @@ export function AddMedicationsDrawer({ patientId, focus, onClose }) {
       onCancel={() => setDraft(null)}
     />
   ) : (
-    <MedicationRow key={m.id} med={m} onStatusChange={handleStatusChange} onEdit={startEdit} />
+    <MedicationRow key={m.id} med={m} onStatusChange={handleStatusChange} onEdit={startEdit} dimmed={!!draft?.editing} />
   ));
 
   return (
     <Drawer title="Add Medications" onClose={onClose}>
       <div className={styles.body}>
-        <div className={styles.addBlock}>
+        <div className={[styles.addBlock, draft?.editing ? styles.dimmed : ''].filter(Boolean).join(' ')}>
           <span className={styles.addLabel}>Add New Medications</span>
           <MedicationSelect
             leadingIcon="solar:magnifer-linear"
@@ -328,6 +330,7 @@ export function AddMedicationsDrawer({ patientId, focus, onClose }) {
         ) : (
           <div className={[styles.list, draft && !draft.editing ? styles.listDimmed : ''].filter(Boolean).join(' ')}>
             <Section
+              dimmed={!!draft?.editing}
               title="Active Medications"
               count={active.length}
               open={activeOpen}
@@ -342,6 +345,7 @@ export function AddMedicationsDrawer({ patientId, focus, onClose }) {
 
             {stopped.length > 0 && (
               <Section
+                dimmed={!!draft?.editing}
                 ref={stoppedRef}
                 title="Stopped Medications"
                 count={stopped.length}

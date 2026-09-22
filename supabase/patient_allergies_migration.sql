@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.patient_allergies (
   criticality   text,                   -- "High" | "Low" | "Unable to Assess"
   since_date    text,                   -- display string, e.g. "03/18/2025"
   reactions     jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{ system, code, display, severity }]
-  status        text NOT NULL DEFAULT 'Active',  -- "Active" | "Inactive"
+  status        text NOT NULL DEFAULT 'Active',  -- "Active" | "Past"
   note          text NOT NULL DEFAULT '',
   sort_order    integer NOT NULL DEFAULT 0,
   created_at    timestamptz NOT NULL DEFAULT now(),

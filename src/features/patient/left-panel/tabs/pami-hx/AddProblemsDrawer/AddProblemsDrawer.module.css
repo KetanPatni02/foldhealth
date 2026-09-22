@@ -204,8 +204,17 @@
   gap: var(--space-4);
 }
 
-/* While a draft is open the saved list steps back rather than competing. */
-.listDimmed { opacity: 0.3; pointer-events: none; }
+/* While a draft is open, everything around it steps back rather than
+   competing. Same treatment Medication Reconciliation uses for an inline
+   row edit, so an open card reads as a focused, temporary state. */
+.listDimmed,
+.dimmed {
+  filter: blur(1px);
+  opacity: 0.6;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
 
 @media (max-width: 40rem) {
   .draftFields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
