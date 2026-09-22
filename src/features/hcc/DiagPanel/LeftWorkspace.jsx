@@ -192,44 +192,34 @@ export function LeftWorkspace({
     return [...header, ...liveLog, ...mock];
   }, [liveLog, member?.name, activityFromDb]);
 
-  // Filter state — each chip carries an ARRAY (multi-select). DOS is seeded
-  // with every DOS the member has, so "all are selected by default" and the
-  // user narrows the view by unchecking. Empty array = filter inactive (all
-  // records match). The ICD chip is kept in sync with the ICD card the user
-  // picked on the right panel (diagActivityIcd) — selecting a card populates
-  // filters.icd; unchecking it in the chip clears the card selection too.
+  // Filter state, each chip carries an ARRAY (multi-select). Empty = filter
+  // inactive (all records match). Nothing is preselected on open, so every
+  // chip reads "Label ⌄" until the user narrows the view. The ICD chip is
+  // kept in sync with the ICD card the user picked on the right panel
+  // (diagActivityIcd): selecting a card populates filters.icd; unchecking it
+  // in the chip clears the card selection too.
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
-  const memberDosList = useMemo(
-    () => (member?.dos_list || []).flatMap(d => d.date ? [d.date] : []),
-    [member?.dos_list],
-  );
   const [filters, setFilters] = useState(() => ({
-    dos:  memberDosList,
+    dos:  [],
     hcc:  [],
     icd:  activityIcd ? [activityIcd] : [],
     by:   [],
     date: [],
   }));
-  // Track whether the user has manually edited the DOS chip. While untouched,
-  // mirror the full DOS option list into filters.dos so late-loading activity
-  // entries (which can widen the option list) stay auto-selected. Once the
-  // user unchecks anything, we stop auto-mirroring so their edit sticks.
-  const dosCustomizedRef = useRef(false);
   const seedRef = useRef(member?.id);
   useEffect(() => {
     if (seedRef.current !== member?.id) {
       seedRef.current = member?.id;
-      dosCustomizedRef.current = false;
       setFilters({
-        dos:  memberDosList,
+        dos:  [],
         hcc:  [],
         icd:  activityIcd ? [activityIcd] : [],
         by:   [],
         date: [],
       });
     }
-  }, [member?.id, memberDosList, activityIcd]);
+  }, [member?.id, activityIcd]);
   // Mirror the card-selected ICD into the ICD chip. When the card gets
   // cleared, drop that ICD from the chip too.
   useEffect(() => {
@@ -243,7 +233,6 @@ export function LeftWorkspace({
 
   const setFilter = (key, value) => {
     setFilters(f => ({ ...f, [key]: value }));
-    if (key === 'dos') dosCustomizedRef.current = true;
     // Un-picking the card-selected ICD via the chip should also clear the
     // card selection so the right-panel highlight stays in sync.
     if (key === 'icd' && activityIcd && Array.isArray(value) && !value.includes(activityIcd)) {
@@ -251,7 +240,6 @@ export function LeftWorkspace({
     }
   };
   const clearAllFilters = () => {
-    dosCustomizedRef.current = true;
     setFilters({ dos: [], hcc: [], icd: [], by: [], date: [] });
     if (activityIcd) clearDiagActivityIcd?.();
   };
@@ -273,18 +261,6 @@ export function LeftWorkspace({
     }),
     [rawActivity, member, dbCommentsAll, dbNotesAll, dbDocsAll, platformUsersAll],
   );
-  // Mirror the full DOS option list into filters.dos until the user edits
-  // it. Keeps "default = all selected" true even when activity data loads
-  // asynchronously and adds new DOS options after the initial render.
-  useEffect(() => {
-    if (dosCustomizedRef.current) return;
-    setFilters(f => {
-      const opts = filterOptions.dos || [];
-      const dosSet = new Set(f.dos);
-      const same = f.dos.length === opts.length && opts.every(d => dosSet.has(d));
-      return same ? f : { ...f, dos: opts };
-    });
-  }, [filterOptions.dos]);
 
   return (
     <div className={styles.wrap}>
