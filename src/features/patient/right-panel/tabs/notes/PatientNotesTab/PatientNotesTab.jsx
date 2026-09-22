@@ -3,12 +3,18 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { Button } from '../../../../../../components/Button/Button';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { Badge } from '../../../../../../components/Badge/Badge';
+import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
+import { KanbanCardContent } from '../../../../../tasks/TasksViewKanban';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
 import { useClinicalNotePanel } from '../../../../../hedis-worklist/useClinicalNotePanel';
 import { ConsolidatedNoteBody, HeaderActions as ClinicalNoteHeaderActions } from '../../../../../hedis-worklist/ClinicalNotePanelParts';
 import { ClinicalNotePreviewBody } from '../../../../../hedis-worklist/ClinicalNotePreviewBody';
+import { TaskDetailDrawer } from '../../../../../tasks/TaskDetailDrawer';
+import { HeaderCell } from '../../../../../../components/HeaderCell/HeaderCell';
+import { useTableSort } from '../../../../../../components/HeaderCell/useTableSort';
 import styles from './PatientNotesTab.module.css';
 
 /**
@@ -96,14 +102,76 @@ export function PatientNotesTab({ patient }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uniqueIds.join('|'), fetchClinicalNotesForPatient, fetchClinicalNotesForMember]);
 
-  const sorted = useMemo(
-    () => [...notes].sort((a, b) => {
-      const at = new Date(a.updatedAt || a.createdAt || 0).getTime();
-      const bt = new Date(b.updatedAt || b.createdAt || 0).getTime();
-      return bt - at;
-    }),
-    [notes],
-  );
+  // Enrich each row with the derived fields the HeaderCell sort keys
+  // read against. Keeps useTableSort's generic comparator simple —
+  // "sortTitle" is the same string the row renders, so the sort
+  // matches what the reviewer sees.
+  const templatesById = useAppStore(s => s.noteTemplatesById);
+  // Kick off the tasks slice fetch so the new Linked Task column can
+  // find the paired Request-for-Sign-off tasks. fetchTasks is
+  // idempotent (guarded by tasksDidFetch), so this is cheap on
+  // repeat P360 mounts.
+  const fetchTasks = useAppStore(s => s.fetchTasks);
+  useEffect(() => { fetchTasks?.(); }, [fetchTasks]);
+  const allTasks = useAppStore(s => s.tasks);
+  // Index sign-off tasks by note id once, so each row can look up its
+  // linked tasks in O(1) instead of scanning the whole tasks list.
+  const tasksByNote = useMemo(() => {
+    const map = new Map();
+    for (const t of (allTasks || [])) {
+      const nid = t.linkedNoteId || t.noteId;
+      if (!nid) continue;
+      const list = map.get(nid) || [];
+      list.push(t);
+      map.set(nid, list);
+    }
+    return map;
+  }, [allTasks]);
+  const rows = useMemo(() => (notes || []).map(n => {
+    const codes = n.gapCodes || [];
+    const template = n.formId ? templatesById?.[n.formId] : null;
+    const isNormal = n.formType === 'normal_note';
+    const isNonVisit = n.formType === 'non_visit_note' || isNormal;
+    const isTemplateDriven = !!template && n.payload?.answers && typeof n.payload.answers === 'object';
+    const title = isTemplateDriven
+      ? template.name
+      : isNonVisit
+        ? (n.payload?.title || (isNormal ? 'Clinical Note' : 'Non-Visit Note'))
+        : codes.length > 1
+          ? 'Consolidated Clinical Note'
+          : codes[0]
+            ? `${codes[0]} Visit Note`
+            : 'Clinical Note';
+    const templateName = template?.name
+      || (isNormal ? 'Clinical Note' : isNonVisit
+        ? 'Non-Visit Note'
+        : (n.formType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+          || (codes[0] ? `${codes[0]} Visit Note` : 'Clinical Note'));
+    // Sign-off task lookup: notes carry `reviewTaskId` for the paired
+    // Request-for-Sign-off task; also collect any tasks that name this
+    // note in `linkedNoteId` / `noteId` (patient-noted tasks, follow-
+    // ups) via the tasksByNote index.
+    const linkedFromIndex = tasksByNote.get(n.id) || [];
+    const reviewTask = n.reviewTaskId
+      ? (allTasks || []).find(t => String(t.id) === String(n.reviewTaskId))
+      : null;
+    const linkedTasks = reviewTask
+      ? [reviewTask, ...linkedFromIndex.filter(t => t.id !== reviewTask.id)]
+      : linkedFromIndex;
+    // useTableSort's ISO-date detector wants YYYY-MM-DD, so we hand
+    // over the raw ISO strings for Last Updated / Created By dates.
+    return {
+      ...n,
+      sortTitle: title,
+      sortStatus: n.status || '',
+      sortAuthor: n.authorName || '',
+      sortUpdated: n.updatedAt || n.createdAt || '',
+      sortTemplate: templateName,
+      sortLinkedTaskCount: linkedTasks.length,
+      linkedTasks,
+    };
+  }), [notes, templatesById, tasksByNote, allTasks]);
+  const { sorted, sortKey, sortDir, requestSort } = useTableSort(rows, 'sortUpdated', 'desc');
 
   const [showNonVisitDrawer, setShowNonVisitDrawer] = useState(false);
   // Inline note view — set to a note when the user clicks a row so the
@@ -111,6 +179,9 @@ export function PatientNotesTab({ patient }) {
   // reviewer mock) rather than the shared preview overlay. Cleared by
   // the inline pane's back button.
   const [inlineNoteId, setInlineNoteId] = useState(null);
+  // Linked task drawer — clicking a Linked Task badge sets this and
+  // TaskDetailDrawer mounts alongside the notes list.
+  const [selectedTask, setSelectedTask] = useState(null);
   const inlineNote = useMemo(
     () => (inlineNoteId ? sorted.find(n => n.id === inlineNoteId) || null : null),
     [inlineNoteId, sorted],
@@ -176,12 +247,58 @@ export function PatientNotesTab({ patient }) {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.checkCol} />
-                <th>Note Title</th>
-                <th>Status</th>
-                <th>Created By</th>
-                <th>Last Updated</th>
-                <th>Template Name</th>
+                <HeaderCell
+                  label="Note Title"
+                  sortField="sortTitle"
+                  sortType="alpha"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Status"
+                  sortField="sortStatus"
+                  sortType="alpha"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Created By"
+                  sortField="sortAuthor"
+                  sortType="alpha"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Last Updated"
+                  sortField="sortUpdated"
+                  sortType="date"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Linked Task"
+                  sortField="sortLinkedTaskCount"
+                  sortType="number"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Template Name"
+                  sortField="sortTemplate"
+                  sortType="alpha"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                {/* Empty header — the trailing actions column is a
+                    fixed-width slot for the row kebab; nothing to
+                    sort on. Keeps the row height matched via .th. */}
+                <th className={styles.actionsCol} aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
@@ -190,6 +307,7 @@ export function PatientNotesTab({ patient }) {
                   key={note.id}
                   note={note}
                   onOpen={() => setInlineNoteId(note.id)}
+                  onOpenTask={setSelectedTask}
                 />
               ))}
             </tbody>
@@ -199,6 +317,13 @@ export function PatientNotesTab({ patient }) {
 
       {showNonVisitDrawer && (
         <NonVisitNoteDrawer patient={patient} onClose={() => setShowNonVisitDrawer(false)} />
+      )}
+      {selectedTask && (
+        <TaskDetailDrawer
+          task={(allTasks || []).find(t => t.id === selectedTask.id) || selectedTask}
+          onClose={() => setSelectedTask(null)}
+          onSelectTask={setSelectedTask}
+        />
       )}
     </div>
   );
@@ -214,7 +339,7 @@ const ORIGIN_LABEL = {
   patient: 'Patient',
 };
 
-function NoteRow({ note, onOpen }) {
+function NoteRow({ note, onOpen, onOpenTask }) {
   const openNotePreview = useAppStore(s => s.openNotePreview);
   const deleteClinicalNote = useAppStore(s => s.deleteClinicalNote);
   const templatesById = useAppStore(s => s.noteTemplatesById);
@@ -243,16 +368,16 @@ function NoteRow({ note, onOpen }) {
       : codes.length
         ? codes.join(' · ')
         : (ORIGIN_LABEL[note.originKind] || 'Clinical Note');
-  // Match the HEDIS Care Gap drawer's status vocabulary + color tokens
-  // (Draft = neutral, Pending Review = warning, Signed = success). Using
+  // Match the HEDIS Care Gap drawer's status vocabulary + tone tokens
+  // (Draft = grey, Pending Review = warning, Signed = success). Using
   // "In Progress" here was a divergent label that made the P360 Notes
   // tab look like it tracked a different lifecycle than the rest of
   // the app.
   const status = note.status === 'signed'
-    ? { label: 'Signed', color: 'var(--status-success)' }
+    ? { label: 'Signed', tone: 'success' }
     : note.status === 'submitted'
-      ? { label: 'Pending Review', color: 'var(--status-warning)' }
-      : { label: 'Draft', color: 'var(--neutral-300)' };
+      ? { label: 'Pending Review', tone: 'warning' }
+      : { label: 'Draft', tone: 'grey' };
   const templateName = template?.name
     || (isNormal ? 'Clinical Note' : isNonVisit
       ? 'Non-Visit Note'
@@ -282,15 +407,12 @@ function NoteRow({ note, onOpen }) {
 
   return (
     <tr className={styles.tr} onClick={handlePreview}>
-      <td className={styles.checkCol} onClick={(e) => e.stopPropagation()}>
-        <input type="checkbox" className={styles.checkbox} aria-label={`Select ${title}`} />
-      </td>
       <td>
         <div className={styles.noteTitle}>{title}</div>
         <div className={styles.noteSub}>{subtitle}</div>
       </td>
       <td>
-        <span style={{ color: status.color }}>{status.label}</span>
+        <Badge tone={status.tone} size="M" label={status.label} />
       </td>
       <td>
         <div>{note.authorName || '—'}</div>
@@ -300,12 +422,17 @@ function NoteRow({ note, onOpen }) {
         <div>{note.signedByName || note.reviewerName || note.authorName || '—'}</div>
         <div className={styles.dateText}>{formatDate(note.updatedAt || note.createdAt)}</div>
       </td>
+      <td onClick={(e) => e.stopPropagation()}>
+        <LinkedTasksCell tasks={note.linkedTasks || []} onOpenTask={onOpenTask} />
+      </td>
       <td className={styles.templateCell}>
         <span className={styles.templateText}>{templateName}</span>
+      </td>
+      <td className={styles.actionsCell} onClick={(e) => e.stopPropagation()}>
         <span className={styles.rowKebab}>
           <ActionButton
             ref={menuBtnRef}
-            icon="solar:menu-dots-bold"
+            icon="solar:menu-dots-linear"
             size="L"
             tooltip="Note actions"
             onClick={(e) => { e.stopPropagation(); setMenuOpen(v => !v); }}
@@ -346,6 +473,82 @@ function NoteRow({ note, onOpen }) {
       </td>
     </tr>
   );
+}
+
+// Linked-task pill for the Notes table's new "Linked Task" column.
+// Renders a status-tinted Badge with the count, or "—" when the note
+// has no sign-off task. Hovering the badge surfaces a rich tooltip
+// with each task's title, due date, and assignee — the same info the
+// Kanban card carries — so a reviewer doesn't have to click through
+// to the Tasks page just to see who owes what.
+function LinkedTasksCell({ tasks, onOpenTask }) {
+  if (!tasks?.length) {
+    return <span style={{ color: 'var(--neutral-300)' }}>—</span>;
+  }
+  // Worst status wins the badge color: missed > pending > completed.
+  const anyMissed = tasks.some(t => isTaskOverdue(t) && String(t.status || '').toLowerCase() !== 'completed');
+  const anyPending = tasks.some(t => {
+    const s = String(t.status || '').toLowerCase();
+    return s !== 'completed' && !isTaskOverdue(t);
+  });
+  const tone = anyMissed ? 'error' : anyPending ? 'warning' : 'success';
+  const icon = anyMissed
+    ? 'solar:danger-triangle-linear'
+    : anyPending
+      ? 'solar:clock-circle-linear'
+      : 'solar:check-circle-linear';
+  return (
+    <Tooltip
+      label={<LinkedTasksTooltip tasks={tasks} />}
+      placement="top"
+      variant="light"
+      maxWidth={460}
+    >
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onOpenTask?.(tasks[0]); }}
+        style={{
+          display: 'inline-flex',
+          border: 'none',
+          background: 'transparent',
+          padding: 0,
+          cursor: onOpenTask ? 'pointer' : 'default',
+        }}
+        aria-label={`Open linked task${tasks.length > 1 ? 's' : ''}`}
+      >
+        <Badge tone={tone} size="M" label={String(tasks.length)} icon={icon} />
+      </button>
+    </Tooltip>
+  );
+}
+
+// Rich hover body: renders the same KanbanCardContent the Tasks page
+// uses so the reviewer sees the full card (priority + due, title,
+// gap chips, member link, assignee, By: + attachments) exactly as it
+// would appear on the Tasks board. `onToggle` is a no-op — hovering
+// is a read; nothing mutates. When more than one task is linked, we
+// stack the cards with a small gap so each stands on its own.
+function LinkedTasksTooltip({ tasks }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', textAlign: 'left' }}>
+      {tasks.map(t => (
+        <KanbanCardContent key={t.id} task={t} onToggle={() => {}} />
+      ))}
+    </div>
+  );
+}
+
+// Fold's tasks slice doesn't ship a shared isOverdue helper we can
+// import here without cycles; inline the same "due_date is a past
+// date at day granularity" rule the TasksView already uses.
+function isTaskOverdue(t) {
+  if (!t?.due_date) return false;
+  const d = new Date(t.due_date);
+  if (Number.isNaN(d.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime() < today.getTime();
 }
 
 function shorten(text, max) {
