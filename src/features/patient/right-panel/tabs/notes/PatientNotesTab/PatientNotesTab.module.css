@@ -48,6 +48,10 @@
 .tableWrap {
   overflow-x: auto;
   overflow-y: hidden;
+  /* Space between the last data row's border and the horizontal
+     scrollbar. Without it the scroll track sat flush against the
+     row, which read as a border artifact rather than a control. */
+  padding-bottom: var(--space-3);
 }
 .table {
   width: 100%;
