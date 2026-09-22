@@ -7,6 +7,7 @@ import { Button } from '../../components/Button/Button';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { MEASURE_NAMES, STATUSES, daysAgo, initialsOf } from './CareGapDetailDrawer.utils';
+import { computeDsfbDueDateISO } from './dsf/dsfScoring';
 import styles from './CareGapDetailDrawer.module.css';
 
 // Status → shared Badge tone. Aligns with STATUS_STYLE's colour intent
@@ -196,6 +197,29 @@ export function CareGapDetailDrawerHeader({
               {gap.startDate && (
                 <div className={styles.gapSubRow}>
                   <span>{gap.startDate}{daysAgo(gap.startDate) ? ` (${daysAgo(gap.startDate)})` : ''}</span>
+                  {/* DSF-B carries a 30-day due window that the worklist
+                      row already surfaces; mirror the same "Due in Xd" /
+                      "Overdue by Xd" chip here so the drawer header
+                      doesn't hide the deadline the coordinator saw
+                      one click ago. Hidden once the gap is Completed
+                      or Closed. */}
+                  {gap.code === 'DSF-B' && gap.status !== 'Completed' && !String(gap.status).startsWith('Closed') && (() => {
+                    const dueISO = computeDsfbDueDateISO({ dsfbGap: gap });
+                    if (!dueISO) return null;
+                    const daysLeft = Math.ceil((new Date(dueISO).getTime() - Date.now()) / 86400000);
+                    const label = daysLeft > 0
+                      ? `Due in ${daysLeft}d`
+                      : daysLeft === 0
+                        ? 'Due today'
+                        : `Overdue by ${Math.abs(daysLeft)}d`;
+                    const color = daysLeft < 0 ? 'var(--status-error)' : 'var(--status-warning)';
+                    return (
+                      <>
+                        <span style={{ color: 'var(--neutral-200)' }}> · </span>
+                        <span style={{ color, fontWeight: 500 }}>{label}</span>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
             </div>
