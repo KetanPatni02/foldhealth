@@ -299,8 +299,11 @@ function DsfaRows({ data }) {
     <>
       <KV label="Location" value={loc} />
       <KV label="Performed by" value={provider} />
+      {/* The DSF-A section header already reads "DSF-A - Depression
+          Screening (PHQ-2)", so prefixing every question row with
+          "PHQ-2 · " is noise. Same treatment for PHQ-9 below. */}
       {items.map((it, i) => (
-        <KV key={i} label={`PHQ-2 · ${it.text || `Q${i + 1}`}`} value={answerLabel(values[i])} stacked />
+        <KV key={i} label={it.text || `Q${i + 1}`} value={answerLabel(values[i])} stacked />
       ))}
       <KV label="PHQ-2 Score" value={scoreLine} wide />
       {/* DSF-A owns the phq2Negative care plan when the score isn't
@@ -348,7 +351,7 @@ function DsfbRows({ data }) {
       {data.location && <KV label="Location" value={loc} />}
       {data.performedBy && <KV label="Performed by" value={provider} />}
       {items.map((it, i) => (
-        <KV key={i} label={`PHQ-9 · ${it.text || `Q${i + 1}`}`} value={answerLabel(values[i])} stacked />
+        <KV key={i} label={it.text || `Q${i + 1}`} value={answerLabel(values[i])} stacked />
       ))}
       <KV label="PHQ-9 Score" value={scoreLine} wide />
       {subMild && (
