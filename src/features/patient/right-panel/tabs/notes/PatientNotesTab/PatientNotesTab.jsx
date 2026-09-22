@@ -106,6 +106,12 @@ export function PatientNotesTab({ patient }) {
   // "sortTitle" is the same string the row renders, so the sort
   // matches what the reviewer sees.
   const templatesById = useAppStore(s => s.noteTemplatesById);
+  // Kick off the tasks slice fetch so the new Linked Task column can
+  // find the paired Request-for-Sign-off tasks. fetchTasks is
+  // idempotent (guarded by tasksDidFetch), so this is cheap on
+  // repeat P360 mounts.
+  const fetchTasks = useAppStore(s => s.fetchTasks);
+  useEffect(() => { fetchTasks?.(); }, [fetchTasks]);
   const allTasks = useAppStore(s => s.tasks);
   // Index sign-off tasks by note id once, so each row can look up its
   // linked tasks in O(1) instead of scanning the whole tasks list.
