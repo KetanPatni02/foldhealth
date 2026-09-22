@@ -256,3 +256,19 @@
   font-weight: 400;
   color: var(--primary-300, #8c5ae2);
 }
+
+.openInNewTab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: var(--space-1);
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background var(--duration-fast, 120ms) var(--ease-hover, ease-out);
+}
+.openInNewTab:hover { background: var(--neutral-50); }

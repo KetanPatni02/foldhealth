@@ -215,7 +215,10 @@ export function CareGapDetailDrawerHeader({
                     const color = daysLeft < 0 ? 'var(--status-error)' : 'var(--status-warning)';
                     return (
                       <>
-                        <span style={{ color: 'var(--neutral-200)' }}> · </span>
+                        {/* Match the PatientBanner's meta separator (bullet
+                            glyph in neutral-300) so the drawer subrow reads
+                            in the same rhythm as gender • age • DOB. */}
+                        <span style={{ color: 'var(--neutral-300)' }}>{' • '}</span>
                         <span style={{ color, fontWeight: 500 }}>{label}</span>
                       </>
                     );

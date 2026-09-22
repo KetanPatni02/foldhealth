@@ -457,6 +457,47 @@ export function useDiagPanel() {
   const commentsCount = dbComments.length || COMMENTS_MOCK.length;
   const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const diagOpenDocId = useAppStore(s => s.diagOpenDocId);
+
+  // Notification dots on the Documents / Comments toolbar buttons: show when
+  // the current count exceeds what the user last saw. Baseline is snapped on
+  // the first mount for a member so pre-existing items aren't flagged, and a
+  // shrink (delete) clamps down so we don't get stuck in the "never seen"
+  // state. Cleared by markHccDiagSeen when the panel opens.
+  const hccDiagSeen = useAppStore(s => s.hccDiagSeen);
+  const markHccDiagSeen = useAppStore(s => s.markHccDiagSeen);
+  const seen = hccDiagSeen[member?.id] || {};
+  const seenComments = seen.comments;
+  const seenDocs = seen.documents;
+  useEffect(() => {
+    if (!member?.id) return;
+    if (typeof seenComments !== 'number') markHccDiagSeen(member.id, 'comments', commentsCount);
+    if (typeof seenDocs !== 'number') markHccDiagSeen(member.id, 'documents', docsCount);
+    // Baseline runs once per member; further updates go through the click paths.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member?.id]);
+  useEffect(() => {
+    if (!member?.id) return;
+    if (typeof seenComments === 'number' && commentsCount < seenComments) {
+      markHccDiagSeen(member.id, 'comments', commentsCount);
+    }
+    if (typeof seenDocs === 'number' && docsCount < seenDocs) {
+      markHccDiagSeen(member.id, 'documents', docsCount);
+    }
+  }, [member?.id, commentsCount, docsCount, seenComments, seenDocs, markHccDiagSeen]);
+  // Keep the seen counter in step with the panel while it's open, so a
+  // comment the user posts themselves doesn't immediately re-arm the dot.
+  useEffect(() => {
+    if (!member?.id || diagActivityIcd) return;
+    if (diagLeftPanel === 'comments' && seenComments !== commentsCount) {
+      markHccDiagSeen(member.id, 'comments', commentsCount);
+    }
+    if (diagLeftPanel === 'documents' && seenDocs !== docsCount) {
+      markHccDiagSeen(member.id, 'documents', docsCount);
+    }
+  }, [diagLeftPanel, diagActivityIcd, member?.id, commentsCount, docsCount, seenComments, seenDocs, markHccDiagSeen]);
+  const commentsUnread = typeof seenComments === 'number' && commentsCount > seenComments;
+  const docsUnread = typeof seenDocs === 'number' && docsCount > seenDocs;
+
   // Toolbar Documents click: open the preview (first doc) rather than the list.
   // Clicking again while it's open closes the panel.
   const openDocsFromToolbar = useCallback(() => {
@@ -467,7 +508,13 @@ export function useDiagPanel() {
     }
     setDiagLeftPanel('documents');
     if (chartsList.length) setDiagOpenDocId(chartsList[0].id);
-  }, [diagLeftPanel, diagActivityIcd, chartsList, setDiagLeftPanel, setDiagOpenDocId]);
+    if (member?.id) markHccDiagSeen(member.id, 'documents', docsCount);
+  }, [diagLeftPanel, diagActivityIcd, chartsList, setDiagLeftPanel, setDiagOpenDocId, member?.id, docsCount, markHccDiagSeen]);
+  const openCommentsFromToolbar = useCallback(() => {
+    const alreadyOpen = diagLeftPanel === 'comments' && !diagActivityIcd;
+    setDiagLeftPanel(alreadyOpen ? null : 'comments');
+    if (!alreadyOpen && member?.id) markHccDiagSeen(member.id, 'comments', commentsCount);
+  }, [diagLeftPanel, diagActivityIcd, setDiagLeftPanel, member?.id, commentsCount, markHccDiagSeen]);
   // DOS-row click: open the doc that matches this DOS date (system docs seed
   // `dateAdded` from the member's DOS). Falls back to the first doc if no
   // match — never leaves the user on an empty list.
@@ -1159,6 +1206,8 @@ export function useDiagPanel() {
     closeDiagPanel,
     closedICDs,
     commentsCount,
+    commentsUnread,
+    openCommentsFromToolbar,
     confirmPendingStatusChange,
     confirmReject,
     contentRowRef,
@@ -1169,6 +1218,7 @@ export function useDiagPanel() {
     disabledDos,
     dismissNewRowNotice,
     docsCount,
+    docsUnread,
     dosExpanded,
     dosList,
     dosState,
