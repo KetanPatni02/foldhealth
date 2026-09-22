@@ -40,10 +40,19 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
     });
     return { answered, total: 9, dueDateISO };
   };
+  // Save-as-Draft on this consolidated surface always closes the drawer
+  // after the write lands. The coordinator finishes the DSF pair on one
+  // call; leaving the drawer open behind the "Draft saved" toast just
+  // makes them hunt for the X. The PHQ-9 exit dialog's Save-and-Exit
+  // branch below routes through the same helper.
+  const saveDraftAndClose = async () => {
+    try { await v.handleSaveDraft(); } catch { /* toast surfaces the failure */ }
+    onClose?.();
+  };
   const handleGuardedSaveDraft = () => {
     const guard = detectPhq9Incomplete({ mode: 'save-draft' });
     if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'save-draft' }); return; }
-    v.handleSaveDraft();
+    saveDraftAndClose();
   };
   const canSaveDraftEffective = v.hasChanges || !!detectPhq9Incomplete({ mode: 'save-draft' });
   // A sign-off review lands here with a consolidated note that already
@@ -149,7 +158,7 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
           onCompleteNow={() => setPhq9ExitPrompt(null)}
           onSaveExit={() => {
             setPhq9ExitPrompt(null);
-            try { v.handleSaveDraft(); } catch { /* best-effort draft */ }
+            saveDraftAndClose();
           }}
         />
       )}
