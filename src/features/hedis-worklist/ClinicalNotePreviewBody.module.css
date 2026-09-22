@@ -8,7 +8,10 @@
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  gap: var(--space-4);
+  /* +8px on top of the prior 16px so section titles get a clear
+     breathing room between them (DOS, DSF-A, DSF-B). Row density
+     inside a section stays tight via .sectionBody's own gap. */
+  gap: var(--space-6);
 }
 
 .headerSubtitleRow {
