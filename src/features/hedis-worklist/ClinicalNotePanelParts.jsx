@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
+import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { Button } from '../../components/Button/Button';
 import { Badge } from '../../components/Badge/Badge';
 import { Switch } from '../../components/Switch/Switch';
@@ -440,13 +441,26 @@ export function GapEvidencePane({ v }) {
    Content hydrates from the submitted note's payload via
    useClinicalNotePanel's restore effect. */
 export function ConsolidatedNoteBody({ v }) {
+  const scrollRef = useRef(null);
+  const sections = v.activeGaps || [];
+  // Stable id list for the jumper. DOS card is always first; each
+  // active gap follows. `data-section-id` on the section elements
+  // lets the jumper look them up without threading refs through
+  // every child.
+  const jumperItems = [
+    { id: 'dos', label: 'Date of Service & Telehealth Statement' },
+    ...sections.map(g => ({
+      id: `gap-${g.code}`,
+      label: `${g.code} - ${MEASURE_NAMES[g.code] ?? g.code}`,
+    })),
+  ];
   return (
     <div className={styles.consolidatedBody}>
       {/* Info banner is hoisted to CareGapDetailDrawer so it can sit as
           a sibling of leftPaneBody — outside the padded, scrollable
           container. See the 'clinical-note-consolidated' branch there. */}
-      <div className={styles.consolidatedScroll}>
-        <div className={styles.dosCard}>
+      <div ref={scrollRef} className={styles.consolidatedScroll}>
+        <div className={styles.dosCard} data-section-id="dos">
           <div className={styles.dosHeader}>
             <span className={styles.dosTitle}>
               Date of Service &amp; Telehealth Statement <span className={styles.required}>•</span>
@@ -493,22 +507,130 @@ export function ConsolidatedNoteBody({ v }) {
             includes on submit; here it just controls the section
             state, not visibility. Empty state only fires when the
             member truly has no active gaps in scope. */}
-        {(() => {
-          const sections = v.activeGaps || [];
-          if (sections.length === 0) {
-            return (
-              <div className={styles.consolidatedEmpty}>
-                <Icon name="solar:clipboard-list-linear" size={36} color="var(--neutral-200)" />
-                <p className={styles.consolidatedEmptyTitle}>No open care gaps on this note</p>
-                <p className={styles.consolidatedEmptyBody}>
-                  Every gap on this note has been signed off. Open a fresh gap on the worklist to start a new one.
-                </p>
-              </div>
-            );
-          }
-          return sections.map((gap) => <GapSection key={gap.code} v={v} gap={gap} />);
-        })()}
+        {sections.length === 0 ? (
+          <div className={styles.consolidatedEmpty}>
+            <Icon name="solar:clipboard-list-linear" size={36} color="var(--neutral-200)" />
+            <p className={styles.consolidatedEmptyTitle}>No open care gaps on this note</p>
+            <p className={styles.consolidatedEmptyBody}>
+              Every gap on this note has been signed off. Open a fresh gap on the worklist to start a new one.
+            </p>
+          </div>
+        ) : (
+          sections.map((gap) => <GapSection key={gap.code} v={v} gap={gap} />)
+        )}
       </div>
+      {sections.length > 0 && (
+        <SectionJumper scrollRef={scrollRef} items={jumperItems} />
+      )}
+    </div>
+  );
+}
+
+/* Floating section jumper — pins to the bottom of the consolidated
+   authoring surface so the reviewer can hop between DOS and each gap
+   section without hunting through a long scroll. Prev/Next arrows
+   move one section at a time; the middle pill opens a MenuPopover
+   with every section for a direct jump. Active section is tracked
+   via getBoundingClientRect against the scroll container's viewport,
+   so it updates as the reviewer scrolls too. */
+function SectionJumper({ scrollRef, items }) {
+  const [activeId, setActiveId] = useState(items[0]?.id ?? null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const jumperRef = useRef(null);
+
+  // Recompute the current section on every scroll of the parent
+  // scrollRef. Whichever section has its top nearest to (but at or
+  // above) the scroll container's top wins. Falls back to the first
+  // section when nothing has scrolled past yet.
+  useEffect(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+    const update = () => {
+      const scrollTop = scrollEl.getBoundingClientRect().top;
+      let best = items[0]?.id ?? null;
+      let bestDelta = Infinity;
+      for (const it of items) {
+        const el = scrollEl.querySelector(`[data-section-id="${it.id}"]`);
+        if (!el) continue;
+        const delta = el.getBoundingClientRect().top - scrollTop;
+        // Prefer the section whose top has just scrolled past the
+        // container top (delta closest to 0 from the negative side);
+        // if none has, pick the first still visible.
+        if (delta <= 24 && Math.abs(delta) < Math.abs(bestDelta)) {
+          best = it.id;
+          bestDelta = delta;
+        }
+      }
+      setActiveId(best);
+    };
+    update();
+    scrollEl.addEventListener('scroll', update, { passive: true });
+    return () => scrollEl.removeEventListener('scroll', update);
+  }, [scrollRef, items]);
+
+  const activeIndex = Math.max(0, items.findIndex(it => it.id === activeId));
+  const jumpTo = (id) => {
+    const scrollEl = scrollRef.current;
+    const el = scrollEl?.querySelector(`[data-section-id="${id}"]`);
+    if (!scrollEl || !el) return;
+    const top = el.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop - 12;
+    scrollEl.scrollTo({ top, behavior: 'smooth' });
+  };
+  const goPrev = () => { if (activeIndex > 0) jumpTo(items[activeIndex - 1].id); };
+  const goNext = () => { if (activeIndex < items.length - 1) jumpTo(items[activeIndex + 1].id); };
+  const openMenu = () => {
+    if (!jumperRef.current) return;
+    const r = jumperRef.current.getBoundingClientRect();
+    setMenuAnchor(r);
+  };
+
+  return (
+    <div className={styles.sectionJumperWrap}>
+      <div ref={jumperRef} className={styles.sectionJumper}>
+        <button
+          type="button"
+          className={styles.sectionJumperArrow}
+          onClick={goPrev}
+          disabled={activeIndex <= 0}
+          aria-label="Previous section"
+        >
+          <Icon name="solar:alt-arrow-left-linear" size={16} color="currentColor" />
+        </button>
+        <button
+          type="button"
+          className={styles.sectionJumperLabel}
+          onClick={openMenu}
+          aria-haspopup="menu"
+          aria-expanded={!!menuAnchor}
+        >
+          <span className={styles.sectionJumperLabelText}>{items[activeIndex]?.label}</span>
+          <DownChevronIcon size={14} color="var(--neutral-300)" />
+        </button>
+        <button
+          type="button"
+          className={styles.sectionJumperArrow}
+          onClick={goNext}
+          disabled={activeIndex >= items.length - 1}
+          aria-label="Next section"
+        >
+          <Icon name="solar:alt-arrow-right-linear" size={16} color="currentColor" />
+        </button>
+      </div>
+      {menuAnchor && (
+        <MenuPopover
+          anchorRect={menuAnchor}
+          placement="top"
+          items={items.map(it => ({
+            key: it.id,
+            label: it.label,
+            selected: it.id === activeId,
+          }))}
+          onSelect={(id) => { jumpTo(id); setMenuAnchor(null); }}
+          onClose={() => setMenuAnchor(null)}
+          ariaLabel="Jump to section"
+          width={320}
+        />
+      )}
     </div>
   );
 }
@@ -518,7 +640,7 @@ function GapSection({ v, gap }) {
   const data = v.gapState[gap.code] ?? {};
   const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
   return (
-    <div className={styles.gapSection}>
+    <div className={styles.gapSection} data-section-id={`gap-${gap.code}`}>
       <button
         type="button"
         className={styles.gapSectionHeader}
