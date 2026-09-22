@@ -451,30 +451,40 @@ export function useDiagPanel() {
     // add another ICD click + ICD again.
     setAddIcdMode(false);
   }, [pendingGaps, member?.id, addHccGap, addHccGapNewRow, addHccGapToRow, showToast, removePendingGap, actingRole, dosState, setAddIcdMode]);
-  // Comments count for the toolbar chip — mirrors what the Comments tab
-  // renders (Supabase-hydrated rows when present, mock fallback otherwise).
+  // Comments count for the toolbar chip. The store slice is org-wide, so
+  // scope to the current member before counting; that matches what the
+  // Comments tab actually shows for this patient and keeps the badge honest
+  // (no more "25" on a panel where the timeline lists 5). The mock fallback
+  // still kicks in when the store has nothing at all.
   const dbComments = useAppStore(s => s.hccDiagComments);
-  const commentsCount = dbComments.length || COMMENTS_MOCK.length;
+  const perMemberDbComments = useMemo(
+    () => (member?.id ? dbComments.filter(c => c.memberId === member.id) : []),
+    [dbComments, member?.id],
+  );
+  const commentsCount = perMemberDbComments.length || (dbComments.length ? 0 : COMMENTS_MOCK.length);
   const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const diagOpenDocId = useAppStore(s => s.diagOpenDocId);
 
   // Notification dots on the Documents / Comments toolbar buttons: show when
-  // the current count exceeds what the user last saw. Baseline is snapped on
-  // the first mount for a member so pre-existing items aren't flagged, and a
-  // shrink (delete) clamps down so we don't get stuck in the "never seen"
-  // state. Cleared by markHccDiagSeen when the panel opens.
+  // the current count exceeds what the user last saw. The baseline snap is
+  // deferred until the ancillary fetch has resolved so we don't seed at 0
+  // and then treat every hydrated row as unread. Clamps down on delete so
+  // we never get stuck in the "never seen" state; cleared by markHccDiagSeen
+  // when the panel opens.
   const hccDiagSeen = useAppStore(s => s.hccDiagSeen);
   const markHccDiagSeen = useAppStore(s => s.markHccDiagSeen);
+  const ancillaryDidFetch = useAppStore(s => s.hccDiagAncillaryDidFetch);
   const seen = hccDiagSeen[member?.id] || {};
   const seenComments = seen.comments;
   const seenDocs = seen.documents;
   useEffect(() => {
-    if (!member?.id) return;
+    if (!member?.id || !ancillaryDidFetch) return;
     if (typeof seenComments !== 'number') markHccDiagSeen(member.id, 'comments', commentsCount);
     if (typeof seenDocs !== 'number') markHccDiagSeen(member.id, 'documents', docsCount);
-    // Baseline runs once per member; further updates go through the click paths.
+    // Baseline runs once per member (post-hydration); further updates go
+    // through the click paths + the panel-open effect below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member?.id]);
+  }, [member?.id, ancillaryDidFetch]);
   useEffect(() => {
     if (!member?.id) return;
     if (typeof seenComments === 'number' && commentsCount < seenComments) {

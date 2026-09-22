@@ -28,6 +28,11 @@ import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
 import { FailReasonInline, EditDocInline } from '../ChartDetailDrawerParts';
+
+// Stable empty-array sentinel used as the "no comments for this patient"
+// fallback, so useMemo/useEffect deps don't churn on every render (which
+// would loop the CommentsTab's setItems effect).
+const EMPTY_COMMENTS = Object.freeze([]);
 import {
   HistoryTimelineEntry,
   TRANS_BADGE,
@@ -92,7 +97,14 @@ export function LeftWorkspace({
   useEffect(() => { fetchHccDiagAncillary(); }, [fetchHccDiagAncillary]);
   const dbComments = useAppStore(s => s.hccDiagComments);
   const dbNotes    = useAppStore(s => s.hccDiagNotes);
-  const commentsForCount = dbComments.length ? dbComments : COMMENTS_MOCK;
+  // Tab-label counts must reflect what the tab will actually render for
+  // THIS patient, so scope by memberId before falling back to the mock.
+  const commentsForCount = useMemo(() => {
+    const forMember = member?.id ? dbComments.filter(c => c.memberId === member.id) : [];
+    if (forMember.length) return forMember;
+    if (dbComments.length) return EMPTY_COMMENTS;
+    return COMMENTS_MOCK;
+  }, [dbComments, member?.id]);
   const notesForCount    = dbNotes.length    ? dbNotes    : NOTES_MOCK;
   // Per-member claims — one row per claim-sourced DOS on the record.
   // claimForDos() reuses the CLAIMS fixture when the date matches or
@@ -686,12 +698,24 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
 // comment is a row with a chat-icon left rail + connector line, a meta line
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
-export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange, memberOverride = null }) {
-  // Seed from Supabase (hcc_diag_comments); fall back to the local mock
-  // while the DB is empty or unreachable. Local state supports optimistic
-  // insert when the composer posts — persistence is a follow-up.
+export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange, member: memberProp = null, memberOverride = null }) {
+  // Scope the timeline to the patient whose DiagPanel we're rendering in.
+  // hccDiagComments is org-wide, so a raw seed would surface every other
+  // patient's comments here (and inflate the toolbar count). Fall back to
+  // the local mock only when the store has no comments at all.
   const dbComments = useAppStore(s => s.hccDiagComments);
-  const seed = dbComments.length ? dbComments : COMMENTS_MOCK;
+  const diagPanelMemberIdEarly = useAppStore(s => s.diagPanelMemberId);
+  const scopeMemberId = memberProp?.id || memberOverride?.id || diagPanelMemberIdEarly || null;
+  const seed = useMemo(() => {
+    const forMember = scopeMemberId
+      ? dbComments.filter(c => c.memberId === scopeMemberId)
+      : [];
+    if (forMember.length) return forMember;
+    // Store hydrated but nothing for this patient: show an empty timeline
+    // instead of falling back to the org-wide mock.
+    if (dbComments.length) return EMPTY_COMMENTS;
+    return COMMENTS_MOCK;
+  }, [dbComments, scopeMemberId]);
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
   const visibleItems = useMemo(
