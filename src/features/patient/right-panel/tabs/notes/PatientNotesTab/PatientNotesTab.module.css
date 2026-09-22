@@ -99,7 +99,10 @@
   color: var(--neutral-300);
   padding: var(--space-2);
   border-bottom: 0.5px solid var(--neutral-100);
-  vertical-align: top;
+  /* Center every cell vertically so single-line values (Status badge,
+     dates, Linked Task badge, template name) sit on the midline of
+     the two-line Note Title. */
+  vertical-align: middle;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
