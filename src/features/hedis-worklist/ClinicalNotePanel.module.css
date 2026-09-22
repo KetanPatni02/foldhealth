@@ -155,6 +155,10 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* Positioning context for the floating SectionJumper pill, which
+     hovers over the bottom of the scroll region like a bulk-action
+     bar instead of claiming its own row. */
+  position: relative;
 }
 .consolidatedScroll {
   flex: 1;
@@ -715,11 +719,17 @@
    .consolidatedScroll, so the scroll region can flex above it while
    the pill stays visible. */
 .sectionJumperWrap {
-  position: relative;
+  /* Float over the bottom of the scroll region so the pill lives on
+     top of the content (mirrors the bulk-action bar treatment) and
+     doesn't reserve its own row above the drawer footer. */
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: var(--space-4);
   display: flex;
   justify-content: center;
-  padding: var(--space-3) 0 var(--space-4);
   pointer-events: none;
+  z-index: 3;
 }
 .sectionJumper {
   display: inline-flex;
