@@ -4,6 +4,7 @@ import { Icon } from '../../../../../../components/Icon/Icon';
 import { Button } from '../../../../../../components/Button/Button';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { Badge } from '../../../../../../components/Badge/Badge';
+import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
@@ -104,6 +105,20 @@ export function PatientNotesTab({ patient }) {
   // "sortTitle" is the same string the row renders, so the sort
   // matches what the reviewer sees.
   const templatesById = useAppStore(s => s.noteTemplatesById);
+  const allTasks = useAppStore(s => s.tasks);
+  // Index sign-off tasks by note id once, so each row can look up its
+  // linked tasks in O(1) instead of scanning the whole tasks list.
+  const tasksByNote = useMemo(() => {
+    const map = new Map();
+    for (const t of (allTasks || [])) {
+      const nid = t.linkedNoteId || t.noteId;
+      if (!nid) continue;
+      const list = map.get(nid) || [];
+      list.push(t);
+      map.set(nid, list);
+    }
+    return map;
+  }, [allTasks]);
   const rows = useMemo(() => (notes || []).map(n => {
     const codes = n.gapCodes || [];
     const template = n.formId ? templatesById?.[n.formId] : null;
@@ -124,6 +139,17 @@ export function PatientNotesTab({ patient }) {
         ? 'Non-Visit Note'
         : (n.formType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
           || (codes[0] ? `${codes[0]} Visit Note` : 'Clinical Note'));
+    // Sign-off task lookup: notes carry `reviewTaskId` for the paired
+    // Request-for-Sign-off task; also collect any tasks that name this
+    // note in `linkedNoteId` / `noteId` (patient-noted tasks, follow-
+    // ups) via the tasksByNote index.
+    const linkedFromIndex = tasksByNote.get(n.id) || [];
+    const reviewTask = n.reviewTaskId
+      ? (allTasks || []).find(t => String(t.id) === String(n.reviewTaskId))
+      : null;
+    const linkedTasks = reviewTask
+      ? [reviewTask, ...linkedFromIndex.filter(t => t.id !== reviewTask.id)]
+      : linkedFromIndex;
     // useTableSort's ISO-date detector wants YYYY-MM-DD, so we hand
     // over the raw ISO strings for Last Updated / Created By dates.
     return {
@@ -133,8 +159,10 @@ export function PatientNotesTab({ patient }) {
       sortAuthor: n.authorName || '',
       sortUpdated: n.updatedAt || n.createdAt || '',
       sortTemplate: templateName,
+      sortLinkedTaskCount: linkedTasks.length,
+      linkedTasks,
     };
-  }), [notes, templatesById]);
+  }), [notes, templatesById, tasksByNote, allTasks]);
   const { sorted, sortKey, sortDir, requestSort } = useTableSort(rows, 'sortUpdated', 'desc');
 
   const [showNonVisitDrawer, setShowNonVisitDrawer] = useState(false);
@@ -237,6 +265,14 @@ export function PatientNotesTab({ patient }) {
                   label="Last Updated"
                   sortField="sortUpdated"
                   sortType="date"
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={requestSort}
+                />
+                <HeaderCell
+                  label="Linked Task"
+                  sortField="sortLinkedTaskCount"
+                  sortType="number"
                   activeKey={sortKey}
                   activeDir={sortDir}
                   onSort={requestSort}
@@ -367,6 +403,9 @@ function NoteRow({ note, onOpen }) {
         <div>{note.signedByName || note.reviewerName || note.authorName || '—'}</div>
         <div className={styles.dateText}>{formatDate(note.updatedAt || note.createdAt)}</div>
       </td>
+      <td>
+        <LinkedTasksCell tasks={note.linkedTasks || []} />
+      </td>
       <td className={styles.templateCell}>
         <span className={styles.templateText}>{templateName}</span>
         <span className={styles.rowKebab}>
@@ -413,6 +452,87 @@ function NoteRow({ note, onOpen }) {
       </td>
     </tr>
   );
+}
+
+// Linked-task pill for the Notes table's new "Linked Task" column.
+// Renders a status-tinted Badge with the count, or "—" when the note
+// has no sign-off task. Hovering the badge surfaces a rich tooltip
+// with each task's title, due date, and assignee — the same info the
+// Kanban card carries — so a reviewer doesn't have to click through
+// to the Tasks page just to see who owes what.
+function LinkedTasksCell({ tasks }) {
+  if (!tasks?.length) {
+    return <span style={{ color: 'var(--neutral-300)' }}>—</span>;
+  }
+  // Worst status wins the badge color: missed > pending > completed.
+  const anyMissed = tasks.some(t => isTaskOverdue(t) && String(t.status || '').toLowerCase() !== 'completed');
+  const anyPending = tasks.some(t => {
+    const s = String(t.status || '').toLowerCase();
+    return s !== 'completed' && !isTaskOverdue(t);
+  });
+  const tone = anyMissed ? 'error' : anyPending ? 'warning' : 'success';
+  const icon = anyMissed
+    ? 'solar:danger-triangle-linear'
+    : anyPending
+      ? 'solar:clock-circle-linear'
+      : 'solar:check-circle-linear';
+  return (
+    <Tooltip
+      label={<LinkedTasksTooltip tasks={tasks} />}
+      placement="top"
+      variant="light"
+      maxWidth={320}
+    >
+      <span style={{ display: 'inline-flex' }}>
+        <Badge tone={tone} size="M" label={String(tasks.length)} icon={icon} />
+      </span>
+    </Tooltip>
+  );
+}
+
+// Rich tooltip body: one card per linked task. Compact version of the
+// Kanban card — status dot + due date, title, assignee — no drag or
+// checkbox affordances (tooltip is read-only).
+function LinkedTasksTooltip({ tasks }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', textAlign: 'left' }}>
+      {tasks.map(t => {
+        const done = String(t.status || '').toLowerCase() === 'completed';
+        const overdue = isTaskOverdue(t) && !done;
+        const statusLabel = done ? 'Completed' : overdue ? 'Missed' : 'Pending';
+        const statusColor = done ? 'var(--status-success)' : overdue ? 'var(--status-error)' : 'var(--status-warning)';
+        return (
+          <div key={t.id} style={{ display: 'flex', flexDirection: 'column', gap: 'calc(var(--space-1) / 2)' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-1)', fontSize: 'var(--font-sm)', color: statusColor, fontWeight: 500 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor', flexShrink: 0 }} />
+              {statusLabel} · Due {formatDate(t.due_date) || '—'}
+            </div>
+            <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-500)', fontWeight: 500 }}>
+              {t.title || 'Untitled task'}
+            </div>
+            {t.assigneeName && (
+              <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-300)' }}>
+                Assigned to {t.assigneeName}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Fold's tasks slice doesn't ship a shared isOverdue helper we can
+// import here without cycles; inline the same "due_date is a past
+// date at day granularity" rule the TasksView already uses.
+function isTaskOverdue(t) {
+  if (!t?.due_date) return false;
+  const d = new Date(t.due_date);
+  if (Number.isNaN(d.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime() < today.getTime();
 }
 
 function shorten(text, max) {

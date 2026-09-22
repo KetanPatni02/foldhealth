@@ -106,10 +106,10 @@
 .checkCol {
   width: var(--space-8);
 }
-/* Fixed 120px on Status, Created By, and Last Updated. Column 1 is
-   the checkbox, column 2 is the note title (fluid), columns 3–5 are
-   the fixed-width metadata columns, and column 6 is the template
-   name / kebab (also fluid to absorb the leftover width). */
+/* Column widths. Layout: 1 = checkbox, 2 = Note Title (fluid), 3–5 =
+   Status / Created By / Last Updated at 120px each, 6 = Linked Task
+   at 96px (badge + tooltip trigger only), 7 = Template Name / kebab
+   (fluid, absorbs the leftover width). */
 .table th:nth-child(3),
 .table th:nth-child(4),
 .table th:nth-child(5),
@@ -117,6 +117,10 @@
 .table td:nth-child(4),
 .table td:nth-child(5) {
   width: 120px;
+}
+.table th:nth-child(6),
+.table td:nth-child(6) {
+  width: 96px;
 }
 .checkbox {
   accent-color: var(--primary-300);
