@@ -41,6 +41,16 @@
   background: var(--neutral-50);
 }
 
+/* Callers can flag an item as the current pick (Change Status, filter
+   menus, etc.) by passing `selected: true`; the row picks up the
+   primary tint + hairline stroke pattern used by Select's active
+   option so both surfaces read the same. */
+.rowSelected,
+.rowSelected:hover {
+  background: var(--primary-50);
+  box-shadow: inset 0 0 0 0.5px var(--primary-200);
+}
+
 .label {
   flex: 1;
   font-size: var(--font-base);

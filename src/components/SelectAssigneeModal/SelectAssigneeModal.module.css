@@ -1,13 +1,22 @@
+/* Tighten the dialog shell to a uniform 12px inset. The shared
+   ShadcnDialog module ships with 20/24/24 padding tuned for the
+   confirm-style dialogs, which reads as too much whitespace on this
+   list-heavy picker. `!important` is intentional: the Tailwind `p-0`
+   utility on <DialogContent> can't win against the module's specificity
+   at build order, so we short-circuit both. */
+.dialogShell {
+  padding: var(--space-3) !important;
+}
+
 .header {
   display: flex;
   align-items: center;
   gap: var(--space-6);
-  padding: var(--space-2) var(--space-2) 0;
+  padding: 0;
 }
 .headerTitle {
   flex: 1;
   min-width: 0;
-  padding: 0 var(--space-2);
   font-size: var(--font-base);
   font-weight: 500;
   color: var(--neutral-400);
@@ -17,7 +26,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-2);
+  padding: var(--space-3) 0 0;
 }
 
 .list {

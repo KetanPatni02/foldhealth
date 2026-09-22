@@ -5,6 +5,22 @@
   border-radius: var(--space-2);
   background: var(--neutral-0);
   margin: var(--space-3);
+  /* Column flex so the inline note pane (rendered instead of the
+     notes table when a row is opened inline) can flex to fill the
+     available height and let ConsolidatedNoteBody / PreviewBody own
+     their own scroll. Doesn't affect the default table layout. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+/* Inline note mode drops the card's own margin so the header, info
+   banner, and body all run flush to the tab pane's edges (matches
+   the reference mock where the inline note is a full-bleed surface,
+   not a card floating in whitespace). */
+.cardInline {
+  margin: 0;
+  border-radius: 0;
 }
 
 /* Section header — title left, "+" and (future) View All right */
@@ -130,4 +146,78 @@
   color: var(--neutral-300);
   max-width: 340px;
   line-height: var(--leading-normal, 1.4);
+}
+
+/* Inline note pane — replaces the notes table when a row is opened
+   inline. The pane runs edge-to-edge inside the card; header owns
+   its own padding + a hairline divider, and the body's scroll runs
+   below the info banner. Matches the reviewer-flow header layout the
+   standalone Drawer uses. */
+.inlinePane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+/* Two-half header row: back arrow + stacked title/subtitle on the
+   left, reviewer action buttons on the right. Capped at 48px so the
+   pane keeps its lift on tab surfaces without an oversized band up
+   top. Line-heights on the title / subtitle stay tight so the stack
+   still clears within that height. */
+.inlineHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  height: 48px;
+  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--neutral-100);
+  box-sizing: border-box;
+}
+.inlineTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+  flex: 1;
+}
+/* Line-heights are tight (1) so the title + subtitle + 2px gap stack
+   fits inside the 48px capped header (title 16 + subtitle 12 + 2 gap
+   = 30px < 32px available). */
+.inlineTitle {
+  font-size: var(--font-base);
+  font-weight: 600;
+  color: var(--neutral-500);
+  line-height: 1;
+}
+.inlineSubtitle {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  line-height: 1;
+}
+.inlineHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+/* Tinted info strip pinned under the header, edge-to-edge, matching
+   the standalone reviewer drawer's banner styling. */
+.inlineInfoBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--status-info-light);
+  color: var(--neutral-400);
+  font-size: var(--font-sm);
+  flex-shrink: 0;
+}
+.inlineEditorBody,
+.inlinePreviewBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }

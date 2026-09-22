@@ -13,10 +13,13 @@
 }
 
 .content {
-  padding: 16px 24px;
+  /* Uniform 16px inset on all sides — the 16/24 split read as too
+     much horizontal breathing room compared to vertical, especially
+     when the drawer sits inside a 640px pane. */
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-4);
   overflow-y: auto;
   flex: 1;
 }

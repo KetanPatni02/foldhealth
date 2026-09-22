@@ -56,7 +56,7 @@ export function SelectAssigneeModal({
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) close(); }}>
       <DialogContent
-        className="max-w-[420px] p-0 gap-0 overflow-hidden rounded-xl"
+        className={`max-w-[420px] gap-0 overflow-hidden rounded-xl ${styles.dialogShell}`}
         overlayClassName="bg-black/25"
         hideClose
       >

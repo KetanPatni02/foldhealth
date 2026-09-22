@@ -576,8 +576,18 @@ function dsfDerivedFlag(field, data, noteContext) {
       return total < 3 || !!p.savedAt;
     }
     case 'phq9ScoreSaved': {
-      const items = data.phq9?.items || [];
-      return items.length === 9 && items.every(v => v != null);
+      // Decline short-circuits the sign-off queue (see plan Section 6)
+      // so a declined DSF-B counts as complete regardless of PHQ-9
+      // state. Otherwise the reviewer needs all 9 items answered AND
+      // the explicit Save Score commit that stamps `savedAt`. Without
+      // requiring `savedAt`, Sign & Save unlocks the moment the last
+      // radio is ticked, letting a reviewer sign a note whose score
+      // was never committed to the record.
+      if (data.decline) return true;
+      const p = data.phq9 || {};
+      const items = p.items || [];
+      if (items.length !== 9 || !items.every(v => v != null)) return false;
+      return !!p.savedAt;
     }
     default:
       return null; // caller falls back to the raw truthy check

@@ -8,7 +8,16 @@
   height: 100%;
   min-height: 0;
   overflow-y: auto;
-  gap: var(--space-4);
+  /* +8px on top of the prior 16px so section titles get a clear
+     breathing room between them (DOS, DSF-A, DSF-B). Row density
+     inside a section stays tight via .sectionBody's own gap. */
+  gap: var(--space-6);
+  /* Own the pane's inset so the scrollbar sits flush with the drawer's
+     right edge (the outer .leftPaneBody drops its padding for the
+     preview view). Content still reads with the same 12px/16px inset
+     it had when the pane owned the padding; the scrollbar is what
+     changes position, not the text. */
+  padding: var(--space-3) var(--space-4);
 }
 
 .headerSubtitleRow {
@@ -39,9 +48,11 @@
 .sectionBody {
   display: flex;
   flex-direction: column;
-  /* 6px between rows — halfway between --space-1 (4px) and --space-2
-     (8px), the density the note preview reads best at. */
-  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  /* +4px on top of the prior 6px so stacked PHQ rows (question label
+     above answer) get an extra beat between them. The DSF questions
+     read as one visual block otherwise; 10px lets each question stand
+     on its own without pushing DOS-style single-line KV rows apart.  */
+  gap: calc(var(--space-2) + calc(var(--space-1) / 2));
 }
 
 .row {
@@ -155,3 +166,46 @@
   font-size: var(--font-sm);
   color: var(--neutral-400);
 }
+
+/* DSF Care Plan block — the preview twin of dsf/DsfEvidenceForms's
+   CarePlanOutcomePanel. Same disc-marker bullet list on the tinted
+   primary background, same title/label rhythm, so a signed / submitted
+   note reads the same as its editable original without the reviewer
+   having to open Amend. Optional outreach notes stack beneath the
+   bullets as a label/value pair. Spans both KV grid columns so the
+   bullets don't get squeezed. */
+.carePlanBlock {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.carePlanBlockTitle {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.carePlanBlockBullets {
+  margin: 0;
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + var(--space-4));
+  list-style: disc outside;
+  background: var(--primary-50);
+  border-radius: 8px;
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  line-height: var(--leading-normal, 1.4);
+}
+.carePlanBlockBullets li { padding-left: var(--space-1); }
+.carePlanBlockBullets li + li { margin-top: var(--space-1); }
+.carePlanBlockOutreach {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  font-size: var(--font-base);
+}
+.carePlanBlockOutreachLabel { color: var(--neutral-300); }
+.carePlanBlockOutreachValue { color: var(--neutral-500); white-space: pre-wrap; }

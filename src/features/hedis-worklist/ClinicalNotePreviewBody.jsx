@@ -13,6 +13,7 @@ import {
 } from './ClinicalNotePanel.utils';
 import { resolvePerformedByLabel, LOCATION_OPTIONS as DSF_LOCATIONS } from './dsf/DsfEvidenceForms';
 import { getItems, getResponseScale, totalScore, isPhq2Positive, phq9Branch, phq9BandLabel } from './dsf/dsfScoring';
+import { DSF_CARE_PLANS } from './dsf/dsfCarePlans';
 import styles from './ClinicalNotePreviewBody.module.css';
 
 // Platform-wide date display is MM/DD/YYYY. Values come off the form as
@@ -298,10 +299,32 @@ function DsfaRows({ data }) {
     <>
       <KV label="Location" value={loc} />
       <KV label="Performed by" value={provider} />
+      {/* The DSF-A section header already reads "DSF-A - Depression
+          Screening (PHQ-2)", so prefixing every question row with
+          "PHQ-2 · " is noise. Same treatment for PHQ-9 below. */}
       {items.map((it, i) => (
-        <KV key={i} label={`PHQ-2 · ${it.text || `Q${i + 1}`}`} value={answerLabel(values[i])} stacked />
+        <KV key={i} label={it.text || `Q${i + 1}`} value={answerLabel(values[i])} stacked />
       ))}
       <KV label="PHQ-2 Score" value={scoreLine} wide />
+      {/* DSF-A owns the phq2Negative care plan when the score isn't
+          Positive; a Positive PHQ-2 hands the plan to DSF-B, so DSF-A
+          doesn't render a duplicate care plan here. Decline on DSF-A
+          swaps in the decline plan, matching the edit surface. */}
+      {(() => {
+        const planKey = data.decline
+          ? 'decline'
+          : (total !== null && !isPhq2Positive(total))
+            ? 'phq2Negative'
+            : null;
+        return planKey ? (
+          <CarePlanBlock
+            title={DSF_CARE_PLANS[planKey].title}
+            bullets={DSF_CARE_PLANS[planKey].bullets}
+            outreachNotes={data.carePlan?.outreachNotes}
+          />
+        ) : null;
+      })()}
+      <KV label="Decline follow-up" value={data.decline ? 'Yes' : 'No'} wide />
     </>
   );
 }
@@ -328,7 +351,7 @@ function DsfbRows({ data }) {
       {data.location && <KV label="Location" value={loc} />}
       {data.performedBy && <KV label="Performed by" value={provider} />}
       {items.map((it, i) => (
-        <KV key={i} label={`PHQ-9 · ${it.text || `Q${i + 1}`}`} value={answerLabel(values[i])} stacked />
+        <KV key={i} label={it.text || `Q${i + 1}`} value={answerLabel(values[i])} stacked />
       ))}
       <KV label="PHQ-9 Score" value={scoreLine} wide />
       {subMild && (
@@ -338,9 +361,56 @@ function DsfbRows({ data }) {
           wide
         />
       )}
-      {outreachNotes && <KV label="Outreach Notes" value={outreachNotes} wide />}
-      {data.decline && <KV label="Decline follow-up" value="Yes" wide />}
+      {/* Care Plan surfaces once the score is committed AND a branch
+          resolves — decline always wins, then the band-driven plan
+          picks up. Outreach Notes render inside the panel (not as a
+          separate KV) so the reviewer reads the plan and its notes as
+          a single unit, matching the edit surface. */}
+      {(() => {
+        let planKey = null;
+        if (data.decline) planKey = 'decline';
+        else if (data.phq9?.savedAt && total !== null) {
+          const branch = phq9Branch(total);
+          if (branch === 'minimal') planKey = 'phq9Minimal';
+          else if (branch === 'mild' && subMild === 'yes') planKey = 'phq9MildYes';
+          else if (branch === 'mild' && subMild === 'no') planKey = 'phq9MildNo';
+          else if (branch === 'moderate') planKey = 'phq9Moderate';
+          else if (branch === 'severe') planKey = 'phq9Severe';
+        }
+        return planKey ? (
+          <CarePlanBlock
+            title={DSF_CARE_PLANS[planKey].title}
+            bullets={DSF_CARE_PLANS[planKey].bullets}
+            outreachNotes={outreachNotes}
+          />
+        ) : (
+          outreachNotes ? <KV label="Outreach Notes" value={outreachNotes} wide /> : null
+        );
+      })()}
+      <KV label="Decline follow-up" value={data.decline ? 'Yes' : 'No'} wide />
     </>
+  );
+}
+
+// Boxed care-plan block used in the DSF read-only preview. Mirrors the
+// edit surface's CarePlanOutcomePanel (title + disc-marker bullets +
+// optional outreach notes) so a reviewer sees the recommended plan and
+// any per-encounter notes as one unit, without having to switch to the
+// editable workspace to check what was saved.
+function CarePlanBlock({ title, bullets, outreachNotes }) {
+  return (
+    <div className={styles.carePlanBlock}>
+      <div className={styles.carePlanBlockTitle}>{title}</div>
+      <ul className={styles.carePlanBlockBullets}>
+        {bullets.map((b, i) => <li key={i}>{b}</li>)}
+      </ul>
+      {outreachNotes && (
+        <div className={styles.carePlanBlockOutreach}>
+          <span className={styles.carePlanBlockOutreachLabel}>Outreach Notes</span>
+          <span className={styles.carePlanBlockOutreachValue}>{outreachNotes}</span>
+        </div>
+      )}
+    </div>
   );
 }
 

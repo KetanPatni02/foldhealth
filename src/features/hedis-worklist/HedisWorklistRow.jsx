@@ -366,11 +366,14 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
         </div>
       </td>
 
-      {/* Member — entire cell clickable for patient quick view */}
+      {/* Member — entire cell clickable for patient quick view. The
+          onClick stops propagation so the row's own onClick (which
+          opens the Care Gap drawer) doesn't also fire. */}
       <td
         className={`${styles.memberTd} ${styles.stickyLeft} ${styles.stickyMember}`}
         title="Open patient quick view"
         style={{ cursor: 'pointer' }}
+        onClick={handleMemberCellClick}
       >
         <div className={styles.patientCell}>
           <Avatar variant="patient" initials={member.in} />

@@ -882,6 +882,14 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   const anyReadyForReview = activeGaps.some(g =>
     isMandatoryComplete(g.code, gapState[g.code] ?? {}, noteCtx)
   );
+  // Every active gap on the note is complete. Used to gate Sign & Save
+  // on the consolidated (multi-gap) surfaces so the reviewer can't
+  // sign a note that still has an un-scored PHQ-9 (or any other
+  // measure with mandatory fields outstanding). `activeMandatoryComplete`
+  // only reads the focused gap, which lets Sign fire off a filled
+  // DSF-A while DSF-B is still empty.
+  const allActiveMandatoryComplete = activeGaps.length > 0
+    && activeGaps.every(g => isMandatoryComplete(g.code, gapState[g.code] ?? {}, noteCtx));
   const hasChanges = dirtyCodes.size > 0;
 
   return {
@@ -892,7 +900,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     handleSaveDraft, handleSubmitForReview, handleConfirmSubmitForReview, handleSaveAndSign, handleSignAndPrint,
     reviewerPickerOpen, setReviewerPickerOpen,
     drawerTitle, ageShort,
-    hasChanges, activeMandatoryComplete, anyReadyForReview,
+    hasChanges, activeMandatoryComplete, allActiveMandatoryComplete, anyReadyForReview,
     // DSF: exposed so the bespoke DsfaEvidenceForm can fire the
     // native "open DSF-B" trigger on PHQ-2 Positive.
     openDsfbGap,

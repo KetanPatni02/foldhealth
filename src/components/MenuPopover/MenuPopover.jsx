@@ -124,6 +124,7 @@ export function MenuPopover({
               styles.row,
               item.danger ? styles.danger : '',
               item.disabled ? styles.disabled : '',
+              item.selected ? styles.rowSelected : '',
             ].filter(Boolean).join(' ')}
             onClick={() => {
               if (item.disabled) return;

@@ -6,6 +6,9 @@ import { ActionButton } from '../../../../../../components/ActionButton/ActionBu
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { NonVisitNoteDrawer } from './NonVisitNoteDrawer';
+import { useClinicalNotePanel } from '../../../../../hedis-worklist/useClinicalNotePanel';
+import { ConsolidatedNoteBody, HeaderActions as ClinicalNoteHeaderActions } from '../../../../../hedis-worklist/ClinicalNotePanelParts';
+import { ClinicalNotePreviewBody } from '../../../../../hedis-worklist/ClinicalNotePreviewBody';
 import styles from './PatientNotesTab.module.css';
 
 /**
@@ -103,8 +106,39 @@ export function PatientNotesTab({ patient }) {
   );
 
   const [showNonVisitDrawer, setShowNonVisitDrawer] = useState(false);
+  // Inline note view — set to a note when the user clicks a row so the
+  // note opens inside this panel (like the timeline/notes card in the
+  // reviewer mock) rather than the shared preview overlay. Cleared by
+  // the inline pane's back button.
+  const [inlineNoteId, setInlineNoteId] = useState(null);
+  const inlineNote = useMemo(
+    () => (inlineNoteId ? sorted.find(n => n.id === inlineNoteId) || null : null),
+    [inlineNoteId, sorted],
+  );
+  // Resolve the HEDIS member the inline note belongs to. The inline
+  // reviewer-editor uses useClinicalNotePanel which requires a member
+  // with a `gaps[]` array.
+  const inlineMember = useMemo(() => {
+    if (!inlineNote) return null;
+    return hedisMembers?.find(m => (
+      m.id === inlineNote.hedisMemberId
+      || m.id === inlineNote.patientId
+    )) || null;
+  }, [inlineNote, hedisMembers]);
 
   if (!patientId) return null;
+
+  if (inlineNote) {
+    return (
+      <div className={`${styles.card} ${styles.cardInline}`}>
+        <InlineNoteView
+          note={inlineNote}
+          member={inlineMember}
+          onBack={() => setInlineNoteId(null)}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.card}>
@@ -155,6 +189,7 @@ export function PatientNotesTab({ patient }) {
                 <NoteRow
                   key={note.id}
                   note={note}
+                  onOpen={() => setInlineNoteId(note.id)}
                 />
               ))}
             </tbody>
@@ -179,7 +214,7 @@ const ORIGIN_LABEL = {
   patient: 'Patient',
 };
 
-function NoteRow({ note }) {
+function NoteRow({ note, onOpen }) {
   const openNotePreview = useAppStore(s => s.openNotePreview);
   const deleteClinicalNote = useAppStore(s => s.deleteClinicalNote);
   const templatesById = useAppStore(s => s.noteTemplatesById);
@@ -224,7 +259,12 @@ function NoteRow({ note }) {
       : (note.formType || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
         || (codes[0] ? `${codes[0]} Visit Note` : 'Clinical Note'));
 
-  const handlePreview = () => openNotePreview?.(note);
+  // Row click routes into the inline note view (owned by
+  // PatientNotesTab). The kebab menu's Preview action still opens the
+  // shared drawer for a quick popover-style read; the inline surface
+  // is the primary flow.
+  const handlePreview = () => { onOpen?.(); };
+  const handleOverlayPreview = () => openNotePreview?.(note);
   const handlePrint = () => {
     const url = note.pdfDataUrl;
     if (url) {
@@ -280,7 +320,7 @@ function NoteRow({ note }) {
               { key: 'delete', label: 'Delete Note', icon: 'solar:trash-bin-trash-linear', danger: true },
             ]}
             onSelect={(key) => {
-              if (key === 'preview') handlePreview();
+              if (key === 'preview') handleOverlayPreview();
               else if (key === 'print') handlePrint();
               else if (key === 'delete') setShowDeleteConfirm(true);
             }}
@@ -321,4 +361,121 @@ function formatDate(iso) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${mm}/${dd}/${d.getFullYear()}`;
+}
+
+/**
+ * InlineNoteView — replaces the notes card body when a row is opened
+ * inline. Two variants, decided per the current viewer's relationship
+ * to the note:
+ *
+ *   • Assigned reviewer opening a submitted note → editable
+ *     ConsolidatedNoteBody with the same reviewer-flow header actions
+ *     the standalone drawer uses (Save as Draft / Sign & Save).
+ *   • Everyone else (author, other clinicians) → read-only
+ *     ClinicalNotePreviewBody. Same content, just no edit affordances.
+ *
+ * Read-only is the safe fallback when the reviewer can't be resolved
+ * or the note isn't in a state that supports editing.
+ */
+function InlineNoteView({ note, member, onBack }) {
+  const currentActorName = useAppStore(s => s.currentActorName);
+  const isReviewerForThis = !!note?.reviewerName
+    && !!currentActorName?.()
+    && String(note.reviewerName) === String(currentActorName())
+    && note.status === 'submitted'
+    && !!note.reviewTaskId
+    && !!member;
+
+  // Reviewer flow needs one useClinicalNotePanel instance shared by
+  // both the header's action buttons and the body's ConsolidatedNote-
+  // Body, so save/sign edits the same gapState the reviewer sees. Non-
+  // reviewer path can skip the hook entirely (no editable state).
+  if (isReviewerForThis) {
+    return <InlineReviewerPane member={member} note={note} onBack={onBack} />;
+  }
+  return (
+    <div className={styles.inlinePane}>
+      <InlineNoteHeader note={note} onBack={onBack} />
+      <div className={styles.inlinePreviewBody}>
+        <ClinicalNotePreviewBody
+          memberId={note.hedisMemberId || note.patientId}
+          gapCode={note.gapCodes?.[0]}
+          noteId={note.id}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Shared header block for the inline note view — back arrow + stacked
+// title/subtitle. Reviewer flow drops action buttons alongside it via
+// the parent InlineReviewerPane.
+function InlineNoteHeader({ note, onBack, actions }) {
+  return (
+    <div className={styles.inlineHeader}>
+      <ActionButton
+        icon="solar:arrow-left-linear"
+        size="S"
+        tooltip="Back to notes list"
+        onClick={onBack}
+      />
+      <div className={styles.inlineTitleBlock}>
+        <span className={styles.inlineTitle}>
+          {(note.gapCodes || []).length > 1
+            ? 'Consolidated Clinical Note'
+            : (note.gapCodes?.[0] ? `${note.gapCodes[0]} Visit Note` : 'Clinical Note')}
+        </span>
+        <span className={styles.inlineSubtitle}>
+          {note.status === 'signed'
+            ? `Signed by ${note.signedByName || note.authorName || '—'} · ${formatDate(note.updatedAt || note.createdAt)}`
+            : note.status === 'submitted'
+              ? `Submitted for Review to ${note.reviewerName || '—'} · ${formatDate(note.updatedAt || note.createdAt)}`
+              : `Draft · ${formatDate(note.updatedAt || note.createdAt)}`}
+        </span>
+      </div>
+      {actions && <div className={styles.inlineHeaderActions}>{actions}</div>}
+    </div>
+  );
+}
+
+// Reviewer-editable inline pane — mounts useClinicalNotePanel once
+// and passes the same `v` handle to the header's action buttons and
+// to ConsolidatedNoteBody, so a save from the header commits the
+// edits shown in the body. The header structure (back arrow + title
+// + actions) is threaded through via `header` so the two halves share
+// a row.
+function InlineReviewerPane({ member, note, onBack }) {
+  const v = useClinicalNotePanel({
+    member,
+    gapCode: note.gapCodes?.[0],
+    onClose: onBack,
+    editingTaskId: note.reviewTaskId,
+  });
+  return (
+    <div className={styles.inlinePane}>
+      <InlineNoteHeader
+        note={note}
+        onBack={onBack}
+        actions={(
+          <ClinicalNoteHeaderActions
+            onSaveDraft={v.handleSaveDraft}
+            onSubmitForReview={v.handleSubmitForReview}
+            onSaveAndSign={v.handleSaveAndSign}
+            onSignAndPrint={v.handleSignAndPrint}
+            primaryLabel="Sign & Save"
+            reviewerFlow
+            canSaveDraft={v.hasChanges}
+            canSign={v.anyReadyForReview}
+          />
+        )}
+      />
+      <div className={styles.inlineInfoBanner}>
+        <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
+        <span>All signed notes sync to the patient&apos;s EHR record.</span>
+      </div>
+      <div className={styles.inlineEditorBody}>
+        <ConsolidatedNoteBody v={v} />
+      </div>
+    </div>
+  );
 }
