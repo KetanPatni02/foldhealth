@@ -42,9 +42,11 @@
 .sectionBody {
   display: flex;
   flex-direction: column;
-  /* 6px between rows — halfway between --space-1 (4px) and --space-2
-     (8px), the density the note preview reads best at. */
-  gap: calc(var(--space-1) + calc(var(--space-1) / 2));
+  /* +4px on top of the prior 6px so stacked PHQ rows (question label
+     above answer) get an extra beat between them. The DSF questions
+     read as one visual block otherwise; 10px lets each question stand
+     on its own without pushing DOS-style single-line KV rows apart.  */
+  gap: calc(var(--space-2) + calc(var(--space-1) / 2));
 }
 
 .row {
