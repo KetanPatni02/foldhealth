@@ -155,3 +155,46 @@
   font-size: var(--font-sm);
   color: var(--neutral-400);
 }
+
+/* DSF Care Plan block — the preview twin of dsf/DsfEvidenceForms's
+   CarePlanOutcomePanel. Same disc-marker bullet list on the tinted
+   primary background, same title/label rhythm, so a signed / submitted
+   note reads the same as its editable original without the reviewer
+   having to open Amend. Optional outreach notes stack beneath the
+   bullets as a label/value pair. Spans both KV grid columns so the
+   bullets don't get squeezed. */
+.carePlanBlock {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.carePlanBlockTitle {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.carePlanBlockBullets {
+  margin: 0;
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + var(--space-4));
+  list-style: disc outside;
+  background: var(--primary-50);
+  border-radius: 8px;
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  line-height: var(--leading-normal, 1.4);
+}
+.carePlanBlockBullets li { padding-left: var(--space-1); }
+.carePlanBlockBullets li + li { margin-top: var(--space-1); }
+.carePlanBlockOutreach {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  font-size: var(--font-base);
+}
+.carePlanBlockOutreachLabel { color: var(--neutral-300); }
+.carePlanBlockOutreachValue { color: var(--neutral-500); white-space: pre-wrap; }
