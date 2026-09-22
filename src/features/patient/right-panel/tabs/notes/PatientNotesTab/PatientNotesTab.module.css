@@ -14,6 +14,14 @@
   min-height: 0;
   flex: 1;
 }
+/* Inline note mode drops the card's own margin so the header, info
+   banner, and body all run flush to the tab pane's edges (matches
+   the reference mock where the inline note is a full-bleed surface,
+   not a card floating in whitespace). */
+.cardInline {
+  margin: 0;
+  border-radius: 0;
+}
 
 /* Section header — title left, "+" and (future) View All right */
 .sectionHeader {

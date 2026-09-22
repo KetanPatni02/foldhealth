@@ -130,7 +130,7 @@ export function PatientNotesTab({ patient }) {
 
   if (inlineNote) {
     return (
-      <div className={styles.card}>
+      <div className={`${styles.card} ${styles.cardInline}`}>
         <InlineNoteView
           note={inlineNote}
           member={inlineMember}
