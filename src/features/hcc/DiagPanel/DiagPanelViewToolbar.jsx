@@ -11,8 +11,10 @@ export function DiagPanelViewToolbar(p) {
   const {
     addIcdMode, gapExcludeCodes, setPendingGaps, exitAddIcdMode, hccUserRole, bulkMode,
     toggleBulkMode, searchQuery, setSearchQuery, setAddIcdMode, filterCount, filterOpen,
-    setFilterOpen, docsCount, commentsCount, diagLeftPanel, setDiagLeftPanel, setFocusIdx,
-    setDiagTab, openDocsFromToolbar, moreOpen, setMoreOpen, moreWrapRef, filters, setFilters,
+    setFilterOpen, docsCount, commentsCount, docsUnread, commentsUnread,
+    diagLeftPanel, setDiagLeftPanel, setFocusIdx,
+    setDiagTab, openDocsFromToolbar, openCommentsFromToolbar,
+    moreOpen, setMoreOpen, moreWrapRef, filters, setFilters,
     icdsRaw, notLinkedRaw, member, diagActivityIcd,
   } = p;
   return (
@@ -110,7 +112,7 @@ export function DiagPanelViewToolbar(p) {
                 icon="solar:file-text-linear"
                 size="S"
                 tooltip="Documents"
-                count={String(docsCount)}
+                notification={docsUnread}
                 className={[
                   styles.hideBelow460,
                   diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : '',
@@ -122,12 +124,12 @@ export function DiagPanelViewToolbar(p) {
                 icon="solar:chat-round-line-linear"
                 size="S"
                 tooltip="Comments"
-                count={String(commentsCount)}
+                notification={commentsUnread}
                 className={[
                   styles.hideBelow540,
                   diagLeftPanel === 'comments' && !diagActivityIcd ? styles.activeIcon : '',
                 ].filter(Boolean).join(' ')}
-                onClick={() => setDiagLeftPanel(diagLeftPanel === 'comments' && !diagActivityIcd ? null : 'comments')}
+                onClick={openCommentsFromToolbar}
               />
               <span className={[styles.divider, styles.hideBelow540].join(' ')} />
               <ActionButton
@@ -172,10 +174,7 @@ export function DiagPanelViewToolbar(p) {
                       type="button"
                       className={[styles.toolbarMoreItem, styles.showBelow540].join(' ')}
                       role="menuitem"
-                      onClick={() => {
-                        setMoreOpen(false);
-                        setDiagLeftPanel(diagLeftPanel === 'comments' && !diagActivityIcd ? null : 'comments');
-                      }}
+                      onClick={() => { setMoreOpen(false); openCommentsFromToolbar(); }}
                     >
                       <Icon name="solar:chat-round-line-linear" size={16} color="var(--neutral-400)" />
                       <span>Comments</span>

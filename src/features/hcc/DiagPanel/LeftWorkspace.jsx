@@ -739,7 +739,14 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
       || null;
     const dos = patient?.dos_list?.[0]?.date || null;
     const icd = activityIcd || null;
-    const row = { id: `c${Date.now()}`, author: 'You', role: userRole, date, time, body, icd, dos };
+    const row = {
+      id: `c${Date.now()}`,
+      author: 'You',
+      role: userRole,
+      date, time, body, icd, dos,
+      memberId: patient?.id || null,
+      patientName: patient?.name || null,
+    };
     setItems(prev => [row, ...prev]);
     addHccDiagComment(row);
     addActivityEntry({
@@ -868,7 +875,7 @@ function renderCommentBody(body, users) {
   while ((match = re.exec(body)) !== null) {
     if (match.index > lastIdx) nodes.push(body.slice(lastIdx, match.index));
     nodes.push(
-      <span key={`m-${key++}`} className={styles.mentionBadge}>@{match[1]}</span>,
+      <Badge key={`m-${key++}`} variant="mention" label={`@${match[1]}`} />,
     );
     lastIdx = match.index + match[0].length;
   }
@@ -906,7 +913,6 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
         <div className={styles.commentMetaRow}>
           <div className={styles.tlMeta}>
             {item.date} • {item.time} • {item.author}({role})
-            {item.dos && <> • DOS {item.dos}</>}
             {item.icd && <> • ICD {item.icd}</>}
             {item.edited && <span className={styles.commentEditedBadge}>Edited</span>}
           </div>

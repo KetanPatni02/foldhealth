@@ -655,6 +655,18 @@ export const useAppStore = create((set, get) => ({
       fileType: doc.docType,
       docId: doc.id,
     });
+    // Bell notification: surface the upload globally so a reviewer who
+    // isn't currently in this patient's DiagPanel still sees the activity.
+    const memberName = useAppStore.getState().hccMembers?.find(m => m.id === memberId)?.name;
+    useAppStore.getState().addNotification?.({
+      type: 'hcc.document_uploaded',
+      title: 'Document uploaded',
+      body: memberName
+        ? `${doc.n || 'A document'} was uploaded for ${memberName}.`
+        : `${doc.n || 'A new document'} was uploaded.`,
+      action: 'openDiagPanel',
+      hccMemberId: memberId,
+    });
   },
   // Load persisted uploads so manually-added docs survive a reload. Grouped by
   // member id into the same map addChartDoc maintains. Single-fire per session
@@ -7694,6 +7706,19 @@ export const useAppStore = create((set, get) => ({
   hccDiagDocumentsList: [],
   hccDiagNotes: [],
   hccDiagHistoryEntries: [],
+  // Per-member "last seen" counts for the DiagPanel toolbar notification
+  // dots on Comments / Documents. Shape: { [memberId]: { comments, documents } }.
+  // A stream is "unread" when its current count exceeds the stored value;
+  // opening the panel calls markHccDiagSeen to clear the dot.
+  hccDiagSeen: {},
+  markHccDiagSeen: (memberId, kind, count) => {
+    if (!memberId || !kind) return;
+    set((state) => {
+      const prev = state.hccDiagSeen?.[memberId] || {};
+      if (prev[kind] === count) return {};
+      return { hccDiagSeen: { ...state.hccDiagSeen, [memberId]: { ...prev, [kind]: count } } };
+    });
+  },
   hccDiagAncillaryLoading: false,
   hccDiagAncillaryDidFetch: false,
   fetchHccDiagAncillary: async () => {
@@ -9413,6 +9438,20 @@ export const useAppStore = create((set, get) => ({
       icds: row.icd ? [row.icd] : undefined,
       headline: row.icd ? `Added a Comment for ${row.icd}` : 'Added a Comment',
       details: row.body ? [{ note: row.body }] : undefined,
+    });
+    // Bell notification: mirror the comment globally so it shows up in
+    // the topbar bell for a reviewer who isn't currently on this patient.
+    const memberName = row.patientName
+      || useAppStore.getState().hccMembers?.find(m => m.id === row.memberId)?.name
+      || null;
+    useAppStore.getState().addNotification?.({
+      type: 'hcc.comment_added',
+      title: 'New comment',
+      body: memberName
+        ? `${row.author || 'A teammate'} added a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
+        : `${row.author || 'A teammate'} added a comment${row.icd ? ` on ${row.icd}` : ''}.`,
+      action: 'openDiagPanel',
+      hccMemberId: row.memberId || null,
     });
   },
 

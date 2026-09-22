@@ -710,25 +710,6 @@
 .commentSaveBtn:hover:not(:disabled) { background: var(--primary-400, var(--primary-300)); }
 .commentSaveBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* Inline @mention badge — used when a comment body references a platform
-   user by name. Renders as a subtle secondary (orange) pill so the reader
-   can spot who's being pinged without confusing it with a member/patient
-   reference (those keep the primary purple treatment). Uses the
-   AA-safe `--secondary-300-fg` for text on the light surface. */
-.mentionBadge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 6px;
-  margin: 0 1px;
-  border-radius: 4px;
-  background: var(--secondary-50);
-  color: var(--secondary-300-fg);
-  font-weight: 500;
-  font-size: var(--font-sm);
-  line-height: 1.5;
-  white-space: nowrap;
-}
-
 /* Comment body text — full-width, multi-line, sits below the meta line. */
 .commentBody {
   font-size: var(--font-md);
