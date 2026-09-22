@@ -46,7 +46,7 @@
 }
 .performedByRole {
   font-size: var(--font-sm);
-  color: var(--neutral-300);
+  color: var(--neutral-200);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -67,7 +67,7 @@
 }
 .performedByRoleInline {
   font-size: var(--font-sm);
-  color: var(--neutral-300);
+  color: var(--neutral-200);
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
