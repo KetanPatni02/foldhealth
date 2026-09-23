@@ -457,59 +457,62 @@ export function useDiagPanel() {
   // (no more "25" on a panel where the timeline lists 5). The mock fallback
   // still kicks in when the store has nothing at all.
   const dbComments = useAppStore(s => s.hccDiagComments);
-  const commentsCount = useMemo(
-    () => commentsForMember(dbComments, member?.id).length,
+  const memberComments = useMemo(
+    () => commentsForMember(dbComments, member?.id),
     [dbComments, member?.id],
   );
+  const commentsCount = memberComments.length;
   const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const diagOpenDocId = useAppStore(s => s.diagOpenDocId);
 
-  // Notification dots on the Documents / Comments toolbar buttons: show when
-  // the current count exceeds what the user last saw. The baseline snap is
-  // deferred until the ancillary fetch has resolved so we don't seed at 0
-  // and then treat every hydrated row as unread. Clamps down on delete so
-  // we never get stuck in the "never seen" state; cleared by markHccDiagSeen
-  // when the panel opens.
+  // Unread badges on the Documents / Comments toolbar buttons: the number of
+  // this patient's items whose id the logged-in user hasn't seen. Seen ids are
+  // persisted per user (hcc_diag_seen), so docs or comments another user added
+  // since your last visit show up after a reload.
+  //
+  // The first time you open a patient there's no record yet: everything
+  // already there is taken as seen (otherwise every patient opens with a
+  // badge on every item). That baseline waits until the seen state, the
+  // comments and the uploaded docs have all loaded, so nothing that loads
+  // late gets flagged. Opening a panel marks everything in it seen, and while
+  // it stays open new items are marked as they arrive.
   const hccDiagSeen = useAppStore(s => s.hccDiagSeen);
   const markHccDiagSeen = useAppStore(s => s.markHccDiagSeen);
+  const fetchHccDiagSeen = useAppStore(s => s.fetchHccDiagSeen);
+  const seenLoaded = useAppStore(s => s.hccDiagSeenLoaded);
   const ancillaryDidFetch = useAppStore(s => s.hccDiagAncillaryDidFetch);
-  const seen = hccDiagSeen[member?.id] || {};
-  const seenComments = seen.comments;
-  const seenDocs = seen.documents;
+  const chartsLoaded = useAppStore(s => s.hccAddedChartsLoaded);
+  const currentUserId = useAppStore(s => s.currentUserProfile?.id);
+  const fetchHccDiagAncillary = useAppStore(s => s.fetchHccDiagAncillary);
+  const fetchHccAddedCharts = useAppStore(s => s.fetchHccAddedCharts);
+  // All three are single-fire per session; calling them here means the badge
+  // works even when the DiagPanel opens with no left panel showing.
+  useEffect(() => { fetchHccDiagSeen(); }, [fetchHccDiagSeen, currentUserId]);
+  useEffect(() => { fetchHccDiagAncillary?.(); fetchHccAddedCharts?.(); }, [fetchHccDiagAncillary, fetchHccAddedCharts]);
+  const commentIds = useMemo(() => memberComments.map(c => c.id), [memberComments]);
+  const docIds = useMemo(() => chartsList.map(d => d.id), [chartsList]);
+  const seenCommentIds = hccDiagSeen[member?.id]?.comments;
+  const seenDocIds = hccDiagSeen[member?.id]?.documents;
   useEffect(() => {
-    if (!member?.id || !ancillaryDidFetch) return;
-    if (typeof seenComments !== 'number') markHccDiagSeen(member.id, 'comments', commentsCount);
-    if (typeof seenDocs !== 'number') markHccDiagSeen(member.id, 'documents', docsCount);
-    // Baseline runs once per member (post-hydration); further updates go
-    // through the click paths + the panel-open effect below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [member?.id, ancillaryDidFetch]);
-  useEffect(() => {
-    if (!member?.id) return;
-    if (typeof seenComments === 'number' && commentsCount < seenComments) {
-      markHccDiagSeen(member.id, 'comments', commentsCount);
-    }
-    if (typeof seenDocs === 'number' && docsCount < seenDocs) {
-      markHccDiagSeen(member.id, 'documents', docsCount);
-    }
-  }, [member?.id, commentsCount, docsCount, seenComments, seenDocs, markHccDiagSeen]);
-  // Keep the seen counter in step with the panel while it's open, so a
-  // comment the user posts themselves doesn't immediately re-arm the dot.
+    if (!member?.id || !seenLoaded) return;
+    if (!seenCommentIds && ancillaryDidFetch) markHccDiagSeen(member.id, 'comments', commentIds);
+    if (!seenDocIds && chartsLoaded) markHccDiagSeen(member.id, 'documents', docIds);
+  }, [member?.id, seenLoaded, ancillaryDidFetch, chartsLoaded, seenCommentIds, seenDocIds, commentIds, docIds, markHccDiagSeen]);
   useEffect(() => {
     if (!member?.id || diagActivityIcd) return;
-    if (diagLeftPanel === 'comments' && seenComments !== commentsCount) {
-      markHccDiagSeen(member.id, 'comments', commentsCount);
-    }
-    if (diagLeftPanel === 'documents' && seenDocs !== docsCount) {
-      markHccDiagSeen(member.id, 'documents', docsCount);
-    }
-  }, [diagLeftPanel, diagActivityIcd, member?.id, commentsCount, docsCount, seenComments, seenDocs, markHccDiagSeen]);
-  const commentsUnreadCount = typeof seenComments === 'number'
-    ? Math.max(0, commentsCount - seenComments)
-    : 0;
-  const docsUnreadCount = typeof seenDocs === 'number'
-    ? Math.max(0, docsCount - seenDocs)
-    : 0;
+    if (diagLeftPanel === 'comments' && seenCommentIds) markHccDiagSeen(member.id, 'comments', commentIds);
+    if (diagLeftPanel === 'documents' && seenDocIds) markHccDiagSeen(member.id, 'documents', docIds);
+  }, [diagLeftPanel, diagActivityIcd, member?.id, commentIds, docIds, seenCommentIds, seenDocIds, markHccDiagSeen]);
+  const commentsUnreadCount = useMemo(() => {
+    if (!seenCommentIds) return 0;
+    const seen = new Set(seenCommentIds);
+    return commentIds.filter(id => !seen.has(id)).length;
+  }, [commentIds, seenCommentIds]);
+  const docsUnreadCount = useMemo(() => {
+    if (!seenDocIds) return 0;
+    const seen = new Set(seenDocIds);
+    return docIds.filter(id => !seen.has(id)).length;
+  }, [docIds, seenDocIds]);
   const commentsUnread = commentsUnreadCount > 0;
   const docsUnread = docsUnreadCount > 0;
 
@@ -523,13 +526,13 @@ export function useDiagPanel() {
     }
     setDiagLeftPanel('documents');
     if (chartsList.length) setDiagOpenDocId(chartsList[0].id);
-    if (member?.id) markHccDiagSeen(member.id, 'documents', docsCount);
-  }, [diagLeftPanel, diagActivityIcd, chartsList, setDiagLeftPanel, setDiagOpenDocId, member?.id, docsCount, markHccDiagSeen]);
+    if (member?.id) markHccDiagSeen(member.id, 'documents', docIds);
+  }, [diagLeftPanel, diagActivityIcd, chartsList, setDiagLeftPanel, setDiagOpenDocId, member?.id, docIds, markHccDiagSeen]);
   const openCommentsFromToolbar = useCallback(() => {
     const alreadyOpen = diagLeftPanel === 'comments' && !diagActivityIcd;
     setDiagLeftPanel(alreadyOpen ? null : 'comments');
-    if (!alreadyOpen && member?.id) markHccDiagSeen(member.id, 'comments', commentsCount);
-  }, [diagLeftPanel, diagActivityIcd, setDiagLeftPanel, member?.id, commentsCount, markHccDiagSeen]);
+    if (!alreadyOpen && member?.id) markHccDiagSeen(member.id, 'comments', commentIds);
+  }, [diagLeftPanel, diagActivityIcd, setDiagLeftPanel, member?.id, commentIds, markHccDiagSeen]);
   // DOS-row click: open the doc that matches this DOS date (system docs seed
   // `dateAdded` from the member's DOS). Falls back to the first doc if no
   // match — never leaves the user on an empty list.

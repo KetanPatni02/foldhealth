@@ -787,6 +787,9 @@ export const useAppStore = create((set, get) => ({
       fileType: doc.docType,
       docId: doc.id,
     });
+    // Your own upload is never "new" to you. Only extend an existing seen set;
+    // with no baseline yet, the DiagPanel's first-open baseline covers it.
+    if (get().hccDiagSeen?.[memberId]?.documents) get().markHccDiagSeen(memberId, 'documents', [doc.id]);
     // Bell notification: surface the upload globally so a reviewer who
     // isn't currently in this patient's DiagPanel still sees the activity.
     const memberName = useAppStore.getState().hccMembers?.find(m => m.id === memberId)?.name;
@@ -804,6 +807,9 @@ export const useAppStore = create((set, get) => ({
   // member id into the same map addChartDoc maintains. Single-fire per session
   // — the HCC worklist and DiagPanel both mount and call this on entry.
   hccAddedChartsDidFetch: false,
+  // True once the fetch has resolved (success or error). The DiagPanel unread
+  // baseline waits on this so docs that load late aren't all flagged as new.
+  hccAddedChartsLoaded: false,
   fetchHccAddedCharts: async () => {
     if (useAppStore.getState().hccAddedChartsDidFetch) return;
     set({ hccAddedChartsDidFetch: true });
@@ -811,12 +817,16 @@ export const useAppStore = create((set, get) => ({
       .from('hcc_added_charts')
       .select('*')
       .order('created_at', { ascending: true });
-    if (error) { console.warn('fetchHccAddedCharts failed:', error.message); return; }
+    if (error) {
+      console.warn('fetchHccAddedCharts failed:', error.message);
+      set({ hccAddedChartsLoaded: true });
+      return;
+    }
     const map = {};
     (data || []).forEach((row) => {
       (map[row.hcc_member_id] = map[row.hcc_member_id] || []).push(rowToAddedChart(row));
     });
-    set({ hccAddedCharts: map });
+    set({ hccAddedCharts: map, hccAddedChartsLoaded: true });
   },
 
   // Per-document review status overrides (keyed by member id → doc id), set
@@ -7838,18 +7848,63 @@ export const useAppStore = create((set, get) => ({
   hccDiagDocumentsList: [],
   hccDiagNotes: [],
   hccDiagHistoryEntries: [],
-  // Per-member "last seen" counts for the DiagPanel toolbar notification
-  // dots on Comments / Documents. Shape: { [memberId]: { comments, documents } }.
-  // A stream is "unread" when its current count exceeds the stored value;
-  // opening the panel calls markHccDiagSeen to clear the dot.
+  // What the logged-in user has already seen in each patient's DiagPanel,
+  // driving the unread badges on the Documents / Comments toolbar buttons.
+  // Shape: { [memberId]: { comments: string[], documents: string[] } } of
+  // item ids. Persisted per user in hcc_diag_seen so the badge survives a
+  // reload and counts items other users added while you were away.
   hccDiagSeen: {},
-  markHccDiagSeen: (memberId, kind, count) => {
-    if (!memberId || !kind) return;
-    set((state) => {
-      const prev = state.hccDiagSeen?.[memberId] || {};
-      if (prev[kind] === count) return {};
-      return { hccDiagSeen: { ...state.hccDiagSeen, [memberId]: { ...prev, [kind]: count } } };
+  hccDiagSeenDidFetch: false,
+  hccDiagSeenLoaded: false,
+  fetchHccDiagSeen: async () => {
+    const me = get().currentUserProfile;
+    if (!me?.id || get().hccDiagSeenDidFetch) return;
+    set({ hccDiagSeenDidFetch: true });
+    const { data, error } = await supabase
+      .from('hcc_diag_seen')
+      .select('hcc_member_id, kind, seen_ids')
+      .eq('user_id', me.id);
+    if (error) {
+      console.warn('fetchHccDiagSeen failed (run hcc_diag_seen_migration.sql?):', error.message);
+      set({ hccDiagSeenLoaded: true });
+      return;
+    }
+    set((s) => {
+      const next = { ...s.hccDiagSeen };
+      for (const r of data || []) {
+        const local = next[r.hcc_member_id]?.[r.kind] || [];
+        const merged = [...new Set([...(r.seen_ids || []), ...local])];
+        next[r.hcc_member_id] = { ...(next[r.hcc_member_id] || {}), [r.kind]: merged };
+      }
+      return { hccDiagSeen: next, hccDiagSeenLoaded: true };
     });
+  },
+  // Add ids to the seen set for (member, kind). Passing an empty list still
+  // records the pair, so a patient with no items gets a baseline row.
+  markHccDiagSeen: (memberId, kind, ids = []) => {
+    if (!memberId || !kind) return;
+    const prev = get().hccDiagSeen?.[memberId]?.[kind];
+    const have = new Set(prev || []);
+    const added = ids.filter(id => id && !have.has(id));
+    if (prev && !added.length) return;
+    const nextIds = [...(prev || []), ...added];
+    set(s => ({
+      hccDiagSeen: {
+        ...s.hccDiagSeen,
+        [memberId]: { ...(s.hccDiagSeen[memberId] || {}), [kind]: nextIds },
+      },
+    }));
+    const me = get().currentUserProfile;
+    if (!me?.id) return;
+    supabase
+      .from('hcc_diag_seen')
+      .upsert(
+        { user_id: me.id, hcc_member_id: memberId, kind, seen_ids: nextIds, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,hcc_member_id,kind' },
+      )
+      .then(({ error }) => {
+        if (error) console.warn('markHccDiagSeen persist failed:', error.message);
+      });
   },
   hccDiagAncillaryLoading: false,
   hccDiagAncillaryDidFetch: false,
@@ -9570,6 +9625,9 @@ export const useAppStore = create((set, get) => ({
     const row = { ...input, memberId: input.memberId ?? get().diagPanelMemberId ?? null };
     set(s => ({ hccDiagComments: [row, ...(s.hccDiagComments || [])] }));
     persistHccDiagComment(row);
+    if (row.memberId && get().hccDiagSeen?.[row.memberId]?.comments) {
+      get().markHccDiagSeen(row.memberId, 'comments', [row.id]);
+    }
     // Timeline entry (Activity tab). The 1500ms dedup on addActivityEntry
     // absorbs UI callers that also log manually so we never double-post.
     useAppStore.getState().addActivityEntry({
