@@ -8,6 +8,7 @@ import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { Switch } from '../../../components/Switch/Switch';
 import { timelineStatusIcon } from '../StatusIcon';
+import { recordParticipants } from '../recordParticipants';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
@@ -762,6 +763,14 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
   const logHccActivity = useAppStore(s => s.logHccActivity);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const hccMembers = useAppStore(s => s.hccMembers);
+  // Only people on this record (current or past assignee, any role) can be
+  // @-mentioned, labelled with the role they hold on this record.
+  const dosAssignments = useAppStore(s => s.hccDosAssignments);
+  const platformUsersForMentions = useAppStore(s => s.platformUsers);
+  const mentionUsers = useMemo(() => {
+    const recordMember = memberProp || memberOverride || hccMembers.find(m => m.id === scopeMemberId);
+    return recordParticipants(recordMember, dosAssignments, platformUsersForMentions || []);
+  }, [memberProp, memberOverride, hccMembers, scopeMemberId, dosAssignments, platformUsersForMentions]);
   const editComment = (id, body) => {
     setItems(prev => prev.map(c => c.id === id ? { ...c, body, edited: true } : c));
     updateHccDiagComment(id, body);
@@ -838,6 +847,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
     <div className={styles.scroll}>
       <div className={styles.commentComposerWrap}>
         <CommentComposer
+          users={mentionUsers}
           onSubmit={composerSubmit}
           statusChange={pendingStatusChange ? {
             fromStatus: pendingStatusChange.from,
@@ -883,6 +893,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
               {!isCollapsed && g.items.map((c, i) => (
                 <CommentEntry
                   key={c.id}
+                  mentionUsers={mentionUsers}
                   item={c}
                   isFirst={i === 0}
                   isLast={i === g.items.length - 1}
@@ -972,7 +983,7 @@ function renderCommentBody(body, users) {
   return nodes.length ? nodes : body;
 }
 
-function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
+function CommentEntry({ item, isFirst, isLast, onEdit, onDelete, mentionUsers }) {
   const isMine = item.author === 'You';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.body || '');
@@ -1050,6 +1061,7 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
           <div className={styles.commentEditor}>
             <CommentComposer
               autoFocus
+              users={mentionUsers}
               initialValue={item.body || ''}
               submitLabel="Save"
               cancelLabel="Cancel"

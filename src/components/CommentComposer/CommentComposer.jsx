@@ -184,6 +184,10 @@ export function CommentComposer({
   // Fires when the Cancel button is clicked — parent can use this to
   // close the composer (e.g. leaving the "Edit comment" state).
   onCancel,
+  // Optional mention roster ({ id, name, initials, roleLabel?, realProfile? }).
+  // When given, only these people can be @-mentioned (e.g. the people on an
+  // HCC record) and their roleLabel shows beside the name in the picker.
+  users: usersProp,
 }) {
   const inStatusMode = !!statusChange;
   const editorRef = useRef(null);
@@ -202,6 +206,7 @@ export function CommentComposer({
   // Always include the signed-in user so someone can @-mention themselves
   // (or write a note visible in their own Mentions tab). Deduped by id.
   const users = useMemo(() => {
+    if (usersProp) return usersProp;
     // `realProfile` marks entries whose `id` is an actual profiles.id, so
     // createMentionChip knows which ids are safe to persist. platformUsers is
     // read straight from `profiles`; SYSTEM_USERS is a fixture roster whose
@@ -217,7 +222,7 @@ export function CommentComposer({
       { id: currentUserProfile.id, name: currentUserProfile.name, initials, role: currentUserProfile.role, source: 'self', realProfile: true },
       ...base,
     ];
-  }, [platformUsers, currentUserProfile]);
+  }, [usersProp, platformUsers, currentUserProfile]);
   const matches = useMemo(() => {
     if (!mention) return [];
     const q = mention.query.toLowerCase();
@@ -243,10 +248,13 @@ export function CommentComposer({
   useEffect(() => {
     if (!initialValue) return;
     const editor = editorRef.current;
-    if (!editor || !users?.length) return;
+    // Re-hydrate against everyone we know, not just the pickable roster, so an
+    // existing tag of someone outside the list survives an edit.
+    const known = [...users, ...(platformUsers || []).map(u => ({ ...u, realProfile: true }))];
+    if (!editor || !known.length) return;
     // Empty first so a re-mount with fresh initialValue doesn't stack.
     editor.innerHTML = '';
-    const names = users.map(u => u.name).filter(Boolean);
+    const names = [...new Set(known.map(u => u.name).filter(Boolean))];
     // Longest-first so a full-name match wins over a shorter prefix.
     const sortedNames = names.slice().sort((a, b) => b.length - a.length);
     if (!sortedNames.length) {
@@ -260,7 +268,7 @@ export function CommentComposer({
         if (match.index > lastIdx) {
           editor.appendChild(document.createTextNode(initialValue.slice(lastIdx, match.index)));
         }
-        const user = users.find(u => u.name === match[1]);
+        const user = known.find(u => u.name === match[1]);
         if (user) {
           editor.appendChild(createMentionChip(user));
           // Trailing space so caret escapes the chip cleanly.
@@ -277,7 +285,7 @@ export function CommentComposer({
     setText(serialize(editor));
     setExpanded(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [users.length]);
+  }, [users.length, platformUsers?.length]);
 
   const refresh = useCallback(() => {
     const editor = editorRef.current;
@@ -474,7 +482,10 @@ function MentionMenu({ anchor, matches, activeIdx, onPick }) {
           onMouseDown={(e) => { e.preventDefault(); onPick(u); }}
         >
           <Avatar variant="staff" size={24} initials={u.initials || (u.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2)} />
-          <span className={styles.mentionName}>{u.name}</span>
+          <span className={styles.mentionName}>
+            {u.name}
+            {u.roleLabel && <span className={styles.mentionRole}> ({u.roleLabel})</span>}
+          </span>
         </button>
       ))}
     </div>,

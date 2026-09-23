@@ -166,4 +166,5 @@
 .mentionItem:hover,
 .mentionItemActive { background: var(--neutral-50); }
 .mentionName { flex: 1; }
+.mentionRole { color: var(--neutral-200); }
 
