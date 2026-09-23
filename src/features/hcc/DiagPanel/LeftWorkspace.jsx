@@ -885,10 +885,27 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
 
 // Group an items[] of {date} into [{ label: 'Mon YYYY', items: [...] }] in
 // descending order (newest first), matching the Activity Log convention.
+// Date + time of an entry as a sortable number. Handles "1:13 PM" and 24h
+// "14:45"; entries with no parseable date sort as "now" (they were just made).
+function entryTimestamp(it) {
+  const d = parseEntryDate(it.date);
+  if (!d) return Date.now();
+  const m = String(it.time || '').match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (m) {
+    let h = +m[1] % 12;
+    if (!m[3]) h = +m[1];
+    else if (m[3].toUpperCase() === 'PM') h += 12;
+    d.setHours(h, +m[2]);
+  }
+  return d.getTime();
+}
+
 function groupByMonth(items) {
   const groups = new Map();
   const order = [];
-  for (const it of items) {
+  // Newest first inside every month, not just across months.
+  const sorted = items.slice().sort((a, b) => entryTimestamp(b) - entryTimestamp(a));
+  for (const it of sorted) {
     const d = parseEntryDate(it.date) || new Date();
     const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
     if (!groups.has(label)) {
