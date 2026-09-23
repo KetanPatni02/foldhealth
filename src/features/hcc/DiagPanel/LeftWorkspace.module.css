@@ -755,7 +755,6 @@
   font-weight: 400;
   color: var(--neutral-500);
   line-height: 1.5;
-  margin-top: 4px;
 }
 
 /* Status-change context card — appears above the body when a comment was
