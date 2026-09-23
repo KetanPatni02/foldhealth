@@ -9,7 +9,7 @@ import { Badge } from '../../../components/Badge/Badge';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
-  COMMENTS as COMMENTS_MOCK,
+  commentsForMember,
   NOTES as NOTES_MOCK,
   CLAIMS,
   HISTORY as HISTORY_MOCK,
@@ -28,11 +28,6 @@ import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
 import { FailReasonInline, EditDocInline } from '../ChartDetailDrawerParts';
-
-// Stable empty-array sentinel used as the "no comments for this patient"
-// fallback, so useMemo/useEffect deps don't churn on every render (which
-// would loop the CommentsTab's setItems effect).
-const EMPTY_COMMENTS = Object.freeze([]);
 import {
   HistoryTimelineEntry,
   TRANS_BADGE,
@@ -97,14 +92,11 @@ export function LeftWorkspace({
   useEffect(() => { fetchHccDiagAncillary(); }, [fetchHccDiagAncillary]);
   const dbComments = useAppStore(s => s.hccDiagComments);
   const dbNotes    = useAppStore(s => s.hccDiagNotes);
-  // Tab-label counts must reflect what the tab will actually render for
-  // THIS patient, so scope by memberId before falling back to the mock.
-  const commentsForCount = useMemo(() => {
-    const forMember = member?.id ? dbComments.filter(c => c.memberId === member.id) : [];
-    if (forMember.length) return forMember;
-    if (dbComments.length) return EMPTY_COMMENTS;
-    return COMMENTS_MOCK;
-  }, [dbComments, member?.id]);
+  // Tab-label count must match what the Comments tab renders for this patient.
+  const commentsForCount = useMemo(
+    () => commentsForMember(dbComments, member?.id),
+    [dbComments, member?.id],
+  );
   const notesForCount    = dbNotes.length    ? dbNotes    : NOTES_MOCK;
   // Per-member claims — one row per claim-sourced DOS on the record.
   // claimForDos() reuses the CLAIMS fixture when the date matches or
@@ -676,22 +668,13 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
 // text below. Composer is a single-line input — Enter posts.
 export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange, member: memberProp = null, memberOverride = null }) {
   // Scope the timeline to the patient whose DiagPanel we're rendering in.
-  // hccDiagComments is org-wide, so a raw seed would surface every other
-  // patient's comments here (and inflate the toolbar count). Fall back to
-  // the local mock only when the store has no comments at all.
   const dbComments = useAppStore(s => s.hccDiagComments);
   const diagPanelMemberIdEarly = useAppStore(s => s.diagPanelMemberId);
   const scopeMemberId = memberProp?.id || memberOverride?.id || diagPanelMemberIdEarly || null;
-  const seed = useMemo(() => {
-    const forMember = scopeMemberId
-      ? dbComments.filter(c => c.memberId === scopeMemberId)
-      : [];
-    if (forMember.length) return forMember;
-    // Store hydrated but nothing for this patient: show an empty timeline
-    // instead of falling back to the org-wide mock.
-    if (dbComments.length) return EMPTY_COMMENTS;
-    return COMMENTS_MOCK;
-  }, [dbComments, scopeMemberId]);
+  const seed = useMemo(
+    () => commentsForMember(dbComments, scopeMemberId),
+    [dbComments, scopeMemberId],
+  );
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
   const visibleItems = useMemo(

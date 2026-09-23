@@ -14,7 +14,7 @@ import {
 } from './ReviewProgressPopover.utils';
 import { SWEEP_ICD_DATA } from '../data/sweepIcds';
 import { getChartDocs } from '../data/chartDocs';
-import { COMMENTS as COMMENTS_MOCK } from '../data/ancillary';
+import { commentsForMember } from '../data/ancillary';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { resolveCurrentAssignee } from '../HccWorklistRow.utils';
 import { slaOutcome } from '../sla';
@@ -457,11 +457,10 @@ export function useDiagPanel() {
   // (no more "25" on a panel where the timeline lists 5). The mock fallback
   // still kicks in when the store has nothing at all.
   const dbComments = useAppStore(s => s.hccDiagComments);
-  const perMemberDbComments = useMemo(
-    () => (member?.id ? dbComments.filter(c => c.memberId === member.id) : []),
+  const commentsCount = useMemo(
+    () => commentsForMember(dbComments, member?.id).length,
     [dbComments, member?.id],
   );
-  const commentsCount = perMemberDbComments.length || (dbComments.length ? 0 : COMMENTS_MOCK.length);
   const setDiagOpenDocId = useAppStore(s => s.setDiagOpenDocId);
   const diagOpenDocId = useAppStore(s => s.diagOpenDocId);
 

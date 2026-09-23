@@ -7870,6 +7870,9 @@ export const useAppStore = create((set, get) => ({
           // Optional ICD/DOS scope — added later; DB rows seeded before the
           // column existed simply won't have these keys.
           icd: r.icd ?? null, dos: r.dos ?? null,
+          // Patient scope (hcc_diag_comment_member_migration.sql). Null on
+          // rows written before the column existed.
+          memberId: r.hcc_member_id ?? null,
           // Status-change linkage — populated when the comment was
           // required for a workflow transition (e.g. Records Requested).
           statusFrom: r.status_from ?? null,
@@ -9559,8 +9562,12 @@ export const useAppStore = create((set, get) => ({
   // Post a new comment to the DiagPanel Comments tab. Appends to the
   // store's hccDiagComments slice (so consumers see it) and persists to
   // Supabase for cross-session durability.
-  addHccDiagComment: (row) => {
-    if (!row?.id) return;
+  addHccDiagComment: (input) => {
+    if (!input?.id) return;
+    // Every comment is scoped to a patient. Callers that don't pass one
+    // (status-change / reject comments) are posted from the open DiagPanel,
+    // so its member is the right scope.
+    const row = { ...input, memberId: input.memberId ?? get().diagPanelMemberId ?? null };
     set(s => ({ hccDiagComments: [row, ...(s.hccDiagComments || [])] }));
     persistHccDiagComment(row);
     // Timeline entry (Activity tab). The 1500ms dedup on addActivityEntry
