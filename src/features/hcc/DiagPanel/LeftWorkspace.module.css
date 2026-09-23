@@ -462,6 +462,22 @@
   user-select: none;
 }
 .activityGroup:hover { color: var(--neutral-500); }
+/* Comments tab: first month header shares its row with the "Show @mentions"
+   switch. The row carries the header's padding so both center on one line. */
+.commentsGroupRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) 0 var(--space-1);
+}
+.commentsGroupRow .activityGroup {
+  padding: 0;
+}
+.commentsEmpty {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
 .activityGroupChevron {
   transition: transform 0.15s;
   flex-shrink: 0;

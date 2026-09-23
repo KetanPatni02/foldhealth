@@ -6,6 +6,7 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
+import { Switch } from '../../../components/Switch/Switch';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
@@ -677,9 +678,18 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
   );
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
+  // "Show @mentions" switch: narrow to comments that tag the logged-in user.
+  const [mentionsOnly, setMentionsOnly] = useState(false);
+  const myName = useAppStore(s => s.currentUserProfile?.name);
+  const mentionsMe = useMemo(() => {
+    if (!myName) return () => false;
+    const escaped = myName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`@${escaped}(?![A-Za-z])`, 'i');
+    return (c) => re.test(c.body || '');
+  }, [myName]);
   const visibleItems = useMemo(
-    () => items.filter(c => recordMatchesFilters(c, filters)),
-    [items, filters],
+    () => items.filter(c => recordMatchesFilters(c, filters) && (!mentionsOnly || mentionsMe(c))),
+    [items, filters, mentionsOnly, mentionsMe],
   );
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [confirmDeleteComment, setConfirmDeleteComment] = useState(null);
@@ -776,21 +786,39 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
         />
       </div>
       <div className={styles.timeline}>
-        {groups.map((g) => {
+        {/* With no matching comments there's no month header to sit beside,
+            so the switch gets its own row (and stays reachable to turn off). */}
+        {groups.length === 0 && (
+          <div className={styles.commentsGroupRow}>
+            <span className={styles.commentsEmpty}>
+              {mentionsOnly ? 'No comments mention you.' : 'No comments yet.'}
+            </span>
+            <Switch label="Show @mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
+          </div>
+        )}
+        {groups.map((g, gi) => {
           const isCollapsed = collapsed.has(g.label);
+          const header = (
+            <button
+              type="button"
+              className={[styles.activityGroup, isCollapsed ? styles.activityGroupCollapsed : ''].join(' ')}
+              onClick={() => toggleGroup(g.label)}
+              aria-expanded={!isCollapsed}
+            >
+              <span>{g.label}</span>
+              <span className={styles.activityGroupChevron}>
+                <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
+              </span>
+            </button>
+          );
           return (
             <div key={g.label}>
-              <button
-                type="button"
-                className={[styles.activityGroup, isCollapsed ? styles.activityGroupCollapsed : ''].join(' ')}
-                onClick={() => toggleGroup(g.label)}
-                aria-expanded={!isCollapsed}
-              >
-                <span>{g.label}</span>
-                <span className={styles.activityGroupChevron}>
-                  <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
-                </span>
-              </button>
+              {gi === 0 ? (
+                <div className={styles.commentsGroupRow}>
+                  {header}
+                  <Switch label="Show @mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
+                </div>
+              ) : header}
               {!isCollapsed && g.items.map((c, i) => (
                 <CommentEntry
                   key={c.id}
