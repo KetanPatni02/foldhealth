@@ -174,18 +174,45 @@ export function LeftWorkspace({
   const fetchHccGapActivity = useAppStore(s => s.fetchHccGapActivity);
   useEffect(() => { fetchHccGapActivity(); }, [fetchHccGapActivity]);
   const activityFromDb = useAppStore(s => s.hccGapActivity);
+  // Session activity only lives in memory, so a comment someone else posted
+  // (or you posted before a reload) never reached this timeline. Comments
+  // are saved, so their "Added a Comment" entries are built from the saved
+  // comments; the in-memory copies are dropped to avoid doubles.
+  const savedCommentEntries = useMemo(() => {
+    if (!dbComments.length) return [];
+    return commentsForCount.map(c => ({
+      t: 'comment',
+      date: c.date,
+      time: c.time,
+      by: c.author,
+      role: c.role,
+      dos: c.dos || null,
+      icds: c.icd ? [c.icd] : undefined,
+      headline: c.icd ? `Added a Comment for ${c.icd}` : 'Added a Comment',
+      details: c.body ? [{ note: c.body }] : undefined,
+      commentId: c.id,
+    }));
+  }, [dbComments.length, commentsForCount]);
   const rawActivity = useMemo(() => {
     const mock = getActivityFromDb(activityFromDb, member?.name);
-    if (!liveLog?.length) return mock;
-    const todayLabel = (() => {
-      const d = new Date();
-      return d.toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase();
-    })();
-    const header = mock[0]?.t === 'group' && mock[0]?.label === todayLabel
-      ? []
-      : [{ t: 'group', label: todayLabel }];
-    return [...header, ...liveLog, ...mock];
-  }, [liveLog, member?.name, activityFromDb]);
+    const live = (liveLog || []).filter(e => !(e.t === 'comment' && /^Added a Comment/.test(e.headline || '')));
+    const recent = [...live, ...savedCommentEntries];
+    if (!recent.length) return mock;
+    // Newest first, with a month header before each month's entries.
+    recent.sort((a, b) => entryTimestamp(b) - entryTimestamp(a));
+    const monthOf = (e) => (parseEntryDate(e.date) || new Date())
+      .toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    const out = [];
+    let current = null;
+    for (const e of recent) {
+      const label = monthOf(e);
+      if (label !== current) { out.push({ t: 'group', label }); current = label; }
+      out.push(e);
+    }
+    // Skip the demo log's first header when it repeats the last live month.
+    const rest = mock[0]?.t === 'group' && mock[0]?.label === current ? mock.slice(1) : mock;
+    return [...out, ...rest];
+  }, [liveLog, savedCommentEntries, member?.name, activityFromDb]);
 
   // Filter state, each chip carries an ARRAY (multi-select). Empty = filter
   // inactive (all records match). Nothing is preselected on open, so every
