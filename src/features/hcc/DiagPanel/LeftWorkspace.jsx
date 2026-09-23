@@ -678,7 +678,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
   );
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
-  // "Show @mentions" switch: narrow to comments that tag the logged-in user.
+  // "@mentions" switch: narrow to comments that tag the logged-in user.
   const [mentionsOnly, setMentionsOnly] = useState(false);
   const myName = useAppStore(s => s.currentUserProfile?.name);
   const mentionsMe = useMemo(() => {
@@ -793,7 +793,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
             <span className={styles.commentsEmpty}>
               {mentionsOnly ? 'No comments mention you.' : 'No comments yet.'}
             </span>
-            <Switch className={styles.mentionsSwitch} label="Show @mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
+            <Switch className={styles.mentionsSwitch} label="@mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
           </div>
         )}
         {groups.map((g, gi) => {
@@ -816,7 +816,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
               {gi === 0 ? (
                 <div className={styles.commentsGroupRow}>
                   {header}
-                  <Switch className={styles.mentionsSwitch} label="Show @mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
+                  <Switch className={styles.mentionsSwitch} label="@mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
                 </div>
               ) : header}
               {!isCollapsed && g.items.map((c, i) => (
