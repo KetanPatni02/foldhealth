@@ -1887,6 +1887,9 @@
   color: var(--neutral-400);
   cursor: pointer;
   flex-shrink: 0;
+  /* The bar aligns to the bottom (tabs sit on its border); center the
+     shorter chevrons on the tab row instead of dropping them to the floor. */
+  align-self: center;
 }
 .docsScrollBtn:hover { background: var(--neutral-100); color: var(--neutral-500); }
 .docsScrollBtnDisabled {
