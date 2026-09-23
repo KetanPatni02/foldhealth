@@ -9056,7 +9056,7 @@ export const useAppStore = create((set, get) => ({
           result = fn(
             s.hccDosAssignments, patient, dos,
             payload.requesterRole, payload.destinationRole, actor,
-            { note: payload.note },
+            { note: payload.note, destinationAssignee: payload.destinationAssignee },
           );
           break;
         case 'recordsReceivedFor':
@@ -9266,6 +9266,7 @@ export const useAppStore = create((set, get) => ({
     track('hcc.records_requested', { memberId: pid, requesterRole, destinationRole });
     return useAppStore.getState().transitionHccDos(pid, dos, 'requestRecordsFrom', {
       requesterRole, destinationRole, actor, note: opts.note,
+      destinationAssignee: opts.destinationAssignee || null,
     });
   },
   hccRecordsReceived: (pid, dos, actor) => {

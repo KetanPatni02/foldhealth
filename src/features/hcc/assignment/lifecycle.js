@@ -527,12 +527,16 @@ export function requestRecordsFrom(map, patient, dos, requesterRole, destination
     { by: actor, reason: `records-requested:from-${destinationRole}` },
   );
 
-  // Destination side: route to last-known assignee, else fall back to picker.
-  const prevDest = lastKnownAssignee(state, destinationRole);
+  // Destination side: the person the requester picked, else the last-known
+  // assignee, else a fresh pick.
+  const prevDest = opts.destinationAssignee || lastKnownAssignee(state, destinationRole);
   if (prevDest) {
     state = setRoleState(state, destinationRole,
       { assignee: prevDest, status: STATUS.RETURNED },
-      { by: 'system', reason: `records-requested:return-to-original-${destinationRole}` },
+      { by: opts.destinationAssignee ? actor : 'system',
+        reason: opts.destinationAssignee
+          ? `records-requested:picked-${destinationRole}`
+          : `records-requested:return-to-original-${destinationRole}` },
     );
   } else {
     const pick = pickAssignee(destinationRole, ctxFor(map, patient, dos));

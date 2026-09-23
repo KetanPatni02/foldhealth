@@ -779,14 +779,17 @@ export function useDiagPanel() {
       || null;
     return { name, status: sup?.status || member?.supS || null };
   }, [recordsRequestPrompt, dosState, platformUsers, member]);
-  const confirmRecordsRequest = ({ destinationRole, note }) => {
+  const confirmRecordsRequest = ({ destinationRole, note, assignee }) => {
     setRecordsRequestPrompt(null);
     if (!member || !currentDos || !destinationRole) return;
     const requesterStatus = actingStatus || 'New';
     // Defer to the next microtask so the AlertDialog's focus-trap unmount
     // finishes before the store cascade re-renders the drawer.
     setTimeout(() => {
-      hccRequestRecordsFrom?.(member.id, currentDos, actingRole, destinationRole, 'current-user', { note });
+      // Only a real roster id can be routed to; anything else falls back to
+      // the engine's last-known assignee.
+      const destinationAssignee = staffById(assignee?.id) ? assignee.id : null;
+      hccRequestRecordsFrom?.(member.id, currentDos, actingRole, destinationRole, 'current-user', { note, destinationAssignee });
       setDiagDosStatus('Record Requested');
       // If the user attached a comment, post it into the DOS Comments feed
       // addressed to the destination role — the destination user sees it

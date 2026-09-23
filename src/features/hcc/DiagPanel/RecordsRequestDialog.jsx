@@ -39,9 +39,11 @@ const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0] || '').join
  * Modal shown when a role picks `Record Requested` in the DosStatusMenu.
  * QA / Compliance choose who to request from (Coder or Support Team).
  * The Coder always requests from Support, so the Coder passes
- * `supportUser` ({ name, status }): the role choice is hidden and the field
- * shows that record's Support user with their current status. A comment is
- * required. Layout mirrors Figma ICD-Import 5723-171525.
+ * `supportUser` ({ name, status }): the role choice is hidden and the
+ * Support User field defaults to that record's Support user (shown with
+ * their status), changeable to any active Support user. The request goes
+ * to whoever is selected. A comment is required. Layout mirrors Figma
+ * ICD-Import 5723-171525.
  */
 export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, supportUser = null }) {
   const fixedToSupport = !!supportUser;
@@ -91,20 +93,9 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
   // Review Progress popover shows and what the assignment engine picks
   // from. Active-only, so nobody on leave surfaces as available.
   const roleUsers = useMemo(() => {
-    if (fixedToSupport) {
-      if (!supportUser?.name) return [];
-      const staff = staffForRole('support').find(s => s.name === supportUser.name);
-      return [{
-        id: staff?.id || supportUser.name,
-        name: supportUser.name,
-        initials: staff?.initials || initialsOf(supportUser.name),
-        roleLabel: ROLE_LABEL.support,
-        status: supportUser.status || null,
-      }];
-    }
     const engineRole = ROLE_TO_ENGINE[role];
     if (!engineRole) return [];
-    return staffForRole(engineRole)
+    const roster = staffForRole(engineRole)
       .filter(s => s.active !== false)
       .map(s => ({
         id: s.id,
@@ -115,7 +106,23 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
         // as Available so the dropdown reads truthfully rather than
         // blank.
         available: true,
+        // The record's current Support user shows their status on this
+        // record instead of an availability tag.
+        status: fixedToSupport && s.name === supportUser?.name ? (supportUser.status || null) : null,
       }));
+    // The record's Support user may not be in the roster (e.g. a profile
+    // assigned from Settings); keep them on the list, first.
+    if (fixedToSupport && supportUser?.name && !roster.some(u => u.name === supportUser.name)) {
+      roster.unshift({
+        id: supportUser.name,
+        name: supportUser.name,
+        initials: initialsOf(supportUser.name),
+        roleLabel: ROLE_LABEL.support,
+        available: true,
+        status: supportUser.status || null,
+      });
+    }
+    return roster;
   }, [role, fixedToSupport, supportUser]);
 
   const assignee = useMemo(
@@ -133,10 +140,10 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
   useEffect(() => {
     if (!roleUsers.length) { setAssigneeId(''); return; }
     if (assigneeId && roleUsers.some(u => u.id === assigneeId)) return;
-    const lastName = lastAssignees?.[role];
+    const lastName = fixedToSupport ? supportUser?.name : lastAssignees?.[role];
     const seed = (lastName && roleUsers.find(u => u.name === lastName)) || roleUsers[0];
     setAssigneeId(seed.id);
-  }, [roleUsers, assigneeId, role, lastAssignees]);
+  }, [roleUsers, assigneeId, role, lastAssignees, fixedToSupport, supportUser]);
 
   // Rich options for the shared Select — each row shows an M-size
   // avatar, the name + role subtitle stacked, and an Available /
@@ -170,9 +177,16 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
             <span className={styles.assigneeOptionRole}>{u.roleLabel}</span>
           )}
         </span>
-        <span className={u.available ? styles.assigneeAvailable : styles.assigneeUnavailable}>
-          {u.available ? 'Available' : 'Unavailable'}
-        </span>
+        {u.status ? (
+          <span className={styles.assigneeStatus} style={{ color: getStatusSpec(u.status).color }}>
+            <StatusIcon status={u.status} size={12} />
+            {statusDisplayLabel(u.status)}
+          </span>
+        ) : (
+          <span className={u.available ? styles.assigneeAvailable : styles.assigneeUnavailable}>
+            {u.available ? 'Available' : 'Unavailable'}
+          </span>
+        )}
       </span>
     ),
   })), [roleUsers]);
@@ -230,8 +244,7 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
             modal instead of hiding behind it. */}
         <Select
           label={fixedToSupport ? 'Support User' : 'Assignee'}
-          disabled={fixedToSupport}
-          placeholder={fixedToSupport ? 'No Support user on this record' : 'Select assignee'}
+          placeholder={fixedToSupport ? 'Select Support user' : 'Select assignee'}
           options={assigneeOptions}
           value={assigneeId}
           onChange={setAssigneeId}
