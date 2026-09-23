@@ -1782,8 +1782,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Same height as the M badge pills so the bar is 8px + 24px + 8px; the
+     26px width keeps the arrow 12px from the bar edge. */
   width: 26px;
-  height: 26px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: 6px;
@@ -1791,7 +1793,6 @@
   color: var(--neutral-400);
   cursor: pointer;
   flex-shrink: 0;
-  margin-bottom: 4px;
 }
 .docsBackBtn:hover { background: var(--neutral-100); color: var(--neutral-500); }
 .docsBrowserTabs {
