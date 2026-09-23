@@ -122,10 +122,10 @@ export const FILTER_DEFS = [
   // (aligned with ROLE_STATUS_OPTIONS in statusSpec.js). Support has no "New"
   // (work arrives already actionable); Coder has record-request states; QA
   // and Compliance share the reviewer flow.
-  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Rebuttal', 'Completed', 'Rejected', 'Skipped'] },
-  { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['New', 'In Progress', 'Record Received', 'Record Requested', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
-  { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
-  { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'supS',   label: 'Support Team Status', type: 'multi', opts: ['Action Needed', 'In Progress', 'Insufficient', 'Returned', 'Completed', 'Rejected', 'Skipped'] },
+  { k: 'cdrS',   label: 'Coder Status',        type: 'multi', opts: ['New', 'In Progress', 'Record Received', 'Record Requested', 'Returned', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'r1s',    label: 'QA Status',           type: 'multi', opts: ['New', 'In Progress', 'Record Requested', 'Returned', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
+  { k: 'r2s',    label: 'Compliance Status',   type: 'multi', opts: ['New', 'In Progress', 'Record Requested', 'Rebuttal', 'Skipped', 'Completed', 'Rejected'] },
   // Per-role assignee pickers. Each filter reads from its OWN role-scoped
   // dynamic pool in FilterChipBar — only users whose profile carries the
   // matching clinical_roles entry are eligible. Same rule the
@@ -246,11 +246,10 @@ const LANGUAGE_LABEL = {
   pa: 'Punjabi',
 };
 
-// Role-status filter → engine value normalization. Coders see "Rebuttal" in the
-// filter option list, but the engine still stores the canonical "Returned"
-// value on the member (see STATUS_SPEC in statusSpec.js). Translate before
-// matching so the filter picks up rows in that state.
-const ROLE_STATUS_ALIAS = { Rebuttal: 'Returned' };
+// Role-status filter → engine value normalization. Rebuttal and Returned are
+// now distinct stored values, so no aliasing is needed; kept as the single
+// place to add one.
+const ROLE_STATUS_ALIAS = {};
 const roleStatusVals = (vals) => new Set(vals.map(v => ROLE_STATUS_ALIAS[v] || v));
 
 // Support Team Status filter buckets → the underlying member `supS` values they
@@ -261,7 +260,7 @@ const SUPPORT_STATUS_MATCH = {
   'Action Needed': ['Action Needed', 'Assign', 'Awaiting', 'New', 'Record Requested', 'Records Requested'],
   'In Progress':   ['In Progress'],
   'Insufficient':  ['Insufficient'],
-  'Rebuttal':      ['Rebuttal', 'Returned'],
+  'Returned':      ['Returned'],
   'Completed':     ['Completed', 'Record Received', 'Records Received'],
   'Rejected':      ['Rejected', 'Reject'],
   'Skipped':       ['Skipped'],

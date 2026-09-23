@@ -596,13 +596,12 @@ export function useChartDetailDrawer({ charts, initialId, member, onClose }) {
     : (engineUiStatus || manualStatus || derivedStatus);
   // Trigger label lookup: "Action Needed" is a derived-only state so it's
   // not in the dropdown, but the trigger still renders it when nothing has
-  // been reviewed yet — hence the explicit fallback here. "Rebuttal" is
-  // also read-only — Support can't manually pick it, so we render a label
-  // outside STATUS_OPTIONS. Label matches DiagPanel's statusDisplayLabel
-  // for Returned so the two surfaces read the same.
+  // been reviewed yet — hence the explicit fallback here. "Returned" is
+  // also read-only (set when a records request comes to Support), so we
+  // render a label outside STATUS_OPTIONS.
   const currentStatus = STATUS_OPTIONS.find(s => s.key === effectiveStatus)
     || (effectiveStatus === 'returned'
-        ? { key: 'returned', label: 'Rebuttal' }
+        ? { key: 'returned', label: 'Returned' }
         : { key: 'action-needed', label: 'Action Needed' });
   const currentBadge = STATUS_BADGE[effectiveStatus] || STATUS_BADGE['action-needed'];
 

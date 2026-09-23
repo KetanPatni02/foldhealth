@@ -62,7 +62,8 @@ export const STATUS = {
   COMPLETED:        'Completed',
   RECORD_REQUESTED: 'Record Requested',
   RECORD_RECEIVED:  'Record Received',
-  RETURNED:         'Returned',
+  RETURNED:         'Returned',         // destination of a records request
+  REBUTTAL:         'Rebuttal',         // QA / Compliance sent the record back
   INSUFFICIENT:     'Insufficient',
   REJECT:           'Reject',
   SKIPPED:          'Skipped',          // role bypassed — a later role acted first

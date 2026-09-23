@@ -564,7 +564,19 @@ export function useDiagPanel() {
   // Record Requested, ICD actions and status changes are frozen until
   // the destination role (Coder or Support) marks the request Completed
   // and the DOS returns to Record Received.
+  // A Rebuttal is read-only for the role it was sent to (QA → Coder,
+  // Compliance → QA) until the sender completes; the sender also shows
+  // Rebuttal but keeps working.
+  const rebuttalTarget = useMemo(() => {
+    const status = (role) => dosState?.[role]?.status;
+    if (actingRole === 'coder') return status('coder') === 'Rebuttal' ? 'QA' : null;
+    if (actingRole === 'reviewer') {
+      return status('reviewer') === 'Rebuttal' && status('reviewer2') === 'Rebuttal' ? 'Compliance' : null;
+    }
+    return null;
+  }, [actingRole, dosState]);
   const stageLocked = useMemo(() => {
+    if (rebuttalTarget) return true;
     if (actingRole === 'reviewer' || actingRole === 'reviewer2') {
       const roleStatus = dosState?.[actingRole]?.status;
       return roleStatus === 'Record Requested';
@@ -572,20 +584,26 @@ export function useDiagPanel() {
     if (actingRole !== 'coder') return false;
     const supStatus = dosState?.support?.status || member?.supS;
     return supStatus !== 'Completed';
-  }, [actingRole, dosState, member]);
+  }, [actingRole, dosState, member, rebuttalTarget]);
 
   // Human-readable reason surfaced on the disabled DosStatusMenu tooltip
   // and on every locked ICD action while QA / Compliance is waiting on a
   // records request to be filled. Falls back to null so the caller's
   // existing lockReason (e.g. rejectionLockReason) still wins.
   const recordsRequestLockReason = useMemo(() => {
-    if (!(actingRole === 'reviewer' || actingRole === 'reviewer2')) return null;
+    if (rebuttalTarget) {
+      return `${rebuttalTarget} sent this record back as a Rebuttal. It's read-only until ${rebuttalTarget} completes.`;
+    }
     const roleStatus = dosState?.[actingRole]?.status;
+    if (actingRole === 'coder' && roleStatus === 'Record Requested') {
+      return 'Waiting on Support Team to return the record. Actions unlock when the request is filled.';
+    }
+    if (!(actingRole === 'reviewer' || actingRole === 'reviewer2')) return null;
     if (roleStatus !== 'Record Requested') return null;
     const req = dosState?.[actingRole]?.records_request;
     const dest = req?.destinationRole === 'support' ? 'Support Team' : 'Coder';
     return `Waiting on ${dest} to return the record — actions unlock when the request is filled.`;
-  }, [actingRole, dosState]);
+  }, [actingRole, dosState, rebuttalTarget]);
 
   // ── Review-progress stages + ring (drives the stage pill) ──
   const reviewStages = useMemo(
@@ -721,11 +739,11 @@ export function useDiagPanel() {
         if (role === 'support')      hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist');
         else                         hccSetRoleStatus(member.id, currentDos, role, 'Reject');
         break;
-      case 'Returned':
+      case 'Rebuttal':
         if (role === 'reviewer' || role === 'reviewer2') {
-          hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
+          hccReturnDos(member.id, currentDos, role, 'current-user', `Rebuttal from ${role}`);
         } else {
-          hccSetRoleStatus(member.id, currentDos, role, 'Returned');
+          hccSetRoleStatus(member.id, currentDos, role, 'Rebuttal');
         }
         break;
       case 'In Progress':

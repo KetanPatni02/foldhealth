@@ -10,9 +10,10 @@ function statusToColor(status) {
       return 'var(--status-success)';
     case 'In Progress':
     case 'New':
+    case 'Returned':
       return 'var(--status-warning)';
     case 'Records Requested':
-    case 'Returned':
+    case 'Rebuttal':
     case 'Rejected':
     case 'Insufficient':
       return 'var(--secondary-300)';

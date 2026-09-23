@@ -10,8 +10,8 @@
 //
 // Color tiers in the Figma:
 //   New                 → primary (purple)
-//   Awaiting / InProg / RecordReceived → warning (amber)
-//   Insufficient / Returned / RecordRequested → secondary (orange)
+//   Awaiting / InProg / RecordReceived / Returned → warning (amber)
+//   Insufficient / Rebuttal / RecordRequested → secondary (orange)
 //   Reject              → error (red)
 //   Completed           → success (green)
 //
@@ -68,11 +68,10 @@ export const STATUS_SPEC = {
     border: 'rgba(244, 122, 62, 0.2)',
     legendOrder: 4,
   },
-  Returned: {
-    // Custom Figma icon (orange disc + white return arrow). Solar fallback
-    // kept for any consumer not yet on StatusIcon.
-    icon: 'solar:undo-left-bold',
-    custom: 'returned',
+  // QA / Compliance sent the record back. The role it went to is read-only
+  // until the sender completes.
+  Rebuttal: {
+    icon: 'solar:chat-round-dots-bold',
     color: 'var(--secondary-300)',
     bg: 'var(--secondary-100)',
     border: 'rgba(244, 122, 62, 0.2)',
@@ -85,6 +84,16 @@ export const STATUS_SPEC = {
     bg: 'var(--secondary-100)',
     border: 'rgba(244, 122, 62, 0.2)',
     legendOrder: 6,
+  },
+  // Destination of a records request: records came back to this role to work.
+  // Custom Figma return-arrow disc, in the warning tone.
+  Returned: {
+    icon: 'solar:undo-left-bold',
+    custom: 'returned',
+    color: 'var(--status-warning)',
+    bg: 'var(--status-warning-light)',
+    border: 'rgba(217, 165, 11, 0.2)',
+    legendOrder: 6.5,
   },
   Reject: {
     // Filled X-circle in red
@@ -188,7 +197,6 @@ export const getStatusSpec = (status) =>
 const STATUS_DISPLAY = {
   Awaiting: 'Action Needed',
   Reject: 'Rejected',
-  Returned: 'Rebuttal',
 };
 export const statusDisplayLabel = (value) => {
   const c = canonicalStatus(value);
@@ -211,17 +219,19 @@ export const statusDisplayLabel = (value) => {
 // (autoSkipEarlierRoles in lifecycle.js). It only appears as a rendered status,
 // never as a menu option.
 export const ROLE_STATUS_OPTIONS = {
-  support:   ['Awaiting', 'In Progress', 'Insufficient', 'Returned', 'Completed', 'Reject'],
+  // Returned is never picked by hand: it's set on whoever a records request
+  // goes to. Rebuttal is the reviewers' "send back" action.
+  support:   ['Awaiting', 'In Progress', 'Insufficient', 'Completed', 'Reject'],
   coder:     ['New', 'In Progress', 'Record Received', 'Record Requested', 'Completed', 'Reject'],
-  reviewer:  ['New', 'In Progress', 'Returned', 'Record Requested', 'Completed', 'Reject'],
-  reviewer2: ['New', 'In Progress', 'Returned', 'Record Requested', 'Completed', 'Reject'],
+  reviewer:  ['New', 'In Progress', 'Rebuttal', 'Record Requested', 'Completed', 'Reject'],
+  reviewer2: ['New', 'In Progress', 'Rebuttal', 'Record Requested', 'Completed', 'Reject'],
 };
 
 // Fallback when no active role owns the DOS (e.g. billing / unassigned):
 // the full set, deduped, so the menu is never empty.
 export const ALL_STATUS_OPTIONS = [
   'New', 'Awaiting', 'In Progress', 'Record Received', 'Record Requested',
-  'Insufficient', 'Returned', 'Skipped', 'Completed', 'Reject', 'Billed',
+  'Insufficient', 'Rebuttal', 'Returned', 'Skipped', 'Completed', 'Reject', 'Billed',
 ];
 
 // Status options ordered for the StatusLegend strip. `status` is the
