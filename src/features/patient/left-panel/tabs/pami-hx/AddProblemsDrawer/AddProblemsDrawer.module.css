@@ -293,3 +293,58 @@
 }
 .reactionName { flex: 1; min-width: 0; }
 .reactionSeverity { width: 160px; flex-shrink: 0; }
+
+/* Surgical history: a Name / Performed Date table. Rows are added straight
+   from the search, and the date is edited on the row. The trailing column
+   holds Remove, shown only on hover or focus so the resting table is just
+   the two columns. */
+.procTable {
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+
+.procHeadRow,
+.procRow {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) var(--space-6);
+  align-items: center;
+  column-gap: var(--space-4);
+  padding: var(--space-3) var(--space-3);
+}
+
+.procHeadRow {
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  line-height: 1.2;
+}
+
+.procRow + .procRow {
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.procName {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.procAction {
+  display: flex;
+  justify-content: flex-end;
+  opacity: 0;
+  transition: opacity var(--duration-base) var(--ease-out);
+}
+
+.procRow:hover .procAction,
+.procRow:focus-within .procAction {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .procAction { transition: none; }
+}

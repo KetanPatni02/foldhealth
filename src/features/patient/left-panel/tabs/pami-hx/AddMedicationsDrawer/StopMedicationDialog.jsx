@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { ReasonDialog } from '../../../../../../components/ReasonDialog/ReasonDialog';
 import { Input } from '../../../../../../components/Input/Input';
 import { MEDICATION_STOP_REASONS } from './medicationStopReasons';
+import { todayIso, toIsoDate } from '../../../../../../lib/clinicalDates';
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
 
 /**
  * Stopping a medication needs a date and a reason, so the row's status
@@ -22,7 +22,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 export function StopMedicationDialog({ medication, onConfirm, onCancel }) {
   const [stop, setStop] = useState(todayIso());
 
-  const start = medication?.start || '';
+  const start = toIsoDate(medication?.start);
   const stopTooEarly = !!(stop && start && stop < start);
 
   return (

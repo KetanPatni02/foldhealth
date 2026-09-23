@@ -69,6 +69,7 @@ import {
   mapPatientProblemRow,
   mapPatientAllergyRow,
   mapPatientImmunizationRow,
+  mapPatientHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
@@ -444,6 +445,13 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  removePatientMedication: async (patientId, id) => {
+    const { error } = await supabase.from('patient_medications').delete().eq('id', id);
+    if (error) { console.warn('removePatientMedication:', error.message); get().showToast?.('Could not remove medication'); return false; }
+    await get().fetchPatientMedications(patientId);
+    return true;
+  },
+
   // ── Patient immunizations (PAMI/Hx → Immunizations) ──
   patientImmunizations: {},           // { [patientId]: Immunization[] }
   patientImmunizationsLoadedFor: {},  // { [patientId]: true } — gates the skeleton
@@ -499,6 +507,63 @@ export const useAppStore = create((set, get) => ({
     const { error } = await supabase.from('patient_immunizations').delete().eq('id', id);
     if (error) { console.warn('removePatientImmunization:', error.message); get().showToast?.('Could not remove immunization'); return false; }
     await get().fetchPatientImmunizations(patientId);
+    return true;
+  },
+
+  // ── PAMI/Hx history cards (Medical, Surgical, Family, Social). Recent
+  // Clinical Events and Lab / Imaging Reports are still static in the tab —
+  // they have no source yet.
+  patientPamiRecords: {},           // { [patientId]: { history } }
+  patientPamiRecordsLoadedFor: {},  // { [patientId]: true } — gates the skeletons
+  fetchPatientPamiRecords: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_history_entries')
+      .select('*').eq('patient_id', String(patientId)).order('sort_order');
+    if (error) console.warn('fetchPatientPamiRecords:', error.message);
+    const history = (data || []).map(mapPatientHistoryRow);
+    set(s => ({
+      patientPamiRecords: { ...s.patientPamiRecords, [patientId]: { history } },
+      patientPamiRecordsLoadedFor: { ...s.patientPamiRecordsLoadedFor, [patientId]: true },
+    }));
+  },
+  // History entries are written one kind at a time (Surgical History today);
+  // each write refetches, so every card on the tab stays in step.
+  addPatientHistoryEntry: async (patientId, kind, values) => {
+    if (!patientId || !kind || !values?.title?.trim()) return false;
+    const row = {
+      id: `phe-${patientId}-${kind.slice(0, 3)}-${Date.now()}`,
+      patient_id: String(patientId),
+      kind,
+      title: values.title.trim(),
+      code: values.code || null,
+      code_system: values.codeSystem || null,
+      detail: values.detail || '',
+      relation: values.relation || null,
+      recorded_on: values.recordedOn || null,
+      synced: true,
+      sort_order: 999,
+    };
+    const { error } = await supabase.from('patient_history_entries').insert(row);
+    if (error) { console.warn('addPatientHistoryEntry:', error.message); get().showToast?.('Could not add history entry'); return false; }
+    await get().fetchPatientPamiRecords(patientId);
+    return true;
+  },
+  updatePatientHistoryEntry: async (patientId, id, values) => {
+    const row = { updated_at: new Date().toISOString() };
+    if (values.title != null) row.title = values.title.trim();
+    if (values.code != null) row.code = values.code || null;
+    if (values.codeSystem != null) row.code_system = values.codeSystem || null;
+    if (values.detail != null) row.detail = values.detail;
+    if (values.recordedOn != null) row.recorded_on = values.recordedOn || null;
+    const { error } = await supabase.from('patient_history_entries').update(row).eq('id', id);
+    if (error) { console.warn('updatePatientHistoryEntry:', error.message); get().showToast?.('Could not update history entry'); return false; }
+    await get().fetchPatientPamiRecords(patientId);
+    return true;
+  },
+  removePatientHistoryEntry: async (patientId, id) => {
+    const { error } = await supabase.from('patient_history_entries').delete().eq('id', id);
+    if (error) { console.warn('removePatientHistoryEntry:', error.message); get().showToast?.('Could not remove history entry'); return false; }
+    await get().fetchPatientPamiRecords(patientId);
     return true;
   },
 

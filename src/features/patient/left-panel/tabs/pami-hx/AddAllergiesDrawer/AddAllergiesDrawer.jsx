@@ -17,6 +17,7 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { AllergySelect } from './AllergySelect';
 import { ALLERGY_REACTIONS, REACTION_SYSTEM } from '../../../../../../reference-data/allergyReactions';
 import { toast } from '../../../../../../components/Toast/sonnerToast';
+import { todayIso, toIsoDate, formatClinicalDate } from '../../../../../../lib/clinicalDates';
 import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 
 const STATUS_OPTIONS = ['Active', 'Past'].map(v => ({ value: v, label: v }));
@@ -32,14 +33,13 @@ const REACTION_OPTIONS = ALLERGY_REACTIONS.map(r => ({ value: r.code, label: r.d
 const REACTION_SEVERITY_OPTIONS = ['Severe', 'Moderate', 'Mild']
   .map(v => ({ value: v, label: v }));
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-US') : '');
+
 
 function AllergyRow({ allergy, onStatusChange, onEdit, dimmed }) {
   const [open, setOpen] = useState(false);
   const meta = [
     allergy.reactionType,
-    allergy.sinceDate ? `Since ${allergy.sinceDate}` : '',
+    allergy.sinceDate ? `Since ${formatClinicalDate(allergy.sinceDate)}` : '',
   ].filter(Boolean);
   const hasDetails = allergy.reactions?.length > 0 || !!allergy.note;
 
@@ -144,7 +144,7 @@ function AllergyDraft({ title, eyebrow, initial, onSave, onCancel }) {
     setSaving(true);
     await onSave({
       title,
-      sinceDate: fmtDate(since),
+      sinceDate: since,
       reactionType,
       criticality,
       // A row left blank was added and never filled in.
@@ -304,7 +304,7 @@ export function AddAllergiesDrawer({ patientId, focus, onClose }) {
     editing: allergy,
     concept: { code: allergy.code || '', codeSystem: allergy.codeSystem || '' },
     initial: {
-      since: allergy.sinceDate ? new Date(allergy.sinceDate).toISOString().slice(0, 10) : todayIso(),
+      since: toIsoDate(allergy.sinceDate) || todayIso(),
       reactionType: allergy.reactionType || 'Allergy',
       criticality: allergy.criticality || 'Low',
       reactions: allergy.reactions || [],
@@ -321,9 +321,14 @@ export function AddAllergiesDrawer({ patientId, focus, onClose }) {
   };
 
   const handleStatusChange = async (allergy, status) => {
-    if (status === (allergy.status || 'Active')) return;
+    const prev = allergy.status || 'Active';
+    if (status === prev) return;
     const ok = await updatePatientAllergy(patientId, allergy.id, { status });
-    if (ok && status === 'Past') toast.success('Allergy moved to past allergies');
+    if (ok && status === 'Past') {
+      toast.success('Allergy moved to past allergies', {
+        action: { label: 'Undo', onClick: () => updatePatientAllergy(patientId, allergy.id, { status: prev }) },
+      });
+    }
   };
 
   const renderRow = (a) => (draft?.editing?.id === a.id ? (

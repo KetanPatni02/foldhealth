@@ -15,6 +15,7 @@ import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkel
 import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { toast } from '../../../../../../components/Toast/sonnerToast';
+import { todayIso, toIsoDate, formatClinicalDate } from '../../../../../../lib/clinicalDates';
 import styles from './AddProblemsDrawer.module.css';
 
 // Controlled is still a live problem, so only Resolved closes one out and the
@@ -24,16 +25,12 @@ const STATUS_OPTIONS = ['Active', 'Controlled', 'Resolved'].map(v => ({ value: v
 const SEVERITY_OPTIONS = ['Mild', 'Moderate', 'Severe'].map(v => ({ value: v, label: v }));
 const TYPE_OPTIONS = ['Chronic', 'Acute'].map(v => ({ value: v, label: v }));
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-
-// onset_label is a display string ("11/18/24 (1 Year)"); the date input needs
-// ISO, so the leading date is parsed back out and today stands in when it
-// cannot be read.
+// onset_label is a display string ("11/18/2024 (1 Year)"); the date input
+// needs ISO, so the leading date is read back out and today stands in when it
+// cannot be parsed.
 function isoFromOnsetLabel(label) {
-  const match = /^(\d{1,2}\/\d{1,2}\/\d{2,4})/.exec((label || '').trim());
-  if (!match) return todayIso();
-  const d = new Date(match[1]);
-  return Number.isNaN(d.getTime()) ? todayIso() : d.toISOString().slice(0, 10);
+  const match = /^(\d{1,2}\/\d{1,2}\/\d{4})/.exec((label || '').trim());
+  return (match && toIsoDate(match[1])) || todayIso();
 }
 
 /**
@@ -231,9 +228,7 @@ export function AddProblemsDrawer({ patientId, focus, onClose }) {
       severity: values.severity,
       status: values.status,
       note: values.note,
-      onsetLabel: values.since
-        ? new Date(values.since).toLocaleDateString('en-US')
-        : undefined,
+      onsetLabel: values.since ? formatClinicalDate(values.since) : undefined,
     };
     const ok = draft?.editing
       ? await updatePatientProblem(patientId, draft.editing.id, payload)
@@ -257,11 +252,16 @@ export function AddProblemsDrawer({ patientId, focus, onClose }) {
   ));
 
   const handleStatusChange = async (problem, status) => {
-    if (status === (problem.status || 'Active')) return;
+    const prev = problem.status || 'Active';
+    if (status === prev) return;
     const ok = await updatePatientProblem(patientId, problem.id, { status });
-    // Resolving closes a problem out, which is worth confirming; the other
-    // statuses are visible in the row itself.
-    if (ok && status === 'Resolved') toast.success('Problem resolved successfully');
+    // Resolving moves the problem out of the active list, so the toast carries
+    // an Undo; the other statuses stay visible in the row itself.
+    if (ok && status === 'Resolved') {
+      toast.success('Problem resolved successfully', {
+        action: { label: 'Undo', onClick: () => updatePatientProblem(patientId, problem.id, { status: prev }) },
+      });
+    }
   };
 
   return (
