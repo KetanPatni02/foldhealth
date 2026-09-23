@@ -20,6 +20,7 @@ import styles from './ActionButton.module.css';
  * @param {boolean}  [props.notification=false]          – Show orange notification badge
  * @param {string}   [props.count]                      – Badge count text (shows grey count badge)
  * @param {boolean}  [props.dot=false]                  – Show red status dot
+ * @param {boolean}  [props.dotPulse=false]             – Make the red dot blink (pulsing ring)
  * @param {boolean}  [props.chevron=false]              – Show dropdown chevron
  * @param {boolean}  [props.chevronOpen=false]          – Rotate chevron when open
  * @param {boolean}  [props.active=false]               – Toggle state (exposed as aria-pressed)
@@ -35,6 +36,7 @@ export const ActionButton = forwardRef(function ActionButton({
   notification = false,
   count,
   dot = false,
+  dotPulse = false,
   chevron = false,
   chevronOpen = false,
   // Destructured so a boolean `active` from callers never reaches the DOM
@@ -96,7 +98,7 @@ export const ActionButton = forwardRef(function ActionButton({
 
       {/* Status dot */}
       {dot && !notification && !count && (
-        <span className={styles.dot} />
+        <span className={`${styles.dot} ${dotPulse ? styles.dotPulse : ''}`} />
       )}
 
       {/* Dropdown chevron */}

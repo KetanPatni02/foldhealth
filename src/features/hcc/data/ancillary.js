@@ -12,6 +12,23 @@ export const COMMENTS = [
   { id: 'c3', author: 'A. Beauchamp',    role: 'Support Team', date: '06/03/2026', time: '02:45 PM', icd: 'I48.91', dos: '03/08/2026', body: 'Records requested from PCP for I48.91 (a-fib). ECG report expected within 5 business days. Placing DOS on hold pending documentation.' },
 ];
 
+// Comments shown on one patient's DiagPanel: rows scoped to that patient,
+// plus legacy rows saved before comments carried a patient id (those were
+// org-wide and have no owner to match). Mock rows only while the store is
+// empty.
+export function commentsForMember(all, memberId) {
+  if (!all?.length) return COMMENTS;
+  return all.filter(c => !c.memberId || c.memberId === memberId);
+}
+
+// True when a comment body @-mentions `name` (case-insensitive, and not as
+// the prefix of a longer name).
+export function mentionsUser(body, name) {
+  if (!body || !name) return false;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`@${escaped}(?![A-Za-z])`, 'i').test(body);
+}
+
 // Documents render as a 2-column table (Figma 1:54865): "Document Name |
 // Status". `ext` drives the per-extension file-icon variant (PDF/DOC/IMG).
 // Uploads span the workflow: PCP-signed clinical docs come from the Support

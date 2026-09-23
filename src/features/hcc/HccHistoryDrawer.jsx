@@ -11,6 +11,7 @@ import { EVENTS } from './activityLog';
 // per spec §2 we want one timeline component, four views.
 import {
   HistoryTimelineEntry,
+  statusIconConfig,
   historyTimelineStyles as htStyles,
 } from '../../components/HistoryTimeline/HistoryTimeline';
 import styles from './DiagPanel/LeftWorkspace.module.css';
@@ -246,7 +247,7 @@ function HistoryEntry({ row, isFirst, isLast }) {
       item={item}
       isFirst={isFirst}
       isLast={isLast}
-      iconConfig={{ icon: iconCfg.icon, color: tone.color, bg: tone.bg, border: tone.border }}
+      iconConfig={statusIconConfig(toStatus) || { icon: iconCfg.icon, color: tone.color, bg: tone.bg, border: tone.border }}
       singleStatus={singleStatusVal}
       detailsContent={detailsContent}
       showDetailsToggle={hasDetails}

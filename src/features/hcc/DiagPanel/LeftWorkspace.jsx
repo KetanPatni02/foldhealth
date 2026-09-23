@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useId } from 'react';
+import { useState, useMemo, useEffect, useRef, useId, useCallback } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
@@ -6,10 +6,12 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
+import { Switch } from '../../../components/Switch/Switch';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
-  COMMENTS as COMMENTS_MOCK,
+  commentsForMember,
+  mentionsUser,
   NOTES as NOTES_MOCK,
   CLAIMS,
   HISTORY as HISTORY_MOCK,
@@ -30,7 +32,7 @@ import { CommentComposer } from '../../../components/CommentComposer/CommentComp
 import { FailReasonInline, EditDocInline } from '../ChartDetailDrawerParts';
 import {
   HistoryTimelineEntry,
-  TRANS_BADGE,
+  statusTone,
 } from '../../../components/HistoryTimeline/HistoryTimeline';
 import styles from './LeftWorkspace.module.css';
 
@@ -92,7 +94,11 @@ export function LeftWorkspace({
   useEffect(() => { fetchHccDiagAncillary(); }, [fetchHccDiagAncillary]);
   const dbComments = useAppStore(s => s.hccDiagComments);
   const dbNotes    = useAppStore(s => s.hccDiagNotes);
-  const commentsForCount = dbComments.length ? dbComments : COMMENTS_MOCK;
+  // Tab-label count must match what the Comments tab renders for this patient.
+  const commentsForCount = useMemo(
+    () => commentsForMember(dbComments, member?.id),
+    [dbComments, member?.id],
+  );
   const notesForCount    = dbNotes.length    ? dbNotes    : NOTES_MOCK;
   // Per-member claims — one row per claim-sourced DOS on the record.
   // claimForDos() reuses the CLAIMS fixture when the date matches or
@@ -180,44 +186,36 @@ export function LeftWorkspace({
     return [...header, ...liveLog, ...mock];
   }, [liveLog, member?.name, activityFromDb]);
 
-  // Filter state — each chip carries an ARRAY (multi-select). DOS is seeded
-  // with every DOS the member has, so "all are selected by default" and the
-  // user narrows the view by unchecking. Empty array = filter inactive (all
-  // records match). The ICD chip is kept in sync with the ICD card the user
-  // picked on the right panel (diagActivityIcd) — selecting a card populates
-  // filters.icd; unchecking it in the chip clears the card selection too.
+  // Filter state, each chip carries an ARRAY (multi-select). Empty = filter
+  // inactive (all records match). Nothing is preselected on open, so every
+  // chip reads "Label ⌄" until the user narrows the view. The ICD chip is
+  // kept in sync with the ICD card the user picked on the right panel
+  // (diagActivityIcd): selecting a card populates filters.icd; unchecking it
+  // in the chip clears the card selection too.
   const activityIcd = useAppStore(s => s.diagActivityIcd);
   const clearDiagActivityIcd = useAppStore(s => s.clearDiagActivityIcd);
-  const memberDosList = useMemo(
-    () => (member?.dos_list || []).flatMap(d => d.date ? [d.date] : []),
-    [member?.dos_list],
-  );
   const [filters, setFilters] = useState(() => ({
-    dos:  memberDosList,
+    dos:  [],
     hcc:  [],
     icd:  activityIcd ? [activityIcd] : [],
     by:   [],
     date: [],
+    type: [],
   }));
-  // Track whether the user has manually edited the DOS chip. While untouched,
-  // mirror the full DOS option list into filters.dos so late-loading activity
-  // entries (which can widen the option list) stay auto-selected. Once the
-  // user unchecks anything, we stop auto-mirroring so their edit sticks.
-  const dosCustomizedRef = useRef(false);
   const seedRef = useRef(member?.id);
   useEffect(() => {
     if (seedRef.current !== member?.id) {
       seedRef.current = member?.id;
-      dosCustomizedRef.current = false;
       setFilters({
-        dos:  memberDosList,
+        dos:  [],
         hcc:  [],
         icd:  activityIcd ? [activityIcd] : [],
         by:   [],
         date: [],
+        type: [],
       });
     }
-  }, [member?.id, memberDosList, activityIcd]);
+  }, [member?.id, activityIcd]);
   // Mirror the card-selected ICD into the ICD chip. When the card gets
   // cleared, drop that ICD from the chip too.
   useEffect(() => {
@@ -231,7 +229,6 @@ export function LeftWorkspace({
 
   const setFilter = (key, value) => {
     setFilters(f => ({ ...f, [key]: value }));
-    if (key === 'dos') dosCustomizedRef.current = true;
     // Un-picking the card-selected ICD via the chip should also clear the
     // card selection so the right-panel highlight stays in sync.
     if (key === 'icd' && activityIcd && Array.isArray(value) && !value.includes(activityIcd)) {
@@ -239,8 +236,7 @@ export function LeftWorkspace({
     }
   };
   const clearAllFilters = () => {
-    dosCustomizedRef.current = true;
-    setFilters({ dos: [], hcc: [], icd: [], by: [], date: [] });
+    setFilters({ dos: [], hcc: [], icd: [], by: [], date: [], type: [] });
     if (activityIcd) clearDiagActivityIcd?.();
   };
 
@@ -261,18 +257,6 @@ export function LeftWorkspace({
     }),
     [rawActivity, member, dbCommentsAll, dbNotesAll, dbDocsAll, platformUsersAll],
   );
-  // Mirror the full DOS option list into filters.dos until the user edits
-  // it. Keeps "default = all selected" true even when activity data loads
-  // asynchronously and adds new DOS options after the initial render.
-  useEffect(() => {
-    if (dosCustomizedRef.current) return;
-    setFilters(f => {
-      const opts = filterOptions.dos || [];
-      const dosSet = new Set(f.dos);
-      const same = f.dos.length === opts.length && opts.every(d => dosSet.has(d));
-      return same ? f : { ...f, dos: opts };
-    });
-  }, [filterOptions.dos]);
 
   return (
     <div className={styles.wrap}>
@@ -306,6 +290,7 @@ export function LeftWorkspace({
             chips, separated by a vertical divider. */}
         {showFilterRow && (
           <FilterRow
+            keys={active === 'activity' ? TIMELINE_FILTER_KEYS : FILTER_KEYS}
             filters={filters}
             options={filterOptions}
             onChange={setFilter}
@@ -353,13 +338,41 @@ export function LeftWorkspace({
 // Filter row chip set — the same 5 chips on every tab so a filter the user
 // dials in on Timeline stays applied on Documents/Claims/etc.
 const FILTER_KEYS = ['dos', 'hcc', 'icd', 'by', 'date'];
+// Timeline only: the same chips plus Activity Type.
+const TIMELINE_FILTER_KEYS = [...FILTER_KEYS, 'type'];
 const FILTER_LABEL = {
   dos:  'DOS',
   hcc:  'HCC Code',
   icd:  'ICD Code',
   by:   'Recorded By',
   date: 'Date',
+  type: 'Activity Type',
 };
+
+// Timeline entries carry many internal kinds (entry.t); the Activity Type
+// filter groups them into the labels a reviewer thinks in. Order here is the
+// order the options appear in the dropdown.
+const ACTIVITY_TYPE_GROUPS = [
+  ['Comment',        ['comment']],
+  ['Clinical Note',  ['clinical_note']],
+  ['Document',       ['upload', 'document-upload', 'doc-status', 'icds-merged-via-upload']],
+  ['Status Change',  ['status_dos', 'status_hcc', 'status_role', 'status_change']],
+  ['Assignment',     ['assign_coder', 'assignee_change']],
+  ['ICD Added',      ['create']],
+  ['ICD Accepted',   ['accept']],
+  ['ICD Dismissed',  ['dismiss']],
+  ['Deleted',        ['delete', 'delete_dos']],
+  ['Override',       ['override']],
+  ['Outreach',       ['outreach']],
+  ['System',         ['system']],
+];
+const ACTIVITY_TYPE_BY_T = Object.fromEntries(
+  ACTIVITY_TYPE_GROUPS.flatMap(([label, ts]) => ts.map(t => [t, label])),
+);
+const ACTIVITY_TYPE_ORDER = [...ACTIVITY_TYPE_GROUPS.map(([label]) => label), 'Other'];
+function activityTypeOf(e) {
+  return ACTIVITY_TYPE_BY_T[e?.t] || 'Other';
+}
 
 // Preset Date-filter ranges, evaluated against entry.date (MM/DD/YYYY).
 const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'This month'];
@@ -372,12 +385,14 @@ export function computeFilterOptions(entries, member, extras = {}) {
   const dos = new Set((member?.dos_list || []).flatMap(d => d.date ? [d.date] : []));
   const hcc = new Set();
   const icd = new Set();
+  const types = new Set();
   const HCC_RE = /HCC\s*\d+/g;
   // Strip a trailing "(Role)" suffix so "You (Coder)" and "You (QA)" collapse
   // to a single "You" option in the Recorded By list.
   const stripRole = (raw) => String(raw || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
   for (const e of entries) {
     if (e.t === 'group') continue;
+    types.add(activityTypeOf(e));
     if (e.dos) dos.add(e.dos);
     if (Array.isArray(e.icds)) e.icds.forEach(c => icd.add(c));
     if (typeof e.headline === 'string') {
@@ -414,6 +429,8 @@ export function computeFilterOptions(entries, member, extras = {}) {
     icd:  [...icd].toSorted(cmp),
     by:   [...byPool].toSorted(cmp),
     date: DATE_PRESETS,
+    // Only the types actually present in this timeline.
+    type: ACTIVITY_TYPE_ORDER.filter(t => types.has(t)),
   };
 }
 
@@ -426,6 +443,7 @@ export function computeFilterOptions(entries, member, extras = {}) {
  */
 function entryMatchesFilters(e, filters) {
   if (e.t === 'group') return true;
+  if (filters.type?.length && !filters.type.includes(activityTypeOf(e))) return false;
   if (filters.dos?.length && !filters.dos.includes(e.dos)) return false;
   if (filters.by?.length  && !filters.by.includes(e.by))   return false;
   if (filters.icd?.length) {
@@ -512,12 +530,12 @@ function matchesDatePreset(d, preset) {
   return true;
 }
 
-export function FilterRow({ filters, options, onChange, onClearAll, trailing }) {
-  const hasAny = FILTER_KEYS.some(k => Array.isArray(filters?.[k]) && filters[k].length > 0);
+export function FilterRow({ filters, options, onChange, onClearAll, trailing, keys = FILTER_KEYS }) {
+  const hasAny = keys.some(k => Array.isArray(filters?.[k]) && filters[k].length > 0);
   return (
     <div className={styles.filterRow}>
       <div className={styles.filterChips}>
-        {FILTER_KEYS.map((k) => (
+        {keys.map((k) => (
           <div key={k} className={styles.filterChipWrap}>
             <SharedFilterChip
               label={FILTER_LABEL[k]}
@@ -686,17 +704,24 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
 // comment is a row with a chat-icon left rail + connector line, a meta line
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
-export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange, memberOverride = null }) {
-  // Seed from Supabase (hcc_diag_comments); fall back to the local mock
-  // while the DB is empty or unreachable. Local state supports optimistic
-  // insert when the composer posts — persistence is a follow-up.
+export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange, member: memberProp = null, memberOverride = null }) {
+  // Scope the timeline to the patient whose DiagPanel we're rendering in.
   const dbComments = useAppStore(s => s.hccDiagComments);
-  const seed = dbComments.length ? dbComments : COMMENTS_MOCK;
+  const diagPanelMemberIdEarly = useAppStore(s => s.diagPanelMemberId);
+  const scopeMemberId = memberProp?.id || memberOverride?.id || diagPanelMemberIdEarly || null;
+  const seed = useMemo(
+    () => commentsForMember(dbComments, scopeMemberId),
+    [dbComments, scopeMemberId],
+  );
   const [items, setItems] = useState(seed);
   useEffect(() => { setItems(seed); }, [seed]);
+  // "@mentions" switch: narrow to comments that tag the logged-in user.
+  const [mentionsOnly, setMentionsOnly] = useState(false);
+  const myName = useAppStore(s => s.currentUserProfile?.name);
+  const mentionsMe = useCallback((c) => mentionsUser(c.body, myName), [myName]);
   const visibleItems = useMemo(
-    () => items.filter(c => recordMatchesFilters(c, filters)),
-    [items, filters],
+    () => items.filter(c => recordMatchesFilters(c, filters) && (!mentionsOnly || mentionsMe(c))),
+    [items, filters, mentionsOnly, mentionsMe],
   );
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [confirmDeleteComment, setConfirmDeleteComment] = useState(null);
@@ -793,21 +818,39 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
         />
       </div>
       <div className={styles.timeline}>
-        {groups.map((g) => {
+        {/* With no matching comments there's no month header to sit beside,
+            so the switch gets its own row (and stays reachable to turn off). */}
+        {groups.length === 0 && (
+          <div className={styles.commentsGroupRow}>
+            <span className={styles.commentsEmpty}>
+              {mentionsOnly ? 'No comments mention you.' : 'No comments yet.'}
+            </span>
+            <Switch className={styles.mentionsSwitch} labelGap="var(--space-1)" label="@mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
+          </div>
+        )}
+        {groups.map((g, gi) => {
           const isCollapsed = collapsed.has(g.label);
+          const header = (
+            <button
+              type="button"
+              className={[styles.activityGroup, isCollapsed ? styles.activityGroupCollapsed : ''].join(' ')}
+              onClick={() => toggleGroup(g.label)}
+              aria-expanded={!isCollapsed}
+            >
+              <span>{g.label}</span>
+              <span className={styles.activityGroupChevron}>
+                <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
+              </span>
+            </button>
+          );
           return (
             <div key={g.label}>
-              <button
-                type="button"
-                className={[styles.activityGroup, isCollapsed ? styles.activityGroupCollapsed : ''].join(' ')}
-                onClick={() => toggleGroup(g.label)}
-                aria-expanded={!isCollapsed}
-              >
-                <span>{g.label}</span>
-                <span className={styles.activityGroupChevron}>
-                  <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-400)" />
-                </span>
-              </button>
+              {gi === 0 ? (
+                <div className={styles.commentsGroupRow}>
+                  {header}
+                  <Switch className={styles.mentionsSwitch} labelGap="var(--space-1)" label="@mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
+                </div>
+              ) : header}
               {!isCollapsed && g.items.map((c, i) => (
                 <CommentEntry
                   key={c.id}
@@ -875,7 +918,7 @@ function renderCommentBody(body, users) {
   while ((match = re.exec(body)) !== null) {
     if (match.index > lastIdx) nodes.push(body.slice(lastIdx, match.index));
     nodes.push(
-      <Badge key={`m-${key++}`} variant="mention" label={`@${match[1]}`} />,
+      <Badge key={`m-${key++}`} variant="mention" label={match[1]} />,
     );
     lastIdx = match.index + match[0].length;
   }
@@ -891,6 +934,8 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
   const role = normalizeRole(item.role);
   const platformUsers = useAppStore(s => s.platformUsers);
   const usersForMentions = platformUsers?.length ? platformUsers : SYSTEM_USERS;
+  const kebabRef = useRef(null);
+  const [menuAnchor, setMenuAnchor] = useState(null);
   const commit = () => {
     const next = draft.trim();
     if (!next || next === item.body) { setEditing(false); return; }
@@ -900,42 +945,58 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
   return (
     <div className={styles.tlRow}>
       <div className={styles.tlRail}>
-        {!isFirst && <span className={styles.tlConnectorTop} />}
+        {isFirst
+          ? <span className={styles.tlConnectorTopFirst} />
+          : <span className={styles.tlConnectorTop} />}
         <span
           className={styles.tlIcon}
           style={{ background: 'var(--neutral-0)', borderColor: 'var(--neutral-150)' }}
         >
           <Icon name="solar:chat-round-linear" size={14} color="var(--neutral-300)" />
         </span>
-        {!isLast && <span className={styles.tlConnectorBottom} />}
+        {isLast
+          ? <span className={styles.tlConnectorBottomLast} />
+          : <span className={styles.tlConnectorBottom} />}
       </div>
       <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
         <div className={styles.commentMetaRow}>
           <div className={styles.tlMeta}>
-            {item.date} • {item.time} • {item.author}({role})
+            {item.date} • {item.time} • {item.author} ({role})
             {item.icd && <> • ICD {item.icd}</>}
-            {item.edited && <span className={styles.commentEditedBadge}>Edited</span>}
+            {item.edited && <> • <span className={styles.commentEditedBadge}>Edited</span></>}
           </div>
           {isMine && !editing && (
-            <div className={styles.commentActions}>
+            <div className={[styles.commentActions, menuAnchor ? styles.commentActionsOpen : ''].filter(Boolean).join(' ')}>
               <button
+                ref={kebabRef}
                 type="button"
                 className={styles.commentActionBtn}
-                aria-label="Edit comment"
-                title="Edit"
-                onClick={() => setEditing(true)}
+                aria-label="Comment actions"
+                title="More"
+                onClick={() => {
+                  const r = kebabRef.current?.getBoundingClientRect();
+                  if (r) setMenuAnchor(r);
+                }}
               >
-                <Icon name="solar:pen-linear" size={13} color="currentColor" />
+                <Icon name="solar:menu-dots-linear" size={14} color="currentColor" />
               </button>
-              <button
-                type="button"
-                className={styles.commentActionBtn}
-                aria-label="Delete comment"
-                title="Delete"
-                onClick={() => onDelete?.(item.id, item.body)}
-              >
-                <Icon name="solar:trash-bin-2-linear" size={13} color="currentColor" />
-              </button>
+              {menuAnchor && (
+                <MenuPopover
+                  anchorRect={menuAnchor}
+                  width={168}
+                  align="right"
+                  items={[
+                    { key: 'edit',   icon: 'solar:pen-linear', label: 'Edit' },
+                    { key: 'delete', icon: 'solar:trash-bin-2-linear', label: 'Delete', danger: true },
+                  ]}
+                  onClose={() => setMenuAnchor(null)}
+                  onSelect={(key) => {
+                    setMenuAnchor(null);
+                    if (key === 'edit') setEditing(true);
+                    else if (key === 'delete') onDelete?.(item.id, item.body);
+                  }}
+                />
+              )}
             </div>
           )}
         </div>
@@ -956,24 +1017,20 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
           </div>
         ) : (
           <>
+            <div className={styles.commentBody}>{renderCommentBody(item.body, usersForMentions)}</div>
             {/* Comment attached to a workflow status transition (currently
-                Coder → Record Requested). Shows the from/to pills above the
-                body so the reason lives next to the change it explains. */}
+                Coder → Record Requested). The from/to card sits under the
+                comment it explains. */}
             {item.statusFrom && item.statusTo && (
               <div className={styles.commentStatusChange}>
                 <div className={styles.commentStatusHeader}>Status Changed</div>
                 <div className={styles.commentStatusPills}>
-                  <span className={[styles.tlPill, styles[TRANS_BADGE[item.statusFrom] || 'pillNew']].join(' ')}>
-                    {item.statusFrom}
-                  </span>
+                  <Badge size="S" tone={statusTone(item.statusFrom)} label={item.statusFrom} />
                   <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-                  <span className={[styles.tlPill, styles[TRANS_BADGE[item.statusTo] || 'pillReturned']].join(' ')}>
-                    {item.statusTo}
-                  </span>
+                  <Badge size="S" tone={statusTone(item.statusTo)} label={item.statusTo} />
                 </div>
               </div>
             )}
-            <div className={styles.commentBody}>{renderCommentBody(item.body, usersForMentions)}</div>
           </>
         )}
       </div>

@@ -476,29 +476,33 @@ function persistHccActivityRow(row) {
 // — the composer already updated local state optimistically.
 function persistHccDiagComment(row) {
   if (!row?.id) return;
-  supabase
-    .from('hcc_diag_comments')
-    .insert({
-      id: row.id,
-      author: row.author,
-      role: row.role,
-      date: row.date,
-      time: row.time,
-      edited: !!row.edited,
-      body: row.body,
-      // Scope columns added in supabase/hcc_diag_comment_scope_migration.sql.
-      // If the migration hasn't run yet, Supabase will reject the insert with
-      // "column ... does not exist" — the warning below surfaces that.
-      icd: row.icd ?? null,
-      dos: row.dos ?? null,
-      // Status-transition context — added in
-      // supabase/hcc_diag_comment_status_migration.sql. Set when a coder
-      // flips a DOS to a status that requires a mandatory comment
-      // (currently "Record Requested").
-      status_from: row.statusFrom ?? null,
-      status_to:   row.statusTo   ?? null,
-    })
+  const base = {
+    id: row.id,
+    author: row.author,
+    role: row.role,
+    date: row.date,
+    time: row.time,
+    edited: !!row.edited,
+    body: row.body,
+    // Scope columns added in supabase/hcc_diag_comment_scope_migration.sql.
+    icd: row.icd ?? null,
+    dos: row.dos ?? null,
+    // Status-transition context — added in
+    // supabase/hcc_diag_comment_status_migration.sql. Set when a coder
+    // flips a DOS to a status that requires a mandatory comment
+    // (currently "Record Requested").
+    status_from: row.statusFrom ?? null,
+    status_to:   row.statusTo   ?? null,
+  };
+  const insert = (payload) => supabase.from('hcc_diag_comments').insert(payload);
+  insert({ ...base, hcc_member_id: row.memberId ?? null })
     .then(({ error }) => {
+      // Until hcc_diag_comment_member_migration.sql runs, the patient column
+      // doesn't exist; retry without it so the comment itself isn't lost.
+      if (error && /hcc_member_id/.test(error.message || '')) return insert(base);
+      return { error };
+    })
+    .then(({ error } = {}) => {
       if (error) reportPersistFailure(`persistHccDiagComment(${row.id})`, error);
     });
 }

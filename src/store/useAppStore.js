@@ -138,7 +138,7 @@ import {
   cancelScheduledCampaignSave,
   queueHccExtractToast,
 } from './lib/contentStoreCache';
-import { HCC_TRANSITION_LABEL } from '../features/hcc/hccTransitionLabels';
+import { HCC_TRANSITION_LABEL, HCC_ROLE_LABEL, hccTransitionRole, hccRoleStatusHeadline } from '../features/hcc/hccTransitionLabels';
 import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActivityFeed';
 import { createShellSlice } from './slices/shellSlice';
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
@@ -787,6 +787,9 @@ export const useAppStore = create((set, get) => ({
       fileType: doc.docType,
       docId: doc.id,
     });
+    // Your own upload is never "new" to you. Only extend an existing seen set;
+    // with no baseline yet, the DiagPanel's first-open baseline covers it.
+    if (get().hccDiagSeen?.[memberId]?.documents) get().markHccDiagSeen(memberId, 'documents', [doc.id]);
     // Bell notification: surface the upload globally so a reviewer who
     // isn't currently in this patient's DiagPanel still sees the activity.
     const memberName = useAppStore.getState().hccMembers?.find(m => m.id === memberId)?.name;
@@ -804,6 +807,9 @@ export const useAppStore = create((set, get) => ({
   // member id into the same map addChartDoc maintains. Single-fire per session
   // — the HCC worklist and DiagPanel both mount and call this on entry.
   hccAddedChartsDidFetch: false,
+  // True once the fetch has resolved (success or error). The DiagPanel unread
+  // baseline waits on this so docs that load late aren't all flagged as new.
+  hccAddedChartsLoaded: false,
   fetchHccAddedCharts: async () => {
     if (useAppStore.getState().hccAddedChartsDidFetch) return;
     set({ hccAddedChartsDidFetch: true });
@@ -811,12 +817,16 @@ export const useAppStore = create((set, get) => ({
       .from('hcc_added_charts')
       .select('*')
       .order('created_at', { ascending: true });
-    if (error) { console.warn('fetchHccAddedCharts failed:', error.message); return; }
+    if (error) {
+      console.warn('fetchHccAddedCharts failed:', error.message);
+      set({ hccAddedChartsLoaded: true });
+      return;
+    }
     const map = {};
     (data || []).forEach((row) => {
       (map[row.hcc_member_id] = map[row.hcc_member_id] || []).push(rowToAddedChart(row));
     });
-    set({ hccAddedCharts: map });
+    set({ hccAddedCharts: map, hccAddedChartsLoaded: true });
   },
 
   // Per-document review status overrides (keyed by member id → doc id), set
@@ -7838,18 +7848,63 @@ export const useAppStore = create((set, get) => ({
   hccDiagDocumentsList: [],
   hccDiagNotes: [],
   hccDiagHistoryEntries: [],
-  // Per-member "last seen" counts for the DiagPanel toolbar notification
-  // dots on Comments / Documents. Shape: { [memberId]: { comments, documents } }.
-  // A stream is "unread" when its current count exceeds the stored value;
-  // opening the panel calls markHccDiagSeen to clear the dot.
+  // What the logged-in user has already seen in each patient's DiagPanel,
+  // driving the unread badges on the Documents / Comments toolbar buttons.
+  // Shape: { [memberId]: { comments: string[], documents: string[] } } of
+  // item ids. Persisted per user in hcc_diag_seen so the badge survives a
+  // reload and counts items other users added while you were away.
   hccDiagSeen: {},
-  markHccDiagSeen: (memberId, kind, count) => {
-    if (!memberId || !kind) return;
-    set((state) => {
-      const prev = state.hccDiagSeen?.[memberId] || {};
-      if (prev[kind] === count) return {};
-      return { hccDiagSeen: { ...state.hccDiagSeen, [memberId]: { ...prev, [kind]: count } } };
+  hccDiagSeenDidFetch: false,
+  hccDiagSeenLoaded: false,
+  fetchHccDiagSeen: async () => {
+    const me = get().currentUserProfile;
+    if (!me?.id || get().hccDiagSeenDidFetch) return;
+    set({ hccDiagSeenDidFetch: true });
+    const { data, error } = await supabase
+      .from('hcc_diag_seen')
+      .select('hcc_member_id, kind, seen_ids')
+      .eq('user_id', me.id);
+    if (error) {
+      console.warn('fetchHccDiagSeen failed (run hcc_diag_seen_migration.sql?):', error.message);
+      set({ hccDiagSeenLoaded: true });
+      return;
+    }
+    set((s) => {
+      const next = { ...s.hccDiagSeen };
+      for (const r of data || []) {
+        const local = next[r.hcc_member_id]?.[r.kind] || [];
+        const merged = [...new Set([...(r.seen_ids || []), ...local])];
+        next[r.hcc_member_id] = { ...(next[r.hcc_member_id] || {}), [r.kind]: merged };
+      }
+      return { hccDiagSeen: next, hccDiagSeenLoaded: true };
     });
+  },
+  // Add ids to the seen set for (member, kind). Passing an empty list still
+  // records the pair, so a patient with no items gets a baseline row.
+  markHccDiagSeen: (memberId, kind, ids = []) => {
+    if (!memberId || !kind) return;
+    const prev = get().hccDiagSeen?.[memberId]?.[kind];
+    const have = new Set(prev || []);
+    const added = ids.filter(id => id && !have.has(id));
+    if (prev && !added.length) return;
+    const nextIds = [...(prev || []), ...added];
+    set(s => ({
+      hccDiagSeen: {
+        ...s.hccDiagSeen,
+        [memberId]: { ...(s.hccDiagSeen[memberId] || {}), [kind]: nextIds },
+      },
+    }));
+    const me = get().currentUserProfile;
+    if (!me?.id) return;
+    supabase
+      .from('hcc_diag_seen')
+      .upsert(
+        { user_id: me.id, hcc_member_id: memberId, kind, seen_ids: nextIds, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,hcc_member_id,kind' },
+      )
+      .then(({ error }) => {
+        if (error) console.warn('markHccDiagSeen persist failed:', error.message);
+      });
   },
   hccDiagAncillaryLoading: false,
   hccDiagAncillaryDidFetch: false,
@@ -7870,6 +7925,9 @@ export const useAppStore = create((set, get) => ({
           // Optional ICD/DOS scope — added later; DB rows seeded before the
           // column existed simply won't have these keys.
           icd: r.icd ?? null, dos: r.dos ?? null,
+          // Patient scope (hcc_diag_comment_member_migration.sql). Null on
+          // rows written before the column existed.
+          memberId: r.hcc_member_id ?? null,
           // Status-change linkage — populated when the comment was
           // required for a workflow transition (e.g. Records Requested).
           statusFrom: r.status_from ?? null,
@@ -7916,7 +7974,7 @@ export const useAppStore = create((set, get) => ({
       t: 'accept', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Accepted ICD ${code}`,
-      from: 'Open', to: 'Accepted',
+      from: 'None', to: 'Accepted',
     });
   },
   dismissHccGap: (code, reason) => {
@@ -7932,7 +7990,7 @@ export const useAppStore = create((set, get) => ({
       t: 'dismiss', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Dismissed ICD ${code}${reason ? ` — ${reason}` : ''}`,
-      from: 'Open', to: 'Dismissed',
+      from: 'None', to: 'Dismissed',
     });
   },
   reopenHccGap: (code) => {
@@ -7948,7 +8006,7 @@ export const useAppStore = create((set, get) => ({
       t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Reopened ICD ${code}`,
-      from: 'Dismissed', to: 'Open',
+      from: 'Dismissed', to: 'Undo',
     });
   },
 
@@ -8038,7 +8096,7 @@ export const useAppStore = create((set, get) => ({
       t: 'dismiss', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Dismissed ICD ${code} on DOS ${dos} — ${reason}`,
-      from: 'Open', to: 'Dismissed',
+      from: 'None', to: 'Dismissed',
     });
   },
 
@@ -8082,10 +8140,9 @@ export const useAppStore = create((set, get) => ({
       removed: true,
     });
     get().addActivityEntry({
-      t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+      t: 'delete', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Removed DOS ${dos} from ${code}`,
-      from: 'Manual', to: 'Removed',
     });
   },
 
@@ -8165,10 +8222,9 @@ export const useAppStore = create((set, get) => ({
       if (get().hccJustAddedCode === code) set({ hccJustAddedCode: null });
     }, 2200);
     get().addActivityEntry({
-      t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+      t: 'create', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Manually added ICD ${code}`,
-      from: '—', to: 'Open',
     });
   },
 
@@ -9102,23 +9158,29 @@ export const useAppStore = create((set, get) => ({
         // reviewer roles because that's the shop-floor nomenclature the
         // Coordinators use. Verb form is plural ("Status Changes") so the
         // Coder and QA entries read the same way in the timeline.
-        const ROLE_LABEL_C = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'QA 2' };
         const prevMember = s.hccMembers.find(m => m.id === patientId);
         const prevStatusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+        const userRole = useAppStore.getState().hccUserRole || 'Coder';
+        const directRole = hccTransitionRole(kind, payload, userRole);
         statusChanges.forEach(({ role, status }) => {
+          // The role the user acted on is credited to them; every other
+          // role that changed was moved by the workflow engine (e.g. Coder
+          // flipping to In Progress when Support completes).
+          const isDirect = role === directRole;
           useAppStore.getState().addActivityEntry({
             _memberId: patientId,
             t: 'status_role',
-            by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+            by: isDirect ? 'You' : 'Automation',
+            role: isDirect ? userRole : null,
             dos: dosDate,
-            headline: `${ROLE_LABEL_C[role] || role} Status Changes`,
-            from: prevMember?.[prevStatusFieldByRole[role]] || '—',
+            headline: hccRoleStatusHeadline(role, status),
+            from: prevMember?.[prevStatusFieldByRole[role]] || null,
             to: status,
             // Composer-note copy the user typed when the status change was
             // gated (e.g. Coder → Record Requested). Rendered inline under
             // the transition pills so reviewers see the rationale without a
             // second click.
-            note: payload.note || null,
+            note: isDirect ? (payload.note || null) : null,
           });
         });
       });
@@ -9371,9 +9433,8 @@ export const useAppStore = create((set, get) => ({
       }));
       return;
     }
-    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'QA 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
-    const roleLabel = ROLE_LABEL_S[role] || role;
+    const roleLabel = HCC_ROLE_LABEL[role] || role;
     useAppStore.getState().logHccActivity({
       eventName: 'role.status_changed',
       scope:     { patientId: pid, dos, source: 'manual' },
@@ -9393,8 +9454,8 @@ export const useAppStore = create((set, get) => ({
         t: 'status_role',
         by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
         dos,
-        headline: `${roleLabel} Status Changes`,
-        from: prevStatus || '—',
+        headline: hccRoleStatusHeadline(role, status),
+        from: prevStatus || null,
         to: status,
         // Composer-note the user typed when the status change was
         // gated (e.g. Coder → Record Requested). View Note link on
@@ -9559,10 +9620,17 @@ export const useAppStore = create((set, get) => ({
   // Post a new comment to the DiagPanel Comments tab. Appends to the
   // store's hccDiagComments slice (so consumers see it) and persists to
   // Supabase for cross-session durability.
-  addHccDiagComment: (row) => {
-    if (!row?.id) return;
+  addHccDiagComment: (input) => {
+    if (!input?.id) return;
+    // Every comment is scoped to a patient. Callers that don't pass one
+    // (status-change / reject comments) are posted from the open DiagPanel,
+    // so its member is the right scope.
+    const row = { ...input, memberId: input.memberId ?? get().diagPanelMemberId ?? null };
     set(s => ({ hccDiagComments: [row, ...(s.hccDiagComments || [])] }));
     persistHccDiagComment(row);
+    if (row.memberId && get().hccDiagSeen?.[row.memberId]?.comments) {
+      get().markHccDiagSeen(row.memberId, 'comments', [row.id]);
+    }
     // Timeline entry (Activity tab). The 1500ms dedup on addActivityEntry
     // absorbs UI callers that also log manually so we never double-post.
     useAppStore.getState().addActivityEntry({
@@ -9573,18 +9641,37 @@ export const useAppStore = create((set, get) => ({
     });
     // Bell notification: mirror the comment globally so it shows up in
     // the topbar bell for a reviewer who isn't currently on this patient.
+    // If the comment body @-mentions the current user, elevate to a
+    // dedicated "You were mentioned" entry so the tag stands out in the
+    // bell list.
     const memberName = row.patientName
       || useAppStore.getState().hccMembers?.find(m => m.id === row.memberId)?.name
       || null;
-    useAppStore.getState().addNotification?.({
-      type: 'hcc.comment_added',
-      title: 'New comment',
-      body: memberName
-        ? `${row.author || 'A teammate'} added a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
-        : `${row.author || 'A teammate'} added a comment${row.icd ? ` on ${row.icd}` : ''}.`,
-      action: 'openDiagPanel',
-      hccMemberId: row.memberId || null,
-    });
+    const me = useAppStore.getState().currentUserProfile?.name || null;
+    const mentionsMe = !!(me && row.body && new RegExp(
+      `@${me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`,
+    ).test(row.body));
+    if (mentionsMe) {
+      useAppStore.getState().addNotification?.({
+        type: 'hcc.comment_mention',
+        title: 'You were mentioned in a comment',
+        body: memberName
+          ? `${row.author || 'A teammate'} mentioned you in a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
+          : `${row.author || 'A teammate'} mentioned you in a comment${row.icd ? ` on ${row.icd}` : ''}.`,
+        action: 'openDiagPanel',
+        hccMemberId: row.memberId || null,
+      });
+    } else {
+      useAppStore.getState().addNotification?.({
+        type: 'hcc.comment_added',
+        title: 'New comment',
+        body: memberName
+          ? `${row.author || 'A teammate'} added a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
+          : `${row.author || 'A teammate'} added a comment${row.icd ? ` on ${row.icd}` : ''}.`,
+        action: 'openDiagPanel',
+        hccMemberId: row.memberId || null,
+      });
+    }
   },
 
   // Edit an existing comment's body. `edited: true` stamps the row so the

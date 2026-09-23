@@ -5,8 +5,8 @@ export const ACTIVITY = {
   "Annette Brave": [
     { t:"group", label:"Jan 2026" },
     { t:"outreach",    date:"06/01",      time:"12:30 PM", by:"Delores Conn",      role:"Coder",       dos:null,         icds:["E11.22","E11.21","E44.0","E11.51"], headline:"Outreach log for HCC 18, HCC 112 & HCC 120", tag:"Provider Communication" },
-    { t:"status_dos",  date:"01/26/2026", time:"12:30 PM", by:"Benjamin Cummings", role:"QA",  dos:"03/04/2025", icds:["E11.22","E11.21","E44.0","E11.51"], headline:"DOS 03/04/2025 Status Changed", from:"Open", to:"Returned" },
-    { t:"status_hcc",  date:"01/24/2026", time:"12:30 PM", by:"Automation",        role:null,          dos:"03/04/2025", icds:["E11.22","E11.21","E44.0"], headline:"HCC 18, HCC 112 and HCC 120 Status Changed", from:"Open", to:"Audited" },
+    { t:"status_dos",  date:"01/26/2026", time:"12:30 PM", by:"Benjamin Cummings", role:"QA",  dos:"03/04/2025", icds:["E11.22","E11.21","E44.0","E11.51"], headline:"DOS 03/04/2025 Status Changed", from:"New", to:"Returned" },
+    { t:"status_hcc",  date:"01/24/2026", time:"12:30 PM", by:"Automation",        role:null,          dos:"03/04/2025", icds:["E11.22","E11.21","E44.0"], headline:"HCC 18, HCC 112 and HCC 120 Status Changed", from:"Open", to:"Completed" },
     { t:"accept",      date:"01/24/2026", time:"12:30 PM", by:"Delores Conn",      role:"Coder",       dos:"03/04/2025", icds:["E11.22","E11.51","E44.0"], headline:"3 ICD: E11.22, E11.51 and E44.0 Status Changed to Accept",
       details:[
         { hcc:"HCC 18 - Diabetes w/ Complications",       icd:"E11.22 - Type 2 diabetes with diabetic chronic kidney disease",                                          from:"None", to:"Accepted" },
@@ -35,7 +35,7 @@ export const ACTIVITY = {
       details:[{ hcc:"HCC 85 - Congestive Heart Failure", icd:"I50.9 - Heart failure, unspecified", from:"None", to:"Accepted" }]
     },
     { t:"dismiss",     date:"01/12/2026", time:"03:00 PM", by:"J. Levesque",   role:"Coder",       dos:"09/28/2023", icds:["E11.9"],                   headline:"ICD: E11.9 Status Changed to Dismiss",
-      details:[{ hcc:"HCC 18 - Diabetes w/ Complications", icd:"E11.9 - Type 2 DM w/o complications", reason:"Documentation insufficient", note:"No supporting notes found", from:"New", to:"Dismissed" }]
+      details:[{ hcc:"HCC 18 - Diabetes w/ Complications", icd:"E11.9 - Type 2 DM w/o complications", reason:"Documentation insufficient", note:"No supporting notes found", from:"None", to:"Dismissed" }]
     },
     { t:"upload",      date:"01/10/2026", time:"11:00 AM", by:"L. Schmidt",    role:"Support Team",dos:"09/28/2023", icds:["J44.1","I50.9"],            headline:"Document Uploaded for HCC 111 (J44.1)", file:"COPD Evaluation.pdf", fileType:"Lab Report" },
     { t:"create",      date:"01/09/2026", time:"02:00 PM", by:"J. Levesque",   role:"Coder",       dos:"09/28/2023", icds:["J44.1"],                   headline:"ICD: J44.1 Created Manually" },
@@ -50,7 +50,7 @@ export const ACTIVITY = {
       ]
     },
     { t:"dismiss",     date:"11/20/2023", time:"11:00 AM", by:"D. Hintz",      role:"Coder",       dos:"05/20/2024", icds:["M79.3"],                   headline:"ICD: M79.3 Status Changed to Dismiss",
-      details:[{ hcc:"HCC 40 - Rheumatoid Arthritis", icd:"M79.3 - Panniculitis, unspecified", reason:"Not supported by documentation", note:"", from:"New", to:"Dismissed" }]
+      details:[{ hcc:"HCC 40 - Rheumatoid Arthritis", icd:"M79.3 - Panniculitis, unspecified", reason:"Not supported by documentation", note:"", from:"None", to:"Dismissed" }]
     },
     { t:"status_dos",  date:"11/15/2023", time:"09:00 AM", by:"D. Hintz",      role:"Coder",       dos:"11/29/2023", icds:["F32.1","E11.65","I48.91","M79.3"], headline:"DOS 11/29/2023 Status Changed", from:"New", to:"In Progress" },
     { t:"create",      date:"11/12/2023", time:"10:00 AM", by:"D. Hintz",      role:"Coder",       dos:"11/29/2023", icds:["I48.91"],                  headline:"ICD: I48.91 Created Manually" },
@@ -59,7 +59,10 @@ export const ACTIVITY = {
   ],
   "_default": [
     { t:"group", label:"Jan 2026" },
-    { t:"status_hcc",  date:"01/24/2026", time:"12:30 PM", by:"Automation",      role:null,          dos:"07/04/2024", icds:["E11.21","I48.91","J44.0"], headline:"HCC 18, HCC 96 and HCC 111 Status Changed", from:"Open", to:"Audited" },
+    { t:"status_role", date:"01/26/2026", time:"03:10 PM", by:"D. Hintz",        role:"Coder",       dos:"07/04/2024", headline:"Coder status changed to Record Requested", from:"In Progress", to:"Record Requested", note:"Progress note for 07/04/2024 is missing the signature page." },
+    { t:"status_role", date:"01/25/2026", time:"11:05 AM", by:"Automation",      role:null,          dos:"07/04/2024", headline:"Coder status changed to In Progress", from:"New", to:"In Progress" },
+    { t:"status_role", date:"01/25/2026", time:"11:05 AM", by:"A. Beauchamp",    role:"Support",     dos:"07/04/2024", headline:"Support status changed to Completed", from:"In Progress", to:"Completed" },
+    { t:"status_hcc",  date:"01/24/2026", time:"12:30 PM", by:"Automation",      role:null,          dos:"07/04/2024", icds:["E11.21","I48.91","J44.0"], headline:"HCC 18, HCC 96 and HCC 111 Status Changed", from:"Open", to:"Completed" },
     { t:"accept",      date:"01/24/2026", time:"12:30 PM", by:"N. Richards",     role:"QA",  dos:"07/04/2024", icds:["E11.21","I48.91"],         headline:"2 ICD: E11.21, I48.91 Status Changed to Accept",
       details:[
         { hcc:"HCC 18 - Diabetes w/ Complications", icd:"E11.21 - Type 2 diabetes with diabetic nephropathy", from:"None", to:"Accepted" },

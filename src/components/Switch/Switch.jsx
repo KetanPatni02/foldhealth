@@ -18,8 +18,9 @@ import styles from './Switch.module.css';
  * @param {string}   [props.label]    – Optional visible label text (displayed to the right)
  * @param {string}   [props.ariaLabel] – Screen-reader label (if no visible label)
  * @param {string}   [props.className] – Extra class on the wrapper
+ * @param {string|number} [props.labelGap=8] – Space between track and label
  */
-export function Switch({ checked, onChange, disabled = false, label, ariaLabel, className }) {
+export function Switch({ checked, onChange, disabled = false, label, ariaLabel, className, labelGap = 8 }) {
   const trackClass = [
     styles.track,
     checked ? styles.trackOn : '',
@@ -28,7 +29,7 @@ export function Switch({ checked, onChange, disabled = false, label, ariaLabel, 
   ].filter(Boolean).join(' ');
 
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: labelGap }}>
       <button
         type="button"
         role="switch"

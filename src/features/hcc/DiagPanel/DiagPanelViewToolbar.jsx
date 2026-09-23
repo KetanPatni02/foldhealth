@@ -11,7 +11,8 @@ export function DiagPanelViewToolbar(p) {
   const {
     addIcdMode, gapExcludeCodes, setPendingGaps, exitAddIcdMode, hccUserRole, bulkMode,
     toggleBulkMode, searchQuery, setSearchQuery, setAddIcdMode, filterCount, filterOpen,
-    setFilterOpen, docsCount, commentsCount, docsUnread, commentsUnread,
+    setFilterOpen, docsCount, commentsCount,
+    docsUnread, commentsUnread, docsUnreadCount, commentsUnreadCount,
     diagLeftPanel, setDiagLeftPanel, setFocusIdx,
     setDiagTab, openDocsFromToolbar, openCommentsFromToolbar,
     moreOpen, setMoreOpen, moreWrapRef, filters, setFilters,
@@ -113,6 +114,7 @@ export function DiagPanelViewToolbar(p) {
                 size="S"
                 tooltip="Documents"
                 notification={docsUnread}
+                count={docsUnread ? String(docsUnreadCount) : undefined}
                 className={[
                   styles.hideBelow460,
                   diagLeftPanel === 'documents' && !diagActivityIcd ? styles.activeIcon : '',
@@ -125,6 +127,7 @@ export function DiagPanelViewToolbar(p) {
                 size="S"
                 tooltip="Comments"
                 notification={commentsUnread}
+                count={commentsUnread ? String(commentsUnreadCount) : undefined}
                 className={[
                   styles.hideBelow540,
                   diagLeftPanel === 'comments' && !diagActivityIcd ? styles.activeIcon : '',
