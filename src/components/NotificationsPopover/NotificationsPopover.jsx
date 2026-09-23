@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { useAppStore } from '../../store/useAppStore';
-import { canAskBrowserNotifications, requestBrowserNotifications } from '../../lib/browserNotifications';
+import { browserNotificationPermission, canAskBrowserNotifications, requestBrowserNotifications } from '../../lib/browserNotifications';
 import boneStyles from '../TableSkeleton/TableSkeleton.module.css';
 import styles from './NotificationsPopover.module.css';
 
@@ -45,6 +45,9 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   // Read once on open — Notification.permission is not reactive, so this is
   // re-evaluated when the popover mounts and after the user answers.
   const [canAsk, setCanAsk] = useState(canAskBrowserNotifications);
+  // Tracks the OS-level permission so a blocked state is visible rather than
+  // silent. Not reactive, so it is re-read on mount and after the user answers.
+  const [permission, setPermission] = useState(browserNotificationPermission);
   const notifications = useAppStore(s => s.notifications) || [];
   const loading = useAppStore(s => s.notificationsLoading);
   const didFetch = useAppStore(s => s.notificationsDidFetch);
@@ -131,11 +134,23 @@ export function NotificationsPopover({ onClose, anchorRef }) {
           onClick={async () => {
             await requestBrowserNotifications();
             setCanAsk(canAskBrowserNotifications());
+            setPermission(browserNotificationPermission());
           }}
         >
           <Icon name="solar:bell-bing-linear" size={14} color="var(--primary-300)" />
           Get these on other tabs
         </button>
+      )}
+
+      {/* Blocked state. Once an origin is denied, the browser refuses further
+          prompts from script, so there is no button to offer — surface why the
+          OS banners stopped and where to turn them back on. Permission is
+          per-origin (host + port), so a changed dev-server port reads here too. */}
+      {permission === 'denied' && (
+        <div className={styles.blockedHint}>
+          <Icon name="solar:bell-off-linear" size={14} color="var(--status-warning-dark)" />
+          <span>Browser alerts are off for this site. Turn on notifications in your browser&rsquo;s site settings to get them when Fold is not the active tab.</span>
+        </div>
       )}
 
       {/* Cold load only — `didFetch` keeps the skeleton from flashing on
