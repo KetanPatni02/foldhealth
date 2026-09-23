@@ -319,7 +319,7 @@ function ResolvedPill({ action }) {
     return <span className={styles.dismissedPill}><Icon name="solar:close-circle-linear" size={13} color="currentColor" /> Dismissed</span>;
   }
   if (action === 'missed') {
-    return <span className={styles.warnPill}><CheckIcon size={13} color="currentColor" /> Missed Opportunity</span>;
+    return <Badge size="S" tone="warning" icon="solar:flag-linear" label="Missed Opportunity" />;
   }
   return <span className={styles.deferredPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>;
 }

@@ -449,7 +449,7 @@ function DosActionRow({
             </>
           ) : isMissed ? (
             <>
-              <span className={styles.warnPill}><Icon name="solar:flag-linear" size={13} color="currentColor" /> Missed opportunity</span>
+              <Badge size="S" tone="warning" icon="solar:flag-linear" label="Missed Opportunity" />
               <Tooltip label={canReview ? 'Undo' : (disabledReason || 'Undo')}>
                 <button
                   type="button"
