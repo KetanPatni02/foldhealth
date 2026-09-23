@@ -717,9 +717,15 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
   // the from/to transition slot — the shared entry component reads any
   // truthy pair, so gate the props here to preserve the legacy behavior.
   const isStatusTransition = item.t === 'status_dos' || item.t === 'status_hcc' || item.t === 'status_role';
-  const entryItem = isStatusTransition
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const baseItem = isStatusTransition
     ? item
     : { ...item, from: undefined, to: undefined };
+  // Comment text gets the same @mention highlighting as the Comments tab.
+  const commentNote = item.t === 'comment' && !item.commentBody ? item.details?.[0]?.note : null;
+  const entryItem = commentNote
+    ? { ...baseItem, commentBody: renderCommentBody(commentNote, platformUsers?.length ? platformUsers : SYSTEM_USERS) }
+    : baseItem;
   return (
     <HistoryTimelineEntry
       item={entryItem}
@@ -970,7 +976,7 @@ function renderCommentBody(body, users) {
   const sortedNames = names.slice().sort((a, b) => b.length - a.length);
   if (!sortedNames.length) return body;
   const escaped = sortedNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const re = new RegExp(`@(${escaped.join('|')})`, 'g');
+  const re = new RegExp(`@(${escaped.join('|')})(?![A-Za-z])`, 'gi');
   const nodes = [];
   let lastIdx = 0;
   let key = 0;
