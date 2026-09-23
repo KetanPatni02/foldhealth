@@ -7,6 +7,7 @@ import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { Switch } from '../../../components/Switch/Switch';
+import { timelineStatusIcon } from '../StatusIcon';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
@@ -173,18 +174,45 @@ export function LeftWorkspace({
   const fetchHccGapActivity = useAppStore(s => s.fetchHccGapActivity);
   useEffect(() => { fetchHccGapActivity(); }, [fetchHccGapActivity]);
   const activityFromDb = useAppStore(s => s.hccGapActivity);
+  // Session activity only lives in memory, so a comment someone else posted
+  // (or you posted before a reload) never reached this timeline. Comments
+  // are saved, so their "Added a Comment" entries are built from the saved
+  // comments; the in-memory copies are dropped to avoid doubles.
+  const savedCommentEntries = useMemo(() => {
+    if (!dbComments.length) return [];
+    return commentsForCount.map(c => ({
+      t: 'comment',
+      date: c.date,
+      time: c.time,
+      by: c.author,
+      role: c.role,
+      dos: c.dos || null,
+      icds: c.icd ? [c.icd] : undefined,
+      headline: c.icd ? `Added a Comment for ${c.icd}` : 'Added a Comment',
+      details: c.body ? [{ note: c.body }] : undefined,
+      commentId: c.id,
+    }));
+  }, [dbComments.length, commentsForCount]);
   const rawActivity = useMemo(() => {
     const mock = getActivityFromDb(activityFromDb, member?.name);
-    if (!liveLog?.length) return mock;
-    const todayLabel = (() => {
-      const d = new Date();
-      return d.toLocaleString('en-US', { month: 'short', year: 'numeric' }).toUpperCase();
-    })();
-    const header = mock[0]?.t === 'group' && mock[0]?.label === todayLabel
-      ? []
-      : [{ t: 'group', label: todayLabel }];
-    return [...header, ...liveLog, ...mock];
-  }, [liveLog, member?.name, activityFromDb]);
+    const live = (liveLog || []).filter(e => !(e.t === 'comment' && /^Added a Comment/.test(e.headline || '')));
+    const recent = [...live, ...savedCommentEntries];
+    if (!recent.length) return mock;
+    // Newest first, with a month header before each month's entries.
+    recent.sort((a, b) => entryTimestamp(b) - entryTimestamp(a));
+    const monthOf = (e) => (parseEntryDate(e.date) || new Date())
+      .toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    const out = [];
+    let current = null;
+    for (const e of recent) {
+      const label = monthOf(e);
+      if (label !== current) { out.push({ t: 'group', label }); current = label; }
+      out.push(e);
+    }
+    // Skip the demo log's first header when it repeats the last live month.
+    const rest = mock[0]?.t === 'group' && mock[0]?.label === current ? mock.slice(1) : mock;
+    return [...out, ...rest];
+  }, [liveLog, savedCommentEntries, member?.name, activityFromDb]);
 
   // Filter state, each chip carries an ARRAY (multi-select). Empty = filter
   // inactive (all records match). Nothing is preselected on open, so every
@@ -695,6 +723,7 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
       isFirst={isFirst}
       isLast={isLast}
       onPreviewFile={item.file ? previewDoc : undefined}
+      renderStatusIcon={timelineStatusIcon}
     />
   );
 }
@@ -883,10 +912,27 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
 
 // Group an items[] of {date} into [{ label: 'Mon YYYY', items: [...] }] in
 // descending order (newest first), matching the Activity Log convention.
+// Date + time of an entry as a sortable number. Handles "1:13 PM" and 24h
+// "14:45"; entries with no parseable date sort as "now" (they were just made).
+function entryTimestamp(it) {
+  const d = parseEntryDate(it.date);
+  if (!d) return Date.now();
+  const m = String(it.time || '').match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (m) {
+    let h = +m[1] % 12;
+    if (!m[3]) h = +m[1];
+    else if (m[3].toUpperCase() === 'PM') h += 12;
+    d.setHours(h, +m[2]);
+  }
+  return d.getTime();
+}
+
 function groupByMonth(items) {
   const groups = new Map();
   const order = [];
-  for (const it of items) {
+  // Newest first inside every month, not just across months.
+  const sorted = items.slice().sort((a, b) => entryTimestamp(b) - entryTimestamp(a));
+  for (const it of sorted) {
     const d = parseEntryDate(it.date) || new Date();
     const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
     if (!groups.has(label)) {
