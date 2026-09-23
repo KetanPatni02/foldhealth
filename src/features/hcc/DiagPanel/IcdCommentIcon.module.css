@@ -1,0 +1,17 @@
+.wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+/* Sits on the icon's top-right corner; the white ring keeps it legible over
+   the stroke. */
+.dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-error);
+  box-shadow: 0 0 0 1px var(--neutral-0);
+}

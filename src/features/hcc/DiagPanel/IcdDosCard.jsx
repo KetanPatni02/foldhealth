@@ -7,6 +7,8 @@ import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Badge } from '../../../components/Badge/Badge';
+import { IcdCommentIcon } from './IcdCommentIcon';
+import { useIcdComments } from './icdComments';
 import { Button } from '../../../components/Button/Button';
 import { DismissReasonForm } from './DismissReasonForm';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
@@ -63,16 +65,9 @@ export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selec
     }
   }, [isJustAdded]);
 
-  // Live ICD-scoped counter for the Comments pill. Comments are keyed by
-  // `icd`; when the DB slice is unpopulated, fall back to the seeded
-  // `icd.cmts` so the badge never under-counts during the first paint.
-  const dbComments = useAppStore(s => s.hccDiagComments);
-  const commentsCount = useMemo(() => {
-    if (!Array.isArray(dbComments) || dbComments.length === 0) {
-      return icd.cmts ?? 0;
-    }
-    return dbComments.filter(c => c?.icd === icd.code).length;
-  }, [dbComments, icd.code, icd.cmts]);
+  // This patient's comments on this ICD, plus whether any are unread (red
+  // dot on the counter).
+  const { count: commentsCount, unread: hasUnreadComments } = useIcdComments(icd.code, icd.cmts ?? 0);
   // History tab renders one row per DOS the ICD is on for this member,
   // so the counter has to match that — otherwise the "7" on the card
   // opens a tab with 3 rows and the reviewer wonders what disappeared.
@@ -193,9 +188,9 @@ export function IcdDosCard({ icd, currentDos = null, focusKey, onFocusRow, selec
             <Button
               variant="ghost"
               size="S"
-              leadingIcon="solar:chat-round-line-linear"
               onClick={(e) => { e.stopPropagation(); openIcdPanel('comments', icd.code); }}
             >
+              <IcdCommentIcon unread={hasUnreadComments} />
               {commentsCount}
             </Button>
           </Tooltip>

@@ -504,10 +504,17 @@ export function useDiagPanel() {
     if (!seenDocIds && chartsLoaded) markHccDiagSeen(member.id, 'documents', docIds);
   }, [member?.id, seenLoaded, ancillaryDidFetch, chartsLoaded, seenCommentIds, seenDocIds, memberComments, myName, docIds, markHccDiagSeen]);
   useEffect(() => {
-    if (!member?.id || diagActivityIcd) return;
+    if (!member?.id) return;
+    // Comments opened for one ICD: only that ICD's comments count as read.
+    if (diagActivityIcd) {
+      if (diagLeftPanel === 'comments' && seenCommentIds) {
+        markHccDiagSeen(member.id, 'comments', memberComments.filter(c => c.icd === diagActivityIcd).map(c => c.id));
+      }
+      return;
+    }
     if (diagLeftPanel === 'comments' && seenCommentIds) markHccDiagSeen(member.id, 'comments', commentIds);
     if (diagLeftPanel === 'documents' && seenDocIds) markHccDiagSeen(member.id, 'documents', docIds);
-  }, [diagLeftPanel, diagActivityIcd, member?.id, commentIds, docIds, seenCommentIds, seenDocIds, markHccDiagSeen]);
+  }, [diagLeftPanel, diagActivityIcd, member?.id, memberComments, commentIds, docIds, seenCommentIds, seenDocIds, markHccDiagSeen]);
   const commentsUnreadCount = useMemo(() => {
     if (!seenCommentIds) return 0;
     const seen = new Set(seenCommentIds);
