@@ -84,9 +84,6 @@ export function LeftWorkspace({
   onChange,
   onClose,
   member,
-  pendingStatusChange = null,
-  onConfirmStatusChange,
-  onCancelStatusChange,
 }) {
   // Kick off the org-scoped ancillary fetch once — safe to call repeatedly,
   // the store guards on didFetch. Doing it here means every drawer open
@@ -339,9 +336,6 @@ export function LeftWorkspace({
           <CommentsTab
             member={member}
             filters={filters}
-            pendingStatusChange={pendingStatusChange}
-            onConfirmStatusChange={onConfirmStatusChange}
-            onCancelStatusChange={onCancelStatusChange}
           />
         )}
         {active === 'documents' && (
@@ -742,7 +736,7 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
 // comment is a row with a chat-icon left rail + connector line, a meta line
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
-export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange, member: memberProp = null, memberOverride = null }) {
+export function CommentsTab({ filters, member: memberProp = null, memberOverride = null }) {
   // Scope the timeline to the patient whose DiagPanel we're rendering in.
   const dbComments = useAppStore(s => s.hccDiagComments);
   const diagPanelMemberIdEarly = useAppStore(s => s.diagPanelMemberId);
@@ -845,24 +839,12 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
     return next;
   });
 
-  // Route the single composer's submit through the right handler: a
-  // pending workflow transition takes priority (Coder → Record Requested),
-  // otherwise it's a regular comment on the tab.
-  const composerSubmit = pendingStatusChange
-    ? (body) => onConfirmStatusChange?.(body)
-    : addComment;
-
   return (
     <div className={styles.scroll}>
       <div className={styles.commentComposerWrap}>
         <CommentComposer
           users={mentionUsers}
-          onSubmit={composerSubmit}
-          statusChange={pendingStatusChange ? {
-            fromStatus: pendingStatusChange.from,
-            toStatus: pendingStatusChange.to,
-            onCancel: () => onCancelStatusChange?.(),
-          } : null}
+          onSubmit={addComment}
         />
       </div>
       <div className={styles.timeline}>
