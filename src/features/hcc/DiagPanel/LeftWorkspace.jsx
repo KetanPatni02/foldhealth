@@ -200,6 +200,7 @@ export function LeftWorkspace({
     icd:  activityIcd ? [activityIcd] : [],
     by:   [],
     date: [],
+    type: [],
   }));
   const seedRef = useRef(member?.id);
   useEffect(() => {
@@ -211,6 +212,7 @@ export function LeftWorkspace({
         icd:  activityIcd ? [activityIcd] : [],
         by:   [],
         date: [],
+        type: [],
       });
     }
   }, [member?.id, activityIcd]);
@@ -234,7 +236,7 @@ export function LeftWorkspace({
     }
   };
   const clearAllFilters = () => {
-    setFilters({ dos: [], hcc: [], icd: [], by: [], date: [] });
+    setFilters({ dos: [], hcc: [], icd: [], by: [], date: [], type: [] });
     if (activityIcd) clearDiagActivityIcd?.();
   };
 
@@ -288,6 +290,7 @@ export function LeftWorkspace({
             chips, separated by a vertical divider. */}
         {showFilterRow && (
           <FilterRow
+            keys={active === 'activity' ? TIMELINE_FILTER_KEYS : FILTER_KEYS}
             filters={filters}
             options={filterOptions}
             onChange={setFilter}
@@ -335,13 +338,41 @@ export function LeftWorkspace({
 // Filter row chip set — the same 5 chips on every tab so a filter the user
 // dials in on Timeline stays applied on Documents/Claims/etc.
 const FILTER_KEYS = ['dos', 'hcc', 'icd', 'by', 'date'];
+// Timeline only: the same chips plus Activity Type.
+const TIMELINE_FILTER_KEYS = [...FILTER_KEYS, 'type'];
 const FILTER_LABEL = {
   dos:  'DOS',
   hcc:  'HCC Code',
   icd:  'ICD Code',
   by:   'Recorded By',
   date: 'Date',
+  type: 'Activity Type',
 };
+
+// Timeline entries carry many internal kinds (entry.t); the Activity Type
+// filter groups them into the labels a reviewer thinks in. Order here is the
+// order the options appear in the dropdown.
+const ACTIVITY_TYPE_GROUPS = [
+  ['Comment',        ['comment']],
+  ['Clinical Note',  ['clinical_note']],
+  ['Document',       ['upload', 'document-upload', 'doc-status', 'icds-merged-via-upload']],
+  ['Status Change',  ['status_dos', 'status_hcc', 'status_role', 'status_change']],
+  ['Assignment',     ['assign_coder', 'assignee_change']],
+  ['ICD Added',      ['create']],
+  ['ICD Accepted',   ['accept']],
+  ['ICD Dismissed',  ['dismiss']],
+  ['Deleted',        ['delete', 'delete_dos']],
+  ['Override',       ['override']],
+  ['Outreach',       ['outreach']],
+  ['System',         ['system']],
+];
+const ACTIVITY_TYPE_BY_T = Object.fromEntries(
+  ACTIVITY_TYPE_GROUPS.flatMap(([label, ts]) => ts.map(t => [t, label])),
+);
+const ACTIVITY_TYPE_ORDER = [...ACTIVITY_TYPE_GROUPS.map(([label]) => label), 'Other'];
+function activityTypeOf(e) {
+  return ACTIVITY_TYPE_BY_T[e?.t] || 'Other';
+}
 
 // Preset Date-filter ranges, evaluated against entry.date (MM/DD/YYYY).
 const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'This month'];
@@ -354,12 +385,14 @@ export function computeFilterOptions(entries, member, extras = {}) {
   const dos = new Set((member?.dos_list || []).flatMap(d => d.date ? [d.date] : []));
   const hcc = new Set();
   const icd = new Set();
+  const types = new Set();
   const HCC_RE = /HCC\s*\d+/g;
   // Strip a trailing "(Role)" suffix so "You (Coder)" and "You (QA)" collapse
   // to a single "You" option in the Recorded By list.
   const stripRole = (raw) => String(raw || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
   for (const e of entries) {
     if (e.t === 'group') continue;
+    types.add(activityTypeOf(e));
     if (e.dos) dos.add(e.dos);
     if (Array.isArray(e.icds)) e.icds.forEach(c => icd.add(c));
     if (typeof e.headline === 'string') {
@@ -396,6 +429,8 @@ export function computeFilterOptions(entries, member, extras = {}) {
     icd:  [...icd].toSorted(cmp),
     by:   [...byPool].toSorted(cmp),
     date: DATE_PRESETS,
+    // Only the types actually present in this timeline.
+    type: ACTIVITY_TYPE_ORDER.filter(t => types.has(t)),
   };
 }
 
@@ -408,6 +443,7 @@ export function computeFilterOptions(entries, member, extras = {}) {
  */
 function entryMatchesFilters(e, filters) {
   if (e.t === 'group') return true;
+  if (filters.type?.length && !filters.type.includes(activityTypeOf(e))) return false;
   if (filters.dos?.length && !filters.dos.includes(e.dos)) return false;
   if (filters.by?.length  && !filters.by.includes(e.by))   return false;
   if (filters.icd?.length) {
@@ -494,12 +530,12 @@ function matchesDatePreset(d, preset) {
   return true;
 }
 
-export function FilterRow({ filters, options, onChange, onClearAll, trailing }) {
-  const hasAny = FILTER_KEYS.some(k => Array.isArray(filters?.[k]) && filters[k].length > 0);
+export function FilterRow({ filters, options, onChange, onClearAll, trailing, keys = FILTER_KEYS }) {
+  const hasAny = keys.some(k => Array.isArray(filters?.[k]) && filters[k].length > 0);
   return (
     <div className={styles.filterRow}>
       <div className={styles.filterChips}>
-        {FILTER_KEYS.map((k) => (
+        {keys.map((k) => (
           <div key={k} className={styles.filterChipWrap}>
             <SharedFilterChip
               label={FILTER_LABEL[k]}
