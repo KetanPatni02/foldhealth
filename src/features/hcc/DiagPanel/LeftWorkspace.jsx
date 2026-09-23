@@ -957,9 +957,10 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
           </div>
         ) : (
           <>
+            <div className={styles.commentBody}>{renderCommentBody(item.body, usersForMentions)}</div>
             {/* Comment attached to a workflow status transition (currently
-                Coder → Record Requested). Shows the from/to pills above the
-                body so the reason lives next to the change it explains. */}
+                Coder → Record Requested). The from/to card sits under the
+                comment it explains. */}
             {item.statusFrom && item.statusTo && (
               <div className={styles.commentStatusChange}>
                 <div className={styles.commentStatusHeader}>Status Changed</div>
@@ -974,7 +975,6 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
                 </div>
               </div>
             )}
-            <div className={styles.commentBody}>{renderCommentBody(item.body, usersForMentions)}</div>
           </>
         )}
       </div>

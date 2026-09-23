@@ -761,7 +761,8 @@
    authored as part of a workflow transition (Coder → Record Requested).
    Matches the Figma pattern: 'Status Changed' label + from/to pills. */
 .commentStatusChange {
-  margin-top: 6px;
+  width: fit-content;
+  margin-top: var(--space-1);
   padding: 10px 12px;
   background: var(--neutral-50);
   border: 0.5px solid var(--neutral-150);
