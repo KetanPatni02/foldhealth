@@ -27,6 +27,18 @@ export default {
   args: { name: 'solar:home-2-linear', size: 24, showCatalog: false },
 };
 
+// In-repo `custom:*` icons for the PAMI/Hx sections and their empty states —
+// shapes Solar doesn't have (or, for the wine glass, kept local alongside
+// its siblings). Rendered through <Icon> so the registry itself is exercised.
+const CLINICAL_ICONS = [
+  { name: 'custom:allergy', label: 'Allergy' },
+  { name: 'custom:scalpel', label: 'Surgical History' },
+  { name: 'custom:medical-history', label: 'Medical History' },
+  { name: 'custom:family-history', label: 'Family History' },
+  { name: 'custom:social-history', label: 'Social History' },
+  { name: 'custom:imaging', label: 'Imaging' },
+];
+
 const COMMON_ICONS = [
   'solar:home-2-linear', 'solar:users-group-rounded-linear', 'solar:settings-linear',
   'custom:filter', 'solar:magnifer-linear', 'solar:add-circle-linear',
@@ -69,6 +81,18 @@ function Catalog() {
           </div>
         </div>
       </div>
+      <div>
+        <div style={{ fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 'var(--font-sm)' }}>Clinical in-repo icons (PAMI/Hx)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16 }}>
+          {CLINICAL_ICONS.map(({ name, label }) => (
+            <div key={name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+              <Icon name={name} size={24} color="var(--neutral-300)" />
+              <span style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-300)', textAlign: 'center' }}>{label}</span>
+              <span style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-200)', textAlign: 'center', wordBreak: 'break-all' }}>{name}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -78,6 +102,22 @@ export const Playground = {
     <div>
       <Icon {...args} />
       {showCatalog && <Catalog />}
+    </div>
+  ),
+};
+
+export const ClinicalIcons = {
+  name: 'Clinical icons (PAMI/Hx)',
+  parameters: { controls: { disable: true } },
+  render: () => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 16 }}>
+      {CLINICAL_ICONS.map(({ name, label }) => (
+        <div key={name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+          <Icon name={name} size={31} color="var(--neutral-200)" />
+          <span style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-300)', textAlign: 'center' }}>{label}</span>
+          <span style={{ fontSize: 'var(--font-2xs)', color: 'var(--neutral-200)', textAlign: 'center', wordBreak: 'break-all' }}>{name}</span>
+        </div>
+      ))}
     </div>
   ),
 };

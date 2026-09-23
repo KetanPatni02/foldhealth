@@ -19,6 +19,7 @@ import { toast } from '../../../../../../components/Toast/sonnerToast';
 import { MedicationSelect } from './MedicationSelect';
 import { StopMedicationDialog } from './StopMedicationDialog';
 import { MEDICATION_STOP_REASONS } from './medicationStopReasons';
+import { todayIso, toIsoDate, formatClinicalDate } from '../../../../../../lib/clinicalDates';
 import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 
 // `Stopped` is what Medication Reconciliation writes to this same table, so
@@ -26,11 +27,10 @@ import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 const STATUS_OPTIONS = ['Active', 'Stopped'].map(v => ({ value: v, label: v }));
 const STOP_REASON_OPTIONS = MEDICATION_STOP_REASONS.map(v => ({ value: v, label: v }));
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function MedicationRow({ med, onStatusChange, onEdit, dimmed }) {
   const [noteOpen, setNoteOpen] = useState(false);
-  const meta = [med.start ? `Started: ${med.start}` : '', med.sig].filter(Boolean);
+  const meta = [med.start ? `Started: ${formatClinicalDate(med.start)}` : '', med.sig].filter(Boolean);
   // Why a medication was stopped rides inside the status trigger, so the
   // reason sits with the state it explains rather than in the meta line.
   const statusOptions = useMemo(() => (med.stopReason
@@ -259,8 +259,8 @@ export function AddMedicationsDrawer({ patientId, focus, onClose }) {
     editing: med,
     initial: {
       status: med.status || 'Active',
-      start: med.start || todayIso(),
-      stop: med.stop || '',
+      start: toIsoDate(med.start) || todayIso(),
+      stop: toIsoDate(med.stop) || '',
       stopReason: med.stopReason || '',
       sig: med.sig || '',
       note: med.note || '',
@@ -284,11 +284,19 @@ export function AddMedicationsDrawer({ patientId, focus, onClose }) {
   };
 
   const confirmStop = async ({ stop, stopReason }) => {
-    const ok = await updatePatientMedication(patientId, stopping.id, {
+    // What the row held before, so Undo can put it all back — the stop date
+    // and reason as well as the status.
+    const med = stopping;
+    const before = { status: med.status || 'Active', stop: med.stop || '', stopReason: med.stopReason || '' };
+    const ok = await updatePatientMedication(patientId, med.id, {
       status: 'Stopped', stop, stopReason,
     });
     setStopping(null);
-    if (ok) toast.success('Medication stopped successfully');
+    if (ok) {
+      toast.success('Medication stopped successfully', {
+        action: { label: 'Undo', onClick: () => updatePatientMedication(patientId, med.id, before) },
+      });
+    }
   };
 
   const renderRow = (m) => (draft?.editing?.id === m.id ? (

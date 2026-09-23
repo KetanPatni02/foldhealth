@@ -28,6 +28,11 @@ import { SubtaskIcon } from './SubtaskIcon';
 import { MemberConsentIcon } from './MemberConsentIcon';
 import { LinkIcon } from './LinkIcon';
 import { AllergyIcon } from './AllergyIcon';
+import { ScalpelIcon } from './ScalpelIcon';
+import { ImagingIcon } from './ImagingIcon';
+import { MedicalHistoryIcon } from './MedicalHistoryIcon';
+import { FamilyHistoryIcon } from './FamilyHistoryIcon';
+import { SocialHistoryIcon } from './SocialHistoryIcon';
 import { DownChevronIcon } from './DownChevronIcon';
 
 const DOWN_CHEVRON_NAMES = new Set([
@@ -74,6 +79,11 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:member-consent') return <MemberConsentIcon size={size} color={color} />;
   if (name === 'custom:link') return <LinkIcon size={size} color={color} />;
   if (name === 'custom:allergy') return <AllergyIcon size={size} color={color} />;
+  if (name === 'custom:scalpel') return <ScalpelIcon size={size} color={color} />;
+  if (name === 'custom:imaging') return <ImagingIcon size={size} color={color} />;
+  if (name === 'custom:medical-history') return <MedicalHistoryIcon size={size} color={color} />;
+  if (name === 'custom:family-history') return <FamilyHistoryIcon size={size} color={color} />;
+  if (name === 'custom:social-history') return <SocialHistoryIcon size={size} color={color} />;
   if (name === 'custom:sms') return <SmsIcon size={size} color={color} />;
   if (name === 'custom:expand-drawer') return <ExpandDrawerIcon size={size} />;
   if (name === 'custom:call-pcp') return <CallPcpIcon size={size} color={color} />;

@@ -175,6 +175,49 @@ DROP POLICY IF EXISTS "Allow all on patient_allergies" ON patient_allergies;
 CREATE POLICY "Allow all on patient_allergies" ON patient_allergies FOR ALL USING (true) WITH CHECK (true);
 `;
 
+const PAMI_HISTORY_DDL = `
+CREATE TABLE IF NOT EXISTS patient_history_entries (
+  id text PRIMARY KEY, patient_id text NOT NULL,
+  kind text NOT NULL CHECK (kind IN ('medical', 'surgical', 'family', 'social')),
+  title text NOT NULL, code text, code_system text,
+  detail text NOT NULL DEFAULT '', relation text, recorded_on date,
+  synced boolean NOT NULL DEFAULT true, sort_order integer NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS patient_history_entries_patient_id_idx ON patient_history_entries (patient_id);
+ALTER TABLE patient_history_entries ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on patient_history_entries" ON patient_history_entries;
+CREATE POLICY "Allow all on patient_history_entries" ON patient_history_entries FOR ALL USING (true) WITH CHECK (true);
+`;
+
+// The History cards' sample rows, on the demo patient only
+// (Annette Brave, 11089), so other patients show honest empty states.
+const PAMI_DEMO_PATIENT = '11089';
+const daysAgoIso = (n) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+// Unsynced flags reproduce the footer counts the tab used to hardcode:
+// Surgical (1), Family (1), Social (2).
+const PATIENT_HISTORY_ENTRIES = [
+  { id: 'phe-11089-med-1', kind: 'medical', title: 'Hypertension', recorded_on: daysAgoIso(182) },
+  { id: 'phe-11089-sur-1', kind: 'surgical', title: 'Appendectomy', recorded_on: daysAgoIso(20), synced: false,
+    code: '377', code_system: 'https://clinicaltables.nlm.nih.gov/api/procedures/v3' },
+  { id: 'phe-11089-fam-1', kind: 'family', relation: 'Father', title: 'Will Blaine', synced: false,
+    detail: 'History of coronary artery disease (diagnosed at age 55), hypertension, and Type 2 diabetes.' },
+  { id: 'phe-11089-soc-1', kind: 'social', title: 'Smoking', synced: false,
+    detail: 'Former smoker, 1 pack per day for 10 years, quit in 2015' },
+  { id: 'phe-11089-soc-2', kind: 'social', title: 'Alcohol', synced: false,
+    detail: 'Occasional social drinker (1-2 drinks per week)' },
+];
+// Every row carries every column: a bulk upsert fills a key missing from some
+// rows with NULL, which the NOT NULL defaults (synced, detail) would reject.
+const HISTORY_ROW_DEFAULTS = { code: null, code_system: null, detail: '', relation: null, recorded_on: null, synced: true };
+const withPatient = (rows) => rows.map((r, i) => ({
+  patient_id: PAMI_DEMO_PATIENT, sort_order: i, ...HISTORY_ROW_DEFAULTS, ...r,
+}));
+
 const PATIENT_IMMUNIZATIONS_DDL = `
 CREATE TABLE IF NOT EXISTS patient_immunizations (
   id                text PRIMARY KEY,
@@ -724,9 +767,11 @@ async function main() {
     await db.query(PATIENT_PROBLEMS_DDL);
     await db.query(PATIENT_ALLERGIES_DDL);
     await db.query(PATIENT_IMMUNIZATIONS_DDL);
+    await db.query(PAMI_HISTORY_DDL);
     console.log('  ✓ patient_problems — created / already exists');
     console.log('  ✓ patient_allergies — created / already exists');
     console.log('  ✓ patient_immunizations — created / already exists');
+    console.log('  ✓ patient_history_entries — created / already exists');
     await db.query(ICD_DDL);
     console.log('  ✓ icd_codes — created / already exists');
     await db.query(POS_DDL);
@@ -814,6 +859,12 @@ async function main() {
     .from('ccm_billing_reports')
     .upsert(reportRows, { onConflict: 'id' });
   if (cre) { console.error('  ✗', cre.message); } else { console.log(`  ✓ ${reportRows.length} reports`); }
+
+  console.log('Seeding patient_history_entries...');
+  const { error: phe } = await supabase
+    .from('patient_history_entries')
+    .upsert(withPatient(PATIENT_HISTORY_ENTRIES), { onConflict: 'id' });
+  if (phe) { console.error('  ✗', phe.message); } else { console.log(`  ✓ ${PATIENT_HISTORY_ENTRIES.length} rows`); }
 
   console.log('Seeding patient_monitoring...');
   const monitoringRows = Object.values(MONITORING_SEED).map(monitoringToRow);

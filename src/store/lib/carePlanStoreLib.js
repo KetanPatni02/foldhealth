@@ -102,6 +102,21 @@ function mapPatientImmunizationRow(row) {
   };
 }
 
+function mapPatientHistoryRow(row) {
+  return {
+    id: row.id,
+    kind: row.kind,
+    title: row.title,
+    code: row.code || '',
+    codeSystem: row.code_system || '',
+    detail: row.detail || '',
+    relation: row.relation || '',
+    recordedOn: row.recorded_on || '',
+    synced: row.synced !== false,
+    createdAt: row.created_at || '',
+  };
+}
+
 function carePlanGoalToRow(g) {
   return {
     title: (g.title || '').trim(),
@@ -628,6 +643,7 @@ export {
   mapPatientProblemRow,
   mapPatientAllergyRow,
   mapPatientImmunizationRow,
+  mapPatientHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,

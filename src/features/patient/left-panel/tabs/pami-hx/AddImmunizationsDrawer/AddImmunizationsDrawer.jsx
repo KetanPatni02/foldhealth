@@ -15,21 +15,22 @@ import { RingEmptyState } from '../../../../../../components/RingEmptyState/Ring
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { toast } from '../../../../../../components/Toast/sonnerToast';
 import { ImmunizationSelect } from './ImmunizationSelect';
+import { todayIso, toIsoDate, formatClinicalDate } from '../../../../../../lib/clinicalDates';
 import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 
 // An immunization is either part of the current schedule or a finished
 // course; Figma 2628:364616 splits the list on exactly that.
 const STATUS_OPTIONS = ['Active', 'Completed'].map(v => ({ value: v, label: v }));
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-US') : '');
+
 
 function ImmunizationRow({ immunization, onStatusChange, onEdit, dimmed }) {
   const [noteOpen, setNoteOpen] = useState(false);
-  const dose = [immunization.doseQuantity && `${immunization.doseQuantity} Dose`,
-    immunization.doseUnits].filter(Boolean).join(' • ');
+  // Quantity and units are one measurement: "10 ml", not "10 Dose • ml".
+  const dose = [immunization.doseQuantity, immunization.doseUnits].filter(Boolean).join(' ');
   const meta = [
-    immunization.dateAdministered ? `Date Administered: ${immunization.dateAdministered}` : '',
+    immunization.dateAdministered
+      ? `Date Administered: ${formatClinicalDate(immunization.dateAdministered)}` : '',
     dose,
   ].filter(Boolean);
 
@@ -106,7 +107,7 @@ function ImmunizationDraft({ title, eyebrow, initial, onSave, onCancel }) {
     setSaving(true);
     await onSave({
       title,
-      dateAdministered: fmtDate(administered),
+      dateAdministered: administered,
       status,
       doseQuantity: doseQuantity.trim(),
       doseUnits: doseUnits.trim(),
@@ -205,6 +206,7 @@ export function AddImmunizationsDrawer({ patientId, focus, onClose }) {
   const fetchPatientImmunizations = useAppStore(s => s.fetchPatientImmunizations);
   const addPatientImmunization = useAppStore(s => s.addPatientImmunization);
   const updatePatientImmunization = useAppStore(s => s.updatePatientImmunization);
+  const showToast = useAppStore(s => s.showToast);
 
   const [activeOpen, setActiveOpen] = useState(true);
   const [completedOpen, setCompletedOpen] = useState(focus === 'completed');
@@ -230,20 +232,25 @@ export function AddImmunizationsDrawer({ patientId, focus, onClose }) {
     return () => cancelAnimationFrame(id);
   }, [focus, loading]);
 
-  const startDraft = (concept) => setDraft({
-    title: concept.display,
-    conceptKey: concept.code,
-    concept: { code: concept.code, codeSystem: concept.system },
-  });
+  // A vaccine already on the list shouldn't be silently added twice; match by
+  // CVX code, falling back to the name for rows recorded without one.
+  const startDraft = (concept) => {
+    const onList = list.some(i => (i.code && i.code === concept.code)
+      || (i.title || '').trim().toLowerCase() === (concept.display || '').trim().toLowerCase());
+    if (onList) { showToast?.('This immunization is already on the list'); return; }
+    setDraft({
+      title: concept.display,
+      conceptKey: concept.code,
+      concept: { code: concept.code, codeSystem: concept.system },
+    });
+  };
 
   const startEdit = (immunization) => setDraft({
     title: immunization.title,
     editing: immunization,
     concept: { code: immunization.code || '', codeSystem: immunization.codeSystem || '' },
     initial: {
-      administered: immunization.dateAdministered
-        ? new Date(immunization.dateAdministered).toISOString().slice(0, 10)
-        : todayIso(),
+      administered: toIsoDate(immunization.dateAdministered) || todayIso(),
       status: immunization.status || 'Active',
       doseQuantity: immunization.doseQuantity || '',
       doseUnits: immunization.doseUnits || '',
@@ -260,9 +267,14 @@ export function AddImmunizationsDrawer({ patientId, focus, onClose }) {
   };
 
   const handleStatusChange = async (immunization, status) => {
-    if (status === (immunization.status || 'Active')) return;
+    const prev = immunization.status || 'Active';
+    if (status === prev) return;
     const ok = await updatePatientImmunization(patientId, immunization.id, { status });
-    if (ok && status === 'Completed') toast.success('Immunization marked as completed');
+    if (ok && status === 'Completed') {
+      toast.success('Immunization marked as completed', {
+        action: { label: 'Undo', onClick: () => updatePatientImmunization(patientId, immunization.id, { status: prev }) },
+      });
+    }
   };
 
   const renderRow = (i) => (draft?.editing?.id === i.id ? (
