@@ -7,6 +7,8 @@ import { CheckIcon } from '../../../components/Icon/CheckIcon';
 import { CloseIcon } from '../../../components/Icon/CloseIcon';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
+import { IcdCommentIcon } from './IcdCommentIcon';
+import { useIcdComments } from './icdComments';
 import { Select } from '../../../components/Select/Select';
 import { useIcdSearch } from '../../../lib/icd/useIcdSearch';
 import { DismissReasonForm } from './DismissReasonForm';
@@ -48,14 +50,8 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
   // Live ICD-scoped counters — comments filtered by `icd`, activity by the
   // `icds` array. Falls back to seeded fields while the DB slice is empty
   // so the pills never blank out mid-render.
-  const dbComments = useAppStore(s => s.hccDiagComments);
   const memberActivity = useAppStore(s => (member?.name ? s.hccActivityLog[member.name] : null));
-  const commentsCount = useMemo(() => {
-    if (!Array.isArray(dbComments) || dbComments.length === 0) {
-      return icd.cmts ?? 0;
-    }
-    return dbComments.filter(c => c?.icd === code).length;
-  }, [dbComments, code, icd.cmts]);
+  const { count: commentsCount, unread: hasUnreadComments } = useIcdComments(code, icd.cmts ?? 0);
   const historyCount = useMemo(() => {
     const list = Array.isArray(memberActivity) ? memberActivity : [];
     const scoped = list.filter(e => Array.isArray(e?.icds) && e.icds.includes(code)).length;
@@ -180,7 +176,7 @@ export function SuspectCard({ icd, dosList = EMPTY_DOS_LIST, member, reviewLocke
           <span className={styles.counterDivider} />
           <Tooltip label="Comments">
             <button type="button" className={styles.counter} onClick={() => openIcdPanel('comments', code)}>
-              <Icon name="solar:chat-round-line-linear" size={14} />
+              <IcdCommentIcon unread={hasUnreadComments} />
               {commentsCount}
             </button>
           </Tooltip>
@@ -319,7 +315,7 @@ function ResolvedPill({ action }) {
     return <span className={styles.dismissedPill}><Icon name="solar:close-circle-linear" size={13} color="currentColor" /> Dismissed</span>;
   }
   if (action === 'missed') {
-    return <span className={styles.warnPill}><CheckIcon size={13} color="currentColor" /> Missed Opportunity</span>;
+    return <Badge size="S" tone="warning" icon="solar:flag-linear" label="Missed Opportunity" />;
   }
   return <span className={styles.deferredPill}><Icon name="solar:alarm-linear" size={13} color="currentColor" /> Deferred</span>;
 }

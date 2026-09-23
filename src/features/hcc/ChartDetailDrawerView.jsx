@@ -172,9 +172,6 @@ export function ChartDetailDrawerView(props) {
                    drawer's patient when the DiagPanel isn't open. */
                 <CommentsTab
                   filters={chartFilters}
-                  pendingStatusChange={null}
-                  onConfirmStatusChange={null}
-                  onCancelStatusChange={null}
                   memberOverride={m}
                 />
               ) : (

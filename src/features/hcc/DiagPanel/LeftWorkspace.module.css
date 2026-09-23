@@ -1769,9 +1769,11 @@
    bottom border merges with the container border below). */
 .docsViewerTabBar {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   gap: 6px;
-  padding: 8px 12px 0;
+  /* 8px sides + the icon buttons' 4px inner inset = 12px to the visible
+     back arrow and scroll chevrons. */
+  padding: var(--space-2);
   border-bottom: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   flex-shrink: 0;
@@ -1780,8 +1782,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* Same height as the M badge pills so the bar is 8px + 24px + 8px; the
+     26px width keeps the arrow 12px from the bar edge. */
   width: 26px;
-  height: 26px;
+  height: 24px;
   padding: 0;
   border: none;
   border-radius: 6px;
@@ -1789,51 +1793,25 @@
   color: var(--neutral-400);
   cursor: pointer;
   flex-shrink: 0;
-  margin-bottom: 4px;
 }
 .docsBackBtn:hover { background: var(--neutral-100); color: var(--neutral-500); }
 .docsBrowserTabs {
   display: flex;
-  align-items: flex-end;
-  gap: 4px;
+  align-items: center;
+  gap: var(--space-1);
   flex: 1;
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
 }
-.docsBrowserTab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 180px;
-  /* Even top/bottom padding so the label sits vertically centered inside
-     the tab pill (the 2px active-tab underline is inset, not extra height). */
-  padding: 8px 10px;
-  border: 0.5px solid var(--neutral-150);
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  background: var(--neutral-0);
-  cursor: pointer;
-  font: 500 12px/1.2 'Inter', sans-serif;
-  color: var(--neutral-400);
+.docsTabBadge {
   flex-shrink: 0;
-  /* Sit on top of the tab bar's bottom border so inactive tabs read as
-     "closed" above the line and the active tab merges into the container. */
-  margin-bottom: -0.5px;
+  max-width: 200px;
 }
-.docsBrowserTab:hover { background: var(--neutral-50); color: var(--neutral-500); }
-.docsBrowserTabActive {
-  background: var(--neutral-0);
-  color: var(--primary-300);
-  border-color: var(--primary-200);
-  /* Purple underline is the active affordance; keep the tab flush so the
-     "browser-tab merge" reads correctly. */
-  box-shadow: inset 0 -2px 0 0 var(--primary-300);
-}
-.docsBrowserTabMain {
+.docsTabBadgeMain {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   min-width: 0;
   padding: 0;
   border: 0;
@@ -1842,15 +1820,13 @@
   font: inherit;
   cursor: pointer;
 }
-.docsBrowserTabName {
+.docsTabBadgeName {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Wrap the leading status glyph in a fixed 14x14 box so passed, failed, and
-   pending render at exactly the same width — Solar's bold variants have
-   different intrinsic glyph weights and can otherwise look mismatched. */
-.docsBrowserTabStatus {
+/* Fixed 14x14 box so passed, failed and pending glyphs take equal width. */
+.docsTabBadgeStatus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1858,7 +1834,7 @@
   height: 14px;
   flex-shrink: 0;
 }
-.docsBrowserTabStatus svg { display: block; }
+.docsTabBadgeStatus svg { display: block; }
 /* Flex container so the iframe (which has flex:1) fills the full height of
    the viewer, not just its intrinsic size. */
 .docsViewerBody {
@@ -1909,11 +1885,10 @@
   justify-content: center;
   width: 18px;
   height: 18px;
-  margin-left: 4px;
   border-radius: 4px;
-  color: var(--neutral-400);
+  color: inherit;
   text-decoration: none;
   flex-shrink: 0;
   transition: color 0.12s, background 0.12s;
 }
-.docsTabExternalLink:hover { background: var(--neutral-100); color: var(--primary-300); }
+.docsTabExternalLink:hover { background: color-mix(in srgb, currentColor 12%, transparent); }

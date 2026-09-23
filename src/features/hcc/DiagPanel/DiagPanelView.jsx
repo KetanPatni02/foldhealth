@@ -22,9 +22,6 @@ export function DiagPanelView(props) {
     setDiagTab,
     setFocusIdx,
     setDiagLeftPanel,
-    pendingStatusChange,
-    confirmPendingStatusChange,
-    setPendingStatusChange,
     startResize,
     rhsWidth,
     bulkMode,
@@ -37,6 +34,7 @@ export function DiagPanelView(props) {
     setRejectPrompt,
     confirmReject,
     recordsRequestPrompt,
+    recordsRequestSupportUser,
     confirmRecordsRequest,
     cancelRecordsRequest,
   } = props;
@@ -80,9 +78,6 @@ export function DiagPanelView(props) {
               onChange={setDiagTab}
               onClose={() => { setFocusIdx(-1); setDiagLeftPanel(null); }}
               member={member}
-              pendingStatusChange={pendingStatusChange}
-              onConfirmStatusChange={confirmPendingStatusChange}
-              onCancelStatusChange={() => setPendingStatusChange(null)}
             />
             <div
               className={styles.resizeHandle}
@@ -137,6 +132,7 @@ export function DiagPanelView(props) {
             support: member?.sup || null,
             qa: member?.r1 || null,
           }}
+          supportUser={recordsRequestSupportUser}
           onCancel={cancelRecordsRequest}
           onConfirm={confirmRecordsRequest}
         />

@@ -19,7 +19,7 @@ import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { resolveCurrentAssignee } from '../HccWorklistRow.utils';
 import { slaOutcome } from '../sla';
 import { dosKey } from '../assignment/dosState';
-import { ROLE_LABEL } from '../assignment/astranaStaff';
+import { ROLE_LABEL, staffById } from '../assignment/astranaStaff';
 import { POS_BY_VT, PROVIDER_POOL_BY_VT, VISIT_TYPES } from '../reference/visitTypes';
 import { DOC_TYPES } from '../data/chartDocs';
 import { isAISuggested, CLOSED_ICD_STATUSES, ROLE_KEY_BY_USER } from './DiagPanel.utils';
@@ -172,10 +172,6 @@ export function useDiagPanel() {
   const [disabledDos, setDisabledDos] = useState(() => new Set());
   const [openDismissKey, setOpenDismissKey] = useState(null);
   const dosDeleted = useAppStore(s => s.hccGapDosDeleted);
-  // Status transitions that require the acting user to leave a comment
-  // (currently just Coder → Record Requested). `pendingStatusChange`
-  // holds the deferred transition until the dialog resolves.
-  const [pendingStatusChange, setPendingStatusChange] = useState(null); // { from, to }
   const addHccDiagComment = useAppStore(s => s.addHccDiagComment);
   const addActivityEntry = useAppStore(s => s.addActivityEntry);
   const setHccRejectInfo = useAppStore(s => s.setHccRejectInfo);
@@ -508,10 +504,17 @@ export function useDiagPanel() {
     if (!seenDocIds && chartsLoaded) markHccDiagSeen(member.id, 'documents', docIds);
   }, [member?.id, seenLoaded, ancillaryDidFetch, chartsLoaded, seenCommentIds, seenDocIds, memberComments, myName, docIds, markHccDiagSeen]);
   useEffect(() => {
-    if (!member?.id || diagActivityIcd) return;
+    if (!member?.id) return;
+    // Comments opened for one ICD: only that ICD's comments count as read.
+    if (diagActivityIcd) {
+      if (diagLeftPanel === 'comments' && seenCommentIds) {
+        markHccDiagSeen(member.id, 'comments', memberComments.filter(c => c.icd === diagActivityIcd).map(c => c.id));
+      }
+      return;
+    }
     if (diagLeftPanel === 'comments' && seenCommentIds) markHccDiagSeen(member.id, 'comments', commentIds);
     if (diagLeftPanel === 'documents' && seenDocIds) markHccDiagSeen(member.id, 'documents', docIds);
-  }, [diagLeftPanel, diagActivityIcd, member?.id, commentIds, docIds, seenCommentIds, seenDocIds, markHccDiagSeen]);
+  }, [diagLeftPanel, diagActivityIcd, member?.id, memberComments, commentIds, docIds, seenCommentIds, seenDocIds, markHccDiagSeen]);
   const commentsUnreadCount = useMemo(() => {
     if (!seenCommentIds) return 0;
     const seen = new Set(seenCommentIds);
@@ -568,7 +571,19 @@ export function useDiagPanel() {
   // Record Requested, ICD actions and status changes are frozen until
   // the destination role (Coder or Support) marks the request Completed
   // and the DOS returns to Record Received.
+  // A Rebuttal is read-only for the role it was sent to (QA → Coder,
+  // Compliance → QA) until the sender completes; the sender also shows
+  // Rebuttal but keeps working.
+  const rebuttalTarget = useMemo(() => {
+    const status = (role) => dosState?.[role]?.status;
+    if (actingRole === 'coder') return status('coder') === 'Rebuttal' ? 'QA' : null;
+    if (actingRole === 'reviewer') {
+      return status('reviewer') === 'Rebuttal' && status('reviewer2') === 'Rebuttal' ? 'Compliance' : null;
+    }
+    return null;
+  }, [actingRole, dosState]);
   const stageLocked = useMemo(() => {
+    if (rebuttalTarget) return true;
     if (actingRole === 'reviewer' || actingRole === 'reviewer2') {
       const roleStatus = dosState?.[actingRole]?.status;
       return roleStatus === 'Record Requested';
@@ -576,20 +591,26 @@ export function useDiagPanel() {
     if (actingRole !== 'coder') return false;
     const supStatus = dosState?.support?.status || member?.supS;
     return supStatus !== 'Completed';
-  }, [actingRole, dosState, member]);
+  }, [actingRole, dosState, member, rebuttalTarget]);
 
   // Human-readable reason surfaced on the disabled DosStatusMenu tooltip
   // and on every locked ICD action while QA / Compliance is waiting on a
   // records request to be filled. Falls back to null so the caller's
   // existing lockReason (e.g. rejectionLockReason) still wins.
   const recordsRequestLockReason = useMemo(() => {
-    if (!(actingRole === 'reviewer' || actingRole === 'reviewer2')) return null;
+    if (rebuttalTarget) {
+      return `${rebuttalTarget} sent this record back as a Rebuttal. It's read-only until ${rebuttalTarget} completes.`;
+    }
     const roleStatus = dosState?.[actingRole]?.status;
+    if (actingRole === 'coder' && roleStatus === 'Record Requested') {
+      return 'Waiting on Support Team to return the record. Actions unlock when the request is filled.';
+    }
+    if (!(actingRole === 'reviewer' || actingRole === 'reviewer2')) return null;
     if (roleStatus !== 'Record Requested') return null;
     const req = dosState?.[actingRole]?.records_request;
     const dest = req?.destinationRole === 'support' ? 'Support Team' : 'Coder';
     return `Waiting on ${dest} to return the record — actions unlock when the request is filled.`;
-  }, [actingRole, dosState]);
+  }, [actingRole, dosState, rebuttalTarget]);
 
   // ── Review-progress stages + ring (drives the stage pill) ──
   const reviewStages = useMemo(
@@ -725,11 +746,11 @@ export function useDiagPanel() {
         if (role === 'support')      hccRejectDos(member.id, currentDos, 'current-user', 'Docs failed checklist');
         else                         hccSetRoleStatus(member.id, currentDos, role, 'Reject');
         break;
-      case 'Returned':
+      case 'Rebuttal':
         if (role === 'reviewer' || role === 'reviewer2') {
-          hccReturnDos(member.id, currentDos, role, 'current-user', `Returned from ${role}`);
+          hccReturnDos(member.id, currentDos, role, 'current-user', `Rebuttal from ${role}`);
         } else {
-          hccSetRoleStatus(member.id, currentDos, role, 'Returned');
+          hccSetRoleStatus(member.id, currentDos, role, 'Rebuttal');
         }
         break;
       case 'In Progress':
@@ -758,18 +779,11 @@ export function useDiagPanel() {
       setRejectPrompt({});
       return;
     }
-    // QA / Compliance → Record Requested opens the role-picker dialog so
-    // the user chooses whether to request records from Coder or Support.
-    // The transition commits only after the dialog resolves.
-    if (next === 'Record Requested' && (actingRole === 'reviewer' || actingRole === 'reviewer2')) {
+    // Record Requested opens the request dialog; the transition commits only
+    // after it resolves. QA / Compliance pick Coder or Support; the Coder
+    // always requests from Support.
+    if (next === 'Record Requested' && ['coder', 'reviewer', 'reviewer2'].includes(actingRole)) {
       setRecordsRequestPrompt({ requesterRole: actingRole });
-      return;
-    }
-    const requiresComment =
-      actingRole === 'coder' && next === 'Record Requested';
-    if (requiresComment) {
-      setPendingStatusChange({ from: actingStatus || 'New', to: next });
-      setDiagLeftPanel('comments');
       return;
     }
     applyStatusChange(next);
@@ -778,13 +792,29 @@ export function useDiagPanel() {
   // Prompt shown when QA / Compliance picks Record Requested. Holds
   // `{ requesterRole }` while the modal is open; null when closed.
   const [recordsRequestPrompt, setRecordsRequestPrompt] = useState(null);
-  const confirmRecordsRequest = ({ destinationRole, note }) => {
+  const platformUsers = useAppStore(s => s.platformUsers);
+  // The Coder's request goes to Support; the dialog defaults to this
+  // record's Support user.
+  const recordsRequestSupportUser = useMemo(() => {
+    if (recordsRequestPrompt?.requesterRole !== 'coder') return null;
+    const sup = dosState?.support;
+    const name = staffById(sup?.assignee)?.name
+      || (platformUsers || []).find(u => u.id === sup?.assignee)?.name
+      || member?.sup
+      || null;
+    return { name };
+  }, [recordsRequestPrompt, dosState, platformUsers, member]);
+  const confirmRecordsRequest = ({ destinationRole, note, assignee }) => {
     setRecordsRequestPrompt(null);
     if (!member || !currentDos || !destinationRole) return;
+    const requesterStatus = actingStatus || 'New';
     // Defer to the next microtask so the AlertDialog's focus-trap unmount
     // finishes before the store cascade re-renders the drawer.
     setTimeout(() => {
-      hccRequestRecordsFrom?.(member.id, currentDos, actingRole, destinationRole, 'current-user', { note });
+      // Only a real roster id can be routed to; anything else falls back to
+      // the engine's last-known assignee.
+      const destinationAssignee = staffById(assignee?.id) ? assignee.id : null;
+      hccRequestRecordsFrom?.(member.id, currentDos, actingRole, destinationRole, 'current-user', { note, destinationAssignee });
       setDiagDosStatus('Record Requested');
       // If the user attached a comment, post it into the DOS Comments feed
       // addressed to the destination role — the destination user sees it
@@ -808,6 +838,8 @@ export function useDiagPanel() {
           body: `For ${destLabel}: ${note}`,
           icd: null,
           dos: currentDos || null,
+          statusFrom: requesterStatus,
+          statusTo: 'Record Requested',
         });
       }
     }, 0);
@@ -902,37 +934,6 @@ export function useDiagPanel() {
       ? `Record rejected by ${roleLabel}. All ICD actions are locked.`
       : 'Record has been rejected. All ICD actions are locked.';
   }, [isDosRejected, dosState, rejectInfo, member]);
-
-  // Finalize the Record-Requested transition: writes the mandatory
-  // comment (tagged with the from/to statuses so the Comments tab and
-  // Activity Log can render the pair together), then applies the status.
-  const confirmPendingStatusChange = (body) => {
-    if (!pendingStatusChange || !member) return;
-    const { from, to } = pendingStatusChange;
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
-    const hours = now.getHours();
-    const time = `${((hours + 11) % 12) + 1}:${pad(now.getMinutes())} ${hours >= 12 ? 'PM' : 'AM'}`;
-    const userRole = useAppStore.getState().hccUserRole || 'Coder';
-    addHccDiagComment({
-      id: `c${Date.now()}`,
-      author: 'You',
-      role: userRole,
-      date,
-      time,
-      edited: false,
-      body,
-      icd: null,
-      dos: currentDos || null,
-      statusFrom: from,
-      statusTo: to,
-    });
-    setPendingStatusChange(null);
-    // Forward the composer body as the note so the activity entry's
-    // View Note affordance can surface it inline.
-    applyStatusChange(to, { note: body });
-  };
 
   // ── Card + suspect data assembly (search + DOS filters applied) ──
   const q = searchQuery.trim().toLowerCase();
@@ -1236,7 +1237,6 @@ export function useDiagPanel() {
     commentsUnread,
     commentsUnreadCount,
     openCommentsFromToolbar,
-    confirmPendingStatusChange,
     confirmReject,
     contentRowRef,
     currentDos,
@@ -1287,7 +1287,6 @@ export function useDiagPanel() {
     openHccClaimForDos,
     overriddenICDs,
     pendingGaps,
-    pendingStatusChange,
     pendingSuspects,
     pillLabel,
     pillRect,
@@ -1297,6 +1296,7 @@ export function useDiagPanel() {
     recordsRequestPrompt,
     confirmRecordsRequest,
     cancelRecordsRequest: () => setRecordsRequestPrompt(null),
+    recordsRequestSupportUser,
     recordsRequestLockReason,
     rejectInfo,
     rejectPrompt,
@@ -1321,7 +1321,6 @@ export function useDiagPanel() {
     setMoreOpen,
     setOpenDismissKey,
     setPendingGaps,
-    setPendingStatusChange,
     setPillPinned,
     setPillRect,
     setRejectPrompt,

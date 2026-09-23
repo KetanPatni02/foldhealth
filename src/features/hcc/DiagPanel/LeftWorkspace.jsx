@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useId, useCallback } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
@@ -8,6 +9,7 @@ import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { Switch } from '../../../components/Switch/Switch';
 import { timelineStatusIcon } from '../StatusIcon';
+import { recordParticipants } from '../recordParticipants';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
@@ -83,9 +85,6 @@ export function LeftWorkspace({
   onChange,
   onClose,
   member,
-  pendingStatusChange = null,
-  onConfirmStatusChange,
-  onCancelStatusChange,
 }) {
   // Kick off the org-scoped ancillary fetch once — safe to call repeatedly,
   // the store guards on didFetch. Doing it here means every drawer open
@@ -318,7 +317,7 @@ export function LeftWorkspace({
             chips, separated by a vertical divider. */}
         {showFilterRow && (
           <FilterRow
-            keys={active === 'activity' ? TIMELINE_FILTER_KEYS : FILTER_KEYS}
+            keys={active === 'activity' ? TIMELINE_FILTER_KEYS : active === 'comments' ? COMMENTS_FILTER_KEYS : FILTER_KEYS}
             filters={filters}
             options={filterOptions}
             onChange={setFilter}
@@ -338,9 +337,6 @@ export function LeftWorkspace({
           <CommentsTab
             member={member}
             filters={filters}
-            pendingStatusChange={pendingStatusChange}
-            onConfirmStatusChange={onConfirmStatusChange}
-            onCancelStatusChange={onCancelStatusChange}
           />
         )}
         {active === 'documents' && (
@@ -368,6 +364,8 @@ export function LeftWorkspace({
 const FILTER_KEYS = ['dos', 'hcc', 'icd', 'by', 'date'];
 // Timeline only: the same chips plus Activity Type.
 const TIMELINE_FILTER_KEYS = [...FILTER_KEYS, 'type'];
+// Comments aren't filtered by DOS.
+const COMMENTS_FILTER_KEYS = FILTER_KEYS.filter(k => k !== 'dos');
 const FILTER_LABEL = {
   dos:  'DOS',
   hcc:  'HCC Code',
@@ -714,9 +712,15 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
   // the from/to transition slot — the shared entry component reads any
   // truthy pair, so gate the props here to preserve the legacy behavior.
   const isStatusTransition = item.t === 'status_dos' || item.t === 'status_hcc' || item.t === 'status_role';
-  const entryItem = isStatusTransition
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const baseItem = isStatusTransition
     ? item
     : { ...item, from: undefined, to: undefined };
+  // Comment text gets the same @mention highlighting as the Comments tab.
+  const commentNote = item.t === 'comment' && !item.commentBody ? item.details?.[0]?.note : null;
+  const entryItem = commentNote
+    ? { ...baseItem, commentBody: renderCommentBody(commentNote, platformUsers?.length ? platformUsers : SYSTEM_USERS) }
+    : baseItem;
   return (
     <HistoryTimelineEntry
       item={entryItem}
@@ -733,7 +737,7 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
 // comment is a row with a chat-icon left rail + connector line, a meta line
 // (`date · time · author(role)` + optional Edited badge), and the full body
 // text below. Composer is a single-line input — Enter posts.
-export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChange, onCancelStatusChange, member: memberProp = null, memberOverride = null }) {
+export function CommentsTab({ filters, member: memberProp = null, memberOverride = null }) {
   // Scope the timeline to the patient whose DiagPanel we're rendering in.
   const dbComments = useAppStore(s => s.hccDiagComments);
   const diagPanelMemberIdEarly = useAppStore(s => s.diagPanelMemberId);
@@ -749,7 +753,8 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
   const myName = useAppStore(s => s.currentUserProfile?.name);
   const mentionsMe = useCallback((c) => mentionsUser(c.body, myName), [myName]);
   const visibleItems = useMemo(
-    () => items.filter(c => recordMatchesFilters(c, filters) && (!mentionsOnly || mentionsMe(c))),
+    // DOS set on another tab mustn't silently narrow comments (no DOS chip here).
+    () => items.filter(c => recordMatchesFilters(c, { ...filters, dos: [] }) && (!mentionsOnly || mentionsMe(c))),
     [items, filters, mentionsOnly, mentionsMe],
   );
   const [collapsed, setCollapsed] = useState(() => new Set());
@@ -762,6 +767,14 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
   const logHccActivity = useAppStore(s => s.logHccActivity);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const hccMembers = useAppStore(s => s.hccMembers);
+  // Only people on this record (current or past assignee, any role) can be
+  // @-mentioned, labelled with the role they hold on this record.
+  const dosAssignments = useAppStore(s => s.hccDosAssignments);
+  const platformUsersForMentions = useAppStore(s => s.platformUsers);
+  const mentionUsers = useMemo(() => {
+    const recordMember = memberProp || memberOverride || hccMembers.find(m => m.id === scopeMemberId);
+    return recordParticipants(recordMember, dosAssignments, platformUsersForMentions || []);
+  }, [memberProp, memberOverride, hccMembers, scopeMemberId, dosAssignments, platformUsersForMentions]);
   const editComment = (id, body) => {
     setItems(prev => prev.map(c => c.id === id ? { ...c, body, edited: true } : c));
     updateHccDiagComment(id, body);
@@ -827,23 +840,12 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
     return next;
   });
 
-  // Route the single composer's submit through the right handler: a
-  // pending workflow transition takes priority (Coder → Record Requested),
-  // otherwise it's a regular comment on the tab.
-  const composerSubmit = pendingStatusChange
-    ? (body) => onConfirmStatusChange?.(body)
-    : addComment;
-
   return (
     <div className={styles.scroll}>
       <div className={styles.commentComposerWrap}>
         <CommentComposer
-          onSubmit={composerSubmit}
-          statusChange={pendingStatusChange ? {
-            fromStatus: pendingStatusChange.from,
-            toStatus: pendingStatusChange.to,
-            onCancel: () => onCancelStatusChange?.(),
-          } : null}
+          users={mentionUsers}
+          onSubmit={addComment}
         />
       </div>
       <div className={styles.timeline}>
@@ -883,6 +885,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
               {!isCollapsed && g.items.map((c, i) => (
                 <CommentEntry
                   key={c.id}
+                  mentionUsers={mentionUsers}
                   item={c}
                   isFirst={i === 0}
                   isLast={i === g.items.length - 1}
@@ -956,7 +959,7 @@ function renderCommentBody(body, users) {
   const sortedNames = names.slice().sort((a, b) => b.length - a.length);
   if (!sortedNames.length) return body;
   const escaped = sortedNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const re = new RegExp(`@(${escaped.join('|')})`, 'g');
+  const re = new RegExp(`@(${escaped.join('|')})(?![A-Za-z])`, 'gi');
   const nodes = [];
   let lastIdx = 0;
   let key = 0;
@@ -972,7 +975,7 @@ function renderCommentBody(body, users) {
   return nodes.length ? nodes : body;
 }
 
-function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
+function CommentEntry({ item, isFirst, isLast, onEdit, onDelete, mentionUsers }) {
   const isMine = item.author === 'You';
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.body || '');
@@ -1050,6 +1053,7 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
           <div className={styles.commentEditor}>
             <CommentComposer
               autoFocus
+              users={mentionUsers}
               initialValue={item.body || ''}
               submitLabel="Save"
               cancelLabel="Cancel"
@@ -1300,7 +1304,7 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
               disabled={!canScrollLeft}
               onClick={() => scrollTabs(-1)}
             >
-              <Icon name="solar:alt-arrow-left-linear" size={14} color="currentColor" />
+              <DownChevronIcon size={14} color="currentColor" style={{ transform: 'rotate(90deg)' }} />
             </button>
           )}
           <div className={styles.docsBrowserTabs} ref={tabsScrollRef}>
@@ -1319,27 +1323,30 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
                 : status === 'failed'
                   ? { name: 'solar:close-circle-bold', color: 'var(--status-error)',  label: 'Failed' }
                   : { name: 'solar:clock-circle-bold', color: 'var(--neutral-300)',   label: 'Pending' };
-              // Tab shell is a role=button div so we can nest a real anchor
-              // (the "open in new browser tab" arrow) without triggering the
-              // HTML "button inside button" invariant, which crashes Radix's
-              // focus-trap when a modal opens over the drawer.
+              // Each doc is a Badge pill: primary when open, grey otherwise.
+              // The filename is the click target and the "open in a new tab"
+              // arrow is a sibling anchor, so nothing interactive nests.
               return (
-                <div
+                <Badge
                   key={d.id}
-                  className={[styles.docsBrowserTab, isOpen ? styles.docsBrowserTabActive : ''].filter(Boolean).join(' ')}
-                  title={`${d.name} — ${statusIcon.label}`}
-                >
-                  <button
-                    type="button"
-                    className={styles.docsBrowserTabMain}
-                    onClick={() => setOpenDocId(d.id)}
-                  >
-                    <span className={styles.docsBrowserTabStatus} aria-hidden="true">
-                      <Icon name={statusIcon.name} size={14} color={statusIcon.color} />
-                    </span>
-                    <span className={styles.docsBrowserTabName}>{d.name}</span>
-                  </button>
-                  {d.pdf && (
+                  size="M"
+                  tone={isOpen ? 'primary' : 'grey'}
+                  className={styles.docsTabBadge}
+                  label={(
+                    <button
+                      type="button"
+                      className={styles.docsTabBadgeMain}
+                      onClick={() => setOpenDocId(d.id)}
+                      aria-pressed={isOpen}
+                      title={`${d.name}: ${statusIcon.label}`}
+                    >
+                      <span className={styles.docsTabBadgeStatus} aria-hidden="true">
+                        <Icon name={statusIcon.name} size={14} color={statusIcon.color} />
+                      </span>
+                      <span className={styles.docsTabBadgeName}>{d.name}</span>
+                    </button>
+                  )}
+                  trailingIconElement={d.pdf ? (
                     <a
                       href={d.pdf}
                       target="_blank"
@@ -1351,8 +1358,8 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
                     >
                       <Icon name="solar:square-top-down-linear" size={12} color="currentColor" />
                     </a>
-                  )}
-                </div>
+                  ) : null}
+                />
               );
             })}
           </div>
@@ -1365,7 +1372,7 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
               disabled={!canScrollRight}
               onClick={() => scrollTabs(1)}
             >
-              <Icon name="solar:alt-arrow-right-linear" size={14} color="currentColor" />
+              <DownChevronIcon size={14} color="currentColor" style={{ transform: 'rotate(-90deg)' }} />
             </button>
           )}
         </div>

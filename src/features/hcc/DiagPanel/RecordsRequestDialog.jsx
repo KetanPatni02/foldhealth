@@ -34,14 +34,18 @@ const COMPLIANCE_ROLE_OPTIONS = [
 const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
 
 /**
- * Modal shown when QA / Compliance picks `Record Requested` in the
- * DosStatusMenu. Forces a role selection (Coder or Support Team) before
- * the transition commits and optionally captures a comment (≤150 chars)
- * that the destination role will see in the Comments tab. Layout mirrors
- * Figma ICD-Import 5723-171525.
+ * Modal shown when a role picks `Record Requested` in the DosStatusMenu.
+ * QA / Compliance choose who to request from (Coder or Support Team).
+ * The Coder always requests from Support, so the Coder passes
+ * `supportUser` ({ name }): the role choice is hidden and the Support User
+ * field defaults to that record's Support user, changeable to any active
+ * Support user. The request goes
+ * to whoever is selected. A comment is required. Layout mirrors Figma
+ * ICD-Import 5723-171525.
  */
-export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
-  const [role, setRole] = useState('coder');
+export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, supportUser = null }) {
+  const fixedToSupport = !!supportUser;
+  const [role, setRole] = useState(fixedToSupport ? 'support' : 'coder');
   const [comment, setComment] = useState('');
   const mentionsRef = useRef([]);
   const attachmentsRef = useRef([]);
@@ -89,7 +93,7 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
   const roleUsers = useMemo(() => {
     const engineRole = ROLE_TO_ENGINE[role];
     if (!engineRole) return [];
-    return staffForRole(engineRole)
+    const roster = staffForRole(engineRole)
       .filter(s => s.active !== false)
       .map(s => ({
         id: s.id,
@@ -101,7 +105,19 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
         // blank.
         available: true,
       }));
-  }, [role]);
+    // The record's Support user may not be in the roster (e.g. a profile
+    // assigned from Settings); keep them on the list, first.
+    if (fixedToSupport && supportUser?.name && !roster.some(u => u.name === supportUser.name)) {
+      roster.unshift({
+        id: supportUser.name,
+        name: supportUser.name,
+        initials: initialsOf(supportUser.name),
+        roleLabel: ROLE_LABEL.support,
+        available: true,
+      });
+    }
+    return roster;
+  }, [role, fixedToSupport, supportUser]);
 
   const assignee = useMemo(
     () => roleUsers.find(u => u.id === assigneeId) || null,
@@ -118,10 +134,10 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
   useEffect(() => {
     if (!roleUsers.length) { setAssigneeId(''); return; }
     if (assigneeId && roleUsers.some(u => u.id === assigneeId)) return;
-    const lastName = lastAssignees?.[role];
+    const lastName = fixedToSupport ? supportUser?.name : lastAssignees?.[role];
     const seed = (lastName && roleUsers.find(u => u.name === lastName)) || roleUsers[0];
     setAssigneeId(seed.id);
-  }, [roleUsers, assigneeId, role, lastAssignees]);
+  }, [roleUsers, assigneeId, role, lastAssignees, fixedToSupport, supportUser]);
 
   // Rich options for the shared Select — each row shows an M-size
   // avatar, the name + role subtitle stacked, and an Available /
@@ -169,13 +185,16 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
             Request Records?
           </AlertDialogTitle>
           <AlertDialogDescription className={styles.subtitle}>
-            Select who you'd like to request the records from.
+            {fixedToSupport
+              ? 'The request goes to the Support user on this record.'
+              : "Select who you'd like to request the records from."}
           </AlertDialogDescription>
         </div>
 
         {/* Inline radio row — Coder first per Figma; toggling flips the
             Assigned-to roster to that role's users. Compliance users
             also see QA in the row. */}
+        {!fixedToSupport && (
         <div className={styles.radioRow} role="radiogroup" aria-label="Request records from">
           {roleOptions.map((opt) => {
             const active = role === opt.value;
@@ -197,14 +216,15 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees }) {
             );
           })}
         </div>
+        )}
 
         {/* Assigned to — shared Select with rich rows (M avatar + name
             + role subtitle + Available/Unavailable). Portals its menu
             (z-index 9800 > alert-dialog 9750) so it lifts above the
             modal instead of hiding behind it. */}
         <Select
-          label="Assignee"
-          placeholder="Select assignee"
+          label={fixedToSupport ? 'Support User' : 'Assignee'}
+          placeholder={fixedToSupport ? 'Select Support user' : 'Select assignee'}
           options={assigneeOptions}
           value={assigneeId}
           onChange={setAssigneeId}

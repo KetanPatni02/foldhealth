@@ -95,8 +95,9 @@
 
 /* Badge sizing per button size */
 .sizeS .badge {
-  top: -7px;
-  right: -6px;
+  /* Tucked onto the icon's top-right corner rather than floating off it. */
+  top: -4px;
+  right: -3px;
   height: 12px;
   padding: 2px 3px;
   font-size: 0.5rem;

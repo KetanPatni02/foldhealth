@@ -527,12 +527,16 @@ export function requestRecordsFrom(map, patient, dos, requesterRole, destination
     { by: actor, reason: `records-requested:from-${destinationRole}` },
   );
 
-  // Destination side: route to last-known assignee, else fall back to picker.
-  const prevDest = lastKnownAssignee(state, destinationRole);
+  // Destination side: the person the requester picked, else the last-known
+  // assignee, else a fresh pick.
+  const prevDest = opts.destinationAssignee || lastKnownAssignee(state, destinationRole);
   if (prevDest) {
     state = setRoleState(state, destinationRole,
       { assignee: prevDest, status: STATUS.RETURNED },
-      { by: 'system', reason: `records-requested:return-to-original-${destinationRole}` },
+      { by: opts.destinationAssignee ? actor : 'system',
+        reason: opts.destinationAssignee
+          ? `records-requested:picked-${destinationRole}`
+          : `records-requested:return-to-original-${destinationRole}` },
     );
   } else {
     const pick = pickAssignee(destinationRole, ctxFor(map, patient, dos));
@@ -647,6 +651,7 @@ export function completeReviewer(map, patient, dos, actor) {
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'reviewer', { status: STATUS.COMPLETED },
     { by: actor, reason: 'reviewer-complete' });
+  state = resolveRebuttal(state, 'reviewer', actor);
   state = pushActivity(state, evt(state, 'status', { role: 'reviewer', to: STATUS.COMPLETED, by: actor }));
   // Support / Coder never worked it → mark Skipped.
   state = autoSkipEarlierRoles(state, 'reviewer', actor);
@@ -701,6 +706,7 @@ export function completeReviewer2(map, patient, dos, actor, config = {}) {
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
   state = setRoleState(state, 'reviewer2', { status: STATUS.COMPLETED },
     { by: actor, reason: 'reviewer2-complete' });
+  state = resolveRebuttal(state, 'reviewer2', actor);
   state = pushActivity(state, evt(state, 'status', { role: 'reviewer2', to: STATUS.COMPLETED, by: actor }));
   // Any earlier role that never worked it → mark Skipped.
   state = autoSkipEarlierRoles(state, 'reviewer2', actor);
@@ -716,10 +722,21 @@ export function completeReviewer2(map, patient, dos, actor, config = {}) {
 
 const RETURN_TARGET = { reviewer: 'coder', reviewer2: 'reviewer' };
 
+// The sender completing ends the rebuttal: the role it was sent to (still
+// read-only in Rebuttal) flips to Completed.
+function resolveRebuttal(state, fromRole, actor) {
+  const target = RETURN_TARGET[fromRole];
+  if (!target || state[target]?.status !== STATUS.REBUTTAL) return state;
+  return setRoleState(state, target, { status: STATUS.COMPLETED },
+    { by: actor, reason: `rebuttal-resolved-by-${fromRole}` });
+}
+
 /**
- * Manual Return — `fromRole` clicked Returned. DOS goes back to the
- * ORIGINAL person who handled the immediate prior role (not a fresh
- * assignment). All work is preserved.
+ * Rebuttal — `fromRole` (QA or Compliance) sends the record back to the
+ * ORIGINAL holder of the prior role (QA → Coder, Compliance → QA). Both sides
+ * show Rebuttal: the target is read-only (no ICD changes, no status changes)
+ * and the sender keeps working. When the sender completes, the target flips
+ * to Completed (see resolveRebuttal). All work is preserved.
  *
  * Only valid for reviewer → coder, reviewer2 → reviewer (AC-7 "no level skipping").
  */
@@ -730,21 +747,20 @@ export function returnDos(map, patient, dos, fromRole, actor, reason) {
   }
   let state = getOrInit(map, patient.id, dos.date, dos.provider, dos.pos);
 
-  // Mark the reviewer's own status as Returned
-  state = setRoleState(state, fromRole, { status: STATUS.RETURNED },
-    { by: actor, reason: `return:${reason || 'no-reason'}` });
+  state = setRoleState(state, fromRole, { status: STATUS.REBUTTAL },
+    { by: actor, reason: `rebuttal:${reason || 'no-reason'}` });
 
   // Bounce to the ORIGINAL prior-role holder
   const originalPrior = state[targetRole].originalAssignee || state[targetRole].assignee;
   if (originalPrior) {
     state = setRoleState(state, targetRole,
-      { assignee: originalPrior, status: STATUS.IN_PROGRESS },
-      { by: 'system', reason: `return-from-${fromRole}` },
+      { assignee: originalPrior, status: STATUS.REBUTTAL },
+      { by: 'system', reason: `rebuttal-from-${fromRole}` },
     );
   }
 
   state = pushActivity(state, evt(state, 'return', {
-    role: fromRole, to: STATUS.RETURNED, by: actor, reason, note: `→ ${ROLE_LABEL[targetRole]}`,
+    role: fromRole, to: STATUS.REBUTTAL, by: actor, reason, note: `→ ${ROLE_LABEL[targetRole]}`,
   }));
 
   return { nextMap: putState(map, state), events: [] };

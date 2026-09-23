@@ -338,7 +338,7 @@ export function RoleStatusCell({ name, status, date, role, memberId, dosDate, pr
   // stand-alone signals worth showing — otherwise a QA row waiting on
   // Coder-Returned reads as a plain "M. Almeda" with no indicator that
   // records were requested.
-  const RECORDS_LOOP_STATES = new Set(['Record Requested', 'Record Received', 'Returned']);
+  const RECORDS_LOOP_STATES = new Set(['Record Requested', 'Record Received', 'Returned', 'Rebuttal']);
   const showStatus = priorResolved || RECORDS_LOOP_STATES.has(effectiveStatus);
   const statusLine = showStatus ? (
     <span className={styles.roleStatusLine}>
