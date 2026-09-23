@@ -1771,7 +1771,9 @@
   display: flex;
   align-items: flex-end;
   gap: 6px;
-  padding: 8px 12px 0;
+  /* 8px sides + the icon buttons' 4px inner inset = 12px to the visible
+     back arrow and scroll chevrons. */
+  padding: var(--space-2) var(--space-2) 0;
   border-bottom: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   flex-shrink: 0;
