@@ -793,7 +793,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
             <span className={styles.commentsEmpty}>
               {mentionsOnly ? 'No comments mention you.' : 'No comments yet.'}
             </span>
-            <Switch label="Show @mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
+            <Switch className={styles.mentionsSwitch} label="Show @mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
           </div>
         )}
         {groups.map((g, gi) => {
@@ -816,7 +816,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
               {gi === 0 ? (
                 <div className={styles.commentsGroupRow}>
                   {header}
-                  <Switch label="Show @mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
+                  <Switch className={styles.mentionsSwitch} label="Show @mentions" checked={mentionsOnly} onChange={setMentionsOnly} />
                 </div>
               ) : header}
               {!isCollapsed && g.items.map((c, i) => (

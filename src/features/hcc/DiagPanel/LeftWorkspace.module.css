@@ -474,6 +474,20 @@
 .commentsGroupRow .activityGroup {
   padding: 0;
 }
+/* Compact 16px-tall Switch for the "Show @mentions" control. Track and knob
+   scale together (knob 13px, 1.5px inset) so the ON travel stays flush. */
+.mentionsSwitch {
+  height: 16px;
+  min-width: 27px;
+}
+.mentionsSwitch > span {
+  width: 13px;
+  height: 13px;
+  border-radius: 2px;
+}
+.mentionsSwitch[aria-checked="true"] > span {
+  transform: translateX(11px);
+}
 .commentsEmpty {
   font-size: var(--font-base);
   color: var(--neutral-300);
