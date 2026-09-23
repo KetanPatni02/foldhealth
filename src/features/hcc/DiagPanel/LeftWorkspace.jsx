@@ -1323,27 +1323,30 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
                 : status === 'failed'
                   ? { name: 'solar:close-circle-bold', color: 'var(--status-error)',  label: 'Failed' }
                   : { name: 'solar:clock-circle-bold', color: 'var(--neutral-300)',   label: 'Pending' };
-              // Tab shell is a role=button div so we can nest a real anchor
-              // (the "open in new browser tab" arrow) without triggering the
-              // HTML "button inside button" invariant, which crashes Radix's
-              // focus-trap when a modal opens over the drawer.
+              // Each doc is a Badge pill: primary when open, grey otherwise.
+              // The filename is the click target and the "open in a new tab"
+              // arrow is a sibling anchor, so nothing interactive nests.
               return (
-                <div
+                <Badge
                   key={d.id}
-                  className={[styles.docsBrowserTab, isOpen ? styles.docsBrowserTabActive : ''].filter(Boolean).join(' ')}
-                  title={`${d.name} — ${statusIcon.label}`}
-                >
-                  <button
-                    type="button"
-                    className={styles.docsBrowserTabMain}
-                    onClick={() => setOpenDocId(d.id)}
-                  >
-                    <span className={styles.docsBrowserTabStatus} aria-hidden="true">
-                      <Icon name={statusIcon.name} size={14} color={statusIcon.color} />
-                    </span>
-                    <span className={styles.docsBrowserTabName}>{d.name}</span>
-                  </button>
-                  {d.pdf && (
+                  size="M"
+                  tone={isOpen ? 'primary' : 'grey'}
+                  className={styles.docsTabBadge}
+                  label={(
+                    <button
+                      type="button"
+                      className={styles.docsTabBadgeMain}
+                      onClick={() => setOpenDocId(d.id)}
+                      aria-pressed={isOpen}
+                      title={`${d.name}: ${statusIcon.label}`}
+                    >
+                      <span className={styles.docsTabBadgeStatus} aria-hidden="true">
+                        <Icon name={statusIcon.name} size={14} color={statusIcon.color} />
+                      </span>
+                      <span className={styles.docsTabBadgeName}>{d.name}</span>
+                    </button>
+                  )}
+                  trailingIconElement={d.pdf ? (
                     <a
                       href={d.pdf}
                       target="_blank"
@@ -1355,8 +1358,8 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
                     >
                       <Icon name="solar:square-top-down-linear" size={12} color="currentColor" />
                     </a>
-                  )}
-                </div>
+                  ) : null}
+                />
               );
             })}
           </div>
