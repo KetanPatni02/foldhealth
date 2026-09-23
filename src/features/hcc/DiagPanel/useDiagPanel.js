@@ -768,8 +768,8 @@ export function useDiagPanel() {
   // `{ requesterRole }` while the modal is open; null when closed.
   const [recordsRequestPrompt, setRecordsRequestPrompt] = useState(null);
   const platformUsers = useAppStore(s => s.platformUsers);
-  // The Coder's request always goes to this record's Support user; the
-  // dialog shows who that is and their current status.
+  // The Coder's request goes to Support; the dialog defaults to this
+  // record's Support user.
   const recordsRequestSupportUser = useMemo(() => {
     if (recordsRequestPrompt?.requesterRole !== 'coder') return null;
     const sup = dosState?.support;
@@ -777,7 +777,7 @@ export function useDiagPanel() {
       || (platformUsers || []).find(u => u.id === sup?.assignee)?.name
       || member?.sup
       || null;
-    return { name, status: sup?.status || member?.supS || null };
+    return { name };
   }, [recordsRequestPrompt, dosState, platformUsers, member]);
   const confirmRecordsRequest = ({ destinationRole, note, assignee }) => {
     setRecordsRequestPrompt(null);

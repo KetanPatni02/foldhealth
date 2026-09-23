@@ -6,8 +6,6 @@ import { Avatar } from '../../../components/Avatar/Avatar';
 import { Select } from '../../../components/Select/Select';
 import { useAppStore } from '../../../store/useAppStore';
 import { staffForRole, ROLE_LABEL } from '../assignment/astranaStaff';
-import { StatusIcon } from '../StatusIcon';
-import { getStatusSpec, statusDisplayLabel } from '../statusSpec';
 import styles from './RecordsRequestDialog.module.css';
 
 // UI role → the Astrana engine role a picker's roster should filter on.
@@ -39,9 +37,9 @@ const initialsOf = (name) => (name || '').split(/\s+/).map(w => w[0] || '').join
  * Modal shown when a role picks `Record Requested` in the DosStatusMenu.
  * QA / Compliance choose who to request from (Coder or Support Team).
  * The Coder always requests from Support, so the Coder passes
- * `supportUser` ({ name, status }): the role choice is hidden and the
- * Support User field defaults to that record's Support user (shown with
- * their status), changeable to any active Support user. The request goes
+ * `supportUser` ({ name }): the role choice is hidden and the Support User
+ * field defaults to that record's Support user, changeable to any active
+ * Support user. The request goes
  * to whoever is selected. A comment is required. Layout mirrors Figma
  * ICD-Import 5723-171525.
  */
@@ -106,9 +104,6 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
         // as Available so the dropdown reads truthfully rather than
         // blank.
         available: true,
-        // The record's current Support user shows their status on this
-        // record instead of an availability tag.
-        status: fixedToSupport && s.name === supportUser?.name ? (supportUser.status || null) : null,
       }));
     // The record's Support user may not be in the roster (e.g. a profile
     // assigned from Settings); keep them on the list, first.
@@ -119,7 +114,6 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
         initials: initialsOf(supportUser.name),
         roleLabel: ROLE_LABEL.support,
         available: true,
-        status: supportUser.status || null,
       });
     }
     return roster;
@@ -156,16 +150,9 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
       <span className={styles.assigneeTriggerLabel}>
         <Avatar variant="assignee" type="initial" size="XS" initials={u.initials} />
         <span className={styles.assigneeName}>{u.name}</span>
-        {u.status ? (
-          <span className={styles.assigneeStatus} style={{ color: getStatusSpec(u.status).color }}>
-            <StatusIcon status={u.status} size={12} />
-            {statusDisplayLabel(u.status)}
-          </span>
-        ) : (
-          <span className={u.available ? styles.assigneeAvailable : styles.assigneeUnavailable}>
-            {u.available ? '(Available)' : '(Unavailable)'}
-          </span>
-        )}
+        <span className={u.available ? styles.assigneeAvailable : styles.assigneeUnavailable}>
+          {u.available ? '(Available)' : '(Unavailable)'}
+        </span>
       </span>
     ),
     label: (
@@ -177,16 +164,9 @@ export function RecordsRequestDialog({ onCancel, onConfirm, lastAssignees, suppo
             <span className={styles.assigneeOptionRole}>{u.roleLabel}</span>
           )}
         </span>
-        {u.status ? (
-          <span className={styles.assigneeStatus} style={{ color: getStatusSpec(u.status).color }}>
-            <StatusIcon status={u.status} size={12} />
-            {statusDisplayLabel(u.status)}
-          </span>
-        ) : (
-          <span className={u.available ? styles.assigneeAvailable : styles.assigneeUnavailable}>
-            {u.available ? 'Available' : 'Unavailable'}
-          </span>
-        )}
+        <span className={u.available ? styles.assigneeAvailable : styles.assigneeUnavailable}>
+          {u.available ? 'Available' : 'Unavailable'}
+        </span>
       </span>
     ),
   })), [roleUsers]);
