@@ -144,3 +144,19 @@
   transition: background var(--duration-fast) var(--ease-hover);
 }
 .enablePush:hover { background: var(--primary-50); }
+
+/* Shown when OS notifications are denied for this origin: an explanation, not a
+   button (a denied origin cannot be re-prompted from script). */
+.blockedHint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: var(--status-warning-light);
+  color: var(--status-warning-dark);
+  font-size: var(--font-xs);
+  line-height: var(--leading-normal);
+}
+.blockedHint svg { flex-shrink: 0; }
