@@ -319,7 +319,7 @@ export function LeftWorkspace({
             chips, separated by a vertical divider. */}
         {showFilterRow && (
           <FilterRow
-            keys={active === 'activity' ? TIMELINE_FILTER_KEYS : FILTER_KEYS}
+            keys={active === 'activity' ? TIMELINE_FILTER_KEYS : active === 'comments' ? COMMENTS_FILTER_KEYS : FILTER_KEYS}
             filters={filters}
             options={filterOptions}
             onChange={setFilter}
@@ -369,6 +369,8 @@ export function LeftWorkspace({
 const FILTER_KEYS = ['dos', 'hcc', 'icd', 'by', 'date'];
 // Timeline only: the same chips plus Activity Type.
 const TIMELINE_FILTER_KEYS = [...FILTER_KEYS, 'type'];
+// Comments aren't filtered by DOS.
+const COMMENTS_FILTER_KEYS = FILTER_KEYS.filter(k => k !== 'dos');
 const FILTER_LABEL = {
   dos:  'DOS',
   hcc:  'HCC Code',
@@ -750,7 +752,8 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
   const myName = useAppStore(s => s.currentUserProfile?.name);
   const mentionsMe = useCallback((c) => mentionsUser(c.body, myName), [myName]);
   const visibleItems = useMemo(
-    () => items.filter(c => recordMatchesFilters(c, filters) && (!mentionsOnly || mentionsMe(c))),
+    // DOS set on another tab mustn't silently narrow comments (no DOS chip here).
+    () => items.filter(c => recordMatchesFilters(c, { ...filters, dos: [] }) && (!mentionsOnly || mentionsMe(c))),
     [items, filters, mentionsOnly, mentionsMe],
   );
   const [collapsed, setCollapsed] = useState(() => new Set());
