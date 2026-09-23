@@ -13,6 +13,7 @@ import { ChartPopover, ActionsMenuPopover } from './RowPopovers';
 import { ChartDetailDrawer } from './ChartDetailDrawer';
 import { DocPreviewDrawer } from './DocPreviewDrawer';
 import { getChartDocs } from './data/chartDocs';
+import { mentionsUser } from './data/ancillary';
 import { DOS_LEVEL_COLS } from './HccWorklistRowParts.constants';
 import { DOS_INNER, CELL_RENDERERS } from './HccWorklistRowCellRenderers';
 import { synthesizeHccProfile } from './HccWorklistRowParts.utils';
@@ -71,6 +72,18 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
   const chartStatus = useAppStore(s => s.hccChartStatus[member.id]);
   const removedCharts = useAppStore(s => s.hccRemovedCharts[member.id]);
   const charts = useMemo(() => getChartDocs(member, addedCharts || [], chartStatus || {}, removedCharts || []), [member, addedCharts, chartStatus, removedCharts]);
+
+  // Blinking dot on the eye icon: this patient has a comment tagging the
+  // logged-in user that they haven't opened yet. Only comments explicitly
+  // scoped to this patient count; legacy org-wide rows would light up every row.
+  const allComments = useAppStore(s => s.hccDiagComments);
+  const seenCommentIds = useAppStore(s => s.hccDiagSeen[member.id]?.comments);
+  const myName = useAppStore(s => s.currentUserProfile?.name);
+  const hasUnreadMention = useMemo(() => {
+    if (!myName) return false;
+    const seen = new Set(seenCommentIds || []);
+    return allComments.some(c => c.memberId === member.id && !seen.has(c.id) && mentionsUser(c.body, myName));
+  }, [allComments, seenCommentIds, myName, member.id]);
 
   const openChartDrawer = (e) => {
     e.stopPropagation();
@@ -270,7 +283,9 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
           <ActionButton
             icon="solar:eye-linear"
             size="L"
-            tooltip="View Diagnosis Gaps"
+            tooltip={hasUnreadMention ? 'View Diagnosis Gaps (you were mentioned)' : 'View Diagnosis Gaps'}
+            dot={hasUnreadMention}
+            dotPulse
             onClick={(e) => {
               e.stopPropagation();
               openDiagPanel(member.id, { leftPanel: 'documents' });

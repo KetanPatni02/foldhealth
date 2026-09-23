@@ -32,6 +32,9 @@ export function useHccWorklistTable() {
   const fetchSnpWorklistMembers = useAppStore(s => s.fetchSnpWorklistMembers);
   const fetchAllPatients = useAppStore(s => s.fetchAllPatients);
   const fetchHccAddedCharts = useAppStore(s => s.fetchHccAddedCharts);
+  const fetchHccDiagAncillary = useAppStore(s => s.fetchHccDiagAncillary);
+  const fetchHccDiagSeen = useAppStore(s => s.fetchHccDiagSeen);
+  const currentUserId = useAppStore(s => s.currentUserProfile?.id);
   const fetchHccChartStatus = useAppStore(s => s.fetchHccChartStatus);
   const fetchHccRemovedCharts = useAppStore(s => s.fetchHccRemovedCharts);
   // Chart slices — source of truth for a record's LIVE document count (seeded
@@ -92,6 +95,10 @@ export function useHccWorklistTable() {
 
   useEffect(() => { fetchHccMembers(); }, [fetchHccMembers]);
   useEffect(() => { fetchHccAddedCharts(); }, [fetchHccAddedCharts]);
+  // Comments + your seen state drive the "you were mentioned" dot on each
+  // row's eye icon.
+  useEffect(() => { fetchHccDiagAncillary?.(); }, [fetchHccDiagAncillary]);
+  useEffect(() => { fetchHccDiagSeen?.(); }, [fetchHccDiagSeen, currentUserId]);
   useEffect(() => { fetchHccChartStatus(); }, [fetchHccChartStatus]);
   useEffect(() => { fetchHccRemovedCharts(); }, [fetchHccRemovedCharts]);
   // The five patient slices below feed exactly one thing: the "Patients

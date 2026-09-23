@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef, useId } from 'react';
+import { useState, useMemo, useEffect, useRef, useId, useCallback } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
@@ -11,6 +11,7 @@ import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/F
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
   commentsForMember,
+  mentionsUser,
   NOTES as NOTES_MOCK,
   CLAIMS,
   HISTORY as HISTORY_MOCK,
@@ -681,12 +682,7 @@ export function CommentsTab({ filters, pendingStatusChange, onConfirmStatusChang
   // "@mentions" switch: narrow to comments that tag the logged-in user.
   const [mentionsOnly, setMentionsOnly] = useState(false);
   const myName = useAppStore(s => s.currentUserProfile?.name);
-  const mentionsMe = useMemo(() => {
-    if (!myName) return () => false;
-    const escaped = myName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`@${escaped}(?![A-Za-z])`, 'i');
-    return (c) => re.test(c.body || '');
-  }, [myName]);
+  const mentionsMe = useCallback((c) => mentionsUser(c.body, myName), [myName]);
   const visibleItems = useMemo(
     () => items.filter(c => recordMatchesFilters(c, filters) && (!mentionsOnly || mentionsMe(c))),
     [items, filters, mentionsOnly, mentionsMe],

@@ -21,6 +21,14 @@ export function commentsForMember(all, memberId) {
   return all.filter(c => !c.memberId || c.memberId === memberId);
 }
 
+// True when a comment body @-mentions `name` (case-insensitive, and not as
+// the prefix of a longer name).
+export function mentionsUser(body, name) {
+  if (!body || !name) return false;
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`@${escaped}(?![A-Za-z])`, 'i').test(body);
+}
+
 // Documents render as a 2-column table (Figma 1:54865): "Document Name |
 // Status". `ext` drives the per-extension file-icon variant (PDF/DOC/IMG).
 // Uploads span the workflow: PCP-signed clinical docs come from the Support

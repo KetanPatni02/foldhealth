@@ -14,7 +14,7 @@ import {
 } from './ReviewProgressPopover.utils';
 import { SWEEP_ICD_DATA } from '../data/sweepIcds';
 import { getChartDocs } from '../data/chartDocs';
-import { commentsForMember } from '../data/ancillary';
+import { commentsForMember, mentionsUser } from '../data/ancillary';
 import { getIcdsForMember, getNotLinkedForMember } from '../data/icds';
 import { resolveCurrentAssignee } from '../HccWorklistRow.utils';
 import { slaOutcome } from '../sla';
@@ -493,11 +493,20 @@ export function useDiagPanel() {
   const docIds = useMemo(() => chartsList.map(d => d.id), [chartsList]);
   const seenCommentIds = hccDiagSeen[member?.id]?.comments;
   const seenDocIds = hccDiagSeen[member?.id]?.documents;
+  const myName = useAppStore(s => s.currentUserProfile?.name);
   useEffect(() => {
     if (!member?.id || !seenLoaded) return;
-    if (!seenCommentIds && ancillaryDidFetch) markHccDiagSeen(member.id, 'comments', commentIds);
+    // Comments that tag you stay out of the baseline: they count as unread
+    // (Comments badge, worklist eye-icon dot) until you open Comments.
+    if (!seenCommentIds && ancillaryDidFetch) {
+      markHccDiagSeen(
+        member.id,
+        'comments',
+        memberComments.filter(c => !mentionsUser(c.body, myName)).map(c => c.id),
+      );
+    }
     if (!seenDocIds && chartsLoaded) markHccDiagSeen(member.id, 'documents', docIds);
-  }, [member?.id, seenLoaded, ancillaryDidFetch, chartsLoaded, seenCommentIds, seenDocIds, commentIds, docIds, markHccDiagSeen]);
+  }, [member?.id, seenLoaded, ancillaryDidFetch, chartsLoaded, seenCommentIds, seenDocIds, memberComments, myName, docIds, markHccDiagSeen]);
   useEffect(() => {
     if (!member?.id || diagActivityIcd) return;
     if (diagLeftPanel === 'comments' && seenCommentIds) markHccDiagSeen(member.id, 'comments', commentIds);
