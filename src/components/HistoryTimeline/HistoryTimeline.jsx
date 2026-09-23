@@ -146,6 +146,8 @@ export function HistoryTimeline({ items = [], renderEntry }) {
  *                       unset it appears whenever there's expandable content
  *   headlineExtra — extra JSX rendered after the headline (kept inline with
  *                   the Details toggle)
+ *   renderStatusIcon — (status, color) => node | null; replaces the rail glyph
+ *                   for status changes with a product-specific status icon
  *   children      — arbitrary JSX rendered at the end of the body, before
  *                   the details card
  */
@@ -159,6 +161,7 @@ export function HistoryTimelineEntry({
   detailsContent,
   showDetailsToggle,
   headlineExtra,
+  renderStatusIcon,
   children,
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -167,10 +170,18 @@ export function HistoryTimelineEntry({
   // ship the copy on `item.note` and reveal it under a View Note link.
   const [noteOpen, setNoteOpen] = useState(false);
   // Status changes take their icon from the status they moved to.
+  // ICD accept/dismiss rows carry their outcome in `t`, not a from/to pair.
+  const statusForIcon = item.to || singleStatus
+    || (item.t === 'accept' ? 'Accepted' : item.t === 'dismiss' ? 'Dismissed' : null);
   const cfg = iconConfig
-    || statusIconConfig(item.to || singleStatus)
+    || statusIconConfig(statusForIcon)
     || ACT_ICON[item.t]
     || ACT_ICON.accept;
+  // Callers can supply the product's own status glyph (e.g. the HCC worklist
+  // icons); unknown statuses keep the generic glyph above.
+  const statusGlyph = renderStatusIcon && statusIconConfig(statusForIcon)
+    ? renderStatusIcon(statusForIcon, cfg.color)
+    : null;
 
   const meta = [
     item.date,
@@ -203,7 +214,7 @@ export function HistoryTimelineEntry({
           className={[styles.icon, cfg.dashed ? styles.iconDashed : ''].join(' ')}
           style={{ background: cfg.bg, borderColor: cfg.border }}
         >
-          <Icon name={cfg.icon} size={14} color={cfg.color} />
+          {statusGlyph || <Icon name={cfg.icon} size={14} color={cfg.color} />}
         </span>
         <span className={[styles.connectorBottom, isLast ? styles.connectorBottomLast : ''].join(' ')} />
       </div>

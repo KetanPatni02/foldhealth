@@ -14,6 +14,7 @@ import {
   statusIconConfig,
   historyTimelineStyles as htStyles,
 } from '../../components/HistoryTimeline/HistoryTimeline';
+import { timelineStatusIcon } from './StatusIcon';
 import styles from './DiagPanel/LeftWorkspace.module.css';
 import hccStyles from './HccHistoryDrawer.module.css';
 
@@ -249,6 +250,7 @@ function HistoryEntry({ row, isFirst, isLast }) {
       isLast={isLast}
       iconConfig={statusIconConfig(toStatus) || { icon: iconCfg.icon, color: tone.color, bg: tone.bg, border: tone.border }}
       singleStatus={singleStatusVal}
+      renderStatusIcon={timelineStatusIcon}
       detailsContent={detailsContent}
       showDetailsToggle={hasDetails}
     />

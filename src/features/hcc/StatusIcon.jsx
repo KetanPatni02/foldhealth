@@ -2,7 +2,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { InProgressIcon } from '../../components/Icon/InProgressIcon';
 import { RecordReceivedIcon } from '../../components/Icon/RecordReceivedIcon';
 import { ReturnedIcon } from '../../components/Icon/ReturnedIcon';
-import { getStatusSpec } from './statusSpec';
+import { getStatusSpec, hasStatusSpec } from './statusSpec';
 
 /**
  * StatusIcon — single dispatch point for HCC status icons.
@@ -24,4 +24,12 @@ export function StatusIcon({ status, size = 12, color }) {
   const Custom = spec.custom ? CUSTOM_BY_KEY[spec.custom] : null;
   if (Custom) return <Custom size={size} color={tone} />;
   return <Icon name={spec.icon} size={size} color={tone} />;
+}
+
+// For timelines: the worklist icon for `status`, or null when the worklist has
+// no icon for it (the timeline then falls back to its own glyph).
+export function timelineStatusIcon(status, color) {
+  const key = status === 'Rebuttal' ? 'Returned' : status;
+  if (!hasStatusSpec(key)) return null;
+  return <StatusIcon status={key} size={14} color={color} />;
 }

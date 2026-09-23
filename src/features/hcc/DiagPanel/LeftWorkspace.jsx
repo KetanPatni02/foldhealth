@@ -7,6 +7,7 @@ import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
 import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { Switch } from '../../../components/Switch/Switch';
+import { timelineStatusIcon } from '../StatusIcon';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
@@ -695,6 +696,7 @@ function ActivityEntry({ item, isFirst, isLast, member }) {
       isFirst={isFirst}
       isLast={isLast}
       onPreviewFile={item.file ? previewDoc : undefined}
+      renderStatusIcon={timelineStatusIcon}
     />
   );
 }
