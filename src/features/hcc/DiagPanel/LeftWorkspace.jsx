@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef, useId, useCallback } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Icon } from '../../../components/Icon/Icon';
+import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { MenuPopover } from '../../../components/MenuPopover/MenuPopover';
@@ -1303,7 +1304,7 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
               disabled={!canScrollLeft}
               onClick={() => scrollTabs(-1)}
             >
-              <Icon name="solar:alt-arrow-left-linear" size={14} color="currentColor" />
+              <DownChevronIcon size={14} color="currentColor" style={{ transform: 'rotate(90deg)' }} />
             </button>
           )}
           <div className={styles.docsBrowserTabs} ref={tabsScrollRef}>
@@ -1368,7 +1369,7 @@ function DocumentsTab({ member, icdScope, charts = EMPTY_CHARTS, openDocId, setO
               disabled={!canScrollRight}
               onClick={() => scrollTabs(1)}
             >
-              <Icon name="solar:alt-arrow-right-linear" size={14} color="currentColor" />
+              <DownChevronIcon size={14} color="currentColor" style={{ transform: 'rotate(-90deg)' }} />
             </button>
           )}
         </div>
