@@ -32,7 +32,7 @@ import { CommentComposer } from '../../../components/CommentComposer/CommentComp
 import { FailReasonInline, EditDocInline } from '../ChartDetailDrawerParts';
 import {
   HistoryTimelineEntry,
-  TRANS_BADGE,
+  statusTone,
 } from '../../../components/HistoryTimeline/HistoryTimeline';
 import styles from './LeftWorkspace.module.css';
 
@@ -1025,13 +1025,9 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete }) {
               <div className={styles.commentStatusChange}>
                 <div className={styles.commentStatusHeader}>Status Changed</div>
                 <div className={styles.commentStatusPills}>
-                  <span className={[styles.tlPill, styles[TRANS_BADGE[item.statusFrom] || 'pillNew']].join(' ')}>
-                    {item.statusFrom}
-                  </span>
+                  <Badge size="S" tone={statusTone(item.statusFrom)} label={item.statusFrom} />
                   <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-                  <span className={[styles.tlPill, styles[TRANS_BADGE[item.statusTo] || 'pillReturned']].join(' ')}>
-                    {item.statusTo}
-                  </span>
+                  <Badge size="S" tone={statusTone(item.statusTo)} label={item.statusTo} />
                 </div>
               </div>
             )}

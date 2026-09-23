@@ -4,30 +4,54 @@ import { Avatar } from '../Avatar/Avatar';
 import { Badge } from '../Badge/Badge';
 import styles from './HistoryTimeline.module.css';
 
-// Status label → shared Badge tone. Every timeline renders its transition
-// chips through the design-system Badge so the color band reads the same
-// as the pills sitting on the worklist rows, drawer headers, etc.
-const STATUS_TONE = {
-  Open:          'primary',
-  Audited:       'primary',
-  New:           'warning',
-  'In Progress': 'warning',
-  Engaged:       'warning',
-  'Engaged Requires Follow-Up': 'warning',
-  Submitted:     'warning',
-  Pending:       'warning',
-  'Pending Review': 'warning',
-  'Record Requested': 'warning',
-  'Record Received': 'warning',
-  Completed:     'success',
-  Accepted:      'success',
-  Dismissed:     'error',
-  Returned:      'error',
-  Rejected:      'error',
-  Deleted:       'grey',
-  None:          'grey',
+// Every status a timeline can show, with its Badge tone and the rail icon
+// used when an entry changes TO that status.
+const STATUS_META = {
+  // Record level
+  New:                  { tone: 'primary',   icon: 'solar:stars-linear' },
+  'In Progress':        { tone: 'warning',   icon: 'solar:hourglass-linear' },
+  Rebuttal:             { tone: 'secondary', icon: 'solar:undo-left-linear' },
+  Returned:             { tone: 'warning',   icon: 'solar:undo-left-linear' },
+  'Record Requested':   { tone: 'secondary', icon: 'solar:clock-circle-linear' },
+  'Record Received':    { tone: 'warning',   icon: 'solar:download-minimalistic-linear' },
+  Completed:            { tone: 'success',   icon: 'solar:check-circle-linear' },
+  Billed:               { tone: 'success',   icon: 'solar:dollar-linear' },
+  Rejected:             { tone: 'error',     icon: 'solar:close-circle-linear' },
+  Skipped:              { tone: 'grey',      icon: 'solar:skip-next-linear' },
+  Awaiting:             { tone: 'warning',   icon: 'solar:sun-linear' },
+  // ICD level
+  None:                 { tone: 'grey',      icon: 'solar:minus-circle-linear' },
+  Accepted:             { tone: 'success',   icon: 'solar:check-read-linear' },
+  Dismissed:            { tone: 'error',     icon: 'solar:close-circle-linear' },
+  'Missed Opportunity': { tone: 'warning',   icon: 'solar:danger-triangle-linear' },
+  Defer:                { tone: 'grey',      icon: 'solar:pause-circle-linear' },
+  Undo:                 { tone: 'grey',      icon: 'solar:undo-left-linear' },
+  // HCC level (Completed is shared with record level)
+  Open:                 { tone: 'primary',   icon: 'solar:folder-open-linear' },
+  Closed:               { tone: 'grey',      icon: 'solar:lock-keyhole-minimalistic-linear' },
 };
-const toneFor = (label) => STATUS_TONE[label] || 'grey';
+// Stored values that display under a different name.
+const STATUS_ALIAS = { Reject: 'Rejected', 'Action Needed': 'Awaiting', Deferred: 'Defer' };
+const statusMeta = (label) => STATUS_META[STATUS_ALIAS[label] || label];
+const toneFor = (label) => statusMeta(label)?.tone || 'grey';
+
+// Rail bubble colors per Badge tone, so the icon matches the pill beside it.
+const TONE_BUBBLE = {
+  primary:   { color: 'var(--primary-300)',    bg: 'var(--primary-50)' },
+  secondary: { color: 'var(--secondary-300)',  bg: 'var(--secondary-50)' },
+  success:   { color: 'var(--status-success)', bg: 'var(--status-success-light)' },
+  warning:   { color: 'var(--status-warning)', bg: 'var(--status-warning-light)' },
+  error:     { color: 'var(--status-error)',   bg: 'var(--status-error-light)' },
+  grey:      { color: 'var(--neutral-300)',    bg: 'var(--neutral-50)' },
+};
+// Icon config for an entry that changed to `label`, or null if unknown.
+export function statusIconConfig(label) {
+  const meta = statusMeta(label);
+  if (!meta) return null;
+  const { color, bg } = TONE_BUBBLE[meta.tone];
+  return { icon: meta.icon, color, bg, border: `color-mix(in srgb, ${color} 20%, transparent)`, dashed: false };
+}
+export { toneFor as statusTone };
 
 // Icon + tone treatment per HCC activity type. Exported so callers that
 // still key on `t` (e.g. HCC's LeftWorkspace) can share the same routing
@@ -58,7 +82,6 @@ export const TRANS_BADGE = {
   Returned:      'pillReturned',
   New:           'pillNew',
   Completed:     'pillCompleted',
-  Audited:       'pillAudited',
   'In Progress': 'pillInProgress',
 };
 
@@ -139,7 +162,11 @@ export function HistoryTimelineEntry({
   // rows that were gated on a note (e.g. Coder → Record Requested)
   // ship the copy on `item.note` and reveal it under a View Note link.
   const [noteOpen, setNoteOpen] = useState(false);
-  const cfg = iconConfig || ACT_ICON[item.t] || ACT_ICON.accept;
+  // Status changes take their icon from the status they moved to.
+  const cfg = iconConfig
+    || statusIconConfig(item.to || singleStatus)
+    || ACT_ICON[item.t]
+    || ACT_ICON.accept;
 
   const meta = [
     item.date,

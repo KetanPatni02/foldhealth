@@ -7974,7 +7974,7 @@ export const useAppStore = create((set, get) => ({
       t: 'accept', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Accepted ICD ${code}`,
-      from: 'Open', to: 'Accepted',
+      from: 'None', to: 'Accepted',
     });
   },
   dismissHccGap: (code, reason) => {
@@ -7990,7 +7990,7 @@ export const useAppStore = create((set, get) => ({
       t: 'dismiss', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Dismissed ICD ${code}${reason ? ` — ${reason}` : ''}`,
-      from: 'Open', to: 'Dismissed',
+      from: 'None', to: 'Dismissed',
     });
   },
   reopenHccGap: (code) => {
@@ -8006,7 +8006,7 @@ export const useAppStore = create((set, get) => ({
       t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Reopened ICD ${code}`,
-      from: 'Dismissed', to: 'Open',
+      from: 'Dismissed', to: 'Undo',
     });
   },
 
@@ -8096,7 +8096,7 @@ export const useAppStore = create((set, get) => ({
       t: 'dismiss', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Dismissed ICD ${code} on DOS ${dos} — ${reason}`,
-      from: 'Open', to: 'Dismissed',
+      from: 'None', to: 'Dismissed',
     });
   },
 
@@ -8140,10 +8140,9 @@ export const useAppStore = create((set, get) => ({
       removed: true,
     });
     get().addActivityEntry({
-      t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+      t: 'delete', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Removed DOS ${dos} from ${code}`,
-      from: 'Manual', to: 'Removed',
     });
   },
 
@@ -8223,10 +8222,9 @@ export const useAppStore = create((set, get) => ({
       if (get().hccJustAddedCode === code) set({ hccJustAddedCode: null });
     }, 2200);
     get().addActivityEntry({
-      t: 'status_hcc', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+      t: 'create', by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
       icds: [code],
       headline: `Manually added ICD ${code}`,
-      from: '—', to: 'Open',
     });
   },
 
