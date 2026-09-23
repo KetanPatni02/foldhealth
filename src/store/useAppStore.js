@@ -138,7 +138,7 @@ import {
   cancelScheduledCampaignSave,
   queueHccExtractToast,
 } from './lib/contentStoreCache';
-import { HCC_TRANSITION_LABEL } from '../features/hcc/hccTransitionLabels';
+import { HCC_TRANSITION_LABEL, HCC_ROLE_LABEL, hccTransitionRole, hccRoleStatusHeadline } from '../features/hcc/hccTransitionLabels';
 import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActivityFeed';
 import { createShellSlice } from './slices/shellSlice';
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
@@ -9158,23 +9158,29 @@ export const useAppStore = create((set, get) => ({
         // reviewer roles because that's the shop-floor nomenclature the
         // Coordinators use. Verb form is plural ("Status Changes") so the
         // Coder and QA entries read the same way in the timeline.
-        const ROLE_LABEL_C = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'QA 2' };
         const prevMember = s.hccMembers.find(m => m.id === patientId);
         const prevStatusFieldByRole = { support: 'supS', coder: 'cdrS', reviewer: 'r1s', reviewer2: 'r2s' };
+        const userRole = useAppStore.getState().hccUserRole || 'Coder';
+        const directRole = hccTransitionRole(kind, payload, userRole);
         statusChanges.forEach(({ role, status }) => {
+          // The role the user acted on is credited to them; every other
+          // role that changed was moved by the workflow engine (e.g. Coder
+          // flipping to In Progress when Support completes).
+          const isDirect = role === directRole;
           useAppStore.getState().addActivityEntry({
             _memberId: patientId,
             t: 'status_role',
-            by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
+            by: isDirect ? 'You' : 'Automation',
+            role: isDirect ? userRole : null,
             dos: dosDate,
-            headline: `${ROLE_LABEL_C[role] || role} Status Changes`,
-            from: prevMember?.[prevStatusFieldByRole[role]] || '—',
+            headline: hccRoleStatusHeadline(role, status),
+            from: prevMember?.[prevStatusFieldByRole[role]] || null,
             to: status,
             // Composer-note copy the user typed when the status change was
             // gated (e.g. Coder → Record Requested). Rendered inline under
             // the transition pills so reviewers see the rationale without a
             // second click.
-            note: payload.note || null,
+            note: isDirect ? (payload.note || null) : null,
           });
         });
       });
@@ -9427,9 +9433,8 @@ export const useAppStore = create((set, get) => ({
       }));
       return;
     }
-    const ROLE_LABEL_S = { support: 'Support', coder: 'Coder', reviewer: 'QA', reviewer2: 'QA 2' };
     const patient = useAppStore.getState().hccMembers.find(m => m.id === pid);
-    const roleLabel = ROLE_LABEL_S[role] || role;
+    const roleLabel = HCC_ROLE_LABEL[role] || role;
     useAppStore.getState().logHccActivity({
       eventName: 'role.status_changed',
       scope:     { patientId: pid, dos, source: 'manual' },
@@ -9449,8 +9454,8 @@ export const useAppStore = create((set, get) => ({
         t: 'status_role',
         by: 'You', role: useAppStore.getState().hccUserRole || 'Coder',
         dos,
-        headline: `${roleLabel} Status Changes`,
-        from: prevStatus || '—',
+        headline: hccRoleStatusHeadline(role, status),
+        from: prevStatus || null,
         to: status,
         // Composer-note the user typed when the status change was
         // gated (e.g. Coder → Record Requested). View Note link on

@@ -59,6 +59,9 @@ export const ACTIVITY = {
   ],
   "_default": [
     { t:"group", label:"Jan 2026" },
+    { t:"status_role", date:"01/26/2026", time:"03:10 PM", by:"D. Hintz",        role:"Coder",       dos:"07/04/2024", headline:"Coder status changed to Record Requested", from:"In Progress", to:"Record Requested", note:"Progress note for 07/04/2024 is missing the signature page." },
+    { t:"status_role", date:"01/25/2026", time:"11:05 AM", by:"Automation",      role:null,          dos:"07/04/2024", headline:"Coder status changed to In Progress", from:"New", to:"In Progress" },
+    { t:"status_role", date:"01/25/2026", time:"11:05 AM", by:"A. Beauchamp",    role:"Support",     dos:"07/04/2024", headline:"Support status changed to Completed", from:"In Progress", to:"Completed" },
     { t:"status_hcc",  date:"01/24/2026", time:"12:30 PM", by:"Automation",      role:null,          dos:"07/04/2024", icds:["E11.21","I48.91","J44.0"], headline:"HCC 18, HCC 96 and HCC 111 Status Changed", from:"Open", to:"Completed" },
     { t:"accept",      date:"01/24/2026", time:"12:30 PM", by:"N. Richards",     role:"QA",  dos:"07/04/2024", icds:["E11.21","I48.91"],         headline:"2 ICD: E11.21, I48.91 Status Changed to Accept",
       details:[

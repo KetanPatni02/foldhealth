@@ -34,6 +34,10 @@ const STATUS_META = {
 const STATUS_ALIAS = { Reject: 'Rejected', 'Action Needed': 'Awaiting', Deferred: 'Defer' };
 const statusMeta = (label) => STATUS_META[STATUS_ALIAS[label] || label];
 const toneFor = (label) => statusMeta(label)?.tone || 'grey';
+// Stored status values render under the names the worklist uses.
+const STATUS_LABEL = { Reject: 'Rejected', Deferred: 'Defer' };
+const labelFor = (value) => STATUS_LABEL[value] || value;
+const isBlankStatus = (v) => !v || v === '—' || v === '-';
 
 // Rail bubble colors per Badge tone, so the icon matches the pill beside it.
 const TONE_BUBBLE = {
@@ -176,8 +180,10 @@ export function HistoryTimelineEntry({
     item.patient,
   ].filter(Boolean).join(' • ');
 
-  const hasTransition = item.from && item.to;
-  const hasSingleStatus = !hasTransition && singleStatus;
+  // A transition with no known previous status shows just the new one.
+  const hasTransition = !isBlankStatus(item.from) && !isBlankStatus(item.to);
+  const singleStatusValue = singleStatus || (!hasTransition && !isBlankStatus(item.to) ? item.to : null);
+  const hasSingleStatus = !hasTransition && singleStatusValue;
   const hasFile = !!item.file;
   const hasAvatarTransition = item.fromAvatar && item.toAvatar;
   const hasDefaultDetails = Array.isArray(item.details) && item.t !== 'accept' && item.t !== 'comment';
@@ -236,9 +242,9 @@ export function HistoryTimelineEntry({
         {hasTransition && (
           <>
             <div className={styles.transition}>
-              <Badge size="S" tone={toneFor(item.from)} label={item.from} />
+              <Badge size="S" tone={toneFor(item.from)} label={labelFor(item.from)} />
               <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
-              <Badge size="S" tone={toneFor(item.to)} label={item.to} />
+              <Badge size="S" tone={toneFor(item.to)} label={labelFor(item.to)} />
               {item.note && (
                 <button
                   type="button"
@@ -263,7 +269,7 @@ export function HistoryTimelineEntry({
         )}
         {hasSingleStatus && (
           <div className={styles.transition}>
-            <Badge size="S" tone={toneFor(singleStatus)} label={singleStatus} />
+            <Badge size="S" tone={toneFor(singleStatusValue)} label={labelFor(singleStatusValue)} />
           </div>
         )}
 
