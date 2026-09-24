@@ -506,7 +506,7 @@ export function StagedFileRow({ file, onRemove, onPreview }) {
           <div className={styles.stagedProgressTrack}>
             <span
               className={styles.stagedProgressFill}
-              style={{ width: `${Math.round(file.progress)}%` }}
+              style={{ transform: `scaleX(${Math.round(file.progress) / 100})` }}
             />
           </div>
         )}

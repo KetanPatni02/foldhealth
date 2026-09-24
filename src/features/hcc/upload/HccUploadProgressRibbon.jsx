@@ -82,7 +82,7 @@ export function HccUploadProgressRibbon() {
       <span className={styles.ribbonProgressTrack}>
         <span
           className={styles.ribbonProgressFill}
-          style={{ width: `${total === 0 ? 0 : Math.round((done / total) * 100)}%` }}
+          style={{ transform: `scaleX(${total === 0 ? 0 : done / total})` }}
         />
       </span>
       <button

@@ -240,7 +240,7 @@ export function FileRow({ file, phase, progress, onRefresh, onRemove, actions })
       </div>
       {phase === 'uploading' && (
         <div className={styles.progressTrack}>
-          <div className={styles.progressBar} style={{ width: `${progress}%` }} />
+          <div className={styles.progressBar} style={{ transform: `scaleX(${progress / 100})` }} />
         </div>
       )}
     </div>
