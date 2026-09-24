@@ -3,7 +3,7 @@ import { useAppStore } from '../../../../store/useAppStore';
 import { Toggle } from '../../../../components/Toggle/Toggle';
 import { Button } from '../../../../components/Button/Button';
 import { FilterChip } from '../../../../components/FilterChip/FilterChip';
-import { DatePicker } from '../../../../components/DatePicker/DatePicker';
+import { DateRangePopover } from '../../../../components/DateRangePopover/DateRangePopover';
 import { Select } from '../../../../components/Select/Select';
 import { Icon } from '../../../../components/Icon/Icon';
 import { CheckboxListPopover } from '../../../../components/CheckboxListPopover/CheckboxListPopover';
@@ -372,18 +372,18 @@ export function EmployerImpactView() {
 
   return (
     <div className={styles.page}>
-      {/* Header: same structure as the shared Analytics view header */}
-      <div className={layout.viewHeader}>
-        <div className={styles.headerText}>
+      {/* Header, filter and quick-jump rows: full-bleed 48px rows split by
+          hairlines, per Figma 5625:15129. */}
+      <div className={styles.header}>
+        <div className={styles.titleRow}>
           <div className={layout.viewTitle}>{VIEW_TITLES.employer.title}</div>
-          <div className={layout.viewSub}>{VIEW_TITLES.employer.sub}</div>
-        </div>
-        <div className={[layout.filterBar, styles.headerActions].join(' ')}>
           <Toggle
             items={[{ key: 'patient', label: 'Patient Location' }, { key: 'visit', label: 'Visit Location' }]}
             active={scope}
             onChange={(k) => { setScope(k); setLocation(null); }}
           />
+        </div>
+        <div className={[layout.filterBar, styles.headerActions].join(' ')}>
           <span ref={widgetBtnRef}>
             <Button
               variant="secondary"
@@ -424,28 +424,35 @@ export function EmployerImpactView() {
           onChange={(next) => setLocation(next[0] || null)}
           singleSelect
         />
+        {/* Month is the default grouping, so the chip reads idle until another is picked. */}
         <FilterChip
           label="Time Frame"
           options={TIME_FRAMES}
-          selected={[timeFrame]}
+          selected={timeFrame === 'Month' ? [] : [timeFrame]}
           onChange={(next) => setTimeFrame(next[0] || 'Month')}
           singleSelect
         />
-        <div className={styles.rangePicker}>
-          <DatePicker
-            mode="range"
-            aria-label="Date range"
-            value={{ start: `${effectiveRange.from}-01`, end: lastDayOf(effectiveRange.to) }}
-            min={`${firstMonth}-01`}
-            max={lastDayOf(lastMonth)}
-            onSelect={(r) => {
-              if (!r?.start || !r?.end) return;
-              const from = toMonthKey(r.start);
-              const to = toMonthKey(r.end);
-              setRange(from <= to ? { from, to } : { from: to, to: from });
-            }}
-          />
-        </div>
+        {/* The report counts whole months, so a picked range widens to the months it touches. */}
+        <FilterChip
+          label="Date Range"
+          active={!!range}
+          activeSummary={range ? rangeText : undefined}
+          onClear={() => setRange(null)}
+          renderPopover={({ anchorRect, onClose }) => (
+            <DateRangePopover
+              anchorRect={anchorRect}
+              label="Date Range"
+              selected={range ? [`${range.from}-01`, lastDayOf(range.to)] : []}
+              onChange={(vals) => {
+                if (vals.length !== 2) { setRange(null); return; }
+                const clamp = (m) => [firstMonth, [m, lastMonth].sort()[0]].sort()[1];
+                const [a, b] = [toMonthKey(vals[0]), toMonthKey(vals[1])].sort();
+                setRange({ from: clamp(a), to: clamp(b) });
+              }}
+              onClose={onClose}
+            />
+          )}
+        />
       </div>
 
       {/* Quick jump */}
@@ -464,9 +471,9 @@ export function EmployerImpactView() {
         ))}
       </nav>
 
-      {filtersLoaded && !filterOptions && (
+      {filtersLoaded && !filterOptions?.lastMonth && (
         <p className={styles.notice}>
-          Employer data isn&apos;t available yet. Charts will fill in once the employer impact tables are set up.
+          No employer data has been loaded yet. Charts will fill in once the employer impact data is seeded.
         </p>
       )}
 

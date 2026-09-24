@@ -1,39 +1,42 @@
 /* Employer Impact Report. Figma 5618:10554. Card chrome mirrors
    AnalyticsLayout's .card (0.5px neutral-150 border, 8px radius). */
 
-.page { display: flex; flex-direction: column; gap: var(--space-3); padding-bottom: var(--space-8); }
+.page { display: flex; flex-direction: column; padding-bottom: var(--space-8); }
 
-/* ── Header (layout comes from AnalyticsLayout's .viewHeader) ── */
-.headerText { flex: 1; min-width: 0; }
+/* ── Header / filter / quick-jump rows (Figma 5625:15129) ── */
+.header, .filterBar {
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  min-height: 48px; padding: var(--space-2) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.header { justify-content: space-between; gap: var(--space-4); }
+.titleRow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
 .headerActions { flex-wrap: wrap; }
 
-/* ── Filters ── */
-.filterBar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.rangePicker { width: 260px; max-width: 100%; }
-
-/* ── Quick jump (sticky so it stays reachable while scrolling) ── */
+/* Sticky so it stays reachable while scrolling. */
 .quickJump {
   position: sticky; top: 0; z-index: 2;
-  display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap;
-  padding: var(--space-2) 0; background: var(--neutral-0);
+  display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap;
+  padding: var(--space-3) var(--space-5); background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
 }
-.quickJumpLabel { font-size: var(--font-sm); color: var(--neutral-300); margin-right: var(--space-1); }
+.quickJumpLabel { font-size: var(--font-sm); color: var(--neutral-400); font-weight: 500; }
 .quickJumpItem {
   border: 0; background: transparent; cursor: pointer;
-  padding: var(--space-1) var(--space-2); border-radius: 6px;
-  font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300);
+  padding: 0 var(--space-1); border-radius: 4px;
+  font-size: var(--font-sm); color: var(--neutral-300);
 }
 .quickJumpItem:hover { background: var(--neutral-50); color: var(--neutral-400); }
 .quickJumpItem:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
-.quickJumpActive { background: var(--primary-50); color: var(--primary-300); }
+.quickJumpActive { background: var(--neutral-50); color: var(--neutral-400); }
 
 .notice {
-  margin: 0; padding: var(--space-3) var(--space-4); border-radius: 8px;
+  margin: var(--space-4) var(--space-4) 0; padding: var(--space-3) var(--space-4); border-radius: 8px;
   background: var(--neutral-50); font-size: var(--font-md); color: var(--neutral-300);
 }
 
 /* ── Sections + grid ── */
-.sections { display: flex; flex-direction: column; gap: var(--space-6); }
+.sections { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-4); }
 .section { display: flex; flex-direction: column; gap: var(--space-3); scroll-margin-top: 48px; }
 .sectionTitle { margin: 0; font-size: var(--font-lg); font-weight: 500; color: var(--neutral-400); }
 .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-4); }
