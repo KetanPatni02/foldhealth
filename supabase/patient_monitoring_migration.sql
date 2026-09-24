@@ -43,12 +43,18 @@ CREATE TABLE IF NOT EXISTS public.patient_monitoring (
   header_chips              jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{label, tone?}]
   programs                  jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{code,name,progress,next,steps:[…]}]
   timeline                  jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{text, source}]
+  story                     jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{at, category, title, body, icon?, iconTone?}]
   tasks                     jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{title, sub, tone}]
   goals                     jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{text, conf}]
   gaps                      jsonb NOT NULL DEFAULT '[]'::jsonb,  -- [{label, meta}]
   created_at                timestamptz NOT NULL DEFAULT now(),
   updated_at                timestamptz NOT NULL DEFAULT now()
 );
+
+-- Forward-safe: `story` was added after the first cut of this file, so a
+-- database that already created the table above still picks it up.
+ALTER TABLE public.patient_monitoring
+  ADD COLUMN IF NOT EXISTS story jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 ALTER TABLE public.patient_monitoring ENABLE ROW LEVEL SECURITY;
 
