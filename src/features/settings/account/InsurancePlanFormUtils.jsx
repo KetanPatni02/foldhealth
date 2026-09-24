@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { sanitizeRichText } from '../../../lib/sanitizeHtml';
 import { Icon } from '../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { Input } from '../../../components/Input/Input';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
@@ -154,35 +153,9 @@ export function DateRangePicker({
   );
 }
 
-/* ── CollapsibleSection — reusable accordion card used by each form section ── */
-export function CollapsibleSection({ icon, title, children }) {
-  const [collapsed, setCollapsed] = useState(false);
-  return (
-    <div className={styles.sectionCard}>
-      <button
-        type="button"
-        aria-expanded={!collapsed}
-        className={`${styles.sectionHeader} ${collapsed ? styles.collapsed : ''}`}
-        onClick={() => setCollapsed(v => !v)}
-      >
-        <Icon name={icon} size={16} color="var(--primary-300)" />
-        <span className={styles.sectionTitle}>{title}</span>
-        <DownChevronIcon
-          size={12}
-          color="var(--neutral-300)"
-          style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
-        />
-      </button>
-      <div className={`${styles.collapseOuter} ${collapsed ? styles.collapsed : ''}`}>
-        <div className={styles.collapseInner}>
-          <div className={styles.sectionBody}>
-            {children}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* ── CollapsibleSection: now the shared primitive in src/components; kept
+   exported from here so the form's existing imports don't change. ── */
+export { CollapsibleSection } from '../../../components/CollapsibleSection/CollapsibleSection';
 
 /* ── RichTextNote — contenteditable field with B/I/U toolbar and char counter ── */
 export function RichTextNote({ value, onChange, placeholder = 'Add Additional Note', maxLength = 150 }) {

@@ -1,0 +1,213 @@
+/* ── Slider and dots ─────────────────────────────────────────────────────
+   The row is `--rating-count` equal columns. The fill ends, the thumb sits
+   and each dot centres on its column, so all of them line up with the
+   number beneath. Figma: Star 251:5922, Heart 247:5783, User 251:6143,
+   Thumbs 251:6062, Circle 190:30868. */
+.slider {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  cursor: pointer;
+  /* Horizontal drags pick a point; vertical ones still scroll the page. */
+  touch-action: pan-y;
+  user-select: none;
+  outline: none;
+  border-radius: var(--space-1);
+}
+
+.slider:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: var(--space-1);
+}
+
+.track {
+  position: relative;
+  height: var(--space-6);
+}
+
+/* The grey rail and the coloured fill share its shape: 14px, 4px corners. */
+.track::before,
+.fill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 14px;
+  translate: 0 -50%;
+  border-radius: var(--space-1);
+}
+
+.track::before {
+  content: '';
+  right: 0;
+  background: var(--neutral-100);
+}
+
+.fill {
+  background: var(--rating-fill);
+  transition: width var(--duration-fast) var(--ease-out);
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  display: flex;
+  translate: -50% -50%;
+  cursor: grab;
+  transition: left var(--duration-fast) var(--ease-out);
+  filter: drop-shadow(var(--shadow-card));
+}
+
+.slider:active .thumb {
+  cursor: grabbing;
+}
+
+.disabled .thumb {
+  cursor: default;
+}
+
+/* The filled icon carries a white outline, as in Figma, so it reads against
+   its own fill colour. Painted under the fill, so only the outer half shows. */
+.thumb svg path {
+  stroke: var(--neutral-0);
+  stroke-width: 1.5px;
+  paint-order: stroke fill;
+}
+
+.dots,
+.numbers {
+  display: grid;
+  grid-template-columns: repeat(var(--rating-count), minmax(0, 1fr));
+}
+
+.dotCell {
+  display: flex;
+  justify-content: center;
+}
+
+.dot {
+  width: var(--space-6);
+  height: var(--space-6);
+  border-radius: 50%;
+  background: var(--neutral-100);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+.dotOn {
+  background: var(--rating-fill);
+}
+
+.numbers {
+  margin-top: var(--space-2);
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-400);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A slider's numbers sit a little further from the track than the dots' do:
+   14px in Figma, between the 12px and 16px steps of the spacing scale. */
+.track + .numbers {
+  margin-top: 0.875rem;
+}
+
+.number {
+  text-align: center;
+}
+
+/* ── Tiles (NPS 209:19439, selected tones 247:6000) ────────────────────── */
+.tileRating {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.tiles {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.tile {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) 0;
+  border: 0.5px solid transparent;
+  border-radius: var(--space-1);
+  background: var(--primary-25);
+  box-shadow: var(--shadow-popover);
+  font-size: var(--font-lg);
+  line-height: 1.2;
+  color: var(--neutral-400);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+}
+
+.tile:hover {
+  border-color: var(--primary-200);
+}
+
+.tileOn,
+.tileOn:hover {
+  border-color: transparent;
+  color: var(--neutral-0);
+}
+
+/* Filled tiles: up to the picked point, or the hovered one as a preview:
+   all take that point's tone. */
+.toneLow { background: var(--status-error-dark); }
+.toneMid { background: var(--status-warning-dark); }
+.toneHigh { background: var(--status-success-dark); }
+
+/* The real radio stays for keyboard and screen readers; the tile draws it.
+   Scoped under .tile so it outranks index.css's global input[type="radio"]
+   (a 20px circle), which otherwise keeps the radio in the flow and pushes
+   the number off centre. */
+.tile .tileInput {
+  position: absolute;
+  inset: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  border: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tile:has(.tileInput:focus-visible) {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 2px;
+}
+
+.anchors {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+.anchorMid { text-align: center; }
+.anchorEnd { text-align: right; }
+
+/* ── Inert (builder canvas) ───────────────────────────────────────────── */
+.disabled,
+.disabled .tile {
+  cursor: default;
+}
+
+.disabled .tile:not(.tileOn):hover {
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill,
+  .thumb,
+  .dot,
+  .tile { transition: none; }
+}

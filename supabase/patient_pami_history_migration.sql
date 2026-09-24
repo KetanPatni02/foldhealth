@@ -1,4 +1,6 @@
--- The PAMI/Hx tab's four History cards (Medical, Surgical, Family, Social).
+-- The PAMI/Hx tab's Medical, Surgical and Family History cards. (Social
+-- History is a questionnaire, not a list, so it has its own table: see
+-- patient_social_history_migration.sql.)
 -- Until now these were constants in PAMIHxTab.jsx, so every patient showed
 -- the same "Appendectomy" and the same father with heart disease.
 --
@@ -12,7 +14,6 @@
 --   medical  → title + recorded_on (when it was noted)
 --   surgical → title + recorded_on (the performed date) + code / code_system
 --   family   → relation + title (the relative's name) + detail
---   social   → title (the category, e.g. "Smoking") + detail
 -- `synced` = false drives each card's "Not Synced (N)" footer.
 --
 -- Surgical codes come from the NLM Clinical Tables procedure list. Its key is
@@ -21,7 +22,7 @@
 CREATE TABLE IF NOT EXISTS public.patient_history_entries (
   id           text PRIMARY KEY,
   patient_id   text NOT NULL,
-  kind         text NOT NULL CHECK (kind IN ('medical', 'surgical', 'family', 'social')),
+  kind         text NOT NULL CHECK (kind IN ('medical', 'surgical', 'family')),
   title        text NOT NULL,
   code         text,
   code_system  text,

@@ -13,6 +13,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { Button } from '../../../components/Button/Button';
 import { FieldInput } from '../builder/FieldInput';
+import { FieldDescription } from './FieldDescription';
+import { ratingElement } from '../builder/rating';
 import { FormHeader, FormFooter } from '../builder/FormChrome';
 import { getFontStack } from '../../email-builder/googleFonts';
 import { isAnswered } from '../scoring/util';
@@ -45,7 +47,7 @@ function FieldNode({ field, answers, onAnswer, missing, visibility, pipe = (t) =
   return (
     <div className={styles.field}>
       <label className={styles.label}>{pipe(field.text)}{field.required && <span className={styles.req}>*</span>}</label>
-      {field.description ? <p className={styles.desc}>{pipe(field.description)}</p> : null}
+      <FieldDescription className={styles.desc} text={field.description && pipe(field.description)} />
       <FieldInput field={field} interactive value={answers[field.linkId]} onChange={(v) => onAnswer(field.linkId, v)} />
       {missing.has(field.linkId) ? <span className={styles.missing}>This field is required.</span> : null}
     </div>
@@ -106,14 +108,16 @@ function TypeformQuestion({ field, number, answers, onAnswer, missing, onNext, b
     return <div className={styles.tfQuestion}><FieldInput field={field} interactive={false} /></div>;
   }
   const isTextInput = ['string', 'text', 'integer', 'decimal', 'date'].includes(field.type);
-  const isChoice = field.type === 'choice';
+  // A Rating is a choice underneath, but it draws its own scale rather than
+  // the lettered option cards.
+  const isChoice = field.type === 'choice' && field.control !== 'rating';
   return (
     <div className={styles.tfQuestion}>
       <div className={styles.tfHead}>
         <span className={styles.tfNum}>{number}</span>
         <div className={styles.tfHeadText}>
           <div className={styles.tfQText}>{pipe(field.text)}{field.required && <span className={styles.req}>*</span>}</div>
-          {field.description ? <p className={styles.tfDesc}>{pipe(field.description)}</p> : null}
+          <FieldDescription className={styles.tfDesc} text={field.description && pipe(field.description)} />
         </div>
       </div>
       <div className={styles.tfBody}>
@@ -302,7 +306,11 @@ export function FormRenderer({
     onAnswer(linkId, v);
     clearMissing(linkId);
     const f = currentQ?.field;
-    if (f && f.linkId === linkId && f.type === 'choice'
+    // A slider or dots Rating is adjusted by dragging, so it waits for Enter
+    // rather than advancing the moment a point is first touched. NPS tiles
+    // are picked once, like option cards, and advance as those do.
+    const adjustable = f?.control === 'rating' && ratingElement(f.ratingElement).look !== 'tiles';
+    if (f && f.linkId === linkId && f.type === 'choice' && !adjustable
       && f.control !== 'checkbox' && f.control !== 'consent' && isAnswered(v)) {
       clearTimeout(advanceTimer.current);
       advanceTimer.current = setTimeout(() => goNext(), 320);

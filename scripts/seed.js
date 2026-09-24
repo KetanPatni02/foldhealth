@@ -28,6 +28,7 @@ import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY } from '../src/features/settings/c
 import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src/features/settings/care-plan-library/data/carePlanTemplateLibrarySeed.js';
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
+import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
 import { PRACTICE_LOCATIONS } from '../src/features/settings/account/locations/data/mock.js';
@@ -175,10 +176,20 @@ DROP POLICY IF EXISTS "Allow all on patient_allergies" ON patient_allergies;
 CREATE POLICY "Allow all on patient_allergies" ON patient_allergies FOR ALL USING (true) WITH CHECK (true);
 `;
 
+const SOCIAL_HISTORY_DDL = `
+CREATE TABLE IF NOT EXISTS patient_social_history (
+  patient_id text PRIMARY KEY, answers jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE patient_social_history ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on patient_social_history" ON patient_social_history;
+CREATE POLICY "Allow all on patient_social_history" ON patient_social_history FOR ALL USING (true) WITH CHECK (true);
+`;
+
 const PAMI_HISTORY_DDL = `
 CREATE TABLE IF NOT EXISTS patient_history_entries (
   id text PRIMARY KEY, patient_id text NOT NULL,
-  kind text NOT NULL CHECK (kind IN ('medical', 'surgical', 'family', 'social')),
+  kind text NOT NULL CHECK (kind IN ('medical', 'surgical', 'family')),
   title text NOT NULL, code text, code_system text,
   detail text NOT NULL DEFAULT '', relation text, recorded_on date,
   synced boolean NOT NULL DEFAULT true, sort_order integer NOT NULL DEFAULT 0,
@@ -199,18 +210,30 @@ const daysAgoIso = (n) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 // Unsynced flags reproduce the footer counts the tab used to hardcode:
-// Surgical (1), Family (1), Social (2).
+// Surgical (1), Family (1). Social History is its own table now (below).
 const PATIENT_HISTORY_ENTRIES = [
   { id: 'phe-11089-med-1', kind: 'medical', title: 'Hypertension', recorded_on: daysAgoIso(182) },
   { id: 'phe-11089-sur-1', kind: 'surgical', title: 'Appendectomy', recorded_on: daysAgoIso(20), synced: false,
     code: '377', code_system: 'https://clinicaltables.nlm.nih.gov/api/procedures/v3' },
   { id: 'phe-11089-fam-1', kind: 'family', relation: 'Father', title: 'Will Blaine', synced: false,
     detail: 'History of coronary artery disease (diagnosed at age 55), hypertension, and Type 2 diabetes.' },
-  { id: 'phe-11089-soc-1', kind: 'social', title: 'Smoking', synced: false,
-    detail: 'Former smoker, 1 pack per day for 10 years, quit in 2015' },
-  { id: 'phe-11089-soc-2', kind: 'social', title: 'Alcohol', synced: false,
-    detail: 'Occasional social drinker (1-2 drinks per week)' },
 ];
+// The old Social History sample ("Former smoker, 1 pack per day for 10 years,
+// quit in 2015"; "Occasional social drinker, 1-2 drinks per week") expressed
+// as answers to the questionnaire in src/reference-data/socialHistoryQuestionnaire.js.
+const PATIENT_SOCIAL_HISTORY = [{
+  patient_id: PAMI_DEMO_PATIENT,
+  answers: {
+    tobacco_status: 'Former user',
+    tobacco_type: ['Cigarettes'],
+    tobacco_comment: '1 pack per day for 10 years, quit in 2015',
+    smoking_status: 'Former smoker',
+    audit_c_frequency: '2-4 times a month',
+    audit_c_intensity: '1 or 2',
+    audit_c_binge: 'Never',
+  },
+}];
+
 // Every row carries every column: a bulk upsert fills a key missing from some
 // rows with NULL, which the NOT NULL defaults (synced, detail) would reject.
 const HISTORY_ROW_DEFAULTS = { code: null, code_system: null, detail: '', relation: null, recorded_on: null, synced: true };
@@ -768,10 +791,15 @@ async function main() {
     await db.query(PATIENT_ALLERGIES_DDL);
     await db.query(PATIENT_IMMUNIZATIONS_DDL);
     await db.query(PAMI_HISTORY_DDL);
+    await db.query(SOCIAL_HISTORY_DDL);
+    // Run the migration itself rather than a copy of it, so the two can't drift.
+    await db.query(readFileSync(new URL('../supabase/employer_impact_migration.sql', import.meta.url), 'utf8'));
     console.log('  ✓ patient_problems — created / already exists');
     console.log('  ✓ patient_allergies — created / already exists');
     console.log('  ✓ patient_immunizations — created / already exists');
     console.log('  ✓ patient_history_entries — created / already exists');
+    console.log('  ✓ patient_social_history: created / already exists');
+    console.log('  ✓ employer_impact_employers / employer_impact_metrics + rollup functions: created / already exists');
     await db.query(ICD_DDL);
     console.log('  ✓ icd_codes — created / already exists');
     await db.query(POS_DDL);
@@ -865,6 +893,34 @@ async function main() {
     .from('patient_history_entries')
     .upsert(withPatient(PATIENT_HISTORY_ENTRIES), { onConflict: 'id' });
   if (phe) { console.error('  ✗', phe.message); } else { console.log(`  ✓ ${PATIENT_HISTORY_ENTRIES.length} rows`); }
+
+  // Employer Impact Report: a year of monthly metrics ending last month.
+  console.log('Seeding employer_impact_employers...');
+  const { error: eie } = await supabase
+    .from('employer_impact_employers')
+    .upsert(EMPLOYER_IMPACT_EMPLOYERS, { onConflict: 'id' });
+  if (eie) { console.error('  ✗', eie.message); } else { console.log(`  ✓ ${EMPLOYER_IMPACT_EMPLOYERS.length} employers`); }
+  {
+    const now = new Date();
+    const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonth = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}`;
+    const metricRows = employerImpactRows(lastMonth);
+    console.log(`Seeding employer_impact_metrics (${metricRows.length} rows, year ending ${lastMonth})...`);
+    let failed = null;
+    for (let i = 0; i < metricRows.length && !failed; i += 1000) {
+      const { error } = await supabase
+        .from('employer_impact_metrics')
+        .upsert(metricRows.slice(i, i + 1000), { onConflict: 'id' });
+      if (error) failed = error;
+    }
+    if (failed) { console.error('  ✗', failed.message); } else { console.log(`  ✓ ${metricRows.length} rows`); }
+  }
+
+  console.log('Seeding patient_social_history...');
+  const { error: psh } = await supabase
+    .from('patient_social_history')
+    .upsert(PATIENT_SOCIAL_HISTORY, { onConflict: 'patient_id' });
+  if (psh) { console.error('  ✗', psh.message); } else { console.log(`  ✓ ${PATIENT_SOCIAL_HISTORY.length} patient`); }
 
   console.log('Seeding patient_monitoring...');
   const monitoringRows = Object.values(MONITORING_SEED).map(monitoringToRow);

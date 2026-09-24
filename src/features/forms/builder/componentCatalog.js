@@ -11,12 +11,17 @@
  * Field shape (a pragmatic, FHIR-Questionnaire-aligned subset):
  *   { type, text, required, description, placeholder, control, options[], items[], healthKey }
  * - type:    'string'|'text'|'boolean'|'choice'|'integer'|'decimal'|'date'|'display'|'group'
- * - control: UI hint within a type ('radio'|'checkbox'|'dropdown'|'stars'|'email'|'tel'|'currency'|'image'|'paragraph')
+ * - control: UI hint within a type ('radio'|'checkbox'|'dropdown'|'rating'|'email'|'tel'|'currency'|'image'|'paragraph')
+ *   'rating' is a choice whose options carry their own number as the score,
+ *   so it is scorable like any choice; its settings live in ./rating.js. It
+ *   has no dedicated look on the canvas yet, so it renders as a single-select
+ *   until one is designed.
  * - options: [{ value, score? }] for choice types (value doubles as the label)
  */
 
 import { validatedPaletteEntries } from './validatedInstruments';
 import { makeMemberConsent } from './memberConsent';
+import { makeRatingField } from './rating';
 
 const opt = (value, score) => (score == null ? { value } : { value, score });
 
@@ -44,6 +49,7 @@ export const BASIC = [
     make: () => ({ ...choice('Select all that apply', 'checkbox', [opt('Option 1'), opt('Option 2'), opt('Option 3')]), repeats: true }) },
   { key: 'dropdown', label: 'Dropdown', icon: 'solar:alt-arrow-down-linear',
     make: () => choice('Choose one', 'dropdown', [opt('Option 1'), opt('Option 2'), opt('Option 3')]) },
+  { key: 'rating', label: 'Rating', icon: 'custom:rating', make: makeRatingField },
   { key: 'phone', label: 'Phone number', icon: 'solar:phone-linear',
     make: () => ({ type: 'string', control: 'tel', text: 'Phone number', placeholder: '(555) 000-0000', required: false }) },
   { key: 'date', label: 'Date', icon: 'solar:calendar-linear',

@@ -309,6 +309,16 @@
   padding: 0 8px 0 4px;
 }
 
+.historySubHeaderDivided {
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+/* Inside a history card the last row already draws the line above the
+   footer; the footer's own top border would double it. */
+.historyCard .footerRow {
+  border-top: none;
+}
+
 .historySubTitle {
   flex: 1;
   font-size: var(--font-base);

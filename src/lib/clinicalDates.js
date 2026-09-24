@@ -69,8 +69,9 @@ export function isFutureDate(value) {
 }
 
 /**
- * A stored date as a coarse "how long ago" label ("Today", "20 days ago",
- * "6 months ago"), counted in whole calendar days so no timezone can move it.
+ * A stored date as a coarse "how long ago" label ("Today", "20 Days Ago",
+ * "6 Months Ago"), in the design's Title Case, counted in whole calendar days
+ * so no timezone can move it.
  * Returns `''` for anything unparseable.
  */
 export function formatDaysAgo(value) {
@@ -80,11 +81,11 @@ export function formatDaysAgo(value) {
   const [ty, tm, td] = todayIso().split('-').map(Number);
   const days = Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(y, m - 1, d)) / 86400000);
   if (days <= 0) return 'Today';
-  if (days < 30) return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+  if (days < 30) return `${days} ${days === 1 ? 'Day' : 'Days'} Ago`;
   // Months round (182 days is "6 months", not "5"); years floor, so a
   // record reads "1 year ago" until the second full year has passed.
   const months = Math.round(days / 30.44);
-  if (months < 12) return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+  if (months < 12) return `${months} ${months === 1 ? 'Month' : 'Months'} Ago`;
   const years = Math.max(1, Math.floor(days / 365.25));
-  return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+  return `${years} ${years === 1 ? 'Year' : 'Years'} Ago`;
 }

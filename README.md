@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Analytics: Employer Impact Report.** A new Overview page (Figma
+  5618:10554) with seven sections: Overview, Cost Savings, Engagement,
+  Communication, Clinical Visits, Clinical Trends, and Demographics. Every
+  chart is Recharts (via `LazyRecharts`) and is computed from
+  `employer_impact_metrics` through the `employer_impact_rollup` SQL function,
+  so the Employer, Patient/Visit Location, Time Frame, and date range filters
+  change the data itself. Each widget can be expanded, viewed as a table,
+  downloaded as CSV, or hidden (Widget picker). Migration:
+  `supabase/employer_impact_migration.sql`, seeded by `bun run seed`.
+
 - **Email campaigns: personalization, compliance, and a real send engine.**
   The email builder gained a Personalize token picker (merge tags like
   `{{first_name}}` resolved at preview and send time, with support for legacy

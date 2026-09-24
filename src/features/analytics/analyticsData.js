@@ -3,6 +3,7 @@
 export const PAGES = [
   { section: 'OVERVIEW', items: [
     { id: 'executive', label: 'Executive Dashboard', icon: 'solar:chart-linear' },
+    { id: 'employer', label: 'Employer Impact Report', icon: 'solar:buildings-2-linear' },
   ]},
   { section: 'ANALYTICS', items: [
     { id: 'population', label: 'Population Overview', icon: 'solar:users-group-two-rounded-linear' },
@@ -30,6 +31,7 @@ export const PAGES = [
 
 export const VIEW_TITLES = {
   executive:    { title: 'Executive Dashboard', sub: 'KPIs, trends & priorities' },
+  employer:     { title: 'Employer Impact Report', sub: 'Savings, engagement & outcomes by employer' },
   population:   { title: 'Population Overview', sub: 'Risk stratification & chronic conditions' },
   financial:    { title: 'Financial Analytics', sub: 'TCOC, PMPM & benchmark comparisons' },
   risk:         { title: 'Risk & Revenue', sub: 'RAF scores, HCC suspects & coding accuracy' },

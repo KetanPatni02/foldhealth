@@ -1,0 +1,155 @@
+/* Employer Impact Report. Figma 5618:10554. Card chrome mirrors
+   AnalyticsLayout's .card (0.5px neutral-150 border, 8px radius). */
+
+.page { display: flex; flex-direction: column; gap: var(--space-3); padding-bottom: var(--space-8); }
+
+/* ── Header (layout comes from AnalyticsLayout's .viewHeader) ── */
+.headerText { flex: 1; min-width: 0; }
+.headerActions { flex-wrap: wrap; }
+
+/* ── Filters ── */
+.filterBar { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.rangePicker { width: 260px; max-width: 100%; }
+
+/* ── Quick jump (sticky so it stays reachable while scrolling) ── */
+.quickJump {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; gap: var(--space-1); flex-wrap: wrap;
+  padding: var(--space-2) 0; background: var(--neutral-0);
+}
+.quickJumpLabel { font-size: var(--font-sm); color: var(--neutral-300); margin-right: var(--space-1); }
+.quickJumpItem {
+  border: 0; background: transparent; cursor: pointer;
+  padding: var(--space-1) var(--space-2); border-radius: 6px;
+  font-size: var(--font-sm); font-weight: 500; color: var(--neutral-300);
+}
+.quickJumpItem:hover { background: var(--neutral-50); color: var(--neutral-400); }
+.quickJumpItem:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+.quickJumpActive { background: var(--primary-50); color: var(--primary-300); }
+
+.notice {
+  margin: 0; padding: var(--space-3) var(--space-4); border-radius: 8px;
+  background: var(--neutral-50); font-size: var(--font-md); color: var(--neutral-300);
+}
+
+/* ── Sections + grid ── */
+.sections { display: flex; flex-direction: column; gap: var(--space-6); }
+.section { display: flex; flex-direction: column; gap: var(--space-3); scroll-margin-top: 48px; }
+.sectionTitle { margin: 0; font-size: var(--font-lg); font-weight: 500; color: var(--neutral-400); }
+.grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-4); }
+.span_full { grid-column: span 6; }
+.span_twoThirds { grid-column: span 4; }
+.span_half { grid-column: span 3; }
+.span_third { grid-column: span 2; }
+.savingsCard { grid-column: span 2; }
+
+@media (max-width: 1100px) {
+  .span_twoThirds, .span_half, .span_third, .savingsCard { grid-column: span 3; }
+}
+@media (max-width: 720px) {
+  .grid > * { grid-column: span 6; }
+}
+
+/* ── Card ── */
+.card {
+  display: flex; flex-direction: column; min-width: 0;
+  background: var(--neutral-0); border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.cardHead { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; }
+.cardHeadText { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-width: 0; }
+.cardTitle {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  font-size: var(--font-base); font-weight: 500; color: var(--neutral-400);
+}
+.cardInfo { display: inline-flex; cursor: help; }
+.cardSub { font-size: var(--font-sm); color: var(--neutral-200); }
+.cardActions { display: flex; align-items: center; gap: var(--space-1); }
+.cardBody { flex: 1; padding: var(--space-3) var(--space-4); min-width: 0; }
+.cardEmpty { display: flex; align-items: center; justify-content: center; min-height: 220px; }
+
+/* ── Tooltip (matches Analytics' chart tooltip) ── */
+.tooltip {
+  min-width: 140px; padding: var(--space-2) var(--space-3); border-radius: 8px;
+  background: var(--neutral-0); border: 0.5px solid var(--neutral-150); box-shadow: var(--shadow-popover);
+}
+.tooltipLabel { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-400); margin-bottom: var(--space-1); }
+.tooltipRow { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-sm); line-height: var(--leading-loose); }
+.tooltipDot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.tooltipName { color: var(--neutral-300); flex: 1; }
+.tooltipValue { color: var(--neutral-400); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* ── Legend ── */
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-2); }
+.legendItem {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  border: 0; background: transparent; padding: var(--space-1) 0; cursor: pointer;
+  font-size: var(--font-sm); color: var(--neutral-300);
+}
+.legendItem:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 2px; border-radius: 4px; }
+.legendOff { opacity: 0.4; }
+.legendOff .legendDot, .legendOff .legendLine { filter: grayscale(1); }
+.legendDot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.legendLine { width: 14px; height: 2px; border-radius: 1px; background: var(--neutral-300); }
+
+/* ── Donut ── */
+.donut { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.donutChart { flex: 1 1 200px; min-width: 180px; }
+.donutLegend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); flex: 1 1 160px; }
+.donutLegendItem { display: flex; align-items: flex-start; gap: var(--space-2); }
+.donutLegendItem .legendDot { margin-top: var(--space-1); }
+.donutLegendText { display: flex; flex-direction: column; }
+.donutLegendLabel { font-size: var(--font-sm); color: var(--neutral-300); }
+.donutLegendValue { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); font-variant-numeric: tabular-nums; }
+
+/* ── Stat cards ── */
+.statGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-3); }
+.statStack { display: flex; flex-direction: column; gap: var(--space-3); }
+.statCard {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-3); border-radius: 8px; background: var(--neutral-50);
+}
+.statLabel { font-size: var(--font-sm); color: var(--neutral-300); }
+.statValue { font-size: var(--font-sm); color: var(--neutral-300); font-variant-numeric: tabular-nums; }
+.statValue strong { font-size: var(--font-xl); font-weight: 500; color: var(--neutral-500); }
+.statSub { color: var(--neutral-200); }
+
+.withStats { display: grid; grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); gap: var(--space-4); }
+.withStatsChart { min-width: 0; }
+@media (max-width: 720px) { .withStats { grid-template-columns: 1fr; } }
+
+/* ── Satisfaction ── */
+.satisfaction { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: var(--space-4); }
+.satisfactionSide { display: flex; flex-direction: column; gap: var(--space-3); }
+.satisfactionChart { min-width: 0; }
+.satBox { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); border-radius: 8px; background: var(--neutral-50); }
+.satNumber { font-size: var(--font-xl); font-weight: 500; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
+.satSplit { display: flex; gap: var(--space-6); margin-top: var(--space-2); }
+.satSplit > span { display: flex; flex-direction: column; gap: var(--space-1); }
+@media (max-width: 720px) { .satisfaction { grid-template-columns: 1fr; } }
+
+/* ── Cost savings ── */
+.savingsRow { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.savingsCol { display: flex; flex-direction: column; gap: var(--space-1); }
+.savingsEnd { margin-left: auto; text-align: right; }
+.savingsLabel { font-size: var(--font-sm); color: var(--neutral-300); }
+.savingsValue { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); font-variant-numeric: tabular-nums; }
+.savingsAmount { font-size: var(--font-xl); font-weight: 500; font-variant-numeric: tabular-nums; }
+.savingsGain { color: var(--status-success-dark); }
+.savingsLoss { color: var(--status-error-dark); }
+.savingsCard .cardEmpty { min-height: 72px; }
+
+/* ── Dialogs ── */
+.dialog { width: min(960px, calc(100vw - 32px)); max-width: none; }
+.expandBody { min-width: 0; }
+.tableWrap { max-height: 60vh; overflow: auto; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
+.table { width: 100%; border-collapse: collapse; font-size: var(--font-md); font-variant-numeric: tabular-nums; }
+.table th, .table td { padding: var(--space-2) var(--space-3); text-align: right; border-bottom: 0.5px solid var(--neutral-150); }
+.table thead th { position: sticky; top: 0; background: var(--neutral-50); font-weight: 500; color: var(--neutral-300); }
+.table th:first-child { text-align: left; }
+.table tbody th { font-weight: 400; color: var(--neutral-400); }
+.table td { color: var(--neutral-400); }
+
+@media print {
+  .quickJump, .headerActions, .cardActions { display: none; }
+  .card { break-inside: avoid; }
+}

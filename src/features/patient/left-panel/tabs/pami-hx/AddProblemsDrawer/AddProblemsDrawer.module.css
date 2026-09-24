@@ -348,3 +348,32 @@
 @media (prefers-reduced-motion: reduce) {
   .procAction { transition: none; }
 }
+
+/* Social History questionnaire. Each section is a CollapsibleSection card,
+   which spaces the questions; text and yes/no labels copy Select's field
+   label so every question reads the same whichever control answers it. */
+/* Section toggle: segments hug their labels. The drawer body is a flex
+   column, which would otherwise stretch it to full width. */
+.qToggle {
+  align-self: flex-start;
+}
+
+.qField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.qLabel {
+  font-size: var(--font-base);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+
+.qRadios {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+}

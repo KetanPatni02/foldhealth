@@ -102,6 +102,13 @@ function mapPatientImmunizationRow(row) {
   };
 }
 
+function mapPatientSocialHistoryRow(row) {
+  return {
+    answers: row?.answers && typeof row.answers === 'object' ? row.answers : {},
+    updatedAt: row?.updated_at || '',
+  };
+}
+
 function mapPatientHistoryRow(row) {
   return {
     id: row.id,
@@ -644,6 +651,7 @@ export {
   mapPatientAllergyRow,
   mapPatientImmunizationRow,
   mapPatientHistoryRow,
+  mapPatientSocialHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
