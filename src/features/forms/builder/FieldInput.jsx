@@ -4,13 +4,43 @@
  * Checkbox). Used both on the builder canvas (interactive=false → inert) and
  * in the live Preview tab (interactive=true → wired to answers).
  */
+import { useState } from 'react';
 import { Input } from '../../../components/Input/Input';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Select } from '../../../components/Select/Select';
 import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { RatingInput } from '../../../components/RatingInput/RatingInput';
+import { ratingElement, ratingBand, DEFAULT_RATING_FILL } from './rating';
 import styles from './FormBuilder.module.css';
+
+/**
+ * A Rating question. Unlike the other fields it stays usable on the builder
+ * canvas: a slider shows a handle, and a handle that cannot be dragged reads
+ * as broken. There the drag is a try-it preview held in local state, nothing
+ * is recorded, since the canvas is not where a form is answered. In Preview
+ * and the live form it reports answers as usual.
+ */
+function RatingField({ field, value, onChange, interactive, name }) {
+  const [tryValue, setTryValue] = useState('');
+  const element = ratingElement(field.ratingElement);
+  const points = (field.options || []).map((o) => ({ value: o.value, label: o.label || o.value }));
+  return (
+    <RatingInput
+      look={element.look}
+      thumb={element.thumb}
+      points={points}
+      value={interactive ? (value ?? '') : tryValue}
+      onChange={interactive ? (v) => onChange?.(v) : setTryValue}
+      fillColor={field.fillColor || DEFAULT_RATING_FILL}
+      showScale={field.showRatingScale !== false}
+      toneOf={(i, n) => ratingBand(i + 1, n)}
+      name={name}
+      ariaLabel={field.text}
+    />
+  );
+}
 
 export function FieldInput({ field, value, onChange, interactive = false, idPrefix = 'f', className }) {
   const disabled = !interactive;
@@ -95,6 +125,9 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
             })}
           </div>
         );
+      }
+      if (field.control === 'rating') {
+        return <RatingField field={field} value={value} onChange={onChange} interactive={interactive} name={id} />;
       }
       if (field.control === 'dropdown') {
         return (

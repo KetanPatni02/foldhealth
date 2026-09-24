@@ -25,6 +25,9 @@ import { Switch } from '../../../components/Switch/Switch';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Toggle } from '../../../components/Toggle/Toggle';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
+import { Select } from '../../../components/Select/Select';
+import { Tooltip } from '../../../components/Tooltip/Tooltip';
+import { ColorInput } from '../../../components/ColorInput/ColorInput';
 import { useAppStore } from '../../../store/useAppStore';
 import { PALETTE_TABS, paletteFor } from './componentCatalog';
 import { instantiateInstrument } from './validatedInstruments';
@@ -35,6 +38,10 @@ import {
 } from './memberConsent';
 import { formShareLink, copyToClipboard } from '../formLink';
 import { FieldInput } from './FieldInput';
+import { FieldDescription } from '../render/FieldDescription';
+import {
+  RATING_ELEMENTS, RATING_SCALES, DEFAULT_RATING_FILL, DEFAULT_RATING_SCALE, ratingElement, ratingOptions,
+} from './rating';
 import { ScorePanel } from './ScorePanel';
 import { LogicPanel } from './LogicPanel';
 import { PreviewPanel } from './PreviewPanel';
@@ -170,7 +177,7 @@ function QuestionBlock({ field, selectedId, onSelect }) {
     return (
       <div className={styles.groupBlock}>
         <div className={styles.groupTitle}>{field.text}</div>
-        {field.description ? <div className={styles.qDesc}>{field.description}</div> : null}
+        <FieldDescription as="div" className={styles.qDesc} text={field.description} />
         <div className={styles.groupFields}>
           {(field.items || []).map((sub) => (
             <div
@@ -198,7 +205,7 @@ function QuestionBlock({ field, selectedId, onSelect }) {
                   {sub.text}{sub.required && <span className={styles.req}>*</span>}
                 </span>
               )}
-              {sub.description ? <span className={styles.qDesc}>{sub.description}</span> : null}
+              <FieldDescription as="span" className={styles.qDesc} text={sub.description} />
               <FieldInput field={sub} interactive={false} />
             </div>
           ))}
@@ -213,7 +220,7 @@ function QuestionBlock({ field, selectedId, onSelect }) {
           {field.text}{field.required && <span className={styles.req}>*</span>}
         </span>
       )}
-      {field.description ? <span className={styles.qDesc}>{field.description}</span> : null}
+      <FieldDescription as="span" className={styles.qDesc} text={field.description} />
       <FieldInput field={field} interactive={false} />
     </>
   );
@@ -283,12 +290,130 @@ function Canvas({ fields, selectedId, onSelect, onDelete }) {
 }
 
 // ── Properties ──────────────────────────────────────────────────────────────
-function CheckRow({ label, checked, onChange }) {
+/** An (i) with a tooltip, for a settings label that needs a word of explanation. */
+function InfoTip({ text }) {
+  return (
+    <Tooltip label={text}>
+      <span className={styles.propInfo} aria-label={text} role="img">
+        <Icon name="solar:info-circle-linear" size={14} color="var(--neutral-300)" />
+      </span>
+    </Tooltip>
+  );
+}
+
+function CheckRow({ label, checked, onChange, info }) {
   return (
     <label className={styles.propCheck}>
       <Checkbox checked={!!checked} onCheckedChange={(c) => onChange(!!c)} />
       <span>{label}</span>
+      {info && <InfoTip text={info} />}
     </label>
+  );
+}
+
+// Rating Elements options: each row shows its icon, the closed trigger shows
+// the chosen icon through `leadingIcon` and the name through `triggerLabel`.
+const RATING_ELEMENT_OPTIONS = RATING_ELEMENTS.map((e) => ({
+  value: e.key,
+  triggerLabel: e.label,
+  label: (
+    <span className={styles.ratingElementOpt}>
+      <Icon name={e.icon} size={16} color="var(--neutral-400)" />
+      {e.label}
+    </span>
+  ),
+}));
+const RATING_SCALE_OPTIONS = RATING_SCALES.map((n) => ({ value: String(n), label: String(n) }));
+
+/**
+ * Settings for a Rating question: label, required, reusable, a rich-text
+ * description, then how the scale looks: which element, how many points,
+ * whether the numbers show, and the fill colour. Changing the scale rewrites
+ * the options, so scoring always matches the points on screen.
+ */
+function RatingProperties({ field, onPatch }) {
+  const uid = useId();
+  const element = ratingElement(field.ratingElement);
+  const scale = field.ratingScale || DEFAULT_RATING_SCALE;
+  const labelMissing = !String(field.text || '').trim();
+
+  return (
+    <aside className={styles.props}>
+      <div className={styles.propsHeader}>Rating</div>
+      <div className={styles.propsBody}>
+        <label className={styles.propLabel} htmlFor={`${uid}-label`}>
+          Label<span className={styles.propRequired} aria-hidden="true" />
+        </label>
+        <Input
+          id={`${uid}-label`}
+          className={styles.ctl}
+          value={field.text || ''}
+          onChange={(e) => onPatch({ text: e.target.value })}
+          errorText={labelMissing ? 'Label is required' : undefined}
+        />
+
+        <CheckRow label="Is this field required?" checked={field.required} onChange={(v) => onPatch({ required: v })} />
+        <CheckRow
+          label="Make this component reusable"
+          info="Saves this question to your Custom components so it can be reused in other forms."
+          checked={field.reusable}
+          onChange={(v) => onPatch({ reusable: v })}
+        />
+
+        <span className={styles.propLabel} id={`${uid}-description`}>
+          Description <InfoTip text="Shown to the respondent under the question." />
+        </span>
+        <Textarea
+          richText
+          aria-labelledby={`${uid}-description`}
+          placeholder="Description for this field."
+          value={field.description || ''}
+          onChange={(html) => onPatch({ description: html })}
+        />
+
+        <label className={styles.propLabel} htmlFor={`${uid}-element`}>Rating Elements</label>
+        <Select
+          portal
+          id={`${uid}-element`}
+          options={RATING_ELEMENT_OPTIONS}
+          value={element.key}
+          leadingIcon={element.icon}
+          onChange={(key) => onPatch({ ratingElement: key })}
+        />
+
+        <CheckRow
+          label="Show rating scale"
+          checked={field.showRatingScale !== false}
+          onChange={(v) => onPatch({ showRatingScale: v })}
+        />
+
+        <label className={styles.propLabel} htmlFor={`${uid}-scale`}>Rating Scale</label>
+        <Select
+          portal
+          id={`${uid}-scale`}
+          options={RATING_SCALE_OPTIONS}
+          value={String(scale)}
+          onChange={(v) => {
+            const n = Number(v);
+            onPatch({ ratingScale: n, options: ratingOptions(n) });
+          }}
+        />
+
+        {/* NPS tiles colour by where the point falls (error / warning /
+            success dark), so a fill colour would have nothing to change. */}
+        {element.look !== 'tiles' && (
+          <>
+            <label className={styles.propLabel} htmlFor={`${uid}-fill`}>Fill Color</label>
+            <ColorInput
+              id={`${uid}-fill`}
+              ariaLabel="Fill color"
+              value={field.fillColor || DEFAULT_RATING_FILL}
+              onChange={(hex) => onPatch({ fillColor: hex })}
+            />
+          </>
+        )}
+      </div>
+    </aside>
   );
 }
 
@@ -491,6 +616,9 @@ function Properties({ field, onPatch, settings, onSettingsChange }) {
   }
   if (field.healthKey === 'memberConsent') {
     return <ConsentProperties field={field} onPatch={onPatch} />;
+  }
+  if (field.control === 'rating') {
+    return <RatingProperties field={field} onPatch={onPatch} />;
   }
   // Validated instruments are locked: show their config read-only.
   if (field.locked) {

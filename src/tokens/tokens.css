@@ -53,6 +53,7 @@
   --status-warning:       #D9A50B;
   --status-warning-light: #FFFCF5;
   --status-warning-dark:  #F79009; /* Fold-Pixel ProgressRing 8700:4713 */
+  --status-success-dark:  #12B76A; /* Figma Colors/Status Dark/Success */
   --status-success:       #007A42;
   --status-success-light: #F5FFFA;
   --status-info:          #145ECC;
@@ -340,6 +341,7 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
   --status-warning:       #F5C429;
   --status-warning-light: #2A2310;
   --status-warning-dark:  #F79009;
+  --status-success-dark:  #12B76A;
   --status-success:       #15D974;
   --status-success-light: #0A2418;
   --status-info:          #5B8DEF;

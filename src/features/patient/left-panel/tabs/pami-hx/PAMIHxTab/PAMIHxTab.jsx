@@ -7,6 +7,8 @@ import { AddMedicationsDrawer } from '../AddMedicationsDrawer';
 import { AddAllergiesDrawer } from '../AddAllergiesDrawer';
 import { AddImmunizationsDrawer } from '../AddImmunizationsDrawer';
 import { AddSurgicalHistoryDrawer } from '../AddSurgicalHistoryDrawer';
+import { AddSocialHistoryDrawer } from '../AddSocialHistoryDrawer';
+import { answeredSocialHistory } from '../../../../../../reference-data/socialHistoryQuestionnaire';
 import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
@@ -289,7 +291,8 @@ function ImmunizationRow({ item, onRemove }) {
   );
 }
 
-// Medical and surgical entries are a condition plus when it was recorded.
+// Medical and surgical entries are a name plus how long ago (Figma P360
+// 484:329560 for Surgical History).
 function DatedHistoryRow({ item }) {
   return (
     <div className={styles.historyRow}>
@@ -297,18 +300,6 @@ function DatedHistoryRow({ item }) {
         <span className={styles.name}>{item.title}</span>
         {item.recordedOn && <span className={styles.meta}>{formatDaysAgo(item.recordedOn)}</span>}
       </div>
-    </div>
-  );
-}
-
-function SurgicalHistoryRow({ item, onRemove }) {
-  return (
-    <div className={styles.historyRow}>
-      <div className={styles.historyContent}>
-        <span className={styles.name}>{item.title}</span>
-        {item.recordedOn && <span className={styles.meta}>Performed: {formatClinicalDate(item.recordedOn)}</span>}
-      </div>
-      <RowMenu label={item.title} onRemove={onRemove && (() => onRemove(item))} />
     </div>
   );
 }
@@ -633,10 +624,10 @@ function ImmunizationsSection({ patientId }) {
   );
 }
 
-function HistorySubCard({ title, actions, children, footer }) {
+function HistorySubCard({ title, actions, children, footer, divided = false }) {
   return (
     <div className={styles.historyCard}>
-      <div className={styles.historySubHeader}>
+      <div className={[styles.historySubHeader, divided ? styles.historySubHeaderDivided : ''].filter(Boolean).join(' ')}>
         <span className={styles.historySubTitle}>{title}</span>
         {actions && <div className={styles.subHeaderActions}>{actions}</div>}
       </div>
@@ -693,13 +684,24 @@ function HistoryEntries({ entries, loading, emptyIcon, emptyLabel, render }) {
 function HistorySection({ patientId, history, loading }) {
   const [collapsed, setCollapsed] = useState(false);
   const [surgicalOpen, setSurgicalOpen] = useState(false);
-  const removePatientHistoryEntry = useAppStore(s => s.removePatientHistoryEntry);
+  const [socialOpen, setSocialOpen] = useState(false);
+
+  // Social History is a questionnaire with its own table; the card lists
+  // whichever questions have been answered.
+  const socialRecord = useAppStore(s => (patientId ? s.patientSocialHistory[patientId] : null));
+  const socialLoadedFor = useAppStore(s => (patientId ? s.patientSocialHistoryLoadedFor[patientId] : false));
+  const fetchPatientSocialHistory = useAppStore(s => s.fetchPatientSocialHistory);
+  useEffect(() => { if (patientId) fetchPatientSocialHistory(patientId); }, [patientId, fetchPatientSocialHistory]);
+  const socialLoading = !!patientId && !socialLoadedFor;
+  const social = useMemo(
+    () => answeredSocialHistory(socialRecord?.answers).map(a => ({ id: a.id, title: a.label, detail: a.value })),
+    [socialRecord],
+  );
   const byKind = (kind) => history.filter(h => h.kind === kind);
   const medical = byKind('medical');
   // Newest first, matching the drawer.
   const surgical = byKind('surgical').sort((a, b) => (b.recordedOn || '').localeCompare(a.recordedOn || ''));
   const family = byKind('family');
-  const social = byKind('social');
 
   return (
     <div className={styles.section}>
@@ -716,23 +718,20 @@ function HistorySection({ patientId, history, loading }) {
           />
         </HistorySubCard>
 
+        {/* The header divider only shows with entries under it: in the empty
+            state it would sit right on top of the dashed ring card. */}
         <HistorySubCard
           title="Surgical History"
           actions={<AddBtn onClick={() => setSurgicalOpen(true)} disabled={!patientId} />}
           footer={unsyncedFooter(surgical)}
+          divided={!loading && surgical.length > 0}
         >
           <HistoryEntries
             entries={surgical}
             loading={loading}
             emptyIcon="custom:scalpel"
             emptyLabel="No Surgical History"
-            render={item => (
-              <SurgicalHistoryRow
-                key={item.id}
-                item={item}
-                onRemove={e => removePatientHistoryEntry(patientId, e.id)}
-              />
-            )}
+            render={item => <DatedHistoryRow key={item.id} item={item} />}
           />
         </HistorySubCard>
 
@@ -764,14 +763,13 @@ function HistorySection({ patientId, history, loading }) {
                 <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
               </button>
               <span className={styles.subHeaderDivider} />
-              <AddBtn onClick={NOOP} />
+              <AddBtn onClick={() => setSocialOpen(true)} disabled={!patientId} />
             </>
           }
-          footer={unsyncedFooter(social)}
         >
           <HistoryEntries
             entries={social}
-            loading={loading}
+            loading={socialLoading}
             emptyIcon="custom:social-history"
             emptyLabel="No Social History"
             render={item => <SocialHistoryRow key={item.id} item={item} />}
@@ -781,6 +779,9 @@ function HistorySection({ patientId, history, loading }) {
       </CollapseWrapper>
       {surgicalOpen && (
         <AddSurgicalHistoryDrawer patientId={patientId} onClose={() => setSurgicalOpen(false)} />
+      )}
+      {socialOpen && (
+        <AddSocialHistoryDrawer patientId={patientId} onClose={() => setSocialOpen(false)} />
       )}
     </div>
   );

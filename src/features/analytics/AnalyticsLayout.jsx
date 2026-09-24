@@ -21,6 +21,7 @@ import { PlatformOpsView } from './views/PlatformOpsView';
 import { AiAnalyticsView } from './views/AiAnalyticsView';
 import { SdohView } from './views/SdohView';
 import { ActionRulesView } from './views/ActionRulesView';
+import { EmployerImpactView } from './views/employer/EmployerImpactView';
 import s from './AnalyticsLayout.module.css';
 
 class ViewErrorBoundary extends React.Component {
@@ -42,7 +43,11 @@ const VIEW_MAP = {
   care: CareView, network: NetworkView, shared: SharedSavingsView,
   roi: RoiView, tools: ToolUsageView, platformops: PlatformOpsView,
   aianalytics: AiAnalyticsView, sdoh: SdohView, actionrules: ActionRulesView,
+  employer: EmployerImpactView,
 };
+
+// Views that render their own title and filters in place of the shared header.
+const SELF_HEADED_VIEWS = new Set(['employer']);
 
 const PERIODS = [
   { value: '2026-03', label: 'Mar 2026' },
@@ -236,6 +241,7 @@ export function AnalyticsLayout() {
           </div>
 
           {/* View header + practice filter + export */}
+          {!SELF_HEADED_VIEWS.has(view) && (
           <div className={s.viewHeader}>
             <div style={{ flex: 1 }}>
               <div className={s.viewTitle}>{meta.title}</div>
@@ -292,6 +298,7 @@ export function AnalyticsLayout() {
               )}
             </div>
           </div>
+          )}
 
           {/* Active view */}
           <ViewErrorBoundary key={view}>

@@ -70,6 +70,7 @@ import {
   mapPatientAllergyRow,
   mapPatientImmunizationRow,
   mapPatientHistoryRow,
+  mapPatientSocialHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
@@ -165,6 +166,11 @@ const _savedPage = sessionStorage.getItem('activePage') || 'population';
 const _cachedWorklistOrder = readCachedWorklistOrder();
 const _savedTab = sessionStorage.getItem('activeTab') || 'toc-worklist';
 const _savedSettingsTab = sessionStorage.getItem('settingsTab');
+
+// Social History saves run one at a time per patient: a select change saves at
+// once and a text field saves after a pause, so two writes can be in flight,
+// and whichever lands last would otherwise overwrite the other's answers.
+const socialHistorySaveChains = new Map();
 
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
@@ -320,7 +326,7 @@ export const useAppStore = create((set, get) => ({
   // Patient problem list (PAMI/Hx "Problems"). Keyed by patientId; the PAMI tab
   // falls back to a local mock for patients with no rows yet.
   patientProblems: {},           // { [patientId]: Problem[] }
-  patientProblemsLoadedFor: {},  // { [patientId]: true } — gates the skeleton
+  patientProblemsLoadedFor: {},  // { [patientId]: true }: gates the skeleton
   fetchPatientProblems: async (patientId) => {
     if (!patientId) return;
     const { data, error } = await supabase.from('patient_problems')
@@ -387,7 +393,7 @@ export const useAppStore = create((set, get) => ({
 
   // ── Patient allergies (PAMI/Hx → Allergies) ──
   patientAllergies: {},           // { [patientId]: Allergy[] }
-  patientAllergiesLoadedFor: {},  // { [patientId]: true } — gates the skeleton
+  patientAllergiesLoadedFor: {},  // { [patientId]: true }: gates the skeleton
   fetchPatientAllergies: async (patientId) => {
     if (!patientId) return;
     const { data, error } = await supabase.from('patient_allergies')
@@ -454,7 +460,7 @@ export const useAppStore = create((set, get) => ({
 
   // ── Patient immunizations (PAMI/Hx → Immunizations) ──
   patientImmunizations: {},           // { [patientId]: Immunization[] }
-  patientImmunizationsLoadedFor: {},  // { [patientId]: true } — gates the skeleton
+  patientImmunizationsLoadedFor: {},  // { [patientId]: true }: gates the skeleton
   fetchPatientImmunizations: async (patientId) => {
     if (!patientId) return;
     const { data, error } = await supabase.from('patient_immunizations')
@@ -514,7 +520,7 @@ export const useAppStore = create((set, get) => ({
   // Clinical Events and Lab / Imaging Reports are still static in the tab —
   // they have no source yet.
   patientPamiRecords: {},           // { [patientId]: { history } }
-  patientPamiRecordsLoadedFor: {},  // { [patientId]: true } — gates the skeletons
+  patientPamiRecordsLoadedFor: {},  // { [patientId]: true }: gates the skeletons
   fetchPatientPamiRecords: async (patientId) => {
     if (!patientId) return;
     const { data, error } = await supabase.from('patient_history_entries')
@@ -526,6 +532,52 @@ export const useAppStore = create((set, get) => ({
       patientPamiRecordsLoadedFor: { ...s.patientPamiRecordsLoadedFor, [patientId]: true },
     }));
   },
+  // ── Social History questionnaire (one row per patient) ──
+  patientSocialHistory: {},           // { [patientId]: { answers } }
+  patientSocialHistoryLoadedFor: {},  // { [patientId]: true }: gates the skeleton
+  fetchPatientSocialHistory: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_social_history')
+      .select('*').eq('patient_id', String(patientId)).maybeSingle();
+    if (error) console.warn('fetchPatientSocialHistory:', error.message);
+    set(s => ({
+      patientSocialHistory: { ...s.patientSocialHistory, [patientId]: mapPatientSocialHistoryRow(data) },
+      patientSocialHistoryLoadedFor: { ...s.patientSocialHistoryLoadedFor, [patientId]: true },
+    }));
+  },
+  // `patch` is `{ answers: {[questionId]: value} }`. Answers merge into what
+  // is already stored; a question patched to null or [] is cleared. The screen updates at once and the write follows, queued behind
+  // any save still in flight.
+  savePatientSocialHistory: (patientId, patch) => {
+    if (!patientId) return Promise.resolve(false);
+    const prev = get().patientSocialHistory[patientId] || { answers: {} };
+    const answers = { ...prev.answers };
+    for (const [id, value] of Object.entries(patch.answers || {})) {
+      const empty = value == null || value === '' || (Array.isArray(value) && value.length === 0);
+      if (empty) delete answers[id]; else answers[id] = value;
+    }
+    const next = { ...prev, answers };
+    set(s => ({ patientSocialHistory: { ...s.patientSocialHistory, [patientId]: next } }));
+
+    const key = String(patientId);
+    const run = async () => {
+      const { error } = await supabase.from('patient_social_history').upsert({
+        patient_id: key,
+        answers: next.answers,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'patient_id' });
+      if (error) {
+        console.warn('savePatientSocialHistory:', error.message);
+        get().showToast?.('Could not save social history');
+        return false;
+      }
+      return true;
+    };
+    const chained = (socialHistorySaveChains.get(key) || Promise.resolve()).then(run, run);
+    socialHistorySaveChains.set(key, chained);
+    return chained;
+  },
+
   // History entries are written one kind at a time (Surgical History today);
   // each write refetches, so every card on the tab stays in step.
   addPatientHistoryEntry: async (patientId, kind, values) => {
@@ -11556,6 +11608,38 @@ export const useAppStore = create((set, get) => ({
   clearQueueTabDot: () => set({ queueTabDot: false }),
 
   // ─── Analytics Data Layer ───
+  // ── Employer Impact Report (Analytics → Overview) ──
+  // Filter options come from the data itself; the rollup is computed in SQL
+  // (employer_impact_rollup) and cached per filter set, so going back to a
+  // combination already seen doesn't refetch.
+  employerImpactFilters: null,       // { employers, patientLocations, visitLocations, firstMonth, lastMonth }
+  employerImpactFiltersLoaded: false,
+  employerImpactRollups: {},         // { [filterKey]: rows[] }
+  fetchEmployerImpactFilters: async () => {
+    const { data, error } = await supabase.rpc('employer_impact_filters');
+    if (error) console.warn('fetchEmployerImpactFilters:', error.message);
+    set({ employerImpactFilters: error ? null : data, employerImpactFiltersLoaded: true });
+  },
+  fetchEmployerImpact: async ({ from, to, employer = null, scope = 'patient', location = null }) => {
+    const key = [from, to, employer || '*', scope, location || '*'].join('|');
+    const cached = get().employerImpactRollups[key];
+    if (cached) return cached;
+    const { data, error } = await supabase.rpc('employer_impact_rollup', {
+      p_from: `${from}-01`,
+      p_to: `${to}-01`,
+      p_employer: employer,
+      p_location_scope: scope,
+      p_location: location,
+    });
+    if (error) {
+      console.warn('fetchEmployerImpact:', error.message);
+      return [];
+    }
+    const rows = Array.isArray(data) ? data : [];
+    set(s => ({ employerImpactRollups: { ...s.employerImpactRollups, [key]: rows } }));
+    return rows;
+  },
+
   analyticsCache: {},
   analyticsLoading: {},
   analyticsError: {},
