@@ -23,6 +23,7 @@ import { ROLE_LABEL, staffById } from '../assignment/astranaStaff';
 import { POS_BY_VT, PROVIDER_POOL_BY_VT, VISIT_TYPES } from '../reference/visitTypes';
 import { DOC_TYPES } from '../data/chartDocs';
 import { isAISuggested, CLOSED_ICD_STATUSES, ROLE_KEY_BY_USER } from './DiagPanel.utils';
+import { currentAuthor } from './commentAuthor';
 
 export function useDiagPanel() {
   const memberId = useAppStore(s => s.diagPanelMemberId);
@@ -829,10 +830,12 @@ export function useDiagPanel() {
         const destLabel = destinationRole === 'coder' ? 'Coder'
           : destinationRole === 'support' ? 'Support Team'
           : destinationRole;
-        const requesterLabel = ROLE_LABEL[actingRole] || (hccUserRole || 'You');
+        const requesterLabel = ROLE_LABEL[actingRole] || (hccUserRole || 'Coder');
+        const { author, authorId } = currentAuthor(useAppStore.getState().currentUserProfile);
         addHccDiagComment({
           id: `c${Date.now()}`,
-          author: 'You',
+          author: author || 'Unknown author',
+          authorId,
           role: requesterLabel,
           date, time, edited: false,
           body: `For ${destLabel}: ${note}`,
@@ -872,9 +875,11 @@ export function useDiagPanel() {
           note: note || '',
         });
       }
+      const { author, authorId } = currentAuthor(useAppStore.getState().currentUserProfile);
       addHccDiagComment?.({
         id: `c${Date.now()}`,
-        author: 'You', role: userRole, date, time, edited: false,
+        author: author || 'Unknown author', authorId,
+        role: userRole, date, time, edited: false,
         body: `Rejected: ${combined}`,
         icd: null, dos: currentDos || null,
       });

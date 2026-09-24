@@ -32,6 +32,7 @@ import { OutreachTab as PatientOutreachTab } from '../../patient/left-panel/tabs
 import { DocEvidenceViewer } from './DocEvidenceViewer';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { CommentComposer } from '../../../components/CommentComposer/CommentComposer';
+import { commentAuthorLabel, currentAuthor, isCommentMine, mentionProfileIds } from './commentAuthor';
 import { FailReasonInline, EditDocInline } from '../ChartDetailDrawerParts';
 import {
   HistoryTimelineEntry,
@@ -784,8 +785,12 @@ export function CommentsTab({ filters, member: memberProp = null, memberOverride
     deleteHccDiagComment(id);
   };
 
-  const addComment = (body) => {
+  const addComment = (body, mentions) => {
     if (!body) return;
+    // Real identity, never the viewer-relative 'You' (that is computed at
+    // render time). The DB trigger re-stamps both from the session anyway.
+    const me = useAppStore.getState().currentUserProfile;
+    const { author, authorId } = currentAuthor(me);
     const now = new Date();
     const pad = (n) => String(n).padStart(2, '0');
     const date = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear()}`;
@@ -808,17 +813,21 @@ export function CommentsTab({ filters, member: memberProp = null, memberOverride
     const icd = activityIcd || null;
     const row = {
       id: `c${Date.now()}`,
-      author: 'You',
+      author: author || 'Unknown author',
+      authorId,
       role: userRole,
       date, time, body, icd, dos,
       memberId: patient?.id || null,
       patientName: patient?.name || null,
+      // Only real profile ids; the DB trigger turns these into notifications
+      // for the mentioned people (not for the commenter).
+      mentionIds: mentionProfileIds(mentions),
     };
     setItems(prev => [row, ...prev]);
     addHccDiagComment(row);
     addActivityEntry({
       _memberId: patient?.id,
-      t: 'comment', by: 'You', role: userRole,
+      t: 'comment', by: row.author, role: userRole,
       icds: activityIcd ? [activityIcd] : undefined,
       headline: activityIcd ? `Added a Comment for ${activityIcd}` : 'Added a Comment',
       details: [{ note: body }],
@@ -826,7 +835,7 @@ export function CommentsTab({ filters, member: memberProp = null, memberOverride
     logHccActivity?.({
       eventName: 'icd.comment_added',
       scope:     { patientId: patient?.id || diagPanelMemberId, icd: activityIcd || null, source: 'manual' },
-      payload:   { actor: 'You', role: userRole, body, patientName: patient?.name },
+      payload:   { actor: row.author, role: userRole, body, patientName: patient?.name },
     });
   };
 
@@ -976,7 +985,9 @@ function renderCommentBody(body, users) {
 }
 
 function CommentEntry({ item, isFirst, isLast, onEdit, onDelete, mentionUsers }) {
-  const isMine = item.author === 'You';
+  const me = useAppStore(s => s.currentUserProfile);
+  const isMine = isCommentMine(item, me);
+  const authorLabel = commentAuthorLabel(item, me);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.body || '');
   useEffect(() => { setDraft(item.body || ''); }, [item.body]);
@@ -1010,7 +1021,7 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete, mentionUsers })
       <div className={[styles.tlBody, isFirst ? styles.tlBodyFirst : '', isLast ? styles.tlBodyLast : ''].join(' ')}>
         <div className={styles.commentMetaRow}>
           <div className={styles.tlMeta}>
-            {item.date} • {item.time} • {item.author} ({role})
+            {item.date} • {item.time} • {authorLabel} ({role})
             {item.icd && <> • ICD {item.icd}</>}
             {item.edited && <> • <span className={styles.commentEditedBadge}>Edited</span></>}
           </div>
@@ -1865,7 +1876,7 @@ function DocUploaderFileRow({ file, phase, progress, onRefresh, onRemove }) {
       </div>
       {phase === 'uploading' && (
         <div className={styles.docFileProgressTrack}>
-          <div className={styles.docFileProgressBar} style={{ width: `${progress}%` }} />
+          <div className={styles.docFileProgressBar} style={{ transform: `scaleX(${progress / 100})` }} />
         </div>
       )}
     </div>

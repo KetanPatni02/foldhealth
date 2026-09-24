@@ -494,11 +494,21 @@ function persistHccDiagComment(row) {
     status_from: row.statusFrom ?? null,
     status_to:   row.statusTo   ?? null,
   };
+  // Authorship + mentions — hcc_diag_comment_author_migration.sql. The DB
+  // trigger re-stamps author/author_id from the session; mention_ids drives
+  // the recipient notifications. Only real profile ids reach the uuid[].
+  const attribution = {
+    author_id:   row.authorId ?? null,
+    mention_ids: row.mentionIds?.length ? row.mentionIds : null,
+  };
   const insert = (payload) => supabase.from('hcc_diag_comments').insert(payload);
-  insert({ ...base, hcc_member_id: row.memberId ?? null })
+  insert({ ...base, ...attribution, hcc_member_id: row.memberId ?? null })
     .then(({ error }) => {
-      // Until hcc_diag_comment_member_migration.sql runs, the patient column
-      // doesn't exist; retry without it so the comment itself isn't lost.
+      // On a database that hasn't run a later migration yet, retry without the
+      // missing columns so the comment itself isn't lost.
+      if (error && /author_id|mention_ids/.test(error.message || '')) {
+        return insert({ ...base, hcc_member_id: row.memberId ?? null });
+      }
       if (error && /hcc_member_id/.test(error.message || '')) return insert(base);
       return { error };
     })

@@ -59,6 +59,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   const setActivePage = useAppStore(s => s.setActivePage);
   const setActiveSubnavList = useAppStore(s => s.setActiveSubnavList);
   const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
+  const openDiagPanelFromNotification = useAppStore(s => s.openDiagPanelFromNotification);
   const openAppointmentFromNotification = useAppStore(s => s.openAppointmentFromNotification);
   const setPendingChatUserEmail = useAppStore(s => s.setPendingChatUserEmail);
   const openPreferencesFromNotification = useAppStore(s => s.openPreferencesFromNotification);
@@ -94,6 +95,8 @@ export function NotificationsPopover({ onClose, anchorRef }) {
       openHccSftpReview?.();
     } else if (n.action === 'openTask' && n.taskId != null) {
       openTaskFromNotification?.(n.taskId);
+    } else if (n.action === 'openDiagPanel' && n.hccMemberId) {
+      openDiagPanelFromNotification?.(n.hccMemberId);
     } else if (n.action === 'openAppointment' && n.appointmentId != null) {
       openAppointmentFromNotification?.(n.appointmentId);
     } else if (n.action === 'openChat' && n.chatUserEmail) {
