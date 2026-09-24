@@ -776,9 +776,12 @@ export function CommentsTab({ filters, member: memberProp = null, memberOverride
     const recordMember = memberProp || memberOverride || hccMembers.find(m => m.id === scopeMemberId);
     return recordParticipants(recordMember, dosAssignments, platformUsersForMentions || []);
   }, [memberProp, memberOverride, hccMembers, scopeMemberId, dosAssignments, platformUsersForMentions]);
-  const editComment = (id, body) => {
-    setItems(prev => prev.map(c => c.id === id ? { ...c, body, edited: true } : c));
-    updateHccDiagComment(id, body);
+  const editComment = (id, body, mentions) => {
+    // The edited body's chips are the comment's full mention set; the DB
+    // trigger notifies only people who weren't mentioned before.
+    const mentionIds = mentionProfileIds(mentions);
+    setItems(prev => prev.map(c => c.id === id ? { ...c, body, mentionIds, edited: true } : c));
+    updateHccDiagComment(id, body, mentionIds);
   };
   const removeComment = (id) => {
     setItems(prev => prev.filter(c => c.id !== id));
@@ -1068,9 +1071,9 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete, mentionUsers })
               initialValue={item.body || ''}
               submitLabel="Save"
               cancelLabel="Cancel"
-              onSubmit={(text) => {
+              onSubmit={(text, mentions) => {
                 setDraft(text);
-                onEdit?.(item.id, text);
+                onEdit?.(item.id, text, mentions);
                 setEditing(false);
               }}
               onCancel={() => { setDraft(item.body || ''); setEditing(false); }}

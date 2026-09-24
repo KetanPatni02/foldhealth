@@ -56,6 +56,18 @@ Fixed in `hcc_activity_log_stamp_actor.sql`. The insert policy now requires
 `actor_id = auth.uid()`, and a BEFORE INSERT trigger stamps it. See that
 file's header for why `actor_name` remains client-supplied.
 
+**`hcc_diag_comments` — writes are author-scoped (deliberate)**
+Reads stay practice-wide (`USING (true) TO authenticated`), so everyone still
+sees every comment. INSERT requires `author_id = auth.uid()` (stamped by a
+BEFORE INSERT trigger), and UPDATE / DELETE are limited to the comment's
+author, because a comment is personal authorship rather than shared worklist
+state. A BEFORE UPDATE trigger pins `author` / `author_id`. Legacy rows with
+no `author_id` are read-only for everyone. See
+`hcc_diag_comment_author_migration.sql` and
+`hcc_diag_comment_rls_and_edit_mentions_migration.sql`. This is the same
+ownership pattern as `hcc_activity_log`; it does not generalize to worklist
+tables, which have no author.
+
 **`*_security_definer_function_executable` — 5 of 6**
 Fixed in `lock_down_security_definer_functions.sql`. `enforce_profile_authz_fields`,
 `sync_profile_last_sign_in` and `is_profile_admin` no longer have EXECUTE

@@ -519,14 +519,19 @@ function persistHccDiagComment(row) {
 
 function persistHccDiagCommentUpdate(row) {
   if (!row?.id) return;
+  const patch = { body: row.body, edited: true };
+  // Replace the mention set only when the editor supplied one; an update of
+  // mention_ids is what lets the DB trigger notify newly added people.
+  if (Array.isArray(row.mentionIds)) patch.mention_ids = row.mentionIds.length ? row.mentionIds : null;
   supabase
     .from('hcc_diag_comments')
-    .update({ body: row.body, edited: true })
+    .update(patch)
     .eq('id', row.id)
     .select('id')
     .then(({ data, error }) => {
       if (error) return reportPersistFailure(`persistHccDiagCommentUpdate(${row.id})`, error);
-      if (!data || data.length === 0) reportPersistFailure(`persistHccDiagCommentUpdate(${row.id})`, { message: 'affected 0 rows' });
+      // RLS scopes updates to the author, so 0 rows means "not yours" (or gone).
+      if (!data || data.length === 0) reportPersistFailure(`persistHccDiagCommentUpdate(${row.id})`, { message: 'affected 0 rows (not the author, or comment removed)' });
     });
 }
 
@@ -536,8 +541,12 @@ function persistHccDiagCommentDelete(id) {
     .from('hcc_diag_comments')
     .delete()
     .eq('id', id)
-    .then(({ error }) => {
-      if (error) reportPersistFailure(`persistHccDiagCommentDelete(${id})`, error);
+    .select('id')
+    .then(({ data, error }) => {
+      if (error) return reportPersistFailure(`persistHccDiagCommentDelete(${id})`, error);
+      // An RLS-blocked delete is not an error, just 0 rows; surface it so the
+      // optimistic removal doesn't silently reappear on reload.
+      if (!data || data.length === 0) reportPersistFailure(`persistHccDiagCommentDelete(${id})`, { message: 'affected 0 rows (not the author, or already removed)' });
     });
 }
 
