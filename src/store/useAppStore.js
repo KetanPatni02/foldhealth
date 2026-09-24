@@ -9718,17 +9718,20 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Edit an existing comment's body. `edited: true` stamps the row so the
-  // UI can render the "Edited" badge. Only the author's UI exposes this.
-  updateHccDiagComment: (id, body) => {
+  // UI can render the "Edited" badge. Only the author can edit — enforced by
+  // RLS (hcc_diag_comment_rls_and_edit_mentions_migration.sql), not just the
+  // UI. `mentionIds` is the edited body's full mention set; the DB trigger
+  // notifies only the newly added ones. Omit it to leave mentions untouched.
+  updateHccDiagComment: (id, body, mentionIds) => {
     if (!id) return;
     const before = get().hccDiagComments?.find(c => c.id === id);
     set(s => ({
       hccDiagComments: (s.hccDiagComments || []).map(c =>
-        c.id === id ? { ...c, body, edited: true } : c),
+        c.id === id ? { ...c, body, edited: true, ...(mentionIds ? { mentionIds } : {}) } : c),
     }));
-    persistHccDiagCommentUpdate({ id, body });
+    persistHccDiagCommentUpdate({ id, body, mentionIds });
     useAppStore.getState().addActivityEntry({
-      t: 'comment', by: before?.author || 'You', role: before?.role || (useAppStore.getState().hccUserRole || 'Coder'),
+      t: 'comment', by: before?.author || 'Unknown author', role: before?.role || (useAppStore.getState().hccUserRole || 'Coder'),
       icds: before?.icd ? [before.icd] : undefined,
       headline: before?.icd ? `Edited a Comment on ${before.icd}` : 'Edited a Comment',
       details: body ? [{ note: body }] : undefined,
