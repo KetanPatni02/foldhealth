@@ -48,6 +48,8 @@ const VIEW_MAP = {
 
 // Views that render their own title and filters in place of the shared header.
 const SELF_HEADED_VIEWS = new Set(['employer']);
+// Views laid out as white report pages rather than cards on the grey canvas.
+const WHITE_CANVAS_VIEWS = new Set(['employer']);
 
 const PERIODS = [
   { value: '2026-03', label: 'Mar 2026' },
@@ -217,7 +219,7 @@ export function AnalyticsLayout() {
         />
 
         {/* ── Canvas ── */}
-        <div className={s.canvas} ref={canvasRef}>
+        <div className={[s.canvas, WHITE_CANVAS_VIEWS.has(view) ? s.canvasWhite : ''].filter(Boolean).join(' ')} ref={canvasRef}>
           {/* Recency bar */}
           <div className={s.recency}>
             <span className={`${s.recDot} ${s.ok}`} />
