@@ -154,7 +154,11 @@
   height: 100%;
   background: var(--status-success);
   border-radius: 2px;
-  transition: width 0.12s linear;
+  width: 100%;
+  /* Fill grows via transform, not width, so progress
+     ticks don't re-layout the row. JSX sets scaleX(pct/100). */
+  transform-origin: left center;
+  transition: transform 0.12s linear;
 }
 
 /* 'Ready' form — Category / Status dropdowns + Caption input. */

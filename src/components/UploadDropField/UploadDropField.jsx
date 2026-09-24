@@ -78,7 +78,7 @@ export function UploadDropField({
           </button>
         </div>
         <div className={styles.progressTrack}>
-          <div className={styles.progressFill} style={{ width: `${proc.progress}%` }} />
+          <div className={styles.progressFill} style={{ transform: `scaleX(${proc.progress / 100})` }} />
         </div>
       </div>
     );

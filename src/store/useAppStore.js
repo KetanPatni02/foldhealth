@@ -4038,7 +4038,7 @@ export const useAppStore = create((set, get) => ({
     set({ notificationsLoading: true });
     const { data, error } = await supabase
       .from('notifications')
-      .select('id, type, title, body, action, task_id, read, created_at, actor_name')
+      .select('id, type, title, body, action, task_id, hcc_member_id, read, created_at, actor_name')
       .eq('recipient_id', me.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -4095,6 +4095,8 @@ export const useAppStore = create((set, get) => ({
           onClick: () => {
             if (row.action === 'openTask' && row.taskId != null) {
               get().openTaskFromNotification?.(row.taskId);
+            } else if (row.action === 'openDiagPanel' && row.hccMemberId) {
+              get().openDiagPanelFromNotification?.(row.hccMemberId);
             }
           },
         });
@@ -7985,7 +7987,9 @@ export const useAppStore = create((set, get) => ({
       ]);
       set({
         hccDiagComments: (comments?.data || []).map(r => ({
-          id: r.id, author: r.author, role: r.role, date: r.date, time: r.time,
+          id: r.id, author: r.author, authorId: r.author_id ?? null,
+          mentionIds: r.mention_ids ?? [],
+          role: r.role, date: r.date, time: r.time,
           edited: r.edited, body: r.body,
           // Optional ICD/DOS scope — added later; DB rows seeded before the
           // column existed simply won't have these keys.
@@ -9700,44 +9704,17 @@ export const useAppStore = create((set, get) => ({
     // Timeline entry (Activity tab). The 1500ms dedup on addActivityEntry
     // absorbs UI callers that also log manually so we never double-post.
     useAppStore.getState().addActivityEntry({
-      t: 'comment', by: row.author || 'You', role: row.role || (useAppStore.getState().hccUserRole || 'Coder'),
+      t: 'comment', by: row.author || 'Unknown author', role: row.role || (useAppStore.getState().hccUserRole || 'Coder'),
       icds: row.icd ? [row.icd] : undefined,
       headline: row.icd ? `Added a Comment for ${row.icd}` : 'Added a Comment',
       details: row.body ? [{ note: row.body }] : undefined,
     });
-    // Bell notification: mirror the comment globally so it shows up in
-    // the topbar bell for a reviewer who isn't currently on this patient.
-    // If the comment body @-mentions the current user, elevate to a
-    // dedicated "You were mentioned" entry so the tag stands out in the
-    // bell list.
-    const memberName = row.patientName
-      || useAppStore.getState().hccMembers?.find(m => m.id === row.memberId)?.name
-      || null;
-    const me = useAppStore.getState().currentUserProfile?.name || null;
-    const mentionsMe = !!(me && row.body && new RegExp(
-      `@${me.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`,
-    ).test(row.body));
-    if (mentionsMe) {
-      useAppStore.getState().addNotification?.({
-        type: 'hcc.comment_mention',
-        title: 'You were mentioned in a comment',
-        body: memberName
-          ? `${row.author || 'A teammate'} mentioned you in a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
-          : `${row.author || 'A teammate'} mentioned you in a comment${row.icd ? ` on ${row.icd}` : ''}.`,
-        action: 'openDiagPanel',
-        hccMemberId: row.memberId || null,
-      });
-    } else {
-      useAppStore.getState().addNotification?.({
-        type: 'hcc.comment_added',
-        title: 'New comment',
-        body: memberName
-          ? `${row.author || 'A teammate'} added a comment on ${memberName}${row.icd ? ` for ${row.icd}` : ''}.`
-          : `${row.author || 'A teammate'} added a comment${row.icd ? ` on ${row.icd}` : ''}.`,
-        action: 'openDiagPanel',
-        hccMemberId: row.memberId || null,
-      });
-    }
+    // No client-side bell entry here. This code runs in the COMMENTER's tab,
+    // so an addNotification() only ever reached the author (it used to post
+    // "New comment" about their own comment, and "mentioned" only when they
+    // mentioned themselves). Mentions are delivered to the mentioned people
+    // by the hcc_diag_comments_emit_notifications trigger, which writes
+    // persisted rows the recipients' bells receive over realtime.
   },
 
   // Edit an existing comment's body. `edited: true` stamps the row so the
@@ -11227,6 +11204,15 @@ export const useAppStore = create((set, get) => ({
     diagClaimDos: opts.claimDos ?? null,
     diagOpenDocId: opts.openDocId ?? null,
   }),
+  // Bell / OS-banner entry point for a Diagnosis Gap comment mention. The bell
+  // can be clicked from any page, where the HCC slice may not be loaded yet —
+  // DiagPanel resolves its member from hccMembers, so load it first, then land
+  // on the Comments tab.
+  openDiagPanelFromNotification: async (memberId) => {
+    if (!memberId) return;
+    if ((get().hccMembers?.length || 0) === 0) await get().fetchHccMembers?.();
+    get().openDiagPanel(memberId, { leftPanel: 'comments' });
+  },
   closeDiagPanel: () => set({ diagPanelOpen: false, diagPanelMemberId: null, diagLeftPanel: null, diagActivityIcd: null, diagClaimDos: null, diagOpenDocId: null }),
   setDiagActiveTab: (tab) => set({ diagActiveTab: tab }),
   setDiagDosFilter: (dos) => set({ diagDosFilter: dos }),
