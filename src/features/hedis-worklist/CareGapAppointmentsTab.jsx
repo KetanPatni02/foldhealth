@@ -7,12 +7,22 @@ import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Badge } from '../../components/Badge/Badge';
+import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
+import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { initialsOf } from './CareGapDetailDrawer.utils';
+import { displayAppointmentStatus } from '../../components/ScheduleDrawer/scheduleDrawerConstants';
 import styles from './CareGapAppointmentsTab.module.css';
 
 const VIEW_OPTIONS = ['Upcoming', 'Past', 'All'];
-const EMPTY_FILTERS = { type: [], assignee: [] };
+const EMPTY_FILTERS = { type: [], status: [], assignee: [] };
+// Appointment Details statuses → Badge tone.
+const STATUS_TONE = {
+  Booked: 'primary',
+  'Checked In': 'success',
+  'No Show': 'warning',
+  Cancelled: 'error',
+};
 
 // Appointments store dates as YYYY-MM-DD or MM/DD/YYYY depending on the
 // writer; normalize to a local Date so Upcoming / Past can compare.
@@ -59,7 +69,7 @@ function downloadIcs(row) {
     `DTSTART:${icsStamp(start)}`,
     `DTEND:${icsStamp(end)}`,
     `SUMMARY:${icsText(row.title)}`,
-    row.subtitle ? `DESCRIPTION:${icsText(row.subtitle)}` : null,
+    (row.reason || row.subtitle) ? `DESCRIPTION:${icsText(row.reason || row.subtitle)}` : null,
     a.location ? `LOCATION:${icsText(a.location)}` : null,
     'END:VEVENT', 'END:VCALENDAR',
   ].filter(Boolean).join('\r\n');
@@ -102,24 +112,31 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
   const [search, setSearch] = useState('');
   const [chipsOpen, setChipsOpen] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [selected, setSelected] = useState(() => new Set());
   const [rowMenu, setRowMenu] = useState(null); // { row, rect } | null
-  const anyFilter = filters.type.length > 0 || filters.assignee.length > 0;
+  const anyFilter = filters.type.length > 0 || filters.status.length > 0 || filters.assignee.length > 0;
 
   const rows = useMemo(() => appointments.map(a => ({
     id: a.id,
     title: a.appointment_type_name || 'Appointment',
-    subtitle: a.reason_for_visit || a.mode || '',
+    subtitle: a.mode || '',
+    reason: (a.reason_for_visit || '').trim(),
     // Reminders share this table once they are stored; today every row is
     // an appointment.
     type: a.kind === 'reminder' ? 'Reminder' : 'Appointment',
     recurring: !!a.recurring,
     date: parseDate(apptDateValue(a)),
+    dateTs: parseDate(apptDateValue(a))?.getTime() ?? null,
     time: apptTime(a),
     assignee: a.primary_user || '',
+    // Same labels as the Appointment Details status dropdown.
+    status: displayAppointmentStatus(a.status),
     raw: a,
   })), [appointments]);
 
+  const statusOptions = useMemo(
+    () => [...new Set(rows.map(r => r.status).filter(Boolean))].sort((x, y) => x.localeCompare(y)),
+    [rows],
+  );
   const assigneeOptions = useMemo(
     () => [...new Set(rows.map(r => r.assignee).filter(Boolean))].sort((x, y) => x.localeCompare(y)),
     [rows],
@@ -134,6 +151,7 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
         if (view === 'Upcoming' && r.date && r.date < today) return false;
         if (view === 'Past' && (!r.date || r.date >= today)) return false;
         if (filters.type.length && !filters.type.includes(r.type)) return false;
+        if (filters.status.length && !filters.status.includes(r.status)) return false;
         if (filters.assignee.length && !filters.assignee.includes(r.assignee)) return false;
         if (q && !`${r.title} ${r.subtitle} ${r.assignee}`.toLowerCase().includes(q)) return false;
         return true;
@@ -144,15 +162,10 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
         return (view === 'Past' ? -1 : 1) * (x.date - y.date);
       });
   }, [rows, view, filters, search]);
+  // Header sort (Date & Time, Status) overrides the default soonest-first
+  // order; nothing is sorted until a header is clicked.
+  const { sorted: sortedRows, sortKey, sortDir, requestSort } = useTableSort(visible);
 
-  const allChecked = visible.length > 0 && visible.every(r => selected.has(r.id));
-  const someChecked = visible.some(r => selected.has(r.id));
-  const toggleAll = () => setSelected(allChecked ? new Set() : new Set(visible.map(r => r.id)));
-  const toggleOne = (id) => setSelected(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
 
   return (
     <div className={styles.wrap}>
@@ -192,6 +205,7 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
       {chipsOpen && (
         <div className={styles.chips}>
           <FilterChip size="S" label="Type" options={['Appointment', 'Reminder']} selected={filters.type} onChange={v => setFilters(f => ({ ...f, type: v }))} />
+          <FilterChip size="S" label="Status" options={statusOptions} selected={filters.status} onChange={v => setFilters(f => ({ ...f, status: v }))} />
           <FilterChip size="S" label="Assignee" options={assigneeOptions} selected={filters.assignee} onChange={v => setFilters(f => ({ ...f, assignee: v }))} searchable />
           {anyFilter && (
             <button type="button" className={styles.clearAll} onClick={() => setFilters(EMPTY_FILTERS)}>
@@ -210,75 +224,99 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
           </p>
         </div>
       ) : (
-        <div className={styles.table}>
-          <div className={[styles.grid, styles.head].join(' ')}>
-            <span className={styles.checkCell}>
-              <Checkbox
-                checked={allChecked ? true : someChecked ? 'indeterminate' : false}
-                onCheckedChange={toggleAll}
-                aria-label="Select all"
-              />
-            </span>
-            <span>Title</span>
-            <span>Type</span>
-            <span>Date &amp; Time</span>
-            <span className={styles.assigneeHead}>Assignee</span>
-            <span />
-          </div>
-          {visible.map(r => (
-            <div key={r.id} className={[styles.grid, styles.row].join(' ')}>
-              <span className={styles.checkCell}>
-                <Checkbox checked={selected.has(r.id)} onCheckedChange={() => toggleOne(r.id)} aria-label={`Select ${r.title}`} />
-              </span>
-              <button
-                type="button"
-                className={styles.titleCell}
-                onClick={() => onOpen?.(r.raw)}
-                aria-label={`Open ${r.title} details`}
-              >
-                <span className={styles.title}>{r.title}</span>
-                {r.subtitle && <span className={styles.subtitle}>{r.subtitle}</span>}
-              </button>
-              <div className={styles.typeCell}>
-                <span>{r.type}</span>
-                {r.recurring && (
-                  <Tooltip label="Recurring">
-                    <span className={styles.recurring}>
-                      <Icon name="solar:repeat-linear" size={12} color="var(--primary-300)" />
-                    </span>
-                  </Tooltip>
-                )}
-              </div>
-              <div className={styles.dateCell}>
-                <span>{fmtDate(r.date) || '—'}</span>
-                {r.time && <span>{r.time}</span>}
-              </div>
-              <div className={styles.assigneeCell}>
-                <AssigneeChange
-                  avatarOnly
-                  unassigned={!r.assignee}
-                  name={r.assignee || undefined}
-                  initials={r.assignee ? initialsOf(r.assignee) : undefined}
-                  ariaLabel={r.assignee || 'Assign'}
-                  users={platformUsers}
-                  pickerTitle={r.assignee ? 'Change assignee' : 'Assign to'}
-                  onSelect={(u) => { if (u?.name && u.name !== r.assignee) onAssigneeChange?.(r.raw, u.name); }}
-                />
-              </div>
-              <div className={styles.actionsCell}>
-                <ActionButton
-                  icon="solar:menu-dots-linear"
-                  size="S"
-                  tooltip="More actions"
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setRowMenu(prev => (prev?.row.id === r.id ? null : { row: r, rect }));
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        <table className={styles.table}>
+          <colgroup>
+            <col />
+            <col className={styles.colType} />
+            <col className={styles.colDate} />
+            <col className={styles.colStatus} />
+            <col className={styles.colAssignee} />
+            <col className={styles.colActions} />
+          </colgroup>
+          <thead>
+            <tr>
+              <HeaderCell label="Title" className={styles.th} />
+              <HeaderCell label="Type" className={styles.th} />
+              <HeaderCell label="Date & Time" sortField="dateTs" sortType="date" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} className={styles.th} />
+              <HeaderCell label="Status" sortField="status" activeKey={sortKey} activeDir={sortDir} onSort={requestSort} className={styles.th} />
+              <HeaderCell label="Assignee" className={styles.th} />
+              <HeaderCell label="" className={styles.th} />
+            </tr>
+          </thead>
+          <tbody>
+            {sortedRows.map(r => (
+              <tr key={r.id} className={styles.row}>
+                <td className={styles.td}>
+                  <div className={styles.titleCell}>
+                    <button
+                      type="button"
+                      className={styles.titleBtn}
+                      onClick={() => onOpen?.(r.raw)}
+                      aria-label={`Open ${r.title} details`}
+                    >
+                      {r.title}
+                    </button>
+                    {(r.subtitle || r.reason) && (
+                      <span className={styles.subtitle}>
+                        {r.subtitle}
+                        {r.subtitle && r.reason && <span className={styles.subtitleDot}> • </span>}
+                        {r.reason && (
+                          <Tooltip label={r.reason} maxWidth={260}>
+                            <span className={styles.reasonLink} tabIndex={0}>Reason</span>
+                          </Tooltip>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className={styles.td}>
+                  <div className={styles.typeCell}>
+                    <span>{r.type}</span>
+                    {r.recurring && (
+                      <Tooltip label="Recurring">
+                        <span className={styles.recurring}>
+                          <Icon name="solar:repeat-linear" size={12} color="var(--primary-300)" />
+                        </span>
+                      </Tooltip>
+                    )}
+                  </div>
+                </td>
+                <td className={styles.td}>
+                  <div className={styles.dateCell}>
+                    <span>{fmtDate(r.date) || '—'}</span>
+                    {r.time && <span>{r.time}</span>}
+                  </div>
+                </td>
+                <td className={styles.td}>
+                  <Badge size="S" tone={STATUS_TONE[r.status] || 'grey'} label={r.status} />
+                </td>
+                <td className={styles.td}>
+                  <AssigneeChange
+                    avatarOnly
+                    unassigned={!r.assignee}
+                    name={r.assignee || undefined}
+                    initials={r.assignee ? initialsOf(r.assignee) : undefined}
+                    ariaLabel={r.assignee || 'Assign'}
+                    users={platformUsers}
+                    pickerTitle={r.assignee ? 'Change assignee' : 'Assign to'}
+                    onSelect={(u) => { if (u?.name && u.name !== r.assignee) onAssigneeChange?.(r.raw, u.name); }}
+                  />
+                </td>
+                <td className={[styles.td, styles.actionsTd].join(' ')}>
+                  <ActionButton
+                    icon="solar:menu-dots-linear"
+                    size="S"
+                    tooltip="More actions"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      setRowMenu(prev => (prev?.row.id === r.id ? null : { row: r, rect }));
+                    }}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
       {rowMenu && (
@@ -309,7 +347,7 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
             key: v,
             label: <span style={{ color: v === view ? 'var(--primary-300)' : undefined }}>{v}</span>,
           }))}
-          onSelect={(key) => { setView(key); setSelected(new Set()); }}
+          onSelect={(key) => setView(key)}
           onClose={() => setViewMenu(null)}
         />
       )}

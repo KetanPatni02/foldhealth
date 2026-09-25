@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import { trackFunnel } from '../../lib/tracking';
-import { FALLBACK_APPOINTMENT_TYPES, LOCATION_OPTIONS } from './scheduleDrawerConstants';
+import { FALLBACK_APPOINTMENT_TYPES, LOCATION_OPTIONS, displayAppointmentStatus } from './scheduleDrawerConstants';
 
 export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, initialSelectedPatient, source }) {
   const isViewMode = !!existingAppointment;
@@ -72,7 +72,7 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
   const staffInstructionRef = useRef('');
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const rawStatus = existingAppointment?.status;
-  const [apptStatus, setApptStatus] = useState(rawStatus === 'Scheduled' ? 'Booked' : (rawStatus || 'Booked'));
+  const [apptStatus, setApptStatus] = useState(displayAppointmentStatus(rawStatus));
   const [editingInstruction, setEditingInstruction] = useState(false);
   const [instructionDraft, setInstructionDraft] = useState(existingAppointment?.member_instruction || '');
   const [showMoreMenu, setShowMoreMenu] = useState(false);

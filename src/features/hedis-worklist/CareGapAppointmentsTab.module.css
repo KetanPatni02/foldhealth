@@ -10,7 +10,6 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  min-height: 28px;
 }
 .viewBy {
   display: inline-flex;
@@ -55,52 +54,60 @@
 }
 .clearAll:hover { color: var(--neutral-400); }
 
-.table { display: flex; flex-direction: column; }
-.grid {
-  display: grid;
-  grid-template-columns: 28px 1fr 130px 100px 64px 28px;
-  align-items: center;
-  column-gap: var(--space-2);
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
 }
-.head {
-  padding: var(--space-1) 0;
+.colType { width: 110px; }
+.colDate { width: 108px; }
+.colStatus { width: 96px; }
+.colAssignee { width: 72px; }
+.colActions { width: 36px; }
+
+/* HeaderCell carries the header look (32px, sort affordance); only the
+   side inset changes to the table's 6px (no 6px token: 4px * 1.5). */
+.table .th {
+  padding: 0 calc(var(--space-1) * 1.5);
   border-bottom: 0.5px solid var(--neutral-150);
 }
-.head span {
-  font-size: var(--font-base);
-  color: var(--neutral-300);
+.td {
+  padding: var(--space-2) calc(var(--space-1) * 1.5);
+  vertical-align: middle;
 }
-.assigneeHead { justify-self: end; }
-.row {
-  padding: var(--space-2) 0;
-  border-bottom: 0.5px solid var(--neutral-100);
-}
+.row { border-bottom: 0.5px solid var(--neutral-100); }
 .row:last-child { border-bottom: none; }
 .row:hover { background: var(--neutral-25); }
-
-.checkCell {
-  display: inline-flex;
-  align-items: center;
-}
+.actionsTd { text-align: right; }
 
 .titleCell {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   min-width: 0;
+}
+/* Title opens Appointment Details. */
+.titleBtn {
+  max-width: 100%;
   padding: 0;
   background: none;
   border: none;
   text-align: left;
   cursor: pointer;
-}
-.titleCell:hover .title { color: var(--primary-300); }
-.title {
   font-size: var(--font-base);
   color: var(--neutral-500);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.titleBtn:hover { color: var(--primary-300); }
+.subtitleDot { color: var(--neutral-200); }
+/* Hover or focus shows the full reason for visit in a tooltip. */
+.reasonLink {
+  color: var(--primary-300);
+  cursor: default;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
 }
 .subtitle {
   font-size: var(--font-base);
@@ -135,14 +142,6 @@
   color: var(--neutral-300);
 }
 
-.assigneeCell {
-  display: inline-flex;
-  justify-content: flex-end;
-}
-.actionsCell {
-  display: inline-flex;
-  justify-content: flex-end;
-}
 
 .empty {
   display: flex;
