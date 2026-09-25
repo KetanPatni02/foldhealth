@@ -19,6 +19,9 @@
 /* Every widget row is one height (12 + 19px switch + 12), so a row with
    the no-data line fits the same box. */
 .widgetRow.widgetRow { height: 43px; padding-top: 0; padding-bottom: 0; box-sizing: border-box; }
+/* A switched-on widget with nothing to show: light red row. The name keeps
+   its neutral-400; only the no-data line is error-dark. */
+.rowNoData.rowNoData { background: var(--status-error-light); }
 .noData { font-size: var(--font-sm); line-height: var(--leading-tight); color: var(--status-error-dark); }
 
 /* Section header: title left, switch right; the card styles come from
@@ -108,6 +111,10 @@
 .gripIndent { padding-left: var(--space-3); }
 
 /* Report Settings has no grip, so no head indent; and it is white. */
+/* Wraps a section card's contents to note which section an edit is in;
+   it takes no box of its own, so the card's layout is unchanged. */
+.focusScope { display: contents; }
+
 /* Doubled selectors: the shared card styles load after this file. */
 .settingsCard.settingsCard { background: var(--neutral-0); }
 .settingsHead.settingsHead { padding-left: 0; padding-right: 0; }

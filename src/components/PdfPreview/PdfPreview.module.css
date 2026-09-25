@@ -5,7 +5,8 @@
 .frame {
   position: absolute; inset: 0; width: 100%; height: 100%;
   border: none; background: var(--neutral-0);
-  opacity: 1; transition: opacity var(--duration-base) var(--ease-out);
+  /* Matches CROSSFADE_MS in PdfPreview.jsx. */
+  opacity: 1; transition: opacity var(--duration-slow) var(--ease-out);
 }
 .frameLayer { z-index: 1; }
 .frameHidden { opacity: 0; }
@@ -15,6 +16,7 @@
   display: flex; align-items: center; justify-content: center;
   background: var(--neutral-0); pointer-events: none;
 }
+.loaderLayer { position: absolute; inset: 0; z-index: 2; display: flex; }
 .spinner {
   width: 20px; height: 20px; border-radius: 50%;
   border: 2px solid var(--neutral-100); border-top-color: var(--primary-300);

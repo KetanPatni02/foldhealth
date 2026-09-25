@@ -337,6 +337,25 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
     if (inserting > remaining) e.preventDefault();
   };
 
+  // Which formatting applies at the caret / selection, so the toolbar can
+  // show those buttons as on. Read from the browser's editing state.
+  const [activeFormats, setActiveFormats] = useState(() => new Set());
+  const refreshFormats = useCallback(() => {
+    const el = editorRef.current;
+    const sel = typeof window !== 'undefined' ? window.getSelection() : null;
+    if (!el || !sel || !sel.anchorNode || !el.contains(sel.anchorNode)) return;
+    const next = new Set();
+    RICH_TOOLBAR.forEach(({ cmd }) => {
+      try { if (document.queryCommandState(cmd)) next.add(cmd); } catch { /* unsupported */ }
+    });
+    setActiveFormats(prev => (prev.size === next.size && [...next].every(c => prev.has(c)) ? prev : next));
+  }, []);
+  useEffect(() => {
+    if (!richText) return undefined;
+    document.addEventListener('selectionchange', refreshFormats);
+    return () => document.removeEventListener('selectionchange', refreshFormats);
+  }, [richText, refreshFormats]);
+
   const runFormat = (cmd) => {
     editorRef.current?.focus();
     // execCommand is the pragmatic path here — a full ProseMirror stack
@@ -344,6 +363,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
     // still supports the four toggles the Figma toolbar shows.
     document.execCommand(cmd, false, null);
     handleRichInput();
+    refreshFormats();
   };
 
   const wrapClass = [
@@ -478,6 +498,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
                   onClick={() => runFormat(btn.cmd)}
                   disabled={disabled}
                   showDivider={i > 0}
+                  active={activeFormats.has(btn.cmd)}
                 />
               ))}
               {moreActions && moreActions.map((a, i) => (
@@ -590,7 +611,7 @@ function MentionMenu({ anchor, matches, activeIdx, onPick }) {
   );
 }
 
-function ToolbarButton({ icon, label, onClick, disabled, showDivider, tone }) {
+function ToolbarButton({ icon, label, onClick, disabled, showDivider, tone, active = false }) {
   return (
     <>
       {showDivider && <span className={styles.enhToolbarDivider} aria-hidden="true" />}
@@ -603,6 +624,8 @@ function ToolbarButton({ icon, label, onClick, disabled, showDivider, tone }) {
         title={label}
         aria-label={label}
         data-tone={tone || undefined}
+        data-active={active || undefined}
+        aria-pressed={active}
       >
         {typeof icon === 'string'
           ? <Icon name={icon} size={16} color="currentColor" />

@@ -178,6 +178,11 @@
   overflow-y: auto;
   box-sizing: border-box;
 }
+/* The app's base styles strip list markers; bring them back in the editor
+   so the Bullet list button visibly makes a list. */
+.enhEditor ul { list-style: disc; padding-left: var(--space-5); margin: var(--space-1) 0; }
+.enhEditor ol { list-style: decimal; padding-left: var(--space-5); margin: var(--space-1) 0; }
+.enhEditor li { margin: 0; }
 .enhEditor[data-empty='true']::before {
   content: attr(data-placeholder);
   color: var(--neutral-200);
@@ -243,6 +248,12 @@
 .enhToolbarBtn:hover:not(:disabled) {
   background: var(--neutral-50);
   color: var(--neutral-400);
+}
+/* Formatting that applies at the caret shows as on. */
+.enhToolbarBtn[data-active='true'],
+.enhToolbarBtn[data-active='true']:hover:not(:disabled) {
+  background: var(--primary-100);
+  color: var(--primary-300);
 }
 .enhToolbarBtn:focus-visible {
   outline: 2px solid var(--primary-200);
