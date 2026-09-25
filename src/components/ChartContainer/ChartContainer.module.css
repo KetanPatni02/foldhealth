@@ -1,0 +1,51 @@
+/* ChartContainer. Figma Fold Pixel 1.0 567:45570. */
+
+.container {
+  display: flex; flex-direction: column; min-width: 0;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 12px;
+  box-shadow: var(--shadow-chart);
+  /* No overflow clipping: action tooltips render above the card edge. */
+}
+
+/* ── Header: 20px all round, title block + action group ── */
+.header { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-5); }
+.headText { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-width: 0; }
+.titleRow { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.title {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--font-base); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-400);
+}
+.info { display: inline-flex; flex-shrink: 0; cursor: help; }
+.subtitle { font-size: var(--font-base); line-height: var(--leading-tight); color: var(--placeholder-text); }
+
+/* Bordered group; ActionButton's own 4px padding makes the Figma
+   12px / 8px inset and 16px icon spacing. */
+.actions {
+  display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 0.5px solid var(--neutral-100); border-radius: 8px;
+}
+.menuAnchor { display: inline-flex; }
+
+/* ── Body: 20px sides and bottom, flush under the header ── */
+.body {
+  display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0;
+  padding: 0 var(--space-5) var(--space-5);
+}
+.empty { display: flex; flex: 1; align-items: center; justify-content: center; }
+
+/* A fixed card or body keeps a row of charts level. On narrow screens, where side
+   panels stack above their chart, it becomes a minimum instead. */
+.fixed { height: var(--chart-body-height); }
+.fixedCard { height: var(--chart-card-height); }
+@media (max-width: 720px) {
+  .fixed { height: auto; min-height: var(--chart-body-height); }
+  .fixedCard { height: auto; min-height: var(--chart-card-height); }
+}
+
+@media print {
+  .actions { display: none; }
+  .container { break-inside: avoid; box-shadow: none; }
+}

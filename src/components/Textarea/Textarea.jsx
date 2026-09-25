@@ -239,9 +239,12 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
     }
   }, [richText, isControlled, value]);
 
+  // Count the value on screen: the prop when controlled (local `text` is
+  // only kept for uncontrolled use, so it would stay at its first value).
+  const current = isControlled ? (value ?? '') : text;
   const plainLen = richText
-    ? (editorRef.current?.innerText?.length ?? plainTextLen(text))
-    : text.length;
+    ? (editorRef.current?.innerText?.length ?? plainTextLen(current))
+    : current.length;
 
   const handleTextareaChange = (e) => {
     if (!isControlled) setText(e.target.value);
@@ -273,7 +276,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
     // Enforce maxLength on the serialized plain-text length so the counter
     // and the cap agree (an <b>bold</b> tag doesn't cost characters).
     if (maxLength && plain.length > maxLength) {
-      el.innerHTML = sanitizeRichText(text);
+      el.innerHTML = sanitizeRichText(current);
       return;
     }
     if (!isControlled) setText(html);

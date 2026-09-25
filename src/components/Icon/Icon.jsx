@@ -36,6 +36,7 @@ import { SocialHistoryIcon } from './SocialHistoryIcon';
 import { TobaccoIcon } from './TobaccoIcon';
 import { SdohIcon } from './SdohIcon';
 import { RatingIcon } from './RatingIcon';
+import { DragHandleIcon } from './DragHandleIcon';
 import { DownChevronIcon } from './DownChevronIcon';
 
 const DOWN_CHEVRON_NAMES = new Set([
@@ -90,6 +91,7 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:tobacco') return <TobaccoIcon size={size} color={color} />;
   if (name === 'custom:sdoh') return <SdohIcon size={size} color={color} />;
   if (name === 'custom:rating') return <RatingIcon size={size} color={color} />;
+  if (name === 'custom:drag-handle') return <DragHandleIcon size={size} color={color} />;
   if (name === 'custom:sms') return <SmsIcon size={size} color={color} />;
   if (name === 'custom:expand-drawer') return <ExpandDrawerIcon size={size} />;
   if (name === 'custom:call-pcp') return <CallPcpIcon size={size} color={color} />;

@@ -1,0 +1,58 @@
+/* Print drawer for the Employer Impact Report; mirrors the care plan's
+   Preview & Share drawer. */
+
+.headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+
+.previewPane { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--neutral-0); }
+
+.editorScroll { flex: 1; min-height: 0; overflow-y: auto; }
+.body { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-4); }
+
+
+/* "Include widgets with no data": the switch-row pattern from the
+   insurance plan drawer (switch, label, supporting line). */
+.optionRow {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3); border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.optionText { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.optionLabel { font-size: var(--font-base); color: var(--neutral-300); }
+.optionLabelOn { color: var(--neutral-400); }
+.optionDesc { font-size: var(--font-sm); line-height: var(--leading-normal); color: var(--neutral-200); }
+.noData { color: var(--neutral-200); }
+
+/* Section header: title left, switch right; the card styles come from
+   UpdateDashboardDrawer.module.css. Right padding lines the switch up with
+   the row switches below it. */
+.sectionHead { justify-content: space-between; padding: var(--space-1) var(--space-3); }
+.grow { flex: 1; min-width: 0; }
+/* The section note sits under the widget list; until opened it is an
+   "Add Note" link, inset like the section title. */
+.note { padding-top: var(--space-2); }
+.addNote {
+  display: inline-flex; align-items: center; gap: var(--space-1); align-self: flex-start;
+  padding: var(--space-2) var(--space-3) var(--space-1); font-size: var(--font-base);
+}
+
+/* Report Details / Cover Page forms: a white panel inside the grey card,
+   like the widget lists. */
+.form {
+  display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-3); border: 0.5px solid var(--neutral-150); border-radius: 12px;
+  background: var(--neutral-0);
+}
+.fieldGroup { display: flex; flex-direction: column; gap: var(--space-2); }
+.fieldLabel { font-size: var(--font-base); line-height: var(--leading-tight); color: var(--neutral-200); }
+.toggleRow { display: flex; }
+
+.swatches { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.swatch {
+  display: flex; flex-direction: column; align-items: center; gap: var(--space-1);
+  padding: var(--space-1); border: 0.5px solid var(--neutral-150); border-radius: 8px;
+  background: var(--neutral-0); cursor: pointer;
+}
+.swatch:hover { border-color: var(--neutral-200); }
+.swatch:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; }
+.swatchOn { border-color: var(--primary-300); box-shadow: 0 0 0 1px var(--primary-300); }
+.swatchFill { display: block; width: 56px; height: 40px; border-radius: 4px; }
+.swatchLabel { font-size: var(--font-sm); color: var(--neutral-300); }

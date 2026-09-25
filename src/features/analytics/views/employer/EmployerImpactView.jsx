@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../../store/useAppStore';
 import { Toggle } from '../../../../components/Toggle/Toggle';
 import { Button } from '../../../../components/Button/Button';
+import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { FilterChip } from '../../../../components/FilterChip/FilterChip';
 import { DateRangePopover } from '../../../../components/DateRangePopover/DateRangePopover';
 import { Select } from '../../../../components/Select/Select';
@@ -9,11 +10,11 @@ import { Icon } from '../../../../components/Icon/Icon';
 import { CheckboxListPopover } from '../../../../components/CheckboxListPopover/CheckboxListPopover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ShadcnDialog/ShadcnDialog';
 import { ChartSkeleton } from '../shared';
-import { ImpactCard } from './ImpactCard';
+import { ChartContainer } from '../../../../components/ChartContainer/ChartContainer';
 import { StackedBars, Lines, HBars, Donut, ChartLegend } from './EmployerCharts';
 import { formatValue } from './employerImpactFormat';
 import {
-  SECTIONS, WIDGETS, SAVINGS_CATEGORIES, SAVINGS_METRIC, TIME_FRAMES,
+  SECTIONS, WIDGETS, SAVINGS_CATEGORIES, SAVINGS_METRIC, TIME_FRAMES, SCOPE_OPTIONS,
 } from './employerImpactConfig';
 import {
   monthsBetween, addMonths, rangeLabel, toMonthKey, indexRows,
@@ -21,18 +22,18 @@ import {
 } from './employerImpactData';
 import { VIEW_TITLES } from '../../analyticsData';
 import layout from '../../AnalyticsLayout.module.css';
+import { readLayouts, writeLayouts, savingsKey, packSpans, SPAN_COLUMNS } from './employerImpactLayout';
+import { UpdateDashboardDrawer } from './UpdateDashboardDrawer';
+import { PrintReportDrawer } from './PrintReportDrawer';
 import styles from './EmployerImpactView.module.css';
 
-const HIDDEN_KEY = 'employer-impact-hidden-widgets';
 const DEFAULT_SPAN_MONTHS = 7;
-
-// Hidden widgets are a per-viewer convenience, so they live in this browser.
-function readHidden() {
-  try { return new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]')); } catch { return new Set(); }
-}
-function writeHidden(set) {
-  try { localStorage.setItem(HIDDEN_KEY, JSON.stringify([...set])); } catch { /* storage unavailable */ }
-}
+// Every chart card is this tall so rows of cards line up.
+const CHART_CARD_HEIGHT = 330;
+const WIDGET_MENU = [
+  { key: 'table', label: 'View as table', icon: 'solar:list-linear' },
+  { key: 'hide', label: 'Hide widget', icon: 'solar:eye-closed-linear' },
+];
 
 function downloadCsv(filename, csv) {
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -110,15 +111,16 @@ function WidgetChart({ widget, model, hidden, onToggle, height }) {
   if (widget.type === 'stats') return <StatCards stats={model.stats} />;
 
   if (widget.type === 'duration') {
-    return <HBars data={model.data} seriesKey="in_person" seriesLabel={widget.series[0].label} xLabel={widget.xLabel} format="minutes" height={height} />;
+    return <div className={styles.chartFill}><HBars data={model.data} seriesKey="in_person" seriesLabel={widget.series[0].label} xLabel={widget.xLabel} format="minutes" height={height} /></div>;
   }
 
   if (widget.type === 'donut') {
-    return <Donut data={model.data} seriesKey={widget.series[0].key} height={height ? height - 40 : undefined} />;
+    return <div className={styles.chartFill}><Donut data={model.data} seriesKey={widget.series[0].key} height={height} /></div>;
   }
 
   if (widget.type === 'hbar') {
     return (
+      <div className={styles.chartFill}>
       <HBars
         data={model.data}
         seriesKey={widget.series[0].key}
@@ -127,6 +129,7 @@ function WidgetChart({ widget, model, hidden, onToggle, height }) {
         xLabel={widget.xLabel}
         height={height}
       />
+      </div>
     );
   }
 
@@ -152,11 +155,11 @@ function WidgetChart({ widget, model, hidden, onToggle, height }) {
     return (
       <div className={styles.withStats}>
         <StatCards stats={model.sideStats || []} compact />
-        <div className={styles.withStatsChart}>{legend}{chart}</div>
+        <div className={styles.withStatsChart}>{legend}<div className={styles.chartFill}>{chart}</div></div>
       </div>
     );
   }
-  return <>{legend}{chart}</>;
+  return <>{legend}<div className={styles.chartFill}>{chart}</div></>;
 }
 
 function SatisfactionBody({ widget, model, onForm, hidden, onToggle, height }) {
@@ -197,24 +200,26 @@ function SatisfactionBody({ widget, model, onForm, hidden, onToggle, height }) {
           hidden={hidden}
           onToggle={onToggle}
         />
-        <StackedBars
-          data={model.data}
-          series={[{ key: 'responded', label: 'Responded' }, { key: 'not_responded', label: 'Not Responded' }]}
-          hidden={hidden}
-          yLabel={widget.yLabel}
-          xLabel={widget.xLabel}
-          format="percent"
-          height={height}
-        />
+        <div className={styles.chartFill}>
+          <StackedBars
+            data={model.data}
+            series={[{ key: 'responded', label: 'Responded' }, { key: 'not_responded', label: 'Not Responded' }]}
+            hidden={hidden}
+            yLabel={widget.yLabel}
+            xLabel={widget.xLabel}
+            format="percent"
+            height={height}
+          />
+        </div>
       </div>
     </div>
   );
 }
 
-function SavingsCard({ card, rangeText, onDownload }) {
+function SavingsCard({ card, rangeText, onDownload, style }) {
   const negative = card.savings < 0;
   return (
-    <ImpactCard title={card.title} info={card.info} hasData={card.hasData} onDownload={onDownload} className={styles.savingsCard}>
+    <ChartContainer title={card.title} info={card.info} empty={!card.hasData} onDownload={onDownload} style={style}>
       <div className={styles.savingsRow} aria-label={rangeText}>
         <span className={styles.savingsCol}>
           <span className={styles.savingsLabel}>Traditional Cost</span>
@@ -233,7 +238,7 @@ function SavingsCard({ card, rangeText, onDownload }) {
           </span>
         </span>
       </div>
-    </ImpactCard>
+    </ChartContainer>
   );
 }
 
@@ -249,6 +254,7 @@ function SavingsCard({ card, rangeText, onDownload }) {
 export function EmployerImpactView() {
   const filterOptions = useAppStore(s => s.employerImpactFilters);
   const filtersLoaded = useAppStore(s => s.employerImpactFiltersLoaded);
+  const usingSample = useAppStore(s => s.employerImpactLocal);
   const fetchFilters = useAppStore(s => s.fetchEmployerImpactFilters);
   const fetchRollup = useAppStore(s => s.fetchEmployerImpact);
 
@@ -258,7 +264,16 @@ export function EmployerImpactView() {
   const [timeFrame, setTimeFrame] = useState('Month');
   const [range, setRange] = useState(null); // { from, to } as 'YYYY-MM'
   const [rows, setRows] = useState(null);
-  const [hiddenWidgets, setHiddenWidgets] = useState(readHidden);
+  // One saved layout per location view; `dashboard` is the one on screen.
+  const [layouts, setLayouts] = useState(readLayouts);
+  const dashboard = layouts[scope];
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
+  const hiddenWidgets = useMemo(() => new Set(dashboard.hidden), [dashboard.hidden]);
+  // A section whose widgets are all switched off drops out, Quick Jump included.
+  const sectionsInOrder = useMemo(() => dashboard.sections
+    .map(id => SECTIONS.find(s => s.id === id))
+    .filter(s => s && dashboard.widgets[s.id].some(k => !hiddenWidgets.has(k))), [dashboard.sections, dashboard.widgets, hiddenWidgets]);
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [forms, setForms] = useState({});
   const [dialog, setDialog] = useState(null); // { key, mode: 'expand' | 'table' }
@@ -313,7 +328,7 @@ export function EmployerImpactView() {
 
   // Quick Jump follows whichever section heading is nearest the top.
   useEffect(() => {
-    const els = SECTIONS.map(s => sectionRefs.current[s.id]).filter(Boolean);
+    const els = sectionsInOrder.map(sec => sectionRefs.current[sec.id]).filter(Boolean);
     if (!els.length || typeof IntersectionObserver === 'undefined') return undefined;
     const io = new IntersectionObserver((entries) => {
       const visible = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
@@ -321,14 +336,16 @@ export function EmployerImpactView() {
     }, { rootMargin: '0px 0px -70% 0px' });
     els.forEach(el => io.observe(el));
     return () => io.disconnect();
-  }, [loading]);
+  }, [loading, sectionsInOrder]);
 
   const jumpTo = (id) => {
     setActiveSection(id);
     sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const setHidden = (next) => { setHiddenWidgets(next); writeHidden(next); };
+  const saveLayouts = (next) => { setLayouts(next); writeLayouts(next); };
+  const saveDashboard = (next) => saveLayouts({ ...layouts, [scope]: next });
+  const setHidden = (next) => saveDashboard({ ...dashboard, hidden: [...next] });
   const hideWidget = (key) => setHidden(new Set([...hiddenWidgets, key]));
   const toggleSeries = (widgetKey) => (seriesKey) => setHiddenSeries((prev) => {
     const cur = new Set(prev[widgetKey] || []);
@@ -337,34 +354,59 @@ export function EmployerImpactView() {
   });
   const csvName = (title) => `${slug(title)}-${effectiveRange.from}-to-${effectiveRange.to}.csv`;
 
-  const widgetTitles = [
-    ...WIDGETS.map(w => ({ key: w.key, title: w.title })),
-    ...SAVINGS_CATEGORIES.map(c => ({ key: `savings:${c.key}`, title: c.title })),
-  ];
+  // The picker lists only the widgets this location view has.
+  const titleOf = {
+    ...Object.fromEntries(WIDGETS.map(w => [w.key, w.title])),
+    ...Object.fromEntries(SAVINGS_CATEGORIES.map(c => [savingsKey(c.key), c.title])),
+  };
+  const widgetTitles = dashboard.sections.flatMap(id => dashboard.widgets[id]).map(key => ({ key, title: titleOf[key] }));
 
-  const renderWidget = (w) => {
-    if (hiddenWidgets.has(w.key)) return null;
+  const renderWidget = (w, style) => {
     const model = models[w.key];
     const hidden = hiddenSeries[w.key] || new Set();
     const body = w.type === 'satisfaction'
       ? <SatisfactionBody widget={w} model={model} hidden={hidden} onToggle={toggleSeries(w.key)} onForm={(f) => setForms(p => ({ ...p, [w.key]: f }))} />
       : <WidgetChart widget={w} model={model} hidden={hidden} onToggle={toggleSeries(w.key)} />;
     return (
-      <ImpactCard
+      <ChartContainer
         key={w.key}
         title={w.title}
         info={w.info}
-        sub={rangeText}
-        hasData={!loading && model.hasData}
-        className={styles[`span_${w.span}`]}
+        subtitle={rangeText}
+        empty={!loading && !model.hasData}
+        height={CHART_CARD_HEIGHT}
+        style={style}
         onExpand={w.type === 'stats' ? undefined : () => setDialog({ key: w.key, mode: 'expand' })}
         onDownload={() => downloadCsv(csvName(w.title), toCsv(model.rows, model.columns))}
-        onTable={() => setDialog({ key: w.key, mode: 'table' })}
-        onHide={() => hideWidget(w.key)}
+        menuItems={model.hasData ? WIDGET_MENU : WIDGET_MENU.filter(i => i.key !== 'table')}
+        onMenuSelect={(key) => (key === 'table' ? setDialog({ key: w.key, mode: 'table' }) : hideWidget(w.key))}
       >
         {loading ? <ChartSkeleton /> : body}
-      </ImpactCard>
+      </ChartContainer>
     );
+  };
+
+  /**
+   * A section's visible cards in saved order, each with its grid span.
+   * Spans are packed so reordering never leaves a gap at a row's end: on
+   * the desktop 6-column grid, and again on tablet where every card but a
+   * full-width one takes half.
+   */
+  const gridCells = (sectionId) => {
+    const cells = dashboard.widgets[sectionId]
+      .filter(key => !hiddenWidgets.has(key))
+      .map((key) => {
+        if (sectionId === 'costSavings') {
+          const card = savings.find(c => savingsKey(c.key) === key);
+          return card && { key, card, span: SPAN_COLUMNS.third };
+        }
+        const widget = WIDGETS.find(w => w.key === key);
+        return widget && { key, widget, span: SPAN_COLUMNS[widget.span] };
+      })
+      .filter(Boolean);
+    const desktop = packSpans(cells.map(c => c.span));
+    const tablet = packSpans(cells.map(c => (c.span === SPAN_COLUMNS.full ? SPAN_COLUMNS.full : SPAN_COLUMNS.half)));
+    return cells.map((c, i) => ({ ...c, style: { '--span': desktop[i], '--span-md': tablet[i] } }));
   };
 
   const dialogWidget = dialog && WIDGETS.find(w => w.key === dialog.key);
@@ -378,15 +420,16 @@ export function EmployerImpactView() {
         <div className={styles.titleRow}>
           <div className={layout.viewTitle}>{VIEW_TITLES.employer.title}</div>
           <Toggle
-            items={[{ key: 'patient', label: 'Patient Location' }, { key: 'visit', label: 'Visit Location' }]}
+            items={SCOPE_OPTIONS}
             active={scope}
             onChange={(k) => { setScope(k); setLocation(null); }}
           />
         </div>
-        <div className={[layout.filterBar, styles.headerActions].join(' ')}>
+        {/* Figma 1530:41988: Widget, then Print and Settings, split by hairlines. */}
+        <div className={styles.headerActions}>
           <span ref={widgetBtnRef}>
             <Button
-              variant="secondary"
+              variant="tertiary"
               size="L"
               leadingIcon="solar:widget-add-linear"
               onClick={() => setWidgetMenuRect(widgetBtnRef.current?.getBoundingClientRect() || null)}
@@ -394,14 +437,15 @@ export function EmployerImpactView() {
               Widget
             </Button>
           </span>
-          <Button
-            variant="secondary"
-            size="L"
-            leadingIcon="solar:printer-minimalistic-linear"
-            onClick={() => window.print()}
-          >
-            Print
-          </Button>
+          <span className={styles.actionDivider} aria-hidden="true" />
+          <ActionButton icon="solar:printer-minimalistic-linear" tooltip="Print" aria-label="Print report" onClick={() => setPrintOpen(true)} />
+          <span className={styles.actionDivider} aria-hidden="true" />
+          <ActionButton
+            icon="solar:settings-minimalistic-linear"
+            tooltip="Update dashboard"
+            aria-label="Update dashboard"
+            onClick={() => setSettingsOpen(true)}
+          />
         </div>
       </div>
 
@@ -455,31 +499,33 @@ export function EmployerImpactView() {
         />
       </div>
 
-      {/* Quick jump */}
-      <nav className={styles.quickJump} aria-label="Quick jump">
-        <span className={styles.quickJumpLabel}>Quick Jump:</span>
-        {SECTIONS.map(s => (
-          <button
-            key={s.id}
-            type="button"
-            className={[styles.quickJumpItem, activeSection === s.id ? styles.quickJumpActive : ''].filter(Boolean).join(' ')}
-            aria-current={activeSection === s.id ? 'true' : undefined}
-            onClick={() => jumpTo(s.id)}
-          >
-            {s.title}
-          </button>
-        ))}
-      </nav>
+      {/* Quick jump: By Location has a single section, so it has none. */}
+      {scope !== 'visit' && (
+        <nav className={styles.quickJump} aria-label="Quick jump">
+          <span className={styles.quickJumpLabel}>Quick Jump:</span>
+          {sectionsInOrder.map(s => (
+            <button
+              key={s.id}
+              type="button"
+              className={[styles.quickJumpItem, activeSection === s.id ? styles.quickJumpActive : ''].filter(Boolean).join(' ')}
+              aria-current={activeSection === s.id ? 'true' : undefined}
+              onClick={() => jumpTo(s.id)}
+            >
+              {s.title}
+            </button>
+          ))}
+        </nav>
+      )}
 
-      {filtersLoaded && !filterOptions?.lastMonth && (
+      {filtersLoaded && usingSample && (
         <p className={styles.notice}>
-          No employer data has been loaded yet. Charts will fill in once the employer impact data is seeded.
+          Showing sample data. Employer data hasn&apos;t been loaded into the database yet.
         </p>
       )}
 
       {/* Sections */}
       <div className={styles.sections}>
-        {SECTIONS.map(section => (
+        {sectionsInOrder.map(section => (
           <section
             key={section.id}
             className={styles.section}
@@ -489,23 +535,59 @@ export function EmployerImpactView() {
           >
             <h2 className={styles.sectionTitle} id={`eir-${section.id}`}>{section.heading || section.title}</h2>
             <div className={styles.grid}>
-              {section.id === 'costSavings'
-                ? savings.filter(c => !hiddenWidgets.has(`savings:${c.key}`)).map(c => (
+              {gridCells(section.id).map(({ key, widget, card, style }) => (widget
+                ? renderWidget(widget, style)
+                : (
                   <SavingsCard
-                    key={c.key}
-                    card={{ ...c, hasData: !loading && c.hasData }}
+                    key={key}
+                    style={style}
+                    card={{ ...card, hasData: !loading && card.hasData }}
                     rangeText={rangeText}
-                    onDownload={() => downloadCsv(csvName(c.title), toCsv(
-                      [{ x: c.title, traditional: c.traditional, ours: c.ours, savings: c.savings }],
+                    onDownload={() => downloadCsv(csvName(card.title), toCsv(
+                      [{ x: card.title, traditional: card.traditional, ours: card.ours, savings: card.savings }],
                       [{ key: 'x', label: 'Category' }, { key: 'traditional', label: 'Traditional Cost' }, { key: 'ours', label: 'Our Cost' }, { key: 'savings', label: 'Savings' }],
                     ))}
                   />
-                ))
-                : WIDGETS.filter(w => w.section === section.id).map(renderWidget)}
+                )))}
             </div>
           </section>
         ))}
       </div>
+
+      {printOpen && (
+        <PrintReportDrawer
+          range={rangeText}
+          meta={[
+            rangeText,
+            employerName || 'All Employers',
+            SCOPE_OPTIONS.find(o => o.key === scope)?.label,
+            location,
+            `By ${timeFrame}`,
+          ].filter(Boolean).join('  ·  ')}
+          filename={`employer-impact-report-${effectiveRange.from}-to-${effectiveRange.to}`}
+          sections={sectionsInOrder.map(section => ({
+            id: section.id,
+            title: section.heading || section.title,
+            items: gridCells(section.id).map(cell => (cell.widget
+              ? { key: cell.key, title: cell.widget.title, kind: 'widget', widget: cell.widget, model: models[cell.key], subtitle: rangeText, full: cell.widget.span === 'full' }
+              : { key: cell.key, title: cell.card.title, kind: 'savings', card: cell.card })),
+          }))}
+          onClose={() => setPrintOpen(false)}
+        />
+      )}
+
+      {settingsOpen && (
+        <UpdateDashboardDrawer
+          layouts={layouts}
+          scope={scope}
+          onClose={() => setSettingsOpen(false)}
+          onSubmit={(next, nextScope) => {
+            saveLayouts(next);
+            if (nextScope !== scope) { setScope(nextScope); setLocation(null); }
+            setSettingsOpen(false);
+          }}
+        />
+      )}
 
       {/* Widget picker */}
       {widgetMenuRect && (

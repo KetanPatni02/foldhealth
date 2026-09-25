@@ -38,6 +38,7 @@ const CLINICAL_ICONS = [
   { name: 'custom:social-history', label: 'Social History' },
   { name: 'custom:tobacco', label: 'Tobacco' },
   { name: 'custom:sdoh', label: 'SDOH' },
+  { name: 'custom:drag-handle', label: 'Drag Handle' },
   { name: 'custom:imaging', label: 'Imaging' },
 ];
 
