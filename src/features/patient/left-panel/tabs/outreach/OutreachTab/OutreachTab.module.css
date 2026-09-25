@@ -1349,3 +1349,25 @@
   align-items: center;
   gap: 8px;
 }
+
+/* Filter chip row toggled by the Outreach Activity filter icon. */
+.activityFilterChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* Matches FilterBar's .clearAll link. */
+.activityFilterClearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.activityFilterClearAll:hover { color: var(--neutral-400); }

@@ -52,7 +52,7 @@ export const ACTIVITY_FILTERS = [
   { key: 'All', dot: null },
   { key: 'Successful', dot: 'var(--status-success)' },
   { key: 'Unsuccessful', dot: 'var(--status-error)' },
-  { key: 'Note', dot: 'var(--status-info)' },
+  { key: 'Note', dot: 'var(--status-warning)' },
 ];
 
 export const LOG_FOR_OPTIONS = [
