@@ -6,6 +6,9 @@ import { Tooltip } from '../Tooltip/Tooltip';
 import { Avatar } from '../Avatar/Avatar';
 import { PriorityIcon } from '../PriorityIcon/PriorityIcon';
 import { useAppStore } from '../../store/useAppStore';
+import { ActionButton } from '../ActionButton/ActionButton';
+import { MenuPopover } from '../MenuPopover/MenuPopover';
+import { CommentComposer } from '../CommentComposer/CommentComposer';
 import {
   AvatarPill,
   ACT_ICON,
@@ -733,22 +736,72 @@ function UploadEntryBody({ entry }) {
 /* `hideTitle` drops the "…added a Comment" line when the caller already
    scopes the log to comments only (e.g. the Comments tab), since the
    title just restates what the surface already implies. */
+// Comments can be editable: the host passes `onEditComment(text, mentions)`
+// / `onDeleteComment()` on the entry (only for the author's own comments)
+// and an optional `mentionUsers` roster for the edit composer.
 function CommentEntryBody({ entry, hideTitle = false }) {
   const meName = useAppStore(s => s.currentUserProfile?.name);
+  const [editing, setEditing] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const canManage = !!(entry.onEditComment || entry.onDeleteComment);
   return (
-    <>
-      <MetaLine entry={entry} />
+    <div className={styles.commentEntry}>
+      <div className={styles.commentMetaRow}>
+        <div className={styles.commentMetaText}>
+          <MetaLine entry={entry} />
+          {entry.edited && <span className={styles.commentEdited}>• Edited</span>}
+        </div>
+        {canManage && !editing && (
+          <span className={[styles.commentMenu, menuAnchor ? styles.commentMenuOpen : ''].filter(Boolean).join(' ')}>
+            <ActionButton
+              icon="solar:menu-dots-linear"
+              size="S"
+              tooltip="Comment actions"
+              onClick={(e) => setMenuAnchor(e.currentTarget.getBoundingClientRect())}
+            />
+          </span>
+        )}
+      </div>
       {!hideTitle && (
         <div className={htStyles.headlineRow}>
           <span className={htStyles.headline}>{entry.title || 'Added a Comment'}</span>
         </div>
       )}
-      {entry.commentBody && (
+      {editing ? (
+        <div className={styles.commentEditor}>
+          <CommentComposer
+            autoFocus
+            users={entry.mentionUsers}
+            initialValue={entry.commentBody || ''}
+            submitLabel="Save"
+            cancelLabel="Cancel"
+            onSubmit={(text, mentions) => { entry.onEditComment?.(text, mentions); setEditing(false); }}
+            onCancel={() => setEditing(false)}
+          />
+        </div>
+      ) : entry.commentBody && (
         <div className={styles.commentBody}>
           {renderCommentBodyWithMentions(entry.commentBody, meName)}
         </div>
       )}
-    </>
+      {menuAnchor && (
+        <MenuPopover
+          anchorRect={menuAnchor}
+          width={168}
+          align="right"
+          items={[
+            ...(entry.onEditComment ? [{ key: 'edit', icon: 'solar:pen-linear', label: 'Edit' }] : []),
+            ...(entry.onDeleteComment ? [{ key: 'delete', icon: 'solar:trash-bin-2-linear', label: 'Delete', danger: true }] : []),
+          ]}
+          onClose={() => setMenuAnchor(null)}
+          onSelect={(key) => {
+            setMenuAnchor(null);
+            if (key === 'edit') setEditing(true);
+            else if (key === 'delete') entry.onDeleteComment?.();
+          }}
+        />
+      )}
+    </div>
   );
 }
 

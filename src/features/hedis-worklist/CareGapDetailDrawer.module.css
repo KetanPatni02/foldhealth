@@ -184,6 +184,10 @@
   flex-direction: column;
   padding: 0;
 }
+/* Appointment Details renders its own 16px content inset. */
+.leftPaneBodyFlush {
+  padding: 0;
+}
 .leftPaneBodySchedule {
   overflow: hidden;
   display: flex;

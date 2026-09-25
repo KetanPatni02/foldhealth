@@ -1,0 +1,168 @@
+/* Care Gap drawer — Appt/Reminders table (Figma 225:93430). */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.viewBy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.viewByValue { color: var(--neutral-300); }
+.toolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.divider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+.searchBar { width: 220px; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.clearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.clearAll:hover { color: var(--neutral-400); }
+
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.colType { width: 110px; }
+.colDate { width: 108px; }
+.colStatus { width: 96px; }
+.colAssignee { width: 72px; }
+.colActions { width: 36px; }
+
+/* HeaderCell carries the header look (32px, sort affordance); only the
+   side inset changes to the table's 6px (no 6px token: 4px * 1.5). */
+.table .th {
+  padding: 0 calc(var(--space-1) * 1.5);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.td {
+  padding: var(--space-2) calc(var(--space-1) * 1.5);
+  vertical-align: middle;
+}
+/* First column gets 4px more (10px) so the title clears the 3px
+   selection bar; the header matches so Title stays aligned. */
+.table .th:first-child,
+.td:first-child { padding-left: calc(var(--space-1) * 2.5); }
+.row { border-bottom: 0.5px solid var(--neutral-100); }
+.row:last-child { border-bottom: none; }
+.row:hover { background: var(--neutral-25); }
+/* Open in the left pane: same selection as the consolidated note's gap
+   list (primary-50 fill + 3px primary-300 bar). The bar is an inset
+   shadow on the first cell so it takes no layout space. */
+.rowActive,
+.rowActive:hover { background: var(--primary-50); }
+.rowActive > td:first-child { box-shadow: inset 3px 0 0 var(--primary-300); }
+.actionsTd { text-align: right; }
+
+.titleCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+/* Title opens Appointment Details. */
+.titleBtn {
+  max-width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.titleBtn:hover { color: var(--primary-300); }
+.subtitleDot { color: var(--neutral-200); }
+/* Hover or focus shows the full reason for visit in a tooltip. */
+.reasonLink {
+  color: var(--primary-300);
+  cursor: default;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
+.subtitle {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.typeCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.recurring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: var(--primary-50);
+  border: 0.5px solid var(--primary-100);
+}
+
+.dateCell {
+  display: flex;
+  flex-direction: column;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-12) var(--space-6);
+}
+.emptyTitle {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}

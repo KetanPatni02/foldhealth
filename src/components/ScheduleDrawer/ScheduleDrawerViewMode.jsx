@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { sanitizeRichText } from '../../lib/sanitizeHtml';
 import { Icon } from '../Icon/Icon';
 import { Drawer } from '../Drawer/Drawer';
@@ -8,10 +9,21 @@ import { AppointmentTypePicker } from './AppointmentTypePicker';
 import { DetailDropdown } from './DetailDropdown';
 import { ProviderPicker } from './ProviderPicker';
 import { DatePicker } from './DatePicker';
+import { ScheduleDrawerTimePicker } from './ScheduleDrawerTimePicker';
 import { StaffInstructionIcon } from './ScheduleDrawerScreens';
 import { getInitials, MODE_OPTIONS, LOCATION_OPTIONS, APPOINTMENT_STATUSES } from './scheduleDrawerConstants';
 import { usePatientCallButton } from '../../hooks/usePatientCallButton';
 import styles from './ScheduleDrawer.module.css';
+
+// "8:30 am" → "9:00 am", matching the picker's 30-minute slots.
+function addThirtyMinutes(time) {
+  const [h, m, p] = String(time || '').match(/(\d+):(\d+)\s*(am|pm)/i)?.slice(1) || [];
+  if (!h) return null;
+  const mins = (parseInt(m, 10) || 0) + 30;
+  return mins >= 60
+    ? `${(parseInt(h, 10) || 0) + 1}:${String(mins - 60).padStart(2, '0')} ${p}`
+    : `${h}:${String(mins).padStart(2, '0')} ${p}`;
+}
 
 export function ScheduleDrawerViewMode({
   onClose,
@@ -41,6 +53,13 @@ export function ScheduleDrawerViewMode({
   date,
   setDate,
   timezoneLabel,
+  time,
+  setTime,
+  openSections = [],
+  customTime,
+  setCustomTime,
+  timeBtnRef,
+  inline = false,
   editingInstruction,
   setEditingInstruction,
   instructionDraft,
@@ -56,9 +75,10 @@ export function ScheduleDrawerViewMode({
   const apptTypeColor = matchedType?.color || (ea.appointment_type_name?.includes('Wellness') ? 'var(--status-warning)' : 'var(--primary-300)');
   const apptTypeForPicker = appointmentType || (ea.appointment_type_name ? { name: ea.appointment_type_name, color: matchedType?.color || apptTypeColor, id: matchedType?.id } : null);
   const { callBtnRef, openCall } = usePatientCallButton(ea?.patient_id);
+  const [reasonDraft, setReasonDraft] = useState(ea.reason_for_visit || '');
 
-  return (
-    <Drawer title="Appointment Details" onClose={onClose} bodyClassName={styles.drawerBody}>
+  const body = (
+    <>
       <div className={styles.content} style={{ gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--neutral-50)', borderRadius: 8, padding: 8 }}>
           <div style={{ flex: 1 }}>
@@ -122,12 +142,24 @@ export function ScheduleDrawerViewMode({
                 <ActionButton icon="solar:menu-dots-bold" size="L" tooltip="More" />
               </div>
             </div>
-            {ea.reason_for_visit && (
-              <div className={styles.reasonField} style={{ pointerEvents: 'none' }}>
-                <span className={styles.reasonLabel}>Reason for Visit</span>
-                <div className={styles.reasonInput} style={{ background: 'var(--neutral-50)', minHeight: 32 }}>{ea.reason_for_visit}</div>
-              </div>
-            )}
+            {/* Same field as the booking form; edits save on blur. Past
+                appointments are read-only like the rest of the details. */}
+            <div className={styles.reasonField}>
+              <label className={styles.reasonLabel} htmlFor="view-reason-for-visit">Reason for Visit</label>
+              <input
+                id="view-reason-for-visit"
+                className={styles.reasonInput}
+                placeholder="Enter Reason for Visit"
+                value={reasonDraft}
+                readOnly={isPastAppointment}
+                onChange={e => setReasonDraft(e.target.value)}
+                onBlur={() => {
+                  const next = reasonDraft.trim();
+                  if (ea.id && next !== (ea.reason_for_visit || '')) updateAppointment(ea.id, { reason_for_visit: next });
+                }}
+                onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+              />
+            </div>
             <div className={styles.patientInfoGrid}>
               <div className={styles.patientInfoRow}>
                 <span className={styles.patientInfoLabel} style={{ fontSize: 'var(--font-base)', fontWeight: 500 }}>Patient Location</span>
@@ -164,10 +196,21 @@ export function ScheduleDrawerViewMode({
               <span className={styles.detailLabel}>Date</span>
               <DatePicker value={date || ea.date} onSelect={v => { setDate(v); if (ea.id) updateAppointment(ea.id, { date: v }); }} />
             </div>
-            <div className={styles.detailRow}>
-              <span className={styles.detailLabel}>Time</span>
-              <span className={styles.detailValue}><Icon name="solar:clock-circle-linear" size={16} color="var(--neutral-300)" /> {ea.time_start || '—'} - {ea.time_end || '—'} ({timezoneLabel})</span>
-            </div>
+            {/* Same slot picker as the booking form; a pick saves the start and
+                the 30-minute end back to the appointment. */}
+            <ScheduleDrawerTimePicker
+              time={time || ea.time_start || ''}
+              setTime={(v) => {
+                setTime?.(v);
+                if (ea.id) updateAppointment(ea.id, { time_start: v, time_end: addThirtyMinutes(v) });
+              }}
+              isSectionOpen={(key) => openSections.includes(key)}
+              setSectionOpen={setSectionOpen}
+              customTime={customTime}
+              setCustomTime={setCustomTime}
+              timeBtnRef={timeBtnRef}
+              timezoneLabel={timezoneLabel}
+            />
           </div>
         </div>
 
@@ -244,6 +287,14 @@ export function ScheduleDrawerViewMode({
           </div>
         )}
       </div>
+    </>
+  );
+  // Inline: the host (e.g. the Care Gap drawer's left pane) supplies the
+  // frame and title; otherwise this is its own Appointment Details drawer.
+  if (inline) return body;
+  return (
+    <Drawer title="Appointment Details" onClose={onClose} bodyClassName={styles.drawerBody}>
+      {body}
     </Drawer>
   );
 }
