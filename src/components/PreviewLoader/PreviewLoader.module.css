@@ -1,0 +1,45 @@
+/* PreviewLoader. Figma Mar–Present 2026, 3868:37292. */
+
+.root {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-6);
+  padding: var(--space-4); background: var(--neutral-0);
+}
+
+/* 200px art: two dashed rings (200, ~162) around a ~129px disc holding the
+   161px animated illustration, which overflows the disc as in the design. */
+.art { position: relative; width: 200px; height: 200px; flex-shrink: 0; }
+.ringOuter, .ringInner, .disc { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+.ringOuter { width: 201px; height: 201px; }
+.ringInner { width: 162.7px; height: 162.7px; }
+.disc {
+  width: 129.4px; height: 129.4px; border-radius: 50%;
+  background: linear-gradient(141.7deg, var(--neutral-25) 12.7%, var(--neutral-50) 91.4%);
+}
+.illustration {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 161px; height: 161px; object-fit: cover; pointer-events: none;
+}
+
+/* Indeterminate bar: a soft glow sweeping across a light purple track. */
+.bar { position: relative; width: 200px; height: 4px; overflow: hidden; border-radius: 10px; background: var(--primary-100); }
+.barGlow {
+  position: absolute; top: 0; left: -60px; width: 60px; height: 100%; border-radius: 16px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--primary-300) 60%, transparent) 26%,
+    var(--primary-300) 51%,
+    color-mix(in srgb, var(--primary-300) 60%, transparent) 76%,
+    transparent 100%);
+  animation: previewLoaderSweep 1.4s var(--ease-out, ease-in-out) infinite;
+}
+@keyframes previewLoaderSweep {
+  from { transform: translateX(0); }
+  to { transform: translateX(260px); }
+}
+
+.label { font-size: var(--font-base); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-500); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  .barGlow { animation: none; left: 70px; }
+}

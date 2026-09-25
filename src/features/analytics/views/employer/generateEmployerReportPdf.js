@@ -145,13 +145,15 @@ const decode = (t) => t.replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e) => {
 /**
  * The Textarea's rich-text HTML as paragraphs of styled runs:
  * `[[{ text, bold, italic, underline, strike }]]`. Handles what its toolbar
- * produces (b/strong, i/em, u, s/strike/del, br, div/p); other tags are
- * dropped and their text kept.
+ * produces (b/strong, i/em, u, s/strike/del, br, div/p, ul/ol/li); other
+ * tags are dropped and their text kept.
  */
 export function parseRichText(html) {
   const paragraphs = [[]];
   const style = { bold: 0, italic: 0, underline: 0, strike: 0 };
   const TAG = { b: 'bold', strong: 'bold', i: 'italic', em: 'italic', u: 'underline', s: 'strike', strike: 'strike', del: 'strike' };
+  const plainRun = (text) => ({ text, bold: false, italic: false, underline: false, strike: false });
+  const lists = []; // open <ul>/<ol>, innermost last: { ordered, n }
   const newParagraph = () => { if (paragraphs[paragraphs.length - 1].length) paragraphs.push([]); };
   const re = /<\/?([a-z0-9]+)[^>]*>|([^<]+)/gi;
   let m;
@@ -165,7 +167,18 @@ export function parseRichText(html) {
     const closing = m[0][1] === '/';
     if (TAG[tag]) style[TAG[tag]] = Math.max(0, style[TAG[tag]] + (closing ? -1 : 1));
     else if (tag === 'br') paragraphs.push([]);
-    else if ((tag === 'div' || tag === 'p') && !closing) newParagraph();
+    else if (tag === 'ul' || tag === 'ol') {
+      if (closing) lists.pop(); else lists.push({ ordered: tag === 'ol', n: 0 });
+      newParagraph();
+    } else if (tag === 'li' && !closing) {
+      // Each list item is its own line, led by a bullet or its number,
+      // indented a step per level of nesting.
+      newParagraph();
+      const list = lists[lists.length - 1] || { ordered: false, n: 0 };
+      list.n += 1;
+      const indent = '    '.repeat(Math.max(0, lists.length - 1));
+      paragraphs[paragraphs.length - 1].push(plainRun(`${indent}${list.ordered ? `${list.n}.` : '•'} `));
+    } else if ((tag === 'div' || tag === 'p') && !closing) newParagraph();
   }
   return paragraphs.filter((p, i) => p.length || i < paragraphs.length - 1);
 }
@@ -183,13 +196,28 @@ function layoutRichText(doc, paragraphs, width, size) {
     runs.forEach((run) => {
       doc.setFont(FAMILY, fontStyle(run));
       // Split on spaces but keep them, so words wrap and spacing survives.
-      run.text.split(/(\s+)/).forEach((word) => {
-        if (!word) return;
-        const w = doc.getTextWidth(word);
-        if (x + w > width && x > 0 && word.trim()) push();
-        if (!line.length && !word.trim()) return; // no leading space on a new line
-        line.push({ ...run, text: word, x, w });
-        x += w;
+      run.text.split(/(\s+)/).forEach((token) => {
+        if (!token) return;
+        // A word wider than the whole line (a long URL, a string with no
+        // spaces) is broken across lines rather than running off the page.
+        const pieces = [];
+        if (token.trim() && doc.getTextWidth(token) > width) {
+          let piece = '';
+          for (const ch of token) {
+            if (piece && doc.getTextWidth(piece + ch) > width) { pieces.push(piece); piece = ''; }
+            piece += ch;
+          }
+          if (piece) pieces.push(piece);
+        } else {
+          pieces.push(token);
+        }
+        pieces.forEach((word) => {
+          const w = doc.getTextWidth(word);
+          if (x + w > width && x > 0 && word.trim()) push();
+          if (!line.length && !word.trim()) return; // no leading space on a new line
+          line.push({ ...run, text: word, x, w });
+          x += w;
+        });
       });
     });
     push();
@@ -783,17 +811,29 @@ export function generatedOnLabel(date = new Date()) {
  *   background?, logo?, clientLogo? }` (see coverPage)
  * @param {{ regular, medium, semibold, bold, italic, boldItalic }} [report.fonts] – Inter TTFs, base64;
  *   without them the PDF falls back to Helvetica
- * @param {{ title: string, subtitle?: string, note?: string, items: object[] }[]} report.sections – `note` is
+ * @param {{ id?: string, title: string, subtitle?: string, note?: string, items: object[] }[]} report.sections – `note` is
  *   the Textarea's rich-text HTML; items are
  *   `{ kind: 'widget', widget, model, full }` or `{ kind: 'savings', card }`
  * @returns {Blob} application/pdf
  */
 export function generateEmployerReportPdf(report) {
+  return generateEmployerReport(report).blob;
+}
+
+/**
+ * The same PDF, plus where things landed: `anchors` maps 'cover' and each
+ * section's `id` to its 1-based page, so a preview can scroll to what changed.
+ *
+ * @returns {{ blob: Blob, anchors: Object<string, number> }}
+ */
+export function generateEmployerReport(report) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
   registerFonts(doc, report.fonts);
   const palette = tokenPalette();
   const hasCover = !!report.cover;
+  const anchors = {};
   if (hasCover) {
+    anchors.cover = 1;
     coverPage(doc, { title: report.title, ...report.cover });
     doc.addPage();
   }
@@ -810,22 +850,49 @@ export function generateEmployerReportPdf(report) {
     y += 18;
   }
 
+  /**
+   * A section's note, after its cards: "Note:" in bold on its own line, then
+   * the note's rich text, wrapped to the page width and carried onto the next
+   * page if needed.
+   */
+  const drawNote = (html) => {
+    if (!html) return;
+    const paragraphs = parseRichText(html);
+    if (!paragraphs.length) return;
+    const plain = { bold: false, italic: false, underline: false, strike: false };
+    // "Note:" on its own line; the note text starts on the next one.
+    paragraphs.unshift([{ ...plain, text: 'Note:', bold: true }]);
+    const lines = layoutRichText(doc, paragraphs, CONTENT_W, NOTE_SIZE);
+    y += 4;
+    lines.forEach((line) => {
+      ensure(NOTE_LINE);
+      drawRichLines(doc, [line], MARGIN, y + 9, NOTE_SIZE, NOTE_LINE, C.black);
+      y += NOTE_LINE;
+    });
+  };
+
   const halfW = (CONTENT_W - GAP) / 2;
   const thirdW = (CONTENT_W - GAP * 2) / 3;
   const NOTE_SIZE = 10;
   const NOTE_LINE = 12;
 
+  let sectionCount = 0;
   report.sections.forEach((section) => {
     if (!section.items.length) return;
+    // Every section after the first starts on a fresh page.
+    if (sectionCount > 0) {
+      doc.addPage();
+      y = BODY_TOP;
+    }
+    sectionCount += 1;
+    if (section.id) anchors[section.id] = doc.getNumberOfPages();
     const firstH = section.items[0].kind === 'savings' ? SAVINGS_H : CARD_H;
     setWeight(doc, 'regular');
     doc.setFontSize(10);
     const subtitleLines = section.subtitle ? doc.splitTextToSize(section.subtitle, CONTENT_W) : [];
     const subtitleH = subtitleLines.length ? subtitleLines.length * 12 + 6 : 0;
-    const noteLines = section.note ? layoutRichText(doc, parseRichText(section.note), CONTENT_W, NOTE_SIZE) : [];
-    const noteH = noteLines.length ? noteLines.length * NOTE_LINE + 4 : 0;
-    // Title, note and the first row of cards stay on one page.
-    ensure(24 + subtitleH + noteH + firstH);
+    // Title, subtitle and the first row of cards stay on one page.
+    ensure(24 + subtitleH + firstH);
 
     // Title over a short rule (Figma: 12pt medium, 100pt × 0.5pt divider).
     text(doc, section.title, MARGIN, y + 11, { size: 12, color: C.black, weight: 'medium' });
@@ -834,16 +901,12 @@ export function generateEmployerReportPdf(report) {
     doc.line(MARGIN, y + 17, MARGIN + 100, y + 17);
     y += 24;
     if (subtitleLines.length) {
-      // Subtitle under the rule, in grey, before the note.
+      // Subtitle under the rule, in grey.
       setWeight(doc, 'medium');
       doc.setFontSize(10);
       ink(doc, C.muted);
       doc.text(subtitleLines, MARGIN, y + 8, { lineHeightFactor: 1.2 });
       y += subtitleH;
-    }
-    if (noteLines.length) {
-      drawRichLines(doc, noteLines, MARGIN, y + 8, NOTE_SIZE, NOTE_LINE, C.black);
-      y += noteH;
     }
     y += 8;
 
@@ -854,7 +917,9 @@ export function generateEmployerReportPdf(report) {
         if (col === 0) ensure(SAVINGS_H);
         savingsCard(doc, item, MARGIN + (thirdW + GAP) * col, y, thirdW);
       });
-      y += SAVINGS_H + 18;
+      y += SAVINGS_H + GAP * 2;
+      drawNote(section.note);
+      y += 12;
       return;
     }
 
@@ -870,6 +935,7 @@ export function generateEmployerReportPdf(report) {
       if (item.full || col === 1) { y += CARD_H + GAP; col = 0; } else col = 1;
     });
     if (col === 1) y += CARD_H + GAP;
+    drawNote(section.note);
     y += 12;
   });
 
@@ -881,5 +947,5 @@ export function generateEmployerReportPdf(report) {
     pageHeader(doc, chrome);
     pageFooter(doc, p);
   }
-  return doc.output('blob');
+  return { blob: doc.output('blob'), anchors };
 }

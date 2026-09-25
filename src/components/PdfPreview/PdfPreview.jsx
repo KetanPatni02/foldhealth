@@ -2,8 +2,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import styles from './PdfPreview.module.css';
 
-const CROSSFADE_MS = 220;
-const DEBOUNCE_MS = 120;
+// Long enough that moving to the edited page reads as a gentle transition
+// (the native viewer can't animate its own scrolling); --duration-slow, the
+// design system's ceiling for UI motion.
+const CROSSFADE_MS = 300;
+// Rebuild only once edits pause, so typing doesn't refresh the viewer per keystroke.
+const DEBOUNCE_MS = 600;
 
 const emptySlot = () => ({ url: null, ready: false });
 
@@ -16,13 +20,21 @@ const emptySlot = () => ({ url: null, ready: false });
  * Same behaviour as the care plan's preview, taking any generator.
  *
  * @param {object}   props
- * @param {function} props.generate     – () => Blob (a PDF). Memoize it: a new
- *                                         function means "the document changed".
+ * @param {function} props.generate     – () => Blob, or () => { blob, anchors }
+ *                                         where `anchors` maps keys to 1-based
+ *                                         pages. Memoize it: a new function
+ *                                         means "the document changed".
+ * @param {{ key: string }} [props.focus] – After a rebuild, open the viewer at
+ *                                         `anchors[focus.key]` so the change is
+ *                                         in view, not back on page 1.
+ * @param {React.ReactNode} [props.loader] – Shown while the first version is
+ *                                         being built (e.g. <PreviewLoader />);
+ *                                         later rebuilds crossfade instead.
  * @param {boolean}  [props.empty=false] – Nothing to render; shows `emptyLabel`
  * @param {string}   [props.emptyLabel='Select items to generate a preview.']
  * @param {string}   [props.title='PDF preview'] – Accessible name of the viewer
  */
-export function PdfPreview({ generate, empty = false, emptyLabel = 'Select items to generate a preview.', title = 'PDF preview' }) {
+export function PdfPreview({ generate, focus, loader, empty = false, emptyLabel = 'Select items to generate a preview.', title = 'PDF preview' }) {
   const [slotA, setSlotA] = useState(emptySlot);
   const [slotB, setSlotB] = useState(emptySlot);
   const [front, setFront] = useState('A');
@@ -32,6 +44,8 @@ export function PdfPreview({ generate, empty = false, emptyLabel = 'Select items
   const slotBRef = useRef(slotB);
   const frontRef = useRef(front);
   const fadeTimerRef = useRef(null);
+  const focusRef = useRef(focus);
+  useEffect(() => { focusRef.current = focus; }, [focus]);
 
   useLayoutEffect(() => {
     slotARef.current = slotA;
@@ -39,7 +53,7 @@ export function PdfPreview({ generate, empty = false, emptyLabel = 'Select items
     frontRef.current = front;
   }, [slotA, slotB, front]);
 
-  const revoke = (url) => { if (url) URL.revokeObjectURL(url); };
+  const revoke = (url) => { if (url) URL.revokeObjectURL(url.split('#')[0]); };
   const setSlot = (key, next) => (key === 'A' ? setSlotA(next) : setSlotB(next));
   const getSlot = (key) => (key === 'A' ? slotARef.current : slotBRef.current);
 
@@ -57,7 +71,11 @@ export function PdfPreview({ generate, empty = false, emptyLabel = 'Select items
         setCrossfading(false);
         return;
       }
-      const url = URL.createObjectURL(generate());
+      const out = generate();
+      const blob = out instanceof Blob ? out : out.blob;
+      const page = out instanceof Blob ? null : out.anchors?.[focusRef.current?.key];
+      // The browser viewer opens at #page=N, so the edited page stays in view.
+      const url = `${URL.createObjectURL(blob)}${page ? `#page=${page}` : ''}`;
       if (!slotARef.current.url && !slotBRef.current.url) {
         setSlotA({ url, ready: false });
         setFront('A');
@@ -121,6 +139,7 @@ export function PdfPreview({ generate, empty = false, emptyLabel = 'Select items
   const hasPreview = slotA.url || slotB.url;
   const frontSlot = front === 'A' ? slotA : slotB;
 
+  if (!hasPreview && !empty && loader) return loader;
   if (!hasPreview) {
     return (
       <div className={styles.empty}>
@@ -135,9 +154,13 @@ export function PdfPreview({ generate, empty = false, emptyLabel = 'Select items
       {renderSlot('A')}
       {renderSlot('B')}
       {!frontSlot.ready && !crossfading && (
-        <div className={styles.loading} aria-hidden="true">
-          <span className={styles.spinner} />
-        </div>
+        loader
+          ? <div className={styles.loaderLayer}>{loader}</div>
+          : (
+            <div className={styles.loading} aria-hidden="true">
+              <span className={styles.spinner} />
+            </div>
+          )
       )}
     </div>
   );

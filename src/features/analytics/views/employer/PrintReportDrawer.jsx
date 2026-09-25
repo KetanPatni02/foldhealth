@@ -15,8 +15,9 @@ import { CloseIcon } from '../../../../components/Icon/CloseIcon';
 import { Link } from '../../../../components/Link/Link';
 import { AddIconMinimalist } from '../../../../components/Icon/AddIconMinimalist';
 import { PdfPreview } from '../../../../components/PdfPreview/PdfPreview';
+import { PreviewLoader } from '../../../../components/PreviewLoader/PreviewLoader';
 import {
-  generateEmployerReportPdf, COVER_GRADIENTS, DEFAULT_COVER_BACKGROUND, isLightBackground, gradientCss,
+  generateEmployerReport, COVER_GRADIENTS, DEFAULT_COVER_BACKGROUND, isLightBackground, gradientCss,
 } from './generateEmployerReportPdf';
 import clientLogoUrl from '../../../../assets/trailhead-clinics-logo.png';
 import clientLogoWhiteUrl from '../../../../assets/trailhead-clinics-logo-white.png';
@@ -32,7 +33,6 @@ import styles from './PrintReportDrawer.module.css';
 // Section cards and rows match the Update Dashboard drawer.
 import cards from './UpdateDashboardDrawer.module.css';
 
-const NOTE_MAX = 500;
 const SECTION_TITLE_MAX = 100;
 const SECTION_SUBTITLE_MAX = 150;
 const COVER_DESCRIPTION_MAX = 300;
@@ -303,7 +303,7 @@ function printBlob(blob) {
  * @param {string}   [props.employerName] – The report's employer, to preselect its logo
  * @param {string}   props.filename – Download name, without extension
  * @param {{ id: string, title: string, items: object[] }[]} props.sections –
- *   Items: `{ key, title, kind: 'widget'|'savings', ... }` (see generateEmployerReportPdf)
+ *   Items: `{ key, title, kind: 'widget'|'savings', ... }` (see generateEmployerReport)
  * @param {function} props.onClose
  */
 export function PrintReportDrawer({ meta, range, employerName, filename, sections, onClose }) {
@@ -383,6 +383,7 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
   const included = useMemo(() => orderedSections
     .filter(s => !sectionsOff.has(s.id))
     .map(s => ({
+      id: s.id,
       title: titles[s.id] || s.title,
       subtitle: (subtitles[s.id] || '').slice(0, SECTION_SUBTITLE_MAX).trim(),
       // Rich text: printed from its HTML; blank when it has no visible text.
@@ -434,7 +435,16 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
     } : null,
     sections: included,
   }), [reportTitle, meta, generatedAt, assets, headerLogo, employerHeaderLogo, includeCover, range, coverDescription, background, employerCoverLogo, coverLogo, included]);
-  const generate = useCallback(() => generateEmployerReportPdf(report), [report]);
+  const generate = useCallback(() => generateEmployerReport(report), [report]);
+  // Where the preview should scroll after the next redraw: the part of the
+  // report the last interaction was in ('cover', or a section id).
+  const [focus, setFocus] = useState(null);
+  const focusOn = (key) => setFocus(prev => (prev?.key === key ? prev : { key, n: (prev?.n || 0) + 1 }));
+  const focusScope = (key) => ({
+    className: styles.focusScope,
+    onPointerDownCapture: () => focusOn(key),
+    onKeyDownCapture: () => focusOn(key),
+  });
 
   const headerRight = (
     <>
@@ -443,7 +453,7 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
         size="L"
         leadingIcon="solar:download-minimalistic-linear"
         disabled={nothingSelected}
-        onClick={() => downloadBlob(generate(), `${filename}.pdf`)}
+        onClick={() => downloadBlob(generate().blob, `${filename}.pdf`)}
       >
         Download PDF
       </Button>
@@ -452,7 +462,7 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
         size="L"
         leadingIcon="solar:printer-minimalistic-linear"
         disabled={nothingSelected}
-        onClick={() => printBlob(generate())}
+        onClick={() => printBlob(generate().blob)}
       >
         Print
       </Button>
@@ -468,7 +478,7 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
           <div className={[cards.sectionHead, styles.settingsHead].join(' ')}>
             <span className={[cards.sectionTitle, styles.grow].join(' ')}>Report Settings</span>
           </div>
-          <div className={styles.fields}>
+          <div className={styles.fields} onPointerDownCapture={() => focusOn('cover')} onKeyDownCapture={() => focusOn('cover')}>
             <Select
               label="Employer Logo"
               portal
@@ -586,7 +596,7 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
             const sectionOn = !sectionsOff.has(section.id);
             return (
               <SortableItem key={section.id} id={section.id} label={titles[section.id] || section.title} className={cards.section}>
-              {sectionHandle => (<>
+              {sectionHandle => (<div {...focusScope(section.id)}>
                 <div className={cards.sectionHead}>
                   {sectionHandle}
                   <span className={[cards.sectionTitle, styles.grow].join(' ')}>
@@ -609,7 +619,12 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
                       onReorder={keys => setItemOrder(prev => ({ ...prev, [section.id]: keys }))}
                     >
                     {section.items.map(item => (
-                      <SortableItem key={item.key} id={item.key} label={item.title} className={[cards.row, styles.widgetRow].join(' ')}>
+                      <SortableItem
+                        key={item.key}
+                        id={item.key}
+                        label={item.title}
+                        className={[cards.row, styles.widgetRow, !off.has(item.key) && !hasData(item) ? styles.rowNoData : ''].filter(Boolean).join(' ')}
+                      >
                       {rowHandle => (<>
                         {rowHandle}
                         <span className={[cards.rowLabel, styles.rowText].join(' ')}>
@@ -674,7 +689,6 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
                       onChange={(html, plain) => setNotes(n => ({ ...n, [section.id]: { html, plain } }))}
                       placeholder="Add a note for this section (optional)"
                       aria-label={`Note for ${section.title}`}
-                      maxLength={NOTE_MAX}
                       rows={2}
                       bottomButton={{ label: 'Remove Note', variant: 'secondary', onClick: () => removeNote(section.id) }}
                     />
@@ -691,7 +705,7 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
                     Add Note
                   </Link>
                 ))}
-              </>)}
+              </div>)}
               </SortableItem>
             );
           })}
@@ -705,6 +719,8 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
     <div className={styles.previewPane}>
       <PdfPreview
         generate={generate}
+        focus={focus}
+        loader={<PreviewLoader />}
         empty={nothingSelected}
         emptyLabel="Select at least one widget to preview the report."
         title="Employer Impact Report PDF preview"

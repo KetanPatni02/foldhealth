@@ -254,3 +254,26 @@ describe('cover background', () => {
     expect(isLightBackground({ type: 'image', dataUrl: 'x' })).toBe(false);
   });
 });
+
+describe('report pages', () => {
+  it('starts every section on a fresh page and reports where', async () => {
+    const { generateEmployerReport } = await import('./generateEmployerReportPdf');
+    const widget = { key: 'w', title: 'W', type: 'line', series: [{ key: 'a', label: 'A' }] };
+    const item = { key: 'w', kind: 'widget', widget, model: { hasData: true, data: [{ x: 'Jan 26', a: 1 }] } };
+    const { anchors } = generateEmployerReport({
+      title: 'Employer Impact Report',
+      cover: { range: 'Jan 2026 - Mar 2026' },
+      sections: [{ id: 'one', title: 'One', items: [item] }, { id: 'two', title: 'Two', items: [item] }, { id: 'three', title: 'Three', items: [item] }],
+    });
+    expect(anchors).toEqual({ cover: 1, one: 2, two: 3, three: 4 });
+  });
+});
+
+describe('parseRichText lists', () => {
+  it('turns bullet and numbered items into lines led by a marker', async () => {
+    const { parseRichText } = await import('./generateEmployerReportPdf');
+    const lines = parseRichText('Intro<ul><li>One</li><li><b>Two</b></li></ul><ol><li>First</li><li>Second</li></ol>')
+      .map(runs => runs.map(r => r.text).join(''));
+    expect(lines).toEqual(['Intro', '• One', '• Two', '1. First', '2. Second']);
+  });
+});
