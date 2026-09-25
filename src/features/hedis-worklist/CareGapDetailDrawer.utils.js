@@ -52,12 +52,12 @@ export const MORE_ACTIONS = [
 
 export const TABS = [
   { key: 'Activity Log', label: 'Activity' },
+  { key: 'Clinical Notes', label: 'Clinical Notes' },
   { key: 'Outreaches', label: 'Outreaches' },
-  { key: 'Referrals', label: 'Referrals' },
   { key: 'Tasks', label: 'Tasks' },
   { key: 'Appt/Reminders', label: 'Appt/Reminders' },
-  { key: 'Clinical Notes', label: 'Clinical Notes' },
   { key: 'Documents', label: 'Documents' },
+  { key: 'Referrals', label: 'Referrals' },
   { key: 'Orders', label: 'Orders' },
 ];
 
