@@ -176,6 +176,14 @@
    .content (16px/24px), so the pane's default 12/16 padding stacked
    two horizontal insets. Drop the outer padding and let the schedule
    body own the whole surface. */
+/* Document preview fills the pane edge to edge; FilePreview owns its own
+   scroll. */
+.leftPaneBodyDocPreview {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
 .leftPaneBodySchedule {
   overflow: hidden;
   display: flex;
