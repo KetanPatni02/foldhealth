@@ -34,9 +34,12 @@ import { DocumentUploadForm } from '../../components/DocumentUploadForm/Document
 import { useDocumentUploadForm } from '../../components/DocumentUploadForm/useDocumentUploadForm';
 import { DOC_TYPES } from '../hcc/data/chartDocs';
 import { DocumentList } from '../../components/DocumentList/DocumentList';
+import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
+import { CareGapAppointmentsTab } from './CareGapAppointmentsTab';
+import { ScheduleDrawer } from '../../components/ScheduleDrawer/ScheduleDrawer';
 import { FilePreview } from '../../components/FilePreview/FilePreview';
 import { useAppStore } from '../../store/useAppStore';
-import { TABS, MORE_ACTIONS, toActivityLogEntries } from './CareGapDetailDrawer.utils';
+import { TABS, MORE_ACTIONS, toActivityLogEntries, initialsOf } from './CareGapDetailDrawer.utils';
 import { CareGapDetailDrawerHeader } from './CareGapDetailDrawerHeader';
 import styles from './CareGapDetailDrawer.module.css';
 
@@ -71,10 +74,24 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   useEffect(() => { fetchProgramDocuments(); }, [fetchProgramDocuments]);
   const activityEntries = useAppStore(s => s.caregapActivity[member?.id]);
   const platformUsers = useAppStore(s => s.platformUsers);
+  const updateAppointment = useAppStore(s => s.updateAppointment);
+  const deleteAppointment = useAppStore(s => s.deleteAppointment);
+  // Appt/Reminders: title click / Edit open the shared appointment detail
+  // drawer; Delete confirms first.
+  const [openAppt, setOpenAppt] = useState(null);
+  const [apptToDelete, setApptToDelete] = useState(null);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
   const caregapActivityLoaded = useAppStore(s => s.caregapActivityLoaded);
   const fetchCaregapActivity = useAppStore(s => s.fetchCaregapActivity);
+  const memberComments = useAppStore(s => s.caregapComments[member?.id]);
+  const fetchCaregapComments = useAppStore(s => s.fetchCaregapComments);
+  const addCaregapComment = useAppStore(s => s.addCaregapComment);
+  const updateCaregapComment = useAppStore(s => s.updateCaregapComment);
+  const deleteCaregapComment = useAppStore(s => s.deleteCaregapComment);
+  const currentUserProfile = useAppStore(s => s.currentUserProfile);
+  const [commentToDelete, setCommentToDelete] = useState(null);
+  useEffect(() => { fetchCaregapComments(); }, [fetchCaregapComments]);
   useEffect(() => { fetchCaregapActivity(); }, [fetchCaregapActivity]);
   const appointments = useAppStore(s => s.appointments);
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
@@ -236,8 +253,6 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     setAmendNoteId(null);
     setLeftWorkspace('clinical-note-preview');
   };
-  const [commentText, setCommentText] = useState('');
-  const [commentExpanded, setCommentExpanded] = useState(false);
   const [inPlaceTaskId, setInPlaceTaskId] = useState(null);
   const inPlaceTaskRaw = inPlaceTaskId ? (allTasks || []).find(t => t.id === inPlaceTaskId) : null;
   const inPlaceTask = inPlaceTaskRaw ? {
@@ -575,7 +590,26 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const canNext = idx < gaps.length - 1;
   const status = gap?.status ?? 'Open';
   const statusLocked = status === 'Completed';
-  const activityLogEntries = toActivityLogEntries(activityEntries);
+  // Saved comments (caregap_comments) join the Activity feed as comment
+  // entries; the author's own get Edit / Delete.
+  const commentEntries = (memberComments || []).map(c => {
+    const mine = !!(c.authorId && currentUserProfile?.id && c.authorId === currentUserProfile.id);
+    return {
+      id: c.id,
+      when: c.createdAt,
+      actor: c.author || 'Unknown author',
+      t: 'comment',
+      title: 'Added a Comment',
+      commentBody: c.body,
+      edited: c.edited,
+      ...(mine ? {
+        onEditComment: (text, mentions) => updateCaregapComment(member.id, c.id, text, mentions),
+        onDeleteComment: () => setCommentToDelete(c),
+      } : {}),
+    };
+  });
+  const allActivityEntries = [...(activityEntries || []), ...commentEntries];
+  const activityLogEntries = toActivityLogEntries(allActivityEntries);
   // Clinical Notes tab is DB-driven (clinicalNotesByMember) so it shows the
   // current state per note — a Pending Review note that is later Signed
   // updates in place instead of appearing as two rows. Activity Log keeps
@@ -664,7 +698,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   );
   const openTaskDetail = (task) => handleOpenTaskInPlace(task);
   const tabCounts = {
-    'Activity Log': activityEntries?.length ?? 0,
+    'Activity Log': allActivityEntries.length,
     Outreaches: outreach.logGroups.reduce((n, g) => n + (g.logs?.length ?? 0), 0),
     'Appt/Reminders': memberAppointments.length,
     'Clinical Notes': clinicalNoteCount,
@@ -675,13 +709,6 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const goPrev = () => { if (canPrev) { setCurrentCode(gaps[idx - 1].code); setStatusOpen(false); } };
   const goNext = () => { if (canNext) { setCurrentCode(gaps[idx + 1].code); setStatusOpen(false); } };
 
-  const handleAddComment = () => {
-    const text = commentText.trim();
-    if (!text) return;
-    logCareGapActivity(member.id, { when: new Date().toISOString(), actor: currentActorName(), t: 'comment', title: 'Added a Comment', commentBody: text });
-    setCommentText('');
-    setCommentExpanded(false);
-  };
 
   return (
     <>
@@ -691,6 +718,55 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       {/* The task detail no longer opens as its own standalone Drawer —
           it renders inline as the left workspace when leftWorkspace ===
           'task-detail' (see the leftPane branches below). */}
+      {openAppt && (
+        <ScheduleDrawer
+          existingAppointment={openAppt}
+          initialSelectedPatient={schedulePatient}
+          patientLocked
+          onClose={() => { setOpenAppt(null); fetchAppointments?.(); }}
+        />
+      )}
+      {apptToDelete && (
+        <ConfirmDialog
+          variant="destructive"
+          title="Delete appointment?"
+          description={`"${apptToDelete.appointment_type_name || 'Appointment'}" will be removed from this member's appointments. This can't be undone.`}
+          confirmLabel="Delete"
+          onCancel={() => setApptToDelete(null)}
+          onConfirm={() => {
+            const appt = apptToDelete;
+            deleteAppointment?.(appt.id);
+            logCareGapActivity(member.id, {
+              when: new Date().toISOString(),
+              actor: currentActorName(),
+              t: 'appointment',
+              title: 'Appointment Deleted',
+              gapCodes: [currentCode],
+              detailCard: {
+                title: appt.appointment_type_name || 'Appointment',
+                subtitle: [appt.date, appt.time_start, appt.primary_user].filter(Boolean).join(' • '),
+                status: 'Deleted',
+              },
+            });
+            showToast('Appointment deleted');
+            setApptToDelete(null);
+          }}
+        />
+      )}
+      {commentToDelete && (
+        <ConfirmDialog
+          variant="destructive"
+          title="Delete comment?"
+          description="This comment will be removed. A Deleted a Comment entry stays in the Activity log."
+          confirmLabel="Delete"
+          onCancel={() => setCommentToDelete(null)}
+          onConfirm={() => {
+            deleteCaregapComment(member.id, commentToDelete.id);
+            showToast('Comment deleted');
+            setCommentToDelete(null);
+          }}
+        />
+      )}
       {docToDelete && (
         <ConfirmDialog
           variant="destructive"
@@ -1126,19 +1202,13 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
             {activeTab === 'Activity Log' ? (
               <div className={styles.activityLog}>
                 <div className={styles.commentInput}>
-                  {commentExpanded ? (
-                    <Textarea autoFocus placeholder="Add a comment, use @ to mention someone" rows={3}
-                      value={commentText} onChange={e => setCommentText(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Escape') { setCommentExpanded(false); setCommentText(''); } }} />
-                  ) : (
-                    <Input placeholder="Add a comment" onFocus={() => setCommentExpanded(true)} style={{ cursor: 'text', width: '100%' }} />
-                  )}
-                  {commentExpanded && (
-                    <div className={styles.commentActions}>
-                      <Button variant="primary" size="S" disabled={!commentText.trim()} onClick={handleAddComment}>Comment</Button>
-                      <Button variant="secondary" size="S" onClick={() => { setCommentExpanded(false); setCommentText(''); }}>Cancel</Button>
-                    </div>
-                  )}
+                  {/* Same composer as the HCC Diagnosis Gaps drawer: @mention
+                      chips, and the mentioned people get a bell from the
+                      caregap_comments trigger. */}
+                  <CommentComposer
+                    placeholder="Add a comment, use @ to mention someone"
+                    onSubmit={(text, mentions) => addCaregapComment({ memberId: member.id, gapCode: currentCode, body: text, mentions })}
+                  />
                 </div>
                 {caregapActivityLoaded
                   ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." onOpenTask={handleOpenTaskInPlace} onOpenNote={openNoteInWorkspace} />
@@ -1148,6 +1218,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
               // While Add Outreach is open in the left pane, the tab shows
               // only the log so the same form isn't rendered twice.
               <OutreachTabView tab={outreach} hideLogForRow hideForm={leftWorkspace === 'outreach'} taskMember={member?.name} schedulePatient={schedulePatient}
+                onLogNew={openOutreachWorkspace}
                 onTaskCreated={logTaskAdded} onAppointmentScheduled={(row) => { logAppointmentScheduled(row); fetchAppointments?.(); }} />
             ) : activeTab === 'Documents' ? (
               programDocumentsDidFetch ? (
@@ -1192,36 +1263,26 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 onTaskClick={openTaskDetail}
               />
             ) : activeTab === 'Appt/Reminders' ? (
-              memberAppointments.length === 0 ? (
-                <div className={styles.emptyTab}>
-                  <Icon name="solar:calendar-linear" size={36} color="var(--neutral-200)" />
-                  <p className={styles.emptyTabTitle}>No appointments scheduled yet.</p>
-                </div>
-              ) : (
-                <div className={styles.apptList}>
-                  {memberAppointments.map(a => {
-                    const meta = [
-                      a.date,
-                      a.time_start && (a.time_end ? `${a.time_start} – ${a.time_end}` : a.time_start),
-                      a.primary_user,
-                    ].filter(Boolean).join(' · ');
-                    return (
-                      <div key={a.id} className={styles.apptCard}>
-                        <Icon name="solar:calendar-linear" size={18} color="var(--primary-300)" />
-                        <div className={styles.apptCardBody}>
-                          <div className={styles.apptCardTitle}>
-                            {a.appointment_type_name || 'Appointment'}
-                          </div>
-                          {meta && <div className={styles.apptCardMeta}>{meta}</div>}
-                        </div>
-                        {a.status && (
-                          <span className={styles.apptCardStatus}>{a.status}</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )
+              <CareGapAppointmentsTab
+                appointments={memberAppointments}
+                platformUsers={platformUsers}
+                onOpen={setOpenAppt}
+                onEdit={setOpenAppt}
+                onDelete={setApptToDelete}
+                onAssigneeChange={(appt, name) => {
+                  const prev = appt.primary_user || null;
+                  updateAppointment?.(appt.id, { primary_user: name });
+                  logCareGapActivity(member.id, {
+                    when: new Date().toISOString(),
+                    actor: currentActorName(),
+                    t: 'assignee_change',
+                    title: `${appt.appointment_type_name || 'Appointment'} Assignee Changed`,
+                    gapCodes: [currentCode],
+                    fromAssignee: prev ? { initials: initialsOf(prev), name: prev } : null,
+                    toAssignee: { initials: initialsOf(name), name },
+                  });
+                }}
+              />
             ) : (
               <div className={styles.emptyTab}>
                 <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-200)" />
