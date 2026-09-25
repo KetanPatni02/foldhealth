@@ -30,6 +30,10 @@
 /* Spans come from packSpans, set per card as --span (desktop) and
    --span-md (tablet), so every row is full whatever the saved order. */
 .grid > * { grid-column: span var(--span, 6); }
+/* Cost savings: the comparison card's column is wider, to fit its chart. */
+@media (min-width: 1101px) {
+  .savingsGrid { grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 1100px) {
   .grid > * { grid-column: span var(--span-md, 6); }
 }
@@ -107,9 +111,23 @@
 .savingsEnd { margin-left: auto; text-align: right; }
 .savingsLabel { font-size: var(--font-sm); color: var(--neutral-300); }
 .savingsValue { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); font-variant-numeric: tabular-nums; }
-.savingsAmount { font-size: var(--font-xl); font-weight: 500; font-variant-numeric: tabular-nums; }
+.savingsAmount { font-size: var(--font-xl); font-weight: 600; font-variant-numeric: tabular-nums; }
 .savingsGain { color: var(--status-success-dark); }
 .savingsLoss { color: var(--status-error-dark); }
+
+/* Cost Savings Comparison: in the first third, running the height of the
+   category cards beside it (--rows); full width once the grid narrows. */
+.savingsSummary { grid-row: span var(--rows, 1); }
+@media (max-width: 1100px) {
+  .savingsSummary { grid-row: auto; }
+}
+.summaryBody { display: flex; gap: var(--space-4); flex: 1; min-height: 0; }
+.summaryTotals { display: flex; flex-direction: column; gap: var(--space-3); flex: 1; min-width: 0; }
+.summaryDivider { height: 0.5px; background: var(--neutral-150); flex-shrink: 0; }
+.summaryKey { display: flex; align-items: center; gap: var(--space-2); }
+.summaryDot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.summaryPart { font-size: var(--font-sm); color: var(--neutral-400); font-variant-numeric: tabular-nums; }
+.summaryChart { flex: 1; min-width: 0; min-height: 240px; }
 
 /* ── Dialogs ── */
 .dialog { width: min(960px, calc(100vw - 32px)); max-width: none; }

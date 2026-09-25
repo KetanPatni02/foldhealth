@@ -205,6 +205,10 @@ describe('generateEmployerReportPdf', () => {
       sections: [
         { title: 'Charts', subtitle: 'Members and revenue, month by month', note: 'For the <b>Q1</b> review.<div><i>Draft</i> &amp; <u>internal</u></div>', items: [...items, ...items] },
         { title: 'Savings', items: [{ key: 's', kind: 'savings', card: { title: 'Imaging Savings', traditional: 97000, ours: 100000, savings: -3000, hasData: true } }] },
+        { title: 'Savings with comparison', items: [
+          { key: 'sum', kind: 'savings', summary: true, subtitle: 'Jan 2026 - Feb 2026', card: { title: 'Cost Savings Comparison', traditional: 900000, membership: 20000, service: 80000, ours: 100000, savings: 800000, hasData: true } },
+          ...['a', 'b', 'c'].map(k => ({ key: k, kind: 'savings', card: { title: `${k} Savings`, traditional: 5000, ours: 1000, savings: 4000, hasData: true } })),
+        ] },
       ],
     });
     expect(blob.type).toBe('application/pdf');

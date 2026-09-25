@@ -361,3 +361,38 @@ export function Donut({ data, seriesKey, height = '100%' }) {
     </div>
   );
 }
+
+/**
+ * Cost Savings Comparison: one bar for the traditional cost, one for ours
+ * stacked as membership + service, on a shared axis.
+ */
+export function CostComparisonBars({ summary, height = '100%' }) {
+  const data = [
+    { x: 'Traditional Cost', traditional: summary.traditional },
+    { x: 'Our Cost', membership: summary.membership, service: summary.service },
+  ];
+  const ticks = niceTicks(Math.max(summary.traditional, summary.ours));
+  const tickFmt = compactTick('currency');
+  const bar = { stackId: 'cost', stroke: 'var(--neutral-0)', maxBarSize: 32, isAnimationActive: false };
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={data} margin={{ top: 8, right: 0, bottom: 0, left: 0 }} barCategoryGap="30%">
+        <CartesianGrid {...GRID} vertical={false} />
+        <XAxis dataKey="x" tick={AXIS_TICK} interval={0} tickLine={false} axisLine={{ stroke: 'var(--neutral-150)' }} {...xAxisLayout(data.map(r => r.x))} />
+        <YAxis
+          tick={AXIS_TICK}
+          tickLine={false}
+          axisLine={false}
+          tickFormatter={tickFmt}
+          ticks={ticks}
+          domain={[0, ticks[ticks.length - 1]]}
+          {...yAxisLayout(ticks.map(tickFmt))}
+        />
+        <Tooltip content={<ImpactTooltip format="currency" />} cursor={{ fill: 'var(--neutral-50)' }} />
+        <Bar {...bar} dataKey="traditional" name="Traditional Cost" fill={seriesColor(0)} strokeWidth={0} radius={[4, 4, 0, 0]} />
+        <Bar {...bar} dataKey="membership" name="Membership Cost" fill={seriesColor(0)} strokeWidth={2} />
+        <Bar {...bar} dataKey="service" name="Service Cost" fill={seriesColor(1)} strokeWidth={2} radius={[4, 4, 0, 0]} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}

@@ -526,6 +526,67 @@ function savingsCard(doc, item, x, y, w) {
   });
 }
 
+/**
+ * Cost Savings Comparison: the totals down the left (Traditional Cost, Our
+ * Cost split into membership and service, Total Savings) and a bar chart of
+ * the two costs on the right, as on the report page.
+ */
+function savingsSummaryCard(doc, item, palette, x, y, w, h) {
+  const { card: c } = item;
+  card(doc, x, y, w, h, c.title, item.subtitle);
+  const top = y + CARD_HEAD_H + CARD_PAD;
+  const bodyH = h - CARD_HEAD_H - CARD_PAD * 2;
+  if (!c.hasData) { emptyState(doc, x, top, w, bodyH); return; }
+  const leftW = (w - CARD_PAD * 3) * 0.45;
+  const lx = x + CARD_PAD;
+  const money = (v) => formatValue(v, 'currency');
+  const divider = (dy) => { stroke(doc, C.border); doc.setLineWidth(0.5); doc.line(lx, dy, lx + leftW, dy); };
+
+  let cy = top;
+  const pair = (label, value, { color = C.body, size = 8, dot } = {}) => {
+    if (dot) { fill(doc, dot); doc.circle(lx + 2, cy + TICK - 2, 2, 'F'); }
+    text(doc, label, lx + (dot ? 7 : 0), cy + TICK, { size: TICK, color: C.muted });
+    text(doc, fitText(doc, value, leftW, size, 'bold'), lx, cy + TICK + 3 + size, { size, color, weight: 'bold' });
+    cy += TICK + size + 9;
+  };
+  pair('Traditional Cost', money(c.traditional));
+  divider(cy - 4);
+  cy += 2;
+  pair('Our Cost', money(c.ours));
+  pair('Membership Cost', money(c.membership), { size: 7, dot: palette[0] });
+  pair('Service Cost', money(c.service), { size: 7, dot: palette[1 % palette.length] });
+  divider(cy - 4);
+  cy += 2;
+  const loss = c.savings < 0;
+  pair('Total Savings', `${loss ? '-' : ''}${money(Math.abs(c.savings))}`, { size: 11, color: loss ? C.loss : C.gain });
+
+  // Traditional as one bar; ours stacked membership (bottom) then service.
+  const cx = lx + leftW + CARD_PAD;
+  const cw = x + w - CARD_PAD - cx;
+  const ticks = niceTicks(Math.max(c.traditional, c.ours));
+  const plotTop = top + 4;
+  const plotH = bodyH - 16;
+  const axisW = yLabels(doc, ticks, compactTick('currency'), cx, plotTop, plotH);
+  const px = cx + axisW;
+  const pw = cw - axisW;
+  gridLines(doc, ticks, px, plotTop, pw, plotH);
+  const max = ticks[ticks.length - 1] || 1;
+  const slot = pw / 2;
+  const barW = Math.min(slot * 0.4, 18);
+  const bars = [[[c.traditional, palette[0]]], [[c.membership, palette[0]], [c.service, palette[1 % palette.length]]]];
+  bars.forEach((segments, i) => {
+    let acc = 0;
+    const bx = px + slot * i + (slot - barW) / 2;
+    segments.forEach(([v, color]) => {
+      if (!v) return;
+      fill(doc, color);
+      doc.rect(bx, plotTop + plotH - ((acc + v) / max) * plotH, barW, (v / max) * plotH, 'F');
+      acc += v;
+    });
+  });
+  xLabels(doc, ['Traditional Cost', 'Our Cost'], px, slot, plotTop + plotH + 8);
+}
+
 // ── Page chrome ──
 /** A closed polygon from absolute points. */
 function polygon(doc, points) {
@@ -813,7 +874,8 @@ export function generatedOnLabel(date = new Date()) {
  *   without them the PDF falls back to Helvetica
  * @param {{ id?: string, title: string, subtitle?: string, note?: string, items: object[] }[]} report.sections – `note` is
  *   the Textarea's rich-text HTML; items are
- *   `{ kind: 'widget', widget, model, full }` or `{ kind: 'savings', card }`
+ *   `{ kind: 'widget', widget, model, full }` or `{ kind: 'savings', card, summary? }`
+ *   (`summary`: the Cost Savings Comparison, whose card is buildSavingsSummary's result plus a title)
  * @returns {Blob} application/pdf
  */
 export function generateEmployerReportPdf(report) {
@@ -886,7 +948,7 @@ export function generateEmployerReport(report) {
     }
     sectionCount += 1;
     if (section.id) anchors[section.id] = doc.getNumberOfPages();
-    const firstH = section.items[0].kind === 'savings' ? SAVINGS_H : CARD_H;
+    const firstH = section.items[0].kind === 'savings' ? (section.items[0].summary ? CARD_H : SAVINGS_H) : CARD_H;
     setWeight(doc, 'regular');
     doc.setFontSize(10);
     const subtitleLines = section.subtitle ? doc.splitTextToSize(section.subtitle, CONTENT_W) : [];
@@ -911,7 +973,29 @@ export function generateEmployerReport(report) {
     y += 8;
 
     if (section.items[0].kind === 'savings') {
-      section.items.forEach((item, i) => {
+      const summary = section.items.find(it => it.summary);
+      const cards = section.items.filter(it => !it.summary);
+      if (summary) {
+        // As on the page: the comparison card in a wider first column, the
+        // category cards two per row beside it.
+        const rows = Math.ceil(cards.length / 2);
+        const cardsH = rows * SAVINGS_H + Math.max(0, rows - 1) * GAP;
+        const h = Math.max(CARD_H, cardsH);
+        ensure(h);
+        const sumW = cards.length ? (CONTENT_W - GAP * 2) * (1.5 / 3.5) : CONTENT_W;
+        savingsSummaryCard(doc, summary, palette, MARGIN, y, sumW, h);
+        const colW = (CONTENT_W - sumW - GAP * 2) / 2;
+        cards.forEach((item, i) => {
+          const last = i === cards.length - 1 && i % 2 === 0;
+          const cx = MARGIN + sumW + GAP + (colW + GAP) * (i % 2);
+          savingsCard(doc, item, cx, y + Math.floor(i / 2) * (SAVINGS_H + GAP), last ? colW * 2 + GAP : colW);
+        });
+        y += h + GAP * 2;
+        drawNote(section.note);
+        y += 12;
+        return;
+      }
+      cards.forEach((item, i) => {
         const col = i % 3;
         if (col === 0 && i) y += SAVINGS_H + GAP;
         if (col === 0) ensure(SAVINGS_H);
