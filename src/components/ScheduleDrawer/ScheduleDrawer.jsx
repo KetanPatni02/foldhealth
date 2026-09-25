@@ -38,6 +38,12 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
         date={drawer.date}
         setDate={drawer.setDate}
         timezoneLabel={timezoneLabel}
+        time={drawer.time}
+        setTime={drawer.setTime}
+        openSections={drawer.openSections}
+        customTime={drawer.customTime}
+        setCustomTime={drawer.setCustomTime}
+        timeBtnRef={drawer.timeBtnRef}
         editingInstruction={drawer.editingInstruction}
         setEditingInstruction={drawer.setEditingInstruction}
         instructionDraft={drawer.instructionDraft}

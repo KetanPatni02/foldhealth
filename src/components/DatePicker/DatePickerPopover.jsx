@@ -186,12 +186,14 @@ export function DatePickerPopover({
 
   const yearOptions = useMemo(() => {
     const now = today.getFullYear();
-    const start = Math.min(now - 80, viewYear - 5);
-    const end = Math.max(now + 20, viewYear + 5);
+    // Bounds narrow the year list too, so a future-only picker (min = today)
+    // doesn't offer years whose every day is disabled.
+    const start = minDate ? minDate.getFullYear() : Math.min(now - 80, viewYear - 5);
+    const end = maxDate ? maxDate.getFullYear() : Math.max(now + 20, viewYear + 5);
     const out = [];
     for (let y = end; y >= start; y--) out.push({ value: String(y), label: String(y) });
     return out;
-  }, [viewYear, today]);
+  }, [viewYear, today, minDate, maxDate]);
 
   const rightYearOptions = useMemo(() => {
     const start = viewYear - 80;

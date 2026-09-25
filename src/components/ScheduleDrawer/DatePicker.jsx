@@ -1,48 +1,56 @@
 import { useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
-import { ActionButton } from '../ActionButton/ActionButton';
-import { MONTH_NAMES } from './scheduleDrawerConstants';
+import { DatePickerPopover } from '../DatePicker/DatePickerPopover';
 import styles from './ScheduleDrawer.module.css';
 
-export function DatePicker({ value, onSelect }) {
-  const [open, setOpen] = useState(false);
-  const [viewDate, setViewDate] = useState(new Date());
-  const btnRef = useRef(null);
+// Appointments store the date as MM-DD-YYYY; the shared calendar speaks ISO.
+function toIso(value) {
+  const s = String(value || '');
+  let m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s);
+  if (m) return `${m[3]}-${m[1]}-${m[2]}`;
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
+  return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0, 10) : '';
+}
+function todayIso() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function fromIso(iso) {
+  const [y, mo, d] = String(iso || '').split('-');
+  return y && mo && d ? `${mo}-${d}-${y}` : '';
+}
 
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const days = [];
-  for (let i = 0; i < firstDay; i++) days.push(null);
-  for (let d = 1; d <= daysInMonth; d++) days.push(d);
+/**
+ * Date field for the schedule drawer. Uses the shared Fold calendar
+ * (components/DatePicker/DatePickerPopover) so it matches every other date
+ * picker in the app. `onSelect` still receives MM-DD-YYYY.
+ */
+export function DatePicker({ value, onSelect }) {
+  const [anchorRect, setAnchorRect] = useState(null);
+  const btnRef = useRef(null);
+  const toggle = () => setAnchorRect(anchorRect ? null : btnRef.current?.getBoundingClientRect() || null);
 
   return (
     <div style={{ position: 'relative' }}>
       {value ? (
-        <button ref={btnRef} className={styles.detailValue} onClick={() => setOpen(v => !v)} style={{ cursor: 'pointer' }}><Icon name="solar:calendar-linear" size={16} color="var(--neutral-300)" /> {value}</button>
+        <button ref={btnRef} type="button" className={styles.detailValue} onClick={toggle} style={{ cursor: 'pointer' }}>
+          <Icon name="solar:calendar-linear" size={16} color="var(--neutral-300)" /> {value}
+        </button>
       ) : (
-        <button ref={btnRef} className={styles.detailValuePlaceholder} onClick={() => setOpen(v => !v)}><Icon name="solar:calendar-linear" size={16} color="var(--neutral-200)" /> Select Date</button>
+        <button ref={btnRef} type="button" className={styles.detailValuePlaceholder} onClick={toggle}>
+          <Icon name="solar:calendar-linear" size={16} color="var(--neutral-200)" /> Select Date
+        </button>
       )}
-      {open && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)}>
-          <div className={styles.calendarDropdown} style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }} onClick={e => e.stopPropagation()}>
-            <div className={styles.calendarHeader}>
-              <ActionButton icon="solar:alt-arrow-left-linear" size="S" onClick={() => setViewDate(new Date(year, month - 1, 1))} />
-              <span className={styles.calendarTitle}>{MONTH_NAMES[month]} {year}</span>
-              <ActionButton icon="solar:alt-arrow-right-linear" size="S" onClick={() => setViewDate(new Date(year, month + 1, 1))} />
-            </div>
-            <div className={styles.calendarGrid}>
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={i} className={styles.calendarDayLabel}>{d}</div>)}
-              {days.map((d, i) => d ? (
-                <button key={i} className={styles.calendarDay} onClick={() => { onSelect(`${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}-${year}`); setOpen(false); }}>{d}</button>
-              ) : <div key={i} />)}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <DatePickerPopover
+        open={!!anchorRect}
+        anchorRect={anchorRect}
+        value={toIso(value)}
+        // Appointments can only be booked from today onward.
+        min={todayIso()}
+        onChange={(iso) => { const next = fromIso(iso); if (next) onSelect(next); }}
+        onClose={() => setAnchorRect(null)}
+      />
     </div>
   );
 }
