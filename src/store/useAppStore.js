@@ -119,7 +119,7 @@ import {
 } from './lib/worklistPersist';
 import { fetchAnalyticsTableBatched } from './lib/analyticsTableBatcher';
 import { mapNotificationRow, mergeNotifications } from './lib/notificationStoreLib';
-import { persistHccAddedChart, persistProgramDocument } from './lib/documentUploadPersist';
+import { persistHccAddedChart, persistProgramDocument, persistProgramDocumentUpdate, persistProgramDocumentDelete } from './lib/documentUploadPersist';
 import {
   LIST_FILTER_KEY,
   detachSaved,
@@ -3577,6 +3577,7 @@ export const useAppStore = create((set, get) => ({
         updatedDate: r.updated_date,
         createdAt:   r.created_at,
         fileUrl:     r.file_url,
+        storagePath: r.storage_path,
         ext:         r.ext,
       }));
       set({ programDocuments: rows, programDocumentsDidFetch: true });
@@ -3588,12 +3589,14 @@ export const useAppStore = create((set, get) => ({
   // `file` (when present) is kept on the in-memory row so FilePreview can show
   // it immediately via a session-local blob URL, while persistProgramDocument
   // uploads the bytes to Storage in the background for durability across reloads.
-  addProgramDocument: (doc, file) => {
+  // `opts.logActivity: false` skips the P360 program activity entry, for
+  // callers that log to their own feed (the HEDIS Care Gap drawer).
+  addProgramDocument: (doc, file, opts = {}) => {
     const nextDoc = file ? { ...doc, file } : doc;
     // Optimistic local append — dedup by id so a later fetch can't double it.
     set(s => ({ programDocuments: [nextDoc, ...s.programDocuments.filter(d => d.id !== doc.id)] }));
     persistProgramDocument(nextDoc, file);
-    if (doc.programCode) {
+    if (doc.programCode && opts.logActivity !== false) {
       get().logProgramActivity({
         patientId: doc.patientId,
         programCode: doc.programCode,
@@ -3601,6 +3604,23 @@ export const useAppStore = create((set, get) => ({
         activityKind: 'document',
       });
     }
+  },
+
+  updateProgramDocument: (id, patch) => {
+    if (!id || !patch) return;
+    set(s => ({ programDocuments: s.programDocuments.map(d => (d.id === id ? { ...d, ...patch } : d)) }));
+    persistProgramDocumentUpdate(id, patch);
+  },
+  removeProgramDocument: (id) => {
+    const doc = get().programDocuments.find(d => d.id === id);
+    if (!doc) return;
+    set(s => ({ programDocuments: s.programDocuments.filter(d => d.id !== id) }));
+    // A doc uploaded this session has no storagePath on the in-memory row
+    // (the upload fills it in on the DB row only); rebuild it from the same
+    // naming rule persistProgramDocument uses so the file isn't orphaned.
+    const path = doc.storagePath
+      || (doc.file ? `${doc.programCode || 'unscoped'}/${doc.patientId || 'unscoped'}/${doc.id}-${doc.file.name}` : null);
+    persistProgramDocumentDelete(id, path);
   },
 
   // Org-level feature flags (from org_settings).
@@ -6245,6 +6265,28 @@ export const useAppStore = create((set, get) => ({
   bulkUpdateGapStatuses: (memberId, updates, { assignee } = {}) => {
     // updates: { [gapCode]: nextStatus }, assignee: optional name to set on all affected gaps
     track('hedis.gap_status_bulk_updated', { memberId, count: Object.keys(updates || {}).length });
+    // Snapshot before the write so each changed gap gets the same persisted
+    // Status Changed / Assignee Changed entries a single-gap edit produces.
+    const prevGaps = (get().hedisMembers || []).find(m => m.id === memberId)?.gaps || [];
+    const actor = get().currentActorName();
+    const initialsOf = (n) => (String(n || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '');
+    const entries = [];
+    prevGaps.forEach(g => {
+      const nextStatus = updates?.[g.code];
+      if (!nextStatus) return;
+      if (g.status !== nextStatus) {
+        entries.push({ t: 'status_change', title: 'Status Changed', from: g.status || null, to: nextStatus, gapCode: g.code });
+      }
+      if (assignee !== undefined && (g.assignee || null) !== (assignee || null)) {
+        entries.push({
+          t: 'assignee_change',
+          title: 'Assignee Changed',
+          gapCode: g.code,
+          fromAssignee: g.assignee ? { initials: initialsOf(g.assignee), name: g.assignee } : null,
+          toAssignee: assignee ? { initials: initialsOf(assignee), name: assignee } : null,
+        });
+      }
+    });
     set(s => ({
       hedisMembers: (s.hedisMembers || []).map(m =>
         m.id !== memberId ? m : {
@@ -6256,6 +6298,7 @@ export const useAppStore = create((set, get) => ({
       ),
     }));
     persistHedisGaps(memberId, get().hedisMembers.find(m => m.id === memberId)?.gaps);
+    entries.forEach(e => get().logCareGapActivity(memberId, { actor, ...e }));
   },
 
   // Open a NEW HEDIS gap on a member natively inside Fold, distinct
@@ -6313,7 +6356,10 @@ export const useAppStore = create((set, get) => ({
     return created;
   },
   logCareGapActivity: (memberId, entry) => {
-    const full = { id: Date.now(), at: new Date().toISOString(), ...entry };
+    // Random suffix: several entries can be logged in the same millisecond
+    // (bulk status changes, multi-program outreach) and `id` is the table's
+    // primary key, so a bare Date.now() made the later inserts fail.
+    const full = { id: `cg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, at: new Date().toISOString(), ...entry };
     set(s => ({
       caregapActivity: {
         ...s.caregapActivity,

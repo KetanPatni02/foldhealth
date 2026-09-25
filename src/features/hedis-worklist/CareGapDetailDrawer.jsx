@@ -28,8 +28,13 @@ import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
 import { CardSkeleton } from '../../components/CardSkeleton/CardSkeleton';
-import { OutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
-import { OUTREACH_LOG_COUNT } from '../patient/data/outreachLogMock';
+import { OutreachTabView } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
+import { useOutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/useOutreachTab';
+import { DocumentUploadForm } from '../../components/DocumentUploadForm/DocumentUploadForm';
+import { useDocumentUploadForm } from '../../components/DocumentUploadForm/useDocumentUploadForm';
+import { DOC_TYPES } from '../hcc/data/chartDocs';
+import { DocumentList } from '../../components/DocumentList/DocumentList';
+import { FilePreview } from '../../components/FilePreview/FilePreview';
 import { useAppStore } from '../../store/useAppStore';
 import { TABS, MORE_ACTIONS, toActivityLogEntries } from './CareGapDetailDrawer.utils';
 import { CareGapDetailDrawerHeader } from './CareGapDetailDrawerHeader';
@@ -57,6 +62,13 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const updateGapAssignee = useAppStore(s => s.updateGapAssignee);
   const logCareGapActivity = useAppStore(s => s.logCareGapActivity);
   const currentActorName = useAppStore(s => s.currentActorName);
+  const addProgramDocument = useAppStore(s => s.addProgramDocument);
+  const updateProgramDocument = useAppStore(s => s.updateProgramDocument);
+  const removeProgramDocument = useAppStore(s => s.removeProgramDocument);
+  const programDocuments = useAppStore(s => s.programDocuments);
+  const programDocumentsDidFetch = useAppStore(s => s.programDocumentsDidFetch);
+  const fetchProgramDocuments = useAppStore(s => s.fetchProgramDocuments);
+  useEffect(() => { fetchProgramDocuments(); }, [fetchProgramDocuments]);
   const activityEntries = useAppStore(s => s.caregapActivity[member?.id]);
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
@@ -126,6 +138,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (a.openClinicalNote) openClinicalNoteFlow();
     else if (a.key === 'task') setLeftWorkspace('task');
     else if (a.key === 'appointment') setLeftWorkspace('schedule');
+    else if (a.key === 'outreach') openOutreachWorkspace();
+    else if (a.key === 'document') openDocumentUpload();
     else showToast(`${a.label} — coming soon`);
   };
 
@@ -250,6 +264,68 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
 
   // Both workspace hooks are called unconditionally (React rules) and
   // their outputs only wire into the UI when their key is active.
+  // Activity entries for tasks / appointments. Shared by this drawer's own
+  // workspaces and the outreach form's Actions row, so a task or
+  // appointment created from either path lands in the persisted feed.
+  const logTaskAdded = (task) => {
+    logCareGapActivity(member?.id, {
+      title: 'Task Added',
+      detail: task?.name || 'Task',
+      actor: currentActorName(),
+      icon: 'solar:clipboard-list-linear',
+      t: 'task',
+      gapCodes: [currentCode],
+      detailCard: {
+        taskId: task?.id,
+        title: task?.name || 'Task',
+        assignee: task?.assigned_to || null,
+        priority: task?.priority || 'none',
+        status: task?.status === 'completed' ? 'Completed' : 'Pending',
+      },
+    });
+  };
+  const logAppointmentScheduled = (row) => {
+    // Match Figma 1230:74055 — Activity entry is a detail card with the
+    // appointment type as title, a "date, time · provider" subtitle, and
+    // the appointment's own status pill (default Scheduled).
+    const subtitleBits = [];
+    if (row?.date) subtitleBits.push(row.date);
+    if (row?.time_start) subtitleBits.push(row.time_end ? `${row.time_start} – ${row.time_end}` : row.time_start);
+    const subtitleLeft = subtitleBits.join(', ');
+    const provider = row?.primary_user || '';
+    logCareGapActivity(member?.id, {
+      when: new Date().toISOString(),
+      actor: currentActorName(),
+      t: 'appointment',
+      title: 'Appointment Scheduled',
+      gapCodes: [currentCode],
+      detailCard: {
+        title: row?.appointment_type_name || 'Appointment',
+        subtitle: [subtitleLeft, provider].filter(Boolean).join(' • '),
+        status: row?.status || 'Scheduled',
+      },
+    });
+  };
+  // One entry per program the outreach was logged for, so each keeps its
+  // own outcome and note (Separate Notes).
+  const logOutreachSaved = (entries, { isEdit, callDetails } = {}) => {
+    const when = new Date().toISOString();
+    entries.forEach(e => {
+      const title = e.type === 'General' ? 'General Outreach' : e.title;
+      logCareGapActivity(member?.id, {
+        when,
+        actor: currentActorName(),
+        t: 'outreach',
+        title: isEdit ? `${title} Updated` : title,
+        badges: e.programs,
+        gapCodes: e.programs,
+        outcome: e.outcome,
+        outcomeColor: e.outcomeColor,
+        note: e.note,
+        ...(callDetails ? { callDetails } : {}),
+      });
+    });
+  };
   const addTask = useAddTaskDrawer({
     defaultStatus: undefined,
     initialMember: member?.name || '',
@@ -258,21 +334,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       // Log an activity entry so the Care Gap Drawer's Activity Log
       // shows the create action, and close the left workspace so the
       // Tasks tab (which reads from the store) is immediately visible.
-      logCareGapActivity(member?.id, {
-        title: 'Task Added',
-        detail: task?.name || 'Task',
-        actor: currentActorName(),
-        icon: 'solar:clipboard-list-linear',
-        t: 'task',
-        gapCodes: [currentCode],
-        detailCard: {
-          taskId: task?.id,
-          title: task?.name || 'Task',
-          assignee: task?.assigned_to || null,
-          priority: task?.priority || 'none',
-          status: task?.status === 'completed' ? 'Completed' : 'Pending',
-        },
-      });
+      logTaskAdded(task);
       runLeftClose();
     },
     // hedisMemberId lets the Tasks tab filter reliably (member.name is
@@ -284,6 +346,102 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     // stay on the in-memory task object for the drawer's own use).
     dbOmit: ['hedisMemberId', 'careGap', 'measurementYear'],
   });
+  // One outreach state backs both the left-pane form (Add Outreach) and
+  // the Outreaches tab list, so a save in the pane shows up in the tab.
+  const outreach = useOutreachTab({ defaultPrograms: [currentCode], defaultLogFor: 'care-program', onSaved: logOutreachSaved });
+  const openOutreachWorkspace = () => {
+    outreach.setDatetime(outreach.formatNow());
+    // Pre-select the gap the drawer is focused on; the hook's reset after a
+    // save or discard clears the selection.
+    if (!outreach.selectedProgs.includes(currentCode)) outreach.toggleProgram(currentCode);
+    outreach.setFormOpen(true);
+    setLeftWorkspace('outreach');
+  };
+  const handleSaveOutreach = () => {
+    if (!outreach.canSave) return;
+    outreach.handleSave();
+    runLeftClose();
+  };
+  // Pre-populate the patient using the current gap's member. Passing the
+  // synthesized object (not just an id) skips the patients.find lookup —
+  // HEDIS members don't share ids with the appointments' patients table.
+  // Shared by this drawer's scheduler and the outreach form's scheduler.
+  const schedulePatient = member && {
+    id: member.id,
+    name: member.name,
+    gender: member.gender,
+    age: member.age,
+    dob: member.dob,
+    facility: member.facility,
+    laceScore: member.laceScore,
+  };
+  // Add Document workspace. The file + row go to `program_documents` (gap
+  // code as program_code, HEDIS member id as patient_id) and the upload is
+  // logged to this gap's Activity feed.
+  const docUpload = useDocumentUploadForm();
+  // Care gap uploads are this member's `cgdoc-` rows; the id prefix keeps
+  // them apart from P360 program documents that share the table.
+  const memberDocs = (programDocuments || [])
+    .filter(d => String(d.id).startsWith('cgdoc-') && String(d.patientId) === String(member?.id))
+    .toSorted((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const [previewDocId, setPreviewDocId] = useState(null);
+  const [docToDelete, setDocToDelete] = useState(null);
+  const previewDoc = previewDocId ? memberDocs.find(d => d.id === previewDocId) : null;
+  const openDocumentUpload = () => { docUpload.reset(); setLeftWorkspace('document'); };
+  const openDocumentPreview = (id) => { setPreviewDocId(id); setLeftWorkspace('document-preview'); };
+  const todayMmDdYyyy = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+  const handleUploadDocument = () => {
+    if (!docUpload.canSave || !member?.id) return;
+    const { file, caption, docType } = docUpload;
+    const now = new Date();
+    if (docUpload.editingId) {
+      const name = caption.trim();
+      updateProgramDocument(docUpload.editingId, {
+        name, type: docType, updatedBy: currentActorName(), updatedDate: todayMmDdYyyy(now),
+      });
+      logCareGapActivity(member.id, {
+        when: now.toISOString(),
+        actor: currentActorName(),
+        t: 'upload',
+        title: 'Document Updated',
+        file: name,
+        fileType: docType,
+        docId: docUpload.editingId,
+        gapCodes: [currentCode],
+      });
+      showToast(`Updated ${name}`);
+      docUpload.reset();
+      runLeftClose();
+      return;
+    }
+    const id = `cgdoc-${now.getTime()}`;
+    const name = caption.trim();
+    addProgramDocument({
+      id,
+      programCode: currentCode,
+      patientId: String(member.id),
+      name,
+      type: docType,
+      sizeBytes: file.size,
+      updatedBy: currentActorName(),
+      updatedDate: todayMmDdYyyy(now),
+      createdAt: now.toISOString(),
+      ext: (/\.([a-z0-9]+)$/i.exec(file.name) || [])[1]?.toLowerCase() || null,
+    }, file, { logActivity: false });
+    logCareGapActivity(member.id, {
+      when: now.toISOString(),
+      actor: currentActorName(),
+      t: 'upload',
+      title: 'Document Uploaded',
+      file: name,
+      fileType: docType,
+      docId: id,
+      gapCodes: [currentCode],
+    });
+    showToast(`Uploaded ${name}`);
+    docUpload.reset();
+    runLeftClose();
+  };
   const scheduleDrawer = useScheduleDrawer({
     onClose: () => closeLeftWorkspace(),
     // On successful create, surface a toast, log an activity entry so the
@@ -293,39 +451,10 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     // before the pane collapses).
     onSave: (row) => {
       showToast('Appointment scheduled');
-      // Match Figma 1230:74055 — Activity entry is a detail card with the
-      // appointment type as title, a "date, time · provider" subtitle, and
-      // the appointment's own status pill (default Scheduled).
-      const subtitleBits = [];
-      if (row?.date) subtitleBits.push(row.date);
-      if (row?.time_start) subtitleBits.push(row.time_end ? `${row.time_start} – ${row.time_end}` : row.time_start);
-      const subtitleLeft = subtitleBits.join(', ');
-      const provider = row?.primary_user || '';
-      logCareGapActivity(member.id, {
-        when: new Date().toISOString(),
-        actor: currentActorName(),
-        t: 'appointment',
-        title: 'Appointment Scheduled',
-        detailCard: {
-          title: row?.appointment_type_name || 'Appointment',
-          subtitle: [subtitleLeft, provider].filter(Boolean).join(' • '),
-          status: row?.status || 'Scheduled',
-        },
-      });
+      logAppointmentScheduled(row);
       fetchAppointments?.();
     },
-    // Pre-populate the patient using the current gap's member. Passing the
-    // synthesized object (not just an id) skips the patients.find lookup —
-    // HEDIS members don't share ids with the appointments' patients table.
-    initialSelectedPatient: member && {
-      id: member.id,
-      name: member.name,
-      gender: member.gender,
-      age: member.age,
-      dob: member.dob,
-      facility: member.facility,
-      laceScore: member.laceScore,
-    },
+    initialSelectedPatient: schedulePatient,
   });
   // Inline single-gap Clinical Note hook — always mounted (React rules) but
   // only wired into the UI when leftWorkspace === 'clinical-note' /
@@ -409,6 +538,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     // Task workspace has a "discard unsaved changes?" guard; the scheduler
     // discards silently for parity with its standalone usage.
     if (leftWorkspace === 'task' && addTask.guardClose() === false) return;
+    if (leftWorkspace === 'outreach') outreach.handleDiscard();
+    if (leftWorkspace === 'document') docUpload.reset();
+    if (leftWorkspace === 'document-preview') setPreviewDocId(null);
     // DSF-B: block close on a partial PHQ-9 and surface the exit modal.
     const guard = detectPhq9Incomplete({ mode: 'close' });
     if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'close' }); return; }
@@ -533,9 +665,10 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const openTaskDetail = (task) => handleOpenTaskInPlace(task);
   const tabCounts = {
     'Activity Log': activityEntries?.length ?? 0,
-    Outreaches: OUTREACH_LOG_COUNT,
+    Outreaches: outreach.logGroups.reduce((n, g) => n + (g.logs?.length ?? 0), 0),
     'Appt/Reminders': memberAppointments.length,
     'Clinical Notes': clinicalNoteCount,
+    Documents: memberDocs.length,
     Tasks: memberTasks.length,
   };
 
@@ -558,6 +691,32 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       {/* The task detail no longer opens as its own standalone Drawer —
           it renders inline as the left workspace when leftWorkspace ===
           'task-detail' (see the leftPane branches below). */}
+      {docToDelete && (
+        <ConfirmDialog
+          variant="destructive"
+          title="Delete document?"
+          description={`"${docToDelete.name}" will be removed from this member's documents. This can't be undone.`}
+          confirmLabel="Delete"
+          onCancel={() => setDocToDelete(null)}
+          onConfirm={() => {
+            const doc = docToDelete;
+            removeProgramDocument(doc.id);
+            logCareGapActivity(member.id, {
+              when: new Date().toISOString(),
+              actor: currentActorName(),
+              t: 'upload',
+              title: 'Document Deleted',
+              file: doc.name,
+              fileType: doc.type,
+              docId: doc.id,
+              gapCodes: [currentCode],
+            });
+            if (previewDocId === doc.id) { setPreviewDocId(null); runLeftClose(); }
+            showToast(`Removed ${doc.name}`);
+            setDocToDelete(null);
+          }}
+        />
+      )}
       {addTask.showCloseConfirm && (
         <ConfirmDialog
           icon="solar:danger-triangle-linear"
@@ -644,6 +803,15 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 if (leftWorkspace === 'task') {
                   return <span className={styles.paneTitle}>Add Task</span>;
                 }
+                if (leftWorkspace === 'outreach') {
+                  return <span className={styles.paneTitle}>Add Outreach</span>;
+                }
+                if (leftWorkspace === 'document') {
+                  return <span className={styles.paneTitle}>{docUpload.editingId ? 'Edit Document' : 'Upload Document'}</span>;
+                }
+                if (leftWorkspace === 'document-preview') {
+                  return <span className={styles.paneTitle}>{previewDoc?.name || 'Document'}</span>;
+                }
                 if (leftWorkspace === 'clinical-note-consolidated') {
                   return <span className={styles.paneTitle}>Consolidated Clinical Note</span>;
                 }
@@ -713,6 +881,23 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   <Button variant="primary" size="M" disabled={!scheduleDrawer.canSchedule} onClick={scheduleDrawer.handleSchedule}>
                     Schedule
                   </Button>
+                ) : leftWorkspace === 'outreach' ? (
+                  <Button variant="primary" size="M" disabled={!outreach.canSave} onClick={handleSaveOutreach}>
+                    Save
+                  </Button>
+                ) : leftWorkspace === 'document' ? (
+                  <Button variant="primary" size="M" disabled={!docUpload.canSave} onClick={handleUploadDocument}>
+                    {docUpload.editingId ? 'Save' : 'Upload'}
+                  </Button>
+                ) : leftWorkspace === 'document-preview' ? (
+                  previewDoc?.fileUrl ? (
+                    <ActionButton
+                      icon="solar:square-top-down-linear"
+                      size="L"
+                      tooltip="Open in new tab"
+                      onClick={() => { const w = window.open(previewDoc.fileUrl, '_blank', 'noopener'); try { w?.focus(); } catch { /* popup blocked */ } }}
+                    />
+                  ) : null
                 ) : leftWorkspace === 'clinical-note' ? (
                   (() => {
                     // The author revisiting their own Pending Review note
@@ -837,7 +1022,13 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   label={
                     leftWorkspace === 'schedule'
                       ? 'Close Schedule Appointment'
-                      : leftWorkspace === 'clinical-note'
+                      : leftWorkspace === 'outreach'
+                        ? 'Close Add Outreach'
+                        : leftWorkspace === 'document'
+                          ? (docUpload.editingId ? 'Close Edit Document' : 'Close Upload Document')
+                          : leftWorkspace === 'document-preview'
+                            ? 'Close Document Preview'
+                            : leftWorkspace === 'clinical-note'
                         || leftWorkspace === 'clinical-note-preview'
                         || leftWorkspace === 'clinical-note-consolidated'
                         ? 'Close Clinical Note'
@@ -859,9 +1050,18 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 <span>All signed notes sync to the patient's EHR.</span>
               </div>
             )}
-            <div className={`${styles.leftPaneBody} ${leftWorkspace === 'clinical-note' ? styles.leftPaneBodyClinicalNote : ''} ${leftWorkspace === 'clinical-note-preview' ? styles.leftPaneBodyClinicalNotePreview : ''} ${leftWorkspace === 'clinical-note-consolidated' ? styles.leftPaneBodyClinicalNoteConsolidated : ''} ${leftWorkspace === 'schedule' ? styles.leftPaneBodySchedule : ''}`}>
+            <div className={`${styles.leftPaneBody} ${leftWorkspace === 'clinical-note' ? styles.leftPaneBodyClinicalNote : ''} ${leftWorkspace === 'clinical-note-preview' ? styles.leftPaneBodyClinicalNotePreview : ''} ${leftWorkspace === 'clinical-note-consolidated' ? styles.leftPaneBodyClinicalNoteConsolidated : ''} ${leftWorkspace === 'schedule' ? styles.leftPaneBodySchedule : ''} ${leftWorkspace === 'document-preview' ? styles.leftPaneBodyDocPreview : ''}`}>
               {leftWorkspace === 'schedule' ? (
                 <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
+              ) : leftWorkspace === 'document' ? (
+                <DocumentUploadForm form={docUpload} docTypes={DOC_TYPES} />
+              ) : leftWorkspace === 'document-preview' ? (
+                previewDoc ? (
+                  <FilePreview src={previewDoc.fileUrl} file={previewDoc.file} name={previewDoc.name} ext={previewDoc.ext} />
+                ) : null
+              ) : leftWorkspace === 'outreach' ? (
+                <OutreachTabView tab={outreach} hideLogForRow hideActivity hideFormFooter flush taskMember={member?.name} schedulePatient={schedulePatient}
+                  onTaskCreated={logTaskAdded} onAppointmentScheduled={(row) => { logAppointmentScheduled(row); fetchAppointments?.(); }} />
               ) : leftWorkspace === 'clinical-note' ? (
                 <ClinicalNoteWorkspaceBody v={clinicalNote} />
               ) : leftWorkspace === 'clinical-note-preview' ? (
@@ -897,6 +1097,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
             showToast={showToast} setShowClinicalNote={setShowClinicalNote}
             onOpenClinicalNote={openClinicalNoteFlow}
             onScheduleAppointment={() => setLeftWorkspace('schedule')}
+            onAddOutreach={openOutreachWorkspace}
             onOpenMeasureInfo={() => setLeftWorkspace('measure-info')} moreBtnRef={moreBtnRef}
             moreMenuRect={moreMenuRect} openMoreMenu={openMoreMenu} closeMoreMenu={closeMoreMenu}
             goPrev={goPrev} goNext={goNext} canPrev={canPrev} canNext={canNext}
@@ -944,7 +1145,37 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   : <CardSkeleton />}
               </div>
             ) : activeTab === 'Outreaches' ? (
-              <OutreachTab defaultPrograms={[gap.code]} defaultLogFor="care-program" hideLogForRow />
+              // While Add Outreach is open in the left pane, the tab shows
+              // only the log so the same form isn't rendered twice.
+              <OutreachTabView tab={outreach} hideLogForRow hideForm={leftWorkspace === 'outreach'} taskMember={member?.name} schedulePatient={schedulePatient}
+                onTaskCreated={logTaskAdded} onAppointmentScheduled={(row) => { logAppointmentScheduled(row); fetchAppointments?.(); }} />
+            ) : activeTab === 'Documents' ? (
+              programDocumentsDidFetch ? (
+                <DocumentList
+                  documents={memberDocs.map(d => ({
+                    id: d.id,
+                    name: d.name,
+                    meta: [d.type, d.programCode, d.updatedDate, d.updatedBy].filter(Boolean).join(' • '),
+                  }))}
+                  onUpload={openDocumentUpload}
+                  onOpen={(d) => openDocumentPreview(d.id)}
+                  menuItems={[
+                    { key: 'edit', icon: 'solar:pen-linear', label: 'Edit' },
+                    { key: 'delete', icon: 'solar:trash-bin-2-linear', label: 'Delete', danger: true },
+                  ]}
+                  onMenuSelect={(key, d) => {
+                    const doc = memberDocs.find(x => x.id === d.id);
+                    if (!doc) return;
+                    if (key === 'edit') {
+                      docUpload.startEdit({ id: doc.id, caption: doc.name, docType: doc.type });
+                      setLeftWorkspace('document');
+                    } else if (key === 'delete') {
+                      setDocToDelete(doc);
+                    }
+                  }}
+                  emptyLabel="No documents uploaded for this member yet."
+                />
+              ) : <CardSkeleton />
             ) : activeTab === 'Clinical Notes' ? (
               // Flat column-headed list per Figma 1030:78586 — no timeline
               // rail, no month grouping. Card affordances are shared with

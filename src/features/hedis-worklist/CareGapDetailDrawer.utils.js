@@ -57,6 +57,7 @@ export const TABS = [
   { key: 'Tasks', label: 'Tasks' },
   { key: 'Appt/Reminders', label: 'Appt/Reminders' },
   { key: 'Clinical Notes', label: 'Clinical Notes' },
+  { key: 'Documents', label: 'Documents' },
   { key: 'Orders', label: 'Orders' },
 ];
 
@@ -116,7 +117,9 @@ export function toActivityLogEntries(rawEntries) {
       time:  valid ? `${hh}:${min} ${ampm}` : '',
       by:    roleMatch ? roleMatch[1] : actor,
       role:  roleMatch ? roleMatch[2] : null,
-      outcomeColor: outcomeColor || e.outcomeColor,
+      // A color saved on the entry (outreach status: Successful / Unsuccessful
+      // / Note) wins over guessing it from the outcome text.
+      outcomeColor: e.outcomeColor || outcomeColor,
     });
   }
   return out;

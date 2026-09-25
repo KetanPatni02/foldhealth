@@ -1,7 +1,7 @@
 import { Button } from '../../../../../../components/Button/Button';
 import { OutreachIcon } from '../../../../../../components/Icon/OutreachIcon';
 import { ScheduleDrawer } from '../../../../../../components/ScheduleDrawer/ScheduleDrawer';
-import { AddTaskDrawer } from '../AddTaskDrawer/AddTaskDrawer.jsx';
+import { AddTaskDrawer } from '../../../../../tasks/AddTaskDrawer';
 import { useOutreachTab } from './useOutreachTab';
 import { OutreachTabForm } from './OutreachTabForm';
 import { OutreachTabActivity } from './OutreachTabActivity';
@@ -21,8 +21,45 @@ export function OutreachTab(props) {
   const tab = useOutreachTab({ ...hookProps, hideLogForRow, programsLabel });
 
   return (
-    <div className={styles.wrapper}>
-      {!tab.formOpen && !tab.scopedProgram ? (
+    <OutreachTabView
+      tab={tab}
+      programsLabel={programsLabel}
+      hideLogForRow={hideLogForRow}
+      hideActivity={hideActivity}
+      taskMember={hookProps.memberName}
+    />
+  );
+}
+
+/**
+ * Renders an Outreach tab from an externally owned `useOutreachTab` state,
+ * so a host (e.g. the Care Gap drawer) can show the form in one place and
+ * the activity list in another while both read the same log.
+ *   hideForm        : omit the form slot entirely (form is open elsewhere)
+ *   hideFormFooter  : drop the in-form Save / Discard (host owns them)
+ *   flush           : no outer padding or card chrome (host frames the form)
+ *   taskMember      : patient name prefilled in the Actions > Add Task drawer
+ *   schedulePatient : patient object prefilled in Actions > Schedule Appointment
+ *                     (for hosts whose member ids aren't in the patients table)
+ *   onTaskCreated / onAppointmentScheduled : let the host log what the
+ *                     Actions row created
+ */
+export function OutreachTabView({
+  tab,
+  programsLabel = 'Select Programs/Gaps',
+  hideLogForRow = false,
+  hideActivity = false,
+  hideForm = false,
+  hideFormFooter = false,
+  flush = false,
+  taskMember,
+  schedulePatient,
+  onTaskCreated,
+  onAppointmentScheduled,
+}) {
+  return (
+    <div className={`${styles.wrapper} ${flush ? styles.wrapperFlush : ''}`}>
+      {hideForm ? null : !tab.formOpen && !tab.scopedProgram ? (
         <div className={styles.emptyCard}>
           <Button
             variant="alt"
@@ -71,6 +108,7 @@ export function OutreachTab(props) {
           getPanel={tab.getPanel}
           patchPanel={tab.patchPanel}
           patchShared={tab.patchShared}
+          toggleSyncText={tab.toggleSyncText}
           sharedPanel={tab.sharedPanel}
           sharedPanelTitle={tab.sharedPanelTitle}
           addOutcome={tab.addOutcome}
@@ -82,6 +120,7 @@ export function OutreachTab(props) {
           handleDiscard={tab.handleDiscard}
           onAddTask={() => tab.setAddTaskOpen(true)}
           onSchedule={() => tab.setScheduleOpen(true)}
+          hideFooter={hideFormFooter}
         />
       )}
 
@@ -106,16 +145,24 @@ export function OutreachTab(props) {
 
       {tab.addTaskOpen && (
         <AddTaskDrawer
+          initialMember={taskMember}
           onClose={() => tab.setAddTaskOpen(false)}
-          onSave={task => tab.scopedProgram && tab.addProgramTask(tab.scopedProgram, task)}
+          onTaskCreated={task => {
+            if (tab.scopedProgram) tab.addProgramTask(tab.scopedProgram, task);
+            onTaskCreated?.(task);
+            tab.setAddTaskOpen(false);
+          }}
         />
       )}
       {tab.scheduleOpen && (
         <ScheduleDrawer
           initialPatientId={tab.patientId}
+          initialSelectedPatient={schedulePatient}
+          patientLocked={!!schedulePatient}
           source="outreach"
           onClose={() => tab.setScheduleOpen(false)}
           onSave={row => {
+            if (row) onAppointmentScheduled?.(row);
             if (!tab.scopedProgram || !row) return;
             tab.addProgramAppointment(tab.scopedProgram, {
               id: `appt-${Date.now()}`,

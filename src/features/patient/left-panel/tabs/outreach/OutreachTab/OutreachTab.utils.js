@@ -1,7 +1,13 @@
 export const PROGRAMS = ['SNP', 'AWV', 'CCM', 'TCM', 'ECM', 'CBP', 'MRP'];
 export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
-export const OUTCOME_CHOICES = ['Completed', 'Engaged', 'Left Voicemail', 'No Answer', 'Declined'];
+// Detailed outcomes offered by each note panel's Select Outcome menu, keyed
+// by the Outreach Outcome radio (Successful / Unsuccessful / Note).
+export const OUTCOME_CHOICES_BY_STATUS = {
+  Successful:   ['Spoke with patient', 'Enrolled', 'Appointment Scheduled', 'Visit Completed', 'Replied', 'Sent'],
+  Unsuccessful: ['No Answer', 'Left Voicemail', 'Inactive Phone Line / Wrong Number', 'Declined', 'Not Interested'],
+  Note:         ['Provider Communication', 'Mailed', 'Follow-up Needed', 'General Note'],
+};
 
 export const TYPE_OPTIONS = [
   { label: 'General',   icon: 'solar:document-text-linear',  flip: false },

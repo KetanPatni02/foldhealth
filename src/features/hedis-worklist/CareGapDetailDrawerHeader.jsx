@@ -45,6 +45,7 @@ export function CareGapDetailDrawerHeader({
   setShowClinicalNote,
   onOpenClinicalNote,
   onScheduleAppointment,
+  onAddOutreach,
   onOpenMeasureInfo,
   moreBtnRef,
   moreMenuRect,
@@ -244,7 +245,7 @@ export function CareGapDetailDrawerHeader({
             <Button variant="tertiary" size="L" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
           )}
           <Button variant="tertiary" size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
-          <Button variant="secondary" size="L" onClick={() => showToast('Add Outreach — coming soon')}>Add Outreach</Button>
+          <Button variant="secondary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>
         </div>
       </div>
     </>

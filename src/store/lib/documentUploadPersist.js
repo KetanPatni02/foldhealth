@@ -71,3 +71,31 @@ export async function persistProgramDocument(doc, file) {
     reportPersistFailure(`persistProgramDocument(${doc.id})`, e || { message: 'unknown' });
   }
 }
+
+/** Patch a `program_documents` row's metadata (fire-and-forget). */
+export async function persistProgramDocumentUpdate(id, patch) {
+  if (!id || !patch) return;
+  const row = {};
+  if ('name' in patch) row.name = patch.name;
+  if ('type' in patch) row.type = patch.type;
+  if ('updatedBy' in patch) row.updated_by = patch.updatedBy;
+  if ('updatedDate' in patch) row.updated_date = patch.updatedDate;
+  if (Object.keys(row).length === 0) return;
+  const { error } = await supabase.from('program_documents').update(row).eq('id', id);
+  if (error) reportPersistFailure(`persistProgramDocumentUpdate(${id})`, error);
+}
+
+/** Delete a `program_documents` row and its Storage object (fire-and-forget). */
+export async function persistProgramDocumentDelete(id, storagePath) {
+  if (!id) return;
+  try {
+    if (storagePath) {
+      const { error: rmErr } = await supabase.storage.from('program-documents').remove([storagePath]);
+      if (rmErr) reportPersistFailure(`persistProgramDocumentDelete.storage(${id})`, rmErr);
+    }
+    const { error } = await supabase.from('program_documents').delete().eq('id', id);
+    if (error) reportPersistFailure(`persistProgramDocumentDelete(${id})`, error);
+  } catch (e) {
+    reportPersistFailure(`persistProgramDocumentDelete(${id})`, e || { message: 'unknown' });
+  }
+}

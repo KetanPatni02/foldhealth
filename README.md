@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **HEDIS Care Gap drawer: Outreach, Documents, and a complete Activity log.**
+  Add Outreach and Add Document now open as left-pane workspaces, like Add
+  Task and Schedule Appointment. The outreach form's Select Outcome lists
+  depend on the Successful / Unsuccessful / Note choice, Sync Text is one
+  toggle across note panels, and its Actions row opens the current Add Task
+  drawer and a scheduler with the patient preselected. A new Documents tab
+  (shared `DocumentList`, matching the HCC Documents tab) lists care gap
+  uploads with preview, edit, and delete; files go to `program_documents`.
+  Every drawer action (outreach, tasks, appointments, notes, documents, bulk
+  status and assignee changes) is now written to `caregap_activity`.
+
 - **Analytics: Employer Impact Report.** A new Overview page (Figma
   5618:10554) with seven sections: Overview, Cost Savings, Engagement,
   Communication, Clinical Visits, Clinical Trends, and Demographics. Every
