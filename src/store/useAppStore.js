@@ -11661,15 +11661,29 @@ export const useAppStore = create((set, get) => ({
   employerImpactFilters: null,       // { employers, patientLocations, visitLocations, firstMonth, lastMonth }
   employerImpactFiltersLoaded: false,
   employerImpactRollups: {},         // { [filterKey]: rows[] }
+  employerImpactLocal: false,
   fetchEmployerImpactFilters: async () => {
     const { data, error } = await supabase.rpc('employer_impact_filters');
     if (error) console.warn('fetchEmployerImpactFilters:', error.message);
-    set({ employerImpactFilters: error ? null : data, employerImpactFiltersLoaded: true });
+    if (!error && data?.lastMonth) {
+      set({ employerImpactFilters: data, employerImpactFiltersLoaded: true, employerImpactLocal: false });
+      return;
+    }
+    // Tables missing or not yet seeded: fall back to the same generated
+    // rows the seed writes, rolled up in the browser.
+    const { localEmployerImpactFilters } = await import('../features/analytics/views/employer/employerImpactLocal');
+    set({ employerImpactFilters: localEmployerImpactFilters(), employerImpactFiltersLoaded: true, employerImpactLocal: true });
   },
   fetchEmployerImpact: async ({ from, to, employer = null, scope = 'patient', location = null }) => {
     const key = [from, to, employer || '*', scope, location || '*'].join('|');
     const cached = get().employerImpactRollups[key];
     if (cached) return cached;
+    if (get().employerImpactLocal) {
+      const { localEmployerImpactRollup } = await import('../features/analytics/views/employer/employerImpactLocal');
+      const rows = localEmployerImpactRollup({ from, to, employer, scope, location });
+      set(s => ({ employerImpactRollups: { ...s.employerImpactRollups, [key]: rows } }));
+      return rows;
+    }
     const { data, error } = await supabase.rpc('employer_impact_rollup', {
       p_from: `${from}-01`,
       p_to: `${to}-01`,

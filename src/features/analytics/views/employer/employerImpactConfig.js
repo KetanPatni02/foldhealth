@@ -15,6 +15,20 @@
  */
 
 export const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// The two report views. Keys stay 'patient' / 'visit' because they pick
+// which location column the SQL filters on.
+export const LOCATION_SCOPES = ['patient', 'visit'];
+export const SCOPE_OPTIONS = [
+  { key: 'patient', label: 'All Locations' },
+  { key: 'visit', label: 'By Location' },
+];
+
+// By Location is a clinic view: only its Clinical Visits section.
+const VISIT_SECTIONS = new Set(['clinicalVisits']);
+
+/** The sections a view shows. */
+export const sectionsForScope = (scope) => (scope === 'visit' ? SECTIONS.filter(s => VISIT_SECTIONS.has(s.id)) : SECTIONS);
+
 export const HOURS = Array.from({ length: 24 }, (_, h) =>
   `${String(h).padStart(2, '0')}-${String((h + 1) % 24).padStart(2, '0')}`);
 

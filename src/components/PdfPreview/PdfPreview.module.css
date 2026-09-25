@@ -1,0 +1,35 @@
+/* PdfPreview: two stacked iframes that crossfade between PDF versions. */
+
+.stack { position: relative; flex: 1; min-height: 0; background: var(--neutral-0); }
+
+.frame {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  border: none; background: var(--neutral-0);
+  opacity: 1; transition: opacity var(--duration-base) var(--ease-out);
+}
+.frameLayer { z-index: 1; }
+.frameHidden { opacity: 0; }
+
+.loading {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--neutral-0); pointer-events: none;
+}
+.spinner {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--neutral-100); border-top-color: var(--primary-300);
+  animation: pdfPreviewSpin 0.8s linear infinite;
+}
+@keyframes pdfPreviewSpin { to { transform: rotate(360deg); } }
+
+.empty {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-3);
+  font-size: var(--font-md); color: var(--neutral-300); text-align: center;
+  background: var(--neutral-0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame { transition: none; }
+  .spinner { animation: none; }
+}

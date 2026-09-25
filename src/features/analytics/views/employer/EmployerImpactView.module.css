@@ -1,5 +1,4 @@
-/* Employer Impact Report. Figma 5618:10554. Card chrome mirrors
-   AnalyticsLayout's .card (0.5px neutral-150 border, 8px radius). */
+/* Employer Impact Report. Figma 5618:10554. */
 
 .page { display: flex; flex-direction: column; padding-bottom: var(--space-8); }
 
@@ -11,7 +10,8 @@
 }
 .header { justify-content: space-between; gap: var(--space-4); }
 .titleRow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; min-width: 0; }
-.headerActions { flex-wrap: wrap; }
+.headerActions { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.actionDivider { width: 0.5px; height: 16px; background: var(--neutral-100); }
 
 /* Sticky so it stays reachable while scrolling. */
 .quickJump {
@@ -40,35 +40,19 @@
 .section { display: flex; flex-direction: column; gap: var(--space-3); scroll-margin-top: 48px; }
 .sectionTitle { margin: 0; font-size: var(--font-lg); font-weight: 500; color: var(--neutral-400); }
 .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-4); }
-.span_full { grid-column: span 6; }
-.span_twoThirds { grid-column: span 4; }
-.span_half { grid-column: span 3; }
-.span_third { grid-column: span 2; }
-.savingsCard { grid-column: span 2; }
-
+/* Spans come from packSpans, set per card as --span (desktop) and
+   --span-md (tablet), so every row is full whatever the saved order. */
+.grid > * { grid-column: span var(--span, 6); }
 @media (max-width: 1100px) {
-  .span_twoThirds, .span_half, .span_third, .savingsCard { grid-column: span 3; }
+  .grid > * { grid-column: span var(--span-md, 6); }
 }
 @media (max-width: 720px) {
   .grid > * { grid-column: span 6; }
 }
 
-/* ── Card ── */
-.card {
-  display: flex; flex-direction: column; min-width: 0;
-  background: var(--neutral-0); border: 0.5px solid var(--neutral-150); border-radius: 8px;
-}
-.cardHead { display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; }
-.cardHeadText { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-width: 0; }
-.cardTitle {
-  display: inline-flex; align-items: center; gap: var(--space-1);
-  font-size: var(--font-base); font-weight: 500; color: var(--neutral-400);
-}
-.cardInfo { display: inline-flex; cursor: help; }
+/* Card chrome lives in src/components/ChartContainer. */
 .cardSub { font-size: var(--font-sm); color: var(--neutral-200); }
-.cardActions { display: flex; align-items: center; gap: var(--space-1); }
-.cardBody { flex: 1; padding: var(--space-3) var(--space-4); min-width: 0; }
-.cardEmpty { display: flex; align-items: center; justify-content: center; min-height: 220px; }
+.chartFill { flex: 1; min-height: 0; min-width: 0; }
 
 /* ── Tooltip (matches Analytics' chart tooltip) ── */
 .tooltip {
@@ -82,7 +66,7 @@
 .tooltipValue { color: var(--neutral-400); font-weight: 500; font-variant-numeric: tabular-nums; }
 
 /* ── Legend ── */
-.legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-2); }
+.legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1) var(--space-3); margin-bottom: var(--space-2); }
 .legendItem {
   display: inline-flex; align-items: center; gap: var(--space-2);
   border: 0; background: transparent; padding: var(--space-1) 0; cursor: pointer;
@@ -95,8 +79,8 @@
 .legendLine { width: 14px; height: 2px; border-radius: 1px; background: var(--neutral-300); }
 
 /* ── Donut ── */
-.donut { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
-.donutChart { flex: 1 1 200px; min-width: 180px; }
+.donut { display: flex; align-items: center; gap: var(--space-4); height: 100%; }
+.donutChart { flex: 1 1 200px; min-width: 160px; height: 100%; }
 .donutLegend { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); flex: 1 1 160px; }
 .donutLegendItem { display: flex; align-items: flex-start; gap: var(--space-2); }
 .donutLegendItem .legendDot { margin-top: var(--space-1); }
@@ -116,14 +100,14 @@
 .statValue strong { font-size: var(--font-xl); font-weight: 500; color: var(--neutral-500); }
 .statSub { color: var(--neutral-200); }
 
-.withStats { display: grid; grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); gap: var(--space-4); }
-.withStatsChart { min-width: 0; }
+.withStats { display: grid; grid-template-columns: minmax(180px, 220px) minmax(0, 1fr); gap: var(--space-4); flex: 1; min-height: 0; }
+.withStatsChart { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 @media (max-width: 720px) { .withStats { grid-template-columns: 1fr; } }
 
 /* ── Satisfaction ── */
-.satisfaction { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: var(--space-4); }
+.satisfaction { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: var(--space-4); flex: 1; min-height: 0; }
 .satisfactionSide { display: flex; flex-direction: column; gap: var(--space-3); }
-.satisfactionChart { min-width: 0; }
+.satisfactionChart { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .satBox { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); border-radius: 8px; background: var(--neutral-50); }
 .satNumber { font-size: var(--font-xl); font-weight: 500; color: var(--neutral-500); font-variant-numeric: tabular-nums; }
 .satSplit { display: flex; gap: var(--space-6); margin-top: var(--space-2); }
@@ -139,11 +123,10 @@
 .savingsAmount { font-size: var(--font-xl); font-weight: 500; font-variant-numeric: tabular-nums; }
 .savingsGain { color: var(--status-success-dark); }
 .savingsLoss { color: var(--status-error-dark); }
-.savingsCard .cardEmpty { min-height: 72px; }
 
 /* ── Dialogs ── */
 .dialog { width: min(960px, calc(100vw - 32px)); max-width: none; }
-.expandBody { min-width: 0; }
+.expandBody { display: flex; flex-direction: column; min-width: 0; }
 .tableWrap { max-height: 60vh; overflow: auto; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
 .table { width: 100%; border-collapse: collapse; font-size: var(--font-md); font-variant-numeric: tabular-nums; }
 .table th, .table td { padding: var(--space-2) var(--space-3); text-align: right; border-bottom: 0.5px solid var(--neutral-150); }
@@ -153,6 +136,11 @@
 .table td { color: var(--neutral-400); }
 
 @media print {
-  .quickJump, .headerActions, .cardActions { display: none; }
-  .card { break-inside: avoid; }
+  .quickJump, .headerActions { display: none; }
+}
+
+/* On narrow screens side panels stack above their charts, so the body
+   grows instead of squeezing the plot. */
+@media (max-width: 720px) {
+  .chartFill { flex: none; height: 260px; }
 }

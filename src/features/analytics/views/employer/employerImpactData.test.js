@@ -114,3 +114,141 @@ describe('toCsv', () => {
     expect(csv).toBe('Category,Count\n"Public Transportation (bus, metro)",3\n"Say ""hi""",1');
   });
 });
+
+describe('local fallback', () => {
+  it('rolls up like the SQL function and narrows by filters', async () => {
+    const { localEmployerImpactFilters, localEmployerImpactRollup } = await import('./employerImpactLocal');
+    const f = localEmployerImpactFilters();
+    expect(f.employers).toHaveLength(3);
+    expect(f.firstMonth < f.lastMonth).toBe(true);
+    const sum = (rs, m) => rs.filter(r => r.m === m).reduce((a, r) => a + r.v, 0);
+    const all = localEmployerImpactRollup({ from: f.firstMonth, to: f.lastMonth });
+    const one = localEmployerImpactRollup({ from: f.firstMonth, to: f.lastMonth, employer: f.employers[1].id });
+    expect(sum(one, 'membership_revenue')).toBeGreaterThan(0);
+    expect(sum(one, 'membership_revenue')).toBeLessThan(sum(all, 'membership_revenue'));
+    const keys = all.map(r => `${r.m}|${r.s}|${r.b}|${r.mo}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('layout', () => {
+  it('reconciles a saved layout with the current config', async () => {
+    const { defaultLayout, normalizeLayout } = await import('./employerImpactLayout');
+    const base = defaultLayout();
+    const [first, second] = base.sections;
+    const [w1, w2] = base.widgets[first];
+    const saved = {
+      sections: [second, 'gone', first],
+      widgets: { [first]: [w2, 'gone', w1] },
+      hidden: [w1, 'gone'],
+    };
+    const out = normalizeLayout(saved);
+    expect(out.sections.slice(0, 2)).toEqual([second, first]);
+    expect(out.sections).toHaveLength(base.sections.length);
+    expect(out.widgets[first].slice(0, 2)).toEqual([w2, w1]);
+    expect(out.widgets[first]).toHaveLength(base.widgets[first].length);
+    expect(out.hidden).toEqual([w1]);
+    expect(normalizeLayout(null)).toEqual(base);
+  });
+  it('By Location shows only Clinical Visits, even from a saved layout', async () => {
+    const { defaultLayout, normalizeLayout } = await import('./employerImpactLayout');
+    const patient = defaultLayout('patient');
+    const visit = normalizeLayout(patient, 'visit');
+    expect(patient.sections).toContain('costSavings');
+    expect(visit.sections).toEqual(['clinicalVisits']);
+    expect(visit.widgets.clinicalVisits).toEqual(patient.widgets.clinicalVisits);
+    expect(visit.widgets.costSavings).toBeUndefined();
+  });
+});
+
+describe('packSpans', () => {
+  it('splits short rows equally, keeps full ones, and keeps order', async () => {
+    const { packSpans } = await import('./employerImpactLayout');
+    expect(packSpans([2, 4, 3, 2, 2])).toEqual([2, 4, 3, 3, 6]);
+    expect(packSpans([4, 2, 3, 3])).toEqual([4, 2, 3, 3]);
+    expect(packSpans([3, 3, 6])).toEqual([3, 3, 6]);
+    expect(packSpans([2, 2, 2])).toEqual([2, 2, 2]);
+    expect(packSpans([2, 2])).toEqual([3, 3]);
+    expect(packSpans([4, 4])).toEqual([6, 6]);
+    expect(packSpans([1, 1, 1, 1], 6)).toEqual([2, 2, 1, 1]);
+    const rows = packSpans([2, 3, 4, 2, 3, 2, 6, 3]);
+    let used = 0;
+    for (const s of rows) { used += s; if (used > 6) throw new Error('row overflow'); if (used === 6) used = 0; }
+    expect(used).toBe(0);
+  });
+  it('fills a two-column tablet grid too', async () => {
+    const { packSpans } = await import('./employerImpactLayout');
+    expect(packSpans([3, 6, 3, 3, 3], 6)).toEqual([6, 6, 3, 3, 6]);
+  });
+});
+
+describe('generateEmployerReportPdf', () => {
+  it('draws every widget type, empty ones included, into a multi-page PDF', async () => {
+    const { generateEmployerReportPdf } = await import('./generateEmployerReportPdf');
+    const months = [{ x: 'Jan 26', a: 10, b: 5, avg: 7.5 }, { x: 'Feb 26', a: 12, b: 6, avg: 9 }];
+    const series = [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }];
+    const w = (type, extra = {}) => ({ key: type, title: type, type, series, format: undefined, ...extra });
+    const item = (widget, model, full = false) => ({ key: widget.key, kind: 'widget', widget, model, subtitle: 'Jan 2026 - Feb 2026', full });
+    const items = [
+      item(w('stackedBar', { line: { key: 'avg', label: 'Avg' } }), { hasData: true, data: months, sideStats: [{ label: '3 mo', pct: 10, count: 1, total: 10, hasData: true }] }),
+      item(w('line'), { hasData: true, data: months }),
+      item(w('hbar', { series: [{ key: 'a', label: 'A' }] }), { hasData: true, data: months }),
+      item(w('donut', { series: [{ key: 'a', label: 'A' }] }), { hasData: true, data: months }),
+      item(w('stats'), { hasData: true, stats: [{ label: '90 days', pct: 50, count: 5, total: 10, hasData: true }] }),
+      item(w('duration'), { hasData: true, data: [{ x: 'Average Duration', in_person: 20 }] }),
+      item(w('satisfaction'), { hasData: true, form: 'Quiz', sent: 10, responded: 8, notResponded: 2, averageScore: 7.5, data: [{ x: 'Jan 26', responded: 80, not_responded: 20 }] }),
+      item(w('stackedBar', { key: 'empty' }), { hasData: false, data: [] }, true),
+    ];
+    const blob = generateEmployerReportPdf({
+      title: 'Employer Impact Report',
+      meta: 'Jan 2026 - Feb 2026',
+      sections: [
+        { title: 'Charts', note: 'For the <b>Q1</b> review.<div><i>Draft</i> &amp; <u>internal</u></div>', items: [...items, ...items] },
+        { title: 'Savings', items: [{ key: 's', kind: 'savings', card: { title: 'Imaging Savings', traditional: 97000, ours: 100000, savings: -3000, hasData: true } }] },
+      ],
+    });
+    expect(blob.type).toBe('application/pdf');
+    const head = new TextDecoder().decode(new Uint8Array(await blob.arrayBuffer()).slice(0, 5));
+    expect(head).toBe('%PDF-');
+  });
+});
+
+describe('parseRichText', () => {
+  it('keeps bold, italic, underline and strike, and splits paragraphs', async () => {
+    const { parseRichText } = await import('./generateEmployerReportPdf');
+    const out = parseRichText('Hello <b>big <i>world</i></b><div><u>next</u> &amp; <s>old</s></div><br>');
+    expect(out[0]).toEqual([
+      { text: 'Hello ', bold: false, italic: false, underline: false, strike: false },
+      { text: 'big ', bold: true, italic: false, underline: false, strike: false },
+      { text: 'world', bold: true, italic: true, underline: false, strike: false },
+    ]);
+    expect(out[1].map(r => [r.text, r.underline, r.strike])).toEqual([['next', true, false], [' & ', false, false], ['old', false, true]]);
+  });
+});
+
+describe('report fonts', () => {
+  it('embeds Inter when the TTFs are supplied', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const dir = fileURLToPath(new URL('../../../../assets/fonts/inter/', import.meta.url));
+    const rd = (n) => readFileSync(dir + n).toString('base64');
+    const fonts = { regular: rd('Inter-Regular.ttf'), medium: rd('Inter-Medium.ttf'), bold: rd('Inter-Bold.ttf'), italic: rd('Inter-Italic.ttf'), boldItalic: rd('Inter-BoldItalic.ttf') };
+    const { generateEmployerReportPdf } = await import('./generateEmployerReportPdf');
+    fonts.semibold = rd('Inter-SemiBold.ttf');
+    const blob = generateEmployerReportPdf({ fonts, title: 'Employer Impact Report', cover: { range: 'Jan 2026 - Mar 2026', description: 'Quarterly summary.' }, sections: [] });
+    const pdf = new TextDecoder('latin1').decode(new Uint8Array(await blob.arrayBuffer()));
+    expect(pdf).toContain('/BaseFont /Inter');
+    expect(pdf).toContain('/BaseFont /InterMedium');
+    expect(pdf).toContain('/BaseFont /InterSemiBold'); // cover title
+  });
+});
+
+describe('cover background', () => {
+  it('picks dark text only for light backgrounds', async () => {
+    const { isLightBackground } = await import('./generateEmployerReportPdf');
+    expect(isLightBackground({ type: 'color', color: '#F6F7F8' })).toBe(true);
+    expect(isLightBackground({ type: 'color', color: '#1376BC' })).toBe(false);
+    expect(isLightBackground({ type: 'gradient', gradient: 'ocean' })).toBe(false);
+    expect(isLightBackground({ type: 'image', dataUrl: 'x' })).toBe(false);
+  });
+});

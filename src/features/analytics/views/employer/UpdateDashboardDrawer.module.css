@@ -1,0 +1,45 @@
+/* Update Dashboard drawer. Figma 885:132349. */
+
+.headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+
+.body { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6); }
+.scope { display: flex; }
+
+.sections { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* Section card: grey tray holding its widget list. */
+.section {
+  display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-3); border-radius: 8px;
+  background: var(--neutral-50); border: 0.5px solid var(--neutral-150);
+}
+.sectionHead { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); }
+.sectionTitle {
+  padding: var(--space-1) 0;
+  font-size: var(--font-base); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-400);
+}
+
+.list {
+  display: flex; flex-direction: column;
+  border: 0.5px solid var(--neutral-150); border-radius: 12px; overflow: hidden;
+  background: var(--neutral-0);
+}
+.row {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-3); background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.row:last-child { border-bottom: 0; }
+.rowLabel { flex: 1; min-width: 0; font-size: var(--font-base); line-height: var(--leading-tight); color: var(--neutral-400); }
+
+.handle {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: var(--space-1); border: 0; border-radius: 4px; background: transparent;
+  cursor: grab; touch-action: none; flex-shrink: 0;
+}
+.handle:hover { background: var(--neutral-50); }
+.handle:active { cursor: grabbing; }
+.handle:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+
+/* The item being dragged lifts above its neighbours. */
+.dragging { position: relative; z-index: 1; box-shadow: var(--shadow-popover); }

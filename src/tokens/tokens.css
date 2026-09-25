@@ -67,6 +67,7 @@
 
   /* Elevation shadows (theme-aware so they stay readable on dark surfaces) */
   --shadow-popover: 0 12px 60px rgba(0, 0, 0, 0.06);
+  --shadow-chart:   0 12px 60px -15px rgba(0, 0, 0, 0.06);
   --shadow-drawer:  -2px 0 24px rgba(0, 0, 0, 0.04);
   --shadow-card:    0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-bulk-bar: 4px 15px 60px 24px rgba(0, 0, 0, 0.15);
@@ -393,6 +394,7 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
 
   /* Elevation shadows — deeper on dark for visual separation */
   --shadow-popover: 0 12px 60px rgba(0, 0, 0, 0.50);
+  --shadow-chart:   0 12px 60px -15px rgba(0, 0, 0, 0.50);
   --shadow-drawer:  -2px 0 24px rgba(0, 0, 0, 0.40);
   --shadow-card:    0 1px 3px rgba(0, 0, 0, 0.30);
   --shadow-bulk-bar: 4px 15px 60px 24px rgba(0, 0, 0, 0.45);
