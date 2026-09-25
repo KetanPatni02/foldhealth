@@ -1,0 +1,119 @@
+/* Mirrors the HCC Diagnosis Gaps drawer's Documents tab table
+   (features/hcc/DiagPanel/LeftWorkspace.module.css). */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.uploadCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-4) var(--space-6);
+  background: var(--primary-50);
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: 8px;
+  color: var(--primary-300);
+  font-size: var(--font-base);
+  font-weight: 500;
+  cursor: pointer;
+}
+.uploadCta:hover { background: var(--primary-100); }
+
+.table {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 40px;
+  gap: var(--space-3);
+}
+.gridWithStatus {
+  display: grid;
+  grid-template-columns: 1fr 110px 40px;
+  gap: var(--space-3);
+}
+
+.head {
+  background: var(--neutral-25);
+  border-bottom: 0.5px solid var(--neutral-150);
+  padding: var(--space-2) var(--space-3);
+}
+.head span {
+  display: block;
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+
+.row {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-100);
+  align-items: center;
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+  transition: background 0.12s;
+}
+.row:last-child { border-bottom: none; }
+.row:hover { background: var(--neutral-25); }
+.rowClickable { cursor: pointer; }
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--neutral-50);
+  border: 0.5px solid var(--neutral-150);
+}
+.cellText {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.name {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.meta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  justify-self: end;
+}
+
+.empty {
+  padding: var(--space-6) var(--space-3);
+  text-align: center;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
