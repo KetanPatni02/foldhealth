@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Drawer } from '../../../../components/Drawer/Drawer';
 import { SplitDrawerLayout } from '../../../../components/Drawer/SplitDrawerLayout';
 import { Button } from '../../../../components/Button/Button';
@@ -9,6 +9,7 @@ import { Input } from '../../../../components/Input/Input';
 import { Toggle } from '../../../../components/Toggle/Toggle';
 import { ColorInput } from '../../../../components/ColorInput/ColorInput';
 import { Dropzone } from '../../../../components/Dropzone/Dropzone';
+import { PhotoSearch } from '../../../../components/PhotoSearch/PhotoSearch';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { CloseIcon } from '../../../../components/Icon/CloseIcon';
 import { Link } from '../../../../components/Link/Link';
@@ -124,6 +125,24 @@ function ImageDropField({ image, fileName, onPick, onRemove }) {
       {error && <span className={styles.dropError} role="alert">{error}</span>}
     </div>
   );
+}
+
+/** A stock photo by URL as what jsPDF needs; kept as JPEG so the PDF stays small. */
+function readPhotoUrl(url) {
+  return fetch(url)
+    .then(r => (r.ok ? r.blob() : Promise.reject(new Error(url))))
+    .then(blob => new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve({ dataUrl: reader.result, format: 'JPEG', width: img.naturalWidth, height: img.naturalHeight });
+        img.onerror = () => resolve(null);
+        img.src = reader.result;
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    }))
+    .catch(() => null);
 }
 
 /**
@@ -322,7 +341,8 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
   const [bgType, setBgType] = useState(DEFAULT_COVER_BACKGROUND.type);
   const [bgColor, setBgColor] = useState('#1376BC');
   const [bgGradient, setBgGradient] = useState(DEFAULT_COVER_BACKGROUND.gradient);
-  const [bgImage, setBgImage] = useState(null);
+  const [bgImage, setBgImage] = useState(null); // { dataUrl, format, width, height, name, photo? }
+  const pickedPhotoId = useRef(null);
   const [assets, setAssets] = useState({}); // logos and fonts for the PDF
   // "Generated On" is the moment the drawer opened, so edits don't move it.
   const [generatedAt] = useState(() => new Date());
@@ -523,12 +543,36 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
                     </div>
                   )}
                   {bgType === 'image' && (
-                    <ImageDropField
-                      image={bgImage}
-                      fileName={bgImage?.name}
-                      onPick={(img, name) => setBgImage({ ...img, name })}
-                      onRemove={() => setBgImage(null)}
-                    />
+                    <>
+                      <ImageDropField
+                        image={bgImage}
+                        fileName={bgImage?.name}
+                        onPick={(img, name) => { pickedPhotoId.current = null; setBgImage({ ...img, name }); }}
+                        onRemove={() => { pickedPhotoId.current = null; setBgImage(null); }}
+                      />
+                      <span className={styles.orDivider}>or search free photos</span>
+                      <PhotoSearch
+                        orientation="portrait"
+                        selectedId={bgImage?.photo?.id}
+                        onSelect={(photo) => {
+                          pickedPhotoId.current = photo.id;
+                          readPhotoUrl(photo.full).then((img) => {
+                            // Ignore a slow download if another image was picked meanwhile.
+                            if (img && pickedPhotoId.current === photo.id) {
+                              setBgImage({ ...img, name: `Photo by ${photo.photographer}`, photo });
+                            }
+                          });
+                        }}
+                      />
+                      {bgImage?.photo && (
+                        <span className={styles.photoCredit}>
+                          Photo by{' '}
+                          <a href={bgImage.photo.photographerUrl} target="_blank" rel="noopener noreferrer">{bgImage.photo.photographer}</a>
+                          {' '}on{' '}
+                          <a href={bgImage.photo.url} target="_blank" rel="noopener noreferrer">Pexels</a>
+                        </span>
+                      )}
+                    </>
                   )}
                 </div>
               </>
