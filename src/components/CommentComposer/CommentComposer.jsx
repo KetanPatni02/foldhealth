@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useAppStore } from '../../store/useAppStore';
 import { Button } from '../Button/Button';
 import { Avatar } from '../Avatar/Avatar';
+import { Icon } from '../Icon/Icon';
 import badgeStyles from '../Badge/Badge.module.css';
 import { SYSTEM_USERS } from '../../features/hcc/systemUsers';
 import styles from './CommentComposer.module.css';
@@ -184,9 +185,11 @@ export function CommentComposer({
   // Fires when the Cancel button is clicked — parent can use this to
   // close the composer (e.g. leaving the "Edit comment" state).
   onCancel,
-  // Optional mention roster ({ id, name, initials, roleLabel?, realProfile? }).
-  // When given, only these people can be @-mentioned (e.g. the people on an
-  // HCC record) and their roleLabel shows beside the name in the picker.
+  // Optional mention roster ({ id, name, initials, roleLabel?, realProfile?,
+  // disabled?, disabledReason? }). When given, only these people are listed
+  // and their roleLabel shows beside the name. A `disabled` entry is shown
+  // (with its reason) but can't be picked, e.g. a user with no access to the
+  // record.
   users: usersProp,
 }) {
   const inStatusMode = !!statusChange;
@@ -229,9 +232,21 @@ export function CommentComposer({
     const filtered = q
       ? users.filter(u => (u.name || '').toLowerCase().includes(q))
       : users;
-    return filtered.slice(0, 8);
-  }, [users, mention]);
+    // Pickable people first; disabled ones follow so the whole roster is
+    // visible without crowding out who can actually be tagged.
+    const enabled = filtered.filter(u => !u.disabled);
+    const disabled = filtered.filter(u => u.disabled);
+    return usersProp ? [...enabled, ...disabled] : filtered.slice(0, 8);
+  }, [users, usersProp, mention]);
   useEffect(() => { setMentionIdx(0); }, [mention?.query]);
+  // Arrow keys step over disabled rows; -1 when nobody is pickable.
+  const stepMention = (from, dir) => {
+    for (let n = 1; n <= matches.length; n++) {
+      const i = (from + dir * n + matches.length) % matches.length;
+      if (!matches[i].disabled) return i;
+    }
+    return -1;
+  };
 
   // Autofocus on mount when requested.
   useEffect(() => {
@@ -363,17 +378,20 @@ export function CommentComposer({
     if (mention && matches.length) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setMentionIdx((i) => (i + 1) % matches.length);
+        setMentionIdx((i) => stepMention(i, 1));
         return;
       }
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setMentionIdx((i) => (i - 1 + matches.length) % matches.length);
+        setMentionIdx((i) => stepMention(i, -1));
         return;
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
-        e.preventDefault();
-        insertMention(matches[mentionIdx]);
+        const pick = matches[mentionIdx];
+        if (pick && !pick.disabled) {
+          e.preventDefault();
+          insertMention(pick);
+        }
         return;
       }
       if (e.key === 'Escape') {
@@ -478,14 +496,23 @@ function MentionMenu({ anchor, matches, activeIdx, onPick }) {
         <button
           key={u.id || u.name}
           type="button"
-          className={[styles.mentionItem, i === activeIdx ? styles.mentionItemActive : ''].join(' ')}
-          onMouseDown={(e) => { e.preventDefault(); onPick(u); }}
+          disabled={u.disabled}
+          aria-disabled={u.disabled || undefined}
+          title={u.disabled ? u.disabledReason : undefined}
+          className={[styles.mentionItem, i === activeIdx && !u.disabled ? styles.mentionItemActive : '', u.disabled ? styles.mentionItemDisabled : ''].filter(Boolean).join(' ')}
+          onMouseDown={(e) => { e.preventDefault(); if (!u.disabled) onPick(u); }}
         >
           <Avatar variant="staff" size={24} initials={u.initials || (u.name || '?').split(' ').map(w => w[0]).join('').slice(0, 2)} />
           <span className={styles.mentionName}>
             {u.name}
             {u.roleLabel && <span className={styles.mentionRole}> ({u.roleLabel})</span>}
           </span>
+          {u.disabled && u.disabledReason && (
+            <span className={styles.mentionDisabledReason}>
+              <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="currentColor" />
+              {u.disabledReason}
+            </span>
+          )}
         </button>
       ))}
     </div>,

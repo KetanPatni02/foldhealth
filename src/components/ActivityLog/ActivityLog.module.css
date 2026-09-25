@@ -379,3 +379,10 @@
 .commentEditor {
   margin-top: var(--space-1);
 }
+
+/* Draft entry whose note has since been submitted or signed. */
+.detailCardIconBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.detailCardIconBtn:disabled:hover { background: none; }

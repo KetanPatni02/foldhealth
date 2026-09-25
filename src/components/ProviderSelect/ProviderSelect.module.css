@@ -1,0 +1,165 @@
+.field {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.required {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border: 0.5px solid var(--placeholder-text);
+  border-radius: 4px;
+  background: var(--neutral-0);
+  cursor: pointer;
+  font-size: var(--font-base);
+  text-align: left;
+}
+.triggerOpen { border-color: var(--primary-300); }
+.triggerValue {
+  flex: 1;
+  min-width: 0;
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.triggerPlaceholder {
+  flex: 1;
+  min-width: 0;
+  color: var(--neutral-200);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: var(--space-1);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-popover);
+}
+.searchRow {
+  position: sticky;
+  top: calc(var(--space-1) * -1);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: calc(var(--space-1) * -1) calc(var(--space-1) * -1) var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.searchInput::placeholder { color: var(--neutral-200); }
+.searchDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+/* Advanced search chips (Search In / Specialty / Zip Code). */
+.advancedRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  /* Pulls up over the search row's 4px bottom margin so the chips get an
+     even 8px above and below; 12px side inset matches the search icon. */
+  padding: var(--space-2) var(--space-3);
+  margin: calc(var(--space-1) * -1) calc(var(--space-1) * -1) var(--space-1);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.clearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.clearAll:hover { color: var(--neutral-400); }
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.option:hover,
+.option:focus-visible { background: var(--neutral-25); outline: none; }
+.optionSelected { background: var(--primary-50); }
+.optionSelected:hover { background: var(--primary-50); }
+.optionDisabled { cursor: not-allowed; }
+.optionDisabled .name,
+.optionDisabled .sub { color: var(--neutral-200); }
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.name {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sub {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.subMuted {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+
+.empty {
+  padding: var(--space-3);
+  text-align: center;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}

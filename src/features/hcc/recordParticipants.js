@@ -67,3 +67,25 @@ export function recordParticipants(member, dosAssignments = {}, platformUsers = 
       };
     });
 }
+
+/**
+ * Full @mention roster for an HCC record: the record's participants (from
+ * recordParticipants, pickable) followed by every other system user, shown
+ * but disabled because they have no access to this record.
+ */
+export function recordMentionRoster(member, dosAssignments = {}, platformUsers = []) {
+  const participants = recordParticipants(member, dosAssignments, platformUsers);
+  const onRecord = new Set(participants.map(p => p.name.toLowerCase()));
+  const outsiders = platformUsers
+    .filter(u => u?.name && !onRecord.has(u.name.toLowerCase()))
+    .toSorted((a, b) => a.name.localeCompare(b.name))
+    .map(u => ({
+      id: u.id,
+      name: u.name,
+      initials: u.initials || initialsOf(u.name),
+      realProfile: true,
+      disabled: true,
+      disabledReason: 'Not part of this record',
+    }));
+  return [...participants, ...outsiders];
+}

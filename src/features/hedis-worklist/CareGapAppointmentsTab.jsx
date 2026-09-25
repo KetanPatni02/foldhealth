@@ -16,12 +16,14 @@ import styles from './CareGapAppointmentsTab.module.css';
 
 const VIEW_OPTIONS = ['Upcoming', 'Past', 'All'];
 const EMPTY_FILTERS = { type: [], status: [], assignee: [] };
-// Appointment Details statuses → Badge tone.
+// Appointment Details statuses (and reminder Pending / Completed) → Badge tone.
 const STATUS_TONE = {
   Booked: 'primary',
   'Checked In': 'success',
   'No Show': 'warning',
   Cancelled: 'error',
+  Pending: 'warning',
+  Completed: 'success',
 };
 
 // Appointments store dates as YYYY-MM-DD or MM/DD/YYYY depending on the
@@ -86,6 +88,9 @@ const ROW_ACTIONS = [
   { key: 'download', icon: 'solar:download-minimalistic-linear', label: 'Download' },
   { key: 'delete', icon: 'solar:trash-bin-2-linear', label: 'Delete', danger: true },
 ];
+const rowActionsFor = (row) => (row.kind === 'reminder' && row.status !== 'Completed'
+  ? [ROW_ACTIONS[0], { key: 'complete', icon: 'solar:check-circle-linear', label: 'Mark as Done' }, ...ROW_ACTIONS.slice(1)]
+  : ROW_ACTIONS);
 
 const apptDateValue = (a) => a.date || a.appointment_date || a.start_date || a.start_time || a.starts_at || '';
 // Time: the stored start time, or the clock part of a full timestamp.
@@ -104,7 +109,21 @@ const fmtDate = (d) => (d
  * search, and Type / Assignee filter chips. Rows carry the appointment
  * type, reason, date and time, and an assignee picker.
  */
-export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], onAssigneeChange, onEdit, onDelete, onOpen, selectedId = null }) {
+export function CareGapAppointmentsTab({
+  appointments = [],
+  reminders = [],
+  platformUsers = [],
+  onAssigneeChange,
+  onEdit,
+  onDelete,
+  onOpen,
+  // Reminder rows (Type = Reminder) route to their own handlers.
+  onOpenReminder,
+  onDeleteReminder,
+  onCompleteReminder,
+  onReminderAssigneeChange,
+  selectedId = null,
+}) {
   const [view, setView] = useState('All');
   const [viewMenu, setViewMenu] = useState(null);
   const viewBtnRef = useRef(null);
@@ -115,14 +134,13 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
   const [rowMenu, setRowMenu] = useState(null); // { row, rect } | null
   const anyFilter = filters.type.length > 0 || filters.status.length > 0 || filters.assignee.length > 0;
 
-  const rows = useMemo(() => appointments.map(a => ({
+  const rows = useMemo(() => [...appointments.map(a => ({
     id: a.id,
+    kind: 'appointment',
     title: a.appointment_type_name || 'Appointment',
     subtitle: a.mode || '',
     reason: (a.reason_for_visit || '').trim(),
-    // Reminders share this table once they are stored; today every row is
-    // an appointment.
-    type: a.kind === 'reminder' ? 'Reminder' : 'Appointment',
+    type: 'Appointment',
     recurring: !!a.recurring,
     date: parseDate(apptDateValue(a)),
     dateTs: parseDate(apptDateValue(a))?.getTime() ?? null,
@@ -131,7 +149,22 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
     // Same labels as the Appointment Details status dropdown.
     status: displayAppointmentStatus(a.status),
     raw: a,
-  })), [appointments]);
+  })), ...reminders.map(r => ({
+    id: r.id,
+    kind: 'reminder',
+    title: r.title || 'Reminder',
+    subtitle: '',
+    reason: (r.note || '').trim(),
+    type: 'Reminder',
+    recurring: false,
+    date: parseDate(r.date),
+    dateTs: parseDate(r.date)?.getTime() ?? null,
+    time: r.time || '',
+    assignee: r.assignee || '',
+    status: r.status || 'Pending',
+    // Shape the .ics download expects.
+    raw: { ...r, time_start: r.time, reason_for_visit: r.note },
+  }))], [appointments, reminders]);
 
   const statusOptions = useMemo(
     () => [...new Set(rows.map(r => r.status).filter(Boolean))].sort((x, y) => x.localeCompare(y)),
@@ -255,7 +288,7 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
                     <button
                       type="button"
                       className={styles.titleBtn}
-                      onClick={() => onOpen?.(r.raw)}
+                      onClick={() => (r.kind === 'reminder' ? onOpenReminder?.(r.raw) : onOpen?.(r.raw))}
                       aria-label={`Open ${r.title} details`}
                     >
                       {r.title}
@@ -303,7 +336,11 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
                     ariaLabel={r.assignee || 'Assign'}
                     users={platformUsers}
                     pickerTitle={r.assignee ? 'Change assignee' : 'Assign to'}
-                    onSelect={(u) => { if (u?.name && u.name !== r.assignee) onAssigneeChange?.(r.raw, u.name); }}
+                    onSelect={(u) => {
+                      if (!u?.name || u.name === r.assignee) return;
+                      if (r.kind === 'reminder') onReminderAssigneeChange?.(r.raw, u.name);
+                      else onAssigneeChange?.(r.raw, u.name);
+                    }}
                   />
                 </td>
                 <td className={[styles.td, styles.actionsTd].join(' ')}>
@@ -329,13 +366,15 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
           align="right"
           width={168}
           ariaLabel="Appointment actions"
-          items={ROW_ACTIONS}
+          items={rowActionsFor(rowMenu.row)}
           onSelect={(key) => {
             const row = rowMenu.row;
+            const isReminder = row.kind === 'reminder';
             setRowMenu(null);
-            if (key === 'edit') onEdit?.(row.raw);
+            if (key === 'edit') (isReminder ? onOpenReminder : onEdit)?.(row.raw);
+            else if (key === 'complete') onCompleteReminder?.(row.raw);
             else if (key === 'download') downloadIcs(row);
-            else if (key === 'delete') onDelete?.(row.raw);
+            else if (key === 'delete') (isReminder ? onDeleteReminder : onDelete)?.(row.raw);
           }}
           onClose={() => setRowMenu(null)}
         />
