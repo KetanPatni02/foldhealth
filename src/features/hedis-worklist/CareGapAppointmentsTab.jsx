@@ -104,8 +104,8 @@ const fmtDate = (d) => (d
  * search, and Type / Assignee filter chips. Rows carry the appointment
  * type, reason, date and time, and an assignee picker.
  */
-export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], onAssigneeChange, onEdit, onDelete, onOpen }) {
-  const [view, setView] = useState('Upcoming');
+export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], onAssigneeChange, onEdit, onDelete, onOpen, selectedId = null }) {
+  const [view, setView] = useState('All');
   const [viewMenu, setViewMenu] = useState(null);
   const viewBtnRef = useRef(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -156,10 +156,10 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
         if (q && !`${r.title} ${r.subtitle} ${r.assignee}`.toLowerCase().includes(q)) return false;
         return true;
       })
-      // Soonest first (latest first for Past); undated rows go last.
+      // Latest date on top, oldest at the bottom; undated rows go last.
       .toSorted((x, y) => {
         if (!x.date || !y.date) return (x.date ? 0 : 1) - (y.date ? 0 : 1);
-        return (view === 'Past' ? -1 : 1) * (x.date - y.date);
+        return y.date - x.date;
       });
   }, [rows, view, filters, search]);
   // Header sort (Date & Time, Status) overrides the default soonest-first
@@ -245,7 +245,11 @@ export function CareGapAppointmentsTab({ appointments = [], platformUsers = [], 
           </thead>
           <tbody>
             {sortedRows.map(r => (
-              <tr key={r.id} className={styles.row}>
+              <tr
+                key={r.id}
+                className={[styles.row, r.id === selectedId ? styles.rowActive : ''].filter(Boolean).join(' ')}
+                aria-selected={r.id === selectedId || undefined}
+              >
                 <td className={styles.td}>
                   <div className={styles.titleCell}>
                     <button

@@ -79,6 +79,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   // Appt/Reminders: title click / Edit open the shared appointment detail
   // drawer; Delete confirms first.
   const [openAppt, setOpenAppt] = useState(null);
+  const openAppointmentDetail = (appt) => { setOpenAppt(appt); setLeftWorkspace('appointment-detail'); };
   const [apptToDelete, setApptToDelete] = useState(null);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
@@ -556,6 +557,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (leftWorkspace === 'outreach') outreach.handleDiscard();
     if (leftWorkspace === 'document') docUpload.reset();
     if (leftWorkspace === 'document-preview') setPreviewDocId(null);
+    if (leftWorkspace === 'appointment-detail') { setOpenAppt(null); fetchAppointments?.(); }
     // DSF-B: block close on a partial PHQ-9 and surface the exit modal.
     const guard = detectPhq9Incomplete({ mode: 'close' });
     if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'close' }); return; }
@@ -718,14 +720,6 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       {/* The task detail no longer opens as its own standalone Drawer —
           it renders inline as the left workspace when leftWorkspace ===
           'task-detail' (see the leftPane branches below). */}
-      {openAppt && (
-        <ScheduleDrawer
-          existingAppointment={openAppt}
-          initialSelectedPatient={schedulePatient}
-          patientLocked
-          onClose={() => { setOpenAppt(null); fetchAppointments?.(); }}
-        />
-      )}
       {apptToDelete && (
         <ConfirmDialog
           variant="destructive"
@@ -893,6 +887,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 }
                 if (leftWorkspace === 'task-detail') {
                   return <span className={styles.paneTitle}>Task Details</span>;
+                }
+                if (leftWorkspace === 'appointment-detail') {
+                  return <span className={styles.paneTitle}>Appointment Details</span>;
                 }
                 if (leftWorkspace === 'measure-info') {
                   return <span className={styles.paneTitle}>Measure Tutorial</span>;
@@ -1077,6 +1074,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       />
                     );
                   })()
+                ) : leftWorkspace === 'appointment-detail' ? (
+                  // Appointment Details saves each field as it changes.
+                  null
                 ) : leftWorkspace === 'task-detail' ? (
                   // Task detail is a read/edit surface; the task's own
                   // header (status pill, title, etc.) lives in the body so
@@ -1108,7 +1108,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                         || leftWorkspace === 'clinical-note-preview'
                         || leftWorkspace === 'clinical-note-consolidated'
                         ? 'Close Clinical Note'
-                        : leftWorkspace === 'task-detail'
+                        : leftWorkspace === 'appointment-detail'
+                          ? 'Close Appointment Details'
+                          : leftWorkspace === 'task-detail'
                           ? 'Close Task Details'
                           : leftWorkspace === 'measure-info'
                             ? 'Close Measure Tutorial'
@@ -1126,7 +1128,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 <span>All signed notes sync to the patient's EHR.</span>
               </div>
             )}
-            <div className={`${styles.leftPaneBody} ${leftWorkspace === 'clinical-note' ? styles.leftPaneBodyClinicalNote : ''} ${leftWorkspace === 'clinical-note-preview' ? styles.leftPaneBodyClinicalNotePreview : ''} ${leftWorkspace === 'clinical-note-consolidated' ? styles.leftPaneBodyClinicalNoteConsolidated : ''} ${leftWorkspace === 'schedule' ? styles.leftPaneBodySchedule : ''} ${leftWorkspace === 'document-preview' ? styles.leftPaneBodyDocPreview : ''}`}>
+            <div className={`${styles.leftPaneBody} ${leftWorkspace === 'clinical-note' ? styles.leftPaneBodyClinicalNote : ''} ${leftWorkspace === 'clinical-note-preview' ? styles.leftPaneBodyClinicalNotePreview : ''} ${leftWorkspace === 'clinical-note-consolidated' ? styles.leftPaneBodyClinicalNoteConsolidated : ''} ${leftWorkspace === 'schedule' ? styles.leftPaneBodySchedule : ''} ${leftWorkspace === 'document-preview' ? styles.leftPaneBodyDocPreview : ''} ${leftWorkspace === 'appointment-detail' ? styles.leftPaneBodyFlush : ''}`}>
               {leftWorkspace === 'schedule' ? (
                 <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
               ) : leftWorkspace === 'document' ? (
@@ -1144,6 +1146,17 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} noteId={selectedNoteId} />
               ) : leftWorkspace === 'clinical-note-consolidated' ? (
                 <ConsolidatedNoteBody v={clinicalNote} />
+              ) : leftWorkspace === 'appointment-detail' ? (
+                openAppt ? (
+                  <ScheduleDrawer
+                    key={openAppt.id}
+                    existingAppointment={openAppt}
+                    initialSelectedPatient={schedulePatient}
+                    patientLocked
+                    inline
+                    onClose={closeLeftWorkspace}
+                  />
+                ) : null
               ) : leftWorkspace === 'task-detail' ? (
                 inPlaceTask ? (
                   <TaskDetailDrawer task={inPlaceTask} inline onClose={closeLeftWorkspace} />
@@ -1266,8 +1279,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
               <CareGapAppointmentsTab
                 appointments={memberAppointments}
                 platformUsers={platformUsers}
-                onOpen={setOpenAppt}
-                onEdit={setOpenAppt}
+                onOpen={openAppointmentDetail}
+                onEdit={openAppointmentDetail}
+                selectedId={leftWorkspace === 'appointment-detail' ? openAppt?.id : null}
                 onDelete={setApptToDelete}
                 onAssigneeChange={(appt, name) => {
                   const prev = appt.primary_user || null;

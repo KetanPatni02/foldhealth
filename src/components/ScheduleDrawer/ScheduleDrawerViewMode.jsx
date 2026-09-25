@@ -59,6 +59,7 @@ export function ScheduleDrawerViewMode({
   customTime,
   setCustomTime,
   timeBtnRef,
+  inline = false,
   editingInstruction,
   setEditingInstruction,
   instructionDraft,
@@ -76,8 +77,8 @@ export function ScheduleDrawerViewMode({
   const { callBtnRef, openCall } = usePatientCallButton(ea?.patient_id);
   const [reasonDraft, setReasonDraft] = useState(ea.reason_for_visit || '');
 
-  return (
-    <Drawer title="Appointment Details" onClose={onClose} bodyClassName={styles.drawerBody}>
+  const body = (
+    <>
       <div className={styles.content} style={{ gap: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--neutral-50)', borderRadius: 8, padding: 8 }}>
           <div style={{ flex: 1 }}>
@@ -286,6 +287,14 @@ export function ScheduleDrawerViewMode({
           </div>
         )}
       </div>
+    </>
+  );
+  // Inline: the host (e.g. the Care Gap drawer's left pane) supplies the
+  // frame and title; otherwise this is its own Appointment Details drawer.
+  if (inline) return body;
+  return (
+    <Drawer title="Appointment Details" onClose={onClose} bodyClassName={styles.drawerBody}>
+      {body}
     </Drawer>
   );
 }

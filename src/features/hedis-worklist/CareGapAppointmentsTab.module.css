@@ -75,9 +75,19 @@
   padding: var(--space-2) calc(var(--space-1) * 1.5);
   vertical-align: middle;
 }
+/* First column gets 4px more (10px) so the title clears the 3px
+   selection bar; the header matches so Title stays aligned. */
+.table .th:first-child,
+.td:first-child { padding-left: calc(var(--space-1) * 2.5); }
 .row { border-bottom: 0.5px solid var(--neutral-100); }
 .row:last-child { border-bottom: none; }
 .row:hover { background: var(--neutral-25); }
+/* Open in the left pane: same selection as the consolidated note's gap
+   list (primary-50 fill + 3px primary-300 bar). The bar is an inset
+   shadow on the first cell so it takes no layout space. */
+.rowActive,
+.rowActive:hover { background: var(--primary-50); }
+.rowActive > td:first-child { box-shadow: inset 3px 0 0 var(--primary-300); }
 .actionsTd { text-align: right; }
 
 .titleCell {
