@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { Badge } from '../Badge/Badge';
@@ -134,6 +134,30 @@ const statusTone = (label) => STATUS_TONE[label] || 'grey';
  * `icon` / `iconBg` / `iconBorder` / `iconColor`, and may replace its body
  * entirely with `render(entry)`.
  */
+// A Draft note entry is superseded once a LATER entry submits or signs a
+// note covering any of the same gaps (or the same note). Consolidated notes
+// bundle several gaps' drafts, so matching on the note id alone would leave
+// the other gaps' drafts looking editable. `_draftLock` is 'signed' or
+// 'submitted' and drives ClinicalNoteCardActions' disabled pencil.
+function markSupersededDrafts(list) {
+  const timeOf = (e) => new Date(e.when ?? e.at ?? 0).getTime() || 0;
+  const codesOf = (dc) => (dc?.gapCodes?.length ? dc.gapCodes : (dc?.gapCode ? [dc.gapCode] : []));
+  const finals = list.filter(e => e.detailCard && (e.detailCard.status === 'Pending Review' || e.detailCard.status === 'Signed'));
+  if (!finals.length) return list;
+  return list.map(e => {
+    const dc = e.detailCard;
+    if (!dc || dc.status !== 'Draft') return e;
+    const at = timeOf(e);
+    const codes = codesOf(dc);
+    const later = finals.filter(f => timeOf(f) > at && (
+      (dc.noteId && f.detailCard.noteId === dc.noteId)
+      || codesOf(f.detailCard).some(c => codes.includes(c))
+    ));
+    if (!later.length) return e;
+    return { ...e, _draftLock: later.some(f => f.detailCard.status === 'Signed') ? 'signed' : 'submitted' };
+  });
+}
+
 export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggleGroup = (label) => setCollapsed(prev => {
@@ -142,7 +166,7 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
     return next;
   });
 
-  const list = entries || [];
+  const list = useMemo(() => markSupersededDrafts(entries || []), [entries]);
   const hasItems = list.some(e => e.t !== 'group');
   if (!hasItems) {
     return (
@@ -514,7 +538,7 @@ function DetailCardEntryBody({ entry, variant, onOpenTask, onOpenNote }) {
               </div>
             </div>
           ) : (
-            <ClinicalNoteCardActions dc={dc} onOpenTask={onOpenTask} onOpenNote={onOpenNote} />
+            <ClinicalNoteCardActions dc={dc} draftLock={entry._draftLock} onOpenTask={onOpenTask} onOpenNote={onOpenNote} />
           )}
         </div>
       )}
@@ -536,7 +560,7 @@ function deriveReviewTaskTitle(dc) {
   return dc?.reviewTask?.title || 'Request for Sign-off - Clinical Note';
 }
 
-export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
+export function ClinicalNoteCardActions({ dc, draftLock = null, onOpenTask, onOpenNote }) {
   // Prefer the caller-provided `onOpenTask` (drawer wires the upstream
   // openTaskFromActivity signal — that's the fix from 3e0aa74 that stamps
   // pendingOpenTaskId for TasksView). Fall back to openTaskFromNotification
@@ -548,6 +572,21 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
   // Pending Review, sign → Signed). A separate "Clinical Note Signed"
   // entry logs at sign-time, so both events remain visible in order.
   const noteStatus = dc?.status;
+  // The note as it is NOW (clinical_notes), found by the id the entry saved.
+  // A Draft entry stays a historical record, but once that note has been
+  // submitted or signed its pencil is locked: the draft is no longer the
+  // editable version. Entries logged before noteId was stored fall back to
+  // the member's note for the same gap.
+  const memberNotes = useAppStore(s => (dc?.memberId ? s.clinicalNotesByMember?.[dc.memberId] : undefined));
+  const entryCodes = dc?.gapCodes?.length ? dc.gapCodes : (dc?.gapCode ? [dc.gapCode] : []);
+  const liveNote = dc?.noteId
+    ? memberNotes?.find(n => n.id === dc.noteId)
+    : memberNotes?.find(n => (n.gapCodes || []).some(c => entryCodes.includes(c)));
+  const liveStatus = liveNote?.status;
+  const draftLocked = noteStatus === 'Draft' && (!!draftLock || (!!liveStatus && liveStatus !== 'draft'));
+  const lockReason = (draftLock === 'signed' || liveStatus === 'signed')
+    ? 'This note has been signed, so this draft can no longer be edited.'
+    : 'This note was submitted for review, so this draft can no longer be edited.';
   const reviewTaskStatus = dc?.reviewTask?.status;
   const reviewTaskPriority = dc?.reviewTask?.priority
     || (dc?.reviewTask?.taskId && allTasks?.find(t => t.id === dc.reviewTask.taskId)?.priority)
@@ -623,18 +662,21 @@ export function ClinicalNoteCardActions({ dc, onOpenTask, onOpenNote }) {
             {noteStatus && <Badge tone={statusTone(noteStatus)} size="M" label={noteStatus} />}
           </span>
           <span className={styles.detailCardActionsSlot}>
-            <button
-              type="button"
-              className={styles.detailCardIconBtn}
-              aria-label={noteStatus === 'Draft' ? 'Edit' : 'Preview'}
-              onClick={handlePrimary}
-            >
-              <Icon
-                name={noteStatus === 'Draft' ? 'solar:pen-linear' : 'solar:eye-linear'}
-                size={14}
-                color="var(--neutral-300)"
-              />
-            </button>
+            <Tooltip label={draftLocked ? lockReason : null} maxWidth={240}>
+              <button
+                type="button"
+                className={styles.detailCardIconBtn}
+                aria-label={noteStatus === 'Draft' ? 'Edit' : 'Preview'}
+                onClick={draftLocked ? undefined : handlePrimary}
+                disabled={draftLocked}
+              >
+                <Icon
+                  name={noteStatus === 'Draft' ? 'solar:pen-linear' : 'solar:eye-linear'}
+                  size={14}
+                  color="var(--neutral-300)"
+                />
+              </button>
+            </Tooltip>
             <span className={styles.detailCardActionsDivider} aria-hidden="true" />
             <button type="button" className={styles.detailCardIconBtn} aria-label="More">
               <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
