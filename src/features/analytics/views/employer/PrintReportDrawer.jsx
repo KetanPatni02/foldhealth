@@ -349,7 +349,6 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
     return inOrder(sectionOrder, sections, s => s.id)
       .map(s => ({ ...s, items: inOrder(itemOrder[s.id], s.items, i => i.key) }));
   }, [sections, sectionOrder, itemOrder]);
-  const [includeEmpty, setIncludeEmpty] = useState(true);
   const [includeCover, setIncludeCover] = useState(true);
   const [coverDescription, setCoverDescription] = useState('');
   const [title, setTitle] = useState(DEFAULT_TITLE);
@@ -404,8 +403,7 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
     return next;
   });
 
-  // What goes in the PDF: sections switched on, their widgets switched on,
-  // and, unless asked for, only widgets that have data in this range.
+  // What goes in the PDF: sections switched on and their widgets switched on.
   const included = useMemo(() => orderedSections
     .filter(s => !sectionsOff.has(s.id))
     .map(s => ({
@@ -414,9 +412,9 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
       subtitle: (subtitles[s.id] || '').slice(0, SECTION_SUBTITLE_MAX).trim(),
       // Rich text: printed from its HTML; blank when it has no visible text.
       note: notes[s.id]?.plain?.trim() ? notes[s.id].html : '',
-      items: s.items.filter(i => !off.has(i.key) && (includeEmpty || hasData(i))),
+      items: s.items.filter(i => !off.has(i.key)),
     }))
-    .filter(s => s.items.length), [orderedSections, sectionsOff, off, includeEmpty, notes, titles, subtitles]);
+    .filter(s => s.items.length), [orderedSections, sectionsOff, off, notes, titles, subtitles]);
   const nothingSelected = included.length === 0;
 
   // An image background falls back to the default gradient until one is uploaded.
@@ -500,12 +498,9 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
   const editor = (
     <div className={styles.editorScroll}>
       <div className={styles.body}>
-        {/* Report settings: logos, title, empty widgets and the cover. */}
-        <div className={[cards.section, styles.settingsCard].join(' ')}>
-          <div className={[cards.sectionHead, styles.settingsHead].join(' ')}>
-            <span className={[cards.sectionTitle, styles.grow].join(' ')}>Report Settings</span>
-          </div>
-          <div className={styles.fields} onPointerDownCapture={() => focusOn('cover')} onKeyDownCapture={() => focusOn('cover')}>
+        {/* Report settings: logos and title, straight on the drawer. */}
+        <div className={styles.settings} onPointerDownCapture={() => focusOn('cover')} onKeyDownCapture={() => focusOn('cover')}>
+          <span className={styles.settingsTitle}>Report Settings</span>
             <Select
               label="Employer Logo"
               portal
@@ -529,19 +524,14 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
               placeholder={DEFAULT_TITLE}
               onChange={e => setTitle(e.target.value)}
             />
-            <div className={[styles.settingRow, styles.optionRowInline].join(' ')}>
-              <Switch checked={includeEmpty} onChange={setIncludeEmpty} ariaLabel="Include widgets with no data" />
-              <div className={styles.optionText}>
-                <span className={[styles.optionLabel, includeEmpty ? styles.optionLabelOn : ''].filter(Boolean).join(' ')}>
-                  Include widgets with no data
-                </span>
-                <span className={styles.optionDesc}>Empty widgets print as blank cards.</span>
-              </div>
-            </div>
-            <div className={styles.coverRow}>
-              <span className={styles.coverLabel}>Cover Page</span>
-              <Switch checked={includeCover} onChange={setIncludeCover} ariaLabel="Include cover page" />
-            </div>
+
+        {/* Cover page settings in their own card. */}
+        <div className={[cards.section, styles.settingsCard].join(' ')} onPointerDownCapture={() => focusOn('cover')} onKeyDownCapture={() => focusOn('cover')}>
+          <div className={[cards.sectionHead, styles.settingsHead].join(' ')}>
+            <span className={[cards.sectionTitle, styles.grow].join(' ')}>Cover Page</span>
+            <Switch checked={includeCover} onChange={setIncludeCover} ariaLabel="Include cover page" />
+          </div>
+          <div className={styles.fields}>
             {includeCover && (
               <>
                 <Textarea
@@ -644,7 +634,11 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
             )}
           </div>
         </div>
+        </div>
 
+        {/* Widget configuration: the report's sections and their widgets. */}
+        <div className={styles.group}>
+          <span className={styles.settingsTitle}>Widget Configuration</span>
         <div className={cards.sections}>
           <SortableList ids={orderedSections.map(sec => sec.id)} onReorder={setSectionOrder}>
           {orderedSections.map((section) => {
@@ -765,6 +759,7 @@ export function PrintReportDrawer({ meta, range, employerName, filename, section
             );
           })}
           </SortableList>
+        </div>
         </div>
       </div>
     </div>

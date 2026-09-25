@@ -198,6 +198,19 @@ export function buildSavings(idx, categories, metric, { months }) {
 }
 
 /**
+ * Cost Savings Comparison: every category's traditional cost against what
+ * the employer paid here, which is the membership fees (the same figure as
+ * Membership Revenue) plus the service cost of each category.
+ */
+export function buildSavingsSummary(idx, savings, { months }) {
+  const traditional = savings.reduce((a, c) => a + c.traditional, 0);
+  const service = savings.reduce((a, c) => a + c.ours, 0);
+  const membership = combine(monthsOf(idx, 'membership_revenue', 'revenue'), months, 'sum');
+  const ours = membership + service;
+  return { traditional, membership, service, ours, savings: traditional - ours, hasData: traditional > 0 || ours > 0 };
+}
+
+/**
  * Duration of Visits: average = total minutes ÷ visits over the range; max
  * and min are the extremes across it. Returned as three bars.
  */

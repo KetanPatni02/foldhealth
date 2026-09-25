@@ -11,14 +11,14 @@ import { CheckboxListPopover } from '../../../../components/CheckboxListPopover/
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ShadcnDialog/ShadcnDialog';
 import { ChartSkeleton, KpiSkeleton } from '../shared';
 import { ChartContainer } from '../../../../components/ChartContainer/ChartContainer';
-import { StackedBars, Lines, HBars, Donut, ChartLegend } from './EmployerCharts';
-import { formatValue } from './employerImpactFormat';
+import { StackedBars, Lines, HBars, Donut, ChartLegend, CostComparisonBars } from './EmployerCharts';
+import { formatValue, seriesColor } from './employerImpactFormat';
 import {
   SECTIONS, WIDGETS, SAVINGS_CATEGORIES, SAVINGS_METRIC, TIME_FRAMES, SCOPE_OPTIONS,
 } from './employerImpactConfig';
 import {
   monthsBetween, addMonths, rangeLabel, toMonthKey, indexRows,
-  buildSeriesData, buildStats, buildSavings, buildDuration, buildSatisfaction, surveyForms, toCsv,
+  buildSeriesData, buildStats, buildSavings, buildSavingsSummary, buildDuration, buildSatisfaction, surveyForms, toCsv,
 } from './employerImpactData';
 import { VIEW_TITLES } from '../../analyticsData';
 import layout from '../../AnalyticsLayout.module.css';
@@ -244,6 +244,61 @@ function SavingsCard({ card, loading, rangeText, onDownload, style }) {
   );
 }
 
+/** Cost Savings Comparison: totals across every category, beside a bar chart. */
+function SavingsSummaryCard({ summary, loading, subtitle, onDownload, style }) {
+  const breakdown = [
+    { key: 'membership', label: 'Membership Cost', value: summary.membership },
+    { key: 'service', label: 'Service Cost', value: summary.service },
+  ];
+  const negative = summary.savings < 0;
+  return (
+    <ChartContainer
+      title="Cost Savings Comparison"
+      info="Traditional cost across every savings category, against our cost: membership fees plus the cost of services."
+      subtitle={subtitle}
+      empty={!loading && !summary.hasData}
+      onDownload={onDownload}
+      className={styles.savingsSummary}
+      style={style}
+    >
+      {loading ? <KpiSkeleton count={3} /> : (
+        <div className={styles.summaryBody}>
+          <div className={styles.summaryTotals}>
+            <span className={styles.savingsCol}>
+              <span className={styles.savingsLabel}>Traditional Cost</span>
+              <span className={styles.savingsValue}>{formatValue(summary.traditional, 'currency')}</span>
+            </span>
+            <span className={styles.summaryDivider} />
+            <span className={styles.savingsCol}>
+              <span className={styles.savingsLabel}>Our Cost</span>
+              <span className={styles.savingsValue}>{formatValue(summary.ours, 'currency')}</span>
+            </span>
+            {breakdown.map((b, i) => (
+              <span key={b.key} className={styles.savingsCol}>
+                <span className={styles.summaryKey}>
+                  <span className={styles.summaryDot} style={{ background: seriesColor(i) }} />
+                  <span className={styles.savingsLabel}>{b.label}</span>
+                </span>
+                <span className={styles.summaryPart}>{formatValue(b.value, 'currency')}</span>
+              </span>
+            ))}
+            <span className={styles.summaryDivider} />
+            <span className={styles.savingsCol}>
+              <span className={styles.savingsLabel}>Total Savings</span>
+              <span className={[styles.savingsAmount, negative ? styles.savingsLoss : styles.savingsGain].join(' ')}>
+                {negative ? '−' : ''}{formatValue(Math.abs(summary.savings), 'currency')}
+              </span>
+            </span>
+          </div>
+          <div className={styles.summaryChart}>
+            <CostComparisonBars summary={summary} />
+          </div>
+        </div>
+      )}
+    </ChartContainer>
+  );
+}
+
 // ── View ─────────────────────────────────────────────────────────────────
 
 /**
@@ -329,6 +384,7 @@ export function EmployerImpactView() {
     return out;
   }, [idx, ctx, forms]);
   const savings = useMemo(() => buildSavings(idx, SAVINGS_CATEGORIES, SAVINGS_METRIC, ctx), [idx, ctx]);
+  const savingsSummary = useMemo(() => buildSavingsSummary(idx, savings, ctx), [idx, savings, ctx]);
 
   // Quick Jump follows whichever section heading is nearest the top.
   useEffect(() => {
@@ -409,9 +465,20 @@ export function EmployerImpactView() {
         return widget && { key, widget, span: SPAN_COLUMNS[widget.span] };
       })
       .filter(Boolean);
-    const desktop = packSpans(cells.map(c => c.span));
+    // Cost savings opens with the comparison card in a wider first column
+    // (room for its chart), running down beside its category cards, which
+    // share two narrower columns (see .savingsGrid).
+    const beside = sectionId === 'costSavings' && cells.length > 0;
+    const desktop = beside ? packSpans(cells.map(() => 1), 2) : packSpans(cells.map(c => c.span));
     const tablet = packSpans(cells.map(c => (c.span === SPAN_COLUMNS.full ? SPAN_COLUMNS.full : SPAN_COLUMNS.half)));
-    return cells.map((c, i) => ({ ...c, style: { '--span': desktop[i], '--span-md': tablet[i] } }));
+    const out = cells.map((c, i) => ({ ...c, style: { '--span': desktop[i], '--span-md': tablet[i] } }));
+    if (sectionId !== 'costSavings') return out;
+    // packSpans fills every row, so the rows are the columns used over the row width.
+    const rows = desktop.reduce((a, b) => a + b, 0) / 2;
+    const summaryStyle = beside
+      ? { '--span': 1, '--span-md': SPAN_COLUMNS.full, '--rows': rows }
+      : { '--span': SPAN_COLUMNS.full, '--span-md': SPAN_COLUMNS.full };
+    return [{ key: 'savings:summary', summary: true, style: summaryStyle }, ...out];
   };
 
   const dialogWidget = dialog && WIDGETS.find(w => w.key === dialog.key);
@@ -530,10 +597,22 @@ export function EmployerImpactView() {
             aria-labelledby={`eir-${section.id}`}
           >
             <h2 className={styles.sectionTitle} id={`eir-${section.id}`}>{section.heading || section.title}</h2>
-            <div className={styles.grid}>
-              {gridCells(section.id).map(({ key, widget, card, style }) => (widget
+            <div className={[styles.grid, section.id === 'costSavings' && gridCells(section.id).length > 1 ? styles.savingsGrid : ''].filter(Boolean).join(' ')}>
+              {gridCells(section.id).map(({ key, widget, card, summary, style }) => (widget
                 ? renderWidget(widget, style)
-                : (
+                : summary ? (
+                  <SavingsSummaryCard
+                    key={key}
+                    style={style}
+                    summary={savingsSummary}
+                    loading={loading}
+                    subtitle={filtersLoaded ? rangeText : undefined}
+                    onDownload={() => downloadCsv(csvName('Cost Savings Comparison'), toCsv(
+                      [{ traditional: savingsSummary.traditional, membership: savingsSummary.membership, service: savingsSummary.service, ours: savingsSummary.ours, savings: savingsSummary.savings }],
+                      [{ key: 'traditional', label: 'Traditional Cost' }, { key: 'membership', label: 'Membership Cost' }, { key: 'service', label: 'Service Cost' }, { key: 'ours', label: 'Our Cost' }, { key: 'savings', label: 'Total Savings' }],
+                    ))}
+                  />
+                ) : (
                   <SavingsCard
                     key={key}
                     style={style}
@@ -566,7 +645,9 @@ export function EmployerImpactView() {
           sections={sectionsInOrder.map(section => ({
             id: section.id,
             title: section.heading || section.title,
-            items: gridCells(section.id).map(cell => (cell.widget
+            items: gridCells(section.id).map(cell => (cell.summary
+              ? { key: cell.key, title: 'Cost Savings Comparison', kind: 'savings', summary: true, subtitle: rangeText, card: { ...savingsSummary, title: 'Cost Savings Comparison' } }
+              : cell.widget
               ? { key: cell.key, title: cell.widget.title, kind: 'widget', widget: cell.widget, model: models[cell.key], subtitle: rangeText, full: cell.widget.span === 'full' }
               : { key: cell.key, title: cell.card.title, kind: 'savings', card: cell.card })),
           }))}
