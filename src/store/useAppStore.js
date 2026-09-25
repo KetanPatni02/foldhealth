@@ -120,6 +120,7 @@ import {
 import { fetchAnalyticsTableBatched } from './lib/analyticsTableBatcher';
 import { mapNotificationRow, mergeNotifications } from './lib/notificationStoreLib';
 import { persistHccAddedChart, persistProgramDocument, persistProgramDocumentUpdate, persistProgramDocumentDelete } from './lib/documentUploadPersist';
+import { fetchCaregapCommentRows, persistCaregapCommentInsert, persistCaregapCommentUpdate, persistCaregapCommentDelete } from './lib/caregapCommentsPersist';
 import {
   LIST_FILTER_KEY,
   detachSaved,
@@ -6354,6 +6355,83 @@ export const useAppStore = create((set, get) => ({
       persistCaregapActivityInsert(memberId, entry);
     }
     return created;
+  },
+  // ── Care Gap comments (Supabase `caregap_comments`) ────────────────────
+  // Keyed by HEDIS member id. The DB stamps authorship, restricts edit and
+  // delete to the author (RLS), and sends mention bells. Until
+  // caregap_comments_migration.sql has run, a new comment falls back to a
+  // plain caregap_activity comment entry so it isn't lost.
+  caregapComments: {},
+  caregapCommentsLoaded: false,
+  caregapCommentsTableMissing: false,
+  fetchCaregapComments: async () => {
+    if (get().caregapCommentsLoaded) return;
+    set({ caregapCommentsLoaded: true });
+    const { rows, missing } = await fetchCaregapCommentRows();
+    const byMember = {};
+    rows.forEach(r => { (byMember[r.memberId] ??= []).push(r); });
+    set({ caregapComments: byMember, caregapCommentsTableMissing: missing });
+  },
+  addCaregapComment: async ({ memberId, gapCode, body, mentions }) => {
+    const text = String(body || '').trim();
+    if (!memberId || !text) return;
+    const me = get().currentUserProfile;
+    const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const row = {
+      id: `cgc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      memberId,
+      gapCode: gapCode || null,
+      author: me?.name || get().currentActorName(),
+      authorId: isUuid(me?.id) ? me.id : null,
+      body: text,
+      mentionIds: [...new Set((mentions || []).map(m => m?.id).filter(isUuid))],
+      edited: false,
+      createdAt: new Date().toISOString(),
+    };
+    const fallback = () => get().logCareGapActivity(memberId, {
+      when: row.createdAt, actor: get().currentActorName(), t: 'comment',
+      title: 'Added a Comment', commentBody: text, gapCodes: gapCode ? [gapCode] : undefined,
+    });
+    if (get().caregapCommentsTableMissing) { fallback(); return; }
+    set(s => ({ caregapComments: { ...s.caregapComments, [memberId]: [row, ...(s.caregapComments[memberId] || [])] } }));
+    const { missing } = await persistCaregapCommentInsert(row);
+    if (missing) {
+      set(s => ({
+        caregapCommentsTableMissing: true,
+        caregapComments: { ...s.caregapComments, [memberId]: (s.caregapComments[memberId] || []).filter(c => c.id !== row.id) },
+      }));
+      fallback();
+    }
+  },
+  updateCaregapComment: (memberId, id, body, mentions) => {
+    const text = String(body || '').trim();
+    const before = (get().caregapComments[memberId] || []).find(c => c.id === id);
+    if (!before || !text || text === before.body) return;
+    const isUuid = (v) => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const mentionIds = [...new Set((mentions || []).map(m => m?.id).filter(isUuid))];
+    set(s => ({
+      caregapComments: {
+        ...s.caregapComments,
+        [memberId]: (s.caregapComments[memberId] || []).map(c => (c.id === id ? { ...c, body: text, edited: true, mentionIds } : c)),
+      },
+    }));
+    persistCaregapCommentUpdate(id, text, mentionIds);
+    get().logCareGapActivity(memberId, {
+      actor: get().currentActorName(), t: 'comment', title: 'Edited a Comment',
+      commentBody: text, commentId: id, gapCodes: before.gapCode ? [before.gapCode] : undefined,
+    });
+  },
+  deleteCaregapComment: (memberId, id) => {
+    const before = (get().caregapComments[memberId] || []).find(c => c.id === id);
+    if (!before) return;
+    set(s => ({
+      caregapComments: { ...s.caregapComments, [memberId]: (s.caregapComments[memberId] || []).filter(c => c.id !== id) },
+    }));
+    persistCaregapCommentDelete(id);
+    get().logCareGapActivity(memberId, {
+      actor: get().currentActorName(), t: 'comment', title: 'Deleted a Comment',
+      commentBody: before.body, commentId: id, gapCodes: before.gapCode ? [before.gapCode] : undefined,
+    });
   },
   logCareGapActivity: (memberId, entry) => {
     // Random suffix: several entries can be logged in the same millisecond
