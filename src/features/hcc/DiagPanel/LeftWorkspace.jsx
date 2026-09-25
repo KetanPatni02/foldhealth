@@ -9,7 +9,7 @@ import { Button } from '../../../components/Button/Button';
 import { Badge } from '../../../components/Badge/Badge';
 import { Switch } from '../../../components/Switch/Switch';
 import { timelineStatusIcon } from '../StatusIcon';
-import { recordParticipants } from '../recordParticipants';
+import { recordMentionRoster } from '../recordParticipants';
 import { FilterChip as SharedFilterChip } from '../../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../../components/TabStrip/TabStrip';
 import {
@@ -768,13 +768,14 @@ export function CommentsTab({ filters, member: memberProp = null, memberOverride
   const logHccActivity = useAppStore(s => s.logHccActivity);
   const diagPanelMemberId = useAppStore(s => s.diagPanelMemberId);
   const hccMembers = useAppStore(s => s.hccMembers);
-  // Only people on this record (current or past assignee, any role) can be
-  // @-mentioned, labelled with the role they hold on this record.
+  // Every system user is listed; only people on this record (current or past
+  // assignee, any role) can be @-mentioned, labelled with their role here.
+  // Everyone else shows disabled as not part of the record.
   const dosAssignments = useAppStore(s => s.hccDosAssignments);
   const platformUsersForMentions = useAppStore(s => s.platformUsers);
   const mentionUsers = useMemo(() => {
     const recordMember = memberProp || memberOverride || hccMembers.find(m => m.id === scopeMemberId);
-    return recordParticipants(recordMember, dosAssignments, platformUsersForMentions || []);
+    return recordMentionRoster(recordMember, dosAssignments, platformUsersForMentions || []);
   }, [memberProp, memberOverride, hccMembers, scopeMemberId, dosAssignments, platformUsersForMentions]);
   const editComment = (id, body, mentions) => {
     // The edited body's chips are the comment's full mention set; the DB

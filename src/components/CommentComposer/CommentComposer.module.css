@@ -167,4 +167,18 @@
 .mentionItemActive { background: var(--neutral-50); }
 .mentionName { flex: 1; }
 .mentionRole { color: var(--neutral-200); }
+/* A user with no access to the record: listed, but can't be tagged. */
+.mentionItemDisabled { cursor: not-allowed; }
+.mentionItemDisabled:hover { background: none; }
+.mentionItemDisabled .mentionName { color: var(--neutral-200); }
+.mentionItemDisabled :global(.avatar),
+.mentionItemDisabled > :first-child { opacity: 0.5; }
+.mentionDisabledReason {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
 
