@@ -4,13 +4,18 @@ import { DownChevronIcon } from '../../../../../../components/Icon/DownChevronIc
 import { Switch } from '../../../../../../components/Switch/Switch';
 import { Textarea } from '../../../../../../components/Textarea/Textarea';
 import { MenuPopover } from '../../../../../../components/MenuPopover/MenuPopover';
-import { OUTCOME_CHOICES } from './OutreachTab.utils';
+import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
+import { OUTCOME_CHOICES_BY_STATUS } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
 
 export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, showSyncText,
   onToggleExpand, onToggleOutcomeOpen, onAddOutcome, onRemoveOutcome, onNoteChange, onToggleSyncText,
   outcomeType }) {
   const outcomeBtnRef = useRef(null);
+  // The menu lists only the outcomes that fit the chosen Outreach Outcome,
+  // so it stays disabled until one of those radios is picked.
+  const choices = (OUTCOME_CHOICES_BY_STATUS[outcomeType] || []).filter(o => !outcomes.includes(o));
+  const outcomeDisabled = !outcomeType;
 
   const badgeClass = outcomeType === 'Successful' ? styles.outcomeBadgeSuccess
     : outcomeType === 'Unsuccessful' ? styles.outcomeBadgeError
@@ -28,18 +33,26 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
         </button>
         <div className={styles.notePanelActions}>
           <div className={styles.selectOutcomeWrap}>
-            <button ref={outcomeBtnRef} className={styles.selectOutcomeBtn} onClick={onToggleOutcomeOpen} type="button">
-              <Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" />
-              <span>Select Outcome</span>
-              {outcomes.length === 0 && <span className={styles.mandatoryDot} aria-hidden="true" />}
-            </button>
-            {outcomeOpen && (
+            <Tooltip label={outcomeDisabled ? 'Select Successful, Unsuccessful or Note first' : null}>
+              <button
+                ref={outcomeBtnRef}
+                className={styles.selectOutcomeBtn}
+                onClick={onToggleOutcomeOpen}
+                disabled={outcomeDisabled}
+                type="button"
+              >
+                <Icon name="solar:add-circle-linear" size={12} color="var(--neutral-300)" />
+                <span>Select Outcome</span>
+                {outcomes.length === 0 && <span className={styles.mandatoryDot} aria-hidden="true" />}
+              </button>
+            </Tooltip>
+            {outcomeOpen && !outcomeDisabled && choices.length > 0 && (
               <MenuPopover
                 anchorRef={outcomeBtnRef}
-                items={OUTCOME_CHOICES.map(val => ({ key: val, label: val }))}
+                items={choices.map(val => ({ key: val, label: val }))}
                 onSelect={onAddOutcome}
                 onClose={onToggleOutcomeOpen}
-                width={150}
+                width={260}
                 ariaLabel="Select outcome"
               />
             )}

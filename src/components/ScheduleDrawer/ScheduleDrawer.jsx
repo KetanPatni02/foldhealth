@@ -5,8 +5,8 @@ import { BookingSuccessScreen } from './ScheduleDrawerScreens';
 import { useScheduleDrawer } from './useScheduleDrawer';
 import styles from './ScheduleDrawer.module.css';
 
-export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, timezoneLabel = 'GMT', initialPatientId, source }) {
-  const drawer = useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, source });
+export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, timezoneLabel = 'GMT', initialPatientId, initialSelectedPatient, patientLocked = false, source }) {
+  const drawer = useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, initialSelectedPatient, source });
 
   if (drawer.isViewMode) {
     return (
@@ -63,6 +63,7 @@ export function ScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointm
   return (
     <ScheduleDrawerBookingForm
       onClose={onClose}
+      patientLocked={patientLocked}
       canSchedule={drawer.canSchedule}
       handleSchedule={drawer.handleSchedule}
       patients={drawer.patients}

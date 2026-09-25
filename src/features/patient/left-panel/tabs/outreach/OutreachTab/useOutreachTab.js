@@ -28,6 +28,9 @@ export function useOutreachTab({
   // Patient name — used to source this patient's open HCC gaps for the
   // "HCC Gaps" mode (same data the Diagnosis Gaps panel shows).
   memberName,
+  // Called after a save with the new log entries, so a host can mirror them
+  // into its own persisted activity feed (the Care Gap drawer does).
+  onSaved,
 } = {}) {
   const PROGRAM_OPTIONS = [...new Set([...(programs && programs.length ? programs : PROGRAMS), ...defaultPrograms])];
   // This patient's distinct open HCC gap codes (e.g. "HCC 37").
@@ -77,8 +80,42 @@ export function useOutreachTab({
 
   const showCallDetails = type === 'Call';
   const getPanel = (prog) => panels[prog] || { expanded: true, outcomes: [], note: '', syncText: false, outcomeOpen: false };
-  const patchPanel = (prog, patch) => setPanels(p => ({ ...p, [prog]: { ...getPanel(prog), ...patch } }));
+  // Merge onto the latest state, not the render-time `panels`: selecting an
+  // outcome issues two patches in one click (add + close menu), and merging
+  // the second onto a stale copy wiped the outcome the first had just added.
+  const patchPanel = (prog, patch) => setPanels(p => ({
+    ...p,
+    [prog]: { ...(p[prog] || { expanded: true, outcomes: [], note: '', syncText: false, outcomeOpen: false }), ...patch },
+  }));
   const patchShared = (patch) => setSharedPanel(p => ({ ...p, ...patch }));
+
+  // Sync Text is one setting across all selected note panels: flipping it
+  // in any panel flips it in every panel, and turning it on copies the
+  // toggled panel's note into the others. Done in a single functional
+  // update so the per-panel writes can't clobber each other.
+  const toggleSyncText = (prog) => setPanels(prev => {
+    const get = (k) => prev[k] || { expanded: true, outcomes: [], note: '', syncText: false, outcomeOpen: false };
+    const source = get(prog);
+    const on = !source.syncText;
+    const next = { ...prev };
+    selectedProgs.forEach(k => {
+      next[k] = on && k !== prog
+        ? { ...get(k), syncText: true, note: source.note }
+        : { ...get(k), syncText: on };
+    });
+    return next;
+  });
+
+  // Detailed outcomes come from a list keyed by this status, so switching
+  // Successful / Unsuccessful / Note drops picks made from the old list.
+  const changeOutcome = (next) => {
+    if (next === outcome) return;
+    setOutcome(next);
+    setPanels(p => Object.fromEntries(
+      Object.entries(p).map(([k, v]) => [k, { ...v, outcomes: [], outcomeOpen: false }]),
+    ));
+    setSharedPanel(p => ({ ...p, outcomes: [], outcomeOpen: false }));
+  };
 
   const toggleProgram = (prog) => {
     const alreadySelected = selectedProgs.includes(prog);
@@ -210,6 +247,14 @@ export function useOutreachTab({
       return [{ id: monthKey, label: monthLabel, logs: newEntries }, ...prev];
     });
 
+    onSaved?.(newEntries, {
+      isEdit: editingIdRef.current != null,
+      callDetails: showCallDetails ? {
+        via: callViaNumber,
+        to: calledToNumber,
+        durationMin: Number(callDurationMin) + Number(callDurationSec) / 60,
+      } : null,
+    });
     editingIdRef.current = null;
     resetForm();
     if (!scopedProgram) setFormOpen(false);
@@ -284,13 +329,14 @@ export function useOutreachTab({
     type, setType,
     datetime, setDatetime,
     selectedProgs,
-    outcome, setOutcome,
+    outcome, setOutcome: changeOutcome,
     separateNotes, setSeparateNotes,
     sharedPanel,
     showCallDetails,
     getPanel,
     patchPanel,
     patchShared,
+    toggleSyncText,
     toggleProgram,
     useSeparate,
     sharedPanelTitle,

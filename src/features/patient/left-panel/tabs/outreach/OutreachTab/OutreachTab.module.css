@@ -9,6 +9,16 @@
   box-sizing: border-box;
   background: var(--neutral-0);
 }
+.wrapperFlush {
+  padding: 0;
+}
+/* Flush hosts (Care Gap drawer's Add Outreach pane) already frame the form,
+   so the card chrome is dropped and the fields sit directly on the pane. */
+.wrapperFlush .formCard {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+}
 
 /* ── Empty state ── */
 .emptyCard {
@@ -733,6 +743,8 @@
 }
 
 .selectOutcomeBtn:hover { background: var(--neutral-100); }
+.selectOutcomeBtn:disabled { cursor: not-allowed; opacity: 0.5; }
+.selectOutcomeBtn:disabled:hover { background: var(--neutral-50); }
 /* Mandatory-field indicator on the Select Outcome badge. */
 .mandatoryDot {
   width: 4px;

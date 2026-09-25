@@ -39,6 +39,7 @@ export function OutreachTabForm({
   getPanel,
   patchPanel,
   patchShared,
+  toggleSyncText,
   sharedPanel,
   sharedPanelTitle,
   addOutcome,
@@ -50,6 +51,7 @@ export function OutreachTabForm({
   handleDiscard,
   onAddTask,
   onSchedule,
+  hideFooter = false,
 }) {
   return (
     <div className={styles.formCard}>
@@ -219,13 +221,7 @@ export function OutreachTabForm({
                     onAddOutcome={val => addOutcome(prog, val)}
                     onRemoveOutcome={val => removeOutcome(prog, val)}
                     onNoteChange={text => handleNoteChange(prog, text)}
-                    onToggleSyncText={() => {
-                      const next = !ps.syncText;
-                      patchPanel(prog, { syncText: next });
-                      if (next) {
-                        selectedProgs.forEach(p => { if (p !== prog) patchPanel(p, { note: ps.note }); });
-                      }
-                    }}
+                    onToggleSyncText={() => toggleSyncText(prog)}
                   />
                 );
               })
@@ -260,10 +256,12 @@ export function OutreachTabForm({
           <ActionButton size="S" icon="solar:alarm-linear" tooltip="Set Reminder" />
         </div>
 
-        <div className={styles.formFooter}>
-          <Button variant="primary" size="L" disabled={!canSave} onClick={handleSave}>Save</Button>
-          <Button variant="ghost" size="L" onClick={handleDiscard}>Discard</Button>
-        </div>
+        {!hideFooter && (
+          <div className={styles.formFooter}>
+            <Button variant="primary" size="L" disabled={!canSave} onClick={handleSave}>Save</Button>
+            <Button variant="ghost" size="L" onClick={handleDiscard}>Discard</Button>
+          </div>
+        )}
       </div>
     </div>
   );
