@@ -43,6 +43,8 @@ export function OutreachTab(props) {
  *                     (for hosts whose member ids aren't in the patients table)
  *   onTaskCreated / onAppointmentScheduled : let the host log what the
  *                     Actions row created
+ *   onLogNew        : replaces the inline form when "Log New Outreach" is
+ *                     clicked (host opens its own outreach workspace)
  */
 export function OutreachTabView({
   tab,
@@ -56,6 +58,7 @@ export function OutreachTabView({
   schedulePatient,
   onTaskCreated,
   onAppointmentScheduled,
+  onLogNew,
 }) {
   return (
     <div className={`${styles.wrapper} ${flush ? styles.wrapperFlush : ''}`}>
@@ -65,7 +68,13 @@ export function OutreachTabView({
             variant="alt"
             size="L"
             leadingIconElement={<OutreachIcon size={16} color="var(--primary-300)" />}
-            onClick={() => { tab.setDatetime(tab.formatNow()); tab.setFormOpen(true); }}
+            onClick={() => {
+              // A host with its own outreach workspace (Care Gap drawer's
+              // left pane) takes over; otherwise the form opens inline.
+              if (onLogNew) { onLogNew(); return; }
+              tab.setDatetime(tab.formatNow());
+              tab.setFormOpen(true);
+            }}
           >
             Log New Outreach
           </Button>
