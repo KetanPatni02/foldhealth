@@ -6,6 +6,10 @@ export const DEFAULT_CALENDARS = {
   telehealth: { colorName: 'telehealth', lightColors: { main: '#145ECC', container: '#EEF4FF', onContainer: '#3A485F' }, darkColors: { main: '#145ECC', container: '#1A2744', onContainer: '#C7DEFF' } },
   selection:  { colorName: 'selection',  lightColors: { main: '#8C5AE2', container: 'transparent', onContainer: '#8C5AE2' }, darkColors: { main: '#8C5AE2', container: 'transparent', onContainer: '#8C5AE2' } },
 };
+// Care Gap reminders reuse the AWV yellow (the warning family) so they read
+// apart from appointments without adding new raw colors.
+DEFAULT_CALENDARS.reminder = { ...DEFAULT_CALENDARS.awv, colorName: 'reminder' };
+
 
 export const TIMEZONE_OPTIONS = [
   { value: 'Asia/Kolkata', label: 'IST (GMT+5:30)' },

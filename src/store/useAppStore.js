@@ -121,6 +121,9 @@ import { fetchAnalyticsTableBatched } from './lib/analyticsTableBatcher';
 import { mapNotificationRow, mergeNotifications } from './lib/notificationStoreLib';
 import { persistHccAddedChart, persistProgramDocument, persistProgramDocumentUpdate, persistProgramDocumentDelete } from './lib/documentUploadPersist';
 import { fetchCaregapCommentRows, persistCaregapCommentInsert, persistCaregapCommentUpdate, persistCaregapCommentDelete } from './lib/caregapCommentsPersist';
+import { fetchCaregapReminderRows, persistCaregapReminderInsert, persistCaregapReminderUpdate, persistCaregapReminderDelete } from './lib/caregapRemindersPersist';
+import { fetchReferralDirectoryRows, fetchCaregapReferralRows, persistCaregapReferralInsert } from './lib/caregapReferralsPersist';
+import { REFERRAL_SENDER_LINES_MOCK } from '../features/hedis-worklist/data/referralDirectoryMock';
 import {
   LIST_FILTER_KEY,
   detachSaved,
@@ -6432,6 +6435,124 @@ export const useAppStore = create((set, get) => ({
       actor: get().currentActorName(), t: 'comment', title: 'Deleted a Comment',
       commentBody: before.body, commentId: id, gapCodes: before.gapCode ? [before.gapCode] : undefined,
     });
+  },
+  // ── Care Gap referrals (supabase/caregap_referrals_migration.sql) ───────
+  // "Refer to" = the practice's system users (profiles). Sender lines fall
+  // back to the local mock (same ids as the migration seed) until the
+  // migration runs; sent referrals are keyed by HEDIS member id and stay
+  // session-only until then.
+  referralProviders: [],
+  referralSenderLines: REFERRAL_SENDER_LINES_MOCK,
+  referralDirectoryLoaded: false,
+  fetchReferralDirectory: async () => {
+    if (get()._referralDirectoryFetching || get().referralDirectoryLoaded) return;
+    set({ _referralDirectoryFetching: true });
+    const { providers, senders } = await fetchReferralDirectoryRows();
+    // If profiles can't be read, use the loaded people-picker roster
+    // (names + emails only; chat still reaches them).
+    const fallback = (get().platformUsers || []).map(u => ({
+      id: u.id, name: u.name, specialty: '', specialties: [], zip: '', network: 'In-Network', practice: '', fax: '', email: u.email || '', phone: '', chatEnabled: true,
+    }));
+    set({
+      referralProviders: providers.length ? providers : fallback,
+      referralSenderLines: senders.length ? senders : REFERRAL_SENDER_LINES_MOCK,
+      referralDirectoryLoaded: true,
+      _referralDirectoryFetching: false,
+    });
+  },
+  caregapReferrals: {},
+  caregapReferralsLoaded: false,
+  caregapReferralsTableMissing: false,
+  fetchCaregapReferrals: async () => {
+    if (get()._caregapReferralsFetching || get().caregapReferralsLoaded) return;
+    set({ _caregapReferralsFetching: true });
+    const { rows, missing } = await fetchCaregapReferralRows();
+    const byMember = {};
+    rows.forEach(r => { (byMember[r.memberId] ??= []).push(r); });
+    set(s => ({
+      caregapReferrals: Object.fromEntries(
+        [...new Set([...Object.keys(byMember), ...Object.keys(s.caregapReferrals)])].map(k => [
+          k,
+          [...(s.caregapReferrals[k] || []).filter(l => !(byMember[k] || []).some(r => r.id === l.id)), ...(byMember[k] || [])],
+        ]),
+      ),
+      caregapReferralsLoaded: true,
+      caregapReferralsTableMissing: missing,
+      _caregapReferralsFetching: false,
+    }));
+  },
+  addCaregapReferral: async (referral, files = []) => {
+    if (!referral?.id || !referral.memberId) return;
+    const row = {
+      status: 'Sent',
+      createdAt: new Date().toISOString(),
+      ...referral,
+      attachments: [
+        ...(files || []).map(f => ({ name: f.name, size: f.size, type: f.type || '' })),
+        ...(referral.documentAttachments || []),
+      ],
+    };
+    set(s => ({ caregapReferrals: { ...s.caregapReferrals, [row.memberId]: [row, ...(s.caregapReferrals[row.memberId] || [])] } }));
+    if (get().caregapReferralsTableMissing) return;
+    const { missing, attachments } = await persistCaregapReferralInsert(row, files);
+    set(s => ({
+      caregapReferralsTableMissing: missing || s.caregapReferralsTableMissing,
+      caregapReferrals: {
+        ...s.caregapReferrals,
+        [row.memberId]: (s.caregapReferrals[row.memberId] || []).map(r => (r.id === row.id ? { ...r, attachments } : r)),
+      },
+    }));
+  },
+
+  // ── Care Gap reminders (Supabase `caregap_reminders`) ──────────────────
+  // Keyed by HEDIS member id. Local state updates first; until
+  // caregap_reminders_migration.sql has run, reminders stay session-only.
+  caregapReminders: {},
+  caregapRemindersLoaded: false,
+  caregapRemindersTableMissing: false,
+  fetchCaregapReminders: async () => {
+    if (get()._caregapRemindersFetching || get().caregapRemindersLoaded) return;
+    set({ _caregapRemindersFetching: true });
+    const { rows, missing } = await fetchCaregapReminderRows();
+    const byMember = {};
+    rows.forEach(r => { (byMember[r.memberId] ??= []).push(r); });
+    set(s => ({
+      // Keep reminders added locally before the fetch returned.
+      caregapReminders: Object.fromEntries(
+        [...new Set([...Object.keys(byMember), ...Object.keys(s.caregapReminders)])].map(k => [
+          k,
+          [...(s.caregapReminders[k] || []).filter(l => !(byMember[k] || []).some(r => r.id === l.id)), ...(byMember[k] || [])],
+        ]),
+      ),
+      caregapRemindersLoaded: true,
+      caregapRemindersTableMissing: missing,
+      _caregapRemindersFetching: false,
+    }));
+  },
+  addCaregapReminder: async (reminder) => {
+    if (!reminder?.id || !reminder.memberId) return;
+    const row = { status: 'Pending', createdAt: new Date().toISOString(), ...reminder };
+    set(s => ({ caregapReminders: { ...s.caregapReminders, [row.memberId]: [row, ...(s.caregapReminders[row.memberId] || [])] } }));
+    if (get().caregapRemindersTableMissing) return;
+    const { missing } = await persistCaregapReminderInsert(row);
+    if (missing) set({ caregapRemindersTableMissing: true });
+  },
+  updateCaregapReminder: (memberId, id, patch) => {
+    if (!memberId || !id || !patch) return;
+    set(s => ({
+      caregapReminders: {
+        ...s.caregapReminders,
+        [memberId]: (s.caregapReminders[memberId] || []).map(r => (r.id === id ? { ...r, ...patch } : r)),
+      },
+    }));
+    if (!get().caregapRemindersTableMissing) persistCaregapReminderUpdate(id, patch);
+  },
+  deleteCaregapReminder: (memberId, id) => {
+    if (!memberId || !id) return;
+    set(s => ({
+      caregapReminders: { ...s.caregapReminders, [memberId]: (s.caregapReminders[memberId] || []).filter(r => r.id !== id) },
+    }));
+    if (!get().caregapRemindersTableMissing) persistCaregapReminderDelete(id);
   },
   logCareGapActivity: (memberId, entry) => {
     // Random suffix: several entries can be logged in the same millisecond

@@ -1,0 +1,116 @@
+.headerRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-1);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.search { width: 220px; }
+.uploadBtn { margin-left: auto; }
+
+.uploadCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  margin-bottom: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.uploadTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.uploadActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.divider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.colCheck { width: 36px; }
+.colActions { width: 120px; }
+.th {
+  height: 32px;
+  padding: 0 calc(var(--space-1) * 1.5);
+  text-align: left;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.row { border-bottom: 0.5px solid var(--neutral-100); }
+.row:hover { background: var(--neutral-25); }
+.td {
+  padding: var(--space-2) calc(var(--space-1) * 1.5);
+  vertical-align: middle;
+}
+
+.fileCell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.fileText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.fileName {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fileMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-12) var(--space-6);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.empty p { margin: 0; }
+.noMatch {
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}

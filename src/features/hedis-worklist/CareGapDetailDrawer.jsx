@@ -36,6 +36,10 @@ import { DOC_TYPES } from '../hcc/data/chartDocs';
 import { DocumentList } from '../../components/DocumentList/DocumentList';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { CareGapAppointmentsTab } from './CareGapAppointmentsTab';
+import { CareGapReminderForm } from './CareGapReminderForm';
+import { useCareGapReminderForm } from './useCareGapReminderForm';
+import { CareGapReferralForm } from './CareGapReferralForm';
+import { useCareGapReferralForm, REFERRAL_CHANNELS, CUSTOM_SENDER, isEmail, providerContact } from './useCareGapReferralForm';
 import { ScheduleDrawer } from '../../components/ScheduleDrawer/ScheduleDrawer';
 import { FilePreview } from '../../components/FilePreview/FilePreview';
 import { useAppStore } from '../../store/useAppStore';
@@ -59,6 +63,8 @@ export function CareGapDetailDrawer(props) {
   return <CareGapDetailDrawerContent key={memberKey} {...props} />;
 }
 
+const EMPTY_REMINDERS = [];
+
 function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const showToast = useAppStore(s => s.showToast);
   const updateGapStatus = useAppStore(s => s.updateGapStatus);
@@ -80,6 +86,127 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   // drawer; Delete confirms first.
   const [openAppt, setOpenAppt] = useState(null);
   const openAppointmentDetail = (appt) => { setOpenAppt(appt); setLeftWorkspace('appointment-detail'); };
+  // Set Reminder workspace (caregap_reminders). Reminders list in the
+  // Appt/Reminders tab as Type = Reminder; each change is logged.
+  const memberReminders = useAppStore(s => s.caregapReminders[member?.id]) || EMPTY_REMINDERS;
+  const fetchCaregapReminders = useAppStore(s => s.fetchCaregapReminders);
+  const addCaregapReminder = useAppStore(s => s.addCaregapReminder);
+  const updateCaregapReminder = useAppStore(s => s.updateCaregapReminder);
+  const deleteCaregapReminder = useAppStore(s => s.deleteCaregapReminder);
+  useEffect(() => { fetchCaregapReminders(); }, [fetchCaregapReminders]);
+  const reminderForm = useCareGapReminderForm();
+  // Send Referral workspace (caregap_referrals): eFax / Email / SMS / Chat.
+  const referralProviders = useAppStore(s => s.referralProviders);
+  const referralSenderLines = useAppStore(s => s.referralSenderLines);
+  const fetchReferralDirectory = useAppStore(s => s.fetchReferralDirectory);
+  const memberReferrals = useAppStore(s => s.caregapReferrals[member?.id]) || EMPTY_REMINDERS;
+  const fetchCaregapReferrals = useAppStore(s => s.fetchCaregapReferrals);
+  const addCaregapReferral = useAppStore(s => s.addCaregapReferral);
+  useEffect(() => { fetchReferralDirectory(); fetchCaregapReferrals(); }, [fetchReferralDirectory, fetchCaregapReferrals]);
+  const referralForm = useCareGapReferralForm();
+  const referralProvider = referralProviders.find(p => p.id === referralForm.values.providerId);
+  const referralContact = providerContact(referralProvider, referralForm.values.channel);
+  const canSendReferral = !!(
+    referralContact
+    && referralForm.values.reason.trim()
+    && (referralForm.values.files.length || referralForm.values.docs.length)
+    && (referralForm.values.channel === 'chat'
+      || (referralForm.values.senderId === CUSTOM_SENDER ? isEmail(referralForm.values.customSender) : referralForm.values.senderId))
+  );
+  const openReferral = () => {
+    const defaultFor = (ch) => (referralSenderLines.find(l => l.channel === ch && l.isDefault) || referralSenderLines.find(l => l.channel === ch))?.id || '';
+    referralForm.reset({ efax: defaultFor('efax'), email: defaultFor('email'), sms: defaultFor('sms') });
+    setLeftWorkspace('referral');
+  };
+  const handleSendReferral = () => {
+    if (!canSendReferral || !member?.id) return;
+    const v = referralForm.values;
+    const sender = referralSenderLines.find(l => l.id === v.senderId);
+    const channelLabel = REFERRAL_CHANNELS.find(c => c.key === v.channel)?.label || v.channel;
+    const referral = {
+      id: `cgref-${new Date().getTime()}`,
+      memberId: member.id,
+      memberName: member.name,
+      gapCode: currentCode,
+      channel: v.channel,
+      senderLineId: v.channel === 'chat' || v.senderId === CUSTOM_SENDER ? null : v.senderId,
+      senderValue: v.channel === 'chat' ? '' : v.senderId === CUSTOM_SENDER ? v.customSender.trim() : (sender?.value || ''),
+      providerId: referralProvider.id,
+      providerName: referralProvider.name,
+      providerContact: referralContact,
+      reason: v.reason.trim(),
+      note: v.noteOpen ? v.note.trim() : '',
+      sentBy: currentActorName(),
+      // Existing patient documents ride along by reference (no re-upload).
+      documentAttachments: v.docs.map(d => ({ name: d.name, type: d.type || '', url: d.url || '', documentId: d.id })),
+    };
+    addCaregapReferral(referral, v.files);
+    logCareGapActivity(member.id, {
+      when: new Date().toISOString(),
+      actor: currentActorName(),
+      t: 'appointment',
+      title: 'Referral Sent',
+      gapCodes: [currentCode],
+      detailCard: {
+        title: `Referral to ${referralProvider.name}`,
+        subtitle: [`${channelLabel} • ${referralContact}`, `${v.files.length + v.docs.length} attachment${v.files.length + v.docs.length === 1 ? '' : 's'}`].join(' • '),
+        status: 'Sent',
+      },
+    });
+    showToast(`Referral sent via ${channelLabel}`);
+    referralForm.reset();
+    runLeftClose();
+  };
+  const [reminderToDelete, setReminderToDelete] = useState(null);
+  const reminderCard = (r, status) => {
+    const [y, m, d] = String(r.date || '').split('-');
+    const dateLabel = y && m && d ? `${m}/${d}/${y}` : '';
+    return {
+      title: r.title || 'Reminder',
+      subtitle: [dateLabel, r.time, r.assignee].filter(Boolean).join(' • '),
+      status: status || r.status || 'Pending',
+    };
+  };
+  const logReminder = (title, r, status) => logCareGapActivity(member?.id, {
+    when: new Date().toISOString(),
+    actor: currentActorName(),
+    t: 'appointment',
+    title,
+    gapCodes: [currentCode],
+    detailCard: reminderCard(r, status),
+  });
+  const openReminderNew = () => {
+    reminderForm.reset({ assignee: currentActorName() || '' });
+    setLeftWorkspace('reminder');
+  };
+  const openReminderEdit = (r) => {
+    reminderForm.startEdit(r);
+    setLeftWorkspace('reminder');
+  };
+  const handleSaveReminder = () => {
+    if (!reminderForm.canSave || !member?.id) return;
+    const v = reminderForm.values;
+    const fields = { title: v.title.trim(), date: v.date, time: v.time, assignee: v.assignee, note: v.note.trim() };
+    if (reminderForm.editingId) {
+      updateCaregapReminder(member.id, reminderForm.editingId, fields);
+      logReminder('Reminder Updated', fields);
+      showToast('Reminder updated');
+    } else {
+      const reminder = {
+        id: `cgrem-${new Date().getTime()}`,
+        memberId: member.id,
+        memberName: member.name,
+        gapCode: currentCode,
+        createdBy: currentActorName(),
+        ...fields,
+      };
+      addCaregapReminder(reminder);
+      logReminder('Reminder Set', reminder, 'Pending');
+      showToast('Reminder set');
+    }
+    reminderForm.reset();
+    runLeftClose();
+  };
   const [apptToDelete, setApptToDelete] = useState(null);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
@@ -158,6 +285,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     else if (a.key === 'appointment') setLeftWorkspace('schedule');
     else if (a.key === 'outreach') openOutreachWorkspace();
     else if (a.key === 'document') openDocumentUpload();
+    else if (a.key === 'reminder') openReminderNew();
+    else if (a.key === 'referral') openReferral();
     else showToast(`${a.label} — coming soon`);
   };
 
@@ -406,30 +535,11 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const openDocumentUpload = () => { docUpload.reset(); setLeftWorkspace('document'); };
   const openDocumentPreview = (id) => { setPreviewDocId(id); setLeftWorkspace('document-preview'); };
   const todayMmDdYyyy = (d) => `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
-  const handleUploadDocument = () => {
-    if (!docUpload.canSave || !member?.id) return;
-    const { file, caption, docType } = docUpload;
+  // Adds a new document to this member's Documents (store + storage) and logs
+  // it to Activity. Shared by the Documents tab and the referral doc picker.
+  const createMemberDocument = ({ file, caption, docType }) => {
+    if (!member?.id || !file) return null;
     const now = new Date();
-    if (docUpload.editingId) {
-      const name = caption.trim();
-      updateProgramDocument(docUpload.editingId, {
-        name, type: docType, updatedBy: currentActorName(), updatedDate: todayMmDdYyyy(now),
-      });
-      logCareGapActivity(member.id, {
-        when: now.toISOString(),
-        actor: currentActorName(),
-        t: 'upload',
-        title: 'Document Updated',
-        file: name,
-        fileType: docType,
-        docId: docUpload.editingId,
-        gapCodes: [currentCode],
-      });
-      showToast(`Updated ${name}`);
-      docUpload.reset();
-      runLeftClose();
-      return;
-    }
     const id = `cgdoc-${now.getTime()}`;
     const name = caption.trim();
     addProgramDocument({
@@ -455,6 +565,33 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       gapCodes: [currentCode],
     });
     showToast(`Uploaded ${name}`);
+    return { id, name, type: docType, addedAt: now.toISOString() };
+  };
+  const handleUploadDocument = () => {
+    if (!docUpload.canSave || !member?.id) return;
+    const { file, caption, docType } = docUpload;
+    const now = new Date();
+    if (docUpload.editingId) {
+      const name = caption.trim();
+      updateProgramDocument(docUpload.editingId, {
+        name, type: docType, updatedBy: currentActorName(), updatedDate: todayMmDdYyyy(now),
+      });
+      logCareGapActivity(member.id, {
+        when: now.toISOString(),
+        actor: currentActorName(),
+        t: 'upload',
+        title: 'Document Updated',
+        file: name,
+        fileType: docType,
+        docId: docUpload.editingId,
+        gapCodes: [currentCode],
+      });
+      showToast(`Updated ${name}`);
+      docUpload.reset();
+      runLeftClose();
+      return;
+    }
+    createMemberDocument({ file, caption, docType });
     docUpload.reset();
     runLeftClose();
   };
@@ -558,6 +695,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (leftWorkspace === 'document') docUpload.reset();
     if (leftWorkspace === 'document-preview') setPreviewDocId(null);
     if (leftWorkspace === 'appointment-detail') { setOpenAppt(null); fetchAppointments?.(); }
+    if (leftWorkspace === 'reminder') reminderForm.reset();
+    if (leftWorkspace === 'referral') referralForm.reset();
     // DSF-B: block close on a partial PHQ-9 and surface the exit modal.
     const guard = detectPhq9Incomplete({ mode: 'close' });
     if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'close' }); return; }
@@ -702,9 +841,10 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const tabCounts = {
     'Activity Log': allActivityEntries.length,
     Outreaches: outreach.logGroups.reduce((n, g) => n + (g.logs?.length ?? 0), 0),
-    'Appt/Reminders': memberAppointments.length,
+    'Appt/Reminders': memberAppointments.length + memberReminders.length,
     'Clinical Notes': clinicalNoteCount,
     Documents: memberDocs.length,
+    Referrals: memberReferrals.length,
     Tasks: memberTasks.length,
   };
 
@@ -720,6 +860,23 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       {/* The task detail no longer opens as its own standalone Drawer —
           it renders inline as the left workspace when leftWorkspace ===
           'task-detail' (see the leftPane branches below). */}
+      {reminderToDelete && (
+        <ConfirmDialog
+          variant="destructive"
+          title="Delete reminder?"
+          description={`"${reminderToDelete.title || 'Reminder'}" will be removed. This can't be undone.`}
+          confirmLabel="Delete"
+          onCancel={() => setReminderToDelete(null)}
+          onConfirm={() => {
+            const r = reminderToDelete;
+            deleteCaregapReminder(member.id, r.id);
+            logReminder('Reminder Deleted', r, 'Deleted');
+            if (reminderForm.editingId === r.id) { reminderForm.reset(); runLeftClose(); }
+            showToast('Reminder deleted');
+            setReminderToDelete(null);
+          }}
+        />
+      )}
       {apptToDelete && (
         <ConfirmDialog
           variant="destructive"
@@ -890,6 +1047,12 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 }
                 if (leftWorkspace === 'appointment-detail') {
                   return <span className={styles.paneTitle}>Appointment Details</span>;
+                }
+                if (leftWorkspace === 'referral') {
+                  return <span className={styles.paneTitle}>Send Referral</span>;
+                }
+                if (leftWorkspace === 'reminder') {
+                  return <span className={styles.paneTitle}>{reminderForm.editingId ? 'Edit Reminder' : 'Set Reminder'}</span>;
                 }
                 if (leftWorkspace === 'measure-info') {
                   return <span className={styles.paneTitle}>Measure Tutorial</span>;
@@ -1077,6 +1240,14 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 ) : leftWorkspace === 'appointment-detail' ? (
                   // Appointment Details saves each field as it changes.
                   null
+                ) : leftWorkspace === 'referral' ? (
+                  <Button variant="primary" size="M" disabled={!canSendReferral} onClick={handleSendReferral}>
+                    Send
+                  </Button>
+                ) : leftWorkspace === 'reminder' ? (
+                  <Button variant="primary" size="M" disabled={!reminderForm.canSave} onClick={handleSaveReminder}>
+                    Save
+                  </Button>
                 ) : leftWorkspace === 'task-detail' ? (
                   // Task detail is a read/edit surface; the task's own
                   // header (status pill, title, etc.) lives in the body so
@@ -1110,6 +1281,10 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                         ? 'Close Clinical Note'
                         : leftWorkspace === 'appointment-detail'
                           ? 'Close Appointment Details'
+                          : leftWorkspace === 'reminder'
+                          ? 'Close Set Reminder'
+                          : leftWorkspace === 'referral'
+                          ? 'Close Send Referral'
                           : leftWorkspace === 'task-detail'
                           ? 'Close Task Details'
                           : leftWorkspace === 'measure-info'
@@ -1146,6 +1321,17 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} noteId={selectedNoteId} />
               ) : leftWorkspace === 'clinical-note-consolidated' ? (
                 <ConsolidatedNoteBody v={clinicalNote} />
+              ) : leftWorkspace === 'referral' ? (
+                <CareGapReferralForm
+                  form={referralForm}
+                  providers={referralProviders}
+                  senderLines={referralSenderLines}
+                  patientDocuments={memberDocs.map(d => ({ id: d.id, name: d.name, type: d.type, addedAt: d.createdAt, url: d.fileUrl }))}
+                  docTypes={DOC_TYPES}
+                  onUploadDocument={createMemberDocument}
+                />
+              ) : leftWorkspace === 'reminder' ? (
+                <CareGapReminderForm form={reminderForm} users={platformUsers} />
               ) : leftWorkspace === 'appointment-detail' ? (
                 openAppt ? (
                   <ScheduleDrawer
@@ -1260,6 +1446,24 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   emptyLabel="No documents uploaded for this member yet."
                 />
               ) : <CardSkeleton />
+            ) : activeTab === 'Referrals' ? (
+              <DocumentList
+                documents={memberReferrals.map(r => ({
+                  id: r.id,
+                  name: `Referral to ${r.providerName}`,
+                  meta: [
+                    REFERRAL_CHANNELS.find(c => c.key === r.channel)?.label || r.channel,
+                    r.providerContact,
+                    r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '',
+                    r.sentBy,
+                  ].filter(Boolean).join(' • '),
+                  status: { variant: 'status-completed', label: r.status || 'Sent' },
+                }))}
+                showStatus
+                onUpload={openReferral}
+                uploadLabel="Send Referral"
+                emptyLabel="No referrals sent for this member yet."
+              />
             ) : activeTab === 'Clinical Notes' ? (
               // Flat column-headed list per Figma 1030:78586 — no timeline
               // rail, no month grouping. Card affordances are shared with
@@ -1281,7 +1485,27 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 platformUsers={platformUsers}
                 onOpen={openAppointmentDetail}
                 onEdit={openAppointmentDetail}
-                selectedId={leftWorkspace === 'appointment-detail' ? openAppt?.id : null}
+                selectedId={leftWorkspace === 'appointment-detail' ? openAppt?.id : leftWorkspace === 'reminder' ? reminderForm.editingId : null}
+                reminders={memberReminders}
+                onOpenReminder={openReminderEdit}
+                onDeleteReminder={setReminderToDelete}
+                onCompleteReminder={(r) => {
+                  updateCaregapReminder(member.id, r.id, { status: 'Completed' });
+                  logReminder('Reminder Completed', r, 'Completed');
+                  showToast('Reminder marked as done');
+                }}
+                onReminderAssigneeChange={(r, name) => {
+                  updateCaregapReminder(member.id, r.id, { assignee: name });
+                  logCareGapActivity(member.id, {
+                    when: new Date().toISOString(),
+                    actor: currentActorName(),
+                    t: 'assignee_change',
+                    title: `${r.title || 'Reminder'} Assignee Changed`,
+                    gapCodes: [currentCode],
+                    fromAssignee: r.assignee ? { initials: initialsOf(r.assignee), name: r.assignee } : null,
+                    toAssignee: { initials: initialsOf(name), name },
+                  });
+                }}
                 onDelete={setApptToDelete}
                 onAssigneeChange={(appt, name) => {
                   const prev = appt.primary_user || null;

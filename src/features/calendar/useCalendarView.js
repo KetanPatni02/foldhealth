@@ -13,6 +13,38 @@ import {
 } from './calendarUtils';
 import styles from './CalendarView.module.css';
 
+// "8:30 am" → "9:00 am" (reminders have no end time; show a 30-min block).
+function addThirtyMinutes(time) {
+  const m = /^(\d{1,2}):(\d{2})\s*(am|pm)$/i.exec(String(time || '').trim());
+  if (!m) return null;
+  let h = Number(m[1]) % 12 + (m[3].toLowerCase() === 'pm' ? 12 : 0);
+  let min = Number(m[2]) + 30;
+  if (min >= 60) { min -= 60; h += 1; }
+  const p = h >= 12 && h < 24 ? 'pm' : 'am';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(min).padStart(2, '0')} ${p}`;
+}
+
+// Care Gap reminder → the appointment shape the calendar renders.
+function reminderToCalendarAppt(r) {
+  const [y, mo, d] = String(r?.date || '').split('-');
+  if (!y || !mo || !d) return null;
+  const start = r.time || '9:00 am';
+  return {
+    id: r.id,
+    isReminder: true,
+    reminderTitle: r.title || 'Reminder',
+    date: `${mo}-${d}-${y}`,
+    time_start: start,
+    time_end: addThirtyMinutes(start) || start,
+    patient_name: r.memberName ? `Reminder: ${r.memberName}` : 'Reminder',
+    appointment_type_name: `Reminder • ${r.title || ''}`.trim(),
+    status: r.status || 'Pending',
+    primary_user: r.assignee || '',
+    calendar_id: 'reminder',
+  };
+}
+
 export function useCalendarView() {
   const [currentView, setCurrentView] = useState('week');
   const [showSchedule, setShowSchedule] = useState(false);
@@ -34,6 +66,11 @@ export function useCalendarView() {
   const [filterStatus, setFilterStatus] = useState([]);
 
   const appointments = useAppStore(s => s.appointments);
+  // Care Gap reminders (caregap_reminders) show as their own events.
+  const caregapReminders = useAppStore(s => s.caregapReminders);
+  const fetchCaregapReminders = useAppStore(s => s.fetchCaregapReminders);
+  useEffect(() => { fetchCaregapReminders?.(); }, [fetchCaregapReminders]);
+  const reminderEvents = useMemo(() => Object.values(caregapReminders || {}).flat().map(reminderToCalendarAppt).filter(Boolean), [caregapReminders]);
   const appointmentTypes = useAppStore(s => s.appointmentTypes);
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
   const fetchAppointmentTypes = useAppStore(s => s.fetchAppointmentTypes);
@@ -68,7 +105,7 @@ export function useCalendarView() {
   }, []);
 
   const filteredAppointments = useMemo(() => {
-    let filtered = appointments || [];
+    let filtered = [...(appointments || []), ...reminderEvents];
     if (filterUser.length > 0) {
       const userSet = new Set(filterUser);
       filtered = filtered.filter(a => userSet.has(a.primary_user));
@@ -85,7 +122,7 @@ export function useCalendarView() {
       filtered = filtered.filter(a => appointmentMatchesStatuses(a, filterStatus));
     }
     return filtered;
-  }, [appointments, filterUser, filterType, filterLocation, filterStatus]);
+  }, [appointments, reminderEvents, filterUser, filterType, filterLocation, filterStatus]);
 
   const handleViewChange = (view) => {
     setCurrentView(view);
@@ -295,11 +332,17 @@ export function useCalendarView() {
   }, [clearSelection, timezone, showToast, appointments]);
 
   const handleEventClick = useCallback((event) => {
+    const reminder = reminderEvents.find(r => r.id === event.id);
+    if (reminder) {
+      // Reminders are managed from the patient's Care Gap drawer.
+      showToast(`Reminder: ${reminder.reminderTitle}${reminder.primary_user ? ` • ${reminder.primary_user}` : ''}`);
+      return;
+    }
     const appt = appointments.find(a => a.id === event.id);
     setClickedAppointment(appt || null);
     setSelectedSlot(event.start);
     setShowSchedule(true);
-  }, [appointments]);
+  }, [appointments, reminderEvents, showToast]);
 
   const handleCloseDrawer = useCallback(() => {
     setShowSchedule(false);
