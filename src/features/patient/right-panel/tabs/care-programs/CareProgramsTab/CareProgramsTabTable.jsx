@@ -6,7 +6,6 @@ import { WorklistShell } from '../../../../../../components/WorklistShell/Workli
 import { AssigneeChange } from '../../../../../../components/AssigneeChange/AssigneeChange';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { ProgramStatusRing } from '../program-detail/shared/ProgramStatusRing/ProgramStatusRing.jsx';
-import { stepProgress } from './CareProgramsTab.utils';
 import styles from './CareProgramsTab.module.css';
 
 const initialsOf = (name) => (name || '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -59,7 +58,7 @@ export function CareProgramsTabTable({
               </td>
               <td className={styles.programCell}>
                 <div className={styles.programName}>
-                  <ProgramStatusRing progress={stepProgress(p.code)} size={16} />
+                  <ProgramStatusRing progress={Number(p.progress) || 0} size={16} />
                   <div className={styles.nameBlock}>
                     <span className={styles.nameText}>{p.name}</span>
                     {p.acuity && <span className={styles.acuityText}>Acuity : {p.acuity}</span>}

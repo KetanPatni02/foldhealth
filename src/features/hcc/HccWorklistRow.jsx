@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAppStore } from '../../store/useAppStore';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
-import { Avatar } from '../../components/Avatar/Avatar';
+import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
@@ -206,7 +206,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
         style={{ cursor: 'pointer' }}
       >
         <div className={styles.patientCell}>
-          <Avatar variant="patient" initials={member.in} locked={isRecordRejected} billed={isRecordBilled} />
+          <PatientAvatarHover patient={{ memberId: member.memberId, id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, dob: member.dob }} locked={isRecordRejected} billed={isRecordBilled} />
           <div>
             <div className={styles.patientName}>
               <button className={styles.patientNameLink} onClick={handleMemberCellClick}>{member.name}</button>{' '}
@@ -422,7 +422,7 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns, staggerIndex = 0
         style={{ cursor: 'pointer' }}
       >
         <div className={styles.patientCell}>
-          <Avatar variant="patient" initials={patient.initials} />
+          <PatientAvatarHover patient={{ memberId: patient.memberId || patient.id, id: patient.id, name: patient.name, initials: patient.initials, gender: patient.gender, age: patient.age, dob: patient.dob }} />
           <div>
             <div className={styles.patientName}>
               <button className={styles.patientNameLink} onClick={handleMemberCellClick}>{patient.name}</button>{' '}

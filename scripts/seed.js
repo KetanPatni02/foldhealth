@@ -17,7 +17,9 @@ import { APCM_PATIENTS } from '../src/features/apcm-billing/data/mock.js';
 import { FALLBACK_ICDS } from '../src/lib/icd/catalog.js';
 import { POS_CODES } from '../src/features/hcc/data/posCodes.js';
 import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../src/features/hcc/data/icds.js';
-import { HCC_MEMBER_BY_NAME } from '../src/features/hcc/data/mock.js';
+import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.js';
+import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
+import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 import { CARE_PLAN_MOCK } from '../src/features/patient/data/carePlanMock.js';
@@ -32,6 +34,8 @@ import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows } from '../src/features/a
 import { REPORT_HEADER_COMPONENT, REPORT_FOOTER_COMPONENT } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
+import { priorLabResultsFor } from '../src/features/hedis-worklist/labs/labMock.js';
+import { buildPatientSnapshot, snapshotToRow } from '../src/lib/patientSnapshot.js';
 import { PRACTICE_LOCATIONS } from '../src/features/settings/account/locations/data/mock.js';
 
 // Care-program letters library. Metadata mirrors PROGRAM_LETTERS_MOCK; the PDF
@@ -1058,6 +1062,42 @@ async function main() {
     .from('caregap_activity')
     .upsert(caregapRows, { onConflict: 'id' });
   if (cge) { console.error('  ✗', cge.message); } else { console.log(`  ✓ ${caregapRows.length} care gap activity entries`); }
+
+  // Prior HbA1c (outside the measurement period) for GSD3 members, so the
+  // Care Gap lab workflow starts from an Open gap with history. Needs
+  // supabase/caregap_lab_orders_migration.sql.
+  const labRows = HEDIS_MEMBERS.flatMap(priorLabResultsFor).map(r => ({
+    id: r.id, lab_order_id: null, hedis_member_id: r.memberId, gap_code: r.gapCode,
+    test_name: r.testName, value: r.value, unit: r.unit, reference_range: r.referenceRange,
+    flag: r.flag, collected_at: r.collectedAt, resulted_at: r.resultedAt, source: r.source,
+    evidence_status: r.evidenceStatus,
+  }));
+  // Hover-card snapshots (patient_snapshots_migration.sql) for every patient
+  // on a worklist, one row per Fold member id: the mock-backed worklists plus
+  // the TOC (`patients`) and All Patients (`all_patients`) tables.
+  const [tocPatients, allPatients] = await Promise.all([
+    supabase.from('patients').select('member_id, name, gender, age'),
+    supabase.from('all_patients').select('member_id, name, gender, age'),
+  ]);
+  const dbPatients = [...(tocPatients.data || []), ...(allPatients.data || [])]
+    .filter(p => p.member_id)
+    .map(p => ({ memberId: p.member_id, name: p.name, gender: p.gender, age: p.age }));
+  const snapshotPatients = [
+    ...HEDIS_MEMBERS, ...HCC_MEMBERS.map(m => ({ ...m, gender: m.g })), ...CCM_WORKLIST_MEMBERS,
+    ...SNP_WORKLIST_MEMBERS, ...AWV_MEMBERS.map(m => ({ ...m, gender: m.g })), ...JSA_MEMBERS.map(m => ({ ...m, gender: m.g })),
+    ...dbPatients,
+  ];
+  const snapshotRows = [...new Map(snapshotPatients
+    .map(m => snapshotToRow(buildPatientSnapshot(m)))
+    .filter(r => r.patient_id)
+    .map(r => [r.patient_id, r])).values()];
+  const { error: snapErr } = await supabase.from('patient_snapshots').upsert(snapshotRows, { onConflict: 'patient_id' });
+  if (snapErr) { console.error('  ✗ patient_snapshots:', snapErr.message); } else { console.log(`  ✓ ${snapshotRows.length} patient snapshots`); }
+
+  if (labRows.length) {
+    const { error: labErr } = await supabase.from('caregap_lab_results').upsert(labRows, { onConflict: 'id' });
+    if (labErr) { console.error('  ✗ caregap_lab_results:', labErr.message); } else { console.log(`  ✓ ${labRows.length} prior lab results`); }
+  }
 
   // Re-seed HCC gaps + member DOS dates for the modernized patients. The
   // gaps table has no (member_name, code) unique key, so we delete-then-

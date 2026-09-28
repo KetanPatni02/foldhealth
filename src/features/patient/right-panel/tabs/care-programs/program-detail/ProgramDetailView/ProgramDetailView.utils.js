@@ -20,11 +20,6 @@ export const initialsOf = (name = '') =>
 export const stepsFor = (code) => PROGRAM_STEPS[code] || PROGRAM_STEPS.SNP;
 export const flatSteps = (list) => list.flatMap(s => (s.type === 'section' ? s.children : [s]));
 
-export function progressForCode(code) {
-  const flat = flatSteps(PROGRAM_STEPS[code] || []);
-  return flat.length ? Math.round((flat.filter(s => s.status === 'completed').length / flat.length) * 100) : 0;
-}
-
 export function letterPdfBlob(letter) {
   if (!letter?.contentBase64) return null;
   const bin = atob(letter.contentBase64);

@@ -1,0 +1,244 @@
+.card {
+  position: fixed;
+  z-index: 9300;
+  width: 350px;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+}
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+.bannerText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.name {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.demo {
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+}
+.gender { color: var(--secondary-300); }
+
+/* Details slide open after the banner (stage 'expanded'): the grid row
+   animates from 0fr to 1fr around a single inner wrapper. */
+.details {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows .22s ease;
+}
+.detailsOpen {
+  grid-template-rows: 1fr;
+  border-top: 0.5px solid var(--neutral-150);
+}
+.detailsInner {
+  min-height: 0;
+  overflow: hidden;
+}
+.details:not(.detailsOpen) .detailsInner { visibility: hidden; }
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.ehr {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-left: 0.5px solid var(--neutral-150);
+}
+.metric:first-child { border-left: none; }
+.metricTab {
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  background: none;
+  cursor: pointer;
+}
+.metricTab:not(.metricActive):hover { background: var(--neutral-25); }
+.metricActive {
+  background: var(--primary-50);
+  box-shadow: inset 0 -1px 0 var(--primary-300);
+}
+.metricLabel {
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+  white-space: nowrap;
+}
+.metricValue {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.metricHigh { color: var(--status-error); }
+.metricRow,
+.progressRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  justify-content: center;
+}
+.delta {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  padding: calc(var(--space-1) / 2) var(--space-1);
+  border-radius: 4px;
+  background: var(--neutral-50);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.progressTrack {
+  position: relative;
+  flex: 1;
+  height: 6px;
+  border-radius: 4px;
+  background: var(--neutral-50);
+  overflow: hidden;
+}
+.progressFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+}
+.fill_success { background: var(--status-success); }
+.fill_warning { background: var(--status-warning); }
+.fill_error { background: var(--status-error); }
+
+.sectionHead {
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+.row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-base);
+}
+.row:last-child { border-bottom: none; }
+.rowLabel {
+  flex-shrink: 0;
+  color: var(--neutral-200);
+}
+.rowValue {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  color: var(--neutral-400);
+}
+.rowValue > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.muted { color: var(--neutral-200); }
+.faint { color: var(--neutral-150); }
+.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── RAF Score tab (Figma 833:2678) ── */
+.rafGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-base);
+}
+.rafGroupTitle { color: var(--neutral-200); }
+.rafLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+  padding: calc(var(--space-1) / 2) 0;
+  border: none;
+  background: none;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  text-align: left;
+}
+button.rafLine { cursor: pointer; }
+button.rafLine:hover .rafHcc { color: var(--primary-300); }
+.rafHcc {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.rafWeight { color: var(--neutral-200); }
+.rafTotal .rafLine { font-weight: 500; }
+.hccDetail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-1) 0;
+  padding: var(--space-2);
+  border-radius: 4px;
+  background: var(--neutral-50);
+  color: var(--neutral-300);
+}
+.hccKey { color: var(--neutral-400); }
+.rafNote {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.rafNoteHigh {
+  background: var(--status-warning-light);
+  color: var(--status-warning-dark);
+}
+
+/* Hover target around the worklist avatar (PatientAvatarHover). */
+.avatarHover {
+  display: inline-flex;
+  flex-shrink: 0;
+}
