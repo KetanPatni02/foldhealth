@@ -7,7 +7,6 @@ import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { FilterChip } from '../../../../components/FilterChip/FilterChip';
 import { MonthPickerPopover } from '../../../../components/MonthPickerPopover/MonthPickerPopover';
 import { Select } from '../../../../components/Select/Select';
-import { CheckboxListPopover } from '../../../../components/CheckboxListPopover/CheckboxListPopover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ShadcnDialog/ShadcnDialog';
 import { ChartSkeleton, KpiSkeleton } from '../shared';
 import { ChartContainer } from '../../../../components/ChartContainer/ChartContainer';
@@ -345,9 +344,7 @@ export function EmployerImpactView({ snapshot = null } = {}) {
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [forms, setForms] = useState({});
   const [dialog, setDialog] = useState(null); // { key, mode: 'expand' | 'table' }
-  const [widgetMenuRect, setWidgetMenuRect] = useState(null);
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
-  const widgetBtnRef = useRef(null);
   const sectionRefs = useRef({});
 
   useEffect(() => { fetchFilters(); }, [fetchFilters]);
@@ -420,12 +417,6 @@ export function EmployerImpactView({ snapshot = null } = {}) {
   });
   const csvName = (title) => `${slug(title)}-${effectiveRange.from}-to-${effectiveRange.to}.csv`;
 
-  // The picker lists only the widgets this location view has.
-  const titleOf = {
-    ...Object.fromEntries(WIDGETS.map(w => [w.key, w.title])),
-    ...Object.fromEntries(SAVINGS_CATEGORIES.map(c => [savingsKey(c.key), c.title])),
-  };
-  const widgetTitles = dashboard.sections.flatMap(id => dashboard.widgets[id]).map(key => ({ key, title: titleOf[key] }));
 
   const renderWidget = (w, style) => {
     const model = models[w.key];
@@ -573,22 +564,13 @@ export function EmployerImpactView({ snapshot = null } = {}) {
             />
           )}
         </div>
-        {/* Figma 1530:41988: Widget, then Print and Settings, split by hairlines. */}
+        {/* Export, then Settings, split by a hairline. */}
         {!readOnly && (
         <div className={styles.headerActions}>
-          <span ref={widgetBtnRef}>
-            <Button
-              variant="tertiary"
-              size="L"
-              leadingIcon="solar:widget-add-linear"
-              onClick={() => setWidgetMenuRect(widgetBtnRef.current?.getBoundingClientRect() || null)}
-            >
-              Widget
-            </Button>
-          </span>
-          <span className={styles.actionDivider} aria-hidden="true" />
           {/* Tooltips open below: above, the page's top bar clips them. */}
-          <ActionButton icon="solar:printer-minimalistic-linear" tooltip="Print" tooltipBelow aria-label="Print report" onClick={() => setPrintOpen(true)} />
+          <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={() => setPrintOpen(true)}>
+            Export
+          </Button>
           <span className={styles.actionDivider} aria-hidden="true" />
           <ActionButton
             icon="solar:settings-minimalistic-linear"
@@ -701,23 +683,6 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         />
       )}
 
-      {/* Widget picker */}
-      {widgetMenuRect && (
-        <CheckboxListPopover
-          anchorRect={widgetMenuRect}
-          label="Widgets"
-          options={widgetTitles.map(w => w.title)}
-          selected={widgetTitles.filter(w => !hiddenWidgets.has(w.key)).map(w => w.title)}
-          onChange={(shownTitles) => {
-            const shown = new Set(shownTitles);
-            setHidden(new Set(widgetTitles.filter(w => !shown.has(w.title)).map(w => w.key)));
-          }}
-          onClose={() => setWidgetMenuRect(null)}
-          width={300}
-          searchable
-          showClear={false}
-        />
-      )}
 
       {/* Expand / table */}
       <Dialog open={!!dialogWidget} onOpenChange={(open) => { if (!open) setDialog(null); }}>

@@ -21,7 +21,7 @@ import { PdfPreview } from '../../../../components/PdfPreview/PdfPreview';
 import { PreviewLoader } from '../../../../components/PreviewLoader/PreviewLoader';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { buildReportPage } from './downloadReportPage';
-import { SendReportEmailDrawer } from './SendReportEmailDrawer';
+// import { SendReportEmailDrawer } from './SendReportEmailDrawer'; // Send Report: hidden for now
 import {
   generateEmployerReport, generatedOnLabel, COVER_GRADIENTS, DEFAULT_COVER_BACKGROUND, isLightBackground, gradientCss,
 } from './generateEmployerReportPdf';
@@ -39,9 +39,9 @@ import { EMPLOYER_LOGOS, EMPLOYER_LOGO_HEIGHT, LOGO_ROOM, employerLogoUrl, logoF
 import { SortableItem, SortableList } from './SortableParts';
 import styles from './PrintReportDrawer.module.css';
 
-// Section notes are a per-viewer draft, kept in this browser like the
-// dashboard layout, so they survive closing the drawer (and a reload) until
-// edited or removed.
+// Section notes are shared by everyone (employer_impact_report_notes). This
+// browser keeps a copy so the drawer opens with them straight away, and
+// keeps working before the table exists.
 const NOTES_KEY = 'employer-impact-print-notes';
 function readNotes() {
   try {
@@ -79,6 +79,7 @@ const IMAGE_ACCEPT = '.png,.svg';
 const IMAGE_MIME = ['image/png', 'image/svg+xml'];
 const IMAGE_MAX_MB = 5;
 const TRAILHEAD_SIZE = { width: 190, height: 150, format: 'PNG' };
+// Send Report menu (hidden for now; kept for when it returns).
 const SEND_OPTIONS = [
   { key: 'email', label: 'Send via Email', icon: 'solar:letter-linear' },
   { key: 'chat', label: 'Send via Chat', icon: 'solar:chat-round-dots-linear' },
@@ -518,10 +519,53 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
   // A saved note opens with its box showing; the rest start as "Add Note".
   const [noteOpen, setNoteOpen] = useState(() => new Set(Object.keys(notes)));
   const openNote = (id) => setNoteOpen(prev => new Set(prev).add(id));
-  // Clears the note and folds the box back into the "Add Note" link.
+
+  // Shared notes: loaded on open, saved as typing pauses (and on close).
+  const fetchReportNotes = useAppStore(s => s.fetchEmployerReportNotes);
+  const saveReportNote = useAppStore(s => s.saveEmployerReportNote);
+  const notesRef = useRef(notes); // latest notes, for the save on close
+  useEffect(() => { notesRef.current = notes; }, [notes]);
+  const editedRef = useRef(new Set()); // sections edited since the drawer opened
+  const pendingRef = useRef({});       // { [sectionId]: save timer }
+  useEffect(() => {
+    let live = true;
+    fetchReportNotes().then((shared) => {
+      if (!live || !shared) return;
+      // The shared copy wins, except for a section already edited here.
+      setNotes((prev) => {
+        const next = { ...shared };
+        editedRef.current.forEach((id) => { if (prev[id]) next[id] = prev[id]; else delete next[id]; });
+        return next;
+      });
+      setNoteOpen(prev => new Set([...prev, ...Object.keys(shared)]));
+    });
+    const pending = pendingRef.current;
+    return () => {
+      live = false;
+      Object.entries(pending).forEach(([id, timer]) => {
+        window.clearTimeout(timer);
+        saveReportNote(id, notesRef.current[id] || null);
+      });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const persistNote = (id, note, delay = 600) => {
+    editedRef.current.add(id);
+    window.clearTimeout(pendingRef.current[id]);
+    pendingRef.current[id] = window.setTimeout(() => {
+      delete pendingRef.current[id];
+      saveReportNote(id, note);
+    }, delay);
+  };
+  const editNote = (id, html, plain) => {
+    setNotes(n => ({ ...n, [id]: { html, plain } }));
+    persistNote(id, { html, plain });
+  };
+  // Clears the note (for everyone) and folds the box back into the "Add Note" link.
   const removeNote = (id) => {
     setNotes((prev) => { const next = { ...prev }; delete next[id]; return next; });
     setNoteOpen((prev) => { const next = new Set(prev); next.delete(id); return next; });
+    persistNote(id, null, 0);
   };
 
   const toggle = (setter, key) => setter((prev) => {
@@ -658,7 +702,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
   });
 
   const showToast = useAppStore(s => s.showToast);
-  const sendRef = useRef(null);
+  // const sendRef = useRef(null); // Send Report: hidden for now
   const [savingPage, setSavingPage] = useState(false);
   const downloadPage = async () => {
     setSavingPage(true);
@@ -671,12 +715,14 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       setSavingPage(false);
     }
   };
-  const [sendOpen, setSendOpen] = useState(false);
-  const [emailOpen, setEmailOpen] = useState(false);
+  // Send Report: hidden for now.
+  // const [sendOpen, setSendOpen] = useState(false);
+  // const [emailOpen, setEmailOpen] = useState(false);
   const downloadRef = useRef(null);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const headerRight = (
     <>
+      {/* Send Report: hidden for now.
       <span ref={sendRef} className={styles.menuAnchor}>
         <Button
           variant="secondary"
@@ -705,6 +751,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
           onClose={() => setSendOpen(false)}
         />
       )}
+      */}
       <span ref={downloadRef} className={styles.menuAnchor}>
         <Button
           variant="primary"
@@ -855,7 +902,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                   <Textarea
                     richText
                     value={notes[section.id]?.html || ''}
-                    onChange={(html, plain) => setNotes(n => ({ ...n, [section.id]: { html, plain } }))}
+                    onChange={(html, plain) => editNote(section.id, html, plain)}
                     placeholder="Add a note for this section (optional)"
                     aria-label={`Note for ${sectionTitle}`}
                     rows={2}
@@ -1139,7 +1186,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       bodyClassName={SplitDrawerLayout.bodyClassName}
     >
       <SplitDrawerLayout left={preview} right={editor} />
-      {/* Send via Email: the report as set up here, attached as a PDF. */}
+      {/* Send via Email (hidden with Send Report for now): the report as set up here, attached as a PDF.
       {emailOpen && (
         <SendReportEmailDrawer
           buildPdf={() => generate().blob}
@@ -1150,6 +1197,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
           onClose={() => setEmailOpen(false)}
         />
       )}
+      */}
     </Drawer>
   );
 }

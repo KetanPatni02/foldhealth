@@ -31,6 +31,7 @@ const ROWS_PER_PAGE = 4;
 const CARD_PAD = 6;       // Figma: 6pt padding in the card header and the chart area
 const CARD_HEAD_H = 30;   // 6 + title (8pt) + 0.8 gap + range (6pt) + 6
 const SAVINGS_H = 62;
+const STATS_ROW_CARD_H = CARD_HEAD_H + CARD_PAD * 2 + 44; // full-width stats card: one row of stats
 
 // Figma "Colors/…" values; jsPDF takes RGB, not CSS variables.
 const C = {
@@ -52,6 +53,8 @@ const C = {
 };
 
 const TICK = 6;     // axis tick and legend text
+const LEGEND_VALUE_GAP = 28; // donut legend: label column to value column
+const SIDE_COL_W = 88; // KPI column left of a chart (Member Satisfaction, Engaged for Care)
 const LABEL = 6;    // axis titles
 
 // ── Colours from tokens ──
@@ -346,7 +349,7 @@ export function labelsFit(doc, item, w) {
   const format = widget.type === 'satisfaction' ? 'percent' : widget.format;
   // Width left for the plot: card padding, the survey's side column, the
   // rotated y title, then the y tick labels.
-  let plotW = w - CARD_PAD * 2 - (widget.type === 'satisfaction' ? 94 : 0) - (widget.yLabel ? LABEL + 3 : 0);
+  let plotW = w - CARD_PAD * 2 - (widget.type === 'satisfaction' || model.sideStats?.length ? SIDE_COL_W + 6 : 0) - (widget.yLabel ? LABEL + 3 : 0);
   const max = Math.max(0, ...model.data.map(r => (widget.type === 'line'
     ? Math.max(...series.map(x => r[x.key] || 0))
     : series.reduce((a, x) => a + (r[x.key] || 0), 0))));
@@ -408,17 +411,28 @@ function emptyState(doc, x, y, w, h) {
  */
 function chartFrame(doc, { legendItems, yLabel, xLabel }, x, y, w, h) {
   const legendH = legendItems?.length ? legend(doc, legendItems, x, y, w) : 0;
-  const yTitleW = yLabel ? LABEL + 3 : 0;
   const xTitleH = xLabel ? LABEL + 6 : 0;
   const top = y + legendH + 6;
   const bottom = y + h - xTitleH - 10; // room for the x tick labels
+  // A title longer than a short plot (e.g. under a KPI row) may use the
+  // chart's full height, then wraps to a second line; it's cut only after that.
+  let yLines = [];
   if (yLabel) {
-    // Rotated 90° it reads bottom-to-top from its start point, so start
-    // half its length below the middle to centre it on the plot.
-    const label = fitText(doc, yLabel, bottom - top, LABEL);
-    const len = doc.getTextWidth(label); // fitText left the regular weight set
-    text(doc, label, x + LABEL, (top + bottom) / 2 + len / 2, { size: LABEL, color: C.muted, angle: 90 });
+    setWeight(doc, 'regular');
+    doc.setFontSize(LABEL);
+    const room = h - 4;
+    yLines = doc.getTextWidth(yLabel) <= room ? [yLabel] : doc.splitTextToSize(yLabel, room).slice(0, 2);
+    yLines = yLines.map(l => fitText(doc, l, room, LABEL));
   }
+  const yTitleW = yLines.length ? LABEL * yLines.length + 3 : 0;
+  yLines.forEach((label, i) => {
+    // Rotated 90° it reads bottom-to-top from its start point, so start
+    // half its length below the middle to centre it on the plot, kept
+    // inside the chart area.
+    const len = doc.getTextWidth(label); // fitText left the regular weight set
+    const start = Math.min(y + h - 2, Math.max(y + 2 + len, (top + bottom) / 2 + len / 2));
+    text(doc, label, x + LABEL * (i + 1), start, { size: LABEL, color: C.muted, angle: 90 });
+  });
   return { x: x + yTitleW, top, h: Math.max(10, bottom - top), w: w - yTitleW, titleY: y + h, xLabel };
 }
 
@@ -535,14 +549,37 @@ function donutChart(doc, { data, seriesKey }, palette, x, y, w, h) {
   doc.circle(cx, cy, r * 0.55, 'F');
   const lx = cx + r + 12;
   const lineH = Math.min(14, (h - 6) / Math.max(1, data.length));
+  const values = data.map((row) => {
+    const v = row[seriesKey] || 0;
+    return `${formatValue(v)} (${total ? Math.round((v / total) * 100) : 0}%)`;
+  });
+  // Label and value columns sized to their content, so each value sits
+  // near its label instead of at the card's far edge.
+  setWeight(doc, 'regular');
+  doc.setFontSize(TICK);
+  const valueW = Math.max(...values.map(t => doc.getTextWidth(t)));
+  const labelMax = x + w - lx - 6 - LEGEND_VALUE_GAP - valueW;
+  const labelW = Math.min(labelMax, Math.max(...data.map(row => doc.getTextWidth(String(row.x)))));
+  const valueRight = lx + 6 + labelW + LEGEND_VALUE_GAP + valueW;
   data.forEach((row, i) => {
     const ly = y + 6 + lineH * i + lineH / 2;
     fill(doc, palette[i % palette.length]);
     doc.circle(lx + 1.4, ly, 1.4, 'F');
-    const v = row[seriesKey] || 0;
-    const pct = total ? Math.round((v / total) * 100) : 0;
-    text(doc, fitText(doc, row.x, x + w - lx - 56, TICK), lx + 6, ly, { size: TICK, color: C.muted, baseline: 'middle' });
-    text(doc, `${formatValue(v)} (${pct}%)`, x + w, ly, { size: TICK, color: C.body, align: 'right', baseline: 'middle' });
+    const label = fitText(doc, row.x, labelW, TICK);
+    const from = lx + 6 + doc.getTextWidth(label) + 3;
+    const to = valueRight - doc.getTextWidth(values[i]) - 3;
+    // A dotted leader ties each label to its value across the gap.
+    if (to - from > 4) {
+      stroke(doc, C.faint);
+      doc.setLineWidth(0.6);
+      doc.setLineCap('round');
+      doc.setLineDashPattern([0.01, 1.6], 0);
+      doc.line(from, ly, to, ly);
+      doc.setLineDashPattern([], 0);
+      doc.setLineCap('butt');
+    }
+    text(doc, label, lx + 6, ly, { size: TICK, color: C.muted, baseline: 'middle' });
+    text(doc, values[i], valueRight, ly, { size: TICK, color: C.body, align: 'right', baseline: 'middle' });
   });
 }
 
@@ -552,6 +589,24 @@ function donutChart(doc, { data, seriesKey }, palette, x, y, w, h) {
  * the left; the count out of the total on the right.
  */
 function statStack(doc, stats, x, y, w, h) {
+  // Full width (e.g. its row partner went full in a Year view), rows would
+  // stretch the count far from its label: the stats go across instead,
+  // one column each, centred in the card.
+  if (w > HALF_W * 1.2) {
+    const colW = w / Math.max(1, stats.length);
+    const mid = y + h / 2;
+    stroke(doc, C.border);
+    doc.setLineWidth(0.5);
+    stats.forEach((s, i) => {
+      const cx = x + colW * i;
+      if (i) doc.line(cx, mid - 18, cx, mid + 18);
+      const sx = cx + (i ? 12 : 0);
+      text(doc, fitText(doc, s.label, colW - 24, TICK), sx, mid - 10, { size: TICK, color: C.muted });
+      text(doc, s.hasData ? `${s.pct}%` : '–', sx, mid + 4, { size: 11, color: C.black, weight: 'bold' });
+      if (s.hasData) text(doc, `${s.count.toLocaleString()} / ${s.total.toLocaleString()}`, sx, mid + 14, { size: TICK, color: C.faint });
+    });
+    return;
+  }
   const rowH = h / Math.max(1, stats.length);
   stats.forEach((s, i) => {
     const top = y + rowH * i;
@@ -567,26 +622,40 @@ function statStack(doc, stats, x, y, w, h) {
   });
 }
 
-function statList(doc, stats, x, y, w) {
-  const colW = w / Math.max(1, stats.length);
+/**
+ * KPIs down the left of a chart (as Member Satisfaction does): label,
+ * percentage, then the count, split by hairlines, filling the card height.
+ */
+function statColumn(doc, stats, x, y, h) {
+  const rowH = h / Math.max(1, stats.length);
+  stroke(doc, C.border);
+  doc.setLineWidth(0.5);
   stats.forEach((s, i) => {
-    const sx = x + colW * i;
-    text(doc, fitText(doc, s.label, colW - 6, TICK), sx, y + 8, { size: TICK, color: C.muted });
-    text(doc, s.hasData ? `${s.pct}%` : '–', sx, y + 21, { size: 11, color: C.black, weight: 'bold' });
-    if (s.hasData) text(doc, `${s.count.toLocaleString()} / ${s.total.toLocaleString()}`, sx, y + 30, { size: TICK, color: C.faint });
+    const top = y + rowH * i;
+    if (i) doc.line(x, top, x + SIDE_COL_W, top);
+    const mid = top + rowH / 2;
+    text(doc, fitText(doc, s.label, SIDE_COL_W, TICK), x, mid - 6, { size: TICK, color: C.muted });
+    text(doc, s.hasData ? `${s.pct}%` : '–', x, mid + 4, { size: 9, color: C.black, weight: 'bold' });
+    if (s.hasData) text(doc, `${s.count.toLocaleString()} / ${s.total.toLocaleString()}`, x, mid + 12, { size: TICK, color: C.faint });
   });
-  return 34;
 }
 
 function satisfaction(doc, model, widget, palette, x, y, w, h) {
-  const colW = 88;
+  const colW = SIDE_COL_W;
   text(doc, fitText(doc, model.form || 'Survey', colW, 7, 'medium'), x, y + 9, { size: 7, color: C.body, weight: 'medium' });
-  text(doc, 'Average Score', x, y + 24, { size: TICK, color: C.muted });
-  text(doc, model.averageScore ?? '–', x, y + 37, { size: 11, color: C.black, weight: 'bold' });
-  text(doc, 'Total form sent', x, y + 54, { size: TICK, color: C.muted });
-  text(doc, model.sent.toLocaleString(), x, y + 66, { size: 9, color: C.black, weight: 'bold' });
-  text(doc, `Responded ${model.responded.toLocaleString()}`, x, y + 80, { size: TICK, color: C.muted });
-  text(doc, `Not Responded ${model.notResponded.toLocaleString()}`, x, y + 90, { size: TICK, color: C.muted });
+  // Four KPIs in one column, label over value, spaced to fit the card.
+  const kpis = [
+    ['Average Score', model.averageScore ?? '–'],
+    ['Total form sent', model.sent.toLocaleString()],
+    ['Responded', model.responded.toLocaleString()],
+    ['Not Responded', model.notResponded.toLocaleString()],
+  ];
+  const step = Math.min(24, (h - 16) / kpis.length);
+  kpis.forEach(([label, value], i) => {
+    const top = y + 16 + step * i;
+    text(doc, fitText(doc, label, colW, TICK), x, top + 6, { size: TICK, color: C.muted });
+    text(doc, String(value), x, top + 15, { size: 8, color: C.black, weight: 'bold' });
+  });
   barChart(doc, {
     data: model.data,
     series: [{ key: 'responded', label: 'Responded' }, { key: 'not_responded', label: 'Not Responded' }],
@@ -609,14 +678,12 @@ function widgetBody(doc, item, palette, x, y, w, h) {
     case 'hbar': hbarChart(doc, { data: model.data, seriesKey: widget.series[0].key, seriesLabel: widget.series[0].label, format: widget.format, xLabel: widget.xLabel }, palette, x, y, w, h); return;
     case 'line': lineChart(doc, { data: model.data, series: widget.series, ...axes }, palette, x, y, w, h); return;
     default: {
-      let top = y;
-      let height = h;
+      let left = x;
       if (model.sideStats?.length) {
-        const used = statList(doc, model.sideStats, x, y, w);
-        top += used;
-        height -= used;
+        statColumn(doc, model.sideStats, x, y, h);
+        left += SIDE_COL_W + 6;
       }
-      barChart(doc, { data: model.data, series: widget.series, line: widget.line, ...axes }, palette, x, top, w, height);
+      barChart(doc, { data: model.data, series: widget.series, line: widget.line, ...axes }, palette, left, y, x + w - left, h);
     }
   }
 }
@@ -1233,13 +1300,16 @@ export function generateEmployerReport(report) {
     let col = 0;
     fillRows(section.items.map(it => (it.full || labelsFit(doc, it, halfW) ? it : { ...it, full: true }))).forEach((item) => {
       if (item.full && col === 1) { y += cardH + GAP; col = 0; }
-      if (col === 0) ensure(cardH);
+      // A full-width stats card lays its stats across (statStack), so it
+      // needs only one row of them, not a chart's height.
+      const h = item.full && item.widget.type === 'stats' ? STATS_ROW_CARD_H : cardH;
+      if (col === 0) ensure(h);
       anchors[item.key] = here(y);
       const w = item.full ? CONTENT_W : halfW;
       const x = MARGIN + (item.full ? 0 : (halfW + GAP) * col);
-      card(doc, x, y, w, cardH, item.widget.title, item.subtitle);
-      widgetBody(doc, item, palette, x + CARD_PAD, y + CARD_HEAD_H + CARD_PAD, w - CARD_PAD * 2, cardH - CARD_HEAD_H - CARD_PAD * 2);
-      if (item.full || col === 1) { y += cardH + GAP; col = 0; } else col = 1;
+      card(doc, x, y, w, h, item.widget.title, item.subtitle);
+      widgetBody(doc, item, palette, x + CARD_PAD, y + CARD_HEAD_H + CARD_PAD, w - CARD_PAD * 2, h - CARD_HEAD_H - CARD_PAD * 2);
+      if (item.full || col === 1) { y += h + GAP; col = 0; } else col = 1;
     });
     if (col === 1) y += cardH + GAP;
     drawNote(section.note);
