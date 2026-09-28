@@ -786,7 +786,7 @@ function pageHeader(doc, { title, generatedOn, logo, clientLogo }) {
 function pageFooter(doc, page) {
   fill(doc, C.footer);
   doc.rect(0, PAGE.h - FOOTER_H, PAGE.w, FOOTER_H, 'F');
-  // As the Report Print Footer component: note on the left, page on the right.
+  // As Print Report Footer Option 1: note on the left, page on the right.
   const mid = PAGE.h - FOOTER_H / 2;
   text(doc, REPORT_FOOTER_NOTE, MARGIN, mid, { size: 10, color: C.footerText, baseline: 'middle' });
   text(doc, String(page), PAGE.w - MARGIN, mid, { size: 10, color: C.footerText, align: 'right', baseline: 'middle' });
@@ -1070,9 +1070,10 @@ export function generatedOnLabel(date = new Date()) {
  * @param {Date}   [report.generatedAt]
  * @param {{ dataUrl: string }} [report.logo] – Employer logo, header right (Fold Health wordmark by default)
  * @param {{ dataUrl: string }} [report.clientLogo] – Provider logo, header left (Trailhead Clinics)
- * @param {{ dataUrl: string, width: number, height: number } | null} [report.header] – A header
- *   component drawn to a PNG (see rasterizeComponent), placed at the top of every page at
- *   full width; null for no header. Omitted, the built-in header (title, logos, band) is drawn.
+ * @param {{ dataUrl?: string, images?: string[], width: number, height: number } | null} [report.header] – A header
+ *   component drawn to a PNG (see rasterizeComponent), placed at the top of every content
+ *   page at full width (`images[n - 1]` for page n when it shows the page number); null for
+ *   no header. Omitted, the built-in header (title, logos, band) is drawn.
  * @param {{ width: number, height: number, dataUrl?: string, images?: string[] } | null} [report.footer] –
  *   A footer component drawn to PNGs, at the foot of every page: `images[n - 1]` for page n when it
  *   shows the page number, else `dataUrl`. null for no footer; omitted (or a page with no image),
@@ -1253,13 +1254,15 @@ export function generateEmployerReport(report) {
     doc.setPage(p);
     const isCover = hasCover && p === 1;
     if (!isCover) {
-      if (header) doc.addImage(header.dataUrl, 'PNG', 0, 0, PAGE.w, headerH);
-      else if (header === undefined) pageHeader(doc, chrome);
+      // A header showing the page number ("Page 2 of 6") is drawn per page.
+      const headerImg = header && (header.images ? header.images[p - 1] : header.dataUrl);
+      if (headerImg) doc.addImage(headerImg, 'PNG', 0, 0, PAGE.w, headerH);
+      else if (header !== null) pageHeader(doc, chrome);
     }
     // A footer with the page number is drawn once per page number.
     const footerImg = footer && (footer.images ? footer.images[p - 1] : footer.dataUrl);
     if (footerImg) doc.addImage(footerImg, 'PNG', 0, PAGE.h - footerH, PAGE.w, footerH);
     else if (footer !== null) pageFooter(doc, p);
   }
-  return { blob: doc.output('blob'), anchors };
+  return { blob: doc.output('blob'), anchors, pages };
 }

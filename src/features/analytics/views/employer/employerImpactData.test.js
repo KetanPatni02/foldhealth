@@ -390,3 +390,24 @@ describe('list numbers from the editor', () => {
   });
 });
 
+describe('frameRange', () => {
+  it('covers the month, the calendar quarter, or the 12 months ending at a month', async () => {
+    const { frameRange } = await import('./employerImpactData');
+    expect(frameRange('Month', '2026-09')).toEqual({ from: '2026-09', to: '2026-09' });
+    expect(frameRange('Quarter', '2026-09')).toEqual({ from: '2026-07', to: '2026-09' });
+    expect(frameRange('Quarter', '2026-08')).toEqual({ from: '2026-07', to: '2026-09' });
+    expect(frameRange('Quarter', '2026-01')).toEqual({ from: '2026-01', to: '2026-03' });
+    expect(frameRange('Year', '2026-09')).toEqual({ from: '2025-10', to: '2026-09' });
+  });
+});
+
+describe('rangeFromStart', () => {
+  it('runs from a picked start: that month, its quarter, or 12 months on', async () => {
+    const { rangeFromStart } = await import('./employerImpactData');
+    expect(rangeFromStart('Month', '2025-01')).toEqual({ from: '2025-01', to: '2025-01' });
+    expect(rangeFromStart('Quarter', '2025-08')).toEqual({ from: '2025-07', to: '2025-09' });
+    expect(rangeFromStart('Year', '2025-01')).toEqual({ from: '2025-01', to: '2025-12' });
+    expect(rangeFromStart('Year', '2025-10')).toEqual({ from: '2025-10', to: '2026-09' });
+  });
+});
+

@@ -9,11 +9,11 @@ import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows } from './employerImpactS
 
 let cache = null;
 
-// The seed's year ends last month; so does this.
+// The seed's year ends this month; so does this.
 function rows() {
   if (!cache) {
     const now = new Date();
-    const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const last = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}`;
     cache = employerImpactRows(lastMonth);
   }

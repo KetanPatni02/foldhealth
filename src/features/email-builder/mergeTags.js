@@ -35,6 +35,7 @@ export const MERGE_TOKENS = [
   { key: 'generated_on',   label: 'Generated on',   group: 'Report',    sample: '09/25/2026 at 5:47 PM',    resolve: c => c.generatedOn },
   { key: 'employer_logo',  label: 'Employer logo',  group: 'Report',    sample: '/brand/employer-logo-sample.svg', resolve: c => c.employerLogo },
   { key: 'page_number',    label: 'Page number',    group: 'Report',    sample: '2',                        resolve: c => c.pageNumber },
+  { key: 'page_count',     label: 'Page count',     group: 'Report',    sample: '6',                        resolve: c => c.pageCount },
 ];
 
 const TOKEN_BY_KEY = Object.fromEntries(MERGE_TOKENS.map(t => [t.key, t]));
@@ -123,6 +124,7 @@ export const SAMPLE_CONTEXT = {
   generatedOn: '09/25/2026 at 5:47 PM',
   employerLogo: '/brand/employer-logo-sample.svg',
   pageNumber: '2',
+  pageCount: '6',
 };
 
 /**

@@ -1,0 +1,40 @@
+/* AttachmentCard: a mail-client style file card (icon, name, size, ▾ menu). */
+.card {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 248px;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  box-sizing: border-box;
+}
+.icon { display: inline-flex; flex-shrink: 0; }
+.text { display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); flex: 1; min-width: 0; }
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.meta { font-size: var(--font-sm); color: var(--neutral-300); }
+.menuAnchor { display: inline-flex; flex-shrink: 0; }
+.menuButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.menuButton:hover { background: var(--neutral-50); color: var(--neutral-400); }
+.menuButton:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 1px; }

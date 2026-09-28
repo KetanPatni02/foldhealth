@@ -12469,6 +12469,23 @@ export const useAppStore = create((set, get) => ({
     set({ campaigns, campaignsLoading: false });
   },
 
+  // Email templates (Settings → Content → Emails) for composing a one-off
+  // email with one, e.g. Send Report by email. Only those with a design.
+  fetchEmailTemplates: async () => {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('id, name, description, email_template')
+      .eq('channel', 'email')
+      .not('email_template', 'is', null)
+      .order('name', { ascending: true })
+      .limit(100);
+    if (error) {
+      console.error('fetchEmailTemplates error:', error);
+      return [];
+    }
+    return (data || []).map(r => ({ id: r.id, name: r.name, description: r.description || '', doc: r.email_template }));
+  },
+
   fetchCampaignById: async (id) => {
     const { data, error } = await supabase
       .from('campaigns')

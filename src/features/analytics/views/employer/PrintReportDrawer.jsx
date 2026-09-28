@@ -21,6 +21,7 @@ import { PdfPreview } from '../../../../components/PdfPreview/PdfPreview';
 import { PreviewLoader } from '../../../../components/PreviewLoader/PreviewLoader';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { buildReportPage } from './downloadReportPage';
+import { SendReportEmailDrawer } from './SendReportEmailDrawer';
 import {
   generateEmployerReport, generatedOnLabel, COVER_GRADIENTS, DEFAULT_COVER_BACKGROUND, isLightBackground, gradientCss,
 } from './generateEmployerReportPdf';
@@ -87,6 +88,9 @@ const SEND_OPTIONS = [
 // A footer showing the page number is drawn for each page up to this; any
 // page past it gets the built-in footer.
 const FOOTER_PAGES = 30;
+// How long the first preview waits for the fonts and logos before building
+// without them.
+const ASSET_WAIT_MS = 3000;
 const PAGE_TOKEN = /\{\{\s*page[ _-]?number\s*\}\}/i;
 
 /**
@@ -98,7 +102,18 @@ const PAGE_TOKEN = /\{\{\s*page[ _-]?number\s*\}\}/i;
  */
 function useComponentImage(component, ctx, fontFaces, enabled) {
   const [result, setResult] = useState(null); // { key, image }
-  const key = [component?.id, component?.updatedAt, ctx.reportTitle, ctx.generatedOn, ctx.employerLogo.length, fontFaces.length].join('|');
+  // Redrawn only when something it shows changes: a footer with just the
+  // page number doesn't redraw (30 pages) for a new employer logo or title.
+  const tree = component ? JSON.stringify(component.tree) : '';
+  const uses = (token) => new RegExp(`\\{\\{\\s*${token}\\s*\\}\\}`, 'i').test(tree);
+  const key = [
+    component?.id, component?.updatedAt,
+    uses('report_title') ? ctx.reportTitle : '',
+    uses('generated_on') ? ctx.generatedOn : '',
+    uses('employer_logo') ? ctx.employerLogo : '',
+    uses('page_count') ? ctx.pageCount : '',
+    fontFaces.length,
+  ].join('|');
   useEffect(() => {
     if (!enabled || !component) return undefined;
     let live = true;
@@ -106,19 +121,21 @@ function useComponentImage(component, ctx, fontFaces, enabled) {
       const draw = (extra) => rasterizeComponent(component.tree, { ...ctx, ...extra }, { fontFaces });
       let image = null;
       if (PAGE_TOKEN.test(JSON.stringify(component.tree))) {
-        const pages = await Promise.all(Array.from({ length: FOOTER_PAGES }, (_, i) => draw({ pageNumber: i + 1 })));
+        const pages = await Promise.all(Array.from({ length: FOOTER_PAGES }, (_, i) => draw({ pageNumber: i + 1, pageCount: ctx.pageCount || '' })));
         if (pages[0]) image = { width: pages[0].width, height: pages[0].height, images: pages.map(p => p?.dataUrl) };
       } else {
         image = await draw({});
       }
       if (live) setResult({ key, image });
-    }, 250);
+      // The first drawing starts at once; redraws wait for typing to pause.
+    }, result ? 250 : 0);
     return () => { live = false; window.clearTimeout(timer); };
     // `key` covers every input that changes the drawing.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, key]);
-  // The last drawing stays up while a new one is made.
-  return result?.image || null;
+  // The last drawing stays up while a new one is made. `settled`: nothing
+  // left to draw for the current inputs (or nothing to draw at all).
+  return { image: result?.image || null, settled: !enabled || !component || result?.key === key };
 }
 
 /**
@@ -398,9 +415,11 @@ function printBlob(blob) {
  * @param {{ id: string, title: string, items: object[] }[]} props.sections –
  *   Items: `{ key, title, kind: 'widget'|'savings', ... }` (see generateEmployerReport)
  * @param {function} props.pageSnapshot – () => the page's snapshot, for Download HTML
+ * @param {boolean}  [props.loading]  – The report's data is (re)loading, e.g. after a
+ *   filter change: widgets keep their switches and the preview shows the loader
  * @param {function} props.onClose
  */
-export function PrintReportDrawer({ range, employerName, filename, sections, filters, pageSnapshot, onClose }) {
+export function PrintReportDrawer({ range, employerName, filename, sections, filters, pageSnapshot, loading = false, onClose }) {
   // { [sectionId]: { html, plain } }, kept between openings of the drawer.
   const [notes, setNotesState] = useState(readNotes);
   const setNotes = (update) => setNotesState((prev) => {
@@ -418,7 +437,10 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
   // Widgets with no data in the range start switched off; a switch flipped
   // by hand wins over that default, whatever the filters do next.
   const [widgetOverrides, setWidgetOverrides] = useState({}); // { [key]: boolean }
-  const isWidgetOn = (item) => widgetOverrides[item.key] ?? hasData(item);
+  // While data reloads every widget reads as empty; treat them as having
+  // data until it lands, so switches and "No data" marks don't flicker.
+  const hasDataNow = (item) => loading || hasData(item);
+  const isWidgetOn = (item) => widgetOverrides[item.key] ?? hasDataNow(item);
   const [sectionsOff, setSectionsOff] = useState(() => new Set());
   // Print order, from the dashboard's saved order; drag to change it here.
   const [sectionOrder, setSectionOrder] = useState(() => sections.map(s => s.id));
@@ -517,10 +539,13 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       subtitle: (subtitles[s.id] ?? s.subtitle ?? '').slice(0, SECTION_SUBTITLE_MAX).trim(),
       // Rich text: printed from its HTML; blank when it has no visible text.
       note: notes[s.id]?.plain?.trim() ? notes[s.id].html : '',
-      items: s.items.filter(i => widgetOverrides[i.key] ?? hasData(i)),
+      items: s.items.filter(i => widgetOverrides[i.key] ?? (loading || hasData(i))),
     }))
-    .filter(s => s.items.length), [orderedSections, sectionsOff, widgetOverrides, notes, titles, subtitles]);
+    .filter(s => s.items.length), [orderedSections, sectionsOff, widgetOverrides, notes, titles, subtitles, loading]);
   const nothingSelected = included.length === 0;
+  // Nothing in the whole report has data (once it has loaded): the empty
+  // preview says so, rather than asking for a widget to be selected.
+  const noWidgetHasData = !loading && sections.every(sec => sec.items.every(i => !hasData(i)));
 
   // An image background falls back to the default gradient until one is uploaded.
   const background = useMemo(() => (
@@ -569,13 +594,28 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
   const footerComponent = footerComponents.find(f => String(f.id) === String(pickedFooterId))
     || defaultReportFooter(footerComponents);
   const fontFaces = useMemo(() => interFontFaces(assets.fonts), [assets.fonts]);
+  // The page count of the last PDF built, for "Page 2 of 6" in a header or
+  // footer; a change redraws those (and the PDF with them), then settles.
+  const [pageCount, setPageCount] = useState(0);
   const componentCtx = useMemo(() => ({
     reportTitle,
     generatedOn: generatedOnLabel(generatedAt).replace(/^Generated On\s*:\s*/, ''),
     employerLogo: employerHeaderLogo?.dataUrl || '',
-  }), [reportTitle, generatedAt, employerHeaderLogo]);
-  const headerImage = useComponentImage(headerComponent, componentCtx, fontFaces, showHeader && !!employerHeaderLogo);
-  const footerImage = useComponentImage(footerComponent, componentCtx, fontFaces, showFooter && !!assets.fonts);
+    pageCount,
+  }), [reportTitle, generatedAt, employerHeaderLogo, pageCount]);
+  const { image: headerImage, settled: headerSettled } = useComponentImage(headerComponent, componentCtx, fontFaces, showHeader && !!employerHeaderLogo);
+  const { image: footerImage, settled: footerSettled } = useComponentImage(footerComponent, componentCtx, fontFaces, showFooter && !!assets.fonts);
+  // The preview waits for what the PDF needs, so each version shown is the
+  // finished one: the report's data (a filter change reloads it), the fonts
+  // and logos (at most ASSET_WAIT_MS, then without them), and the drawn
+  // header and footer, including redraws (e.g. a new employer's logo).
+  const [assetWaitOver, setAssetWaitOver] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setAssetWaitOver(true), ASSET_WAIT_MS);
+    return () => window.clearTimeout(t);
+  }, []);
+  const fontsReady = 'fonts' in assets || assetWaitOver;
+  const previewReady = !loading && fontsReady && headerSettled && footerSettled;
 
   const report = useMemo(() => ({
     title: reportTitle,
@@ -596,7 +636,13 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     } : null,
     sections: included,
   }), [reportTitle, generatedAt, assets, headerLogo, employerHeaderLogo, showHeader, headerImage, showFooter, footerImage, includeCover, range, coverDescription, background, employerCoverLogo, coverLogo, included]);
-  const generate = useCallback(() => generateEmployerReport(report), [report]);
+  const generate = useCallback(() => {
+    const out = generateEmployerReport(report);
+    // Called from the preview's timer and from Download / Print, never
+    // during render, so setting state here is safe.
+    setPageCount(out.pages);
+    return out;
+  }, [report]);
   // Where the preview should scroll after the next redraw: the part of the
   // report the last interaction was in ('cover', or a section id).
   const [focus, setFocus] = useState(null);
@@ -626,6 +672,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     }
   };
   const [sendOpen, setSendOpen] = useState(false);
+  const [emailOpen, setEmailOpen] = useState(false);
   const downloadRef = useRef(null);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const headerRight = (
@@ -650,7 +697,11 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
           ariaLabel="Send report"
           items={SEND_OPTIONS}
           width={200}
-          onSelect={(key, item) => { setSendOpen(false); showToast(`${item.label} is coming soon`); }}
+          onSelect={(key, item) => {
+            setSendOpen(false);
+            if (key === 'email') setEmailOpen(true);
+            else showToast(`${item.label} is coming soon`);
+          }}
           onClose={() => setSendOpen(false)}
         />
       )}
@@ -713,10 +764,14 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       onDragFinish={() => setReordering(false)}
     >
       {orderedSections.map((section) => {
-        const sectionOn = !sectionsOff.has(section.id);
+        // A section is on only while it's switched on and has a widget on:
+        // switching off its last widget switches it off too.
+        const switchedOff = sectionsOff.has(section.id);
+        const sectionOn = !switchedOff && section.items.some(isWidgetOn);
         const sectionTitle = titles[section.id] || section.title;
-        // Off, or mid-reorder: just the title row and switch.
-        const collapsed = !sectionOn || reordering;
+        // Switched off, or mid-reorder: just the title row and switch. Off
+        // because its widgets are, it stays open so they can go back on.
+        const collapsed = switchedOff || reordering;
         const collapse = (children) => (
           <div className={[styles.collapse, collapsed ? styles.collapsed : ''].filter(Boolean).join(' ')} inert={collapsed}>
             <div className={styles.collapseInner}>{children}</div>
@@ -750,7 +805,15 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
               </div>
               <Switch
                 checked={sectionOn}
-                onChange={() => toggle(setSectionsOff, section.id)}
+                onChange={() => {
+                  if (sectionOn) { toggle(setSectionsOff, section.id); return; }
+                  setSectionsOff(prev => { const next = new Set(prev); next.delete(section.id); return next; });
+                  // Back on with no widget on: all its widgets go on (those
+                  // without data print as empty cards).
+                  if (!section.items.some(isWidgetOn)) {
+                    setWidgetOverrides(prev => ({ ...prev, ...Object.fromEntries(section.items.map(i => [i.key, true])) }));
+                  }
+                }}
                 ariaLabel={`Include ${sectionTitle}`}
               />
             </div>
@@ -765,7 +828,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                     key={item.key}
                     id={item.key}
                     label={item.title}
-                    className={[styles.cardRow, isWidgetOn(item) && !hasData(item) ? styles.rowNoData : ''].filter(Boolean).join(' ')}
+                    className={[styles.cardRow, isWidgetOn(item) && !hasDataNow(item) ? styles.rowNoData : ''].filter(Boolean).join(' ')}
                   >
                   {rowHandle => (<div {...focusScope(item.key, section.id)}>
                     {rowHandle}
@@ -773,7 +836,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                       {item.title}
                       {/* Flag widgets with nothing to show, on or off; switched on,
                           the row also turns red since it will print blank. */}
-                      {!hasData(item) && (
+                      {!hasDataNow(item) && (
                         <span className={styles.noData}>No data available for this widget</span>
                       )}
                     </span>
@@ -1055,8 +1118,11 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
         generate={generate}
         focus={focus}
         loader={<PreviewLoader />}
+        ready={previewReady}
         empty={nothingSelected}
-        emptyLabel="Select at least one widget to preview the report."
+        emptyLabel={noWidgetHasData
+          ? 'No widgets have data for this date range. Turn a widget on to generate report anyway.'
+          : 'Select at least one widget to preview the report.'}
         title="Employer Impact Report PDF preview"
       />
     </div>
@@ -1073,6 +1139,17 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       bodyClassName={SplitDrawerLayout.bodyClassName}
     >
       <SplitDrawerLayout left={preview} right={editor} />
+      {/* Send via Email: the report as set up here, attached as a PDF. */}
+      {emailOpen && (
+        <SendReportEmailDrawer
+          buildPdf={() => generate().blob}
+          filename={filename}
+          title={reportTitle}
+          employerName={employerName}
+          range={range}
+          onClose={() => setEmailOpen(false)}
+        />
+      )}
     </Drawer>
   );
 }

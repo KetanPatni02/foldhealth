@@ -46,6 +46,35 @@ export function periodOf(key, timeFrame) {
   return `${MONTH_NAMES[m - 1]} ${yy}`;
 }
 
+/**
+ * The date range a Time Frame covers, ending at `end` ('YYYY-MM'):
+ * Month is that month, Quarter the calendar quarter it falls in (Jul–Sep),
+ * Year the 12 months ending with it (Oct–Sep).
+ *
+ * @returns {{ from: string, to: string }} month keys
+ */
+export function frameRange(timeFrame, end) {
+  if (timeFrame === 'Year') return { from: addMonths(end, -11), to: end };
+  if (timeFrame === 'Quarter') {
+    const m = Number(end.slice(5, 7));
+    const start = addMonths(end, -((m - 1) % 3));
+    return { from: start, to: addMonths(start, 2) };
+  }
+  return { from: end, to: end };
+}
+
+/**
+ * The date range a Time Frame covers from a picked start month: Month is
+ * that month, Quarter the calendar quarter it falls in, Year the 12 months
+ * from it (Jan → Dec).
+ *
+ * @returns {{ from: string, to: string }} month keys
+ */
+export function rangeFromStart(timeFrame, start) {
+  if (timeFrame === 'Year') return { from: start, to: addMonths(start, 11) };
+  return frameRange(timeFrame, start);
+}
+
 /** "Mar 2026 - Sep 2026": the subtitle every card carries. */
 export function rangeLabel(from, to) {
   const f = (k) => { const [y, m] = k.split('-').map(Number); return `${MONTH_NAMES[m - 1]} ${y}`; };
