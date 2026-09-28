@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Avatar } from '../../components/Avatar/Avatar';
+import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -246,7 +246,7 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
         title="Open patient quick view"
       >
         <div className={styles.patientCell}>
-          <Avatar variant="patient" initials={m.initials} />
+          <PatientAvatarHover patient={{ memberId: m.memberId, id: m.id, name: m.name, initials: m.initials, gender: m.gender, age: m.age, dob: m.dob }} />
           <div>
             <div className={styles.patientName}>
               <button className={styles.patientNameLink} onClick={handleNameClick}>{m.name}</button>{' '}

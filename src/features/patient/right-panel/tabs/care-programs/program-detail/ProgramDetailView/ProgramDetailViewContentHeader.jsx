@@ -73,7 +73,32 @@ export function ProgramDetailViewContentHeader({
   taskFiltersActive,
   goNextStep,
   nextStep,
+  stepStatus,
+  stepStatusSource,
+  onMarkStep,
 }) {
+  // Reviewed / Skip save the step's status for this patient enrollment.
+  // A step already completed by its records (e.g. a signed care plan)
+  // shows as done and isn't toggled by hand.
+  const reviewed = stepStatus === 'completed';
+  const skipped = stepStatus === 'skipped';
+  const lockedByRecords = reviewed && stepStatusSource === 'records';
+  const skipLink = !isMandatoryStep && (
+    skipped
+      ? <Link variant="secondary" onClick={() => onMarkStep?.(null)}>Undo Skip</Link>
+      : !reviewed && <Link variant="secondary" onClick={() => onMarkStep?.('skipped')}>Skip</Link>
+  );
+  const reviewedButton = (size = 'L') => (
+    <Button
+      variant={reviewed ? 'success' : 'tertiary'}
+      size={size}
+      leadingIcon="solar:check-circle-linear"
+      disabled={lockedByRecords}
+      onClick={() => onMarkStep?.(reviewed ? null : 'completed')}
+    >
+      {reviewed ? 'Reviewed' : 'Mark as Reviewed'}
+    </Button>
+  );
   const [signOffOpen, setSignOffOpen] = useState(false);
   const [carePlanReviewOpen, setCarePlanReviewOpen] = useState(false);
   const [carePlanMoreMenu, setCarePlanMoreMenu] = useState(null);
@@ -422,7 +447,7 @@ export function ProgramDetailViewContentHeader({
             <>
               {assigneePicker}
               <span className={styles.headerDivider} />
-              {!isMandatoryStep && <Link variant="secondary">Skip</Link>}
+              {skipLink}
               <span className={styles.headerDivider} />
               {medReconSignature ? (
                 <Button variant="tertiary" size="L" leadingIcon="solar:check-circle-linear">Reviewed</Button>
@@ -480,12 +505,12 @@ export function ProgramDetailViewContentHeader({
             </>
           ) : isProgramFilesStep ? (
             <>
-              {!isMandatoryStep && <Link variant="secondary">Skip</Link>}
+              {skipLink}
             </>
           ) : isAppointmentStep ? (
             <>
               {assigneePicker}
-              {!isMandatoryStep && <Link variant="secondary">Skip</Link>}
+              {skipLink}
               <Button variant="tertiary" size="L" onClick={goNextStep} disabled={!nextStep}>Next</Button>
             </>
           ) : isDiagnosisGapsStep ? (
@@ -506,14 +531,14 @@ export function ProgramDetailViewContentHeader({
                   onClick={() => setDiagGapsSearchOpen(true)}
                 />
               )}
-              <Button variant="tertiary" size="M" leadingIcon="solar:check-circle-linear">Reviewed</Button>
+              {reviewedButton('M')}
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </>
           ) : (
             <>
               {assigneePicker}
-              {!isMandatoryStep && <Link variant="secondary">Skip</Link>}
-              <Button variant="tertiary" size="L" leadingIcon="solar:check-circle-linear">Reviewed</Button>
+              {skipLink}
+              {reviewedButton('L')}
               <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
             </>
           )}

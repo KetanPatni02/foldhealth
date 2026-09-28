@@ -1,4 +1,3 @@
-import { PROGRAM_STEPS } from '../../../../data/programActivityMock';
 
 // URL key for a program row — code slug plus the trigger ordinal past 1
 // ('awv', 'toc-ip', 'snp-2'). Trigger is derived deterministically from
@@ -25,14 +24,6 @@ export const matchesTab = (p, tab) => {
   if (tab === 'Completed') return p.status === 'Completed';
   if (tab === 'Closed') return p.status === 'Closed';
   return true;
-};
-
-export const stepProgress = (code) => {
-  const list = PROGRAM_STEPS[code] || [];
-  const flat = list.flatMap(s => (s.type === 'section' ? (s.children || []) : [s]));
-  if (!flat.length) return 0;
-  const done = flat.filter(s => s.status === 'completed').length;
-  return Math.round((done / flat.length) * 100);
 };
 
 export const todayStr = () => {

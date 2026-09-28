@@ -187,6 +187,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
             taskFiltersActive={v.taskFiltersActive}
             goNextStep={v.goNextStep}
             nextStep={v.ALL_STEPS[v.ALL_STEPS.findIndex(s => s.id === v.activeStep) + 1]}
+            stepStatus={v.activeStepStatus}
+            stepStatusSource={v.activeStepSource}
+            onMarkStep={v.markStep}
           />
           {renderStepBody()}
         </div>

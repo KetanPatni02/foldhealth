@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
@@ -319,7 +320,7 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
           title="Open patient quick view"
         >
           <div className={styles.patientCell}>
-            <Avatar variant="patient" initials={p.initials} />
+            <PatientAvatarHover patient={{ memberId: p.memberId, id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, dob: p.dob }} />
             <div>
               <div className={styles.patientName}>
                 <button className={styles.patientNameLink} onClick={handleMemberCellClick}>{p.name}</button> {(() => { const dobLabel = formatDobDisplay(p.dob) || deriveDob(p.age, p.name); return (<Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom"><span className={styles.patientDemo}>({p.gender}•{p.age})</span></Tooltip>); })()}

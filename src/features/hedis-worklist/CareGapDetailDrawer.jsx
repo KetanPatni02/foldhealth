@@ -30,6 +30,7 @@ import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
 import { CardSkeleton } from '../../components/CardSkeleton/CardSkeleton';
+import { TimelineSkeleton } from '../../components/TimelineSkeleton/TimelineSkeleton';
 import { OutreachTabView } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
 import { useOutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/useOutreachTab';
 import { DocumentUploadForm } from '../../components/DocumentUploadForm/DocumentUploadForm';
@@ -43,6 +44,12 @@ import { useCareGapReminderForm } from './useCareGapReminderForm';
 import { CareGapReferralForm } from './CareGapReferralForm';
 import { CareGapReferralDetail } from './CareGapReferralDetail';
 import { CareGapReferralsTab } from './CareGapReferralsTab';
+import { useCareGapLabs } from './labs/useCareGapLabs';
+import { CareGapLabsTab } from './labs/CareGapLabsTab';
+import { LabOrderForm } from './labs/LabOrderForm';
+import { LabOrderDetail } from './labs/LabOrderDetail';
+import { LabResultReview } from './labs/LabResultReview';
+import { CANCELLABLE_STATUSES, PERFORMING_LABS } from './labs/labRules';
 import { useCareGapReferralForm, REFERRAL_CHANNELS, REFERRAL_STATUS, isReferralDraft, CUSTOM_SENDER, isEmail, providerContact } from './useCareGapReferralForm';
 import { draftReferralEmail } from './referralEmail';
 import { ScheduleDrawer } from '../../components/ScheduleDrawer/ScheduleDrawer';
@@ -87,6 +94,7 @@ const ACTIVITY_TYPE_LABEL = {
   reminder: 'Reminder',
   referral: 'Referral',
   upload: 'Document', document: 'Document',
+  lab: 'Lab',
   assign_coder: 'Assignee Change', assignee_change: 'Assignee Change',
 };
 
@@ -422,6 +430,37 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const [statusAnchorRect, setStatusAnchorRect] = useState(null);
 
   const [selectedYear, setSelectedYear] = useState(year);
+  // Lab Order + Result workflow for this gap (Orders tab, Order Lab pane).
+  const labs = useCareGapLabs({ member, gapCode: currentCode, year: selectedYear });
+  const [labForm, setLabForm] = useState(null);
+  const [labOrderId, setLabOrderId] = useState(null);
+  const [labResultId, setLabResultId] = useState(null);
+  const [labCloseGap, setLabCloseGap] = useState(true);
+  const [labOrderToCancel, setLabOrderToCancel] = useState(null);
+  const labOrder = labOrderId ? labs.orders.find(o => o.id === labOrderId) : null;
+  const labOrderResult = labOrder ? (labs.evaluated.find(r => r.labOrderId === labOrder.id && r.testName === labs.rule?.test) || labs.evaluated.find(r => r.labOrderId === labOrder.id)) : null;
+  const labResult = labResultId ? labs.evaluated.find(r => r.id === labResultId) : null;
+  const canPlaceLabOrder = !!(labForm?.tests.length && labForm.diagnoses.length && labForm.performingLab && labForm.orderingProvider);
+  const openLabOrder = () => {
+    setLabForm({
+      tests: labs.rule ? [labs.rule.test] : [],
+      diagnoses: labs.rule ? [labs.rule.diagnosis] : [],
+      priority: 'Routine',
+      performingLab: PERFORMING_LABS[0],
+      orderingProvider: currentActorName(),
+    });
+    setActiveTab('Orders');
+    setLeftWorkspace('lab-order');
+  };
+  const placeLabOrder = () => {
+    if (!canPlaceLabOrder) return;
+    labs.placeOrder(labForm);
+    setLabForm(null);
+    setLeftWorkspace(null);
+    setActiveTab('Orders');
+  };
+  const openLabOrderDetail = (order) => { setLabOrderId(order.id); setLeftWorkspace('lab-order-detail'); };
+  const openLabResult = (result) => { setLabResultId(result.id); setLabCloseGap(true); setLeftWorkspace('lab-result'); };
   const [prevYear, setPrevYear] = useState(year);
   if (prevYear !== year) { setPrevYear(year); setSelectedYear(year); }
   const [yearOpen, setYearOpen] = useState(false);
@@ -451,6 +490,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     else if (a.key === 'document') openDocumentUpload();
     else if (a.key === 'reminder') openReminderNew();
     else if (a.key === 'referral') openReferral();
+    else if (a.key === 'lab') openLabOrder();
     else showToast(`${a.label} — coming soon`);
   };
 
@@ -862,6 +902,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (leftWorkspace === 'reminder') reminderForm.reset();
     if (leftWorkspace === 'referral') referralForm.reset();
     if (leftWorkspace === 'referral-detail') setOpenReferralId(null);
+    if (leftWorkspace === 'lab-order') setLabForm(null);
+    if (leftWorkspace === 'lab-order-detail') setLabOrderId(null);
+    if (leftWorkspace === 'lab-result') setLabResultId(null);
     // DSF-B: block close on a partial PHQ-9 and surface the exit modal.
     const guard = detectPhq9Incomplete({ mode: 'close' });
     if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'close' }); return; }
@@ -1083,6 +1126,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     'Clinical Notes': clinicalNoteCount,
     Documents: memberDocs.length,
     Referrals: memberReferrals.length,
+    Orders: labs.orders.length,
     Tasks: memberTasks.length,
   };
 
@@ -1098,6 +1142,17 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       {/* The task detail no longer opens as its own standalone Drawer —
           it renders inline as the left workspace when leftWorkspace ===
           'task-detail' (see the leftPane branches below). */}
+      {labOrderToCancel && (
+        <ConfirmDialog
+          variant="destructive"
+          title={`Cancel this lab order (${labOrderToCancel.testName})?`}
+          description="The lab will not process this order. The Care Gap stays open until a qualifying result is found."
+          confirmLabel="Cancel Order"
+          cancelLabel="Keep Order"
+          onCancel={() => setLabOrderToCancel(null)}
+          onConfirm={() => { labs.cancelOrder(labOrderToCancel, 'Cancelled by care team'); setLabOrderToCancel(null); }}
+        />
+      )}
       {reminderToDelete && (
         <ConfirmDialog
           variant="destructive"
@@ -1292,6 +1347,15 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 if (leftWorkspace === 'referral-detail') {
                   return <span className={styles.paneTitle}>Referral Details</span>;
                 }
+                if (leftWorkspace === 'lab-order') {
+                  return <span className={styles.paneTitle}>Order Lab</span>;
+                }
+                if (leftWorkspace === 'lab-order-detail') {
+                  return <span className={styles.paneTitle}>Lab Order</span>;
+                }
+                if (leftWorkspace === 'lab-result') {
+                  return <span className={styles.paneTitle}>Review Result</span>;
+                }
                 if (leftWorkspace === 'reminder') {
                   return <span className={styles.paneTitle}>{reminderForm.editingId ? 'Edit Reminder' : 'Set Reminder'}</span>;
                 }
@@ -1478,6 +1542,21 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       />
                     );
                   })()
+                ) : leftWorkspace === 'lab-order' ? (
+                  <>
+                    <Button variant="secondary" size="M" onClick={closeLeftWorkspace}>Cancel</Button>
+                    <Button variant="primary" size="M" disabled={!canPlaceLabOrder} onClick={placeLabOrder}>Place Lab Order</Button>
+                  </>
+                ) : leftWorkspace === 'lab-order-detail' ? (
+                  labOrder && CANCELLABLE_STATUSES.includes(labOrder.status)
+                    ? <Button variant="secondary" size="M" onClick={() => setLabOrderToCancel(labOrder)}>Cancel Order</Button>
+                    : null
+                ) : leftWorkspace === 'lab-result' ? (
+                  labResult && !labResult.reviewedAt ? (
+                    <Button variant="primary" size="M" onClick={() => { labs.reviewResult(labResult, { closeGap: labCloseGap }); setLabResultId(null); setLeftWorkspace(null); }}>
+                      Mark as Reviewed
+                    </Button>
+                  ) : null
                 ) : leftWorkspace === 'appointment-detail' || leftWorkspace === 'referral-detail' ? (
                   // Appointment Details saves each field as it changes;
                   // Referral Details is read-only.
@@ -1534,6 +1613,12 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                           ? 'Close Send Referral'
                           : leftWorkspace === 'referral-detail'
                           ? 'Close Referral Details'
+                          : leftWorkspace === 'lab-order'
+                          ? 'Close Order Lab'
+                          : leftWorkspace === 'lab-order-detail'
+                          ? 'Close Lab Order'
+                          : leftWorkspace === 'lab-result'
+                          ? 'Close Review Result'
                           : leftWorkspace === 'task-detail'
                           ? 'Close Task Details'
                           : leftWorkspace === 'measure-info'
@@ -1570,6 +1655,29 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} noteId={selectedNoteId} />
               ) : leftWorkspace === 'clinical-note-consolidated' ? (
                 <ConsolidatedNoteBody v={clinicalNote} />
+              ) : leftWorkspace === 'lab-order' ? (
+                labForm ? (
+                  <LabOrderForm values={labForm} onChange={(k, v) => setLabForm(f => ({ ...f, [k]: v }))} providers={platformUsers || []} labs={labs} />
+                ) : null
+              ) : leftWorkspace === 'lab-order-detail' ? (
+                labOrder ? (
+                  <LabOrderDetail
+                    order={labOrder}
+                    result={labOrderResult}
+                    results={labs.evaluated.filter(r => r.labOrderId === labOrder.id)}
+                    gapTest={labs.rule?.test}
+                  />
+                ) : null
+              ) : leftWorkspace === 'lab-result' ? (
+                labResult ? (
+                  <LabResultReview
+                    result={labResult}
+                    rule={labs.rule}
+                    closeGap={labCloseGap}
+                    onCloseGapChange={setLabCloseGap}
+                    orderResults={labResult.labOrderId ? labs.evaluated.filter(r => r.labOrderId === labResult.labOrderId) : []}
+                  />
+                ) : null
               ) : leftWorkspace === 'referral-detail' ? (
                 openReferralRecord ? (
                   <CareGapReferralDetail referral={openReferralRecord} member={member} providers={referralProviders} />
@@ -1675,7 +1783,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       toolbar={activityToolbar}
                       toolbarBelow={activityChips}
                     />
-                  : <CardSkeleton />}
+                  : <TimelineSkeleton />}
               </div>
             ) : activeTab === 'Outreaches' ? (
               // While Add Outreach is open in the left pane, the tab shows
@@ -1719,6 +1827,15 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 onComplete={completeReferral}
                 onViewEmail={(id) => { setActivePage?.('messages'); setPendingEmailReferralId?.(id); }}
                 selectedId={leftWorkspace === 'referral-detail' ? openReferralId : leftWorkspace === 'referral' ? referralForm.values.draftId : null}
+              />
+            ) : activeTab === 'Orders' ? (
+              <CareGapLabsTab
+                labs={labs}
+                measureName={`${currentCode} - ${MEASURE_NAMES[currentCode] || currentCode}`}
+                onOrderLab={openLabOrder}
+                onViewOrder={openLabOrderDetail}
+                onReviewResult={openLabResult}
+                onCancelOrder={setLabOrderToCancel}
               />
             ) : activeTab === 'Clinical Notes' ? (
               // Flat column-headed list per Figma 1030:78586 — no timeline
