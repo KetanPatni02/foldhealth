@@ -14,7 +14,7 @@ function templateDraft(d) {
     body: [
       who,
       '',
-      `I'm referring our patient ${patient}${d.providerSpecialty ? ` for ${d.providerSpecialty.toLowerCase()} evaluation` : ''}${d.gap ? ` related to ${d.gap}` : ''}.${d.reason?.trim() ? ` ${d.reason.trim()}` : ''}`,
+      `I'm referring our patient ${patient} for evaluation${d.providerSpecialty ? ` (${d.providerSpecialty})` : ''}${d.gap ? ` related to ${d.gap}` : ''}.${d.reason?.trim() ? ` ${d.reason.trim()}` : ''}`,
       '',
       [files, 'Please let us know once the patient is scheduled, and send your findings back to our office.'].filter(Boolean).join(' '),
       '',

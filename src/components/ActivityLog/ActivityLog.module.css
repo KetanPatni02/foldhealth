@@ -23,6 +23,29 @@
   user-select: none;
 }
 .group:hover { color: var(--neutral-500); }
+/* First month row with the Activity toolbar (search / filter) at its right. */
+.groupRowWrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-1);
+}
+.groupRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.groupRowToolbarOnly {
+  justify-content: flex-end;
+  padding-top: var(--space-3);
+}
+.groupToolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+}
 .groupChevron {
   transition: transform 0.15s;
   flex-shrink: 0;
@@ -438,3 +461,13 @@
 }
 .referralStatus { color: var(--status-success); }
 .referralStatusDraft { color: var(--status-warning); }
+/* Opens Referral Details in the left pane. */
+.referralCardClickable { cursor: pointer; transition: border-color .12s, background .12s; }
+.referralCardClickable:hover { border-color: var(--primary-200); background: var(--primary-25); }
+.referralCardClickable:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+/* "Fold Provider" tag sits 2px under the S badge (Figma: 10px text). */
+.referralBadge {
+  height: 18px;
+  padding: calc(var(--space-1) / 2) var(--space-1);
+  font-size: var(--font-2xs);
+}

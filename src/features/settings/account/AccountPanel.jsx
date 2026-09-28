@@ -34,6 +34,7 @@ import { LocationsTab } from './locations/LocationsTab';
 import { HCC_ROLES, ROLE_COLORS, getInitials } from './AccountPanel.constants';
 import { useLocationNames, AddColumnDropdown } from './AccountPanelParts';
 import { ADMIN_ROLES, GENDER_OPTIONS, LANGUAGE_OPTIONS, MOCK_ROLES, isCapitalizedName } from './InviteUserDrawer.utils';
+import { MEDICAL_SPECIALTIES, PHYSICIAN_ROLE } from '../../../data/medicalSpecialties';
 import styles from './AccountPanel.module.css';
 
 const ALL_TABS = ['Org', 'Users', 'Teams', 'Access Control', 'Locations', 'Insurance Plans', 'Holiday Configuration', 'Merged Or Delayed', 'Allowed Phone', 'Allowed Emails'];
@@ -265,6 +266,17 @@ function UserDetailsView({ user, raw }) {
 
       <ViewBadgeSection label="Roles" items={roles} variant="ai-care" />
       <ViewBadgeSection label="Location" items={raw.locations} variant="ai-neutral" />
+      {/* Doctors always show Specialty, even before one is set. */}
+      {roles.includes(PHYSICIAN_ROLE) && (
+        raw.specialties?.length ? (
+          <ViewBadgeSection label="Specialty" items={raw.specialties} variant="ai-neutral" />
+        ) : (
+          <div className={styles.viewSection}>
+            <div className={styles.viewSectionLabel}>Specialty</div>
+            <span className={styles.viewFieldValue}>-</span>
+          </div>
+        )
+      )}
       <ViewBadgeSection label="Languages" items={raw.languages} variant="toc-engaged" />
 
       <div className={styles.viewSection}>
@@ -517,6 +529,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
     credentials: raw.credentials || [],
     licence_states: raw.licence_states || [],
     clinical_roles: raw.clinical_roles || [],
+    specialties: raw.specialties || [],
     ehr_mapping: raw.ehr_mapping || '',
     ehr_user: raw.ehr_user || '',
   }), [user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -538,6 +551,7 @@ export function EditUserDrawer({ user, onClose, onSave }) {
   const [form, setForm] = useState(() => (initialDraft ? { ...initialForm, ...initialDraft } : initialForm));
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
+  const isPhysician = form.clinical_roles.includes(PHYSICIAN_ROLE);
 
   // Credentials is a free-text list stored as an array; a plain DS Input backs
   // it with a comma-separated string, kept locally so a trailing comma while
@@ -594,7 +608,8 @@ export function EditUserDrawer({ user, onClose, onSave }) {
     const updates = {
       full_name: `${form.first_name} ${form.last_name}`.trim(),
       first_name: form.first_name, middle_name: form.middle_name, last_name: form.last_name,
-      date_of_birth: form.date_of_birth, gender: form.gender,
+      // `date` column: an empty field has to go up as null, not "".
+      date_of_birth: form.date_of_birth || null, gender: form.gender,
       admin_role: form.admin_role, role: form.clinical_roles.length > 0 ? form.clinical_roles[0] : 'Viewer', bio: form.bio,
       mobile: form.mobile, fax: form.fax, zip_code: form.zip_code,
       address_line1: form.address_line1, address_line2: form.address_line2,
@@ -602,6 +617,8 @@ export function EditUserDrawer({ user, onClose, onSave }) {
       locations: form.locations, languages: form.languages,
       credentials: form.credentials, licence_states: form.licence_states,
       clinical_roles: form.clinical_roles, ehr_mapping: form.ehr_mapping, ehr_user: form.ehr_user,
+      // Only doctors carry a specialty; dropping the role clears it.
+      specialties: form.clinical_roles.includes(PHYSICIAN_ROLE) ? form.specialties : [],
     };
     // Build changes for audit log
     const changes = [];
@@ -674,15 +691,27 @@ export function EditUserDrawer({ user, onClose, onSave }) {
             />
           </div>
 
-          {/* Location */}
-          <Select
-            label="Location"
-            multiple checkboxes searchable
-            options={toOptions(locationNames)}
-            value={form.locations}
-            onChange={v => set('locations', v)}
-            placeholder="Select..."
-          />
+          {/* Location + Specialty (enabled once the user is a Physician/Doctor) */}
+          <div className={styles.formGrid}>
+            <Select
+              label="Location"
+              multiple checkboxes searchable
+              options={toOptions(locationNames)}
+              value={form.locations}
+              onChange={v => set('locations', v)}
+              placeholder="Select..."
+            />
+            <Select
+              label="Specialty"
+              multiple checkboxes searchable
+              searchPlaceholder="Search specialty"
+              options={toOptions(MEDICAL_SPECIALTIES)}
+              value={isPhysician ? form.specialties : []}
+              onChange={v => set('specialties', v)}
+              placeholder={isPhysician ? 'Select specialty' : 'Select Physician/Doctor role first'}
+              disabled={!isPhysician}
+            />
+          </div>
 
           {/* Map User to EHR — each select carries its own built-in label. */}
           <div className={styles.formGrid}>

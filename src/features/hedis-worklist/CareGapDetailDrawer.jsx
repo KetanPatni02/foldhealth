@@ -24,6 +24,8 @@ import { computeDsfbDueDateISO } from './dsf/dsfScoring';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
+import { SearchBar } from '../../components/SearchBar/SearchBar';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { TabStrip } from '../../components/TabStrip/TabStrip';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { ActivityLog } from '../../components/ActivityLog/ActivityLog';
@@ -39,6 +41,8 @@ import { CareGapAppointmentsTab } from './CareGapAppointmentsTab';
 import { CareGapReminderForm } from './CareGapReminderForm';
 import { useCareGapReminderForm } from './useCareGapReminderForm';
 import { CareGapReferralForm } from './CareGapReferralForm';
+import { CareGapReferralDetail } from './CareGapReferralDetail';
+import { CareGapReferralsTab } from './CareGapReferralsTab';
 import { useCareGapReferralForm, REFERRAL_CHANNELS, REFERRAL_STATUS, isReferralDraft, CUSTOM_SENDER, isEmail, providerContact } from './useCareGapReferralForm';
 import { draftReferralEmail } from './referralEmail';
 import { ScheduleDrawer } from '../../components/ScheduleDrawer/ScheduleDrawer';
@@ -65,6 +69,26 @@ export function CareGapDetailDrawer(props) {
 }
 
 const EMPTY_REMINDERS = [];
+const EMPTY_ACTIVITY_FILTERS = { type: [], by: [], date: [] };
+const ACTIVITY_DATE_RANGES = [
+  { label: 'Today', days: 1 },
+  { label: 'Last 7 Days', days: 7 },
+  { label: 'Last 30 Days', days: 30 },
+  { label: 'Last 90 Days', days: 90 },
+];
+// Activity entry type → Activity Type filter label.
+const ACTIVITY_TYPE_LABEL = {
+  comment: 'Comment',
+  outreach: 'Outreach', call: 'Outreach', sms: 'Outreach',
+  status_change: 'Status Change', status_dos: 'Status Change',
+  clinical_note: 'Clinical Note', note: 'Clinical Note',
+  task: 'Task',
+  appointment: 'Appointment',
+  reminder: 'Reminder',
+  referral: 'Referral',
+  upload: 'Document', document: 'Document',
+  assign_coder: 'Assignee Change', assignee_change: 'Assignee Change',
+};
 
 function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const showToast = useAppStore(s => s.showToast);
@@ -96,6 +120,12 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const deleteCaregapReminder = useAppStore(s => s.deleteCaregapReminder);
   useEffect(() => { fetchCaregapReminders(); }, [fetchCaregapReminders]);
   const reminderForm = useCareGapReminderForm();
+  const [activitySearchOpen, setActivitySearchOpen] = useState(false);
+  const [activitySearch, setActivitySearch] = useState('');
+  const [activityChipsOpen, setActivityChipsOpen] = useState(false);
+  const [activityFilters, setActivityFilters] = useState(EMPTY_ACTIVITY_FILTERS);
+  // "Last N days" is measured from when the drawer opened.
+  const [activityOpenedAt] = useState(() => Date.now());
   // Send Referral workspace (caregap_referrals): eFax / Email.
   const directoryProviders = useAppStore(s => s.referralProviders);
   const practiceSenderLines = useAppStore(s => s.referralSenderLines);
@@ -188,6 +218,44 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     referralForm.loadDraft(draft, referralSenderDefaults());
     setLeftWorkspace('referral');
   };
+  // A draft opens for editing; anything already referred opens read-only.
+  const [openReferralId, setOpenReferralId] = useState(null);
+  const openReferralDetail = (id) => {
+    const r = memberReferrals.find(x => x.id === id);
+    if (!r) return;
+    if (isReferralDraft(r)) { openReferralDraft(id); return; }
+    setOpenReferralId(id);
+    setLeftWorkspace('referral-detail');
+  };
+  const openReferralRecord = openReferralId ? memberReferrals.find(r => r.id === openReferralId) : null;
+  const setActivePage = useAppStore(s => s.setActivePage);
+  const setPendingEmailReferralId = useAppStore(s => s.setPendingEmailReferralId);
+  // Signed referral → Completed (the specialist has seen the patient).
+  const completeReferral = (id) => {
+    const r = memberReferrals.find(x => x.id === id);
+    if (!r || isReferralDraft(r)) return;
+    updateCaregapReferral({ ...r, status: REFERRAL_STATUS.completed, documentAttachments: r.attachments || [] });
+    logCareGapActivity(member.id, {
+      when: new Date().toISOString(),
+      actor: currentActorName(),
+      t: 'referral',
+      title: 'Referral Completed',
+      gapCodes: [currentCode],
+      detailCard: {
+        referralId: r.id,
+        channel: r.channel,
+        fromId: r.sentById || null,
+        fromName: r.sentBy,
+        toId: r.providerId,
+        toName: r.providerName,
+        toBadge: r.providerName ? 'Fold Provider' : '',
+        toContact: r.providerContact ? `${REFERRAL_CHANNELS.find(c => c.key === r.channel)?.label || r.channel} : ${r.providerContact}` : '',
+        createdAt: new Date().toISOString(),
+        status: REFERRAL_STATUS.completed,
+      },
+    });
+    showToast('Referral marked as completed');
+  };
   // A draft needs something worth keeping; Sign & Refer needs it all.
   const canSaveReferralDraft = (() => {
     const v = referralForm.values;
@@ -237,11 +305,14 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       detailCard: {
         referralId: referral.id,
         channel: v.channel,
+        fromId: meId || null,
         fromName: currentActorName(),
-        fromRole: meProvider?.specialty || currentUserProfile?.role || '',
+        fromRole: meProvider?.specialty || '',
+        toId: referral.providerId,
         toName: referral.providerName || 'Provider not selected',
         toBadge: referral.providerName ? 'Fold Provider' : '',
-        toSubtitle: [referralProvider?.specialty, referralContact && `${channelLabel} : ${referralContact}`].filter(Boolean).join(' • '),
+        toSpecialty: referralProvider?.specialty || '',
+        toContact: referralContact ? `${channelLabel} : ${referralContact}` : '',
         createdAt: now.toISOString(),
         status,
       },
@@ -790,6 +861,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (leftWorkspace === 'appointment-detail') { setOpenAppt(null); fetchAppointments?.(); }
     if (leftWorkspace === 'reminder') reminderForm.reset();
     if (leftWorkspace === 'referral') referralForm.reset();
+    if (leftWorkspace === 'referral-detail') setOpenReferralId(null);
     // DSF-B: block close on a partial PHQ-9 and surface the exit modal.
     const guard = detectPhq9Incomplete({ mode: 'close' });
     if (guard) { setPhq9ExitPrompt({ ...guard, mode: 'close' }); return; }
@@ -842,13 +914,81 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       } : {}),
     };
   });
-  // A referral entry whose referral is still a draft can be picked back up.
-  const allActivityEntries = [...(activityEntries || []), ...commentEntries].map(e => (
-    e.t === 'referral' && e.detailCard?.referralId && isReferralDraft(memberReferrals.find(r => r.id === e.detailCard.referralId))
-      ? { ...e, onOpenReferralDraft: () => openReferralDraft(e.detailCard.referralId) }
-      : e
-  ));
-  const activityLogEntries = toActivityLogEntries(allActivityEntries);
+  // Referral entries open the referral (read-only, or for editing while it
+  // is still a draft) when it still exists for this member.
+  const allActivityEntries = [...(activityEntries || []), ...commentEntries].map(e => {
+    const ref = e.t === 'referral' && e.detailCard?.referralId
+      ? memberReferrals.find(r => r.id === e.detailCard.referralId)
+      : null;
+    if (!ref) return e;
+    return {
+      ...e,
+      onOpenReferral: () => openReferralDetail(ref.id),
+      ...(isReferralDraft(ref) ? { onOpenReferralDraft: () => openReferralDraft(ref.id) } : {}),
+      // Only a referral still out with the specialist can be completed.
+      ...(!isReferralDraft(ref) && ref.status !== REFERRAL_STATUS.completed ? { onCompleteReferral: () => completeReferral(ref.id) } : {}),
+    };
+  });
+  // Activity tab search + filter chips (Activity Type / Activity By / Date).
+  const activityTypeOf = (e) => ACTIVITY_TYPE_LABEL[e.t] || 'Other';
+  const activityByOf = (e) => String(e.actor || e.user || 'System').replace(/\s*\(.+?\)\s*$/, '');
+  const activityTypeOptions = [...new Set(allActivityEntries.map(activityTypeOf))].sort();
+  const activityByOptions = [...new Set(allActivityEntries.map(activityByOf))].sort();
+  const anyActivityFilter = !!(activityFilters.type.length || activityFilters.by.length || activityFilters.date.length || activitySearch.trim());
+  const filteredActivityEntries = allActivityEntries.filter(e => {
+    if (activityFilters.type.length && !activityFilters.type.includes(activityTypeOf(e))) return false;
+    if (activityFilters.by.length && !activityFilters.by.includes(activityByOf(e))) return false;
+    const range = ACTIVITY_DATE_RANGES.find(r => r.label === activityFilters.date[0]);
+    if (range) {
+      const at = new Date(e.when ?? e.at).getTime();
+      if (Number.isNaN(at) || at < activityOpenedAt - range.days * 86400000) return false;
+    }
+    const q = activitySearch.trim().toLowerCase();
+    if (q) {
+      const hay = [e.title, e.headline, e.note, e.commentBody, e.body, e.file, activityByOf(e), activityTypeOf(e),
+        e.detailCard?.title, e.detailCard?.subtitle, e.detailCard?.toName, e.detailCard?.fromName].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  const activityLogEntries = toActivityLogEntries(filteredActivityEntries);
+  const activityToolbar = (
+    <>
+      {activitySearchOpen ? (
+        <SearchBar
+          className={styles.activitySearch}
+          placeholder="Search activity"
+          value={activitySearch}
+          onChange={e => setActivitySearch(e.target.value)}
+          onClose={() => { setActivitySearchOpen(false); setActivitySearch(''); }}
+        />
+      ) : (
+        <ActionButton size="S" icon="solar:magnifer-linear" tooltip="Search" onClick={() => setActivitySearchOpen(true)} />
+      )}
+      <span className={styles.activityToolbarDivider} />
+      <ActionButton
+        size="S"
+        icon="custom:filter"
+        tooltip={activityChipsOpen ? 'Hide filters' : 'Filter'}
+        tooltipLeft
+        iconColor={activityChipsOpen || activityFilters.type.length || activityFilters.by.length || activityFilters.date.length ? 'var(--primary-300)' : undefined}
+        onClick={() => setActivityChipsOpen(v => !v)}
+      />
+    </>
+  );
+  const activityChips = activityChipsOpen && (
+    <div className={styles.activityChips}>
+      <FilterChip size="S" label="Activity Type" options={activityTypeOptions} selected={activityFilters.type} onChange={v => setActivityFilters(f => ({ ...f, type: v }))} />
+      <FilterChip size="S" label="Activity By" options={activityByOptions} selected={activityFilters.by} onChange={v => setActivityFilters(f => ({ ...f, by: v }))} searchable />
+      <FilterChip size="S" label="Date" options={ACTIVITY_DATE_RANGES.map(r => r.label)} selected={activityFilters.date} onChange={v => setActivityFilters(f => ({ ...f, date: v }))} singleSelect />
+      {(activityFilters.type.length || activityFilters.by.length || activityFilters.date.length) > 0 && (
+        <button type="button" className={styles.activityClearAll} onClick={() => setActivityFilters(EMPTY_ACTIVITY_FILTERS)}>
+          <Icon name="solar:close-circle-linear" size={14} color="currentColor" />
+          Clear All
+        </button>
+      )}
+    </div>
+  );
   // Clinical Notes tab is DB-driven (clinicalNotesByMember) so it shows the
   // current state per note — a Pending Review note that is later Signed
   // updates in place instead of appearing as two rows. Activity Log keeps
@@ -1149,6 +1289,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 if (leftWorkspace === 'referral') {
                   return <span className={styles.paneTitle}>Send Referral</span>;
                 }
+                if (leftWorkspace === 'referral-detail') {
+                  return <span className={styles.paneTitle}>Referral Details</span>;
+                }
                 if (leftWorkspace === 'reminder') {
                   return <span className={styles.paneTitle}>{reminderForm.editingId ? 'Edit Reminder' : 'Set Reminder'}</span>;
                 }
@@ -1335,8 +1478,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       />
                     );
                   })()
-                ) : leftWorkspace === 'appointment-detail' ? (
-                  // Appointment Details saves each field as it changes.
+                ) : leftWorkspace === 'appointment-detail' || leftWorkspace === 'referral-detail' ? (
+                  // Appointment Details saves each field as it changes;
+                  // Referral Details is read-only.
                   null
                 ) : leftWorkspace === 'referral' ? (
                   <>
@@ -1388,6 +1532,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                           ? 'Close Set Reminder'
                           : leftWorkspace === 'referral'
                           ? 'Close Send Referral'
+                          : leftWorkspace === 'referral-detail'
+                          ? 'Close Referral Details'
                           : leftWorkspace === 'task-detail'
                           ? 'Close Task Details'
                           : leftWorkspace === 'measure-info'
@@ -1424,6 +1570,10 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 <ClinicalNotePreviewBody memberId={member?.id} gapCode={currentCode} noteId={selectedNoteId} />
               ) : leftWorkspace === 'clinical-note-consolidated' ? (
                 <ConsolidatedNoteBody v={clinicalNote} />
+              ) : leftWorkspace === 'referral-detail' ? (
+                openReferralRecord ? (
+                  <CareGapReferralDetail referral={openReferralRecord} member={member} providers={referralProviders} />
+                ) : null
               ) : leftWorkspace === 'referral' ? (
                 <CareGapReferralForm
                   form={referralForm}
@@ -1517,7 +1667,14 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   />
                 </div>
                 {caregapActivityLoaded
-                  ? <ActivityLog entries={activityLogEntries} emptyLabel="No activity yet for this care gap." onOpenTask={handleOpenTaskInPlace} onOpenNote={openNoteInWorkspace} />
+                  ? <ActivityLog
+                      entries={activityLogEntries}
+                      emptyLabel={anyActivityFilter ? 'No activity matches these filters.' : 'No activity yet for this care gap.'}
+                      onOpenTask={handleOpenTaskInPlace}
+                      onOpenNote={openNoteInWorkspace}
+                      toolbar={activityToolbar}
+                      toolbarBelow={activityChips}
+                    />
                   : <CardSkeleton />}
               </div>
             ) : activeTab === 'Outreaches' ? (
@@ -1554,25 +1711,14 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 />
               ) : <CardSkeleton />
             ) : activeTab === 'Referrals' ? (
-              <DocumentList
-                documents={memberReferrals.map(r => ({
-                  id: r.id,
-                  name: `Referral to ${r.providerName}`,
-                  meta: [
-                    REFERRAL_CHANNELS.find(c => c.key === r.channel)?.label || r.channel,
-                    r.providerContact,
-                    r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '',
-                    r.sentBy,
-                  ].filter(Boolean).join(' • '),
-                  status: isReferralDraft(r)
-                    ? { variant: 'status-review', label: 'Draft' }
-                    : { variant: 'status-completed', label: r.status || 'Sent' },
-                }))}
-                showStatus
-                onOpen={(d) => openReferralDraft(d.id)}
-                onUpload={openReferral}
-                uploadLabel="Send Referral"
-                emptyLabel="No referrals sent for this member yet."
+              <CareGapReferralsTab
+                referrals={memberReferrals}
+                providers={referralProviders}
+                onOpen={openReferralDetail}
+                onNew={openReferral}
+                onComplete={completeReferral}
+                onViewEmail={(id) => { setActivePage?.('messages'); setPendingEmailReferralId?.(id); }}
+                selectedId={leftWorkspace === 'referral-detail' ? openReferralId : leftWorkspace === 'referral' ? referralForm.values.draftId : null}
               />
             ) : activeTab === 'Clinical Notes' ? (
               // Flat column-headed list per Figma 1030:78586 — no timeline

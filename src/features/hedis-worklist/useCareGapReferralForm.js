@@ -10,14 +10,8 @@ export const REFERRAL_MAX_BYTES = 5 * 1024 * 1024;
 export const CUSTOM_SENDER = '__custom__';
 export const isEmail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((s || '').trim());
 
-// Standard specialty list offered by the provider filter (always shown, so
-// the filter is usable before every profile has a specialty set).
-export const MEDICAL_SPECIALTIES = [
-  'Behavioral Health', 'Cardiology', 'Dermatology', 'Endocrinology', 'Family Medicine',
-  'Gastroenterology', 'General Practice', 'Geriatrics', 'Internal Medicine', 'Nephrology',
-  'Neurology', 'OB/GYN', 'Oncology', 'Ophthalmology', 'Orthopedics', 'Pediatrics',
-  'Podiatry', 'Psychiatry', 'Pulmonology', 'Radiology', 'Rheumatology', 'Urology',
-];
+// Same specialty values the Users settings save to profiles.specialties.
+export { MEDICAL_SPECIALTIES } from '../../data/medicalSpecialties';
 
 // The provider's address for a channel, or '' when they can't receive it.
 export function providerContact(provider, channel) {
@@ -33,7 +27,7 @@ export function providerContact(provider, channel) {
 const EMPTY = { draftId: null, channel: 'efax', senderId: '', customSender: '', emailSubject: '', emailBody: '', providerId: '', files: [], docs: [], reason: '', note: '', noteOpen: false };
 
 // Statuses a saved referral can hold.
-export const REFERRAL_STATUS = { draft: 'Draft', referred: 'Signed & Referred' };
+export const REFERRAL_STATUS = { draft: 'Draft', referred: 'Signed & Referred', completed: 'Completed' };
 export const isReferralDraft = (r) => r?.status === REFERRAL_STATUS.draft;
 
 /**

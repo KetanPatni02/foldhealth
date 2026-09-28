@@ -686,3 +686,29 @@
   text-transform: capitalize;
   flex-shrink: 0;
 }
+
+/* Activity tab toolbar (inline with the first month row) + filter chips. */
+.activitySearch { width: 200px; }
+.activityToolbarDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+.activityChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.activityClearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.activityClearAll:hover { color: var(--neutral-400); }
