@@ -36,11 +36,13 @@ describe('components in the builder', () => {
   it('offers the report header beside saved email headers and starts on it', () => {
     const releaseNote = { id: 7, label: 'Release Note', isDefault: false };
     const headers = withReportHeader([releaseNote]);
-    expect(headers.map(h => h.label)).toEqual(['Report Print Header', 'Release Note']);
+    expect(headers.map(h => h.label)).toEqual(['Print Report Header Option 1', 'Print Report Header Option 2', 'Print Report Header Option 3', 'Print Report Header Option 4', 'Release Note']);
     expect(defaultReportHeader(headers).slug).toBe(REPORT_HEADER_SLUG);
     // Once seeded, the saved copy replaces the local one.
-    const seeded = { id: 9, slug: REPORT_HEADER_SLUG, label: 'Report Print Header', isDefault: true };
-    expect(withReportHeader([releaseNote, seeded])).toHaveLength(2);
+    const seeded = { id: 9, slug: REPORT_HEADER_SLUG, label: 'Print Report Header Option 1', isDefault: true };
+    // Once seeded, the saved list is used as is: no stand-ins, so a deleted
+    // option stays deleted.
+    expect(withReportHeader([releaseNote, seeded]).map(h => h.label)).toEqual(['Release Note', 'Print Report Header Option 1']);
     // A saved default wins.
     expect(defaultReportHeader(withReportHeader([{ ...releaseNote, isDefault: true }])).id).toBe(7);
   });
@@ -50,5 +52,17 @@ describe('components in the builder', () => {
     expect(footer.slug).toBe(REPORT_FOOTER_SLUG);
     expect(JSON.stringify(footer.tree)).toContain('{{page_number}}');
     expect(applyMergeTags('{{page_number}}', { pageNumber: 3 })).toBe('3');
+  });
+
+  it('has Option 2 (from the report frame), in Trailhead blue, with the report name', async () => {
+    const { PATIENT_SUMMARY_HEADER_COMPONENT, PATIENT_SUMMARY_FOOTER_COMPONENT } = await import('./reportHeaderComponent');
+    const header = JSON.stringify(PATIENT_SUMMARY_HEADER_COMPONENT.tree);
+    expect(header).toContain('{{report_title}}');
+    expect(header).toContain('Page {{page_number}} of {{page_count}}');
+    expect(header).toContain('trailhead-clinics-logo');
+    const footer = JSON.stringify(PATIENT_SUMMARY_FOOTER_COMPONENT.tree);
+    expect(footer).toContain('#1376BC');
+    expect(footer).toContain('1607 Grand Ave Unit 22, Glenwood Springs, CO 81601');
+    expect(withReportFooter([]).map(f => f.label)).toEqual(['Print Report Footer Option 1', 'Print Report Footer Option 2', 'Print Report Footer Option 3', 'Print Report Footer Option 4']);
   });
 });

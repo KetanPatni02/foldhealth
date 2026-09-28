@@ -12118,6 +12118,31 @@ export const useAppStore = create((set, get) => ({
     return rows;
   },
 
+  // Print drawer section notes, shared by everyone: { [sectionId]: { html, plain } }.
+  // Resolves null when the table isn't there yet (migration not run), so
+  // the drawer can keep its local copy.
+  fetchEmployerReportNotes: async () => {
+    const { data, error } = await supabase.from('employer_impact_report_notes').select('section_id, html, plain');
+    if (error) {
+      console.warn('fetchEmployerReportNotes:', error.message);
+      return null;
+    }
+    return Object.fromEntries((data || []).map(r => [r.section_id, { html: r.html, plain: r.plain }]));
+  },
+  saveEmployerReportNote: async (sectionId, note) => {
+    const { error } = note
+      ? await supabase.from('employer_impact_report_notes').upsert({
+        section_id: sectionId,
+        html: note.html || '',
+        plain: note.plain || '',
+        updated_by: get().currentUserProfile?.name || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'section_id' })
+      : await supabase.from('employer_impact_report_notes').delete().eq('section_id', sectionId);
+    if (error) console.warn('saveEmployerReportNote:', error.message);
+    return !error;
+  },
+
   analyticsCache: {},
   analyticsLoading: {},
   analyticsError: {},
@@ -12575,6 +12600,23 @@ export const useAppStore = create((set, get) => ({
     }
     const campaigns = (data || []).map(campaignRowToJs);
     set({ campaigns, campaignsLoading: false });
+  },
+
+  // Email templates (Settings → Content → Emails) for composing a one-off
+  // email with one, e.g. Send Report by email. Only those with a design.
+  fetchEmailTemplates: async () => {
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select('id, name, description, email_template')
+      .eq('channel', 'email')
+      .not('email_template', 'is', null)
+      .order('name', { ascending: true })
+      .limit(100);
+    if (error) {
+      console.error('fetchEmailTemplates error:', error);
+      return [];
+    }
+    return (data || []).map(r => ({ id: r.id, name: r.name, description: r.description || '', doc: r.email_template }));
   },
 
   fetchCampaignById: async (id) => {

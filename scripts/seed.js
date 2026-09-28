@@ -31,7 +31,7 @@ import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
-import { REPORT_HEADER_COMPONENT, REPORT_FOOTER_COMPONENT } from '../src/features/email-builder/reportHeaderComponent.js';
+import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
 import { priorLabResultsFor } from '../src/features/hedis-worklist/labs/labMock.js';
@@ -917,25 +917,27 @@ async function main() {
     .upsert(withPatient(PATIENT_HISTORY_ENTRIES), { onConflict: 'id' });
   if (phe) { console.error('  ✗', phe.message); } else { console.log(`  ✓ ${PATIENT_HISTORY_ENTRIES.length} rows`); }
 
-  // Components: the report print header and footer, the default Report
-  // Header and Report Footer.
-  console.log('Seeding email_header_footer_presets (report print header + footer)...');
-  for (const c of [REPORT_HEADER_COMPONENT, REPORT_FOOTER_COMPONENT]) {
+  // Components: Print Report Header / Footer Options 1–4 (Option 1 is the
+  // default Report Header and Report Footer).
+  console.log('Seeding email_header_footer_presets (report headers + footers)...');
+  for (const c of [...REPORT_HEADER_OPTIONS, ...REPORT_FOOTER_OPTIONS]) {
     const { error } = await supabase
       .from('email_header_footer_presets')
-      .upsert({ slug: c.slug, role: c.role, name: c.label, description: c.description, accent: c.accent, tree: c.tree, is_default: true }, { onConflict: 'slug' });
+      .upsert({ slug: c.slug, role: c.role, name: c.label, description: c.description, accent: c.accent, tree: c.tree, is_default: c.isDefault }, { onConflict: 'slug' });
     if (error) { console.error('  ✗', error.message); } else { console.log(`  ✓ ${c.label}`); }
   }
 
-  // Employer Impact Report: a year of monthly metrics ending last month.
+  // Employer Impact Report: a year of monthly metrics ending this month.
   console.log('Seeding employer_impact_employers...');
   const { error: eie } = await supabase
     .from('employer_impact_employers')
     .upsert(EMPLOYER_IMPACT_EMPLOYERS, { onConflict: 'id' });
   if (eie) { console.error('  ✗', eie.message); } else { console.log(`  ✓ ${EMPLOYER_IMPACT_EMPLOYERS.length} employers`); }
   {
+    // Through this month: the report's Date Range ends at the current month
+    // by default, so it has data from the start.
     const now = new Date();
-    const last = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const last = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}`;
     const metricRows = employerImpactRows(lastMonth);
     console.log(`Seeding employer_impact_metrics (${metricRows.length} rows, year ending ${lastMonth})...`);

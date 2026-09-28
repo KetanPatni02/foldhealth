@@ -148,6 +148,15 @@
 }
 
 /* Attachment chips inside the message box, above the toolbar */
+.attachmentCards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .attachments {
   display: flex;
   flex-wrap: wrap;

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Icon } from '../Icon/Icon';
+import { RingEmptyState } from '../RingEmptyState/RingEmptyState';
 import styles from './PdfPreview.module.css';
 
 // Long enough that moving to the edited page reads as a gentle transition
@@ -12,6 +12,8 @@ const CROSSFADE_MS = 300;
 const SETTLE_MS = 350;
 // Rebuild only once edits pause, so typing doesn't refresh the viewer per keystroke.
 const DEBOUNCE_MS = 600;
+// A wait for the report to be ready shows the loader once it passes this.
+const LOADER_DELAY_MS = 250;
 
 const emptySlot = () => ({ url: null, ready: false });
 
@@ -48,11 +50,18 @@ function viewHash(anchor) {
  * @param {React.ReactNode} [props.loader] – Shown while the first version is
  *                                         being built (e.g. <PreviewLoader />);
  *                                         later rebuilds crossfade instead.
+ * @param {boolean}  [props.ready=true]  – False while what the PDF needs is
+ *                                         still loading (its data, fonts,
+ *                                         images): nothing is built, and the
+ *                                         loader covers the preview until the
+ *                                         version built once ready has loaded.
+ *                                         A build right after waiting (like the
+ *                                         first one) starts at once.
  * @param {boolean}  [props.empty=false] – Nothing to render; shows `emptyLabel`
  * @param {string}   [props.emptyLabel='Select items to generate a preview.']
  * @param {string}   [props.title='PDF preview'] – Accessible name of the viewer
  */
-export function PdfPreview({ generate, focus, loader, empty = false, emptyLabel = 'Select items to generate a preview.', title = 'PDF preview' }) {
+export function PdfPreview({ generate, focus, loader, ready = true, empty = false, emptyLabel = 'Select items to generate a preview.', title = 'PDF preview' }) {
   const [slotA, setSlotA] = useState(emptySlot);
   const [slotB, setSlotB] = useState(emptySlot);
   const [front, setFront] = useState('A');
@@ -62,6 +71,13 @@ export function PdfPreview({ generate, focus, loader, empty = false, emptyLabel 
   const slotBRef = useRef(slotB);
   const frontRef = useRef(front);
   const fadeTimerRef = useRef(null);
+  // Set while waiting to be ready, cleared when the version built after it
+  // loads: the loader stays over the old preview for that whole time.
+  const [stale, setStale] = useState(!ready);
+  const staleRef = useRef(!ready);
+  // Only edits wait out the debounce; the first build, and the first after
+  // waiting to be ready, start at once.
+  const builtRef = useRef(false);
   const focusRef = useRef(focus);
   // Where the last version opened, reused when an edit has no anchor of its
   // own (e.g. its widget was just switched off), so the view doesn't jump.
@@ -79,11 +95,26 @@ export function PdfPreview({ generate, focus, loader, empty = false, emptyLabel 
   const getSlot = (key) => (key === 'A' ? slotARef.current : slotBRef.current);
 
   useEffect(() => {
+    if (!ready) {
+      // Nothing is built until ready; flag the preview stale so the loader
+      // covers it (set from a timer, like every state change here).
+      // Only a wait that lasts shows the loader, so a quick redraw (a title
+      // being typed) doesn't flash it.
+      const t = window.setTimeout(() => {
+        staleRef.current = true;
+        setStale(true);
+      }, builtRef.current ? LOADER_DELAY_MS : 0);
+      return () => window.clearTimeout(t);
+    }
     if (fadeTimerRef.current) { clearTimeout(fadeTimerRef.current); fadeTimerRef.current = null; }
+    const immediate = empty || !builtRef.current || staleRef.current;
     // Generation runs in the timer (not the effect body), so a burst of edits
     // builds one PDF, and state is only set from that callback.
     const timer = window.setTimeout(() => {
+      builtRef.current = true;
       if (empty) {
+        staleRef.current = false;
+        setStale(false);
         revoke(slotARef.current.url);
         revoke(slotBRef.current.url);
         setSlotA(emptySlot());
@@ -109,9 +140,9 @@ export function PdfPreview({ generate, focus, loader, empty = false, emptyLabel 
       const back = frontRef.current === 'A' ? 'B' : 'A';
       revoke(getSlot(back).url);
       setSlot(back, { url, ready: false });
-    }, empty ? 0 : DEBOUNCE_MS);
+    }, immediate ? 0 : DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
-  }, [generate, empty]);
+  }, [generate, empty, ready]);
 
   useEffect(() => () => {
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
@@ -119,17 +150,26 @@ export function PdfPreview({ generate, focus, loader, empty = false, emptyLabel 
     revoke(slotBRef.current.url);
   }, []);
 
+  const clearStale = () => {
+    if (!staleRef.current) return;
+    staleRef.current = false;
+    setStale(false);
+  };
+
   const finishCrossfade = (back) => {
     const oldFront = back === 'A' ? 'B' : 'A';
     revoke(getSlot(oldFront).url);
     setSlot(oldFront, emptySlot());
     setFront(back);
     setCrossfading(false);
+    clearStale();
   };
 
   const handleSlotLoad = (key) => {
     setSlot(key, { ...getSlot(key), ready: true });
-    if (key === frontRef.current) return;
+    // The version built after waiting is showing: the loader can go. A
+    // first version shows on load; a later one once it has crossfaded in.
+    if (key === frontRef.current) { clearStale(); return; }
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);
     fadeTimerRef.current = window.setTimeout(() => {
       setCrossfading(true);
@@ -164,13 +204,17 @@ export function PdfPreview({ generate, focus, loader, empty = false, emptyLabel 
 
   const hasPreview = slotA.url || slotB.url;
   const frontSlot = front === 'A' ? slotA : slotB;
+  // Waiting counts as not empty: a filter change briefly has no widgets.
+  // Before the first build, waiting shows the loader at once; after it,
+  // only once `stale` is set (the wait has lasted LOADER_DELAY_MS).
+  const waiting = stale || (!ready && !hasPreview);
 
-  if (!hasPreview && !empty && loader) return loader;
+  if (!hasPreview && (waiting || !empty) && loader) return loader;
   if (!hasPreview) {
     return (
       <div className={styles.empty}>
-        <Icon name="custom:pdf-file" size={32} color="var(--neutral-200)" />
-        <span>{empty ? emptyLabel : 'Generating preview…'}</span>
+        {/* The app's ringed empty state (as in an empty chart), with the PDF icon. */}
+        <RingEmptyState icon="custom:pdf-file" iconSize={31} label={empty ? emptyLabel : 'Generating preview…'} />
       </div>
     );
   }
@@ -179,7 +223,7 @@ export function PdfPreview({ generate, focus, loader, empty = false, emptyLabel 
     <div className={styles.stack}>
       {renderSlot('A')}
       {renderSlot('B')}
-      {!frontSlot.ready && !crossfading && (
+      {((!frontSlot.ready && !crossfading) || (waiting && loader)) && (
         loader
           ? <div className={styles.loaderLayer}>{loader}</div>
           : (

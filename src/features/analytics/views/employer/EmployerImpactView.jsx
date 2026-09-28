@@ -5,9 +5,8 @@ import { SubTabs } from '../../../../components/SubTabs/SubTabs';
 import { Button } from '../../../../components/Button/Button';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { FilterChip } from '../../../../components/FilterChip/FilterChip';
-import { DateRangePopover } from '../../../../components/DateRangePopover/DateRangePopover';
+import { MonthPickerPopover } from '../../../../components/MonthPickerPopover/MonthPickerPopover';
 import { Select } from '../../../../components/Select/Select';
-import { CheckboxListPopover } from '../../../../components/CheckboxListPopover/CheckboxListPopover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../../../components/ShadcnDialog/ShadcnDialog';
 import { ChartSkeleton, KpiSkeleton } from '../shared';
 import { ChartContainer } from '../../../../components/ChartContainer/ChartContainer';
@@ -17,7 +16,7 @@ import {
   SECTIONS, WIDGETS, SAVINGS_CATEGORIES, SAVINGS_METRIC, TIME_FRAMES, SCOPE_OPTIONS,
 } from './employerImpactConfig';
 import {
-  monthsBetween, addMonths, rangeLabel, toMonthKey, indexRows,
+  monthsBetween, rangeLabel, frameRange, rangeFromStart, toMonthKey, indexRows,
   buildSeriesData, buildStats, buildSavings, buildSavingsSummary, buildDuration, buildSatisfaction, surveyForms, toCsv,
 } from './employerImpactData';
 import { VIEW_TITLES } from '../../analyticsData';
@@ -27,7 +26,6 @@ import { UpdateDashboardDrawer } from './UpdateDashboardDrawer';
 import { PrintReportDrawer } from './PrintReportDrawer';
 import styles from './EmployerImpactView.module.css';
 
-const DEFAULT_SPAN_MONTHS = 7;
 // Every chart card is this tall so rows of cards line up.
 const CHART_CARD_HEIGHT = 330;
 const WIDGET_MENU = [
@@ -46,10 +44,6 @@ function downloadCsv(filename, csv) {
   URL.revokeObjectURL(url);
 }
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-const lastDayOf = (monthKey) => {
-  const [y, m] = monthKey.split('-').map(Number);
-  return `${monthKey}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
-};
 
 // ── Per-widget view model ────────────────────────────────────────────────
 
@@ -330,8 +324,12 @@ export function EmployerImpactView({ snapshot = null } = {}) {
   // All Locations has no location filter, so a location picked on By
   // Location never narrows it.
   const location = scope === 'visit' ? pickedLocation : null;
-  const [timeFrame, setTimeFrame] = useState(saved?.timeFrame || 'Month');
-  const [range, setRange] = useState(saved?.range ?? null); // { from, to } as 'YYYY-MM'
+  // Time Frame sets the range's length (a Month, a calendar Quarter, or a
+  // Year of 12 months); the Date Range picks its start month, and the end
+  // follows. Until one is picked, the range ends this month. Charts always
+  // show months within it.
+  const [timeFrame, setTimeFrame] = useState(saved?.timeFrame || 'Quarter');
+  const [pickedStart, setPickedStart] = useState(saved?.range?.from ?? null); // 'YYYY-MM'
   const [rows, setRows] = useState(null);
   // One saved layout per location view; `dashboard` is the one on screen.
   const [layouts, setLayouts] = useState(() => (saved?.layouts ? normalizeLayouts(saved.layouts) : readLayouts()));
@@ -346,20 +344,13 @@ export function EmployerImpactView({ snapshot = null } = {}) {
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [forms, setForms] = useState({});
   const [dialog, setDialog] = useState(null); // { key, mode: 'expand' | 'table' }
-  const [widgetMenuRect, setWidgetMenuRect] = useState(null);
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
-  const widgetBtnRef = useRef(null);
   const sectionRefs = useRef({});
 
   useEffect(() => { fetchFilters(); }, [fetchFilters]);
 
-  // Default range: the last seven months that have data.
-  const lastMonth = filterOptions?.lastMonth || toMonthKey(new Date());
-  const firstMonth = filterOptions?.firstMonth || addMonths(lastMonth, -11);
-  const effectiveRange = range || {
-    from: [addMonths(lastMonth, -(DEFAULT_SPAN_MONTHS - 1)), firstMonth].sort().pop(),
-    to: lastMonth,
-  };
+  const thisMonth = toMonthKey(new Date());
+  const effectiveRange = pickedStart ? rangeFromStart(timeFrame, pickedStart) : frameRange(timeFrame, thisMonth);
 
   const employers = filterOptions?.employers || [];
   const employerName = pickedEmployer === undefined ? (employers[0]?.name ?? null) : pickedEmployer;
@@ -382,7 +373,8 @@ export function EmployerImpactView({ snapshot = null } = {}) {
   const loading = rows?.key !== requestKey;
   const idx = useMemo(() => indexRows(loading ? [] : rows.rows), [rows, loading]);
   const months = useMemo(() => monthsBetween(effectiveRange.from, effectiveRange.to), [effectiveRange.from, effectiveRange.to]);
-  const ctx = useMemo(() => ({ months, timeFrame }), [months, timeFrame]);
+  // Charts always show months; Time Frame only sets how long the range is.
+  const ctx = useMemo(() => ({ months, timeFrame: 'Month' }), [months]);
   const rangeText = rangeLabel(effectiveRange.from, effectiveRange.to);
 
   const models = useMemo(() => {
@@ -425,12 +417,6 @@ export function EmployerImpactView({ snapshot = null } = {}) {
   });
   const csvName = (title) => `${slug(title)}-${effectiveRange.from}-to-${effectiveRange.to}.csv`;
 
-  // The picker lists only the widgets this location view has.
-  const titleOf = {
-    ...Object.fromEntries(WIDGETS.map(w => [w.key, w.title])),
-    ...Object.fromEntries(SAVINGS_CATEGORIES.map(c => [savingsKey(c.key), c.title])),
-  };
-  const widgetTitles = dashboard.sections.flatMap(id => dashboard.widgets[id]).map(key => ({ key, title: titleOf[key] }));
 
   const renderWidget = (w, style) => {
     const model = models[w.key];
@@ -513,28 +499,38 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         disabled={readOnly}
       />
       )}
-      {/* Always shows the range the charts use: the default span reads as a
-          fixed value (no ✕); a picked range can be cleared back to it.
-          The report counts whole months, so a picked range widens to the
-          months it touches. */}
+      {/* The range's length; always set (Quarter by default), so no clear. */}
+      <FilterChip
+        label="Time Frame"
+        options={TIME_FRAMES}
+        selected={[timeFrame]}
+        // A new frame starts from its default range, ending this month
+        // (Sep 2026 for Month), rather than carrying over a picked start.
+        onChange={(next) => { setTimeFrame(next[0] || 'Quarter'); setPickedStart(null); }}
+        singleSelect
+        noClear
+        disabled={readOnly}
+      />
+      {/* Which period the report covers: pick its start month, and the end
+          follows from the Time Frame (Jan → Dec for a Year). By default, and
+          whenever the Time Frame changes, it ends this month; a picked start
+          can be cleared back to that. */}
       <FilterChip
         label="Date Range"
         active={filtersLoaded}
         activeSummary={rangeText}
-        noClear={!range}
+        noClear={!pickedStart}
         disabled={readOnly}
-        onClear={() => setRange(null)}
+        onClear={() => setPickedStart(null)}
         renderPopover={({ anchorRect, onClose }) => (
-          <DateRangePopover
+          <MonthPickerPopover
             anchorRect={anchorRect}
             label="Date Range"
-            selected={[`${effectiveRange.from}-01`, lastDayOf(effectiveRange.to)]}
-            onChange={(vals) => {
-              if (vals.length !== 2) { setRange(null); return; }
-              const clamp = (m) => [firstMonth, [m, lastMonth].sort()[0]].sort()[1];
-              const [a, b] = [toMonthKey(vals[0]), toMonthKey(vals[1])].sort();
-              setRange({ from: clamp(a), to: clamp(b) });
-            }}
+            value={effectiveRange}
+            rangeFor={(start) => rangeFromStart(timeFrame, start)}
+            // A range can't run past this month, except the current quarter.
+            max={timeFrame === 'Quarter' ? frameRange('Quarter', thisMonth).to : thisMonth}
+            onChange={setPickedStart}
             onClose={onClose}
           />
         )}
@@ -549,17 +545,6 @@ export function EmployerImpactView({ snapshot = null } = {}) {
           singleSelect
           disabled={readOnly}
         />
-      )}
-      {/* Month is the default grouping, so the chip reads idle until another is picked. */}
-      {showChip(timeFrame !== 'Month') && (
-      <FilterChip
-        label="Time Frame"
-        options={TIME_FRAMES}
-        selected={timeFrame === 'Month' ? [] : [timeFrame]}
-        onChange={(next) => setTimeFrame(next[0] || 'Month')}
-        singleSelect
-        disabled={readOnly}
-      />
       )}
     </>
   );
@@ -579,22 +564,13 @@ export function EmployerImpactView({ snapshot = null } = {}) {
             />
           )}
         </div>
-        {/* Figma 1530:41988: Widget, then Print and Settings, split by hairlines. */}
+        {/* Export, then Settings, split by a hairline. */}
         {!readOnly && (
         <div className={styles.headerActions}>
-          <span ref={widgetBtnRef}>
-            <Button
-              variant="tertiary"
-              size="L"
-              leadingIcon="solar:widget-add-linear"
-              onClick={() => setWidgetMenuRect(widgetBtnRef.current?.getBoundingClientRect() || null)}
-            >
-              Widget
-            </Button>
-          </span>
-          <span className={styles.actionDivider} aria-hidden="true" />
           {/* Tooltips open below: above, the page's top bar clips them. */}
-          <ActionButton icon="solar:printer-minimalistic-linear" tooltip="Print" tooltipBelow aria-label="Print report" onClick={() => setPrintOpen(true)} />
+          <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={() => setPrintOpen(true)}>
+            Export
+          </Button>
           <span className={styles.actionDivider} aria-hidden="true" />
           <ActionButton
             icon="solar:settings-minimalistic-linear"
@@ -670,6 +646,7 @@ export function EmployerImpactView({ snapshot = null } = {}) {
 
       {printOpen && (
         <PrintReportDrawer
+          loading={loading}
           pageSnapshot={() => ({
             state: { scope, employerName, location, timeFrame, range: effectiveRange, layouts },
             filters: filterOptions,
@@ -706,23 +683,6 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         />
       )}
 
-      {/* Widget picker */}
-      {widgetMenuRect && (
-        <CheckboxListPopover
-          anchorRect={widgetMenuRect}
-          label="Widgets"
-          options={widgetTitles.map(w => w.title)}
-          selected={widgetTitles.filter(w => !hiddenWidgets.has(w.key)).map(w => w.title)}
-          onChange={(shownTitles) => {
-            const shown = new Set(shownTitles);
-            setHidden(new Set(widgetTitles.filter(w => !shown.has(w.title)).map(w => w.key)));
-          }}
-          onClose={() => setWidgetMenuRect(null)}
-          width={300}
-          searchable
-          showClear={false}
-        />
-      )}
 
       {/* Expand / table */}
       <Dialog open={!!dialogWidget} onOpenChange={(open) => { if (!open) setDialog(null); }}>

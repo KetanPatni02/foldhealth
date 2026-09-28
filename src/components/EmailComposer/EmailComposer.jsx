@@ -4,6 +4,7 @@ import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { UnityIcon } from '../UnityIcon/UnityIcon';
 import { Avatar } from '../Avatar/Avatar';
+import { AttachmentCard } from '../AttachmentCard/AttachmentCard';
 import styles from './EmailComposer.module.css';
 
 const DEFAULT_NOTICE = 'Do not send PHI via email or text without verifying and obtaining consent.';
@@ -25,8 +26,10 @@ const DEFAULT_NOTICE = 'Do not send PHI via email or text without verifying and 
  * @param {boolean}  [props.generating]      – disables Generate while a draft is on its way
  * @param {{ name: string, lines?: string[], details?: Array<{ label: string, value: string }> }} [props.signature]
  * @param {Array<{ key: string, icon: string, tooltip: string, onClick: function }>} [props.toolbarActions]
- * @param {Array<{ key: string, name: string, meta?: string, onRemove?: function }>} [props.attachments]
- *                                            – shown as chips inside the message box
+ * @param {Array<{ key: string, name: string, size?: number, meta?: string, onRemove?: function, onPreview?: function, onDownload?: function }>} [props.attachments]
+ *                                            – shown inside the message box
+ * @param {'chip'|'card'} [props.attachmentVariant='chip'] – compact chips, or mail-client
+ *                                            cards (AttachmentCard: icon, name, size, ▾ menu)
  * @param {Array<{ key: string, name: string, initials?: string, role?: string }>} [props.cc]
  *                                            – read-only CC tags (e.g. the member the email is about)
  * @param {string}   [props.footerNote]      – helper text under the message box
@@ -46,6 +49,7 @@ export function EmailComposer({
   signature,
   toolbarActions = [],
   attachments = [],
+  attachmentVariant = 'chip',
   cc = [],
   footerNote,
   footerNoteError = false,
@@ -123,7 +127,16 @@ export function EmailComposer({
                 </div>
               )}
             </div>
-            {attachments.length > 0 && (
+            {attachments.length > 0 && attachmentVariant === 'card' && (
+              <ul className={styles.attachmentCards} aria-label="Attachments">
+                {attachments.map(a => (
+                  <li key={a.key}>
+                    <AttachmentCard name={a.name} size={a.size} meta={a.meta} onPreview={a.onPreview} onDownload={a.onDownload} onRemove={a.onRemove} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {attachments.length > 0 && attachmentVariant !== 'card' && (
               <ul className={styles.attachments} aria-label="Attachments">
                 {attachments.map(a => (
                   <li key={a.key} className={styles.attachment}>
