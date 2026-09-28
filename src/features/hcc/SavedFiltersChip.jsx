@@ -5,7 +5,7 @@ import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { Button } from '../../components/Button/Button';
 import { useAppStore } from '../../store/useAppStore';
 import { FilterNameDialog } from './FilterNameDialog';
-import styles from './DueDateChip.module.css';
+import styles from './SavedFiltersChip.module.css';
 
 /**
  * Top-bar "Saved Filters" dropdown (Paper 21UY). Sole surface for managing

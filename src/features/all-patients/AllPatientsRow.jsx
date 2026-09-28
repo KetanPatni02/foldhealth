@@ -12,7 +12,7 @@ import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { PatientAppActiveIndicator } from '../../components/PatientAppActiveIndicator/PatientAppActiveIndicator';
-import rowStyles from '../toc-worklist/WorklistRow.module.css';
+import rowStyles from '../toc/worklist/WorklistRow.module.css';
 import styles from './AllPatientsRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };

@@ -83,7 +83,7 @@
 .foldId:hover { color: var(--primary-300); text-decoration: underline; }
 
 /* Language badge — inline plain-text link inside .patientMeta, matches
-   src/features/toc-worklist (WorklistRow.module.css). Tooltip renders
+   src/features/toc/worklist (WorklistRow.module.css). Tooltip renders
    above the trigger so it doesn't get clipped by table chrome below. */
 .langBadge {
   position: relative;
@@ -222,7 +222,7 @@
 
 /* Gap status */
 
-/* Outreach cell — lifted from src/features/toc-worklist/WorklistRow.module.css */
+/* Outreach cell — lifted from src/features/toc/worklist/WorklistRow.module.css */
 .outreachWl { display: flex; flex-direction: column; gap: 4px; }
 .outreachWlMain { display: flex; align-items: center; gap: 6px; }
 .outreachWlText { font-size: var(--font-md); color: var(--neutral-400); }

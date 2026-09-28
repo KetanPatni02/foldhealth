@@ -7,7 +7,7 @@ import { Button } from '../../components/Button/Button';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { SortPopover } from '../../components/SortPopover/SortPopover';
-import { DUE_OPTIONS } from './DueDateChip.utils';
+import { DUE_OPTIONS } from './dueDateFilter';
 import { SavedFiltersChip } from './SavedFiltersChip';
 import { FilterChipBar } from './FilterChipBar';
 import { FilterNameDialog } from './FilterNameDialog';

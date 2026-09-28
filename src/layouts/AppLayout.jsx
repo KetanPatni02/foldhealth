@@ -8,9 +8,9 @@ import { Pagination } from '../components/Pagination/Pagination';
 import { ActiveCallCard } from '../components/ActiveCallCard/ActiveCallCard';
 import { InvokeAgentModal } from '../components/InvokeAgentModal/InvokeAgentModal';
 import { DegradedBanner } from '../components/DegradedBanner/DegradedBanner';
-import { WorklistTable } from '../features/toc-worklist/WorklistTable';
-import { QueueTable } from '../features/toc-queue/QueueTable';
-import { QueueSummaryBar } from '../features/toc-queue/QueueSummaryBar';
+import { WorklistTable } from '../features/toc/worklist/WorklistTable';
+import { QueueTable } from '../features/toc/queue/QueueTable';
+import { QueueSummaryBar } from '../features/toc/queue/QueueSummaryBar';
 import { TocWorklistTable } from '../features/toc/TocWorklistTable';
 import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
@@ -73,8 +73,8 @@ const HccAddDosDrawer      = lz(() => import('../features/hcc/HccAddDosDrawer'),
 const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer'), 'EditPatientDrawer');
-const AssessmentDrawer     = lz(() => import('../features/toc-queue/AssessmentDrawer'),                    'AssessmentDrawer');
-const OutreachStatusDrawer = lz(() => import('../features/toc-queue/OutreachStatusDrawer'),                'OutreachStatusDrawer');
+const AssessmentDrawer     = lz(() => import('../features/toc/queue/AssessmentDrawer'),                    'AssessmentDrawer');
+const OutreachStatusDrawer = lz(() => import('../features/toc/queue/OutreachStatusDrawer'),                'OutreachStatusDrawer');
 const AiTasksDrawer        = lz(() => import('../features/toc/AiTasksDrawer'),                             'AiTasksDrawer');
 
 // Placeholder while a lazy chunk is in flight. Empty div keeps layout stable.

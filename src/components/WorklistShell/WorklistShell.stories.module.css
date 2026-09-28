@@ -1,5 +1,5 @@
 /* Story-only styles for the sample row rendered in WorklistShell.stories.
-   The row mirrors src/features/toc-worklist/WorklistRow's visual language
+   The row mirrors src/features/toc/worklist/WorklistRow's visual language
    (sticky-left checkbox + Members col, sticky-right Actions col, primary-25
    hover) so the story doubles as a copy-paste starting point. */
 

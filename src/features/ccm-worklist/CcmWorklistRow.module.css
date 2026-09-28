@@ -1,4 +1,4 @@
-/* Mirrors src/features/toc-worklist/WorklistRow.module.css so all shared
+/* Mirrors src/features/toc/worklist/WorklistRow.module.css so all shared
    worklists (TOC + CCM + future ones) share the same visual language.
    Sticky-left checkbox + Members column, sticky-right Actions column,
    row hover in primary-25. */
