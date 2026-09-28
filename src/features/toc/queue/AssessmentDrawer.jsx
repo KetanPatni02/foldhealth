@@ -1,16 +1,16 @@
 import { useMemo } from 'react';
-import { Drawer } from '../../components/Drawer/Drawer';
-import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Button } from '../../components/Button/Button';
-import { useAppStore } from '../../store/useAppStore';
-import { AssessmentFormView } from '../patient/right-panel/tabs/care-programs/program-detail/steps/AssessmentFormView/AssessmentFormView';
+import { Drawer } from '../../../components/Drawer/Drawer';
+import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { Button } from '../../../components/Button/Button';
+import { useAppStore } from '../../../store/useAppStore';
+import { AssessmentFormView } from '../../patient/right-panel/tabs/care-programs/program-detail/steps/AssessmentFormView/AssessmentFormView';
 import {
   POST_IP_FORM_NAME,
   POST_IP_FORM_TITLE,
   POST_IP_PREFILLED_ANSWERS,
   buildPostIpForm,
-} from '../forms/postIpAssessment';
+} from '../../forms/postIpAssessment';
 import styles from './AssessmentDrawer.module.css';
 
 /**

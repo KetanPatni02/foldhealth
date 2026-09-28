@@ -114,7 +114,7 @@ export const REPORT_HEADER_COMPONENT = {
 // ── Report footer ──
 export const REPORT_FOOTER_SLUG = 'report-print-footer';
 
-export const REPORT_FOOTER_NOTE = 'Strictly Confidential - Prepared for internal Fold use';
+export const REPORT_FOOTER_NOTE = 'Strictly Confidential - Prepared for internal use';
 
 /**
  * The report print footer: a Neutral 50 band with the confidentiality note

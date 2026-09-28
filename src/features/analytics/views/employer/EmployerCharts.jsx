@@ -100,20 +100,48 @@ function textWidth(str) {
 // the whole axis drops the year ("Feb") rather than letting labels overlap.
 const MONTH_LABEL = /^([A-Z][a-z]{2}) \d{2}$/;
 const TICK_GAP = 6;
+// Line height of a wrapped tick label, in ems.
+const TICK_LINE = 1.2;
+
+const isMonthly = (labels) => labels.length > 0 && labels.every(l => MONTH_LABEL.test(String(l)));
+// Category labels of more than one word can take a second line.
+const canWrap = (labels) => !isMonthly(labels) && labels.some(l => /\s/.test(String(l).trim()));
+
 /**
- * A category-axis tick that fits its slot. The decision is per axis, from
- * the widest label, so every tick reads the same way.
+ * `value` in at most two lines no wider than `maxW`, broken between words:
+ * as many words as fit go on the first line, the rest on the second.
+ */
+function wrapLabel(value, maxW) {
+  const words = value.split(/\s+/).filter(Boolean);
+  if (words.length < 2 || textWidth(value) <= maxW) return [value];
+  let first = words[0];
+  let i = 1;
+  while (i < words.length - 1 && textWidth(`${first} ${words[i]}`) <= maxW) first = `${first} ${words[i++]}`;
+  return [first, words.slice(i).join(' ')];
+}
+
+/**
+ * A category-axis tick that fits its slot. Month labels ("Feb 26") drop
+ * the year across the whole axis when the widest won't fit; other labels
+ * that don't fit wrap onto a second line between words (xAxisLayout keeps
+ * room for it), so neighbouring labels never run into each other.
  */
 function fitTick(labels) {
-  const monthly = labels.length > 0 && labels.every(l => MONTH_LABEL.test(String(l)));
+  const monthly = isMonthly(labels);
   const widest = monthly ? Math.max(...labels.map(textWidth)) : 0;
   return function FitTick({ x, y, payload, width, visibleTicksCount }) {
     const slot = width / Math.max(1, visibleTicksCount);
     const value = String(payload.value);
-    const text = monthly && widest + TICK_GAP > slot ? value.replace(MONTH_LABEL, '$1') : value;
+    const lines = monthly
+      ? [widest + TICK_GAP > slot ? value.replace(MONTH_LABEL, '$1') : value]
+      : wrapLabel(value, slot - TICK_GAP);
     return (
-      <text x={x} y={y} dy="0.71em" textAnchor="middle" fill={AXIS_TICK.fill} fontSize={AXIS_TICK.fontSize}>
-        {text}
+      <text x={x} y={y} textAnchor="middle" fill={AXIS_TICK.fill} fontSize={AXIS_TICK.fontSize}>
+        {/* The offsets live on the lines: a line's own dy would override the
+            text's, pulling the first line up onto the axis. */}
+        {lines.map((line, i) => (
+          <tspan key={line} x={x} dy={i ? `${TICK_LINE}em` : '0.71em'}>{line}</tspan>
+        ))}
       </text>
     );
   };
@@ -155,12 +183,15 @@ function yAxisLayout(labels, title, maxLabelWidth = Infinity) {
   };
 }
 
-/** Props for a bottom axis; `angled` for the rotated hour ticks. */
+/**
+ * Props for a bottom axis; `angled` for the rotated hour ticks. Multi-word
+ * category labels get room for a second line, in case they wrap.
+ */
 function xAxisLayout(labels, title, angled = false) {
   const size = fontPx();
   const tickHeight = angled
     ? Math.max(0, ...labels.map(textWidth)) * Math.sin(Math.PI / 3) + size * 0.5
-    : size;
+    : size * (canWrap(labels) ? 1 + TICK_LINE : 1);
   return {
     height: Math.ceil(TICK_MARGIN + tickHeight + (title ? LABEL_GAP + size * 1.2 : 4)),
     tickSize: 0,
@@ -385,13 +416,13 @@ export function Donut({ data, seriesKey, height = '100%' }) {
 }
 
 /**
- * Cost Savings Comparison: one bar for the traditional cost, one for ours
- * stacked as membership + service, on a shared axis.
+ * Cost Savings Comparison: one bar for the traditional cost and one for
+ * ours, each in its own colour (the legend beside it uses the same two).
  */
 export function CostComparisonBars({ summary, height = '100%' }) {
   const data = [
     { x: 'Traditional Cost', traditional: summary.traditional },
-    { x: 'Our Cost', membership: summary.membership, service: summary.service },
+    { x: 'Our Cost', ours: summary.ours },
   ];
   const ticks = niceTicks(Math.max(summary.traditional, summary.ours));
   const tickFmt = compactTick('currency');
@@ -400,7 +431,7 @@ export function CostComparisonBars({ summary, height = '100%' }) {
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={data} margin={{ top: 8, right: 0, bottom: 0, left: 0 }} barCategoryGap="30%">
         <CartesianGrid {...GRID} vertical={false} />
-        <XAxis dataKey="x" tick={AXIS_TICK} interval={0} tickLine={false} axisLine={{ stroke: 'var(--neutral-150)' }} {...xAxisLayout(data.map(r => r.x))} />
+        <XAxis dataKey="x" tick={fitTick(data.map(r => r.x))} interval={0} tickLine={false} axisLine={{ stroke: 'var(--neutral-150)' }} {...xAxisLayout(data.map(r => r.x))} />
         <YAxis
           tick={AXIS_TICK}
           tickLine={false}
@@ -411,9 +442,9 @@ export function CostComparisonBars({ summary, height = '100%' }) {
           {...yAxisLayout(ticks.map(tickFmt))}
         />
         <Tooltip content={<ImpactTooltip format="currency" />} cursor={{ fill: 'var(--neutral-50)' }} />
+        {/* Same stack so each bar sits centred in its own slot. */}
         <Bar {...bar} dataKey="traditional" name="Traditional Cost" fill={seriesColor(0)} strokeWidth={0} radius={[4, 4, 0, 0]} />
-        <Bar {...bar} dataKey="membership" name="Membership Cost" fill={seriesColor(0)} strokeWidth={2} />
-        <Bar {...bar} dataKey="service" name="Service Cost" fill={seriesColor(1)} strokeWidth={2} radius={[4, 4, 0, 0]} />
+        <Bar {...bar} dataKey="ours" name="Our Cost" fill={seriesColor(1)} strokeWidth={0} radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );

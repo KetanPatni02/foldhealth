@@ -38,6 +38,22 @@ import { EMPLOYER_LOGOS, EMPLOYER_LOGO_HEIGHT, LOGO_ROOM, employerLogoUrl, logoF
 import { SortableItem, SortableList } from './SortableParts';
 import styles from './PrintReportDrawer.module.css';
 
+// Section notes are a per-viewer draft, kept in this browser like the
+// dashboard layout, so they survive closing the drawer (and a reload) until
+// edited or removed.
+const NOTES_KEY = 'employer-impact-print-notes';
+function readNotes() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '{}');
+    return saved && typeof saved === 'object' ? saved : {};
+  } catch {
+    return {};
+  }
+}
+function writeNotes(notes) {
+  try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch { /* storage unavailable */ }
+}
+
 const SECTION_TITLE_MAX = 100;
 const EDITOR_TABS = [
   { key: 'widgets', label: 'Widgets' },
@@ -385,7 +401,13 @@ function printBlob(blob) {
  * @param {function} props.onClose
  */
 export function PrintReportDrawer({ range, employerName, filename, sections, filters, pageSnapshot, onClose }) {
-  const [notes, setNotes] = useState({}); // { [sectionId]: { html, plain } }
+  // { [sectionId]: { html, plain } }, kept between openings of the drawer.
+  const [notes, setNotesState] = useState(readNotes);
+  const setNotes = (update) => setNotesState((prev) => {
+    const next = typeof update === 'function' ? update(prev) : update;
+    writeNotes(next);
+    return next;
+  });
   const [titles, setTitles] = useState({}); // { [sectionId]: custom title }
   // { [sectionId]: text }. Unset means the section's default subtitle; '' clears it.
   const [subtitles, setSubtitles] = useState({});
@@ -471,7 +493,8 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     return () => { live = false; };
   }, []);
   // Sections whose note box is open; each starts as an "Add Note" link.
-  const [noteOpen, setNoteOpen] = useState(() => new Set());
+  // A saved note opens with its box showing; the rest start as "Add Note".
+  const [noteOpen, setNoteOpen] = useState(() => new Set(Object.keys(notes)));
   const openNote = (id) => setNoteOpen(prev => new Set(prev).add(id));
   // Clears the note and folds the box back into the "Add Note" link.
   const removeNote = (id) => {
@@ -773,6 +796,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                     placeholder="Add a note for this section (optional)"
                     aria-label={`Note for ${sectionTitle}`}
                     rows={2}
+                    className={styles.noteField}
                     bottomButton={{ label: 'Remove Note', variant: 'secondary', onClick: () => removeNote(section.id) }}
                   />
                 ) : (

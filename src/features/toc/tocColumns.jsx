@@ -2,7 +2,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { BotIcon } from '../../components/Icon/BotIcon';
 import { Badge } from '../../components/Badge/Badge';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
-import rowStyles from '../toc-worklist/WorklistRow.module.css';
+import rowStyles from './worklist/WorklistRow.module.css';
 import styles from './tocColumns.module.css';
 import { hasAgentConnected, outreachStatusLabel, resolveAiTaskCount } from './tocOutcome';
 import { AiOutcomeCell } from './tocColumnCells/AiOutcomeCell';

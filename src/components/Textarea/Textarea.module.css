@@ -139,6 +139,9 @@
   padding: var(--space-2);
   flex: 1 1 auto;
   min-height: 0;
+  /* When the card is capped (a max-height from the caller), long text
+     scrolls here instead of running under the toolbar. */
+  overflow-y: auto;
 }
 .enhTextarea {
   width: 100%;
@@ -183,6 +186,9 @@
 .enhEditor ul { list-style: disc; padding-left: var(--space-5); margin: var(--space-1) 0; }
 .enhEditor ol { list-style: decimal; padding-left: var(--space-5); margin: var(--space-1) 0; }
 .enhEditor li { margin: 0; }
+/* A blank item (an empty line between items) is space, not a bullet or a
+   number; see numberListItems. */
+.enhEditor li[data-blank] { list-style: none; }
 .enhEditor[data-empty='true']::before {
   content: attr(data-placeholder);
   color: var(--neutral-200);
@@ -210,6 +216,9 @@
   border-top: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
   flex-shrink: 0;
+  /* Above the (positioned) body, so text can never paint over the toolbar. */
+  position: relative;
+  z-index: 1;
 }
 .enhToolbar {
   display: inline-flex;

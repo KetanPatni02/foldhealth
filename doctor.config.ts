@@ -68,7 +68,6 @@ export default {
       {
         files: [
           'api/**',
-          'netlify/functions/**',
           'supabase/functions/**',
         ],
         // Note the `deslop/` prefix — dead-code analysis comes from deslop-js,

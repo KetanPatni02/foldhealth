@@ -39,7 +39,7 @@ jobs:
         with:
           # Keep in step with `packageManager` in package.json and the other
           # workflows.
-          bun-version: 1.4.0
+          bun-version: 1.4.2
 
       - name: Sync CVX from the CDC
         run: node scripts/sync-cvx.mjs

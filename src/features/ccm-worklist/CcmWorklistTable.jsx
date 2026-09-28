@@ -399,7 +399,7 @@ export function CcmWorklistTable() {
       )}
 
       {/* Table body. Uses the same inline th styles + sticky columns as
-          src/features/toc-worklist/WorklistTable.jsx. */}
+          src/features/toc/worklist/WorklistTable.jsx. */}
       <div className={styles.tableScroll}>
         {loading && members.length === 0 ? (
           <TableSkeleton rows={perPage} columns={colCount} />

@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { Drawer } from '../../components/Drawer/Drawer';
-import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
-import { useAppStore } from '../../store/useAppStore';
-import { OutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
-import { hasTocOutreachActivity } from '../toc/tocOutcome';
+import { Drawer } from '../../../components/Drawer/Drawer';
+import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
+import { useAppStore } from '../../../store/useAppStore';
+import { OutreachTab } from '../../patient/left-panel/tabs/outreach/OutreachTab/OutreachTab';
+import { hasTocOutreachActivity } from '../tocOutcome';
 import styles from './OutreachStatusDrawer.module.css';
 
 /**

@@ -13545,7 +13545,9 @@ export const useAppStore = create((set, get) => ({
     const { data, error } = await query.select('*').single();
     if (error) {
       const msg = String(error.message || '');
-      s.showToast(msg.includes('is_default') || msg.includes('does not exist') || msg.includes('schema cache')
+      // A missing column, or the role check still limited to header / footer,
+      // both mean the components migration hasn't run.
+      s.showToast(msg.includes('is_default') || msg.includes('role_check') || msg.includes('does not exist') || msg.includes('schema cache')
         ? 'Run the email_components migration to save components'
         : `Save failed: ${msg}`);
       console.error('saveComponent error:', error);

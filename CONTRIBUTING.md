@@ -6,6 +6,19 @@ This repo uses **Bun** — never `npm` or `pnpm`. Use `bun install` and
 `bun run <script>`. `bun.lock` is the source of truth; do not commit
 `package-lock.json` or `pnpm-lock.yaml`.
 
+**Bun version** is pinned in four places. Bump them together:
+
+- `package.json` → `packageManager`
+- `.github/workflows/{design-system,no-undef,cvx-sync}.yml` → `bun-version`
+- `vercel.json` → `installCommand` / `buildCommand` (`bunx bun@<version> …`)
+
+Vercel has no setting for the Bun version used by installs and builds
+(`bunVersion` only switches the Functions *runtime*, and `packageManager`
+pinning goes through Corepack, which covers pnpm/Yarn only), so it would
+otherwise use whatever Bun its build image ships. Running the pinned Bun via
+`bunx` fixes that; Bun re-exposes itself as `bun` to nested `package.json`
+scripts, so the whole build tree runs on the pinned version.
+
 ## Design system
 
 All UI must follow the Fold Health design system. These rules are enforced

@@ -1,5 +1,7 @@
 {
   "framework": "vite",
+  "installCommand": "bunx bun@1.4.2 install",
+  "buildCommand": "bunx bun@1.4.2 run build",
   "redirects": [
     {
       "source": "/docs/",

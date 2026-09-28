@@ -1,5 +1,5 @@
-import { Icon } from '../../components/Icon/Icon';
-import { useAppStore } from '../../store/useAppStore';
+import { Icon } from '../../../components/Icon/Icon';
+import { useAppStore } from '../../../store/useAppStore';
 
 export function QueueEmptyState() {
   const setActiveTab = useAppStore(s => s.setActiveTab);

@@ -13,6 +13,7 @@ import {
 } from './mentions';
 import styles from './Textarea.module.css';
 import { sanitizeRichText } from '../../lib/sanitizeHtml';
+import { exitEmptyListItem, applyListShortcut, numberListItems, nestListItem, outdentListItem, unlistItem, textToListHtml } from './richTextLists';
 
 /**
  * Fold Health Textarea (Figma Fold-Pixel 5786:1273 / 25:78337).
@@ -176,15 +177,25 @@ const BulletListIcon = ({ size = 16, color = 'currentColor' }) => (
   </svg>
 );
 
+// Numbered-list glyph (design-supplied): 1 / 2 / 3 beside three lines, an
+// outlined 1px shape like the other toolbar icons. Tints with currentColor.
+const NumberedListIcon = ({ size = 16, color = 'currentColor' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path fill={color} d="M9.3 11.5C9.02386 11.5 8.8 11.7239 8.8 12C8.8 12.2761 9.02386 12.5 9.3 12.5V11.5ZM21 12.5C21.2761 12.5 21.5 12.2761 21.5 12C21.5 11.7239 21.2761 11.5 21 11.5V12.5ZM9.3 5.5C9.02386 5.5 8.8 5.72386 8.8 6C8.8 6.27614 9.02386 6.5 9.3 6.5V5.5ZM21 6.5C21.2761 6.5 21.5 6.27614 21.5 6C21.5 5.72386 21.2761 5.5 21 5.5V6.5ZM9.3 17.5C9.02386 17.5 8.8 17.7239 8.8 18C8.8 18.2761 9.02386 18.5 9.3 18.5V17.5ZM21 18.5C21.2761 18.5 21.5 18.2761 21.5 18C21.5 17.7239 21.2761 17.5 21 17.5V18.5ZM2.91032 4.42243C2.68428 4.58105 2.62963 4.89288 2.78825 5.11892C2.94688 5.34496 3.25871 5.39961 3.48474 5.24099L2.91032 4.42243ZM4.38272 4H4.88272C4.88272 3.81346 4.77887 3.64243 4.61336 3.55637C4.44785 3.47032 4.2482 3.48357 4.0955 3.59072L4.38272 4ZM3.88272 7.95062C3.88272 8.22676 4.10657 8.45062 4.38272 8.45062C4.65886 8.45062 4.88272 8.22676 4.88272 7.95062H3.88272ZM2.5 11.2099C2.5 11.486 2.72386 11.7099 3 11.7099C3.27614 11.7099 3.5 11.486 3.5 11.2099H2.5ZM5.37037 11.2099L5.75 11.5353C5.82767 11.4447 5.87037 11.3292 5.87037 11.2099H5.37037ZM3 13.9753L2.62037 13.6499C2.4933 13.7982 2.46415 14.0068 2.54574 14.1842C2.62734 14.3616 2.80474 14.4753 3 14.4753V13.9753ZM5.37037 14.4753C5.64651 14.4753 5.87037 14.2515 5.87037 13.9753C5.87037 13.6992 5.64651 13.4753 5.37037 13.4753V14.4753ZM2.5 17.037C2.5 17.3132 2.72386 17.537 3 17.537C3.27614 17.537 3.5 17.3132 3.5 17.037H2.5ZM4.18519 17.5247C3.90904 17.5247 3.68519 17.7485 3.68519 18.0247C3.68519 18.3008 3.90904 18.5247 4.18519 18.5247V17.5247ZM3.5 19.0123C3.5 18.7362 3.27614 18.5123 3 18.5123C2.72386 18.5123 2.5 18.7362 2.5 19.0123H3.5ZM9.3 12.5H21V11.5H9.3V12.5ZM9.3 6.5H21V5.5H9.3V6.5ZM9.3 18.5H21V17.5H9.3V18.5ZM3.48474 5.24099L4.66993 4.40928L4.0955 3.59072L2.91032 4.42243L3.48474 5.24099ZM3.88272 4V7.95062H4.88272V4H3.88272ZM3.5 11.2099C3.5 10.8315 3.80677 10.5247 4.18519 10.5247V9.52469C3.25448 9.52469 2.5 10.2792 2.5 11.2099H3.5ZM4.18519 10.5247C4.5636 10.5247 4.87037 10.8315 4.87037 11.2099H5.87037C5.87037 10.2792 5.11589 9.52469 4.18519 9.52469V10.5247ZM4.99074 10.8845L2.62037 13.6499L3.37963 14.3007L5.75 11.5353L4.99074 10.8845ZM3 14.4753H5.37037V13.4753H3V14.4753ZM5.87037 17.037C5.87037 16.1339 5.02666 15.5494 4.18519 15.5494V16.5494C4.65283 16.5494 4.87037 16.8492 4.87037 17.037H5.87037ZM4.18519 15.5494C3.34371 15.5494 2.5 16.1339 2.5 17.037H3.5C3.5 16.8492 3.71754 16.5494 4.18519 16.5494V15.5494ZM4.18519 18.5247C5.02666 18.5247 5.87037 17.9401 5.87037 17.037H4.87037C4.87037 17.2249 4.65283 17.5247 4.18519 17.5247V18.5247ZM4.87037 19.0123C4.87037 19.2002 4.65283 19.5 4.18519 19.5V20.5C5.02666 20.5 5.87037 19.9154 5.87037 19.0123H4.87037ZM4.18519 19.5C3.71754 19.5 3.5 19.2002 3.5 19.0123H2.5C2.5 19.9154 3.34371 20.5 4.18519 20.5V19.5ZM4.18519 18.5247C4.65283 18.5247 4.87037 18.8245 4.87037 19.0123H5.87037C5.87037 18.1093 5.02666 17.5247 4.18519 17.5247V18.5247Z" />
+  </svg>
+);
+
 // Attachment is a slot the parent wires up (file input, upload drawer, …)
 // so it renders outside the formatting toggles that just call execCommand.
-// Order matches Figma: Bold | Italic | Underline | Strikethrough | Bullets.
+// Order matches Figma: Bold | Italic | Underline | Strikethrough | Bullets,
+// then Numbered list.
 const RICH_TOOLBAR = [
   { cmd: 'bold',                icon: 'solar:text-bold-linear',      label: 'Bold' },
   { cmd: 'italic',              icon: 'solar:text-italic-linear',    label: 'Italic' },
   { cmd: 'underline',           icon: 'solar:text-underline-linear', label: 'Underline' },
   { cmd: 'strikeThrough',       icon: 'solar:text-cross-linear',     label: 'Strikethrough' },
   { cmd: 'insertUnorderedList', icon: <BulletListIcon />,            label: 'Bullet list' },
+  { cmd: 'insertOrderedList',   icon: <NumberedListIcon />,          label: 'Numbered list' },
 ];
 
 // eslint-disable-next-line no-unused-vars — split out purely for readability
@@ -231,11 +242,17 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
 
   // Keep controlled contentEditable in sync — otherwise React's reconciler
   // never touches innerHTML after mount and the field ignores prop updates.
+  // The editor's own edits come back as `value`; rewriting innerHTML for
+  // those would throw the caret to the start (e.g. after a paste, whose
+  // markup never matches its sanitized copy exactly), so they're skipped.
+  const emittedRef = useRef(null);
   useEffect(() => {
     if (!richText || !isControlled) return;
+    if (value === emittedRef.current) return;
     const safe = sanitizeRichText(value ?? '');
     if (editorRef.current && editorRef.current.innerHTML !== safe) {
       editorRef.current.innerHTML = safe;
+      numberListItems(editorRef.current);
     }
   }, [richText, isControlled, value]);
 
@@ -269,6 +286,8 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
   const handleRichInput = () => {
     const el = editorRef.current;
     if (!el) return;
+    // Blank list items are spacing: unnumbered, and skipped by the numbers.
+    numberListItems(el);
     const html = el.innerHTML;
     // Use the shared serializer so mention chips report as "@Name" and
     // don't inflate the plain-text length with their inner HTML.
@@ -280,6 +299,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
       return;
     }
     if (!isControlled) setText(html);
+    emittedRef.current = html;
     onChange?.(html, plain);
     if (mentionsOn) {
       setMentionCtx(detectMention(el));
@@ -310,7 +330,35 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
   };
 
   const handleRichKeyDown = (e) => {
-    if (!mentionsOn || !mentionCtx || mentionMatches.length === 0) return;
+    const mentionOpen = mentionsOn && mentionCtx && mentionMatches.length > 0;
+    // Enter on an empty list item steps out of the list (see richTextLists).
+    if (!mentionOpen && e.key === 'Enter' && !e.shiftKey && exitEmptyListItem(editorRef.current)) {
+      e.preventDefault();
+      handleRichInput();
+      return;
+    }
+    // "1. " starts a numbered list, "- " or "* " a bullet list.
+    if (!mentionOpen && e.key === ' ' && applyListShortcut(editorRef.current)) {
+      e.preventDefault();
+      handleRichInput();
+      return;
+    }
+    // Backspace at the start of a list item removes its bullet or number.
+    if (!mentionOpen && e.key === 'Backspace' && unlistItem(editorRef.current)) {
+      e.preventDefault();
+      handleRichInput();
+      return;
+    }
+    // Tab indents a list item under the one above; Shift+Tab brings it back.
+    if (!mentionOpen && e.key === 'Tab') {
+      const moved = e.shiftKey ? outdentListItem(editorRef.current) : nestListItem(editorRef.current);
+      if (moved) {
+        e.preventDefault();
+        handleRichInput();
+        return;
+      }
+    }
+    if (!mentionOpen) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setMentionIdx((i) => (i + 1) % mentionMatches.length);
@@ -324,6 +372,34 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
       e.preventDefault();
       setMentionCtx(null);
     }
+  };
+
+  // Paste sanitized, at the caret: clipboard HTML (Word, web pages) is
+  // cleaned first, and plain text keeps its line breaks (the editor is
+  // pre-wrap). execCommand inserts at the selection and keeps undo working.
+  const handleRichPaste = (e) => {
+    const data = e.clipboardData;
+    if (!data) return;
+    const html = data.getData('text/html');
+    const text = data.getData('text/plain');
+    if (!html && !text) return;
+    e.preventDefault();
+    // A list copied as HTML stays a list. Otherwise lines like "1. …" or
+    // "- …" in the text become one (sources such as Word and PDFs often
+    // copy lists as plain paragraphs).
+    const htmlHasList = /<(ul|ol)[\s>]/i.test(html);
+    const listHtml = !htmlHasList ? textToListHtml(text) : null;
+    if (listHtml) {
+      document.execCommand('insertHTML', false, sanitizeRichText(listHtml));
+    } else if (html) {
+      // Drop the page wrapper and <style>/<meta> a copy from Word or a
+      // browser carries, keeping only the formatting the editor supports.
+      const body = html.replace(/^[\s\S]*?<body[^>]*>|<\/body>[\s\S]*$/gi, '').replace(/<!--[\s\S]*?-->/g, '');
+      document.execCommand('insertHTML', false, sanitizeRichText(body));
+    } else {
+      document.execCommand('insertText', false, text);
+    }
+    handleRichInput();
   };
 
   const handleBeforeInput = (e) => {
@@ -358,6 +434,17 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
 
   const runFormat = (cmd) => {
     editorRef.current?.focus();
+    // Bullets started inside a numbered item nest under the number above,
+    // rather than the browser turning that numbered item into a bullet.
+    if (cmd === 'insertUnorderedList') {
+      const sel = window.getSelection();
+      const anchor = sel?.anchorNode?.nodeType === 1 ? sel.anchorNode : sel?.anchorNode?.parentElement;
+      if (anchor?.closest('li')?.parentElement?.tagName === 'OL' && nestListItem(editorRef.current, 'UL')) {
+        handleRichInput();
+        refreshFormats();
+        return;
+      }
+    }
     // execCommand is the pragmatic path here — a full ProseMirror stack
     // would dwarf everything else this component does, and every browser
     // still supports the four toggles the Figma toolbar shows.
@@ -427,6 +514,7 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
               onInput={handleRichInput}
               onBeforeInput={handleBeforeInput}
               onKeyDown={handleRichKeyDown}
+              onPaste={handleRichPaste}
               onKeyUp={handleRichSelect}
               onClick={handleRichSelect}
               onFocus={() => setFocused(true)}

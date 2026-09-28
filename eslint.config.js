@@ -7,7 +7,13 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
-export default defineConfig([globalIgnores(['dist', 'storybook-static', 'coverage', '.claude']), {
+export default defineConfig([globalIgnores([
+  'dist', 'storybook-static', 'coverage',
+  // Generated bundle (vite.report-viewer.config.js → public/report-viewer), gitignored.
+  'public/report-viewer',
+  // Agent tooling installs, not app code (same reason as .claude).
+  '.claude', '.agents', '.github/skills',
+]), {
   files: ['**/*.{js,jsx}'],
   extends: [
     js.configs.recommended,
@@ -73,7 +79,7 @@ export default defineConfig([globalIgnores(['dist', 'storybook-static', 'coverag
     ],
   },
 }, {
-  files: ['vite.config.js', 'vitest.config.js', 'vite-plugin-dev-api.js', 'scripts/**/*.{js,mjs}', 'api/**/*.js', 'api/**/*.jsx', 'netlify/functions/**/*.js'],
+  files: ['vite.config.js', 'vitest.config.js', 'vite-plugin-dev-api.js', 'scripts/**/*.{js,mjs}', 'api/**/*.js', 'api/**/*.jsx'],
   languageOptions: {
     globals: { ...globals.node },
     parserOptions: { ecmaVersion: 'latest', sourceType: 'module' },

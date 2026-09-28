@@ -50,3 +50,9 @@ supabase/.temp/
 
 # Built by bun run build:report-viewer (Print → Download HTML)
 public/report-viewer/
+
+# Bun is the only package manager (bun.lock). Other lockfiles make Vercel
+# install with npm/pnpm/yarn instead of Bun and silently drift the deps.
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
