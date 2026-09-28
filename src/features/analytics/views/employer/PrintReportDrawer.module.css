@@ -135,3 +135,7 @@
 .groupHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .groupTitle { margin: 0; font-size: var(--font-base); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-400); }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* A section note grows with its text up to this height, then scrolls
+   inside (the Engagement note's size). The corner drag resizes up to it. */
+.noteField { max-height: 480px; }

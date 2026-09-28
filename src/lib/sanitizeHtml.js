@@ -28,7 +28,13 @@ const RICH_TEXT = {
     'small', 'span', 'strike', 'strong', 'sub', 'sup', 'table', 'tbody', 'td',
     'tfoot', 'th', 'thead', 'tr', 'u', 'ul',
   ],
-  ALLOWED_ATTR: ['href', 'title', 'alt', 'src', 'width', 'height', 'colspan', 'rowspan', 'align', 'style'],
+  // `start` (on <ol>): the editor continues a numbered list after bullets
+  // with <ol start="2">, so the numbering must survive the round trip.
+  // `value` (on <li>): an item's number, so numbering can skip blank items.
+  ALLOWED_ATTR: ['href', 'title', 'alt', 'src', 'width', 'height', 'colspan', 'rowspan', 'align', 'style', 'start', 'value'],
+  // DOMPurify checks attribute values against ALLOWED_URI_REGEXP unless the
+  // attribute is URI-safe; "2" isn't a URL, so `start` and `value` are listed here.
+  ADD_URI_SAFE_ATTR: ['start', 'value'],
   // Block javascript:/vbscript: URLs; data: is kept for inline document images.
   ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|tel:|data:image\/(?:png|jpe?g|gif|webp|svg\+xml);|#|\/)/i,
   FORBID_TAGS: ['script', 'style', 'iframe', 'object', 'embed', 'form', 'input', 'link', 'meta', 'base'],

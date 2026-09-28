@@ -324,3 +324,69 @@ describe('parseRichText lists', () => {
   });
 });
 
+describe('PDF chart widths', () => {
+  it('widens a chart whose labels would be cut short at half width', async () => {
+    const { default: jsPDF } = await import('jspdf');
+    const { labelsFit, labelEvery, registerFonts, HALF_W, FULL_W } = await import('./generateEmployerReportPdf');
+    const { readFileSync } = await import('node:fs');
+    // Measured in Inter, as the real report is.
+    const ttf = (name) => readFileSync(new URL(`../../../../assets/fonts/inter/Inter-${name}.ttf`, import.meta.url)).toString('base64');
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    registerFonts(doc, { regular: ttf('Regular'), bold: ttf('Bold'), italic: ttf('Italic'), boldItalic: ttf('BoldItalic'), medium: ttf('Medium') });
+    const series = [{ key: 'a', label: 'A' }];
+    const hours = Array.from({ length: 24 }, (_, h) => ({ x: `${String(h).padStart(2, '0')}-${String(h + 1).padStart(2, '0')}`, a: 10 }));
+    const hourly = { widget: { type: 'stackedBar', series, yLabel: 'No. of Visits' }, model: { hasData: true, data: hours } };
+    expect(labelsFit(doc, hourly, HALF_W)).toBe(false);
+    expect(labelsFit(doc, hourly, FULL_W)).toBe(true);
+    // Across the page every hour gets its own label, under its own bar.
+    expect(labelEvery(doc, hours.map(h => h.x), (FULL_W - 60) / 24)).toBe(1);
+    const monthly = { widget: { type: 'stackedBar', series }, model: { hasData: true, data: ['Jan 26', 'Feb 26', 'Mar 26'].map(x => ({ x, a: 1 })) } };
+    expect(labelsFit(doc, monthly, HALF_W)).toBe(true);
+    // Charts with no category axis never need widening.
+    expect(labelsFit(doc, { widget: { type: 'donut', series }, model: { hasData: true, data: hours } }, HALF_W)).toBe(true);
+  });
+});
+
+describe('PDF card rows', () => {
+  it('widens a half card left alone in its row', async () => {
+    const { fillRows } = await import('./generateEmployerReportPdf');
+    const half = (key) => ({ key });
+    const full = (key) => ({ key, full: true });
+    const widths = (items) => fillRows(items).map(i => (i.full ? 'F' : 'H')).join('');
+    expect(widths([half('a'), half('b'), half('c')])).toBe('HHF');       // last one alone
+    expect(widths([half('a'), half('b'), half('c'), full('d')])).toBe('HHFF'); // alone before a full chart
+    expect(widths([half('a'), full('b'), half('c'), half('d')])).toBe('FFHH');
+    expect(widths([half('a'), half('b')])).toBe('HH');
+  });
+});
+
+describe('note spacing', () => {
+  it('keeps typed line breaks and blank lines, and indents a list item\'s later lines', async () => {
+    const { parseRichText } = await import('./generateEmployerReportPdf');
+    const html = 'Intro line\n\n<ul><li>One</li><li>Two ends.\n\nMore of two</li></ul><ol><li>First</li></ol>';
+    const paras = parseRichText(html);
+    const text = paras.map(runs => runs.map(r => r.text).join(''));
+    expect(text).toEqual(['Intro line', '', '• One', '• Two ends.', '', 'More of two', '1. First']);
+    // The blank line and "More of two" belong to item two, so they hang under its text.
+    expect(paras[5].hangText).toBe('• ');
+    expect(paras[2][0].marker).toBe(true);
+  });
+});
+
+describe('blank list items', () => {
+  it('prints a blank item as space, unnumbered, and numbers the rest on', async () => {
+    const { parseRichText } = await import('./generateEmployerReportPdf');
+    const html = '<ol><li>One</li><li><br></li><li>Two</li><li data-blank=""><br></li><li>Three</li></ol>';
+    const text = parseRichText(html).map(runs => runs.map(r => r.text).join(''));
+    expect(text).toEqual(['1. One', '', '2. Two', '', '3. Three']);
+  });
+});
+
+describe('list numbers from the editor', () => {
+  it('uses each item\'s own number, so numbering carries on past bullets', async () => {
+    const { parseRichText } = await import('./generateEmployerReportPdf');
+    const html = '<ol><li value="1">Total</li></ol><ul><li>Unpaid</li></ul><ol><li value="2">Revenue</li><li value="3">New</li></ol>';
+    expect(parseRichText(html).map(runs => runs.map(r => r.text).join(''))).toEqual(['1. Total', '• Unpaid', '2. Revenue', '3. New']);
+  });
+});
+

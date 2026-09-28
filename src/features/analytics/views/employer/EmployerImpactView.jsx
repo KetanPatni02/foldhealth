@@ -248,10 +248,6 @@ function SavingsCard({ card, loading, rangeText, onDownload, style }) {
 
 /** Cost Savings Comparison: totals across every category, beside a bar chart. */
 function SavingsSummaryCard({ summary, loading, subtitle, onDownload, style }) {
-  const breakdown = [
-    { key: 'membership', label: 'Membership Cost', value: summary.membership },
-    { key: 'service', label: 'Service Cost', value: summary.service },
-  ];
   const negative = summary.savings < 0;
   return (
     <ChartContainer
@@ -266,24 +262,22 @@ function SavingsSummaryCard({ summary, loading, subtitle, onDownload, style }) {
       {loading ? <KpiSkeleton count={3} /> : (
         <div className={styles.summaryBody}>
           <div className={styles.summaryTotals}>
+            {/* The chart's legend: each total carries its bar's colour. */}
             <span className={styles.savingsCol}>
-              <span className={styles.savingsLabel}>Traditional Cost</span>
+              <span className={styles.summaryKey}>
+                <span className={styles.summaryDot} style={{ background: seriesColor(0) }} />
+                <span className={styles.savingsLabel}>Traditional Cost</span>
+              </span>
               <span className={styles.savingsValue}>{formatValue(summary.traditional, 'currency')}</span>
             </span>
             <span className={styles.summaryDivider} />
             <span className={styles.savingsCol}>
-              <span className={styles.savingsLabel}>Our Cost</span>
+              <span className={styles.summaryKey}>
+                <span className={styles.summaryDot} style={{ background: seriesColor(1) }} />
+                <span className={styles.savingsLabel}>Our Cost</span>
+              </span>
               <span className={styles.savingsValue}>{formatValue(summary.ours, 'currency')}</span>
             </span>
-            {breakdown.map((b, i) => (
-              <span key={b.key} className={styles.savingsCol}>
-                <span className={styles.summaryKey}>
-                  <span className={styles.summaryDot} style={{ background: seriesColor(i) }} />
-                  <span className={styles.savingsLabel}>{b.label}</span>
-                </span>
-                <span className={styles.summaryPart}>{formatValue(b.value, 'currency')}</span>
-              </span>
-            ))}
             <span className={styles.summaryDivider} />
             <span className={styles.savingsCol}>
               <span className={styles.savingsLabel}>Total Savings</span>
@@ -503,8 +497,12 @@ export function EmployerImpactView({ snapshot = null } = {}) {
 
   // The report's filters; the Print drawer shows the same chips, so a change
   // in either place updates the report and its PDF.
+  // A saved report shows only the filters it was narrowed by; one left
+  // unset there can't be changed, so it would be noise.
+  const showChip = (applied) => !readOnly || applied;
   const filterChips = (
     <>
+      {showChip(!!employerName) && (
       <FilterChip
         label="Employer"
         options={employers.map(e => e.name)}
@@ -514,6 +512,7 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         searchable={employers.length > 6}
         disabled={readOnly}
       />
+      )}
       {/* Always shows the range the charts use: the default span reads as a
           fixed value (no ✕); a picked range can be cleared back to it.
           The report counts whole months, so a picked range widens to the
@@ -541,7 +540,7 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         )}
       />
       {/* Only By Location narrows to a location; All Locations covers them all. */}
-      {scope === 'visit' && (
+      {scope === 'visit' && showChip(!!location) && (
         <FilterChip
           label="Visit Location"
           options={locations}
@@ -552,6 +551,7 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         />
       )}
       {/* Month is the default grouping, so the chip reads idle until another is picked. */}
+      {showChip(timeFrame !== 'Month') && (
       <FilterChip
         label="Time Frame"
         options={TIME_FRAMES}
@@ -560,6 +560,7 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         singleSelect
         disabled={readOnly}
       />
+      )}
     </>
   );
 

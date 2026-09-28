@@ -23,6 +23,9 @@ const FOOTER_H = 24;
 const BODY_TOP = HEADER_H + BAND_H + 12;
 const BODY_BOTTOM = PAGE.h - FOOTER_H - 12;
 const GAP = 6;
+// Card widths: two per row, or one across the page.
+export const HALF_W = (CONTENT_W - GAP) / 2;
+export const FULL_W = CONTENT_W;
 const CARD_H = 161;       // tallest a chart card gets; see cardH per section
 const ROWS_PER_PAGE = 4;
 const CARD_PAD = 6;       // Figma: 6pt padding in the card header and the chart area
@@ -98,7 +101,7 @@ const INTER_FILES = [
  * core weight is missing. SemiBold (cover title only) is optional and
  * falls back to Inter Bold.
  */
-function registerFonts(doc, fonts) {
+export function registerFonts(doc, fonts) {
   const core = INTER_FILES.filter(([key]) => key !== 'semibold');
   if (!fonts || core.some(([key]) => !fonts[key])) {
     FAMILY = 'helvetica';
@@ -160,13 +163,24 @@ export function parseRichText(html) {
   const TAG = { b: 'bold', strong: 'bold', i: 'italic', em: 'italic', u: 'underline', s: 'strike', strike: 'strike', del: 'strike' };
   const plainRun = (text) => ({ text, bold: false, italic: false, underline: false, strike: false });
   const lists = []; // open <ul>/<ol>, innermost last: { ordered, n }
+  let itemMarker = null; // the open <li>'s bullet or number, for its later lines
+  let openItem = null; // the open <li>: where its lines start, and its list
   const newParagraph = () => { if (paragraphs[paragraphs.length - 1].length) paragraphs.push([]); };
   const re = /<\/?([a-z0-9]+)[^>]*>|([^<]+)/gi;
   let m;
   while ((m = re.exec(html || ''))) {
     if (m[2] != null) {
-      const text = decode(m[2]);
-      if (text) paragraphs[paragraphs.length - 1].push({ text, bold: !!style.bold, italic: !!style.italic, underline: !!style.underline, strike: !!style.strike });
+      // The editor keeps typed and pasted line breaks as newlines (it's
+      // pre-wrap), so each one starts a new line, blank lines included.
+      decode(m[2]).split(/\r?\n/).forEach((text, i) => {
+        if (i > 0) {
+          // Inside a list item, the new line stays indented under its text.
+          const next = [];
+          if (itemMarker) next.hangText = itemMarker;
+          paragraphs.push(next);
+        }
+        if (text) paragraphs[paragraphs.length - 1].push({ text, bold: !!style.bold, italic: !!style.italic, underline: !!style.underline, strike: !!style.strike });
+      });
       continue;
     }
     const tag = m[1].toLowerCase();
@@ -174,16 +188,37 @@ export function parseRichText(html) {
     if (TAG[tag]) style[TAG[tag]] = Math.max(0, style[TAG[tag]] + (closing ? -1 : 1));
     else if (tag === 'br') paragraphs.push([]);
     else if (tag === 'ul' || tag === 'ol') {
-      if (closing) lists.pop(); else lists.push({ ordered: tag === 'ol', n: 0 });
+      // An <ol start="2"> (the editor's way to continue numbering) counts from there.
+      const start = Number((m[0].match(/start\s*=\s*["']?(\d+)/i) || [])[1]) || 1;
+      if (closing) { lists.pop(); itemMarker = null; } else lists.push({ ordered: tag === 'ol', n: start - 1 });
       newParagraph();
+    } else if (tag === 'li' && closing) {
+      // A blank item (an empty line between items) is space: its marker
+      // goes and the numbers skip it, as in the editor.
+      if (openItem) {
+        const { from, list: itemList } = openItem;
+        const hasText = paragraphs.slice(from).some((p, pi) => p.some((r, ri) => !(pi === 0 && ri === 0 && r.marker) && r.text.trim()));
+        if (!hasText) {
+          paragraphs[from].shift();
+          itemList.n -= 1;
+        }
+        openItem = null;
+      }
+      itemMarker = null;
     } else if (tag === 'li' && !closing) {
       // Each list item is its own line, led by a bullet or its number,
       // indented a step per level of nesting.
       newParagraph();
       const list = lists[lists.length - 1] || { ordered: false, n: 0 };
-      list.n += 1;
+      // The editor writes each item's number (value="2"), carrying numbering
+      // on across a bullet list; use it so the PDF shows the same numbers.
+      const value = Number((m[0].match(/value\s*=\s*["']?(\d+)/i) || [])[1]);
+      list.n = value ? value : list.n + 1;
       const indent = '    '.repeat(Math.max(0, lists.length - 1));
-      paragraphs[paragraphs.length - 1].push(plainRun(`${indent}${list.ordered ? `${list.n}.` : '•'} `));
+      // `marker`: wrapped lines of the item hang under its text, not the bullet.
+      itemMarker = `${indent}${list.ordered ? `${list.n}.` : '•'} `;
+      paragraphs[paragraphs.length - 1].push({ ...plainRun(itemMarker), marker: true });
+      openItem = { from: paragraphs.length - 1, list };
     } else if ((tag === 'div' || tag === 'p') && !closing) newParagraph();
   }
   return paragraphs.filter((p, i) => p.length || i < paragraphs.length - 1);
@@ -196,9 +231,15 @@ function layoutRichText(doc, paragraphs, width, size) {
   doc.setFontSize(size);
   const lines = [];
   paragraphs.forEach((runs) => {
+    // A list item's wrapped lines start where its text does.
+    doc.setFont(FAMILY, 'normal');
+    const hangText = runs[0]?.marker ? runs[0].text : runs.hangText;
+    const hang = hangText ? doc.getTextWidth(hangText) : 0;
     let line = [];
-    let x = 0;
-    const push = () => { lines.push(line); line = []; x = 0; };
+    // A later line of a list item starts indented; the item's first line
+    // starts with its marker at the margin.
+    let x = runs.hangText && !runs[0]?.marker ? hang : 0;
+    const push = () => { lines.push(line); line = []; x = hang; };
     runs.forEach((run) => {
       doc.setFont(FAMILY, fontStyle(run));
       // Split on spaces but keep them, so words wrap and spacing survives.
@@ -219,7 +260,7 @@ function layoutRichText(doc, paragraphs, width, size) {
         }
         pieces.forEach((word) => {
           const w = doc.getTextWidth(word);
-          if (x + w > width && x > 0 && word.trim()) push();
+          if (x + w > width && x > hang && word.trim()) push();
           if (!line.length && !word.trim()) return; // no leading space on a new line
           line.push({ ...run, text: word, x, w });
           x += w;
@@ -268,12 +309,73 @@ function yLabels(doc, ticks, fmt, x, y, h) {
   return labelW + 5;
 }
 
+/**
+ * How often to label a category axis: every bar when the widest label fits
+ * its slot, else every 2nd, 3rd… bar, as few gaps as the width allows. So
+ * each label sits under the bar it names.
+ */
+export function labelEvery(doc, labels, slot) {
+  setWeight(doc, 'regular');
+  doc.setFontSize(TICK);
+  const widest = Math.max(0, ...labels.map(l => doc.getTextWidth(String(l))));
+  let every = 1;
+  while (every < labels.length && widest > slot * every - 2) every += 1;
+  return every;
+}
+
 function xLabels(doc, labels, x0, slot, y) {
-  const every = labels.length > 12 ? Math.ceil(labels.length / 12) : 1;
+  const every = labelEvery(doc, labels, slot);
   labels.forEach((l, i) => {
     if (i % every) return;
     text(doc, fitText(doc, l, slot * every - 2, TICK), x0 + slot * i + slot / 2, y, { size: TICK, color: C.muted, align: 'center' });
   });
+}
+
+/**
+ * Whether a widget's category labels fit, uncut, in a card `w` wide: the same
+ * plot width, label spacing and thinning as barChart / lineChart. Widgets
+ * whose labels would be cut to "…" print across the full page instead.
+ */
+export function labelsFit(doc, item, w) {
+  const { widget, model } = item;
+  // Stats, donuts and horizontal bars have no category axis to cut.
+  if (!model?.hasData || ['stats', 'duration', 'donut', 'hbar'].includes(widget.type)) return true;
+  const labels = (model.data || []).map(r => String(r.x));
+  if (!labels.length) return true;
+  const series = widget.type === 'satisfaction' ? [{ key: 'responded' }, { key: 'not_responded' }] : widget.series;
+  const format = widget.type === 'satisfaction' ? 'percent' : widget.format;
+  // Width left for the plot: card padding, the survey's side column, the
+  // rotated y title, then the y tick labels.
+  let plotW = w - CARD_PAD * 2 - (widget.type === 'satisfaction' ? 94 : 0) - (widget.yLabel ? LABEL + 3 : 0);
+  const max = Math.max(0, ...model.data.map(r => (widget.type === 'line'
+    ? Math.max(...series.map(x => r[x.key] || 0))
+    : series.reduce((a, x) => a + (r[x.key] || 0), 0))));
+  const ticks = format === 'percent' ? [0, 25, 50, 75, 100] : niceTicks(max);
+  setWeight(doc, 'regular');
+  doc.setFontSize(TICK);
+  plotW -= Math.max(...ticks.map(t => doc.getTextWidth(compactTick(format)(t)))) + 5;
+  // Fits when the labels need no more thinning than the old every-other
+  // rule for long axes gave (more than 12 bars); tighter than that, they'd
+  // be too sparse to read, so the chart goes full width.
+  const allowed = labels.length > 12 ? Math.ceil(labels.length / 12) : 1;
+  return labelEvery(doc, labels, plotW / labels.length) <= allowed;
+}
+
+/**
+ * Cards in two-per-row order with any half card that would sit alone in its
+ * row (its partner is full width, or there is none) widened to full.
+ */
+export function fillRows(items) {
+  const out = [];
+  let col = 0;
+  items.forEach((item, i) => {
+    if (item.full) { out.push(item); col = 0; return; }
+    const next = items[i + 1];
+    const alone = col === 0 && (!next || next.full);
+    out.push(alone ? { ...item, full: true } : item);
+    col = alone ? 0 : 1 - col;
+  });
+  return out;
 }
 
 /** Dot legend, right-aligned on one line starting at `top`, as in the Figma cards. */
@@ -444,6 +546,27 @@ function donutChart(doc, { data, seriesKey }, palette, x, y, w, h) {
   });
 }
 
+/**
+ * A stats-only widget (e.g. Patients Not Seen): one stat per row down the
+ * card, split by hairlines, filling its height. Label over the value on
+ * the left; the count out of the total on the right.
+ */
+function statStack(doc, stats, x, y, w, h) {
+  const rowH = h / Math.max(1, stats.length);
+  stats.forEach((s, i) => {
+    const top = y + rowH * i;
+    if (i > 0) {
+      stroke(doc, C.border);
+      doc.setLineWidth(0.5);
+      doc.line(x, top, x + w, top);
+    }
+    const mid = top + rowH / 2;
+    text(doc, fitText(doc, s.label, w * 0.6, TICK), x, mid - 4, { size: TICK, color: C.muted });
+    text(doc, s.hasData ? `${s.pct}%` : '–', x, mid + 9, { size: 11, color: C.black, weight: 'bold' });
+    if (s.hasData) text(doc, `${s.count.toLocaleString()} / ${s.total.toLocaleString()}`, x + w, mid + 9, { size: TICK, color: C.faint, align: 'right' });
+  });
+}
+
 function statList(doc, stats, x, y, w) {
   const colW = w / Math.max(1, stats.length);
   stats.forEach((s, i) => {
@@ -479,7 +602,7 @@ function widgetBody(doc, item, palette, x, y, w, h) {
   if (!model.hasData) { emptyState(doc, x, y, w, h); return; }
   const axes = { yLabel: widget.yLabel, xLabel: widget.xLabel, format: widget.format };
   switch (widget.type) {
-    case 'stats': statList(doc, model.stats, x, y, w); return;
+    case 'stats': statStack(doc, model.stats, x, y, w, h); return;
     case 'duration': hbarChart(doc, { data: model.data, seriesKey: 'in_person', seriesLabel: widget.series?.[0]?.label, format: 'minutes', xLabel: widget.xLabel }, palette, x, y, w, h); return;
     case 'satisfaction': satisfaction(doc, model, widget, palette, x, y, w, h); return;
     case 'donut': donutChart(doc, { data: model.data, seriesKey: widget.series[0].key }, palette, x, y, w, h); return;
@@ -583,7 +706,7 @@ function savingsSummaryCard(doc, item, palette, x, y, w, h) {
   doc.setLineWidth(0.5);
   doc.line(cx - GUTTER / 2, top, cx - GUTTER / 2, top + bodyH);
 
-  // Traditional as one bar; ours stacked membership (bottom) then service.
+  // Traditional Cost and Our Cost, one bar each.
   const ticks = niceTicks(Math.max(c.traditional, c.ours));
   const plotTop = top + 3;
   const plotH = bodyH - 14;
@@ -594,11 +717,13 @@ function savingsSummaryCard(doc, item, palette, x, y, w, h) {
   const max = ticks[ticks.length - 1] || 1;
   const slot = pw / 2;
   const barW = Math.min(slot * 0.45, 28);
+  // One bar per x-axis label, each in its own colour; the legend names them
+  // the same way, so a colour always means the bar it sits on.
   const parts = [
-    ['Membership Cost', c.membership, palette[0]],
-    ['Service Cost', c.service, palette[1 % palette.length]],
+    ['Traditional Cost', c.traditional, palette[0]],
+    ['Our Cost', c.ours, palette[1 % palette.length]],
   ];
-  const bars = [[[c.traditional, palette[0]]], parts.map(([, v, color]) => [v, color])];
+  const bars = parts.map(([, v, color]) => [[v, color]]);
   bars.forEach((segments, i) => {
     let acc = 0;
     const bx = px + slot * i + (slot - barW) / 2;
@@ -611,7 +736,7 @@ function savingsSummaryCard(doc, item, palette, x, y, w, h) {
   });
   xLabels(doc, ['Traditional Cost', 'Our Cost'], px, slot, plotTop + plotH + 9);
 
-  // Our Cost's parts beside the chart, centred on it.
+  // The legend, with each bar's value, beside the chart and centred on it.
   const partH = TICK + 4 + 8;
   const partGap = 12;
   let ky = plotTop + (plotH - (parts.length * partH + partGap)) / 2;
@@ -1019,17 +1144,19 @@ export function generateEmployerReport(report) {
     paragraphs.unshift([{ ...plain, text: 'Note:', bold: true }]);
     const lines = layoutRichText(doc, paragraphs, CONTENT_W, NOTE_SIZE);
     y += 4;
-    lines.forEach((line) => {
+    lines.forEach((line, i) => {
       ensure(NOTE_LINE);
       drawRichLines(doc, [line], MARGIN, y + 9, NOTE_SIZE, NOTE_LINE, C.black);
-      y += NOTE_LINE;
+      // A little room between the "Note:" heading and the note itself.
+      y += NOTE_LINE + (i === 0 ? NOTE_HEADING_GAP : 0);
     });
   };
 
-  const halfW = (CONTENT_W - GAP) / 2;
+  const halfW = HALF_W;
   const thirdW = (CONTENT_W - GAP * 2) / 3;
   const NOTE_SIZE = 10;
   const NOTE_LINE = 12;
+  const NOTE_HEADING_GAP = 6;
 
   let sectionCount = 0;
   report.sections.forEach((section) => {
@@ -1099,9 +1226,11 @@ export function generateEmployerReport(report) {
       return;
     }
 
-    // Two cards per row; wide charts (24 hourly bars) take a full row.
+    // Two cards per row. Wide charts (24 hourly bars), any whose labels
+    // would be cut short at half width, and any card left alone in its row
+    // take a full row, so a row never has an empty half.
     let col = 0;
-    section.items.forEach((item) => {
+    fillRows(section.items.map(it => (it.full || labelsFit(doc, it, halfW) ? it : { ...it, full: true }))).forEach((item) => {
       if (item.full && col === 1) { y += cardH + GAP; col = 0; }
       if (col === 0) ensure(cardH);
       anchors[item.key] = here(y);
