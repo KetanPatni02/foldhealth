@@ -431,7 +431,7 @@ DELETE FROM public.${table} d
                 WHERE c.id::text = c.member_id::text AND c.name = d.name);`;
 const WORKLIST_DEDUPE_SQL = [
   'snp_worklist_members', 'ccm_worklist_members', 'awv_members',
-  'hedis_members', 'jsa_members',
+  'hedis_members', 'jsa_members', 'apcm_patients',
 ].map(worklistDedupeSql).join('\n');
 
 const CAREGAP_ACTIVITY_DDL = `
@@ -533,6 +533,22 @@ function resolveMemberId(rawId, foldIdMap) {
     return rawId ?? null;
   }
   return foldId;
+}
+
+// Worklist mocks still key rows on synthetic ids (ap-001, ccmw-002, snpw-001,
+// ap15), but patient_reident_member_id_migration.sql re-keyed the live rows to
+// id = member_id. Upserting on the synthetic id therefore inserts a second row
+// for a person who is already there, and it shows up twice in the patient list.
+// So worklist seeding is insert-only per person: a mock row is skipped when the
+// table already has someone with that name. Name, not member_id, because the
+// seed's Fold ID lookup no longer reproduces the member_ids the re-key assigned.
+const normName = (n) => String(n || '').trim().toLowerCase();
+
+async function withoutExistingPeople(supabase, table, rows) {
+  const { data, error } = await supabase.from(table).select('name');
+  if (error) throw new Error(`${table} read failed: ${error.message}`);
+  const have = new Set(data.map((r) => normName(r.name)));
+  return rows.filter((r) => !have.has(normName(r.name)));
 }
 
 function hedisToRow(m, foldIdMap) {
@@ -844,18 +860,18 @@ async function main() {
   console.log(`  ✓ ${foldIdMap.size} Fold IDs available in patient_registry`);
 
   console.log('\nSeeding hedis_members...');
-  const hedisRows = HEDIS_MEMBERS.map((m) => hedisToRow(m, foldIdMap));
+  const hedisRows = await withoutExistingPeople(supabase, 'hedis_members', HEDIS_MEMBERS.map((m) => hedisToRow(m, foldIdMap)));
   const { error: he } = await supabase
     .from('hedis_members')
     .upsert(hedisRows, { onConflict: 'id' });
-  if (he) { console.error('  ✗', he.message); } else { console.log(`  ✓ ${hedisRows.length} members`); }
+  if (he) { console.error('  ✗', he.message); } else { console.log(`  ✓ ${hedisRows.length} new members (${HEDIS_MEMBERS.length - hedisRows.length} already present)`); }
 
   console.log('Seeding apcm_patients...');
-  const apcmRows = APCM_PATIENTS.map(apcmToRow);
+  const apcmRows = await withoutExistingPeople(supabase, 'apcm_patients', APCM_PATIENTS.map(apcmToRow));
   const { error: ae } = await supabase
     .from('apcm_patients')
     .upsert(apcmRows, { onConflict: 'id' });
-  if (ae) { console.error('  ✗', ae.message); } else { console.log(`  ✓ ${apcmRows.length} patients`); }
+  if (ae) { console.error('  ✗', ae.message); } else { console.log(`  ✓ ${apcmRows.length} new patients (${APCM_PATIENTS.length - apcmRows.length} already present)`); }
 
   console.log('Seeding icd_codes...');
   const icdRows = FALLBACK_ICDS.map(icdToRow);
@@ -943,18 +959,18 @@ async function main() {
   if (pme) { console.error('  ✗', pme.message); } else { console.log(`  ✓ ${monitoringRows.length} monitoring snapshots`); }
 
   console.log('Seeding ccm_worklist_members...');
-  const worklistRows = CCM_WORKLIST_MEMBERS.map((m) => ccmWorklistToRow(m, foldIdMap));
+  const worklistRows = await withoutExistingPeople(supabase, 'ccm_worklist_members', CCM_WORKLIST_MEMBERS.map((m) => ccmWorklistToRow(m, foldIdMap)));
   const { error: cwe } = await supabase
     .from('ccm_worklist_members')
     .upsert(worklistRows, { onConflict: 'id' });
-  if (cwe) { console.error('  ✗', cwe.message); } else { console.log(`  ✓ ${worklistRows.length} worklist members`); }
+  if (cwe) { console.error('  ✗', cwe.message); } else { console.log(`  ✓ ${worklistRows.length} new worklist members (${CCM_WORKLIST_MEMBERS.length - worklistRows.length} already present)`); }
 
   console.log('Seeding snp_worklist_members...');
-  const snpWorklistRows = SNP_WORKLIST_MEMBERS.map((m) => snpWorklistToRow(m, foldIdMap));
+  const snpWorklistRows = await withoutExistingPeople(supabase, 'snp_worklist_members', SNP_WORKLIST_MEMBERS.map((m) => snpWorklistToRow(m, foldIdMap)));
   const { error: swe } = await supabase
     .from('snp_worklist_members')
     .upsert(snpWorklistRows, { onConflict: 'id' });
-  if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} SNP worklist members`); }
+  if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} new SNP worklist members (${SNP_WORKLIST_MEMBERS.length - snpWorklistRows.length} already present)`); }
 
   console.log('Seeding care_plan_barriers (library)...');
   const barrierLibraryRows = CARE_PLAN_BARRIER_LIBRARY.map(carePlanBarrierLibraryToRow);
@@ -1026,10 +1042,18 @@ async function main() {
     .upsert(locationRows, { onConflict: 'id' });
   if (ple) { console.error('  ✗', ple.message); } else { console.log(`  ✓ ${locationRows.length} practice locations`); }
 
+  // The activity mock is keyed on synthetic HEDIS ids; attach it to whichever
+  // row that person actually has, or the history lands on an id that no longer
+  // exists (see withoutExistingPeople).
   console.log('Seeding caregap_activity...');
-  const caregapRows = Object.entries(CAREGAP_ACTIVITY_MOCK).flatMap(
-    ([memberId, entries]) => entries.map(e => caregapActivityToRow(memberId, e)),
-  );
+  const { data: hedisLive, error: hle } = await supabase.from('hedis_members').select('id, name');
+  if (hle) throw new Error(`hedis_members read failed: ${hle.message}`);
+  const hedisIdByName = new Map(hedisLive.map((r) => [normName(r.name), String(r.id)]));
+  const mockHedisName = new Map(HEDIS_MEMBERS.map((m) => [m.id, normName(m.name)]));
+  const caregapRows = Object.entries(CAREGAP_ACTIVITY_MOCK).flatMap(([mockId, entries]) => {
+    const memberId = hedisIdByName.get(mockHedisName.get(mockId)) || mockId;
+    return entries.map(e => caregapActivityToRow(memberId, e));
+  });
   const { error: cge } = await supabase
     .from('caregap_activity')
     .upsert(caregapRows, { onConflict: 'id' });
