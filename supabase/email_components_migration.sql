@@ -22,6 +22,14 @@ alter table public.email_header_footer_presets add column if not exists "is_defa
 alter table public.email_header_footer_presets add column if not exists "slug" text;
 create unique index if not exists email_header_footer_presets_slug_key on public.email_header_footer_presets (slug);
 
+-- Components have four types: email headers and footers, and report
+-- headers and footers. The live table's role check (created outside the
+-- repo) allowed only 'header' / 'footer', so saving a Report Header or
+-- Report Footer failed with email_header_footer_presets_role_check.
+alter table public.email_header_footer_presets drop constraint if exists email_header_footer_presets_role_check;
+alter table public.email_header_footer_presets add constraint email_header_footer_presets_role_check
+  check (role in ('header', 'footer', 'report_header', 'report_footer'));
+
 create or replace function public.email_header_footer_presets_touch()
 returns trigger language plpgsql as $$
 begin
