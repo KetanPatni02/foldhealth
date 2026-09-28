@@ -12,40 +12,40 @@
    break. */
 
 .row {
-  composes: row from '../../components/WorklistShell/WorklistRow.module.css';
-  composes: rowClickable from '../../components/WorklistShell/WorklistRow.module.css';
+  composes: row from '../../../components/WorklistShell/WorklistRow.module.css';
+  composes: rowClickable from '../../../components/WorklistShell/WorklistRow.module.css';
 }
 
-.rowSelected { composes: rowSelected from '../../components/WorklistShell/WorklistRow.module.css'; }
-.stickyLeft  { composes: stickyLeft  from '../../components/WorklistShell/WorklistRow.module.css'; }
-.stickyRight { composes: stickyRight from '../../components/WorklistShell/WorklistRow.module.css'; }
-.td          { composes: td          from '../../components/WorklistShell/WorklistRow.module.css'; }
-.checkTd     { composes: checkTd     from '../../components/WorklistShell/WorklistRow.module.css'; }
-.membersTd   { composes: membersTd   from '../../components/WorklistShell/WorklistRow.module.css'; }
+.rowSelected { composes: rowSelected from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyLeft  { composes: stickyLeft  from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyRight { composes: stickyRight from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.td          { composes: td          from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.checkTd     { composes: checkTd     from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.membersTd   { composes: membersTd   from '../../../components/WorklistShell/WorklistRow.module.css'; }
 
-.patientCell     { composes: patientCell     from '../../components/WorklistShell/WorklistRow.module.css'; }
-.patientName     { composes: patientName     from '../../components/WorklistShell/WorklistRow.module.css'; }
-.patientNameLink { composes: patientNameLink from '../../components/WorklistShell/WorklistRow.module.css'; }
-.patientDemo     { composes: patientDemo     from '../../components/WorklistShell/WorklistRow.module.css'; }
-.patientMeta     { composes: patientMeta     from '../../components/WorklistShell/WorklistRow.module.css'; }
-.foldId          { composes: foldId          from '../../components/WorklistShell/WorklistRow.module.css'; }
-.langBadge       { composes: langBadge       from '../../components/WorklistShell/WorklistRow.module.css'; }
-.langTooltip     { composes: langTooltip     from '../../components/WorklistShell/WorklistRow.module.css'; }
+.patientCell     { composes: patientCell     from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.patientName     { composes: patientName     from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.patientNameLink { composes: patientNameLink from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.patientDemo     { composes: patientDemo     from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.patientMeta     { composes: patientMeta     from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.foldId          { composes: foldId          from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.langBadge       { composes: langBadge       from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.langTooltip     { composes: langTooltip     from '../../../components/WorklistShell/WorklistRow.module.css'; }
 
-.outreachWl       { composes: outreachWl       from '../../components/WorklistShell/WorklistRow.module.css'; }
-.outreachWlMain   { composes: outreachWlMain   from '../../components/WorklistShell/WorklistRow.module.css'; }
-.outreachWlText   { composes: outreachWlText   from '../../components/WorklistShell/WorklistRow.module.css'; }
-.outreachWlDate   { composes: outreachWlDate   from '../../components/WorklistShell/WorklistRow.module.css'; }
-.outreachWlNone   { composes: outreachWlNone   from '../../components/WorklistShell/WorklistRow.module.css'; }
-.outreachWlFailed { composes: outreachWlFailed from '../../components/WorklistShell/WorklistRow.module.css'; }
-.dotsRow          { composes: dotsRow          from '../../components/WorklistShell/WorklistRow.module.css'; }
-.dot              { composes: dot              from '../../components/WorklistShell/WorklistRow.module.css'; }
-.success          { composes: success          from '../../components/WorklistShell/WorklistRow.module.css'; }
-.failed           { composes: failed           from '../../components/WorklistShell/WorklistRow.module.css'; }
-.pending          { composes: pending          from '../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWl       { composes: outreachWl       from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlMain   { composes: outreachWlMain   from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlText   { composes: outreachWlText   from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlDate   { composes: outreachWlDate   from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlNone   { composes: outreachWlNone   from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.outreachWlFailed { composes: outreachWlFailed from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.dotsRow          { composes: dotsRow          from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.dot              { composes: dot              from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.success          { composes: success          from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.failed           { composes: failed           from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.pending          { composes: pending          from '../../../components/WorklistShell/WorklistRow.module.css'; }
 
-.actionsCell   { composes: actionsCell   from '../../components/WorklistShell/WorklistRow.module.css'; }
-.actionDivider { composes: actionDivider from '../../components/WorklistShell/WorklistRow.module.css'; }
+.actionsCell   { composes: actionsCell   from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.actionDivider { composes: actionDivider from '../../../components/WorklistShell/WorklistRow.module.css'; }
 
 /* ── TOC-specific ── outreach chip cell, on-call/queued call states,
    agent cell, dates, tasks + attempts tooltip. */

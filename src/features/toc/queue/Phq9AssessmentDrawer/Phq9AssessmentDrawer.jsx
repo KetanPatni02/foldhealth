@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Drawer } from '../../../components/Drawer/Drawer';
-import { Button } from '../../../components/Button/Button';
-import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
-import { AssessmentFormView } from '../../patient/right-panel/tabs/care-programs/program-detail/steps/AssessmentFormView/AssessmentFormView';
-import { ASSESSMENT_STEPS } from '../../patient/right-panel/tabs/care-programs/program-detail/ProgramDetailView/ProgramDetailView.utils';
-import { useAppStore } from '../../../store/useAppStore';
+import { Drawer } from '../../../../components/Drawer/Drawer';
+import { Button } from '../../../../components/Button/Button';
+import { PatientBanner } from '../../../../components/PatientBanner/PatientBanner';
+import { AssessmentFormView } from '../../../patient/right-panel/tabs/care-programs/program-detail/steps/AssessmentFormView/AssessmentFormView';
+import { ASSESSMENT_STEPS } from '../../../patient/right-panel/tabs/care-programs/program-detail/ProgramDetailView/ProgramDetailView.utils';
+import { useAppStore } from '../../../../store/useAppStore';
 
 const HRA = ASSESSMENT_STEPS.HRA;
 

@@ -1,16 +1,16 @@
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
-import { Avatar } from '../../components/Avatar/Avatar';
-import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
-import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
-import { Badge } from '../../components/Badge/Badge';
-import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
-import { useAppStore } from '../../store/useAppStore';
-import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
+import { Icon } from '../../../components/Icon/Icon';
+import { ActionButton } from '../../../components/ActionButton/ActionButton';
+import { Avatar } from '../../../components/Avatar/Avatar';
+import { AssigneeChange } from '../../../components/AssigneeChange/AssigneeChange';
+import { platformUsersForAssigneePicker } from '../../../lib/worklistAssignee';
+import { Badge } from '../../../components/Badge/Badge';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { useAppStore } from '../../../store/useAppStore';
+import { FoldIdTag } from '../../../components/FoldIdTag/FoldIdTag';
 import { Phq9AssessmentDrawer } from './Phq9AssessmentDrawer/Phq9AssessmentDrawer';
-import rowStyles from '../toc-worklist/WorklistRow.module.css';
+import rowStyles from '../worklist/WorklistRow.module.css';
 import styles from './QueueRow.module.css';
 
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };

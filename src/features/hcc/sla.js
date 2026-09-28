@@ -100,7 +100,7 @@ export function slaOutcome(createdDate, coderDoneAt, cfg = SLA_CONFIG) {
 }
 
 /**
- * Map a record's live SLA state to the DueDateChip filter buckets, so the
+ * Map a record's live SLA state to the Due Date filter buckets, so the
  * "Due Date" filter agrees with the colour-coded Created Date column (rather
  * than the legacy static `due` string). The SLA clock stops at Coder
  * (Reviewer 1) completion — resolved records fall into no bucket.

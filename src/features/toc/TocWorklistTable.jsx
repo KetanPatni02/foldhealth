@@ -1,4 +1,4 @@
-import { QueueTable } from '../toc-queue/QueueTable';
+import { QueueTable } from './queue/QueueTable';
 import { TocEmptyState } from './TocEmptyState';
 import { TOC_MIDDLE_COLUMNS } from './tocColumns';
 

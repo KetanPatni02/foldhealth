@@ -1,12 +1,12 @@
 import { useEffect, useMemo } from 'react';
-import { useAppStore } from '../../store/useAppStore';
-import { Icon } from '../../components/Icon/Icon';
-import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
-import { useTableSort } from '../../components/HeaderCell/useTableSort';
+import { useAppStore } from '../../../store/useAppStore';
+import { Icon } from '../../../components/Icon/Icon';
+import { WorklistShell } from '../../../components/WorklistShell/WorklistShell';
+import { useTableSort } from '../../../components/HeaderCell/useTableSort';
 import { QueueRow, getQueueMiddleColumns } from './QueueRow';
 import { QueueEmptyState } from './QueueEmptyState';
-import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
-import { enrichTocRow } from '../toc/tocColumns';
+import { TableSkeleton } from '../../../components/TableSkeleton/TableSkeleton';
+import { enrichTocRow } from '../tocColumns';
 
 /**
  * Agent-queue table shared by the TCM Agent Queue tab and the standalone

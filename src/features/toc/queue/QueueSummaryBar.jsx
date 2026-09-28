@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Icon } from '../../components/Icon/Icon';
-import { useAppStore } from '../../store/useAppStore';
+import { Icon } from '../../../components/Icon/Icon';
+import { useAppStore } from '../../../store/useAppStore';
 
 const cardStyle = {
   flex: 1,
