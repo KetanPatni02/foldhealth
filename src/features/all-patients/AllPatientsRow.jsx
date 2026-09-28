@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Avatar } from '../../components/Avatar/Avatar';
+import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
@@ -291,7 +292,7 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
         title="Open patient quick view"
       >
         <div className={rowStyles.patientCell}>
-          <Avatar variant="patient" initials={row.initials} />
+          <PatientAvatarHover patient={{ memberId: row.memberId, id: row.id, name: row.name, initials: row.initials, gender: row.gender, age: ageDisplay || row.age, dob: row.dob }} />
           <div>
             <div className={rowStyles.patientName}>
               <button className={rowStyles.patientNameLink} onClick={handleMemberCellClick}>{row.name}</button>

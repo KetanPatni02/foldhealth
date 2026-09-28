@@ -77,6 +77,7 @@ const TYPE_ICON = {
   reminder:        { icon: 'solar:bell-linear',             color: 'var(--status-warning)', bg: 'var(--status-warning-light)', border: 'rgba(217,165,11,0.2)' },
   appointment:     { icon: 'solar:calendar-linear',         color: 'var(--primary-300)',    bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)' },
   referral:        { icon: 'solar:square-share-line-linear', tileClass: 'referralTile' },
+  lab:             { icon: 'solar:test-tube-linear' },
 };
 const DEFAULT_ICON = { icon: 'solar:document-text-linear', color: 'var(--neutral-300)', bg: 'var(--neutral-0)', border: 'var(--neutral-150)' };
 

@@ -14,19 +14,20 @@ import {
   flatSteps,
   fmtCompletedDate,
   initialsOf,
-  progressForCode,
   stepsFor,
 } from './ProgramDetailView.utils';
+import { deriveStepStatus, programProgressOf, STEP_STATUS } from './stepStatus';
+
+const EMPTY_LIST = [];
+const EMPTY_MAP = {};
 
 export function useProgramDetailView({ program, onSwitchProgram }) {
   const isCcm = program.code === 'CCM';
   const isSnp = program.code === 'SNP';
-  const stepList = stepsFor(program.code);
-  const ALL_STEPS = flatSteps(stepList);
-  const firstStep = stepList[0];
-  const programProgress = ALL_STEPS.length
-    ? Math.round((ALL_STEPS.filter(s => s.status === 'completed').length / ALL_STEPS.length) * 100)
-    : 0;
+  // Step definitions only; each step's status is worked out per patient below.
+  const baseStepList = stepsFor(program.code);
+  const ALL_STEPS = flatSteps(baseStepList);
+  const firstStep = baseStepList[0];
 
   // The active step lives in the store (mirrored into the URL by the hash
   // router) so a refresh restores it. null or an id that doesn't belong to
@@ -157,6 +158,53 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
     [patientPrograms, program.id],
   );
 
+  // ── Real step status for this patient + enrollment ──────────────────────
+  const carePlan = useAppStore(s => (patientId && program.id ? s.patientCarePlans[`${patientId}::${program.id}`] : null));
+  const fetchPatientCarePlan = useAppStore(s => s.fetchPatientCarePlan);
+  const programDocuments = useAppStore(s => s.programDocuments) || EMPTY_LIST;
+  const fetchProgramDocuments = useAppStore(s => s.fetchProgramDocuments);
+  const appointments = useAppStore(s => s.appointments) || EMPTY_LIST;
+  const fetchAppointments = useAppStore(s => s.fetchAppointments);
+  const manualStatus = useAppStore(s => s.programStepStatus[program.id]) || EMPTY_MAP;
+  const fetchProgramStepStatus = useAppStore(s => s.fetchProgramStepStatus);
+  const setProgramStepStatus = useAppStore(s => s.setProgramStepStatus);
+  useEffect(() => {
+    if (patientId && program.id) fetchPatientCarePlan?.(patientId, program.id);
+    fetchProgramDocuments?.();
+    fetchAppointments?.();
+    fetchProgramStepStatus?.(program.id);
+  }, [patientId, program.id, fetchPatientCarePlan, fetchProgramDocuments, fetchAppointments, fetchProgramStepStatus]);
+
+  const stepCtx = useMemo(() => {
+    const pid = String(patientId || '');
+    const ids = new Set([pid, String(currentPatient?.id || ''), String(currentPatient?.memberId || '')].filter(Boolean));
+    return {
+      manual: manualStatus,
+      carePlan,
+      program: liveProgram || program,
+      tasks: allStoreTasks.filter(t => !t.is_subtask && t.program_code === program.code && ids.has(String(t.patient_id))),
+      documents: programDocuments.filter(d => d.programCode === program.code && ids.has(String(d.patientId))),
+      appointments: appointments.filter(a => ids.has(String(a.patient_id))),
+    };
+  }, [patientId, currentPatient, manualStatus, carePlan, liveProgram, program, allStoreTasks, programDocuments, appointments]);
+
+  // Same shape as the step list, with each step's real status filled in.
+  const stepList = useMemo(() => stepsFor(program.code).map(step => (
+    step.type === 'section'
+      ? { ...step, children: step.children.map(c => ({ ...c, ...deriveStepStatus(c, stepCtx) })) }
+      : { ...step, ...deriveStepStatus(step, stepCtx) }
+  )), [program.code, stepCtx]);
+  const programProgress = programProgressOf(flatSteps(stepList));
+
+  // Keep the enrollment's stored progress in step, so the program list and
+  // badges show the same number.
+  const storedProgress = liveProgram?.progress;
+  useEffect(() => {
+    if (!liveProgram || storedProgress === programProgress) return;
+    updateCareProgram(patientId, program.id, { progress: programProgress });
+  }, [liveProgram, storedProgress, programProgress, patientId, program.id, updateCareProgram]);
+  const progressFor = (code) => (patientPrograms || []).find(p => p.code === code)?.progress ?? 0;
+
   const triggerIdx = orderedTriggers.findIndex(p => p.id === program.id);
   const prevTrigger = triggerIdx > 0 ? orderedTriggers[triggerIdx - 1] : null;
   const nextTrigger = triggerIdx >= 0 && triggerIdx < orderedTriggers.length - 1 ? orderedTriggers[triggerIdx + 1] : null;
@@ -182,7 +230,15 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   const previewLetter = (letter) => setPreviewTarget(letter);
   const downloadSelectedLetters = () => downloadLetters(letters.filter(l => selectedLetters.has(l.id)), toast);
 
-  const activeStepObj = ALL_STEPS.find(s => s.id === activeStep);
+  const activeStepObj = flatSteps(stepList).find(s => s.id === activeStep);
+  // Reviewed / Skip on steps: saved per patient enrollment.
+  const activeStepStatus = activeStepObj?.status || STEP_STATUS.pending;
+  const markStep = (status) => {
+    if (!activeStepObj) return;
+    setProgramStepStatus(program.id, activeStepObj, status);
+    if (status === STEP_STATUS.completed) toast.success?.(`${activeStepObj.name} marked as reviewed`);
+    else if (status === STEP_STATUS.skipped) toast.success?.(`${activeStepObj.name} skipped`);
+  };
   const stepName = activeStepObj?.name || '';
   const isMandatoryStep = !!activeStepObj?.mandatory;
   const assessmentCfg = ASSESSMENT_STEPS[stepName];
@@ -227,6 +283,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
     changeStatus, allLettersSelected, someLettersSelected, toggleAllLetters,
     toggleLetter, previewLetter, downloadSelectedLetters, stepName,
     isMandatoryStep, assessmentCfg, goNextStep, toggleSection, stepFlags,
-    initialsOf, progressForCode, onSwitchProgram,
+    initialsOf, progressForCode: progressFor, onSwitchProgram,
+    activeStepStatus, activeStepSource: activeStepObj?.source || null, markStep,
   };
 }

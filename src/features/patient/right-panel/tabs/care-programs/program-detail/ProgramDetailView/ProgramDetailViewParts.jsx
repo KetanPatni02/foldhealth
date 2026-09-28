@@ -32,15 +32,20 @@ function CheckMark() {
   );
 }
 
+const STATUS_LABEL = { completed: 'Completed', in_progress: 'In progress', skipped: 'Skipped', pending: 'Not started' };
+
 function StepStatusIcon({ status }) {
+  const label = STATUS_LABEL[status] || STATUS_LABEL.pending;
   if (status === 'completed') {
     return (
-      <span className={styles.statusCompleted}>
+      <span className={styles.statusCompleted} role="img" aria-label={label} title={label}>
         <CheckMark />
       </span>
     );
   }
-  return <span className={styles.statusPending} />;
+  if (status === 'in_progress') return <span className={styles.statusInProgress} role="img" aria-label={label} title={label} />;
+  if (status === 'skipped') return <span className={styles.statusSkipped} role="img" aria-label={label} title={label} />;
+  return <span className={styles.statusPending} role="img" aria-label={label} title={label} />;
 }
 
 export function StepItem({ step, isActive, onClick, isChild }) {

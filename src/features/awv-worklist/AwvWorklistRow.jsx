@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { Avatar } from '../../components/Avatar/Avatar';
+import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
@@ -260,7 +260,7 @@ export function AwvWorklistRow({ member, columns, hiddenSet, selected, onToggle,
         title="Open patient quick view"
       >
         <div className={styles.patientCell}>
-          <Avatar variant="patient" initials={member.in} />
+          <PatientAvatarHover patient={{ memberId: member.memberId, id: member.id, name: member.name, initials: member.in, gender: member.g, age: member.age, dob: member.dob }} />
           <div>
             <div className={styles.patientName}>
               <button type="button" className={styles.patientNameLink} onClick={handleMemberCellClick}>{member.name}</button>{' '}

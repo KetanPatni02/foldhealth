@@ -234,6 +234,25 @@
   flex-shrink: 0;
   box-sizing: border-box;
 }
+/* Half-filled ring: work started (e.g. care plan drafted, tasks open). */
+.statusInProgress {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--status-warning);
+  background: linear-gradient(90deg, var(--status-warning-light) 50%, transparent 50%);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+/* Dashed ring: skipped on purpose (optional step). */
+.statusSkipped {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px dashed var(--neutral-300);
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
 .statusCompleted {
   width: 16px;
   height: 16px;

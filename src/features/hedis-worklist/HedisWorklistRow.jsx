@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { Avatar } from '../../components/Avatar/Avatar';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
@@ -12,6 +11,8 @@ import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { computeDsfbDueDateISO } from './dsf/dsfScoring';
 import { platformUsersForAssigneePicker } from '../../lib/worklistAssignee';
+import { MEASURE_NAMES } from './ClinicalNotePanel.utils';
+import { PatientAvatarHover } from '../../components/PatientHoverCard/PatientAvatarHover';
 import styles from './HedisWorklistRow.module.css';
 
 const LANG_MAP = {
@@ -114,14 +115,17 @@ export const HEDIS_MIDDLE_COLUMNS = [
       <div className={styles.gapItems}>
         {(ctx.visibleGaps || []).map(g => (
           <div key={g.code} className={styles.gapItem}>
-            <button
-              type="button"
-              className={styles.gapBadgeButton}
-              aria-label={`Open ${g.code} care gap details`}
-              onClick={(e) => { e.stopPropagation(); ctx.onOpenGap?.(member, g.code); }}
-            >
-              <Badge size="M" variant="compliance-na" label={g.code} />
-            </button>
+            {/* Hover shows the measure's full name; the code alone is hard to read. */}
+            <Tooltip label={MEASURE_NAMES[g.code] || g.code}>
+              <button
+                type="button"
+                className={styles.gapBadgeButton}
+                aria-label={`Open ${g.code}${MEASURE_NAMES[g.code] ? ` (${MEASURE_NAMES[g.code]})` : ''} care gap details`}
+                onClick={(e) => { e.stopPropagation(); ctx.onOpenGap?.(member, g.code); }}
+              >
+                <Badge size="M" variant="compliance-na" label={g.code} />
+              </button>
+            </Tooltip>
           </div>
         ))}
         {ctx.extraCount > 0 && (
@@ -376,7 +380,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
         onClick={handleMemberCellClick}
       >
         <div className={styles.patientCell}>
-          <Avatar variant="patient" initials={member.in} />
+          <PatientAvatarHover patient={{ memberId: member.memberId, id: member.id, name: member.name, initials: member.in, gender: member.gender, age: member.age, dob: member.dob }} />
           <div>
             <div className={styles.patientName}>
               <button
@@ -439,7 +443,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
           />
           <span className={styles.actionsDivider} />
           <ActionButton
-            icon="solar:menu-dots-bold"
+            icon="solar:menu-dots-linear"
             size="L"
             tooltip="More"
             onClick={e => { e.stopPropagation(); showToast('More actions — coming soon'); }}

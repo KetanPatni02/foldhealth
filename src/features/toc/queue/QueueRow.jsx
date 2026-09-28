@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../components/Icon/Icon';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { Avatar } from '../../../components/Avatar/Avatar';
+import { PatientAvatarHover } from '../../../components/PatientHoverCard/PatientAvatarHover';
 import { AssigneeChange } from '../../../components/AssigneeChange/AssigneeChange';
 import { platformUsersForAssigneePicker } from '../../../lib/worklistAssignee';
 import { Badge } from '../../../components/Badge/Badge';
@@ -486,7 +486,7 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
         title="Open patient quick view"
       >
         <div className={rowStyles.patientCell}>
-          <Avatar variant="patient" initials={p.initials} />
+          <PatientAvatarHover patient={{ memberId: p.memberId, id: p.id, name: p.name, initials: p.initials, gender: p.gender, age: p.age, dob: p.dob }} />
           <div>
             <div className={rowStyles.patientName}>
               <button type="button" className={rowStyles.patientNameLink} onClick={handleMemberCellClick}>{p.name}</button>{' '}

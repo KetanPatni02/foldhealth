@@ -1,0 +1,470 @@
+/* Care Gap lab workflow: Orders tab, Order Lab / order / result panes. */
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Gap summary (heaviest block) ── */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.summaryHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.summaryTitleCol {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.eyebrow {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.summaryTitle {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.reason {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.requirement {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.facts div,
+.orderGrid div,
+.resultFacts div {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.facts dt,
+.orderGrid dt,
+.resultFacts dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.facts dd,
+.orderGrid dd,
+.resultFacts dd {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  overflow-wrap: anywhere;
+}
+
+/* Recommended action: the one obvious next step. */
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 8px;
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+.actionDone {
+  border-color: color-mix(in srgb, var(--status-success) 30%, transparent);
+  background: var(--status-success-light);
+  color: var(--status-success);
+}
+.actionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.actionLabel {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+/* ── Cards ── */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.cardTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.cardActions {
+  display: flex;
+  gap: var(--space-2);
+}
+.resultRow {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+.resultMain {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 120px;
+}
+.resultTest {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.resultValue {
+  font-size: var(--font-xl);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.resultFacts {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.orderGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.explain {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.empty {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.emptyRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.note,
+.formNote,
+.formWarn {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.formWarn { color: var(--status-warning); }
+.reviewed {
+  font-size: var(--font-sm);
+  color: var(--status-success);
+}
+.footnote {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.historyToggle {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: var(--font-sm);
+  color: var(--primary-300);
+  cursor: pointer;
+}
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.historyRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 6px;
+  background: none;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  cursor: pointer;
+  text-align: left;
+}
+.historyRow:hover { background: var(--neutral-25); }
+
+/* Care Gap evaluation under a result: separate from the clinical flag. */
+.evaluation {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: 6px;
+}
+.evaluation > div {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+.evaluationOk { background: var(--status-success-light); color: var(--status-success); }
+.evaluationNo { background: var(--status-error-light); color: var(--status-error); }
+.evaluationTitle { font-size: var(--font-base); font-weight: 500; }
+.evaluationText { font-size: var(--font-sm); color: var(--neutral-400); }
+
+/* ── Prototype controls (clearly not product UI) ── */
+.proto {
+  border: 0.5px dashed var(--neutral-200);
+  border-radius: 8px;
+  background: var(--neutral-25);
+}
+.protoHead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+.protoHint {
+  flex: 1;
+  text-align: left;
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+.protoBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-3) var(--space-3);
+}
+.protoRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.protoLabel {
+  width: 110px;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.protoNote {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+/* ── Panes ── */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.fieldLabel {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.radioRow {
+  display: flex;
+  gap: var(--space-4);
+}
+.detailHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+.stepDone { color: var(--status-success); }
+.stepCurrent { color: var(--primary-300); font-weight: 500; }
+.bigValue {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--font-2xl);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.flag {
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--status-warning);
+}
+.checkRow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+
+@media (max-width: 1280px) {
+  .facts,
+  .orderGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Diagnoses picked for an order */
+.required {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: var(--space-1);
+  border-radius: 50%;
+  background: var(--status-error);
+  vertical-align: middle;
+}
+.fieldHint {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.dxList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.dxChip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 6px;
+  background: var(--neutral-25);
+  font-size: var(--font-base);
+}
+.dxCode {
+  flex-shrink: 0;
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.dxTitle {
+  flex: 1;
+  min-width: 0;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dxPrimary {
+  flex-shrink: 0;
+  font-size: var(--font-sm);
+  color: var(--primary-300);
+}
+.dxRemove {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.dxRemove:hover { color: var(--status-error); }
+
+/* Tests / diagnoses / results on an order */
+.tagList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.resultTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-base);
+}
+.resultTable th {
+  padding: var(--space-1) var(--space-2);
+  text-align: left;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.resultTable td {
+  padding: var(--space-2);
+  color: var(--neutral-500);
+  border-bottom: 0.5px solid var(--neutral-100);
+  vertical-align: middle;
+}
+.resultTable tr:last-child td { border-bottom: none; }
+.resultGapRow td { background: var(--primary-25); }
+.resultFlagHigh { color: var(--status-warning); }
+.muted { color: var(--neutral-300); }
+
+.spanAll { grid-column: 1 / -1; }

@@ -149,6 +149,10 @@ import { fetchCaregapReminderRows, persistCaregapReminderInsert, persistCaregapR
 import { fetchReferralDirectoryRows, fetchCaregapReferralRows, persistCaregapReferralInsert, persistCaregapReferralUpdate, persistCaregapReferralRead } from './lib/caregapReferralsPersist';
 import { REFERRAL_SENDER_LINES_MOCK } from '../features/hedis-worklist/data/referralDirectoryMock';
 import { fetchEfaxNumberRows, persistEfaxNumberInsert, persistEfaxNumberUpdate, persistEfaxNumberDelete } from './lib/efaxNumbersPersist';
+import { fetchCaregapLabRows, persistLabOrder, persistLabResult } from './lib/caregapLabsPersist';
+import { fetchStepStatusRows, persistStepStatus } from './lib/careProgramStepStatusPersist';
+import { fetchPatientSnapshotRow } from './lib/patientSnapshotsPersist';
+import { buildPatientSnapshot, patientSnapshotKey } from '../lib/patientSnapshot';
 import { EFAX_NUMBERS_MOCK } from '../features/settings/messages/efax/efaxNumbersMock';
 import {
   LIST_FILTER_KEY,
@@ -6625,6 +6629,110 @@ export const useAppStore = create((set, get) => ({
     }));
     if (!get().caregapRemindersTableMissing) persistCaregapReminderDelete(id);
   },
+  // ── Patient snapshots (Supabase `patient_snapshots`) ───────────────────
+  // Loaded one patient at a time when the hover card opens. Falls back to
+  // the seed's deterministic values until the migration + seed run.
+  patientSnapshots: {},
+  patientSnapshotLoading: {},
+  patientSnapshotsTableMissing: false,
+  fetchPatientSnapshot: async (patient) => {
+    const id = patientSnapshotKey(patient) || null;
+    if (!id || get().patientSnapshots[id] || get().patientSnapshotLoading[id]) return;
+    set(s => ({ patientSnapshotLoading: { ...s.patientSnapshotLoading, [id]: true } }));
+    // Once the table is known to be missing, skip the round trip.
+    const { snapshot, missing } = get().patientSnapshotsTableMissing
+      ? { snapshot: null, missing: true }
+      : await fetchPatientSnapshotRow(id);
+    set(s => ({
+      patientSnapshotsTableMissing: missing || s.patientSnapshotsTableMissing,
+      patientSnapshots: { ...s.patientSnapshots, [id]: snapshot || buildPatientSnapshot(patient) },
+      patientSnapshotLoading: { ...s.patientSnapshotLoading, [id]: false },
+    }));
+  },
+
+  // ── Care Program step status (Supabase `care_program_step_status`) ─────
+  // Keyed by patient program enrollment id → { [stepId]: { status, ... } }.
+  // Only statuses someone set (Reviewed / Skip); record-backed steps derive
+  // theirs in the view. Session-only until the migration runs.
+  programStepStatus: {},
+  programStepStatusTableMissing: false,
+  fetchProgramStepStatus: async (patientProgramId) => {
+    if (!patientProgramId || get().programStepStatus[patientProgramId]) return;
+    set(s => ({ programStepStatus: { ...s.programStepStatus, [patientProgramId]: {} } }));
+    const { rows, missing } = await fetchStepStatusRows(patientProgramId);
+    set(s => ({
+      programStepStatusTableMissing: missing || s.programStepStatusTableMissing,
+      programStepStatus: {
+        ...s.programStepStatus,
+        [patientProgramId]: { ...Object.fromEntries(rows.map(r => [r.stepId, r])), ...(s.programStepStatus[patientProgramId] || {}) },
+      },
+    }));
+  },
+  setProgramStepStatus: async (patientProgramId, step, status) => {
+    if (!patientProgramId || !step?.id) return;
+    const updatedBy = get().currentActorName?.() || null;
+    set(s => {
+      const cur = { ...(s.programStepStatus[patientProgramId] || {}) };
+      if (status) cur[step.id] = { stepId: step.id, status, updatedBy, updatedAt: new Date().toISOString() };
+      else delete cur[step.id];
+      return { programStepStatus: { ...s.programStepStatus, [patientProgramId]: cur } };
+    });
+    if (get().programStepStatusTableMissing) return;
+    const { missing } = await persistStepStatus(patientProgramId, step, status, updatedBy);
+    if (missing) set({ programStepStatusTableMissing: true });
+  },
+
+  // ── Care Gap lab orders / results (Supabase `caregap_lab_*`) ────────────
+  // Keyed by HEDIS member id. Local state updates first; until
+  // caregap_lab_orders_migration.sql has run they stay session-only and the
+  // drawer falls back to the seeded prior result (labMock.js).
+  caregapLabOrders: {},
+  caregapLabResults: {},
+  caregapLabsLoaded: false,
+  caregapLabsTableMissing: false,
+  fetchCaregapLabs: async () => {
+    if (get()._caregapLabsFetching || get().caregapLabsLoaded) return;
+    set({ _caregapLabsFetching: true });
+    const { orders, results, missing } = await fetchCaregapLabRows();
+    const group = (list, local) => {
+      const out = { ...local };
+      list.forEach(x => { out[x.memberId] = [...(out[x.memberId] || []).filter(l => l.id !== x.id), x]; });
+      return out;
+    };
+    set(s => ({
+      caregapLabOrders: group(orders, s.caregapLabOrders),
+      caregapLabResults: group(results, s.caregapLabResults),
+      caregapLabsLoaded: true,
+      caregapLabsTableMissing: missing,
+      _caregapLabsFetching: false,
+    }));
+  },
+  // Insert or update (same id) an order / a result.
+  saveLabOrder: async (order) => {
+    if (!order?.id || !order.memberId) return;
+    set(s => ({
+      caregapLabOrders: {
+        ...s.caregapLabOrders,
+        [order.memberId]: [order, ...(s.caregapLabOrders[order.memberId] || []).filter(o => o.id !== order.id)],
+      },
+    }));
+    if (get().caregapLabsTableMissing) return;
+    const { missing } = await persistLabOrder(order);
+    if (missing) set({ caregapLabsTableMissing: true });
+  },
+  saveLabResult: async (result) => {
+    if (!result?.id || !result.memberId) return;
+    set(s => ({
+      caregapLabResults: {
+        ...s.caregapLabResults,
+        [result.memberId]: [result, ...(s.caregapLabResults[result.memberId] || []).filter(r => r.id !== result.id)],
+      },
+    }));
+    if (get().caregapLabsTableMissing) return;
+    const { missing } = await persistLabResult(result);
+    if (missing) set({ caregapLabsTableMissing: true });
+  },
+
   // ── Practice eFax numbers (Supabase `efax_numbers`) ─────────────────────
   // Settings > Messages > eFax. Local state updates first; falls back to the
   // mock (same ids as the migration seed) until efax_numbers_migration.sql

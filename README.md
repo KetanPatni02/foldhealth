@@ -37,6 +37,21 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Patient hover card on every worklist.** Resting on a member avatar for
+  800ms opens a patient banner, then a snapshot slides out: EHR ID, Fold
+  Score / RAF Score / Goal Progress tiles and the Fold Score Breakdown. The
+  RAF Score tile switches the breakdown to HCCs (each opens to its ICD-10
+  details), demographics and interactions. Shared `PatientAvatarHover`
+  component; data in `patient_snapshots`
+  (`supabase/patient_snapshots_migration.sql`).
+
+- **Care Gap lab orders and results.** Order one or more tests with multiple
+  diagnoses from the Care Gap drawer, then review results against the gap
+  (`supabase/caregap_lab_orders_migration.sql`). Care Program steps now derive
+  their status from records, with Reviewed / Skip stored in
+  `care_program_step_status`. The Activity loader is a timeline skeleton, and
+  gap badges show the full measure name on hover.
+
 - **Employer Impact Print drawer: Widgets and Personalize tabs.** Widgets
   (first) holds the section cards, redesigned to Figma 937:52974: drag a card
   from anywhere (all cards shrink to their titles mid-drag), switch a section

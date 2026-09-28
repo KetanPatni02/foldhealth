@@ -249,31 +249,33 @@ export const CM_FILTERS = [
   { label: 'Action Status' },
 ];
 
+// Step definitions only: each step's status is worked out per patient in
+// ProgramDetailView/stepStatus.js.
 export const PROGRAM_STEPS_MOCK = [
-  { id: 'step-1', name: 'Outreach', status: 'pending' },
-  { id: 'step-2', name: 'Letters', status: 'completed', mandatory: true },
+  { id: 'step-1', name: 'Outreach' },
+  { id: 'step-2', name: 'Letters', mandatory: true },
   {
     id: 'step-3', name: 'Program Directives', type: 'section', expanded: true,
     children: [
-      { id: 'step-3a', name: 'Pre-visit', status: 'completed', mandatory: true },
-      { id: 'step-3b', name: 'HRA', status: 'completed', hasAlert: true },
-      { id: 'step-3c', name: 'BRCSI Assessment', status: 'completed' },
-      { id: 'step-3d', name: 'SNP Assessment', status: 'completed', mandatory: true },
+      { id: 'step-3a', name: 'Pre-visit', mandatory: true },
+      { id: 'step-3b', name: 'HRA', hasAlert: true },
+      { id: 'step-3c', name: 'BRCSI Assessment' },
+      { id: 'step-3d', name: 'SNP Assessment', mandatory: true },
     ],
   },
   {
     id: 'step-4', name: 'Model of Care', type: 'section', expanded: true,
     children: [
-      { id: 'step-4a', name: 'Care Plan', status: 'completed', mandatory: true },
+      { id: 'step-4a', name: 'Care Plan', mandatory: true },
     ],
   },
-  { id: 'step-5', name: 'ICT Appointment', status: 'completed', mandatory: true },
-  { id: 'step-6', name: 'Post Visit Checklist', status: 'completed', mandatory: true },
-  { id: 'step-7', name: 'Open Care Gaps', status: 'pending' },
-  { id: 'step-8', name: 'Medication Reconciliation', status: 'pending' },
-  { id: 'step-9', name: 'Program Related Task', status: 'pending' },
-  { id: 'step-10', name: 'Program Related Files', status: 'pending', mandatory: true },
-  { id: 'step-11', name: 'Referral Review', status: 'pending', mandatory: true },
+  { id: 'step-5', name: 'ICT Appointment', mandatory: true },
+  { id: 'step-6', name: 'Post Visit Checklist', mandatory: true },
+  { id: 'step-7', name: 'Open Care Gaps' },
+  { id: 'step-8', name: 'Medication Reconciliation' },
+  { id: 'step-9', name: 'Program Related Task' },
+  { id: 'step-10', name: 'Program Related Files', mandatory: true },
+  { id: 'step-11', name: 'Referral Review', mandatory: true },
 ];
 
 // CCM-specific step list. Distinct from PROGRAM_STEPS_MOCK because CCM's
@@ -281,17 +283,17 @@ export const PROGRAM_STEPS_MOCK = [
 // like SNP. The Billing Review step carries `kind: 'billing'` so
 // ProgramDetailView can swap in the CcmBillingReview content pane.
 export const CCM_PROGRAM_STEPS = [
-  { id: 'ccm-outreach', name: 'Outreach', status: 'pending' },
+  { id: 'ccm-outreach', name: 'Outreach' },
   {
     id: 'ccm-assess', name: 'Assess Patient', type: 'section', expanded: true,
     children: [
-      { id: 'ccm-assess-overview', name: 'Overview', status: 'pending' },
-      { id: 'ccm-assess-health', name: 'Health Management', status: 'pending' },
+      { id: 'ccm-assess-overview', name: 'Overview' },
+      { id: 'ccm-assess-health', name: 'Health Management' },
     ],
   },
-  { id: 'ccm-med-review', name: 'Medication Review', status: 'pending' },
-  { id: 'ccm-care-plan', name: 'Care Plan Details', status: 'pending' },
-  { id: 'ccm-billing', name: 'Billing Review', kind: 'billing', status: 'pending', hasAlert: true },
+  { id: 'ccm-med-review', name: 'Medication Review' },
+  { id: 'ccm-care-plan', name: 'Care Plan Details' },
+  { id: 'ccm-billing', name: 'Billing Review', kind: 'billing', hasAlert: true },
 ];
 
 // ─── Per-program step lists ────────────────────────────────────────────────
