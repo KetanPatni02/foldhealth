@@ -35,7 +35,7 @@ create table if not exists public.patient_snapshots (
 alter table public.patient_snapshots enable row level security;
 
 drop policy if exists "Allow all" on public.patient_snapshots;
-create policy "Allow all" on public.patient_snapshots for all using (true) with check (true);
+create policy "Allow all" on public.patient_snapshots for all to authenticated using (true) with check (true);
 
 commit;
 
