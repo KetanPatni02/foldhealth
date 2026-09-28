@@ -1,0 +1,119 @@
+/* Care Gap drawer: Referrals tab (Figma 1:121862). */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.toolbarActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.divider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+.searchBar { width: 220px; }
+
+.folderLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.folderDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.folderCount { color: var(--neutral-200); }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.clearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.clearAll:hover { color: var(--neutral-400); }
+
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.colCreated { width: 120px; }
+.colStatus { width: 128px; }
+.colActions { width: 40px; }
+.table .th {
+  padding: 0 var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.td {
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  vertical-align: middle;
+  font-size: var(--font-base);
+}
+.row {
+  border-bottom: 0.5px solid var(--neutral-100);
+  cursor: pointer;
+}
+.row:last-child { border-bottom: none; }
+.row:hover { background: var(--neutral-25); }
+.row:focus-visible { outline: 2px solid var(--primary-300); outline-offset: -2px; }
+.rowActive,
+.rowActive:hover { background: var(--primary-50); }
+.rowActive > td:first-child { box-shadow: inset 3px 0 0 var(--primary-300); }
+
+.name,
+.sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.name { color: var(--neutral-500); }
+.sub {
+  margin-top: calc(var(--space-1) / 2);
+  color: var(--neutral-300);
+}
+.created { color: var(--neutral-300); }
+.statusDraft { color: var(--neutral-300); }
+.statusSigned { color: var(--status-warning); }
+.statusCompleted { color: var(--status-success); }
+
+/* The row menu shows on hover / focus, like the design's hidden Action cell. */
+.actionsTd { text-align: right; }
+.rowMenuBtn { opacity: 0; transition: opacity .12s; }
+.row:hover .rowMenuBtn,
+.row:focus-within .rowMenuBtn { opacity: 1; }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
+}
+.emptyTitle {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}

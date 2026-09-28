@@ -158,7 +158,12 @@ function markSupersededDrafts(list) {
   });
 }
 
-export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote }) {
+/**
+ * `toolbar` sits at the right of the first month header (search / filter
+ * actions); `toolbarBelow` renders under that row (e.g. filter chips). Both
+ * stay visible when filtering leaves nothing to show.
+ */
+export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote, toolbar, toolbarBelow }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggleGroup = (label) => setCollapsed(prev => {
     const next = new Set(prev);
@@ -168,11 +173,21 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
 
   const list = useMemo(() => markSupersededDrafts(entries || []), [entries]);
   const hasItems = list.some(e => e.t !== 'group');
+  const emptyState = (
+    <div className={styles.empty}>
+      <Icon name="solar:history-linear" size={32} color="var(--neutral-200)" />
+      <p>{emptyLabel}</p>
+    </div>
+  );
   if (!hasItems) {
+    if (!toolbar) return emptyState;
     return (
-      <div className={styles.empty}>
-        <Icon name="solar:history-linear" size={32} color="var(--neutral-200)" />
-        <p>{emptyLabel}</p>
+      <div className={htStyles.wrap}>
+        <div className={[styles.groupRow, styles.groupRowToolbarOnly].join(' ')}>
+          <span className={styles.groupToolbar}>{toolbar}</span>
+        </div>
+        {toolbarBelow}
+        {emptyState}
       </div>
     );
   }
@@ -202,30 +217,46 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
 
   return (
     <div className={htStyles.wrap}>
-      {items.map(it => it.kind === 'group' ? (
-        <button
-          key={it.key}
-          type="button"
-          className={`${styles.group} ${collapsed.has(it.entry.label) ? styles.groupCollapsed : ''}`}
-          onClick={() => toggleGroup(it.entry.label)}
-          aria-expanded={!collapsed.has(it.entry.label)}
-        >
-          <span>{it.entry.label}</span>
-          <span className={styles.groupChevron}>
-            <DownChevronIcon size={12} color="var(--neutral-400)" />
-          </span>
-        </button>
-      ) : (
-        <ActivityLogEntry
-          key={it.key}
-          entry={it.entry}
-          isFirst={it.isFirst}
-          isLast={it.isLast}
-          hideCommentTitle={hideCommentTitle}
-          onOpenTask={onOpenTask}
-          onOpenNote={onOpenNote}
-        />
-      ))}
+      {items.map((it, idx) => {
+        if (it.kind === 'item') {
+          return (
+            <ActivityLogEntry
+              key={it.key}
+              entry={it.entry}
+              isFirst={it.isFirst}
+              isLast={it.isLast}
+              hideCommentTitle={hideCommentTitle}
+              onOpenTask={onOpenTask}
+              onOpenNote={onOpenNote}
+            />
+          );
+        }
+        const groupBtn = (
+          <button
+            key={it.key}
+            type="button"
+            className={`${styles.group} ${collapsed.has(it.entry.label) ? styles.groupCollapsed : ''}`}
+            onClick={() => toggleGroup(it.entry.label)}
+            aria-expanded={!collapsed.has(it.entry.label)}
+          >
+            <span>{it.entry.label}</span>
+            <span className={styles.groupChevron}>
+              <DownChevronIcon size={12} color="var(--neutral-400)" />
+            </span>
+          </button>
+        );
+        // The first month row also carries the toolbar.
+        if (idx !== 0 || !toolbar) return groupBtn;
+        return (
+          <div key={it.key} className={styles.groupRowWrap}>
+            <div className={styles.groupRow}>
+              {groupBtn}
+              <span className={styles.groupToolbar}>{toolbar}</span>
+            </div>
+            {toolbarBelow}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -802,7 +833,7 @@ function CommentEntryBody({ entry, hideTitle = false }) {
               icon="solar:menu-dots-linear"
               size="S"
               tooltip="Comment actions"
-              onClick={(e) => setMenuAnchor(e.currentTarget.getBoundingClientRect())}
+              onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget.getBoundingClientRect()); }}
             />
           </span>
         )}
@@ -859,7 +890,25 @@ function ReferralEntryBody({ entry }) {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const setActivePage = useAppStore(s => s.setActivePage);
   const setPendingEmailReferralId = useAppStore(s => s.setPendingEmailReferralId);
+  const providers = useAppStore(s => s.referralProviders);
   const dc = entry.detailCard || {};
+  // Specialty is read from the directory at render time, so a card logged
+  // before a doctor's specialty was set still shows it. Id first; older
+  // entries only carry names, and one person can have duplicate profile rows,
+  // so prefer the same-name row that has a specialty.
+  const lookup = (id, name) => {
+    if (id) {
+      const byId = providers?.find(p => p.id === id);
+      if (byId) return byId;
+    }
+    if (!name) return null;
+    const same = (providers || []).filter(p => (p.name || '').toLowerCase() === name.toLowerCase());
+    return same.find(p => p.specialty) || same[0] || null;
+  };
+  const fromSpecialty = lookup(dc.fromId, dc.fromName)?.specialty || dc.fromRole || '';
+  const toSpecialty = lookup(dc.toId, dc.toName)?.specialty || dc.toSpecialty || '';
+  const toContact = dc.toContact ?? dc.toSubtitle ?? '';
+  const toSubtitle = [toSpecialty && !toContact.includes(toSpecialty) ? toSpecialty : '', toContact].filter(Boolean).join(' • ');
   const created = dc.createdAt ? new Date(dc.createdAt) : null;
   const createdLabel = created && !Number.isNaN(created.getTime())
     ? `${String(created.getMonth() + 1).padStart(2, '0')}/${String(created.getDate()).padStart(2, '0')}/${created.getFullYear()}, ${created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`
@@ -868,6 +917,7 @@ function ReferralEntryBody({ entry }) {
   const menuItems = [
     ...(entry.onOpenReferralDraft ? [{ key: 'continue-draft', icon: 'solar:pen-linear', label: 'Continue Draft' }] : []),
     ...(!isDraft && dc.channel === 'email' && dc.referralId ? [{ key: 'view-email', icon: 'solar:letter-linear', label: 'View Email' }] : []),
+    ...(entry.onCompleteReferral ? [{ key: 'complete', icon: 'solar:check-circle-linear', label: 'Mark as Completed' }] : []),
   ];
 
   return (
@@ -878,20 +928,26 @@ function ReferralEntryBody({ entry }) {
         <ViewMoreButton expanded={expanded} onToggle={() => setExpanded(v => !v)} leadingDot />
       </div>
       {expanded && (
-        <div className={[styles.detailCard, styles.referralCard].join(' ')}>
+        <div
+          className={[styles.detailCard, styles.referralCard, entry.onOpenReferral ? styles.referralCardClickable : ''].filter(Boolean).join(' ')}
+          role={entry.onOpenReferral ? 'button' : undefined}
+          tabIndex={entry.onOpenReferral ? 0 : undefined}
+          onClick={entry.onOpenReferral}
+          onKeyDown={entry.onOpenReferral ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); entry.onOpenReferral(); } } : undefined}
+        >
           <div className={styles.referralMain}>
             <div className={styles.referralParties}>
               <div className={styles.referralParty}>
                 <span className={styles.referralName}>{dc.fromName}</span>
-                {dc.fromRole && <span className={styles.referralSub}>{dc.fromRole}</span>}
+                {fromSpecialty && <span className={styles.referralSub}>{fromSpecialty}</span>}
               </div>
               <Icon name="solar:arrow-right-linear" size={16} color="var(--neutral-300)" />
               <div className={styles.referralParty}>
                 <span className={styles.referralNameRow}>
                   <span className={styles.referralName}>{dc.toName}</span>
-                  {dc.toBadge && <Badge tone="primary" size="S" label={dc.toBadge} />}
+                  {dc.toBadge && <Badge tone="primary" size="S" label={dc.toBadge} className={styles.referralBadge} />}
                 </span>
-                {dc.toSubtitle && <span className={styles.referralSub}>{dc.toSubtitle}</span>}
+                {toSubtitle && <span className={styles.referralSub}>{toSubtitle}</span>}
               </div>
             </div>
             <div className={styles.referralSub}>
@@ -906,10 +962,12 @@ function ReferralEntryBody({ entry }) {
               size="S"
               tooltip="More actions"
               tooltipLeft
-              onClick={(e) => setMenuAnchor(e.currentTarget.getBoundingClientRect())}
+              onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget.getBoundingClientRect()); }}
             />
           )}
           {menuAnchor && (
+            // Portal clicks still bubble through React; keep them off the card.
+            <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
             <MenuPopover
               anchorRect={menuAnchor}
               width={168}
@@ -919,12 +977,14 @@ function ReferralEntryBody({ entry }) {
               onSelect={(key) => {
                 setMenuAnchor(null);
                 if (key === 'continue-draft') entry.onOpenReferralDraft?.();
+                else if (key === 'complete') entry.onCompleteReferral?.();
                 else if (key === 'view-email') {
                   setActivePage?.('messages');
                   setPendingEmailReferralId?.(dc.referralId);
                 }
               }}
             />
+            </span>
           )}
         </div>
       )}
