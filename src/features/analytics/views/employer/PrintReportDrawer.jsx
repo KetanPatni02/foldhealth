@@ -516,9 +516,10 @@ function printBlob(blob) {
  * @param {function} props.pageSnapshot – () => the page's snapshot, for Download HTML
  * @param {boolean}  [props.loading]  – The report's data is (re)loading, e.g. after a
  *   filter change: widgets keep their switches and the preview shows the loader
+ * @param {(format: 'pdf' | 'html' | 'print', filename: string) => void} [props.onExport] – After each export, for the History log
  * @param {function} props.onClose
  */
-export function PrintReportDrawer({ range, employerName, filename, sections, filters, pageSnapshot, loading = false, onClose }) {
+export function PrintReportDrawer({ range, employerName, filename, sections, filters, pageSnapshot, loading = false, onExport, onClose }) {
   // { [sectionId]: { html, plain } }, kept between openings of the drawer.
   const [notes, setNotesState] = useState(readNotes);
   const setNotes = (update) => setNotesState((prev) => {
@@ -930,6 +931,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     setSavingPage(true);
     try {
       downloadBlob(await buildReportPage(pageSnapshot(), reportTitle), `${filename}.html`);
+      onExport?.('html', `${filename}.html`);
     } catch (err) {
       console.error('Download HTML failed:', err);
       showToast('Could not prepare the HTML report. Run bun run build:report-viewer and try again.');
@@ -1001,8 +1003,10 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
           width={200}
           onSelect={(key) => {
             setDownloadOpen(false);
-            if (key === 'pdf') downloadBlob(generate().blob, `${filename}.pdf`);
-            else downloadPage();
+            if (key === 'pdf') {
+              downloadBlob(generate().blob, `${filename}.pdf`);
+              onExport?.('pdf', `${filename}.pdf`);
+            } else downloadPage();
           }}
           onClose={() => setDownloadOpen(false)}
         />
@@ -1016,7 +1020,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
         tooltipBelow
         aria-label="Print report"
         state={nothingSelected ? 'disabled' : 'active'}
-        onClick={() => printBlob(generate().blob)}
+        onClick={() => { printBlob(generate().blob); onExport?.('print', `${filename}.pdf`); }}
       />
       <span className={styles.headerDivider} aria-hidden="true" />
     </>

@@ -14,9 +14,10 @@
 .headerActions { display: flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
 .actionDivider { width: 0.5px; height: 16px; background: var(--neutral-100); }
 
-/* Sticky so it stays reachable while scrolling. */
+/* Title, filters and section tabs stay pinned while the charts scroll. */
+.topBar { position: sticky; top: 0; z-index: 3; background: var(--neutral-0); }
+
 .quickJump {
-  position: sticky; top: 0; z-index: 2;
   display: flex; align-items: center; overflow-x: auto;
   padding: var(--space-2) var(--space-4); background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
@@ -24,7 +25,7 @@
 
 /* ── Sections + grid ── */
 .sections { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-4); }
-.section { display: flex; flex-direction: column; gap: var(--space-3); scroll-margin-top: 48px; }
+.section { display: flex; flex-direction: column; gap: var(--space-3); scroll-margin-top: calc(var(--top-bar-h, 0px) + var(--space-4)); }
 .sectionTitle { margin: 0; font-size: var(--font-lg); font-weight: 500; color: var(--neutral-400); }
 .grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-4); }
 /* Spans come from packSpans, set per card as --span (desktop) and

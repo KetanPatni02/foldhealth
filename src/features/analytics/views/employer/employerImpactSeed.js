@@ -176,3 +176,15 @@ export function employerImpactRows(lastMonth) {
   }
   return rows;
 }
+
+// Sample export history (History button), relative to `now` so the log
+// always has recent entries. Also the stand-in until the table exists.
+export function employerImpactExportRows(now = new Date()) {
+  const daysAgo = (d, h) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - d, h, 15).toISOString();
+  return [
+    { id: 'eie-sample-1', format: 'pdf', employer: 'Northwind Logistics', time_frame: 'Quarter', date_range: 'Jul 2026 - Sep 2026', filename: 'employer-impact-report-2026-07-to-2026-09.pdf', exported_by: 'Devanshi Sharma', exported_at: daysAgo(1, 10) },
+    { id: 'eie-sample-2', format: 'html', employer: 'Brightline Schools', time_frame: 'Quarter', date_range: 'Jul 2026 - Sep 2026', filename: 'employer-impact-report-2026-07-to-2026-09.html', exported_by: 'Alok Kumar', exported_at: daysAgo(3, 15) },
+    { id: 'eie-sample-3', format: 'print', employer: 'Northwind Logistics', time_frame: 'Month', date_range: 'Aug 2026', filename: 'employer-impact-report-2026-08-to-2026-08.pdf', exported_by: 'Devanshi Sharma', exported_at: daysAgo(12, 11) },
+    { id: 'eie-sample-4', format: 'pdf', employer: 'Harbor Manufacturing', time_frame: 'Year', date_range: 'Oct 2025 - Sep 2026', filename: 'employer-impact-report-2025-10-to-2026-09.pdf', exported_by: 'Alok Kumar', exported_at: daysAgo(40, 9) },
+  ];
+}

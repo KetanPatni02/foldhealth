@@ -30,7 +30,7 @@ import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY } from '../src/features/settings/c
 import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src/features/settings/care-plan-library/data/carePlanTemplateLibrarySeed.js';
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
-import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
+import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -957,6 +957,15 @@ async function main() {
       if (error) failed = error;
     }
     if (failed) { console.error('  ✗', failed.message); } else { console.log(`  ✓ ${metricRows.length} rows`); }
+  }
+
+  console.log('Seeding employer_impact_report_exports (sample export history)...');
+  {
+    const exportRows = employerImpactExportRows();
+    const { error } = await supabase
+      .from('employer_impact_report_exports')
+      .upsert(exportRows, { onConflict: 'id' });
+    if (error) { console.error('  ✗', error.message); } else { console.log(`  ✓ ${exportRows.length} exports`); }
   }
 
   console.log('Seeding patient_social_history...');

@@ -12167,6 +12167,44 @@ export const useAppStore = create((set, get) => ({
     return !error;
   },
 
+  // Export history (History button): newest first. Falls back to the
+  // sample rows while the table isn't there yet; exports made meanwhile are
+  // kept in memory so they still show up.
+  employerReportExports: [],
+  employerReportExportsLoading: false,
+  employerReportExportsFetched: false,
+  fetchEmployerReportExports: async () => {
+    set({ employerReportExportsLoading: true });
+    const { data, error } = await supabase
+      .from('employer_impact_report_exports')
+      .select('*')
+      .order('exported_at', { ascending: false })
+      .limit(200);
+    let rows = data || [];
+    if (error) {
+      console.warn('fetchEmployerReportExports:', error.message);
+      const { employerImpactExportRows } = await import('../features/analytics/views/employer/employerImpactSeed');
+      const local = get().employerReportExports.filter(r => r.local);
+      rows = [...local, ...employerImpactExportRows()];
+    }
+    set({ employerReportExports: rows, employerReportExportsLoading: false, employerReportExportsFetched: true });
+  },
+  logEmployerReportExport: async ({ format, employer, timeFrame, dateRange, filename }) => {
+    const row = {
+      id: `eie-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      format,
+      employer: employer || null,
+      time_frame: timeFrame || null,
+      date_range: dateRange || null,
+      filename: filename || null,
+      exported_by: get().currentUserProfile?.name || null,
+      exported_at: new Date().toISOString(),
+    };
+    const { error } = await supabase.from('employer_impact_report_exports').insert(row);
+    if (error) console.warn('logEmployerReportExport:', error.message);
+    set(s => ({ employerReportExports: [{ ...row, local: !!error }, ...s.employerReportExports] }));
+  },
+
   analyticsCache: {},
   analyticsLoading: {},
   analyticsError: {},
