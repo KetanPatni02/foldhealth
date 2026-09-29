@@ -26,16 +26,33 @@
 
 /* All presets on one line: equal columns that share the width, square
    swatches, names on hover (title) and for screen readers (aria-label). */
-/* 14 columns (the preset count), so colour rows with fewer swatches keep the same size. */
-.swatches { display: grid; grid-template-columns: repeat(14, minmax(0, 1fr)); gap: var(--space-1); }
+/* 15 columns: the 14 presets plus "+", so colour rows with fewer swatches keep the same size. */
+.swatches { display: grid; grid-template-columns: repeat(15, minmax(0, 1fr)); gap: var(--space-1); }
 .swatch {
   display: flex; min-width: 0; padding: var(--space-1); border: 0.5px solid var(--neutral-150); border-radius: 6px;
   background: var(--neutral-0); cursor: pointer;
 }
 .swatch:hover { border-color: var(--neutral-200); }
+/* A swatch and, for one the user added, its remove button (top right, on hover). */
+.swatchCell { position: relative; display: flex; min-width: 0; }
+.swatchCell > .swatch { flex: 1; }
+.swatchRemove {
+  /* Figma 1047:21272: 16px, over the top-right corner. */
+  position: absolute; top: -5.5px; right: -2.5px; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; padding: 0; box-sizing: border-box;
+  border: 0.5px solid var(--neutral-150); border-radius: 50%;
+  background: var(--neutral-75);
+  cursor: pointer; opacity: 0;
+  transition: opacity var(--duration-instant) var(--ease-hover);
+}
+.swatchCell:hover .swatchRemove, .swatchRemove:focus-visible { opacity: 1; }
+.swatchRemove:hover { border-color: var(--neutral-200); }
 .swatch:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; }
 .swatchOn { border-color: var(--primary-300); box-shadow: 0 0 0 1px var(--primary-300); }
 .swatchFill { display: block; width: 100%; aspect-ratio: 1; border-radius: 4px; }
+/* "+": opens the picker for a colour or gradient of your own. */
+.swatchAdd { align-items: center; justify-content: center; width: 100%; height: 100%; }
 
 /* Image picker (Dropzone + picked-file row). */
 .dropField { display: flex; flex-direction: column; gap: var(--space-1); }
@@ -119,21 +136,36 @@
 .reordering .collapse { transition: none; }
 .reordering .sectionCard { cursor: grabbing; }
 
-/* Employer logo preview row. */
-.logoThumb { width: 96px; height: 40px; object-fit: contain; border-radius: 4px; background: var(--neutral-50); padding: var(--space-1); box-sizing: border-box; }
 .hiddenInput { display: none; }
 
-/* ── Personalize: groups split by hairlines. Each group is a title row
-   (with its switch) over its fields, 12px apart. ── */
-.personalize { display: flex; flex-direction: column; }
-.group {
-  display: flex; flex-direction: column; gap: var(--space-3);
-  padding: var(--space-5) 0; border-bottom: 0.5px solid var(--neutral-150);
-}
-.group:first-child { padding-top: 0; }
-.group:last-child { padding-bottom: 0; border-bottom: 0; }
+/* ── Personalize (Figma 1031:21133): blocks 24px apart, no hairlines. ── */
+.personalize { display: flex; flex-direction: column; gap: var(--space-6); }
 .groupHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .groupTitle { margin: 0; font-size: var(--font-base); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-400); }
+
+/* A cover logo: its box on the left, the alignment picker filling the
+   rest of the row at the box's height. */
+.logoPlacement { display: grid; grid-template-columns: minmax(0, 1fr) minmax(96px, 25%); gap: var(--space-2); }
+.logoPlacement > .fieldGroup { gap: calc(var(--space-1) * 1.5); }
+.logoBox {
+  display: flex; flex-direction: column; justify-content: center; gap: var(--space-3);
+  padding: var(--space-2); border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.alignSlot { flex: 1; display: flex; flex-direction: column; }
+.logoRow { display: flex; align-items: center; gap: var(--space-3); }
+.logoThumb {
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  height: 55px; padding: var(--space-2) var(--space-3); box-sizing: border-box;
+  border-radius: 6px; background: var(--neutral-50);
+}
+.logoThumb img { max-width: 120px; max-height: 39px; object-fit: contain; }
+.scaleRow { display: flex; align-items: center; gap: var(--space-3); }
+.scaleLabel { flex-shrink: 0; font-size: var(--font-base); line-height: var(--leading-tight); color: var(--neutral-200); }
+
+.coverGroup { display: flex; flex-direction: column; gap: var(--space-4); }
+/* Header and footer side by side, 16px apart. */
+.chromeRow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.chromeGroup { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* A section note grows with its text up to this height, then scrolls

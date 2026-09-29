@@ -789,3 +789,36 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Template `content` block (e.g. LSC care plan): read-only guidance shown
+   by a display rule. Matches the DSF care plan panel. */
+.templateContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.templateContentTitle {
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--neutral-500);
+}
+.templateContentBullets {
+  margin: 0;
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + var(--space-4));
+  list-style: disc outside;
+  background: var(--primary-50);
+  border-radius: 8px;
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+  line-height: var(--leading-normal);
+}
+.templateContentBullets li { padding-left: var(--space-1); }
+.templateContentBullets li + li { margin-top: var(--space-1); }
+.fieldHelper {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}

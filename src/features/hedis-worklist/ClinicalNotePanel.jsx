@@ -122,7 +122,7 @@ export function ClinicalNotePanel({ member, gapCode, year, onClose, editingTaskI
             primaryLabel="Sign & Save"
             reviewerFlow={isReviewFlow}
             canSaveDraft={canSaveDraftEffective}
-            canSign={isReviewFlow ? v.anyReadyForReview : v.allActiveMandatoryComplete}
+            canSign={isReviewFlow ? v.anyReadyForReview : v.canSignReady}
             authorEditingSubmitted={isAuthorEditingSubmitted}
           />
         }

@@ -8331,7 +8331,7 @@ export const useAppStore = create((set, get) => ({
           continue;
         }
         const initials = name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
-        byName.set(name, { id: r.id, name, initials, clinicalRoles: roles });
+        byName.set(name, { id: r.id, name, initials, email: r.email || '', clinicalRoles: roles });
       }
       set({
         platformUsers: [...byName.values()],
@@ -12140,6 +12140,30 @@ export const useAppStore = create((set, get) => ({
       }, { onConflict: 'section_id' })
       : await supabase.from('employer_impact_report_notes').delete().eq('section_id', sectionId);
     if (error) console.warn('saveEmployerReportNote:', error.message);
+    return !error;
+  },
+
+  // Print drawer Personalize settings, shared by everyone, one row per
+  // employer. Resolves { settings, missing }: settings is null when nothing
+  // is saved yet; missing is true before the migration runs (the drawer
+  // then keeps its settings for the session only).
+  fetchEmployerReportSettings: async (employer) => {
+    const { data, error } = await supabase.from('employer_impact_report_settings')
+      .select('settings').eq('employer', employer).maybeSingle();
+    if (error) {
+      console.warn('fetchEmployerReportSettings:', error.message);
+      return { settings: null, missing: true };
+    }
+    return { settings: data?.settings || null, missing: false };
+  },
+  saveEmployerReportSettings: async (employer, settings) => {
+    const { error } = await supabase.from('employer_impact_report_settings').upsert({
+      employer,
+      settings,
+      updated_by: get().currentUserProfile?.name || null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'employer' });
+    if (error) console.warn('saveEmployerReportSettings:', error.message);
     return !error;
   },
 

@@ -12,6 +12,7 @@ import { DatePicker } from '../../components/DatePicker/DatePicker';
 import { RadioButton } from '../../components/RadioButton/RadioButton';
 import { CheckboxTick } from '../../components/CheckboxTick/CheckboxTick';
 import { UploadDropField } from '../../components/UploadDropField/UploadDropField';
+import { Alert } from '../../components/Alert/Alert';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { PatientBanner } from '../../components/PatientBanner/PatientBanner';
 import {
@@ -28,6 +29,7 @@ import {
   isMandatoryComplete as isMandatoryCompleteRaw,
 } from './ClinicalNotePanel.utils';
 import { DsfaEvidenceForm, DsfbEvidenceForm } from './dsf/DsfEvidenceForms';
+import { derivedPatch, isFieldVisible, needsTelehealthConsent, userSelectOptions } from '../../lib/noteTemplateRules';
 import styles from './ClinicalNotePanel.module.css';
 
 // Wraps `isMandatoryComplete` so DSF measures see the note-level
@@ -975,10 +977,21 @@ function GenericEvidenceForm({ code, v, data, submitted }) {
   // both places — see scripts/sync-note-templates.mjs.
   const dbTemplate = useAppStore(s => s.noteTemplatesByGap?.[code]);
   const dbFields = Array.isArray(dbTemplate?.schema?.items) ? dbTemplate.schema.items : null;
-  const template = dbFields && dbFields.length ? dbFields : GAP_TEMPLATES[code];
-  if (!template) return null;
-  const onUpdate = (patch) => v.updateGap(code, patch);
+  const allFields = dbFields && dbFields.length ? dbFields : GAP_TEMPLATES[code];
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  const hasUserSelect = !!allFields?.some(f => f.type === 'user-select');
+  useEffect(() => { if (hasUserSelect) fetchPlatformUsers?.(); }, [hasUserSelect, fetchPlatformUsers]);
+  if (!allFields) return null;
+  // Derived fields (e.g. LSC Result from Result Value) ride along in the
+  // same update so the value and what depends on it never disagree.
+  const onUpdate = (patch) => {
+    const next = { ...data, ...patch };
+    v.updateGap(code, { ...patch, ...derivedPatch(allFields, next) });
+  };
   const err = (field, req) => submitted && req && !data[field];
+  const template = allFields.filter(f => isFieldVisible(f, data));
+  const consentMissing = needsTelehealthConsent(allFields, data) && !v.audioOnly && !v.audioVideo;
 
   const rows = [];
   let i = 0;
@@ -1009,8 +1022,15 @@ function GenericEvidenceForm({ code, v, data, submitted }) {
             data={data}
             onUpdate={onUpdate}
             err={err}
+            users={platformUsers}
           />
         )
+      )}
+      {consentMissing && submitted && (
+        <Alert
+          tone="warning"
+          message="Verbal telehealth consent required. Tick Audio-only or Audio-video visit in the Date of Service card above."
+        />
       )}
       <FieldStack>
         <FieldLabel>Upload Evidence (if available):</FieldLabel>
@@ -1020,20 +1040,53 @@ function GenericEvidenceForm({ code, v, data, submitted }) {
   );
 }
 
-function GenericField({ field, data, onUpdate, err }) {
-  const { key, label, type, options, required, placeholder } = field;
+function GenericField({ field, data, onUpdate, err, users }) {
+  const { key, label, type, options, required, placeholder, readOnly, description } = field;
   const value = data[key] ?? (type === 'checkbox' ? false : '');
   const hasError = err(key, required);
   const errorText = required ? `${label} is required` : null;
 
-  if (type === 'checkbox') {
+  if (type === 'content') {
+    return (
+      <div className={styles.templateContent}>
+        <div className={styles.templateContentTitle}>{field.title}</div>
+        <ul className={styles.templateContentBullets}>
+          {(field.bullets || []).map((b, i) => <li key={i}>{b}</li>)}
+        </ul>
+      </div>
+    );
+  }
+
+  if (type === 'user-select') {
     return (
       <FieldStack>
+        <Select
+          label={label}
+          required={required}
+          options={userSelectOptions(field, users)}
+          value={value}
+          onChange={(v2) => onUpdate({ [key]: v2 })}
+          placeholder={placeholder || `Select ${label}`}
+          searchable
+          searchPlaceholder="Search…"
+          variant={hasError ? 'error' : 'default'}
+        />
+        {hasError && <FieldError>{errorText}</FieldError>}
+      </FieldStack>
+    );
+  }
+
+  if (type === 'checkbox') {
+    // `checkboxLabel` puts the field name above and the option text on the box.
+    return (
+      <FieldStack>
+        {field.checkboxLabel && <FieldLabel required={required}>{label}</FieldLabel>}
         <CheckboxRow
           checked={!!value}
           onChange={(v2) => onUpdate({ [key]: v2 })}
-          label={label}
+          label={field.checkboxLabel || label}
         />
+        {hasError && <FieldError>{errorText}</FieldError>}
       </FieldStack>
     );
   }
@@ -1052,9 +1105,11 @@ function GenericField({ field, data, onUpdate, err }) {
               checked={value === opt.value}
               onChange={() => onUpdate({ [key]: opt.value })}
               label={opt.label}
+              disabled={readOnly}
             />
           ))}
         </div>
+        {description && <span className={styles.fieldHelper}>{description}</span>}
         {hasError && <FieldError>{errorText}</FieldError>}
       </FieldStack>
     );
@@ -1100,10 +1155,11 @@ function GenericField({ field, data, onUpdate, err }) {
         label={label}
         required={required}
         type={type === 'number' ? 'number' : 'text'}
-        inputMode={type === 'number' ? 'numeric' : undefined}
+        inputMode={type === 'number' ? 'decimal' : undefined}
         value={value}
         onChange={(e) => onUpdate({ [key]: e.target.value })}
         placeholder={placeholder}
+        trailingText={field.unit}
         variant={hasError ? 'error' : undefined}
       />
       {hasError && <FieldError>{errorText}</FieldError>}

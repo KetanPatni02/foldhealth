@@ -1,4 +1,10 @@
 import jsPDF from 'jspdf';
+import { GAP_TEMPLATES, MEASURE_CPT, savedGapData } from '../ClinicalNotePanel.utils';
+import { contentOf, isFieldVisible } from '../../../lib/noteTemplateRules';
+
+const hasTemplateRules = (fields) => !!fields?.some(f => f.type === 'content' || f.showWhen || f.derive);
+// False for notes saved against an older template, which use the generic dump.
+const hasTemplateValues = (fields, data) => fields.some(f => f.type !== 'content' && data?.[f.key] != null && data[f.key] !== '');
 
 /**
  * Build the consolidated Clinical Note PDF for a HEDIS care-gap encounter.
@@ -96,7 +102,9 @@ export function generateClinicalNotePdf({
   };
 
   // ── Header ────────────────────────────────────────────────────────────
-  heading('Consolidated Clinical Note', 18);
+  // One gap is that gap's Visit Note; two or more are a Consolidated note.
+  const noteTitle = gapCodes.length === 1 ? `${gapCodes[0]} Visit Note` : 'Consolidated Clinical Note';
+  heading(noteTitle, 18);
   body(`Patient: ${member.name}   ·   ${member.gender === 'F' ? 'Female' : member.gender === 'M' ? 'Male' : 'Other'} · Age ${member.age}`);
   body(`Member ID: ${member.memberId}`);
   body(`Date of Service: ${dateOfService || '—'}`);
@@ -134,10 +142,11 @@ export function generateClinicalNotePdf({
     OMW: 'Osteoporosis Management in Women',
     BPD: 'Blood Pressure Documentation',
     CCS: 'Cervical Cancer Screening',
+    LSC: 'Lead Screening in Children',
   };
 
   gapCodes.forEach((code, i) => {
-    const data = gapData?.[code] ?? {};
+    const data = savedGapData(code, gapData?.[code] ?? {}) || {};
     ensureRoom(60);
     if (i > 0) {
       y += 8;
@@ -193,6 +202,26 @@ export function generateClinicalNotePdf({
       kv('Current Management', data.currentManagement);
       kv('Plan updated?', data.planUpdated);
       kv('Additional Notes', data.notes);
+    } else if (hasTemplateRules(GAP_TEMPLATES[code]) && hasTemplateValues(GAP_TEMPLATES[code], data)) {
+      // Templates with display rules (e.g. LSC): only the visible fields,
+      // labelled as on the form, plus the care plan block that applies.
+      // The PDF's base font has no "≥", so it prints as ">=".
+      const pdfText = (t) => String(t).replace(/≥/g, '>=');
+      for (const f of GAP_TEMPLATES[code].filter(f2 => isFieldVisible(f2, data))) {
+        const raw = data[f.key];
+        if (f.type === 'content') {
+          const block = contentOf(f, data);
+          body(pdfText(block.title), { color: [60, 64, 72] });
+          for (const b of block.bullets || []) body(`• ${pdfText(b)}`, { indent: 10 });
+        } else if (f.type === 'checkbox') {
+          kv(f.label, raw ? pdfText(f.checkboxLabel || 'Yes') : null);
+        } else if (f.options) {
+          kv(f.label, pdfText(f.options.find(o => o.value === raw)?.label || raw || ''));
+        } else {
+          kv(f.label, raw !== '' && raw != null ? `${raw}${f.unit ? ` ${f.unit}` : ''}` : null);
+        }
+      }
+      if (MEASURE_CPT[code]) kv('CPT Code', MEASURE_CPT[code]);
     } else {
       // Generic fallback for GAP_TEMPLATES-driven gaps — render all stored
       // key/value pairs so DM and future templates automatically appear in
@@ -202,7 +231,7 @@ export function generateClinicalNotePdf({
         body('No evidence documented.', { color: [120, 124, 132] });
       } else {
         for (const [k, v] of entries) {
-          if (k === 'evidenceLabel' || k === 'manuallyOff') continue;
+          if (k === 'evidenceLabel' || k === 'manuallyOff' || typeof v === 'object') continue;
           const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
           kv(label, typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v));
         }
@@ -217,7 +246,7 @@ export function generateClinicalNotePdf({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(140, 144, 152);
-    doc.text(`${member.name}  ·  Consolidated Clinical Note`, margin, pageH - 24);
+    doc.text(`${member.name}  ·  ${noteTitle}`, margin, pageH - 24);
     doc.text(`Page ${p} of ${pageCount}`, pageW - margin, pageH - 24, { align: 'right' });
   }
 

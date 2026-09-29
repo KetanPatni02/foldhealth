@@ -79,6 +79,36 @@ export const MEASURE_INFO = {
       },
     ],
   },
+  LSC: {
+    requirements: [
+      {
+        text: 'Document the capillary blood lead test the phlebotomist performed',
+        children: [
+          { text: 'Date of Service (common for all gaps), Location, and Performed by (the phlebotomist)' },
+          { text: 'Verbal telehealth consent (audio-only or audio-video) when Location is Telehealth' },
+          { text: 'Procedure Performed: Meridian Leadcare II – Capillary Blood Lead Test' },
+          { text: 'Result Value in mcg/dL' },
+        ],
+      },
+    ],
+    instructions: [
+      { intro: 'You coordinate the visit and document the result. The phlebotomist performs the test.' },
+      {
+        heading: 'Enter the Result Value',
+        items: [
+          { text: 'Under 3.5 mcg/dL selects Negative and shows the care plan for values under 3.5.' },
+          { text: '3.5 mcg/dL or more selects Positive and shows the care plan for a confirmatory venous test.' },
+          { text: 'Review the care plan with the parent or caregiver.' },
+        ],
+      },
+      {
+        heading: 'Send for Review',
+        items: [
+          { text: 'The note routes to the provider queue for sign-off and bills under CPT 83655 for either result.' },
+        ],
+      },
+    ],
+  },
   'DSF-A': {
     requirements: [
       {

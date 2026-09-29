@@ -36,6 +36,14 @@ import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js'
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
 import { priorLabResultsFor } from '../src/features/hedis-worklist/labs/labMock.js';
 import { buildPatientSnapshot, snapshotToRow } from '../src/lib/patientSnapshot.js';
+
+// Astrana phlebotomists who perform the LSC capillary blood lead test.
+const LSC_PHLEBOTOMISTS = [
+  'jasmine.guerrero@astranahealth.com',
+  'stephanie.rodriguez2@astranahealth.com',
+  'victoria.nugal@astranahealth.com',
+  'victoria.magallon@astranahealth.com',
+];
 import { PRACTICE_LOCATIONS } from '../src/features/settings/account/locations/data/mock.js';
 
 // Care-program letters library. Metadata mirrors PROGRAM_LETTERS_MOCK; the PDF
@@ -1074,6 +1082,29 @@ async function main() {
     flag: r.flag, collected_at: r.collectedAt, resulted_at: r.resultedAt, source: r.source,
     evidence_status: r.evidenceStatus,
   }));
+  // LSC "Performed by" lists users with the Phlebotomist clinical role.
+  // Seed Astrana's phlebotomists as system users with that role (random
+  // password; they sign in through a reset if they ever need access).
+  for (const email of LSC_PHLEBOTOMISTS) {
+    const [first, last] = email.split('@')[0].replace(/\d+$/, '').split('.').map(w => w.charAt(0).toUpperCase() + w.slice(1));
+    const full_name = `${first} ${last}`;
+    let { data: prof } = await supabase.from('profiles').select('id, clinical_roles').eq('email', email).maybeSingle();
+    if (!prof) {
+      const { data: created, error: cErr } = await supabase.auth.admin.createUser({
+        email, email_confirm: true, password: crypto.randomUUID(),
+        user_metadata: { full_name, first_name: first, last_name: last },
+      });
+      if (cErr) { console.error(`  ✗ phlebotomist ${email}:`, cErr.message); continue; }
+      prof = { id: created.user.id, clinical_roles: [] };
+    }
+    const roles = [...new Set([...(prof.clinical_roles || []), 'Phlebotomist'])];
+    const { error: pErr } = await supabase.from('profiles')
+      .update({ full_name, first_name: first, last_name: last, clinical_roles: roles, role: roles[0], status: 'Active' })
+      .eq('id', prof.id);
+    if (pErr) console.error(`  ✗ phlebotomist ${email}:`, pErr.message);
+  }
+  console.log(`  ✓ ${LSC_PHLEBOTOMISTS.length} LSC phlebotomists`);
+
   // Hover-card snapshots (patient_snapshots_migration.sql) for every patient
   // on a worklist, one row per Fold member id: the mock-backed worklists plus
   // the TOC (`patients`) and All Patients (`all_patients`) tables.

@@ -10,7 +10,11 @@ import {
   EED_EXAM_RESULTS,
   EED_EVIDENCE_TYPES,
   GAP_TEMPLATES,
+  MEASURE_CPT,
+  LEGACY_GAP_FIELDS,
+  savedGapData,
 } from './ClinicalNotePanel.utils';
+import { contentOf, isFieldVisible } from '../../lib/noteTemplateRules';
 import { resolvePerformedByLabel, LOCATION_OPTIONS as DSF_LOCATIONS } from './dsf/DsfEvidenceForms';
 import { getItems, getResponseScale, totalScore, isPhq2Positive, phq9Branch, phq9BandLabel } from './dsf/dsfScoring';
 import { DSF_CARE_PLANS } from './dsf/dsfCarePlans';
@@ -201,29 +205,56 @@ function NonVisitAnswers({ fields, answers }) {
   });
 }
 
-function GenericRows({ code, data }) {
+function GenericRows({ code, data: saved }) {
   const fields = GAP_TEMPLATES[code];
   if (!fields?.length) return <KV label="Evidence" value="—" wide />;
-  const hasAnyValue = fields.some(f => data[f.key] != null && data[f.key] !== '');
-  if (!hasAnyValue) return <KV label="Evidence" value="—" wide />;
+  const data = savedGapData(code, saved) || {};
+  const hasAnyValue = fields.some(f => f.type !== 'content' && data[f.key] != null && data[f.key] !== '');
+  if (!hasAnyValue) return <LegacyRows data={data} />;
+  // Older payload keys the template doesn't cover and that weren't mapped
+  // to a new field (e.g. an LSC Screening Date) still show, after the fields.
+  const skip = new Set([...fields.map(f => f.key), ...(LEGACY_GAP_FIELDS[code] || []).map(l => l.from)]);
+  const extras = Object.fromEntries(Object.entries(saved || {}).filter(([k]) => !skip.has(k)));
   return (
     <>
-      {fields.map(f => {
+      {fields.filter(f => isFieldVisible(f, data)).map(f => {
+        if (f.type === 'content') {
+          const block = contentOf(f, data);
+          return <CarePlanBlock key={f.key} title={block.title} bullets={block.bullets || []} />;
+        }
         const raw = data[f.key];
         let display;
         if (f.type === 'checkbox') {
-          display = raw ? 'Yes' : 'No';
+          display = f.checkboxLabel ? (raw ? f.checkboxLabel : null) : (raw ? 'Yes' : 'No');
         } else if ((f.type === 'select' || f.type === 'radio') && f.options) {
           display = f.options.find(o => o.value === raw)?.label || raw;
         } else if (f.type === 'date') {
           display = formatMDY(raw);
         } else {
-          display = raw;
+          display = raw !== '' && raw != null && f.unit ? `${raw} ${f.unit}` : raw;
         }
         return <KV key={f.key} label={f.label} value={display} wide={!f.column} />;
       })}
+      <LegacyRows data={extras} hideEmpty />
+      {MEASURE_CPT[code] && <KV label="CPT Code" value={MEASURE_CPT[code]} wide />}
     </>
   );
+}
+
+// A note saved against an earlier version of the template: show whatever
+// was stored, labelled from its keys, rather than an empty "—".
+function LegacyRows({ data, hideEmpty }) {
+  const entries = Object.entries(data || {})
+    .filter(([k, v]) => k !== 'evidenceLabel' && k !== 'manuallyOff' && v !== '' && v != null && v !== false && typeof v !== 'object');
+  if (!entries.length) return hideEmpty ? null : <KV label="Evidence" value="—" wide />;
+  return entries.map(([k, v]) => (
+    <KV
+      key={k}
+      label={k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase())}
+      value={v === true ? 'Yes' : /^\d{4}-\d{2}-\d{2}/.test(String(v)) ? formatMDY(v) : String(v)}
+      wide
+    />
+  ));
 }
 
 function CbpRows({ data }) {

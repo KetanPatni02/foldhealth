@@ -6,6 +6,7 @@ import {
   MEASURE_NAMES,
   defaultGapData,
   isMandatoryComplete,
+  savedGapData,
 } from './ClinicalNotePanel.utils';
 
 // Human-friendly form-type label for the activity log's detailCard.
@@ -78,8 +79,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       for (const [code, data] of Object.entries(gapsPayload)) {
         if (gapsSeen.has(code)) continue;
         gapsSeen.add(code);
-        if (init[code]) init[code] = { ...init[code], ...data };
-        else init[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+        if (init[code]) init[code] = { ...init[code], ...savedGapData(code, data) };
+        else init[code] = { manuallyOff: false, ...defaultGapData(code), ...savedGapData(code, data) };
       }
     }
     return init;
@@ -320,8 +321,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
             setGapState(prev => {
               const next = { ...prev };
               for (const [code, data] of Object.entries(amended.payload.gaps)) {
-                if (next[code] !== undefined) next[code] = { ...next[code], ...data };
-                else next[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+                if (next[code] !== undefined) next[code] = { ...next[code], ...savedGapData(code, data) };
+                else next[code] = { manuallyOff: false, ...defaultGapData(code), ...savedGapData(code, data) };
               }
               return next;
             });
@@ -347,8 +348,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
           setGapState(prev => {
             const next = { ...prev };
             for (const [code, data] of Object.entries(target.payload.gaps)) {
-              if (next[code]) next[code] = { ...next[code], ...data };
-              else next[code] = { ...defaultGapData(code), ...data };
+              if (next[code]) next[code] = { ...next[code], ...savedGapData(code, data) };
+              else next[code] = { ...defaultGapData(code), ...savedGapData(code, data) };
             }
             return next;
           });
@@ -375,8 +376,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
             for (const [code, data] of Object.entries(gapsPayload)) {
               if (gapsSeen.has(code)) continue;
               gapsSeen.add(code);
-              if (next[code]) next[code] = { ...next[code], ...data };
-              else next[code] = { ...defaultGapData(code), ...data };
+              if (next[code]) next[code] = { ...next[code], ...savedGapData(code, data) };
+              else next[code] = { ...defaultGapData(code), ...savedGapData(code, data) };
             }
           }
           return next;
@@ -415,8 +416,8 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       setGapState(prev => {
         const next = { ...prev };
         for (const [code, data] of Object.entries(note.payload.gaps)) {
-          if (next[code] !== undefined) next[code] = { ...next[code], ...data };
-          else next[code] = { manuallyOff: false, ...defaultGapData(code), ...data };
+          if (next[code] !== undefined) next[code] = { ...next[code], ...savedGapData(code, data) };
+          else next[code] = { manuallyOff: false, ...defaultGapData(code), ...savedGapData(code, data) };
         }
         return next;
       });
@@ -882,14 +883,16 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
   const anyReadyForReview = activeGaps.some(g =>
     isMandatoryComplete(g.code, gapState[g.code] ?? {}, noteCtx)
   );
-  // Every active gap on the note is complete. Used to gate Sign & Save
-  // on the consolidated (multi-gap) surfaces so the reviewer can't
-  // sign a note that still has an un-scored PHQ-9 (or any other
-  // measure with mandatory fields outstanding). `activeMandatoryComplete`
-  // only reads the focused gap, which lets Sign fire off a filled
-  // DSF-A while DSF-B is still empty.
-  const allActiveMandatoryComplete = activeGaps.length > 0
-    && activeGaps.every(g => isMandatoryComplete(g.code, gapState[g.code] ?? {}, noteCtx));
+  // Sign & Save / Submit for Review open once at least one gap is Ready
+  // for Review. Only the Ready gaps are sent (noteScope): one makes a
+  // "{CODE} Visit Note", two or more a Consolidated Clinical Note. A Ready
+  // DSF-A still waits for its DSF-B on the same note, so a positive PHQ-2
+  // can't be signed without the PHQ-9.
+  const readyCodes = collectReadyCodes();
+  const dsfbPending = readyCodes.includes('DSF-A')
+    && activeGaps.some(g => g.code === 'DSF-B')
+    && !readyCodes.includes('DSF-B');
+  const canSignReady = readyCodes.length > 0 && !dsfbPending;
   const hasChanges = dirtyCodes.size > 0;
 
   return {
@@ -900,7 +903,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     handleSaveDraft, handleSubmitForReview, handleConfirmSubmitForReview, handleSaveAndSign, handleSignAndPrint,
     reviewerPickerOpen, setReviewerPickerOpen,
     drawerTitle, ageShort,
-    hasChanges, activeMandatoryComplete, allActiveMandatoryComplete, anyReadyForReview,
+    hasChanges, activeMandatoryComplete, canSignReady, anyReadyForReview,
     // DSF: exposed so the bespoke DsfaEvidenceForm can fire the
     // native "open DSF-B" trigger on PHQ-2 Positive.
     openDsfbGap,
