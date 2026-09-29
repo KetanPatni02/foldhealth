@@ -20,6 +20,7 @@ function viewerStubs() {
     [/\/store\/useAppStore(\.js)?$/, stub('snapshotStore.js')],
     [/\/PrintReportDrawer(\.jsx)?$/, stub('noDrawer.js')],
     [/\/UpdateDashboardDrawer(\.jsx)?$/, stub('noDrawer.js')],
+    [/\/ExportHistoryDrawer(\.jsx)?$/, stub('noDrawer.js')],
   ];
   return {
     name: 'report-viewer-stubs',
