@@ -9,7 +9,7 @@ export const ROLE_COLORS = {
   'Admin/Practice Manager':        'outreach-post-visit', 'Billing Specialist': 'compliance-warn',
   'Front Desk Staff/Receptionist': 'ai-neutral', 'Lab Technician': 'status-queued',
   'Pharmacist':                    'ai-med', 'Health Information Manager (HIM)': 'ai-care',
-  'Radiologist':                   'toc-engaged', 'Patient': 'ai-neutral',
+  'Radiologist':                   'toc-engaged', 'Phlebotomist': 'status-queued', 'Patient': 'ai-neutral',
 };
 
 export function getInitials(name) {

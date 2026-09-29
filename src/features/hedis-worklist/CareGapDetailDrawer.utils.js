@@ -14,6 +14,7 @@ export const MEASURE_NAMES = {
   GSD3:     'Glycemic Status Assessment',
   'DSF-A':  'Depression Screening (PHQ-2)',
   'DSF-B':  'Depression Follow-Up (PHQ-9)',
+  LSC:      'Lead Screening in Children',
 };
 
 export const STATUSES = [

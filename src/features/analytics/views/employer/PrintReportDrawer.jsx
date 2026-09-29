@@ -17,6 +17,10 @@ import { PhotoSearch } from '../../../../components/PhotoSearch/PhotoSearch';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Link } from '../../../../components/Link/Link';
 import { AddIconMinimalist } from '../../../../components/Icon/AddIconMinimalist';
+import { Icon } from '../../../../components/Icon/Icon';
+import { CloseIcon } from '../../../../components/Icon/CloseIcon';
+import { Slider } from '../../../../components/ShadcnSlider/ShadcnSlider';
+import { AlignmentPicker } from '../../../../components/AlignmentPicker/AlignmentPicker';
 import { PdfPreview } from '../../../../components/PdfPreview/PdfPreview';
 import { PreviewLoader } from '../../../../components/PreviewLoader/PreviewLoader';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
@@ -24,6 +28,7 @@ import { buildReportPage } from './downloadReportPage';
 // import { SendReportEmailDrawer } from './SendReportEmailDrawer'; // Send Report: hidden for now
 import {
   generateEmployerReport, generatedOnLabel, COVER_GRADIENTS, DEFAULT_COVER_BACKGROUND, isLightBackground, gradientCss,
+  DEFAULT_LOGO_SCALE, DEFAULT_CLIENT_LOGO_SCALE,
 } from './generateEmployerReportPdf';
 import { withReportHeader, withReportFooter, defaultReportHeader, defaultReportFooter } from '../../../email-builder/reportHeaderComponent';
 import { rasterizeComponent, interFontFaces } from '../../../email-builder/rasterizeComponent';
@@ -69,7 +74,6 @@ const DEFAULT_TITLE = 'Employer Impact Report';
 // cover. The provider logo (Trailhead Clinics) is fixed.
 const DARK_INK = '#16181D';
 const WHITE_INK = '#FFFFFF';
-const CLINIC_LOGO_OPTIONS = [{ value: 'trailhead', label: 'Trailhead Clinics' }];
 const BACKGROUND_TYPES = [
   { key: 'color', label: 'Color' },
   { key: 'gradient', label: 'Gradient' },
@@ -141,8 +145,8 @@ function useComponentImage(component, ctx, fontFaces, enabled) {
 
 /**
  * The employer's logo as a preview row with a Change action (and Reset once
- * replaced). The logo comes from the Employer filter; Change swaps in an
- * upload (PNG or SVG, up to IMAGE_MAX_MB).
+ * replaced), for the Employer Logo box. The logo comes from the Employer
+ * filter; Change swaps in an upload (PNG or SVG, up to IMAGE_MAX_MB).
  */
 function EmployerLogoField({ logo, custom, onPick, onReset }) {
   const inputRef = useRef(null);
@@ -150,10 +154,9 @@ function EmployerLogoField({ logo, custom, onPick, onReset }) {
   const src = custom?.dataUrl || (logo && employerLogoUrl(logo, DARK_INK));
   const name = custom?.name || logo?.name || 'No logo';
   return (
-    <div className={styles.fieldGroup}>
-      <span className={styles.fieldLabel}>Employer Logo</span>
-      <div className={styles.picked}>
-        {src && <img className={styles.logoThumb} src={src} alt="" />}
+    <>
+      <div className={styles.logoRow}>
+        {src && <span className={styles.logoThumb}><img src={src} alt="" /></span>}
         <span className={styles.pickedName}>{name}</span>
         {custom && (
           <Button variant="tertiary" size="S" onClick={() => { setError(''); onReset(); }}>Reset</Button>
@@ -182,7 +185,103 @@ function EmployerLogoField({ logo, custom, onPick, onReset }) {
         />
       </div>
       {error && <span className={styles.dropError} role="alert">{error}</span>}
+    </>
+  );
+}
+
+/** "Scale: ─●── 50%" for a cover logo's size. */
+function LogoScale({ value, onChange, label }) {
+  return (
+    <div className={styles.scaleRow}>
+      <span className={styles.scaleLabel}>Scale:</span>
+      <Slider
+        variant="neutral"
+        min={10}
+        max={100}
+        step={5}
+        value={[value]}
+        onValueChange={([v]) => onChange(v)}
+        aria-label={`${label} scale`}
+      />
+      <span className={styles.scaleLabel}>{value}%</span>
     </div>
+  );
+}
+
+/**
+ * A cover logo's settings (Figma 1031:21133): the logo box (preview, Scale)
+ * on the left, where it sits on the cover on the right.
+ */
+function LogoPlacement({ label, align, onAlign, alignRows, children }) {
+  return (
+    <div className={styles.logoPlacement}>
+      <div className={styles.fieldGroup}>
+        <span className={styles.groupTitle}>{label}</span>
+        <div className={styles.logoBox}>{children}</div>
+      </div>
+      <div className={styles.fieldGroup}>
+        <span className={styles.groupTitle}>Alignment</span>
+        <div className={styles.alignSlot}>
+          <AlignmentPicker rows={alignRows} value={align} onChange={onAlign} ariaLabel={`${label} alignment`} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A cover background swatch (Figma Cover Swatch, 1031:55835), with a remove
+ * button at its top right on hover.
+ */
+function CoverSwatch({ label, fill, selected, onSelect, onRemove }) {
+  return (
+    <div className={styles.swatchCell}>
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        aria-label={label}
+        title={label}
+        className={[styles.swatch, selected ? styles.swatchOn : ''].filter(Boolean).join(' ')}
+        onClick={onSelect}
+      >
+        {/* The swatch shows report content (the PDF's own colours), not UI chrome. */}
+        <span className={styles.swatchFill} style={fill} />
+      </button>
+      {onRemove && (
+        <button type="button" className={styles.swatchRemove} aria-label={`Remove ${label}`} title="Remove" onClick={onRemove}>
+          <CloseIcon size={11} color="var(--neutral-300)" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The last swatch, always there: "+" opens the picker, starting from the
+ * cover's current fill. One opening adds one swatch: the first change
+ * creates it (selected), later changes in the same opening update it.
+ */
+function AddSwatch({ value, gradient, onPick }) {
+  const draft = useRef(null);
+  return (
+    <ColorInput
+      value={value}
+      onChange={(v) => { draft.current = onPick(v, draft.current); }}
+      allowGradient={gradient}
+      gradientOnly={gradient}
+      trigger={(
+        <button
+          type="button"
+          aria-label={gradient ? 'Add gradient' : 'Add colour'}
+          title={gradient ? 'Add gradient' : 'Add colour'}
+          className={[styles.swatch, styles.swatchAdd].join(' ')}
+          onClick={() => { draft.current = null; }}
+        >
+          <Icon name="solar:add-linear" size={20} color="var(--neutral-300)" />
+        </button>
+      )}
+    />
   );
 }
 
@@ -228,7 +327,6 @@ const toHex = ([r, g, b]) => `#${[r, g, b].map(n => n.toString(16).padStart(2, '
 // Default colour swatches: one per gradient preset, so both rows hold the same
 // number, each its most colourful stop (the tinted end of the lighter ones).
 const chroma = ([r, g, b]) => Math.max(r, g, b) - Math.min(r, g, b);
-const COLOR_SWATCH_COUNT = COVER_GRADIENTS.length;
 const DEFAULT_COLOR_SWATCHES = COVER_GRADIENTS.map(g => toHex(
   g.stops.reduce((best, [c]) => (chroma(c) > chroma(best) ? c : best), g.stops[0][0]),
 ));
@@ -482,18 +580,54 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     const logo = logoForEmployer(employerName);
     if (logo) setLogoChoice(logo.key);
   }
+  // Cover logo size and placement (see coverPage in generateEmployerReportPdf).
+  const [logoScale, setLogoScale] = useState(DEFAULT_LOGO_SCALE);
+  const [logoAlign, setLogoAlign] = useState('middle-center');
+  const [clientLogoScale, setClientLogoScale] = useState(DEFAULT_CLIENT_LOGO_SCALE);
+  const [clientLogoAlign, setClientLogoAlign] = useState('center');
   const [bgType, setBgType] = useState(DEFAULT_COVER_BACKGROUND.type);
   const [bgColor, setBgColor] = useState(DEFAULT_COVER_COLOR);
-  // Recently applied colours (shared with the builders' picker, kept per
-  // browser) first; the defaults fill the rest and drop off the end as
-  // more colours are picked.
-  const recentColors = useAppStore(s => s.recentlyUsedColors);
-  const colorSwatches = useMemo(
-    () => [...new Set([...recentColors, ...DEFAULT_COLOR_SWATCHES].map(c => c.toUpperCase()))].slice(0, COLOR_SWATCH_COUNT),
-    [recentColors],
-  );
-  const [bgGradient, setBgGradient] = useState(DEFAULT_COVER_BACKGROUND.gradient); // preset key or 'custom'
-  const [bgCustomGradient, setBgCustomGradient] = useState(null); // CSS gradient from the picker
+  // The swatch rows: the defaults (any of which can be removed) then the
+  // colours and gradients added with "+". Shared with everyone through the
+  // saved settings. A custom gradient is picked by id.
+  const [customColors, setCustomColors] = useState([]); // ['#RRGGBB']
+  const [customGradients, setCustomGradients] = useState([]); // [{ id, css }]
+  const [hiddenColors, setHiddenColors] = useState([]); // removed default colours
+  const [hiddenGradients, setHiddenGradients] = useState([]); // removed preset keys
+  const [bgGradient, setBgGradient] = useState(DEFAULT_COVER_BACKGROUND.gradient); // preset key or a custom id
+  const customGradient = customGradients.find(g => g.id === bgGradient) || null;
+  const colorList = [...DEFAULT_COLOR_SWATCHES.filter(c => !hiddenColors.includes(c)), ...customColors];
+  const gradientList = [
+    ...COVER_GRADIENTS.filter(g => !hiddenGradients.includes(g.key)).map(g => ({ id: g.key, label: g.label, css: gradientCss(g) })),
+    ...customGradients.map((g, i) => ({ id: g.id, label: `Custom gradient ${i + 1}`, css: g.css })),
+  ];
+  const pickColor = (color, draft) => {
+    const c = color.toUpperCase();
+    if (DEFAULT_COLOR_SWATCHES.includes(c)) setHiddenColors(prev => prev.filter(x => x !== c));
+    setCustomColors(prev => {
+      const base = draft ? prev.filter(x => x !== draft) : prev;
+      return DEFAULT_COLOR_SWATCHES.includes(c) || base.includes(c) ? base : [...base, c];
+    });
+    setBgColor(c);
+    return c;
+  };
+  // Removing the selected swatch selects the first one left.
+  const removeColor = (c) => {
+    if (DEFAULT_COLOR_SWATCHES.includes(c)) setHiddenColors(prev => [...prev, c]);
+    else setCustomColors(prev => prev.filter(x => x !== c));
+    if (bgColor.toUpperCase() === c) setBgColor(colorList.find(x => x !== c) || DEFAULT_COVER_COLOR);
+  };
+  const pickGradient = (css, draft) => {
+    const id = draft || `custom-${Date.now().toString(36)}`;
+    setCustomGradients(prev => (draft ? prev.map(g => (g.id === id ? { ...g, css } : g)) : [...prev, { id, css }]));
+    setBgGradient(id);
+    return id;
+  };
+  const removeGradient = (id) => {
+    if (COVER_GRADIENTS.some(g => g.key === id)) setHiddenGradients(prev => [...prev, id]);
+    else setCustomGradients(prev => prev.filter(g => g.id !== id));
+    if (bgGradient === id) setBgGradient(gradientList.find(g => g.id !== id)?.id || DEFAULT_COVER_BACKGROUND.gradient);
+  };
   const [bgImage, setBgImage] = useState(null); // { dataUrl, format, width, height, name, photo? }
   const pickedPhotoId = useRef(null);
   const [assets, setAssets] = useState({}); // logos and fonts for the PDF
@@ -596,9 +730,9 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
   const background = useMemo(() => (
     bgType === 'color' ? { type: 'color', color: bgColor }
       : bgType === 'image' && bgImage ? { type: 'image', ...bgImage }
-        : bgType === 'gradient' && bgGradient === 'custom' && bgCustomGradient ? { type: 'gradient', css: bgCustomGradient }
-          : { type: 'gradient', gradient: bgType === 'gradient' ? bgGradient : DEFAULT_COVER_BACKGROUND.gradient }
-  ), [bgType, bgColor, bgGradient, bgCustomGradient, bgImage]);
+        : bgType === 'gradient' && customGradient ? { type: 'gradient', css: customGradient.css }
+          : { type: 'gradient', gradient: bgType === 'gradient' && COVER_GRADIENTS.some(g => g.key === bgGradient) ? bgGradient : DEFAULT_COVER_BACKGROUND.gradient }
+  ), [bgType, bgColor, bgGradient, customGradient, bgImage]);
   const lightCover = isLightBackground(background);
 
   // Provider logo (fixed): colour in page headers; on the cover, the white
@@ -638,6 +772,90 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     || defaultReportHeader(headerComponents);
   const footerComponent = footerComponents.find(f => String(f.id) === String(pickedFooterId))
     || defaultReportFooter(footerComponents);
+
+  // Personalize settings are shared: loaded for this employer on open and
+  // saved (shortly after each change) for everyone. A stock photo is saved
+  // as its details and fetched again, not as the image itself.
+  const settingsKey = employerName || 'all';
+  const fetchReportSettings = useAppStore(s => s.fetchEmployerReportSettings);
+  const saveReportSettings = useAppStore(s => s.saveEmployerReportSettings);
+  const personalizeSettings = useMemo(() => ({
+    title, includeCover, coverDescription,
+    logoScale, logoAlign, clientLogoScale, clientLogoAlign,
+    bgType, bgColor, bgGradient, customColors, customGradients, hiddenColors, hiddenGradients,
+    bgImage: bgImage?.photo ? { photo: bgImage.photo } : bgImage,
+    customLogo, showHeader, showFooter, headerId: pickedHeaderId, footerId: pickedFooterId,
+  }), [title, includeCover, coverDescription, logoScale, logoAlign, clientLogoScale, clientLogoAlign,
+    bgType, bgColor, bgGradient, customColors, customGradients, hiddenColors, hiddenGradients, bgImage, customLogo, showHeader, showFooter, pickedHeaderId, pickedFooterId]);
+  const settingsJson = JSON.stringify(personalizeSettings);
+  const settingsJsonRef = useRef(settingsJson);
+  useEffect(() => { settingsJsonRef.current = settingsJson; }, [settingsJson]);
+  // Which employer's settings are on screen (null while loading), and the
+  // copy last saved or loaded, so loading doesn't write straight back.
+  const [settingsLoadedFor, setSettingsLoadedFor] = useState(null);
+  const settingsMissingRef = useRef(false);
+  const lastSavedRef = useRef('');
+  useEffect(() => {
+    let live = true;
+    fetchReportSettings(settingsKey).then(({ settings: saved, missing }) => {
+      if (!live) return;
+      settingsMissingRef.current = missing;
+      if (saved) {
+        const has = (k) => saved[k] !== undefined;
+        if (has('title')) setTitle(saved.title);
+        if (has('includeCover')) setIncludeCover(saved.includeCover);
+        if (has('coverDescription')) setCoverDescription(saved.coverDescription);
+        if (has('logoScale')) setLogoScale(saved.logoScale);
+        if (has('logoAlign')) setLogoAlign(saved.logoAlign);
+        if (has('clientLogoScale')) setClientLogoScale(saved.clientLogoScale);
+        if (has('clientLogoAlign')) setClientLogoAlign(saved.clientLogoAlign);
+        if (has('bgType')) setBgType(saved.bgType);
+        if (has('bgColor')) setBgColor(saved.bgColor);
+        if (has('customColors')) setCustomColors(saved.customColors);
+        if (has('customGradients')) setCustomGradients(saved.customGradients);
+        if (has('hiddenColors')) setHiddenColors(saved.hiddenColors);
+        if (has('hiddenGradients')) setHiddenGradients(saved.hiddenGradients);
+        if (has('bgGradient')) setBgGradient(saved.bgGradient);
+        if (has('customLogo')) setCustomLogo(saved.customLogo);
+        if (has('showHeader')) setShowHeader(saved.showHeader);
+        if (has('showFooter')) setShowFooter(saved.showFooter);
+        if (has('headerId')) setPickedHeaderId(saved.headerId);
+        if (has('footerId')) setPickedFooterId(saved.footerId);
+        const photo = saved.bgImage?.photo;
+        if (photo && !saved.bgImage.dataUrl) {
+          pickedPhotoId.current = photo.id;
+          readPhotoUrl(photo.full).then((img) => {
+            if (live && img && pickedPhotoId.current === photo.id) setBgImage({ ...img, name: `Photo by ${photo.photographer}`, photo });
+          });
+        } else if (has('bgImage')) {
+          setBgImage(saved.bgImage);
+        }
+        lastSavedRef.current = JSON.stringify(saved);
+      } else {
+        // Nothing saved for this employer: what's on screen stays, and is
+        // only written once someone changes it.
+        lastSavedRef.current = settingsJsonRef.current;
+      }
+      setSettingsLoadedFor(settingsKey);
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settingsKey]);
+  const pendingSaveRef = useRef(null); // { key, json, timer }
+  useEffect(() => {
+    if (settingsLoadedFor !== settingsKey || settingsMissingRef.current) return;
+    if (settingsJson === lastSavedRef.current) return;
+    const flush = () => {
+      pendingSaveRef.current = null;
+      lastSavedRef.current = settingsJson;
+      saveReportSettings(settingsKey, JSON.parse(settingsJson));
+    };
+    const timer = window.setTimeout(flush, 800);
+    pendingSaveRef.current = { flush, timer };
+    return () => window.clearTimeout(timer);
+  }, [settingsJson, settingsKey, settingsLoadedFor, saveReportSettings]);
+  // Closing the drawer mid-edit still saves the last change.
+  useEffect(() => () => { pendingSaveRef.current?.flush(); }, []);
   const fontFaces = useMemo(() => interFontFaces(assets.fonts), [assets.fonts]);
   // The page count of the last PDF built, for "Page 2 of 6" in a header or
   // footer; a change redraws those (and the PDF with them), then settles.
@@ -678,9 +896,13 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       background,
       logo: employerCoverLogo,
       clientLogo: coverLogo,
+      logoScale,
+      logoAlign,
+      clientLogoScale,
+      clientLogoAlign,
     } : null,
     sections: included,
-  }), [reportTitle, generatedAt, assets, headerLogo, employerHeaderLogo, showHeader, headerImage, showFooter, footerImage, includeCover, range, coverDescription, background, employerCoverLogo, coverLogo, included]);
+  }), [reportTitle, generatedAt, assets, headerLogo, employerHeaderLogo, showHeader, headerImage, showFooter, footerImage, includeCover, range, coverDescription, background, employerCoverLogo, coverLogo, logoScale, logoAlign, clientLogoScale, clientLogoAlign, included]);
   const generate = useCallback(() => {
     const out = generateEmployerReport(report);
     // Called from the preview's timer and from Download / Print, never
@@ -981,34 +1203,30 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
       <div className={styles.body}>
         {editorTab === 'widgets' ? widgetsPanel : (
         <>
-        {/* Personalize: groups split by hairlines, no cards. */}
+        {/* Personalize (Figma 1031:21133): blocks 24px apart, no hairlines. */}
         <div className={styles.personalize} onPointerDownCapture={() => focusOn('cover')} onKeyDownCapture={() => focusOn('cover')}>
-          <section className={styles.group}>
+          <LogoPlacement label="Employer Logo" align={logoAlign} onAlign={setLogoAlign} alignRows={3}>
             <EmployerLogoField
               logo={EMPLOYER_LOGOS.find(l => l.key === logoChoice)}
               custom={customLogo}
               onPick={setCustomLogo}
               onReset={() => setCustomLogo(null)}
             />
-            {/* The clinic providing the report; fixed to Trailhead Clinics for now. */}
-            <Select
-              label="Clinic Logo"
-              portal
-              options={CLINIC_LOGO_OPTIONS}
-              value="trailhead"
-              onChange={() => {}}
-              disabled
-            />
-            <Input
-              label="Report Title"
-              value={title}
-              maxLength={TITLE_MAX}
-              placeholder={DEFAULT_TITLE}
-              onChange={e => setTitle(e.target.value)}
-            />
-          </section>
+            <LogoScale label="Employer logo" value={logoScale} onChange={setLogoScale} />
+          </LogoPlacement>
+          {/* The clinic providing the report (Trailhead Clinics for now), on the cover's "Provided By" line. */}
+          <LogoPlacement label="Clinic Logo" align={clientLogoAlign} onAlign={setClientLogoAlign} alignRows={1}>
+            <LogoScale label="Clinic logo" value={clientLogoScale} onChange={setClientLogoScale} />
+          </LogoPlacement>
+          <Input
+            label="Report Title"
+            value={title}
+            maxLength={TITLE_MAX}
+            placeholder={DEFAULT_TITLE}
+            onChange={e => setTitle(e.target.value)}
+          />
 
-          <section className={styles.group}>
+          <section className={styles.coverGroup}>
             <div className={styles.groupHead}>
               <h3 className={styles.groupTitle}>Cover Page</h3>
               <Switch checked={includeCover} onChange={setIncludeCover} ariaLabel="Include cover page" />
@@ -1024,59 +1242,40 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                   rows={3}
                 />
                 <div className={styles.fieldGroup}>
-                  <span className={styles.fieldLabel}>Cover Background</span>
-                  <div className={styles.toggleRow}>
+                  <div className={styles.groupHead}>
+                    <span className={styles.groupTitle}>Cover Background</span>
                     <Toggle size="S" items={BACKGROUND_TYPES} active={bgType} onChange={setBgType} />
                   </div>
                   {bgType === 'color' && (
-                    <>
-                      <div className={styles.swatches} role="radiogroup" aria-label="Recent colours">
-                        {colorSwatches.map(c => (
-                          <button
-                            key={c}
-                            type="button"
-                            role="radio"
-                            aria-checked={bgColor.toUpperCase() === c}
-                            aria-label={c}
-                            title={c}
-                            className={[styles.swatch, bgColor.toUpperCase() === c ? styles.swatchOn : ''].filter(Boolean).join(' ')}
-                            onClick={() => setBgColor(c)}
-                          >
-                            {/* The swatch shows report content (the PDF's own colours), not UI chrome. */}
-                            <span className={styles.swatchFill} style={{ background: c }} />
-                          </button>
-                        ))}
-                      </div>
-                      <ColorInput value={bgColor} onChange={setBgColor} allowGradient={false} />
-                    </>
+                    <div className={styles.swatches} role="radiogroup" aria-label="Cover colour">
+                      {colorList.map(c => (
+                        <CoverSwatch
+                          key={c}
+                          label={c}
+                          fill={{ background: c }}
+                          selected={bgColor.toUpperCase() === c}
+                          onSelect={() => setBgColor(c)}
+                          onRemove={colorList.length > 1 ? () => removeColor(c) : undefined}
+                        />
+                      ))}
+                      <AddSwatch value={bgColor} onPick={pickColor} />
+                    </div>
                   )}
                   {bgType === 'gradient' && (
-                    <>
                     <div className={styles.swatches} role="radiogroup" aria-label="Cover gradient">
-                      {COVER_GRADIENTS.map(g => (
-                        <button
-                          key={g.key}
-                          type="button"
-                          role="radio"
-                          aria-checked={bgGradient === g.key}
-                          aria-label={g.label}
-                          title={g.label}
-                          className={[styles.swatch, bgGradient === g.key ? styles.swatchOn : ''].filter(Boolean).join(' ')}
-                          onClick={() => setBgGradient(g.key)}
-                        >
-                          {/* The swatch shows report content (the PDF's own colours), not UI chrome. */}
-                          <span className={styles.swatchFill} style={{ backgroundImage: gradientCss(g) }} />
-                        </button>
+                      {gradientList.map(g => (
+                        <CoverSwatch
+                          key={g.id}
+                          label={g.label}
+                          fill={{ backgroundImage: g.css }}
+                          selected={bgGradient === g.id}
+                          onSelect={() => setBgGradient(g.id)}
+                          onRemove={gradientList.length > 1 ? () => removeGradient(g.id) : undefined}
+                        />
                       ))}
+                      {/* Starts from the cover's gradient; the edit is added as a new swatch. */}
+                      <AddSwatch gradient value={customGradient?.css || presetPickerCss(bgGradient)} onPick={pickGradient} />
                     </div>
-                    {/* Starts from the picked preset; any edit makes it the cover's custom gradient. */}
-                    <ColorInput
-                      label="Custom gradient"
-                      gradientOnly
-                      value={bgGradient === 'custom' && bgCustomGradient ? bgCustomGradient : presetPickerCss(bgGradient)}
-                      onChange={(css) => { setBgCustomGradient(css); setBgGradient('custom'); }}
-                    />
-                    </>
                   )}
                   {bgType === 'image' && (
                     <>
@@ -1118,43 +1317,45 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
             )}
           </section>
 
-          {/* Page header and footer: a saved component on every page. */}
-          <section className={styles.group}>
-            <div className={styles.groupHead}>
-              <h3 className={styles.groupTitle}>Show Header</h3>
-              <Switch checked={showHeader} onChange={setShowHeader} ariaLabel="Show header" />
-            </div>
-            {showHeader && (
-              <>
-                <label className={styles.srOnly} htmlFor="print-report-header">Header</label>
-                <Select
-                  id="print-report-header"
-                  portal
-                  options={headerComponents.map(h => ({ value: String(h.id), label: h.label }))}
-                  value={String(headerComponent?.id ?? '')}
-                  onChange={setPickedHeaderId}
-                />
-              </>
-            )}
-          </section>
-          <section className={styles.group}>
-            <div className={styles.groupHead}>
-              <h3 className={styles.groupTitle}>Show Footer</h3>
-              <Switch checked={showFooter} onChange={setShowFooter} ariaLabel="Show footer" />
-            </div>
-            {showFooter && (
-              <>
-                <label className={styles.srOnly} htmlFor="print-report-footer">Footer</label>
-                <Select
-                  id="print-report-footer"
-                  portal
-                  options={footerComponents.map(f => ({ value: String(f.id), label: f.label }))}
-                  value={String(footerComponent?.id ?? '')}
-                  onChange={setPickedFooterId}
-                />
-              </>
-            )}
-          </section>
+          {/* Page header and footer: a saved component on every page, side by side. */}
+          <div className={styles.chromeRow}>
+            <section className={styles.chromeGroup}>
+              <div className={styles.groupHead}>
+                <h3 className={styles.groupTitle}>Show Header</h3>
+                <Switch checked={showHeader} onChange={setShowHeader} ariaLabel="Show header" />
+              </div>
+              {showHeader && (
+                <>
+                  <label className={styles.srOnly} htmlFor="print-report-header">Header</label>
+                  <Select
+                    id="print-report-header"
+                    portal
+                    options={headerComponents.map(h => ({ value: String(h.id), label: h.label }))}
+                    value={String(headerComponent?.id ?? '')}
+                    onChange={setPickedHeaderId}
+                  />
+                </>
+              )}
+            </section>
+            <section className={styles.chromeGroup}>
+              <div className={styles.groupHead}>
+                <h3 className={styles.groupTitle}>Show Footer</h3>
+                <Switch checked={showFooter} onChange={setShowFooter} ariaLabel="Show footer" />
+              </div>
+              {showFooter && (
+                <>
+                  <label className={styles.srOnly} htmlFor="print-report-footer">Footer</label>
+                  <Select
+                    id="print-report-footer"
+                    portal
+                    options={footerComponents.map(f => ({ value: String(f.id), label: f.label }))}
+                    value={String(footerComponent?.id ?? '')}
+                    onChange={setPickedFooterId}
+                  />
+                </>
+              )}
+            </section>
+          </div>
 
         </div>
         </>

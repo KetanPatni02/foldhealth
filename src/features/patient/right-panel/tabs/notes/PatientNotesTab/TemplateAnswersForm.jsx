@@ -3,6 +3,8 @@ import { Textarea } from '../../../../../../components/Textarea/Textarea';
 import { Select } from '../../../../../../components/Select/Select';
 import { RadioButton } from '../../../../../../components/RadioButton/RadioButton';
 import { DatePicker } from '../../../../../../components/DatePicker/DatePicker';
+import { useAppStore } from '../../../../../../store/useAppStore';
+import { derivedPatch, isFieldVisible, userSelectOptions } from '../../../../../../lib/noteTemplateRules';
 import styles from './TemplateAnswersForm.module.css';
 
 /**
@@ -17,17 +19,20 @@ import styles from './TemplateAnswersForm.module.css';
  * Field descriptor shape (matches `GAP_TEMPLATES` and the Form Builder):
  *   { key, label, type, options?, required?, placeholder?, description?, column? }
  *   type ∈ 'text' | 'textarea' | 'number' | 'date' | 'select' | 'radio' | 'checkbox'
+ *          | 'content' | 'user-select'  (rules in src/lib/noteTemplateRules.js)
  *
  * Fields with `column: 2` pair up into a two-column row (adjacent pairs
  * only), matching the visit-note form's convention.
  */
 export function TemplateAnswersForm({ items = [], answers, onChange, submitted = false }) {
+  const users = useAppStore(s => s.platformUsers);
   if (!items.length) return null;
+  const visible = items.filter(f => isFieldVisible(f, answers));
   const rows = [];
   let i = 0;
-  while (i < items.length) {
-    const f = items[i];
-    const next = items[i + 1];
+  while (i < visible.length) {
+    const f = visible[i];
+    const next = visible[i + 1];
     if (f.column === 2 && next && next.column === 2) {
       rows.push({ kind: 'pair', a: f, b: next });
       i += 2;
@@ -36,30 +41,62 @@ export function TemplateAnswersForm({ items = [], answers, onChange, submitted =
       i += 1;
     }
   }
-  const set = (key, value) => onChange?.({ ...(answers || {}), [key]: value });
+  const set = (key, value) => {
+    const next = { ...(answers || {}), [key]: value };
+    onChange?.({ ...next, ...derivedPatch(items, next) });
+  };
 
   return (
     <div className={styles.form}>
       {rows.map((row, idx) => (
         row.kind === 'pair' ? (
           <div key={idx} className={styles.grid2}>
-            <Field field={row.a} answers={answers} onSet={set} submitted={submitted} />
-            <Field field={row.b} answers={answers} onSet={set} submitted={submitted} />
+            <Field field={row.a} answers={answers} onSet={set} submitted={submitted} users={users} />
+            <Field field={row.b} answers={answers} onSet={set} submitted={submitted} users={users} />
           </div>
         ) : (
-          <Field key={idx} field={row.field} answers={answers} onSet={set} submitted={submitted} />
+          <Field key={idx} field={row.field} answers={answers} onSet={set} submitted={submitted} users={users} />
         )
       ))}
     </div>
   );
 }
 
-function Field({ field, answers, onSet, submitted }) {
-  const { key, label, type = 'text', options, required, placeholder, description } = field;
+function Field({ field, answers, onSet, submitted, users }) {
+  const { key, label, type = 'text', options, required, placeholder, description, readOnly } = field;
   const value = answers?.[key] ?? (type === 'checkbox' ? false : '');
   const hasError = submitted && required
     && (type === 'checkbox' ? value !== true : (value === '' || value == null));
   const errorText = hasError ? `${label || key} is required` : null;
+
+  if (type === 'content') {
+    return (
+      <div className={styles.field}>
+        <span className={styles.fieldLabel}>{field.title}</span>
+        <ul className={styles.contentBullets}>
+          {(field.bullets || []).map((b, i) => <li key={i}>{b}</li>)}
+        </ul>
+      </div>
+    );
+  }
+
+  if (type === 'user-select') {
+    return (
+      <div className={styles.field}>
+        <span className={styles.fieldLabel}>
+          {label || key}{required && <span className={styles.required}> •</span>}
+        </span>
+        <Select
+          options={userSelectOptions(field, users)}
+          value={value || ''}
+          onChange={(v) => onSet(key, v)}
+          placeholder={placeholder || 'Choose an option'}
+          searchable
+        />
+        {errorText && <span className={styles.error}>{errorText}</span>}
+      </div>
+    );
+  }
 
   if (type === 'checkbox') {
     return (
@@ -69,7 +106,7 @@ function Field({ field, answers, onSet, submitted }) {
           checked={!!value}
           onChange={(e) => onSet(key, e.target.checked)}
         />
-        <span className={styles.fieldLabel}>{label || key}{required && <span className={styles.required}> •</span>}</span>
+        <span className={styles.fieldLabel}>{field.checkboxLabel || label || key}{required && <span className={styles.required}> •</span>}</span>
       </label>
     );
   }
@@ -87,6 +124,7 @@ function Field({ field, answers, onSet, submitted }) {
               checked={value === opt.value}
               onChange={() => onSet(key, opt.value)}
               label={opt.label}
+              disabled={readOnly}
             />
           ))}
         </div>
@@ -155,6 +193,7 @@ function Field({ field, answers, onSet, submitted }) {
         value={value ?? ''}
         onChange={(e) => onSet(key, e.target.value)}
         placeholder={placeholder}
+        trailingText={field.unit}
         variant={hasError ? 'error' : 'default'}
       />
       {description && <span className={styles.help}>{description}</span>}

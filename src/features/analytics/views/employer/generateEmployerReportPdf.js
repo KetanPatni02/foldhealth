@@ -16,6 +16,12 @@ import { REPORT_FOOTER_NOTE } from '../../../email-builder/reportHeaderComponent
 // A4 in points, laid out as in the Figma frame.
 const PAGE = { w: 595, h: 842 };
 const MARGIN = 24;
+// Cover logo placement: default scales (the sizes the cover was designed
+// at), the inset from the page edge, and the top of the "Provided By" row.
+export const DEFAULT_LOGO_SCALE = 50;
+export const DEFAULT_CLIENT_LOGO_SCALE = 35;
+const COVER_EDGE = 48;
+const COVER_FOOT_Y = 755;
 const CONTENT_W = PAGE.w - MARGIN * 2;
 const HEADER_H = 80;
 const BAND_H = 16;
@@ -1046,8 +1052,16 @@ function fadingGrid(doc, color, x0, y0, w, h, cx, cy, rx, ry) {
  *   gradient) or `{ type: 'image', dataUrl, format, width, height }`
  * @param {{ dataUrl }} [cover.logo]       – Employer logo (Fold Health wordmark by default)
  * @param {{ dataUrl }} [cover.clientLogo] – Provider logo for "Provided By"
+ * @param {number} [cover.logoScale]       – Employer logo size, 10–100 (50 is the default size)
+ * @param {string} [cover.logoAlign]       – '{top|middle|bottom}-{left|center|right}'. Middle keeps
+ *   the logo above the title, aligned to the title block; top and bottom move it to the page edge.
+ * @param {number} [cover.clientLogoScale] – "Provided By" logo size, 10–100 (35 is the default size)
+ * @param {string} [cover.clientLogoAlign] – 'left' | 'center' | 'right'
  */
-function coverPage(doc, { title, range, description, background = DEFAULT_COVER_BACKGROUND, logo, clientLogo, withFooter = false }) {
+function coverPage(doc, {
+  title, range, description, background = DEFAULT_COVER_BACKGROUND, logo, clientLogo, withFooter = false,
+  logoScale = DEFAULT_LOGO_SCALE, logoAlign = 'middle-center', clientLogoScale = DEFAULT_CLIENT_LOGO_SCALE, clientLogoAlign = 'center',
+}) {
   const light = isLightBackground(background);
   const ink1 = light ? C.black : [255, 255, 255];
   const ink2 = light ? C.body : [182, 216, 239]; // Figma #B6D8EF on the blue
@@ -1076,17 +1090,27 @@ function coverPage(doc, { title, range, description, background = DEFAULT_COVER_
   setWeight(doc, 'semibold');
   doc.setFontSize(30);
   const titleLines = doc.splitTextToSize(title, 514);
-  // Employer logo slot: 151 × 28 for the wordmark; uploads may be up to 48 tall.
-  const logoBox = logo?.dataUrl ? (logo.width ? fitLogo(logo, 151, 48) : { w: 151, h: 28 }) : { w: 0, h: 0 };
-  const logoH = logoBox.h;
+  // Employer logo slot at the default scale: 151 × 28 for the wordmark;
+  // uploads may be up to 48 tall. Scale grows or shrinks the slot.
+  const k = logoScale / DEFAULT_LOGO_SCALE;
+  const logoBox = logo?.dataUrl
+    ? (logo.width ? fitLogo(logo, 151 * k, 48 * k) : { w: 151 * k, h: 28 * k })
+    : { w: 0, h: 0 };
+  const [vAlign, hAlign] = logoAlign.split('-');
+  const inStack = !!logo?.dataUrl && vAlign === 'middle';
+  const logoH = inStack ? logoBox.h : 0;
   const titleH = titleLines.length * 36;
   const rangeH = 14.4;
   const descH = descLines.length * 12;
   const stackH = (logoH ? logoH + 24 : 0) + titleH + 4 + rangeH + (descLines.length ? 4 + descH : 0);
   let y = (PAGE.h - stackH) / 2;
   if (logo?.dataUrl) {
-    doc.addImage(logo.dataUrl, logo.format || 'PNG', (PAGE.w - logoBox.w) / 2, y, logoBox.w, logoBox.h);
-    y += logoH + 24;
+    // Middle row lines up with the title block; top and bottom rows with the page margins.
+    const edge = inStack ? (PAGE.w - 514) / 2 : COVER_EDGE;
+    const x = hAlign === 'left' ? edge : hAlign === 'right' ? PAGE.w - edge - logoBox.w : (PAGE.w - logoBox.w) / 2;
+    const logoY = inStack ? y : vAlign === 'top' ? COVER_EDGE : COVER_FOOT_Y - 24 - logoBox.h;
+    doc.addImage(logo.dataUrl, logo.format || 'PNG', x, logoY, logoBox.w, logoBox.h);
+    if (inStack) y += logoH + 24;
   }
   titleLines.forEach((line, i) => {
     text(doc, line, PAGE.w / 2, y + 28 + i * 36, { size: 30, color: ink1, weight: 'semibold', align: 'center' });
@@ -1107,10 +1131,19 @@ function coverPage(doc, { title, range, description, background = DEFAULT_COVER_
     doc.setFontSize(12);
     const label = 'Provided By:';
     const labelW = doc.getTextWidth(label);
-    const logoW = fitLogo(clientLogo, 54, 24);
-    const gx = (PAGE.w - (labelW + 4 + 54)) / 2;
-    text(doc, label, gx, 755 + 16, { size: 12, color: ink1, weight: 'medium' });
-    doc.addImage(clientLogo.dataUrl, clientLogo.format || 'PNG', gx + labelW + 4 + (54 - logoW.w) / 2, 755 + (24 - logoW.h) / 2, logoW.w, logoW.h);
+    const ck = clientLogoScale / DEFAULT_CLIENT_LOGO_SCALE;
+    const boxW = 54 * ck;
+    const boxH = 24 * ck;
+    const logoW = fitLogo(clientLogo, boxW, boxH);
+    const groupW = labelW + 4 + boxW;
+    const gx = clientLogoAlign === 'left' ? COVER_EDGE
+      : clientLogoAlign === 'right' ? PAGE.w - COVER_EDGE - groupW
+        : (PAGE.w - groupW) / 2;
+    // The row keeps its bottom edge; a larger logo grows upward.
+    const rowTop = COVER_FOOT_Y + 24 - Math.max(24, boxH);
+    const rowH = Math.max(24, boxH);
+    text(doc, label, gx, rowTop + rowH / 2 + 4, { size: 12, color: ink1, weight: 'medium' });
+    doc.addImage(clientLogo.dataUrl, clientLogo.format || 'PNG', gx + labelW + 4 + (boxW - logoW.w) / 2, rowTop + (rowH - logoW.h) / 2, logoW.w, logoW.h);
   }
 
   // With no report footer the cover still carries its page number.

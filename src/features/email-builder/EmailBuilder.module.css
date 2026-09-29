@@ -2916,3 +2916,6 @@
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+
+/* ColorInput `trigger`: the caller's element stands in for the hex field. */
+.customTrigger { display: contents; }

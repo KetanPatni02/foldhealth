@@ -15,7 +15,9 @@ import styles from './EmailBuilder.module.css';
 // stays mounted this long after close so it can animate out.
 const EXIT_MS = 160;
 
-export function ColorInput({ label, value, onChange, allowGradient = true, gradientOnly = false }) {
+// `trigger` (an element, e.g. a swatch) replaces the hex field; clicking it
+// opens the same picker.
+export function ColorInput({ label, value, onChange, allowGradient = true, gradientOnly = false, trigger }) {
   const hexId = useId();
   const colorVariables = useAppStore(s => s.colorVariables);
   const recentlyUsedColors = useAppStore(s => s.recentlyUsedColors);
@@ -115,6 +117,9 @@ export function ColorInput({ label, value, onChange, allowGradient = true, gradi
   return (
     <div className={styles.fieldCol} ref={fieldRef}>
       {label && <label className={styles.fieldLabel} htmlFor={hexId}>{label}</label>}
+      {trigger ? (
+        <span className={styles.customTrigger} onClick={() => (shown ? closePicker() : openPicker())}>{trigger}</span>
+      ) : (
       <Input
         id={hexId}
         value={displayText}
@@ -140,6 +145,7 @@ export function ColorInput({ label, value, onChange, allowGradient = true, gradi
           </button>
         )}
       />
+      )}
       {mounted && createPortal(
         <div
           ref={popoverRef}

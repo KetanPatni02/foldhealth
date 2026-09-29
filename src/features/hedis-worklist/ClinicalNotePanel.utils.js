@@ -1,3 +1,5 @@
+import { derivedPatch, needsTelehealthConsent, requiredKeys } from '../../lib/noteTemplateRules';
+
 export const CURRENT_USER = 'Isabeth Partida Fra';
 export const GENDER_LABEL = { M: 'Male', F: 'Female', O: 'Other' };
 
@@ -37,6 +39,35 @@ export const MEASURE_NAMES = {
   MRP:        'Medication Reconciliation Post-Discharge',
   'DSF-A':    'Depression Screening (PHQ-2)',
   'DSF-B':    'Depression Follow-Up (PHQ-9)',
+};
+
+// Notes saved against an earlier template: { from: old key, to: new key,
+// map }. Only fills a new field that's still empty; old keys are kept.
+export const LEGACY_GAP_FIELDS = {
+  LSC: [
+    { from: 'leadLevel', to: 'resultValue', map: (v) => v },
+    { from: 'testType', to: 'procedurePerformed', map: (v) => (v === 'capillary' ? true : undefined) },
+  ],
+};
+
+// Saved gap data as the current template reads it: legacy fields mapped,
+// then derived values (Result, care plan) filled in. Used wherever a note's
+// payload is loaded, so the next save persists the upgraded shape.
+export function savedGapData(code, data) {
+  if (!data || typeof data !== 'object') return data;
+  const out = { ...data };
+  for (const { from, to, map } of LEGACY_GAP_FIELDS[code] || []) {
+    const v = data[from] == null || data[from] === '' ? undefined : map(data[from]);
+    if ((out[to] === '' || out[to] == null) && v !== undefined) out[to] = v;
+  }
+  const t = GAP_TEMPLATES[code];
+  return t ? { ...out, ...derivedPatch(t, out) } : out;
+}
+
+// CPT billed on provider sign-off (SSD capable), keyed by gap code. LSC
+// bills 83655 whatever the result.
+export const MEASURE_CPT = {
+  LSC: '83655',
 };
 
 export const EED_EXAM_TYPES = [
@@ -343,15 +374,48 @@ export const GAP_TEMPLATES = {
     { key: 'hpv', label: 'HPV complete?', type: 'radio', options: YES_NO, required: true },
     { key: 'catchupPlan', label: 'Missing Vaccine Plan', type: 'text', placeholder: 'Enter catch-up plan' },
   ],
+  // LSC (Phase 2): the Coordinator documents a capillary blood lead test
+  // the phlebotomist performed. Result follows Result Value (derive), and
+  // the matching care plan block shows off Result (showWhen). Rules live in
+  // src/lib/noteTemplateRules.js. Care plan copy is verbatim from Astrana.
   LSC: [
-    { key: 'screeningDate', label: 'Screening Date', type: 'date', required: true, column: 2 },
-    { key: 'testType', label: 'Test Type', type: 'radio', required: true, column: 2,
+    { key: 'location', label: 'Location', type: 'radio', required: true, consentWhen: 'telehealth',
       options: [
-        { value: 'capillary', label: 'Capillary' },
-        { value: 'venous', label: 'Venous' },
+        { value: 'telehealth', label: 'Telehealth visit' },
+        { value: 'outpatient', label: 'Outpatient visit' },
+        { value: 'clinic', label: 'Clinic' },
+        { value: 'home', label: 'Home' },
       ] },
-    { key: 'leadLevel', label: 'Lead Level (µg/dL)', type: 'number', required: true, placeholder: '3.2' },
-    { key: 'followUp', label: 'Follow-up needed?', type: 'radio', options: YES_NO },
+    { key: 'performedBy', label: 'Performed by', type: 'user-select', role: 'Phlebotomist',
+      required: true, placeholder: 'Select from these Phlebotomists' },
+    { key: 'procedurePerformed', label: 'Procedure Performed', type: 'checkbox', required: true,
+      checkboxLabel: 'Meridian Leadcare II – Capillary Blood Lead Test' },
+    { key: 'resultValue', label: 'Result Value', type: 'number', unit: 'mcg/dL', required: true, placeholder: 'Enter value' },
+    { key: 'result', label: 'Result', type: 'radio', required: true, readOnly: true,
+      description: 'Selected automatically from Result Value.',
+      derive: { from: 'resultValue', threshold: 3.5, below: 'negative', atOrAbove: 'positive' },
+      options: [
+        { value: 'negative', label: 'If <3.5 (Negative result)' },
+        { value: 'positive', label: 'If ≥3.5 (Positive result)' },
+      ] },
+    { key: 'carePlanNegative', type: 'content', title: 'Care plan for values <3.5',
+      showWhen: { field: 'result', equals: 'negative' },
+      bullets: [
+        'Provided lead exposure prevention with parent/caregiver.',
+        'Provided potential environmental sources of lead exposure and measures to reduce exposure, including handwashing, wet cleaning of household surfaces, avoidance of lead-containing products, and ensuring adequate dietary iron and calcium intake.',
+        'Reinforced continue routine preventive care with parent/caregiver and has no further questions.',
+        'May follow-up with PCP in 2 weeks if needed. Result will be communicated to PCP office.',
+      ] },
+    { key: 'carePlanPositive', type: 'content', title: 'Care Plan for values >=3.5',
+      showWhen: { field: 'result', equals: 'positive' },
+      bullets: [
+        'Positive capillary blood lead screening reviewed with parent/caregiver. Confirmatory venous blood lead test is required, and a lab requisition order will be sent directly to the laboratory.',
+        'Provided lead exposure prevention and reviewed potential environmental sources of lead exposure and measures to reduce exposure, including handwashing, wet cleaning of household surfaces, avoidance of lead-containing products, and ensuring adequate dietary iron and calcium intake.',
+        'Follow-up will occur after venous blood lead results are available. Care team will reach out to parent/caregiver in 2 weeks for follow-up.',
+        'Reinforced continue routine preventive care with parent/caregiver and has no further questions.',
+        'Follow-up with PCP if needed. Result will be communicated to PCP office.',
+        'Parent/caregiver understands the importance of timely confirmatory testing and agrees with the plan.',
+      ] },
   ],
   POLYACH: [
     { key: 'reviewDate', label: 'Review Date', type: 'date', required: true, column: 2 },
@@ -479,10 +543,9 @@ export const MANDATORY_FIELDS = {
   'DSF-B': ['phq9ScoreSaved'],
 };
 
-function mandatoryFieldsFor(code) {
+function mandatoryFieldsFor(code, data) {
   if (MANDATORY_FIELDS[code]) return MANDATORY_FIELDS[code];
-  const t = GAP_TEMPLATES[code];
-  return t ? t.filter(f => f.required).map(f => f.key) : [];
+  return requiredKeys(GAP_TEMPLATES[code], data);
 }
 
 function defaultTemplateData(code) {
@@ -490,6 +553,7 @@ function defaultTemplateData(code) {
   if (!t) return {};
   const out = { evidenceLabel: `${code} Evidence` };
   for (const f of t) {
+    if (f.type === 'content') continue;
     out[f.key] = f.type === 'checkbox' ? false : '';
   }
   return out;
@@ -595,7 +659,7 @@ function dsfDerivedFlag(field, data, noteContext) {
 }
 
 export function isMandatoryComplete(code, data, noteContext) {
-  let req = mandatoryFieldsFor(code);
+  let req = mandatoryFieldsFor(code, data);
   // Standalone DSF-B (no paired DSF-A on the same note) has to collect
   // its own visit context — Location, Performed by, and the telehealth
   // consent that normally rides on the shared DOS card. The paired
@@ -609,6 +673,10 @@ export function isMandatoryComplete(code, data, noteContext) {
     }
   }
   if (!req.length || !data) return false;
+  // Templated gaps with `consentWhen` (e.g. LSC Location = Telehealth)
+  // need the shared DOS card's telehealth consent, like DSF-A.
+  if (needsTelehealthConsent(GAP_TEMPLATES[code], data)
+    && !noteContext?.audioOnly && !noteContext?.audioVideo) return false;
   const isDsf = code === 'DSF-A' || code === 'DSF-B';
   return req.every(f => {
     if (isDsf) {

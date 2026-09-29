@@ -45,3 +45,16 @@
   cursor: pointer;
 }
 .checkboxRow input { accent-color: var(--primary-300); }
+
+/* `content` field: read-only guidance (e.g. a care plan). */
+.contentBullets {
+  margin: 0;
+  padding: var(--space-3) var(--space-3) var(--space-3) calc(var(--space-3) + var(--space-4));
+  list-style: disc outside;
+  background: var(--primary-50);
+  border-radius: 8px;
+  font-size: var(--font-md);
+  color: var(--neutral-300);
+  line-height: var(--leading-normal);
+}
+.contentBullets li + li { margin-top: var(--space-1); }

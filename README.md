@@ -37,6 +37,15 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **LSC (Lead Screening in Children) Clinical Note, Phase 2.** LSC now has
+  its own section in the consolidated Clinical Note: Location, Performed by
+  (users with the new Phlebotomist role, listed by email), Procedure
+  Performed, and Result Value in mcg/dL. Result is selected automatically
+  (<3.5 Negative, ≥3.5 Positive) and shows the matching care plan. Telehealth
+  consent is required when Location is Telehealth. Both results bill CPT
+  83655. The rules (`showWhen`, `derive`, `content`, `user-select`) live in
+  `src/lib/noteTemplateRules.js`, so other templates can use them.
+
 - **Patient hover card on every worklist.** Resting on a member avatar for
   800ms opens a patient banner, then a snapshot slides out: EHR ID, Fold
   Score / RAF Score / Goal Progress tiles and the Fold Score Breakdown. The
