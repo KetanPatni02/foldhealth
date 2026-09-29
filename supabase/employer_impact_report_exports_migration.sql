@@ -4,7 +4,7 @@
 -- Download PDF, Download HTML or Print. Records the format and what the
 -- report covered (employer, time frame, date range) when it was exported.
 --
--- Read and written with the anon key, so the table needs a permissive policy.
+-- Shared by every signed-in user; anon gets no access.
 
 CREATE TABLE IF NOT EXISTS public.employer_impact_report_exports (
   id           text PRIMARY KEY,
@@ -21,4 +21,4 @@ CREATE INDEX IF NOT EXISTS employer_impact_report_exports_at_idx
 ALTER TABLE public.employer_impact_report_exports ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on employer_impact_report_exports" ON public.employer_impact_report_exports;
 CREATE POLICY "Allow all on employer_impact_report_exports" ON public.employer_impact_report_exports
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
