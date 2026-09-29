@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback, useId, useMemo } from 'react'
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Avatar } from '../Avatar/Avatar';
+import { activeOooFor } from '../../features/ooo/oooUtils';
 import { Input } from '../Input/Input';
 import { Button } from '../Button/Button';
 import { CreateNewPopover } from '../CreateNewPopover/CreateNewPopover';
@@ -87,6 +88,9 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
 
   const initials = getUserInitials(user);
   const displayName = getUserDisplayName(user);
+  // The store's profile name is what Out of Office records are keyed by.
+  const oooName = useAppStore(s => s.currentUserProfile?.name) || displayName;
+  const isOoo = useAppStore(s => !!activeOooFor(s.oooRecords, oooName));
   const email = user?.email || '';
 
   const handleLogout = async () => {
@@ -122,13 +126,14 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
       {/* User info */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
         <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-          <Avatar variant="staff" size="XL" initials={initials} />
-          {/* Online-status dot — sits on the avatar's top-right corner. */}
-          <span style={{
+          <Avatar variant="staff" size="XL" initials={initials} userName={oooName} />
+          {/* Online-status dot — sits on the avatar's top-right corner.
+              Out of office, the avatar's OOO badge says so instead. */}
+          {!isOoo && <span style={{
             position: 'absolute', top: -1, right: -3, width: 10, height: 10,
             borderRadius: '50%', background: 'var(--status-success-bright)',
             border: '2px solid var(--neutral-0)',
-          }} />
+          }} />}
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 'var(--font-lg)', fontWeight: 500, color: 'var(--neutral-500)', lineHeight: 1.2 }}>{displayName}</div>
@@ -260,6 +265,7 @@ const SETTINGS_BREADCRUMB = {
   'embedded-components': 'Embed',
   content: 'Content',
   account: 'Account',
+  calendar: 'Calendar',
   billing: 'Billing',
 };
 
@@ -336,6 +342,7 @@ export function TopBar() {
   }, []);
 
   const initials = getUserInitials(user);
+  const meName = useAppStore(s => s.currentUserProfile?.name) || getUserDisplayName(user);
   const isSettings = activePage === 'settings';
   const isAnalytics = activePage === 'analytics';
   const isCalendar = activePage === 'calendar';
@@ -637,7 +644,7 @@ export function TopBar() {
             title="Profile"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
           >
-            <Avatar variant="staff" initials={initials} />
+            <Avatar variant="staff" initials={initials} userName={meName} />
           </button>
           {showProfile && (
             <ProfilePopover

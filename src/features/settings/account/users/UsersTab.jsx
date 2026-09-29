@@ -9,13 +9,16 @@ import { InviteUserDrawer } from '../InviteUserDrawer';
 import { USERS_FILTER_DEFS, USERS_COLUMNS } from './UsersTab.utils';
 import { useUsersTab } from './useUsersTab';
 import { UsersTabRow } from './UsersTabRow';
+import { OooUserRecordsDrawer } from '../../../ooo/OooRecordsDrawers';
 import panelStyles from '../AccountPanel.module.css';
+import rowStyles from './UserRow.module.css';
 
 export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
   const tab = useUsersTab();
   const { sorted: sortedUsers, sortKey, sortDir, requestSort } = useTableSort(tab.filteredUsers, 'name');
   const [userPage, setUserPage] = useState(1);
   const [userPerPage, setUserPerPage] = useState(10);
+  const [oooUser, setOooUser] = useState(null);
 
   useEffect(() => { setUserPage(1); }, [tab.searchVal, tab.userFilters, sortKey, sortDir]);
 
@@ -31,6 +34,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
       isCurrentUserAdmin={tab.isCurrentUserAdmin}
       onView={tab.setViewingUser}
       onEdit={tab.setEditingUser}
+      onViewOoo={setOooUser}
       onResetPassword={tab.resetPassword}
       onToggleStatus={tab.toggleUserStatus}
       onDelete={tab.deleteUser}
@@ -75,6 +79,8 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
 
   return (
     <>
+      {/* The wrapper only sets the first column's left inset (see UserRow.module.css). */}
+      <div className={rowStyles.tableWrap}>
       <WorklistShell
         header={header}
         showFilters={tab.filterOpen}
@@ -106,6 +112,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
         onPageSizeChange={(pp) => { setUserPerPage(pp); setUserPage(1); }}
         minTableWidth={1400}
       />
+      </div>
 
       {tab.viewingUser && (
         <ViewUserDrawer
@@ -120,6 +127,12 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
           user={tab.editingUser}
           onClose={() => tab.setEditingUser(null)}
           onSave={(updates) => tab.saveUserProfile(tab.editingUser.id, updates)}
+        />
+      )}
+      {oooUser && (
+        <OooUserRecordsDrawer
+          user={{ id: oooUser.id, name: oooUser.name, email: oooUser.email, role: oooUser.clinicalRoles?.[0] || oooUser.role }}
+          onClose={() => setOooUser(null)}
         />
       )}
       {tab.showInvite && (

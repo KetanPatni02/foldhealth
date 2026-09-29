@@ -112,7 +112,7 @@
 .keyboardHandle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .keyboardHandle:focus-within { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
 /* Rows and the note keep their own cursors; only the card frame grabs. */
-.cardList, .cardFooter { cursor: auto; }
+.cardList { cursor: auto; }
 .cardList { display: flex; flex-direction: column; border-top: 0.5px solid var(--neutral-150); }
 .cardRow {
   display: flex; align-items: center; gap: var(--space-2);
@@ -120,8 +120,15 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .rowText { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-width: 0; font-size: var(--font-base); line-height: var(--leading-tight); color: var(--neutral-400); }
-.cardFooter { display: flex; flex-direction: column; padding: var(--space-2) var(--space-3); }
-.addNote { display: inline-flex; align-items: center; gap: var(--space-1); align-self: flex-start; font-size: var(--font-base); }
+/* The note's row sits with the widget rows; its box opens under it. */
+.noteRow { border-bottom: none; cursor: auto; }
+.noteLinkRow { display: flex; padding: var(--space-2) var(--space-3); cursor: auto; }
+.addNote { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-base); }
+.noteBody { padding: 0 var(--space-3) var(--space-3); cursor: auto; }
+.handleDisabled {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: var(--space-1); flex-shrink: 0; cursor: not-allowed;
+}
 
 /* Collapsible parts of a section card (subtitle, widget list, note): a
    0fr/1fr grid row animates the height without measuring it. */

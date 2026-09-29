@@ -322,8 +322,19 @@ function TabsSection({ tabs, activeTab, onTabChange, barRef, rightRef }) {
   useEffect(() => {
     measure();
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
-  }, [measure, tabs]);
+    // The right cluster changes width without a window resize (the search
+    // box opening, a filter count appearing); re-measure so tabs fold into
+    // "More" instead of being cut off.
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => measure()) : null;
+    if (ro) {
+      if (rightRef.current) ro.observe(rightRef.current);
+      if (barRef.current) ro.observe(barRef.current);
+    }
+    return () => {
+      window.removeEventListener('resize', measure);
+      ro?.disconnect();
+    };
+  }, [measure, tabs, barRef, rightRef]);
 
   useEffect(() => {
     if (!moreOpen) return;

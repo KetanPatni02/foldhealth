@@ -12,6 +12,13 @@
 .actionsCell  { composes: actionsCell  from '../../../../components/WorklistShell/WorklistRow.module.css'; }
 .actionDivider { composes: actionDivider from '../../../../components/WorklistShell/WorklistRow.module.css'; }
 
+/* The table's first column sits 20px in from the edge when it's the user
+   column (header and cells); in bulk mode the checkbox leads and the
+   shared tight spacing beside it stays. */
+.tableWrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.tableWrap th:first-child:not(:has([role="checkbox"])) { padding-left: var(--space-5); }
+.membersTd.membersTdInset { padding-left: var(--space-5); }
+
 /* User cell — avatar + name/email stack. */
 /* A <button> so the row's member cell opens the profile from the keyboard.
    width/text-align restore what the <div> had inside its <td>. */

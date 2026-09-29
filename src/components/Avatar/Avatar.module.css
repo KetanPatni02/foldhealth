@@ -210,3 +210,31 @@
   box-shadow: 0 0 0 0.5px var(--neutral-0);
 }
 .billedBadge svg { display: block; }
+
+/* Out of Office: purple arrow badge on the bottom-right corner, with a
+   tooltip saying when the user is away. */
+.oooWrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.oooBadgeWrap {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: inline-flex;
+}
+.oooBadge {
+  display: inline-flex;
+  border-radius: 3.5px;
+  /* A thin surface ring keeps the mark readable over the avatar's edge. */
+  box-shadow: 0 0 0 1px var(--neutral-0);
+  cursor: default;
+}
+.oooBadge svg { display: block; }
+.oooTip {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  white-space: nowrap;
+}

@@ -2,14 +2,15 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../../components/Icon/Icon';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
+import { OOO_ICON } from '../../../ooo/oooUtils';
 import styles from '../AccountPanel.module.css';
 
 /**
  * Row-level actions for the Users table: Reset Password, Disable/Enable,
- * More menu (Edit / Delete). Non-admins see a plain "—" — every action
+ * More menu (Edit / View OOO Records / Delete). Non-admins see a plain "—" — every action
  * on this component is admin-only.
  */
-export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, onEdit, onDelete }) {
+export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, onEdit, onViewOoo, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -47,6 +48,11 @@ export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, on
             <button className={styles.moreItem} onClick={() => { onEdit(); setMenuOpen(false); }}>
               <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" /> Edit User
             </button>
+            {onViewOoo && (
+              <button className={styles.moreItem} onClick={() => { onViewOoo(); setMenuOpen(false); }}>
+                <Icon name={OOO_ICON} size={16} color="var(--neutral-300)" /> View OOO Records
+              </button>
+            )}
             <div className={styles.moreDivider} />
             <button className={`${styles.moreItem} ${styles.moreItemDanger}`} onClick={() => { onDelete(); setMenuOpen(false); }}>
               <Icon name="solar:trash-bin-minimalistic-linear" size={16} color="var(--status-error)" /> Delete User

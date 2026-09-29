@@ -1,0 +1,135 @@
+/* Out of Office: records tables, the record drawer and its reassignment
+   step (Figma Eventus "Edit OOO Flow"). */
+
+.headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+.actionDivider { width: 0.5px; height: 16px; background: var(--neutral-150); }
+
+/* ── Records lists (the table itself is OooRecordsTable) ── */
+.userText { display: flex; flex-direction: column; min-width: 0; }
+.userName { color: var(--neutral-400); }
+.userSub { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.emptyBox { border: 1px dashed var(--neutral-150); border-radius: 8px; padding: var(--space-6) var(--space-4); }
+
+/* ── Preferences section ── */
+.prefHeader {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.prefTitle { margin: 0; font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.prefTools { display: inline-flex; align-items: center; gap: var(--space-2); }
+.prefBody { flex: 1; overflow-y: auto; padding: var(--space-3); }
+
+/* ── Drawers ── */
+.drawerBody { display: flex; flex-direction: column; gap: var(--space-4); }
+.flushBody { padding: 0 !important; display: flex; flex-direction: column; }
+.filterRow { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); }
+.clearAll {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  padding: 0; border: none; background: none; cursor: pointer;
+  font-size: var(--font-base); color: var(--primary-300);
+}
+.clearAll:hover { text-decoration: underline; }
+.clearAll:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 2px; border-radius: 2px; }
+.iconActive { background: var(--primary-50); }
+.providerCard {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+
+/* ── Record form ── */
+.form { display: flex; flex-direction: column; gap: var(--space-4); }
+.dateRow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+@media (max-width: 560px) { .dateRow { grid-template-columns: 1fr; } }
+.fieldGroup { display: flex; flex-direction: column; gap: var(--space-2); }
+.fieldLabel { font-size: var(--font-base); color: var(--neutral-300); }
+.fieldError { font-size: var(--font-sm); color: var(--status-error); }
+
+.changedCard {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--status-warning-light);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.changedHead { display: flex; flex-direction: column; }
+.changedTitle { font-size: var(--font-base); color: var(--neutral-500); }
+.changedSub { font-size: var(--font-sm); color: var(--neutral-300); }
+.optionCard {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.optionText { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.optionTitle { font-size: var(--font-base); color: var(--neutral-500); }
+.optionSub { font-size: var(--font-sm); color: var(--neutral-300); }
+
+.autoReplyCard {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.autoReplyHead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.autoReplyField { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* ── Reassignment step ── */
+.groupTitle { font-size: var(--font-base); color: var(--neutral-500); }
+.groupHead { display: flex; align-items: center; justify-content: space-between; }
+.groupTools { display: inline-flex; align-items: center; gap: var(--space-1); }
+.radioRow { display: flex; flex-wrap: wrap; gap: var(--space-4); }
+.rangeBox {
+  display: inline-flex; align-items: center; gap: var(--space-3); align-self: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-200); border-radius: 4px;
+  font-size: var(--font-base); color: var(--neutral-400); font-variant-numeric: tabular-nums;
+}
+.checkRow { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-base); color: var(--neutral-400); }
+.groupCard {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.groupCardText { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.groupCardTitle { font-size: var(--font-base); color: var(--neutral-500); }
+.groupCardSub { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-sm); color: var(--neutral-300); }
+.viewToggle {
+  display: inline-flex; gap: var(--space-1); padding: var(--space-1);
+  background: var(--neutral-50); border-radius: 6px;
+}
+.viewToggleOn { background: var(--neutral-0); box-shadow: 0 0 0 0.5px var(--neutral-150); }
+.assigneePicker {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  height: 28px; padding: 0 var(--space-1);
+  border: 0.5px solid var(--neutral-150); border-radius: 6px;
+  background: var(--neutral-50); cursor: pointer;
+}
+.assigneePicker:hover { background: var(--neutral-100); }
+.assigneePicker:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+.unassignable {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--status-error-light);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+  font-size: var(--font-base); color: var(--neutral-300);
+}
+.countBadge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 16px; padding: 0 var(--space-1);
+  border-radius: 4px; background: var(--status-warning);
+  font-size: var(--font-xs); font-weight: 500; color: var(--neutral-0);
+}
+.reassignFooter {
+  display: flex; justify-content: center; gap: var(--space-2);
+  font-size: var(--font-base); color: var(--neutral-300);
+}
+
+/* Record drawer steps: Next slides the reassignment step in from the right,
+   Previous brings the details back from the left. */
+.stepInForward { animation: oooStepForward 220ms ease-out both; }
+.stepInBack { animation: oooStepBack 220ms ease-out both; }
+@keyframes oooStepForward { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
+@keyframes oooStepBack { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .stepInForward, .stepInBack { animation: none; } }

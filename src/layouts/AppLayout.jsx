@@ -252,6 +252,11 @@ export function AppLayout() {
 
   useEffect(() => { fetchOrgFeatures(); }, [fetchOrgFeatures]);
 
+  // Out of Office records drive the avatar badge everywhere, so they load
+  // with the app rather than with any one screen.
+  const fetchOooRecords = useAppStore(s => s.fetchOooRecords);
+  useEffect(() => { fetchOooRecords(); }, [fetchOooRecords]);
+
   // Keep profiles in sync with auth.users. Self-signups and OAuth logins don't
   // go through the Invite flow, so profiles would otherwise stay empty for them.
   // First login inserts with safe defaults; later logins only refresh identity

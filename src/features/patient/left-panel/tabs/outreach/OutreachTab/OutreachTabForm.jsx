@@ -8,7 +8,7 @@ import { RadioButton } from '../../../../../../components/RadioButton/RadioButto
 import { Switch } from '../../../../../../components/Switch/Switch';
 import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
 import { FieldDropdown, TypeDropdown } from './OutreachTabDropdowns';
-import { OutreachDateTimePicker } from './OutreachDateTimePicker';
+import { DateTimePicker } from '../../../../../../components/DateTimePicker/DateTimePicker';
 import { NotePanel } from './OutreachTabNotePanel';
 import { LOG_FOR_OPTIONS } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
@@ -71,7 +71,7 @@ export function OutreachTabForm({
 
       <div className={styles.formHeader}>
         <TypeDropdown value={type} onChange={setType} disabled={isHccGaps} />
-        <OutreachDateTimePicker value={datetime} onChange={setDatetime} />
+        <DateTimePicker value={datetime} onChange={setDatetime} />
       </div>
 
       <div className={styles.formBody}>

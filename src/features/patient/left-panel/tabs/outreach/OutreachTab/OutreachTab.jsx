@@ -5,10 +5,8 @@ import { AddTaskDrawer } from '../../../../../tasks/AddTaskDrawer';
 import { useOutreachTab } from './useOutreachTab';
 import { OutreachTabForm } from './OutreachTabForm';
 import { OutreachTabActivity } from './OutreachTabActivity';
-import { OutreachDateTimePicker } from './OutreachDateTimePicker';
 import styles from './OutreachTab.module.css';
 
-export { OutreachDateTimePicker };
 
 export function OutreachTab(props) {
   const {

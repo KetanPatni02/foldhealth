@@ -132,6 +132,7 @@
   --accent-persian-blue: #5800FF;
   --accent-purple:       #9C27B0;
   --accent-pink:         #E81E63;
+  --accent-magenta:      #ED36D5; /* Out of Office (Figma Eventus 17581:115194) */
 
   /* Accent Light — soft background shades for tags, chips, tinted surfaces */
   --accent-light-blue-grey:    #EFF2F3;
@@ -144,6 +145,7 @@
   --accent-light-persian-blue: #EEE5FF;
   --accent-light-purple:       #F5E9F7;
   --accent-light-pink:         #FDE8EF;
+  --accent-light-magenta:      #FEFAFE;
 
   /* Native form / scrollbar coloring */
   color-scheme: light;
@@ -379,6 +381,7 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
   --accent-persian-blue: #EEE5FF;
   --accent-purple:       #F5E9F7;
   --accent-pink:         #FDE8EF;
+  --accent-magenta:      #F7B6EE;
 
   /* Accent Light — inverted: dark hues become the "light" surface on dark bg */
   --accent-light-blue-grey:    #607D8B;
@@ -391,6 +394,7 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
   --accent-light-persian-blue: #5800FF;
   --accent-light-purple:       #9C27B0;
   --accent-light-pink:         #E81E63;
+  --accent-light-magenta:      #3A1334;
 
   /* Elevation shadows — deeper on dark for visual separation */
   --shadow-popover: 0 12px 60px rgba(0, 0, 0, 0.50);
