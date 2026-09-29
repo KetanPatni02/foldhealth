@@ -24,6 +24,7 @@ import layout from '../../AnalyticsLayout.module.css';
 import { readLayouts, writeLayouts, normalizeLayouts, savingsKey, packSpans, SPAN_COLUMNS } from './employerImpactLayout';
 import { UpdateDashboardDrawer } from './UpdateDashboardDrawer';
 import { PrintReportDrawer } from './PrintReportDrawer';
+import { ExportHistoryDrawer } from './ExportHistoryDrawer';
 import styles from './EmployerImpactView.module.css';
 
 // Every chart card is this tall so rows of cards line up.
@@ -346,6 +347,18 @@ export function EmployerImpactView({ snapshot = null } = {}) {
   const [dialog, setDialog] = useState(null); // { key, mode: 'expand' | 'table' }
   const [activeSection, setActiveSection] = useState(SECTIONS[0].id);
   const sectionRefs = useRef({});
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const logExport = useAppStore(s => s.logEmployerReportExport);
+  // The sticky top bar's height, so a section jumped to lands below it.
+  const topBarRef = useRef(null);
+  const [topBarH, setTopBarH] = useState(0);
+  useEffect(() => {
+    const el = topBarRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const ro = new ResizeObserver(() => setTopBarH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => { fetchFilters(); }, [fetchFilters]);
 
@@ -550,9 +563,10 @@ export function EmployerImpactView({ snapshot = null } = {}) {
   );
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} style={{ '--top-bar-h': `${topBarH}px` }}>
       {/* Header, filter and quick-jump rows: full-bleed 48px rows split by
-          hairlines, per Figma 5625:15129. */}
+          hairlines, per Figma 5625:15129, sticky together while scrolling. */}
+      <div className={styles.topBar} ref={topBarRef}>
       <div className={styles.header}>
         <div className={styles.titleRow}>
           <div className={layout.viewTitle}>{VIEW_TITLES.employer.title}</div>
@@ -564,13 +578,21 @@ export function EmployerImpactView({ snapshot = null } = {}) {
             />
           )}
         </div>
-        {/* Export, then Settings, split by a hairline. */}
+        {/* Export, History, then Settings, split by hairlines. */}
         {!readOnly && (
         <div className={styles.headerActions}>
           {/* Tooltips open below: above, the page's top bar clips them. */}
           <Button variant="secondary" size="L" leadingIcon="solar:download-minimalistic-linear" onClick={() => setPrintOpen(true)}>
             Export
           </Button>
+          <span className={styles.actionDivider} aria-hidden="true" />
+          <ActionButton
+            icon="solar:history-linear"
+            tooltip="History"
+            tooltipBelow
+            aria-label="Export history"
+            onClick={() => setHistoryOpen(true)}
+          />
           <span className={styles.actionDivider} aria-hidden="true" />
           <ActionButton
             icon="solar:settings-minimalistic-linear"
@@ -599,6 +621,7 @@ export function EmployerImpactView({ snapshot = null } = {}) {
           />
         </nav>
       )}
+      </div>
 
       {/* Sections */}
       <div className={styles.sections}>
@@ -644,9 +667,11 @@ export function EmployerImpactView({ snapshot = null } = {}) {
         ))}
       </div>
 
+      {historyOpen && <ExportHistoryDrawer onClose={() => setHistoryOpen(false)} />}
       {printOpen && (
         <PrintReportDrawer
           loading={loading}
+          onExport={(format, filename) => logExport({ format, filename, employer: employerName, timeFrame, dateRange: rangeText })}
           pageSnapshot={() => ({
             state: { scope, employerName, location, timeFrame, range: effectiveRange, layouts },
             filters: filterOptions,

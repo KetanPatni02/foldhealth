@@ -25,7 +25,9 @@ document.documentElement.dataset.theme = 'light';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <div className={layout.canvas}>
+    {/* Flush and full height, as in the app: the report's rows run edge to
+        edge and its top bar sticks within this scroller. */}
+    <div className={`${layout.canvas} ${layout.canvasFlush}`} style={{ height: '100vh' }}>
       <EmployerImpactView snapshot={snapshot} />
     </div>
   </StrictMode>,

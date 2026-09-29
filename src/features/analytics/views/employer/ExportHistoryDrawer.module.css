@@ -1,0 +1,3 @@
+/* What the export covered, as white badges under the title (the same row
+   Care Plan History uses for its change counts). */
+.badges { display: flex; flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-1); }
