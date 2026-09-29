@@ -12205,6 +12205,63 @@ export const useAppStore = create((set, get) => ({
     set(s => ({ employerReportExports: [{ ...row, local: !!error }, ...s.employerReportExports] }));
   },
 
+  // ── Out of Office records (Preferences → Out of Office, the calendar,
+  // the OOO drawers). Until the table exists, sample records for the first
+  // staff users stand in and edits stay in memory (oooLocal).
+  oooRecords: [],
+  oooRecordsLoading: false,
+  oooRecordsFetched: false,
+  oooLocal: false,
+  fetchOooRecords: async ({ force = false } = {}) => {
+    if (get().oooRecordsLoading || (get().oooRecordsFetched && !force)) return;
+    set({ oooRecordsLoading: true });
+    const { rowToOoo, sampleOooRecords } = await import('../features/ooo/oooSeed');
+    const { data, error } = await supabase.from('ooo_records').select('*').order('start_at', { ascending: false });
+    if (!error) {
+      set({ oooRecords: (data || []).map(rowToOoo), oooRecordsLoading: false, oooRecordsFetched: true, oooLocal: false });
+      return;
+    }
+    console.warn('fetchOooRecords:', error.message);
+    await get().fetchPlatformUsers?.();
+    const emails = Object.fromEntries((get().taskProfiles || []).map(p => [p.name, p.email]));
+    const users = (get().platformUsers || []).map(u => ({ ...u, email: emails[u.name] }));
+    set({ oooRecords: sampleOooRecords(users), oooRecordsLoading: false, oooRecordsFetched: true, oooLocal: true });
+  },
+  saveOooRecord: async (record) => {
+    const { oooToRow } = await import('../features/ooo/oooSeed');
+    const now = new Date().toISOString();
+    const existing = record.id && get().oooRecords.find(r => r.id === record.id);
+    const next = {
+      ...record,
+      id: record.id || `ooo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdBy: existing?.createdBy || record.createdBy || get().currentUserProfile?.name || null,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now,
+    };
+    if (!get().oooLocal) {
+      const { error } = await supabase.from('ooo_records').upsert(oooToRow(next), { onConflict: 'id' });
+      if (error) {
+        console.warn('saveOooRecord:', error.message);
+        get().showToast?.('Could not save the Out of Office record. Try again.');
+        return null;
+      }
+    }
+    set(s => ({ oooRecords: existing ? s.oooRecords.map(r => (r.id === next.id ? next : r)) : [next, ...s.oooRecords] }));
+    return next;
+  },
+  deleteOooRecord: async (id) => {
+    if (!get().oooLocal) {
+      const { error } = await supabase.from('ooo_records').delete().eq('id', id);
+      if (error) {
+        console.warn('deleteOooRecord:', error.message);
+        get().showToast?.('Could not delete the Out of Office record. Try again.');
+        return false;
+      }
+    }
+    set(s => ({ oooRecords: s.oooRecords.filter(r => r.id !== id) }));
+    return true;
+  },
+
   analyticsCache: {},
   analyticsLoading: {},
   analyticsError: {},

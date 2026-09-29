@@ -1,0 +1,61 @@
+/* Out of Office on the calendar grid (Figma Eventus 17557:110750). */
+
+/* The provider's OOO time, as in the Day view (Figma Eventus 17587:116989):
+   an outlined area (its label is in the header), inset 4px, over the day
+   (Week) or the whole cell (Month). It takes the click, so the time can't
+   be booked; clicking opens the record to edit. */
+.blockHost {
+  position: absolute;
+  inset: 0 4px;
+  z-index: 1;
+  border: 0.5px solid var(--accent-magenta);
+  border-radius: 4px;
+  /* Translucent so the time slots show through. */
+  background: color-mix(in srgb, var(--accent-light-magenta) 85%, transparent);
+  cursor: pointer;
+  overflow: hidden;
+}
+/* Week: the OOO day's header strip. Every header in that week gets room
+   for it, so the day names stay in line. */
+:global(.sx__week-grid__date[data-ooo-day]) { position: relative; }
+:global(.sx__week-grid__date-axis:has([data-ooo-day])) :global(.sx__week-grid__date) { padding-bottom: var(--space-10) !important; }
+.stripHost { position: absolute; left: 0; right: 0; bottom: 0; }
+.oooStrip {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-1);
+  height: 20px;
+  background: var(--accent-magenta);
+  font-size: var(--font-xs); font-weight: 500; line-height: 1; color: var(--neutral-0);
+  white-space: nowrap;
+}
+/* Month (Figma Eventus 17590:117225): a dashed outline over the whole
+   cell, 2px in, labelled under the day number. */
+.blockHostMonth {
+  z-index: 0; inset: 2px;
+  border-style: dashed;
+  padding: var(--space-10) var(--space-3) var(--space-3);
+}
+/* The day number stays readable above the OOO block. */
+:global(.sx__month-grid-day:has([data-ooo-host="block"])) :global(.sx__month-grid-day__header) {
+  position: relative;
+  z-index: 1;
+}
+.monthLabel { display: flex; flex-direction: column; gap: 0; padding: var(--space-1) 0; min-width: 0; }
+.monthTitle {
+  display: flex; align-items: center; gap: var(--space-1); min-width: 0;
+  font-size: var(--font-base); font-weight: 500; line-height: 1.2; color: var(--neutral-500);
+  white-space: nowrap;
+}
+.monthSub { font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Month view, everyone in view: how many providers are out that day. */
+.countLink {
+  display: inline-flex; align-items: center; gap: var(--space-1);
+  margin: var(--space-1) var(--space-2);
+  padding: 0; border: none; background: none;
+  font-size: var(--font-sm); color: var(--neutral-400);
+  cursor: pointer; text-align: left;
+}
+.countLink:hover { color: var(--primary-300); text-decoration: underline; }
+.countLink:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; border-radius: 2px; }
+
+/* Week: appointments stay above the OOO area and open as usual. */
+:global(.sx__time-grid-day) :global(.sx__event) { z-index: 2; }

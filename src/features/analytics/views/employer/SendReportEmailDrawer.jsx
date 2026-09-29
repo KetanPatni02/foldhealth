@@ -8,6 +8,7 @@ import { EmailComposer } from '../../../../components/EmailComposer/EmailCompose
 import { RecipientInput } from '../../../../components/RecipientInput/RecipientInput';
 import { isEmailAddress } from '../../../../components/RecipientInput/isEmailAddress';
 import { useAppStore } from '../../../../store/useAppStore';
+import { toast } from '../../../../components/Toast/sonnerToast';
 import styles from './SendReportEmailDrawer.module.css';
 
 const PHI_NOTICE = 'Do not send PHI via email or text without verifying and obtaining consent.';
@@ -94,7 +95,7 @@ export function SendReportEmailDrawer({ buildPdf, filename, title, employerName,
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out?.error?.message || `Sending failed (${res.status}).`);
-      showToast(`Report sent to ${to.length === 1 ? to[0] : `${to.length} recipients`}`);
+      toast.success(`Report sent to ${to.length === 1 ? to[0] : `${to.length} recipients`}`);
       onClose();
     } catch (err) {
       showToast(err.message || 'Sending failed.');

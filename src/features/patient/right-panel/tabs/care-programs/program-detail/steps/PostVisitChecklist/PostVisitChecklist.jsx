@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RadioButton } from '../../../../../../../../components/RadioButton/RadioButton';
-import { OutreachDateTimePicker } from '../../../../../../left-panel/tabs/outreach/OutreachTab/OutreachTab.jsx';
+import { DateTimePicker } from '../../../../../../../../components/DateTimePicker/DateTimePicker';
 import styles from './PostVisitChecklist.module.css';
 
 // Fixed checklist for the Post Visit Checklist step (Figma 482:339172).
@@ -34,7 +34,7 @@ export function PostVisitChecklist() {
           </div>
           {q.type === 'date' ? (
             <div className={styles.answer}>
-              <OutreachDateTimePicker
+              <DateTimePicker
                 className={styles.datePicker}
                 value={answers[q.id] || ''}
                 onChange={v => setDate(q.id, v)}

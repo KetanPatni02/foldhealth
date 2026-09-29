@@ -6,6 +6,7 @@ import { EmbeddedComponentsSettings } from './embedded-components/EmbeddedCompon
 import { ContentSettings } from './content/ContentSettings';
 import { AccountPanel } from './account/AccountPanel';
 import { BillingPanel } from './billing/BillingPanel';
+import { CalendarSettings } from './calendar/CalendarSettings';
 import { MemberLeadsPanel } from './member-leads/MemberLeadsPanel';
 import { CarePlanLibraryPanel } from './care-plan-library/panel/CarePlanLibraryPanel/CarePlanLibraryPanel';
 import { CarePlanCreateView } from './care-plan-library/create/CarePlanCreateView/CarePlanCreateView';
@@ -19,7 +20,7 @@ import styles from './SettingsLayout.module.css';
 // queries; a static placeholder costs nothing.
 const IMPLEMENTED = new Set([
   'agents', 'member/leads', 'messages', 'embedded-components',
-  'content', 'care-plan-library', 'billing', 'account',
+  'content', 'care-plan-library', 'billing', 'account', 'calendar',
 ]);
 
 function ComingSoonPanel({ label }) {
@@ -103,6 +104,8 @@ export function SettingsLayout() {
         <AccountPanel />
       ) : settingsNavItem === 'billing' ? (
         <BillingPanel />
+      ) : settingsNavItem === 'calendar' ? (
+        <CalendarSettings />
       ) : settingsNavItem === 'member/leads' ? (
         <MemberLeadsPanel />
       ) : settingsNavItem === 'care-plan-library' ? (

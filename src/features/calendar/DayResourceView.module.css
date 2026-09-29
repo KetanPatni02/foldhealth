@@ -1,0 +1,89 @@
+/* Calendar Day view, a column per user (Figma Eventus 17365:119644). */
+.wrap { flex: 1; min-height: 0; overflow: auto; background: var(--neutral-0); }
+.grid {
+  display: grid;
+  grid-template-columns: 72px repeat(var(--cols), minmax(240px, 1fr));
+  min-width: max-content;
+}
+.sticky { position: sticky; top: 0; z-index: 5; }
+
+.corner {
+  display: flex; align-items: flex-end;
+  padding: var(--space-2);
+  font-size: var(--font-xs); color: var(--neutral-300);
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  left: 0; z-index: 6;
+}
+.colHead {
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+  min-width: 0;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+  border-left: 0.5px solid var(--neutral-150);
+  font-size: var(--font-base); color: var(--neutral-400);
+}
+.colName {
+  display: flex; align-items: center; justify-content: center;
+  height: 40px; padding: 0 var(--space-3); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Out of office that day: a thin strip at the foot of the header. */
+.oooStrip {
+  display: flex; align-items: center; justify-content: center; gap: var(--space-1);
+  height: 20px; margin-top: auto;
+  background: var(--accent-magenta);
+  font-size: var(--font-xs); font-weight: 500; line-height: 1; color: var(--neutral-0);
+  white-space: nowrap;
+}
+
+.times { position: sticky; left: 0; z-index: 4; background: var(--neutral-0); border-right: 0.5px solid var(--neutral-150); }
+.timeLabel {
+  position: absolute; right: var(--space-2); transform: translateY(-50%);
+  font-size: var(--font-xs); color: var(--neutral-300); white-space: nowrap;
+}
+
+.col { position: relative; border-left: 0.5px solid var(--neutral-150); }
+.slot {
+  position: absolute; left: 0; right: 0;
+  padding: 0; border: none; background: none; cursor: pointer;
+  border-top: 0.5px solid var(--neutral-150);
+}
+.slotHalf { border-top-style: dashed; border-top-color: var(--neutral-100); }
+.slot:hover { background: var(--primary-25); }
+.slot:focus-visible { outline: 2px solid var(--primary-300); outline-offset: -2px; }
+.past { position: absolute; top: 0; left: 0; right: 0; background: var(--neutral-50); opacity: 0.6; pointer-events: none; }
+
+/* Out of office (Figma Eventus 17587:116989): an outlined area (its label
+   is in the header), inset 4px in the column; the time slots show through
+   and clicks land on them (which open the record). */
+.oooBlock {
+  position: absolute; left: 4px; right: 4px; z-index: 1;
+  border: 0.5px solid var(--accent-magenta); border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-light-magenta) 85%, transparent);
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Appointments (calendar slots, Figma Eventus 17581:116489) sit above the
+   OOO area and open as usual. Colour follows the appointment type; cyan
+   when there's none. */
+.event {
+  position: absolute; left: var(--space-2); right: var(--space-2); z-index: 2;
+  display: flex; flex-direction: column; align-items: stretch; gap: 0;
+  padding: var(--space-1) var(--space-2);
+  border: none; border-left: 4px solid var(--accent-cyan); border-radius: 4px;
+  background: var(--accent-light-cyan); text-align: left; cursor: pointer; overflow: hidden;
+}
+.event:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+.event_followup { border-left-color: var(--primary-300); background: var(--primary-50); }
+.event_awv, .event_reminder { border-left-color: var(--status-warning); background: var(--status-warning-light); }
+.event_specialty { border-left-color: var(--status-success); background: var(--status-success-light); }
+.event_telehealth { border-left-color: var(--status-info); background: var(--status-info-light); }
+.eventCancelled { opacity: 0.5; }
+.eventCancelled .eventTitle { text-decoration: line-through; }
+.eventHead { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.eventTitle { flex: 1; min-width: 0; font-size: var(--font-base); font-weight: 500; line-height: 1.2; color: var(--neutral-500); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eventSub { font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.nowLine { position: absolute; left: 0; right: 0; z-index: 3; height: 2px; background: var(--primary-300); pointer-events: none; }

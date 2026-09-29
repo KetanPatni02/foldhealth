@@ -1,0 +1,37 @@
+/* Out of Office records rows: composed from the shared worklist row shell
+   so they read like every other table in the app. */
+.row          { composes: row          from '../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyLeft   { composes: stickyLeft   from '../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyRight  { composes: stickyRight  from '../../components/WorklistShell/WorklistRow.module.css'; }
+.td           { composes: td           from '../../components/WorklistShell/WorklistRow.module.css'; }
+.membersTd    { composes: membersTd    from '../../components/WorklistShell/WorklistRow.module.css'; }
+.actionsCell  { composes: actionsCell  from '../../components/WorklistShell/WorklistRow.module.css'; }
+.actionDivider { composes: actionDivider from '../../components/WorklistShell/WorklistRow.module.css'; }
+
+/* Fills its pane like the shell it wraps (or grows with content when
+   embedded). The first column, header and cells, sits 20px in from the
+   edge: the shared 12px (and the member cell's 4px, meant for a bulk
+   checkbox this table doesn't have) read as touching the border. */
+.wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.wrapEmbedded { display: block; }
+.wrap th:first-child, .wrap td:first-child,
+.wrapEmbedded th:first-child, .wrapEmbedded td:first-child { padding-left: var(--space-5); }
+
+.dates { font-variant-numeric: tabular-nums; }
+.reason { color: var(--neutral-300); white-space: normal; }
+
+.userCell { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.userText { display: flex; flex-direction: column; min-width: 0; }
+.userName { color: var(--neutral-400); }
+.userSub { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* A row picked from the calendar: tinted and outlined in Primary 300 for a
+   few seconds, then back to normal. Covers the sticky cells too. */
+.row td { transition: background 0.4s ease, box-shadow 0.4s ease; }
+.rowHighlight td {
+  background: var(--primary-25);
+  box-shadow: inset 0 1px 0 var(--primary-300), inset 0 -1px 0 var(--primary-300);
+}
+.rowHighlight td:first-child { box-shadow: inset 1px 1px 0 var(--primary-300), inset 0 -1px 0 var(--primary-300); }
+.rowHighlight td:last-child { box-shadow: inset -1px 1px 0 var(--primary-300), inset 0 -1px 0 var(--primary-300); }
+@media (prefers-reduced-motion: reduce) { .row td { transition: none; } }

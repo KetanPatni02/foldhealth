@@ -61,6 +61,8 @@ export function useCalendarView() {
   });
 
   const [filterUser, setFilterUser] = useState([]);
+  // The day schedule-x is showing (ISO), for the per-user Day view.
+  const [selectedDate, setSelectedDate] = useState(() => getTodayInTimezone(timezone));
   const [filterLocation, setFilterLocation] = useState([]);
   const [filterType, setFilterType] = useState([]);
   const [filterStatus, setFilterStatus] = useState([]);
@@ -104,10 +106,21 @@ export function useCalendarView() {
       });
   }, []);
 
+  // Week shows one user at a time: the picked one, else the signed-in
+  // user, else the first user. Day and Month take any number.
+  const meName = useAppStore(s => s.currentUserProfile?.name);
+  const weekUser = filterUser[0]
+    || (users.some(u => u.name === meName) ? meName : users[0]?.name)
+    || null;
+  const viewUsers = useMemo(
+    () => (currentView === 'week' ? [weekUser].filter(Boolean) : filterUser),
+    [currentView, weekUser, filterUser],
+  );
+
   const filteredAppointments = useMemo(() => {
     let filtered = [...(appointments || []), ...reminderEvents];
-    if (filterUser.length > 0) {
-      const userSet = new Set(filterUser);
+    if (viewUsers.length > 0) {
+      const userSet = new Set(viewUsers);
       filtered = filtered.filter(a => userSet.has(a.primary_user));
     }
     if (filterType.length > 0) {
@@ -122,7 +135,7 @@ export function useCalendarView() {
       filtered = filtered.filter(a => appointmentMatchesStatuses(a, filterStatus));
     }
     return filtered;
-  }, [appointments, reminderEvents, filterUser, filterType, filterLocation, filterStatus]);
+  }, [appointments, reminderEvents, viewUsers, filterType, filterLocation, filterStatus]);
 
   const handleViewChange = (view) => {
     setCurrentView(view);
@@ -141,14 +154,20 @@ export function useCalendarView() {
       const m = typeof dateVal.month === 'number' ? dateVal.month - 1 : new Date().getMonth();
       const y = typeof dateVal.year === 'number' ? dateVal.year : new Date().getFullYear();
       setCalendarTitle(`${MONTH_NAMES[m]} ${y}`);
+      if (typeof dateVal.day === 'number') {
+        setSelectedDate(`${y}-${String(m + 1).padStart(2, '0')}-${String(dateVal.day).padStart(2, '0')}`);
+      }
     }
   }, []);
 
   const applyPastOverlays = useCallback(() => {
     const today = getTodayInTimezone(timezone);
+    // Past days in the week header read grey (data-past, styled in CSS)
+    // rather than faded.
     document.querySelectorAll('.sx__week-grid__date').forEach(dateEl => {
       const dateStr = dateEl.getAttribute('data-date');
-      dateEl.style.opacity = (dateStr && dateStr < today) ? '0.4' : '';
+      if (dateStr && dateStr < today) dateEl.setAttribute('data-past', '1');
+      else dateEl.removeAttribute('data-past');
     });
     document.querySelectorAll('.sx__time-grid-day').forEach((dayCol, i) => {
       dayCol.querySelectorAll('[data-past-overlay]').forEach(el => el.remove());
@@ -194,8 +213,10 @@ export function useCalendarView() {
   // turn. Deliberately setTimeout and not requestAnimationFrame: rAF never
   // fires while the tab is hidden, which would leave the title and the
   // past-day shading stale until the next navigation.
+  const [renderTick, setRenderTick] = useState(0);
   const handleRangeUpdate = useCallback(() => {
     setTimeout(() => {
+      setRenderTick(t => t + 1);
       updateTitle();
       applyPastOverlays();
       applyTimeIndicator();
@@ -488,6 +509,13 @@ export function useCalendarView() {
   }, [applyTimeIndicator, applyPastOverlays]);
 
   return {
+    renderTick,
+    selectedDate,
+    viewUsers,
+    meName,
+    setClickedAppointment,
+    setSelectedSlot,
+    setShowSchedule,
     calendarTitle,
     currentView,
     showSchedule,

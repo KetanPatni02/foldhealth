@@ -31,6 +31,7 @@ import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
+import { sampleOooRecords, oooToRow } from '../src/features/ooo/oooSeed.js';
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -966,6 +967,25 @@ async function main() {
       .from('employer_impact_report_exports')
       .upsert(exportRows, { onConflict: 'id' });
     if (error) { console.error('  ✗', error.message); } else { console.log(`  ✓ ${exportRows.length} exports`); }
+  }
+
+  // Out of Office: sample records for the first staff profiles, dated
+  // around today so ongoing, upcoming and past all show.
+  console.log('Seeding ooo_records...');
+  {
+    const { data: staff, error: pe } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .not('full_name', 'is', null)
+      .order('full_name')
+      .limit(7);
+    if (pe) {
+      console.error('  ✗ profiles:', pe.message);
+    } else {
+      const rows = sampleOooRecords((staff || []).map(p => ({ id: p.id, name: p.full_name.trim(), email: p.email, role: p.role }))).map(oooToRow);
+      const { error } = rows.length ? await supabase.from('ooo_records').upsert(rows, { onConflict: 'id' }) : { error: null };
+      if (error) { console.error('  ✗', error.message); } else { console.log(`  ✓ ${rows.length} records`); }
+    }
   }
 
   console.log('Seeding patient_social_history...');

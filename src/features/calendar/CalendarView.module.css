@@ -166,35 +166,56 @@
   box-shadow: none !important;
 }
 
-/* Reduce day name and date number size */
-.calendarWrap :global(.sx__week-grid__day-name) {
-  font-size: var(--font-xs) !important;
-  font-weight: 500 !important;
-  text-transform: uppercase;
-  color: var(--neutral-300) !important;
-  letter-spacing: 0.04em;
+/* Week header, as the legacy week view: one line per day ("SUN•27") in
+   bordered cells; past days grey, today tinted with a primary top bar. */
+.calendarWrap :global(.sx__week-grid__date) {
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: var(--space-3) 0 !important;
+  border-left: 0.5px solid var(--neutral-150);
+  border-top: 4px solid transparent;
+  background: var(--neutral-0);
 }
-
+.calendarWrap :global(.sx__week-grid__date[data-past]) { background: var(--neutral-50); }
+.calendarWrap :global(.sx__week-grid__day-name),
 .calendarWrap :global(.sx__week-grid__date-number) {
   font-size: var(--font-base) !important;
   font-weight: 500 !important;
-  color: var(--neutral-400) !important;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: var(--neutral-500) !important;
 }
+.calendarWrap :global(.sx__week-grid__day-name)::after { content: '•'; }
 
-/* Today date number with purple circle */
+.calendarWrap :global(.sx__week-grid__date--is-today) {
+  background: var(--primary-50);
+  border-top-color: var(--primary-300);
+}
+.calendarWrap :global(.sx__week-grid__date--is-today .sx__week-grid__day-name),
 .calendarWrap :global(.sx__week-grid__date--is-today .sx__week-grid__date-number) {
-  background: var(--primary-300) !important;
-  color: #fff !important;
-  border-radius: 50%;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: var(--primary-300) !important;
+  font-weight: 400 !important;
+  /* schedule-x draws a filled circle behind today's number; the top bar
+     and tint mark today instead. */
+  background: transparent !important;
+  width: auto !important;
+  height: auto !important;
+  border-radius: 0 !important;
 }
 
-.calendarWrap :global(.sx__week-grid__date--is-today .sx__week-grid__day-name) {
-  color: var(--primary-300) !important;
+/* The selected user's name, above the week's day cells. */
+.weekUserRow {
+  /* The empty 60px track sits over the time axis, so the name centres on
+     the day columns. */
+  display: grid; grid-template-columns: 60px 1fr; align-items: center; justify-items: center;
+  height: 40px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
+  font-size: var(--font-md); font-weight: 600; color: var(--neutral-500);
+  flex-shrink: 0;
 }
 
 /* ── Schedule-x theme overrides to match Fold design ── */
@@ -446,3 +467,9 @@
   transition: opacity 0.1s;
   z-index: 5;
 }
+
+/* Between the toolbar's Availability toggle and its icon buttons. */
+.actionDivider { width: 0.5px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+
+/* Day view draws its own per-user columns; schedule-x stays mounted underneath. */
+.calendarHidden { display: none; }

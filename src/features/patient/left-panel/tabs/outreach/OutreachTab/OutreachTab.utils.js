@@ -1,6 +1,4 @@
 export const PROGRAMS = ['SNP', 'AWV', 'CCM', 'TCM', 'ECM', 'CBP', 'MRP'];
-export const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'];
 // Detailed outcomes offered by each note panel's Select Outcome menu, keyed
 // by the Outreach Outcome radio (Successful / Unsuccessful / Note).
 export const OUTCOME_CHOICES_BY_STATUS = {
@@ -105,21 +103,3 @@ export function parseDatetime(dt) {
   };
 }
 
-export function parsePickerValue(v) {
-  if (!v) return { date: null, hour: 0, minute: 0 };
-  const parts = v.split(', ');
-  const datePart = parts[0];
-  const timePart = parts[1] || '';
-  const match24 = timePart.match(/^(\d{1,2}):(\d{2})$/);
-  if (match24) return { date: datePart, hour: parseInt(match24[1]), minute: parseInt(match24[2]) };
-  const match12 = timePart.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (match12) {
-    let h = parseInt(match12[1]);
-    const m = parseInt(match12[2]);
-    const ap = match12[3].toUpperCase();
-    if (ap === 'PM' && h !== 12) h += 12;
-    if (ap === 'AM' && h === 12) h = 0;
-    return { date: datePart, hour: h, minute: m };
-  }
-  return { date: datePart, hour: 0, minute: 0 };
-}

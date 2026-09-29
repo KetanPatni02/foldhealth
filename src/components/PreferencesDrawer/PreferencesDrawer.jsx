@@ -20,11 +20,14 @@ import { Badge } from '../Badge/Badge';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { RadioButton } from '../RadioButton/RadioButton';
 import { Select } from '../Select/Select';
+import { OooPreferencesSection } from '../../features/ooo/OooRecordsDrawers';
+import { OOO_ICON } from '../../features/ooo/oooUtils';
 import styles from './PreferencesDrawer.module.css';
 
 const PREF_TABS = [
   { key: 'notifications', icon: 'solar:bell-linear', label: 'Notification Settings' },
   { key: 'email', icon: 'solar:letter-linear', label: 'Email Settings' },
+  { key: 'ooo', icon: OOO_ICON, label: 'Out of Office' },
   { key: 'account', icon: 'solar:user-circle-linear', label: 'Account & Profile' },
 ];
 
@@ -34,9 +37,9 @@ function getInitials(name) {
   return (parts[0]?.[0] || '') + (parts[parts.length - 1]?.[0] || '');
 }
 
-export function PreferencesDrawer({ onClose }) {
+export function PreferencesDrawer({ onClose, initialTab = 'account' }) {
   const uid = useId();
-  const [activeTab, setActiveTab] = useState('account');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [inboxView, setInboxView] = useState('all');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -134,14 +137,16 @@ export function PreferencesDrawer({ onClose }) {
         {/* Right content */}
         <div className={styles.content}>
           {/* Section title bar */}
-          {activeTab !== 'account' && (
+          {activeTab !== 'account' && activeTab !== 'ooo' && (
             <div className={styles.sectionHeader}>
               <h3 className={styles.contentTitle}>{PREF_TABS.find(t => t.key === activeTab)?.label?.toUpperCase() || ''}</h3>
               <ActionButton icon="solar:close-linear" size="S" tooltip="Close" onClick={onClose} />
             </div>
           )}
 
-          {activeTab === 'account' ? (
+          {activeTab === 'ooo' ? (
+            <OooPreferencesSection />
+          ) : activeTab === 'account' ? (
             loading ? (
               <div style={{ padding: 32, textAlign: 'center', color: 'var(--neutral-300)' }}>Loading profile...</div>
             ) : (

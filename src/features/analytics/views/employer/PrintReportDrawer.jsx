@@ -650,10 +650,24 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     });
     return () => { live = false; };
   }, []);
-  // Sections whose note box is open; each starts as an "Add Note" link.
-  // A saved note opens with its box showing; the rest start as "Add Note".
+  // Sections whose note is switched on; a saved note starts on.
   const [noteOpen, setNoteOpen] = useState(() => new Set(Object.keys(notes)));
-  const openNote = (id) => setNoteOpen(prev => new Set(prev).add(id));
+  // Sections showing the note toggle row: any with a note added, including
+  // one switched off since (so it can be switched back on).
+  const [noteRows, setNoteRows] = useState(() => new Set(Object.keys(notes)));
+  // A note switched off is kept here, so switching it back on (while the
+  // drawer is open) restores what was typed.
+  const offNotesRef = useRef({});
+  const openNote = (id) => {
+    setNoteOpen(prev => new Set(prev).add(id));
+    setNoteRows(prev => new Set(prev).add(id));
+    const kept = offNotesRef.current[id];
+    if (kept) {
+      delete offNotesRef.current[id];
+      setNotes(n => ({ ...n, [id]: kept }));
+      persistNote(id, kept);
+    }
+  };
 
   // Shared notes: loaded on open, saved as typing pauses (and on close).
   const fetchReportNotes = useAppStore(s => s.fetchEmployerReportNotes);
@@ -673,6 +687,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
         return next;
       });
       setNoteOpen(prev => new Set([...prev, ...Object.keys(shared)]));
+      setNoteRows(prev => new Set([...prev, ...Object.keys(shared)]));
     });
     const pending = pendingRef.current;
     return () => {
@@ -696,8 +711,9 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     setNotes(n => ({ ...n, [id]: { html, plain } }));
     persistNote(id, { html, plain });
   };
-  // Clears the note (for everyone) and folds the box back into the "Add Note" link.
+  // Switching the note off clears it (for everyone) and folds the box away.
   const removeNote = (id) => {
+    if (notes[id]?.plain?.trim()) offNotesRef.current[id] = notes[id];
     setNotes((prev) => { const next = { ...prev }; delete next[id]; return next; });
     setNoteOpen((prev) => { const next = new Set(prev); next.delete(id); return next; });
     persistNote(id, null, 0);
@@ -1123,19 +1139,23 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                 ))}
                 </SortableList>
               </div>
-              <div className={styles.cardFooter} data-no-drag>
-                {noteOpen.has(section.id) ? (
-                  <Textarea
-                    richText
-                    value={notes[section.id]?.html || ''}
-                    onChange={(html, plain) => editNote(section.id, html, plain)}
-                    placeholder="Add a note for this section (optional)"
-                    aria-label={`Note for ${sectionTitle}`}
-                    rows={2}
-                    className={styles.noteField}
-                    bottomButton={{ label: 'Remove Note', variant: 'secondary', onClick: () => removeNote(section.id) }}
+              {/* Note: an "Add Note" link until a note is added; then a row
+                  like the widgets' (drag handle disabled) whose toggle keeps
+                  or drops the note, with the note box under it. */}
+              {noteRows.has(section.id) ? (
+                <div className={`${styles.cardRow} ${styles.noteRow}`} data-no-drag>
+                  <span className={styles.handleDisabled} aria-hidden="true">
+                    <Icon name="custom:drag-handle" size={16} color="var(--neutral-150)" />
+                  </span>
+                  <span className={styles.rowText}>Add Note</span>
+                  <Switch
+                    checked={noteOpen.has(section.id)}
+                    onChange={(on) => (on ? openNote(section.id) : removeNote(section.id))}
+                    ariaLabel={`Add a note to ${sectionTitle}`}
                   />
-                ) : (
+                </div>
+              ) : (
+                <div className={styles.noteLinkRow} data-no-drag>
                   <Link
                     className={styles.addNote}
                     role="button"
@@ -1146,8 +1166,21 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                     <AddIconMinimalist size={14} color="currentColor" />
                     Add Note
                   </Link>
-                )}
-              </div>
+                </div>
+              )}
+              {noteOpen.has(section.id) && (
+                <div className={styles.noteBody} data-no-drag>
+                  <Textarea
+                    richText
+                    value={notes[section.id]?.html || ''}
+                    onChange={(html, plain) => editNote(section.id, html, plain)}
+                    placeholder="Add a note for this section (optional)"
+                    aria-label={`Note for ${sectionTitle}`}
+                    rows={2}
+                    className={styles.noteField}
+                  />
+                </div>
+              )}
             </>)}
           </div>)}
           </SortableItem>

@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { trackFunnel } from '../../lib/tracking';
 import { FALLBACK_APPOINTMENT_TYPES, LOCATION_OPTIONS, displayAppointmentStatus } from './scheduleDrawerConstants';
 
-export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, initialSelectedPatient, source }) {
+export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, initialSelectedPatient, initialProvider, source }) {
   const isViewMode = !!existingAppointment;
   const patients = useAppStore(s => s.patients);
   const fetchPatients = useAppStore(s => s.fetchPatients);
@@ -48,7 +48,8 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
   const [appointmentType, setAppointmentTypeState] = useState(null);
   const [mode, setMode] = useState('');
   const [location, setLocation] = useState('');
-  const [provider, setProvider] = useState('');
+  // A Day-view column click books for that column's user.
+  const [provider, setProvider] = useState(initialProvider || '');
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
   const [recurring, setRecurring] = useState(false);

@@ -12,6 +12,7 @@ export function UsersTabRow({
   isCurrentUserAdmin,
   onView,
   onEdit,
+  onViewOoo,
   onResetPassword,
   onToggleStatus,
   onDelete,
@@ -30,13 +31,13 @@ export function UsersTabRow({
       {bulkMode && (
         <BulkCheckboxCell selected={selected} onToggle={() => onToggleSelect?.(user.id)} label={`Select ${user.name}`} />
       )}
-      <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: bulkMode ? 36 : 0 }}>
+      <td className={`${styles.membersTd} ${styles.stickyLeft} ${bulkMode ? '' : styles.membersTdInset}`} style={{ left: bulkMode ? 36 : 0 }}>
         <button
           type="button"
           className={styles.userCell}
           onClick={() => (bulkMode ? onToggleSelect?.(user.id) : onView(user))}
         >
-          <Avatar variant="staff" size="M" initials={user.initials} />
+          <Avatar variant="staff" size="M" initials={user.initials} userName={user.name} />
           <div className={styles.userInfo}>
             <span className={styles.userName}>{user.name}</span>
             <span className={styles.userEmail}>{user.email}</span>
@@ -84,6 +85,7 @@ export function UsersTabRow({
           onResetPassword={() => onResetPassword(user)}
           onToggleStatus={() => onToggleStatus(user)}
           onEdit={() => onEdit(user)}
+          onViewOoo={onViewOoo ? () => onViewOoo(user) : undefined}
           onDelete={() => onDelete(user)}
         />
       </td>

@@ -55,6 +55,10 @@ export function CalendarToolbar({
           selected={filterUser}
           onChange={onFilterUserChange}
           searchable
+          // Week shows one user's calendar: pick one, and it always has one.
+          singleSelect={currentView === 'week'}
+          noClear={currentView === 'week'}
+          noClearNeutral={false}
         />
 
         {/* Locations */}
@@ -102,7 +106,9 @@ export function CalendarToolbar({
           <input type="checkbox" />
           <span>Availability</span>
         </label>
+        <span className={styles.actionDivider} aria-hidden="true" />
         <ActionButton icon="solar:tuning-2-linear" size="L" tooltip="Settings" />
+        <span className={styles.actionDivider} aria-hidden="true" />
         <ActionButton icon="solar:info-circle-linear" size="L" tooltip="Help" />
       </div>
     </div>

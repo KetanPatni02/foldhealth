@@ -1,24 +1,43 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '../../../../../../components/Icon/Icon';
-import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
-import { MONTH_NAMES, parsePickerValue } from './OutreachTab.utils';
-import styles from './OutreachTab.module.css';
+import { Icon } from '../Icon/Icon';
+import { ActionButton } from '../ActionButton/ActionButton';
+import { parsePickerValue } from './parsePickerValue';
+import styles from './DateTimePicker.module.css';
 
-// Bespoke rather than the shared DatePicker: DatePicker is a plain
-// `<input type="date">` with no time-of-day support, and this widget needs
-// date + hour/minute selection in one popover — a full swap would drop
-// time selection entirely rather than reuse an equivalent primitive.
-export function OutreachDateTimePicker({ value, onChange, className }) {
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+const pad = (n) => String(n).padStart(2, '0');
+
+const toDate = (mmddyyyy) => {
+  const [mm, dd, yyyy] = mmddyyyy.split('/');
+  return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+};
+
+/**
+ * Date + time in one popover: a month calendar beside scrolling hour and
+ * minute columns, with Reset and Save. The value is a string,
+ * "MM/DD/YYYY, HH:MM" (24-hour); Save calls `onChange` with it.
+ *
+ * @param {object}   props
+ * @param {string}   [props.value]       – "MM/DD/YYYY, HH:MM", or '' when unset
+ * @param {function} props.onChange      – (value) => void
+ * @param {string}   [props.label]       – Field label above the trigger
+ * @param {boolean}  [props.required]    – Red dot after the label
+ * @param {string}   [props.placeholder='MM/DD/YYYY, HH:MM']
+ * @param {string}   [props.errorText]   – Red border and message below
+ * @param {Date}     [props.minDate]     – Days before this can't be picked
+ * @param {boolean}  [props.fullWidth]   – Fill the container instead of 200px
+ * @param {string}   [props.className]   – Extra class on the trigger box
+ */
+export function DateTimePicker({ value, onChange, label, required = false, placeholder = 'MM/DD/YYYY, HH:MM', errorText, minDate, fullWidth = false, className }) {
+  const id = useId();
   const parsed = parsePickerValue(value);
   const [open, setOpen] = useState(false);
-  const [viewDate, setViewDate] = useState(() => {
-    if (parsed.date) {
-      const [mm, dd, yyyy] = parsed.date.split('/');
-      return new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
-    }
-    return new Date();
-  });
+  const [rect, setRect] = useState(null); // the trigger's box, measured on open
+  const [viewDate, setViewDate] = useState(() => (parsed.date ? toDate(parsed.date) : new Date()));
   const [selectedDate, setSelectedDate] = useState(parsed.date);
   const [pickerHour, setPickerHour] = useState(parsed.hour);
   const [pickerMinute, setPickerMinute] = useState(parsed.minute);
@@ -33,9 +52,7 @@ export function OutreachDateTimePicker({ value, onChange, className }) {
   const days = [];
   for (let i = 0; i < firstDay; i++) days.push(null);
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
-
-  const HOURS = Array.from({ length: 24 }, (_, i) => i);
-  const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+  const minDay = minDate ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()).getTime() : null;
 
   const scrollToTime = (h, m) => {
     setTimeout(() => {
@@ -49,67 +66,72 @@ export function OutreachDateTimePicker({ value, onChange, className }) {
     setSelectedDate(p.date);
     setPickerHour(p.hour);
     setPickerMinute(p.minute);
-    if (p.date) {
-      const [mm, dd, yyyy] = p.date.split('/');
-      setViewDate(new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd)));
-    }
+    if (p.date) setViewDate(toDate(p.date));
     scrollToTime(p.hour, p.minute);
   };
 
   const handleOk = () => {
     if (!selectedDate) return;
-    const hStr = String(pickerHour).padStart(2, '0');
-    const mStr = String(pickerMinute).padStart(2, '0');
-    onChange(`${selectedDate}, ${hStr}:${mStr}`);
+    onChange(`${selectedDate}, ${pad(pickerHour)}:${pad(pickerMinute)}`);
     setOpen(false);
   };
 
-  const rect = triggerRef.current?.getBoundingClientRect();
-
-  return (
-    <div ref={triggerRef} className={`${styles.dateInputWrap}${className ? ` ${className}` : ''}`}>
+  const box = (
+    <div
+      ref={triggerRef}
+      className={[styles.dateInputWrap, fullWidth ? styles.fullWidth : '', errorText ? styles.hasError : '', className || ''].filter(Boolean).join(' ')}
+    >
       <button
+        id={id}
         className={styles.datePickerTrigger}
-        onClick={() => setOpen(v => !v)}
+        onClick={() => { setRect(triggerRef.current?.getBoundingClientRect() || null); setOpen(v => !v); }}
         type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-invalid={errorText ? true : undefined}
       >
         <span className={value ? styles.datePickerText : styles.datePickerPlaceholder}>
-          {value || 'MM/DD/YYYY, HH:MM'}
+          {value || placeholder}
         </span>
         <Icon name="solar:calendar-linear" size={14} color="var(--neutral-300)" />
       </button>
 
       {open && createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)}>
+        <div className={styles.backdrop} onClick={() => setOpen(false)}>
           <div
             className={styles.dateTimeDropdown}
+            role="dialog"
+            aria-label={label || 'Pick a date and time'}
             style={{ top: rect ? rect.bottom + 4 : 0, right: rect ? window.innerWidth - rect.right : 0 }}
             onClick={e => e.stopPropagation()}
           >
             <div className={styles.dtPickerBody}>
               <div className={styles.calendarSection}>
                 <div className={styles.calendarHeader}>
-                  <ActionButton icon="solar:alt-arrow-left-linear" size="S"
+                  <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous month"
                     onClick={() => setViewDate(new Date(year, month - 1, 1))} />
                   <span className={styles.calendarTitle}>{MONTH_NAMES[month]} {year}</span>
-                  <ActionButton icon="solar:alt-arrow-right-linear" size="S"
+                  <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next month"
                     onClick={() => setViewDate(new Date(year, month + 1, 1))} />
                 </div>
                 <div className={styles.calendarGrid}>
                   {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
                     <div key={i} className={styles.calendarDayLabel}>{d}</div>
                   ))}
-                  {days.map((d, i) => d ? (
-                    <button
-                      key={i}
-                      type="button"
-                      className={`${styles.calendarDay} ${
-                        selectedDate === `${String(month + 1).padStart(2, '0')}/${String(d).padStart(2, '0')}/${year}`
-                          ? styles.calendarDaySelected : ''
-                      }`}
-                      onClick={() => setSelectedDate(`${String(month + 1).padStart(2, '0')}/${String(d).padStart(2, '0')}/${year}`)}
-                    >{d}</button>
-                  ) : <div key={i} />)}
+                  {days.map((d, i) => {
+                    if (!d) return <div key={i} />;
+                    const key = `${pad(month + 1)}/${pad(d)}/${year}`;
+                    const disabled = minDay != null && new Date(year, month, d).getTime() < minDay;
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={disabled}
+                        className={`${styles.calendarDay} ${selectedDate === key ? styles.calendarDaySelected : ''}`}
+                        onClick={() => setSelectedDate(key)}
+                      >{d}</button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -122,7 +144,7 @@ export function OutreachDateTimePicker({ value, onChange, className }) {
                         <button key={h} type="button" data-h={h}
                           className={`${styles.timeColItem} ${pickerHour === h ? styles.timeColItemSelected : ''}`}
                           onClick={() => setPickerHour(h)}>
-                          {String(h).padStart(2, '0')}
+                          {pad(h)}
                         </button>
                       ))}
                     </div>
@@ -134,7 +156,7 @@ export function OutreachDateTimePicker({ value, onChange, className }) {
                         <button key={m} type="button" data-m={m}
                           className={`${styles.timeColItem} ${pickerMinute === m ? styles.timeColItemSelected : ''}`}
                           onClick={() => setPickerMinute(m)}>
-                          {String(m).padStart(2, '0')}
+                          {pad(m)}
                         </button>
                       ))}
                     </div>
@@ -150,8 +172,22 @@ export function OutreachDateTimePicker({ value, onChange, className }) {
             </div>
           </div>
         </div>,
-        document.body
+        document.body,
       )}
+    </div>
+  );
+
+  if (!label && !errorText) return box;
+  return (
+    <div className={styles.field}>
+      {label && (
+        <label htmlFor={id} className={styles.label}>
+          {label}
+          {required && <span className={styles.required} aria-hidden="true">•</span>}
+        </label>
+      )}
+      {box}
+      {errorText && <span className={styles.errorText}>{errorText}</span>}
     </div>
   );
 }
