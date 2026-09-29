@@ -62,6 +62,7 @@ const TICK = 6;     // axis tick and legend text
 const LEGEND_VALUE_GAP = 28; // donut legend: label column to value column
 const SIDE_COL_W = 88; // KPI column left of a chart (Member Satisfaction, Engaged for Care)
 const LABEL = 6;    // axis titles
+const Y_TITLE_GAP = 7; // between the rotated y title and the tick values
 
 // ── Colours from tokens ──
 function parseColor(value) {
@@ -355,7 +356,7 @@ export function labelsFit(doc, item, w) {
   const format = widget.type === 'satisfaction' ? 'percent' : widget.format;
   // Width left for the plot: card padding, the survey's side column, the
   // rotated y title, then the y tick labels.
-  let plotW = w - CARD_PAD * 2 - (widget.type === 'satisfaction' || model.sideStats?.length ? SIDE_COL_W + 6 : 0) - (widget.yLabel ? LABEL + 3 : 0);
+  let plotW = w - CARD_PAD * 2 - (widget.type === 'satisfaction' || model.sideStats?.length ? SIDE_COL_W + 6 : 0) - (widget.yLabel ? LABEL + Y_TITLE_GAP : 0);
   const max = Math.max(0, ...model.data.map(r => (widget.type === 'line'
     ? Math.max(...series.map(x => r[x.key] || 0))
     : series.reduce((a, x) => a + (r[x.key] || 0), 0))));
@@ -430,7 +431,7 @@ function chartFrame(doc, { legendItems, yLabel, xLabel }, x, y, w, h) {
     yLines = doc.getTextWidth(yLabel) <= room ? [yLabel] : doc.splitTextToSize(yLabel, room).slice(0, 2);
     yLines = yLines.map(l => fitText(doc, l, room, LABEL));
   }
-  const yTitleW = yLines.length ? LABEL * yLines.length + 3 : 0;
+  const yTitleW = yLines.length ? LABEL * yLines.length + Y_TITLE_GAP : 0;
   yLines.forEach((label, i) => {
     // Rotated 90° it reads bottom-to-top from its start point, so start
     // half its length below the middle to centre it on the plot, kept
