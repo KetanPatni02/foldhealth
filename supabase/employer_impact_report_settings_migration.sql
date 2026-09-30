@@ -22,7 +22,8 @@ CREATE TABLE IF NOT EXISTS public.employer_impact_report_settings (
 ALTER TABLE public.employer_impact_report_settings ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on employer_impact_report_settings" ON public.employer_impact_report_settings;
 CREATE POLICY "Allow all on employer_impact_report_settings" ON public.employer_impact_report_settings
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated
+  USING ((select auth.uid()) is not null) WITH CHECK ((select auth.uid()) is not null);
 
 -- Rollback:
 --   DROP TABLE IF EXISTS public.employer_impact_report_settings;

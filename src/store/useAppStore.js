@@ -12225,8 +12225,10 @@ export const useAppStore = create((set, get) => ({
   fetchOooRecords: async ({ force = false } = {}) => {
     if (get().oooRecordsLoading || (get().oooRecordsFetched && !force)) return;
     set({ oooRecordsLoading: true });
-    const { rowToOoo, sampleOooRecords } = await import('../features/ooo/oooSeed');
-    const { data, error } = await supabase.from('ooo_records').select('*').order('start_at', { ascending: false });
+    const [{ rowToOoo, sampleOooRecords }, { data, error }] = await Promise.all([
+      import('../features/ooo/oooSeed'),
+      supabase.from('ooo_records').select('*').order('start_at', { ascending: false }),
+    ]);
     if (!error) {
       set({ oooRecords: (data || []).map(rowToOoo), oooRecordsLoading: false, oooRecordsFetched: true, oooLocal: false });
       return;

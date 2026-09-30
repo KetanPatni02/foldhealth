@@ -68,10 +68,12 @@ alter table public.caregap_lab_results enable row level security;
 
 drop policy if exists caregap_lab_orders_all on public.caregap_lab_orders;
 create policy caregap_lab_orders_all on public.caregap_lab_orders
-  for all to authenticated using (true) with check (true);
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
 drop policy if exists caregap_lab_results_all on public.caregap_lab_results;
 create policy caregap_lab_results_all on public.caregap_lab_results
-  for all to authenticated using (true) with check (true);
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
 
 -- ── Seed: prior HbA1c outside the measurement period ─────────────────────────
 insert into public.caregap_lab_results

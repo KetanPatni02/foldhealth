@@ -18,16 +18,19 @@ export function MedicationSelect({ value, onChange, leadingIcon }) {
     // Every state write sits inside the timer: setting state synchronously in
     // an effect body cascades renders.
     const timer = setTimeout(async () => {
-      if (term.length < 2) { setOptions([]); setLoading(false); return; }
       setLoading(true);
       try {
+        if (term.length < 2) {
+          setOptions([]);
+          return;
+        }
         const results = await searchMedications(term, { signal: controller.signal });
         const names = results.map(r => r.displayName).filter(Boolean);
         setOptions([...new Set(names)].map(v => ({ value: v, label: v })));
       } catch (err) {
         if (err.name !== 'AbortError') setOptions([]);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        setLoading(false);
       }
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };

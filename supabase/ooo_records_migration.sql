@@ -29,4 +29,5 @@ CREATE INDEX IF NOT EXISTS ooo_records_range_idx ON public.ooo_records (start_at
 ALTER TABLE public.ooo_records ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on ooo_records" ON public.ooo_records;
 CREATE POLICY "Allow all on ooo_records" ON public.ooo_records
-  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated
+  USING ((select auth.uid()) is not null) WITH CHECK ((select auth.uid()) is not null);

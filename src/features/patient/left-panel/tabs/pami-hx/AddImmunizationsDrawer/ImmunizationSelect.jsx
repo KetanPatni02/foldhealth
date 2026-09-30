@@ -18,14 +18,17 @@ export function ImmunizationSelect({ value, onChange, leadingIcon }) {
     // Debounced, and each request aborts the one before it, so a slow early
     // response cannot overwrite a newer one.
     const timer = setTimeout(async () => {
-      if (term.length < 2) { setItems([]); setLoading(false); return; }
       setLoading(true);
       try {
+        if (term.length < 2) {
+          setItems([]);
+          return;
+        }
         setItems(await searchImmunizations(term, { signal: controller.signal }));
       } catch (err) {
         if (err.name !== 'AbortError') setItems([]);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        setLoading(false);
       }
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };

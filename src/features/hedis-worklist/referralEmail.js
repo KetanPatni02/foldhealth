@@ -31,8 +31,10 @@ export async function draftReferralEmail(details) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(details),
     });
-    const json = await res.json().catch(() => ({}));
-    if (res.ok && json.email?.body) return { ...json.email, source: 'ai' };
+    if (res.ok) {
+      const json = await res.json().catch(() => ({}));
+      if (json.email?.body) return { ...json.email, source: 'ai' };
+    }
   } catch { /* fall through to the template */ }
   return { ...templateDraft(details), source: 'template' };
 }

@@ -142,7 +142,8 @@ function AllergyDraft({ title, eyebrow, initial, onSave, onCancel }) {
 
   const save = async () => {
     setSaving(true);
-    await onSave({
+    try {
+      await onSave({
       title,
       sinceDate: since,
       reactionType,
@@ -154,7 +155,9 @@ function AllergyDraft({ title, eyebrow, initial, onSave, onCancel }) {
         .map(({ code, display, severity }) => ({ system: REACTION_SYSTEM, code, display, severity })),
       note: note.trim(),
     });
-    setSaving(false);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

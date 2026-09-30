@@ -6,6 +6,8 @@ import {
   MEASURE_NAMES,
   defaultGapData,
   isMandatoryComplete,
+  mergeGapsFromNotes,
+  mergeSavedGapsIntoState,
   savedGapData,
 } from './ClinicalNotePanel.utils';
 
@@ -318,14 +320,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
         if (amended?.payload) {
           if (amended.payload.dateOfService) setDateOfService(amended.payload.dateOfService);
           if (amended.payload.gaps) {
-            setGapState(prev => {
-              const next = { ...prev };
-              for (const [code, data] of Object.entries(amended.payload.gaps)) {
-                if (next[code] !== undefined) next[code] = { ...next[code], ...savedGapData(code, data) };
-                else next[code] = { manuallyOff: false, ...defaultGapData(code), ...savedGapData(code, data) };
-              }
-              return next;
-            });
+            setGapState(prev => mergeSavedGapsIntoState(prev, amended.payload.gaps, { includeManualOff: true }));
           }
           if (amended.payload.audioOnly !== undefined) setAudioOnly(!!amended.payload.audioOnly);
           if (amended.payload.audioVideo !== undefined) setAudioVideo(!!amended.payload.audioVideo);
@@ -345,14 +340,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
         if (target.payload.audioOnly !== undefined) setAudioOnly(!!target.payload.audioOnly);
         if (target.payload.audioVideo !== undefined) setAudioVideo(!!target.payload.audioVideo);
         if (target.payload.gaps) {
-          setGapState(prev => {
-            const next = { ...prev };
-            for (const [code, data] of Object.entries(target.payload.gaps)) {
-              if (next[code]) next[code] = { ...next[code], ...savedGapData(code, data) };
-              else next[code] = { ...defaultGapData(code), ...savedGapData(code, data) };
-            }
-            return next;
-          });
+          setGapState(prev => mergeSavedGapsIntoState(prev, target.payload.gaps));
         }
       } else {
         let dosSeed = null;
@@ -367,21 +355,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
             break;
           }
         }
-        setGapState(prev => {
-          const next = { ...prev };
-          const gapsSeen = new Set();
-          for (const n of notes) {
-            const gapsPayload = n.payload?.gaps;
-            if (!gapsPayload) continue;
-            for (const [code, data] of Object.entries(gapsPayload)) {
-              if (gapsSeen.has(code)) continue;
-              gapsSeen.add(code);
-              if (next[code]) next[code] = { ...next[code], ...savedGapData(code, data) };
-              else next[code] = { ...defaultGapData(code), ...savedGapData(code, data) };
-            }
-          }
-          return next;
-        });
+        setGapState(prev => mergeGapsFromNotes(prev, notes));
         if (dosSeed) {
           setDateOfService(dosSeed.dateOfService);
           if (dosSeed.audioOnly !== undefined) setAudioOnly(!!dosSeed.audioOnly);
@@ -413,14 +387,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     if (!note?.payload) return;
     if (note.payload.dateOfService) setDateOfService(note.payload.dateOfService);
     if (note.payload.gaps) {
-      setGapState(prev => {
-        const next = { ...prev };
-        for (const [code, data] of Object.entries(note.payload.gaps)) {
-          if (next[code] !== undefined) next[code] = { ...next[code], ...savedGapData(code, data) };
-          else next[code] = { manuallyOff: false, ...defaultGapData(code), ...savedGapData(code, data) };
-        }
-        return next;
-      });
+      setGapState(prev => mergeSavedGapsIntoState(prev, note.payload.gaps, { includeManualOff: true }));
     }
     if (note.payload.audioOnly !== undefined) setAudioOnly(!!note.payload.audioOnly);
     if (note.payload.audioVideo !== undefined) setAudioVideo(!!note.payload.audioVideo);

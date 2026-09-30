@@ -48,6 +48,10 @@ export default {
       'dist/**',
       'storybook-static/**',
       'docs/**',
+      // Vite IIFE bundle (bun run build:report-viewer). React's runtime uses
+      // Math.random internally; scanning minified output is not actionable app
+      // code (eslint.config.js ignores this path too).
+      'public/report-viewer/**',
     ],
     // False positives for supabase-client-owned-authz-field, verified by
     // reading each site: a realtime typing-broadcast compare (no DB write),
@@ -372,6 +376,7 @@ export default {
       {
         files: [
           'src/components/FilePreview/FilePreview.jsx',
+          'src/components/PdfPreview/PdfPreview.jsx',
           'src/components/PdfPreviewOverlay/PdfPreviewOverlay.jsx',
           'src/features/hcc/DiagPanel/DocEvidenceViewer.jsx',
           'src/features/patient/right-panel/tabs/care-programs/program-detail/letters/AddLetterDrawer/AddLetterDrawer.jsx',
@@ -400,6 +405,17 @@ export default {
       { files: ['src/components/RangeSliderPopover/RangeSliderPopover.jsx'], rules: ['react-doctor/no-derived-state'] },
 
       {
+        files: ['src/features/analytics/views/employer/PrintReportDrawer.jsx'],
+        rules: [
+          // Mount-time asset rasterization and per-employer settings hydration when
+          // the drawer opens; cancellation uses a `live` flag. printBlob revokes
+          // its object URL after print (60s delay so the iframe can load first).
+          'react-doctor/no-fetch-in-effect',
+          'react-doctor/no-create-object-url-without-revoke',
+        ],
+      },
+
+      {
         files: [
           'src/components/CreateNewPopover/CreateNewPopover.jsx',
           // DatePickerPopover adds its mousedown listener inside a
@@ -420,6 +436,7 @@ export default {
           // detector can follow.
           'src/features/calendar/useCalendarView.js',
           'src/features/ccm-worklist/TimeFilterChip.jsx',
+          'src/features/ooo/CalendarOooLayer.jsx',
           'src/features/email-builder/PreviewCanvas.jsx',
           'src/features/hcc/DiagPanel/LeftWorkspace.jsx',
           'src/features/patient/shared/widgets/HealthMapWidget/HealthMapWidget.jsx',

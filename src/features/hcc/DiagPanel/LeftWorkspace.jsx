@@ -993,19 +993,12 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete, mentionUsers })
   const isMine = isCommentMine(item, me);
   const authorLabel = commentAuthorLabel(item, me);
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(item.body || '');
-  useEffect(() => { setDraft(item.body || ''); }, [item.body]);
+  useEffect(() => { setEditing(false); }, [item.body]);
   const role = normalizeRole(item.role);
   const platformUsers = useAppStore(s => s.platformUsers);
   const usersForMentions = platformUsers?.length ? platformUsers : SYSTEM_USERS;
   const kebabRef = useRef(null);
   const [menuAnchor, setMenuAnchor] = useState(null);
-  const commit = () => {
-    const next = draft.trim();
-    if (!next || next === item.body) { setEditing(false); return; }
-    onEdit?.(item.id, next);
-    setEditing(false);
-  };
   return (
     <div className={styles.tlRow}>
       <div className={styles.tlRail}>
@@ -1073,11 +1066,10 @@ function CommentEntry({ item, isFirst, isLast, onEdit, onDelete, mentionUsers })
               submitLabel="Save"
               cancelLabel="Cancel"
               onSubmit={(text, mentions) => {
-                setDraft(text);
                 onEdit?.(item.id, text, mentions);
                 setEditing(false);
               }}
-              onCancel={() => { setDraft(item.body || ''); setEditing(false); }}
+              onCancel={() => setEditing(false)}
             />
           </div>
         ) : (

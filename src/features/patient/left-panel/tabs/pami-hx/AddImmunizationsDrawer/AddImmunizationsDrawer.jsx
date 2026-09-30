@@ -105,15 +105,18 @@ function ImmunizationDraft({ title, eyebrow, initial, onSave, onCancel }) {
 
   const save = async () => {
     setSaving(true);
-    await onSave({
-      title,
-      dateAdministered: administered,
-      status,
-      doseQuantity: doseQuantity.trim(),
-      doseUnits: doseUnits.trim(),
-      note: note.trim(),
-    });
-    setSaving(false);
+    try {
+      await onSave({
+        title,
+        dateAdministered: administered,
+        status,
+        doseQuantity: doseQuantity.trim(),
+        doseUnits: doseUnits.trim(),
+        note: note.trim(),
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

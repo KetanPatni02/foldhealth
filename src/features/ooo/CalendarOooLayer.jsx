@@ -36,15 +36,23 @@ export function CalendarOooLayer({ currentView, focusUser, records, renderTick, 
   useEffect(() => { onEditRef.current = onEdit; }, [onEdit]);
 
   useEffect(() => {
+    let cancelled = false;
     let attempts = 0;
     let timer;
     const hosts = [];
+    const disposers = [];
+
     const collect = () => {
+      if (cancelled) return;
+      disposers.splice(0).forEach((off) => off());
       const isMonth = currentView === 'month-grid';
       const cells = isMonth
         ? [...document.querySelectorAll('.sx__month-grid-day')]
         : [...document.querySelectorAll('.sx__time-grid-day')];
-      if (!cells.length && attempts++ < 60) { timer = setTimeout(collect, 50); return; }
+      if (!cells.length && attempts++ < 60) {
+        timer = setTimeout(collect, 50);
+        return;
+      }
       document.querySelectorAll('[data-ooo-host]').forEach(el => el.remove());
       document.querySelectorAll('[data-ooo-day]').forEach(el => el.removeAttribute('data-ooo-day'));
       const dates = isMonth ? null : [...document.querySelectorAll('.sx__week-grid__date')].map(el => el.getAttribute('data-date'));
@@ -94,11 +102,17 @@ export function CalendarOooLayer({ currentView, focusUser, records, renderTick, 
           // edit instead. Native and stopped here, since schedule-x listens
           // on the grid cell itself, before React's root listener would run.
           // No hover "new appointment" preview over OOO time.
-          host.addEventListener('mousemove', (e) => e.stopPropagation());
-          host.addEventListener('click', (e) => {
+          const stopMove = (e) => e.stopPropagation();
+          const onClick = (e) => {
             e.stopPropagation();
             // A past record is read-only, but its time still can't be booked.
             if (canEdit(record)) onEditRef.current(record);
+          };
+          host.addEventListener('mousemove', stopMove);
+          host.addEventListener('click', onClick);
+          disposers.push(() => {
+            host.removeEventListener('mousemove', stopMove);
+            host.removeEventListener('click', onClick);
           });
           cell.appendChild(host);
           hosts.push(host);
@@ -107,12 +121,15 @@ export function CalendarOooLayer({ currentView, focusUser, records, renderTick, 
           if (isMonth) next.push({ host, kind: 'monthBlock', date, record });
         });
       });
+      if (cancelled) return;
       setTargets(next);
     };
     // After schedule-x has committed its grid (see handleRangeUpdate).
     timer = setTimeout(collect, 0);
     return () => {
+      cancelled = true;
       clearTimeout(timer);
+      disposers.forEach((off) => off());
       hosts.forEach(h => h.remove());
     };
   }, [currentView, focusUser, records, renderTick]);

@@ -58,11 +58,13 @@ alter table public.caregap_referrals enable row level security;
 
 drop policy if exists referral_sender_lines_read on public.referral_sender_lines;
 create policy referral_sender_lines_read
-  on public.referral_sender_lines for select to authenticated using (true);
+  on public.referral_sender_lines for select to authenticated
+  using ((select auth.uid()) is not null);
 
 drop policy if exists caregap_referrals_all on public.caregap_referrals;
 create policy caregap_referrals_all
-  on public.caregap_referrals for all to authenticated using (true) with check (true);
+  on public.caregap_referrals for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
 
 -- ── Seed: sender lines ──────────────────────────────────────────────────────
 insert into public.referral_sender_lines (id, channel, label, value, is_default) values

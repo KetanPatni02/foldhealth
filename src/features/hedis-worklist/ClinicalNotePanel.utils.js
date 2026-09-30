@@ -686,3 +686,36 @@ export function isMandatoryComplete(code, data, noteContext) {
     return !!data[f];
   });
 }
+
+export function mergeSavedGapsIntoState(prev, gapsPayload, { includeManualOff = false } = {}) {
+  const next = { ...prev };
+  for (const [code, data] of Object.entries(gapsPayload || {})) {
+    const patch = savedGapData(code, data);
+    if (next[code] !== undefined) {
+      next[code] = { ...next[code], ...patch };
+    } else {
+      next[code] = {
+        ...(includeManualOff ? { manuallyOff: false } : {}),
+        ...defaultGapData(code),
+        ...patch,
+      };
+    }
+  }
+  return next;
+}
+
+export function mergeGapsFromNotes(prev, notes) {
+  const next = { ...prev };
+  const gapsSeen = new Set();
+  for (const n of notes) {
+    const gapsPayload = n.payload?.gaps;
+    if (!gapsPayload) continue;
+    for (const [code, data] of Object.entries(gapsPayload)) {
+      if (gapsSeen.has(code)) continue;
+      gapsSeen.add(code);
+      if (next[code]) next[code] = { ...next[code], ...savedGapData(code, data) };
+      else next[code] = { ...defaultGapData(code), ...savedGapData(code, data) };
+    }
+  }
+  return next;
+}

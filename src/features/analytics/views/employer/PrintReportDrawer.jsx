@@ -522,11 +522,10 @@ function printBlob(blob) {
 export function PrintReportDrawer({ range, employerName, filename, sections, filters, pageSnapshot, loading = false, onExport, onClose }) {
   // { [sectionId]: { html, plain } }, kept between openings of the drawer.
   const [notes, setNotesState] = useState(readNotes);
-  const setNotes = (update) => setNotesState((prev) => {
-    const next = typeof update === 'function' ? update(prev) : update;
-    writeNotes(next);
-    return next;
-  });
+  const setNotes = (update) => setNotesState((prev) => (
+    typeof update === 'function' ? update(prev) : update
+  ));
+  useEffect(() => { writeNotes(notes); }, [notes]);
   const [titles, setTitles] = useState({}); // { [sectionId]: custom title }
   // { [sectionId]: text }. Unset means the section's default subtitle; '' clears it.
   const [subtitles, setSubtitles] = useState({});

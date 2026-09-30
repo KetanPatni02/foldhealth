@@ -40,10 +40,13 @@ export function useOooRecordActions({ user, users } = {}) {
           onCancel={() => setToDelete(null)}
           onConfirm={async () => {
             setDeleting(true);
-            const ok = await deleteOooRecord(toDelete.id);
-            setDeleting(false);
-            if (ok) toast.success('Out of Office Record Deleted Successfully');
-            setToDelete(null);
+            try {
+              const ok = await deleteOooRecord(toDelete.id);
+              if (ok) toast.success('Out of Office Record Deleted Successfully');
+              setToDelete(null);
+            } finally {
+              setDeleting(false);
+            }
           }}
         />
       )}

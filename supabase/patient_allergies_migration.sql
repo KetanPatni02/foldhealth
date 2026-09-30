@@ -27,4 +27,5 @@ ALTER TABLE public.patient_allergies ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow all on patient_allergies" ON public.patient_allergies;
 CREATE POLICY "Allow all on patient_allergies" ON public.patient_allergies
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated
+  USING ((select auth.uid()) is not null) WITH CHECK ((select auth.uid()) is not null);

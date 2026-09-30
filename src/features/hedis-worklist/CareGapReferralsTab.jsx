@@ -73,7 +73,11 @@ export function CareGapReferralsTab({ referrals = [], providers = [], onOpen, on
   // eslint-disable-next-line react-hooks/exhaustive-deps
   })), [referrals, providers]);
 
-  const counts = useMemo(() => rows.reduce((acc, r) => ({ ...acc, [r.folder]: (acc[r.folder] || 0) + 1 }), {}), [rows]);
+  const counts = useMemo(() => {
+    const acc = { draft: 0, signed: 0, completed: 0 };
+    for (const r of rows) acc[r.folder] = (acc[r.folder] || 0) + 1;
+    return acc;
+  }, [rows]);
   const channelOptions = useMemo(() => [...new Set(rows.map(r => r.channel).filter(Boolean))], [rows]);
   const toOptions = useMemo(() => [...new Set(rows.map(r => r.toName).filter(Boolean))].sort(), [rows]);
   const anyFilter = filters.channel.length > 0 || filters.referredTo.length > 0;

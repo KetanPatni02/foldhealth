@@ -39,4 +39,5 @@ CREATE INDEX IF NOT EXISTS patient_history_entries_patient_id_idx
 ALTER TABLE public.patient_history_entries ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on patient_history_entries" ON public.patient_history_entries;
 CREATE POLICY "Allow all on patient_history_entries" ON public.patient_history_entries
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated
+  USING ((select auth.uid()) is not null) WITH CHECK ((select auth.uid()) is not null);

@@ -18,7 +18,8 @@ CREATE TABLE IF NOT EXISTS public.employer_impact_employers (
 ALTER TABLE public.employer_impact_employers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on employer_impact_employers" ON public.employer_impact_employers;
 CREATE POLICY "Allow all on employer_impact_employers" ON public.employer_impact_employers
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated
+  USING ((select auth.uid()) is not null) WITH CHECK ((select auth.uid()) is not null);
 
 CREATE TABLE IF NOT EXISTS public.employer_impact_metrics (
   id                text PRIMARY KEY,       -- employer|patient_loc|visit_loc|month|metric|series|bucket
@@ -36,7 +37,8 @@ CREATE INDEX IF NOT EXISTS employer_impact_metrics_filter_idx
 ALTER TABLE public.employer_impact_metrics ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow all on employer_impact_metrics" ON public.employer_impact_metrics;
 CREATE POLICY "Allow all on employer_impact_metrics" ON public.employer_impact_metrics
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated
+  USING ((select auth.uid()) is not null) WITH CHECK ((select auth.uid()) is not null);
 
 -- The report's data for one set of filters, combined by metric / series /
 -- bucket / month. NULL employer or location means "all".

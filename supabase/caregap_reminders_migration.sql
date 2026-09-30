@@ -53,8 +53,8 @@ drop policy if exists caregap_reminders_all on public.caregap_reminders;
 create policy caregap_reminders_all
   on public.caregap_reminders for all
   to authenticated
-  using (true)
-  with check (true);
+  using ((select auth.uid()) is not null)
+  with check ((select auth.uid()) is not null);
 
 commit;
 

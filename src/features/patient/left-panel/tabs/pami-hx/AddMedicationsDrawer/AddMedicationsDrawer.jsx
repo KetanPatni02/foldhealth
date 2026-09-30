@@ -122,17 +122,20 @@ function MedicationDraft({ title, eyebrow, initial, onSave, onCancel }) {
 
   const save = async () => {
     setSaving(true);
-    await onSave({
-      name: title,
-      status,
-      start,
-      sig: sig.trim(),
-      note: note.trim(),
-      // A medication that is running has no stop date or reason to record.
-      stop: stopped ? stop : '',
-      stopReason: stopped ? stopReason : '',
-    });
-    setSaving(false);
+    try {
+      await onSave({
+        name: title,
+        status,
+        start,
+        sig: sig.trim(),
+        note: note.trim(),
+        // A medication that is running has no stop date or reason to record.
+        stop: stopped ? stop : '',
+        stopReason: stopped ? stopReason : '',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

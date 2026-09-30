@@ -93,8 +93,11 @@ export function SendReportEmailDrawer({ buildPdf, filename, title, employerName,
           attachment: { filename: file.name, contentBase64: await toBase64(file.blob) },
         }),
       });
-      const out = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(out?.error?.message || `Sending failed (${res.status}).`);
+      if (!res.ok) {
+        const out = await res.json().catch(() => ({}));
+        throw new Error(out?.error?.message || `Sending failed (${res.status}).`);
+      }
+      await res.json().catch(() => ({}));
       toast.success(`Report sent to ${to.length === 1 ? to[0] : `${to.length} recipients`}`);
       onClose();
     } catch (err) {

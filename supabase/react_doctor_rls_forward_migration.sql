@@ -179,4 +179,87 @@ create policy "form_responses_update_authenticated"
 create policy "form_responses_delete_authenticated"
   on public.form_responses for delete to authenticated using ((select auth.uid()) is not null);
 
+-- React Doctor RLS batch (2026-09): tables whose original migrations still
+-- used USING (true); idempotent for DBs that already ran the forward pass.
+drop policy if exists care_program_step_status_all on public.care_program_step_status;
+create policy care_program_step_status_all on public.care_program_step_status
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
+drop policy if exists caregap_lab_orders_all on public.caregap_lab_orders;
+create policy caregap_lab_orders_all on public.caregap_lab_orders
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+drop policy if exists caregap_lab_results_all on public.caregap_lab_results;
+create policy caregap_lab_results_all on public.caregap_lab_results
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
+drop policy if exists referral_sender_lines_read on public.referral_sender_lines;
+create policy referral_sender_lines_read
+  on public.referral_sender_lines for select to authenticated
+  using ((select auth.uid()) is not null);
+drop policy if exists caregap_referrals_all on public.caregap_referrals;
+create policy caregap_referrals_all
+  on public.caregap_referrals for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
+drop policy if exists caregap_reminders_all on public.caregap_reminders;
+create policy caregap_reminders_all on public.caregap_reminders
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
+drop policy if exists efax_numbers_all on public.efax_numbers;
+create policy efax_numbers_all on public.efax_numbers
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
+drop policy if exists "Allow all on employer_impact_employers" on public.employer_impact_employers;
+create policy "Allow all on employer_impact_employers" on public.employer_impact_employers
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+drop policy if exists "Allow all on employer_impact_metrics" on public.employer_impact_metrics;
+create policy "Allow all on employer_impact_metrics" on public.employer_impact_metrics
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
+drop policy if exists "Allow all on employer_impact_report_exports" on public.employer_impact_report_exports;
+create policy "Allow all on employer_impact_report_exports" on public.employer_impact_report_exports
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+drop policy if exists "Allow all on employer_impact_report_notes" on public.employer_impact_report_notes;
+create policy "Allow all on employer_impact_report_notes" on public.employer_impact_report_notes
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+drop policy if exists "Allow all on employer_impact_report_settings" on public.employer_impact_report_settings;
+create policy "Allow all on employer_impact_report_settings" on public.employer_impact_report_settings
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
+drop policy if exists "Allow all on ooo_records" on public.ooo_records;
+create policy "Allow all on ooo_records" on public.ooo_records
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
+drop policy if exists "Allow all on patient_allergies" on public.patient_allergies;
+create policy "Allow all on patient_allergies" on public.patient_allergies
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+drop policy if exists "Allow all on patient_immunizations" on public.patient_immunizations;
+create policy "Allow all on patient_immunizations" on public.patient_immunizations
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+drop policy if exists "Allow all on patient_history_entries" on public.patient_history_entries;
+create policy "Allow all on patient_history_entries" on public.patient_history_entries
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+drop policy if exists "Allow all" on public.patient_snapshots;
+create policy "Allow all" on public.patient_snapshots
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+drop policy if exists "Allow all on patient_social_history" on public.patient_social_history;
+create policy "Allow all on patient_social_history" on public.patient_social_history
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
+
 commit;

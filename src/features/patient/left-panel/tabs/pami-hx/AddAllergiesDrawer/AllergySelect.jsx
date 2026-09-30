@@ -19,16 +19,19 @@ export function AllergySelect({ value, onChange, leadingIcon }) {
     // Debounced, and each request aborts the one before it, so a slow early
     // response cannot overwrite a newer one.
     const timer = setTimeout(async () => {
-      if (term.length < 2) { setItems([]); setLoading(false); return; }
       setLoading(true);
       try {
+        if (term.length < 2) {
+          setItems([]);
+          return;
+        }
         const { results, snomedFailed: failed } = await searchAllergies(term, { signal: controller.signal });
         setItems(results);
         setSnomedFailed(failed);
       } catch (err) {
         if (err.name !== 'AbortError') setItems([]);
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        setLoading(false);
       }
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };

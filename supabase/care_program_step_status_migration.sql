@@ -27,7 +27,8 @@ alter table public.care_program_step_status enable row level security;
 
 drop policy if exists care_program_step_status_all on public.care_program_step_status;
 create policy care_program_step_status_all on public.care_program_step_status
-  for all to authenticated using (true) with check (true);
+  for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
 
 commit;
 

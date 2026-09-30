@@ -49,8 +49,11 @@ function ProblemDraft({ title, eyebrow, initial, onSave, onCancel }) {
 
   const save = async () => {
     setSaving(true);
-    await onSave({ title, since, status, severity, type, note: note.trim() });
-    setSaving(false);
+    try {
+      await onSave({ title, since, status, severity, type, note: note.trim() });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

@@ -25,4 +25,5 @@ ALTER TABLE public.patient_social_history ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow all on patient_social_history" ON public.patient_social_history;
 CREATE POLICY "Allow all on patient_social_history" ON public.patient_social_history
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated
+  USING ((select auth.uid()) is not null) WITH CHECK ((select auth.uid()) is not null);

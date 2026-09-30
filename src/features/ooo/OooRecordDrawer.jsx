@@ -68,17 +68,20 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
     setTouched(true);
     if (hasErrors) return;
     setSaving(true);
-    const saved = await saveOooRecord({
-      ...record,
-      ...values,
-      reason: values.reason.trim(),
-      autoReplyMessage: values.autoReply ? values.autoReplyMessage.trim() : '',
-    });
-    setSaving(false);
-    if (!saved) return;
-    toast.success('Out of Office Record Saved Successfully');
-    onSaved?.(saved);
-    onClose();
+    try {
+      const saved = await saveOooRecord({
+        ...record,
+        ...values,
+        reason: values.reason.trim(),
+        autoReplyMessage: values.autoReply ? values.autoReplyMessage.trim() : '',
+      });
+      if (!saved) return;
+      toast.success('Out of Office Record Saved Successfully');
+      onSaved?.(saved);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
   };
 
   const title = isEdit ? 'Edit Out of Office Record' : 'New Out of Office Record';

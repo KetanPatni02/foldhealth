@@ -32,7 +32,8 @@ alter table public.efax_numbers enable row level security;
 
 drop policy if exists efax_numbers_all on public.efax_numbers;
 create policy efax_numbers_all
-  on public.efax_numbers for all to authenticated using (true) with check (true);
+  on public.efax_numbers for all to authenticated
+  using ((select auth.uid()) is not null) with check ((select auth.uid()) is not null);
 
 -- ── Seed ────────────────────────────────────────────────────────────────────
 insert into public.efax_numbers (id, name, number, linked_user_ids, is_active) values
