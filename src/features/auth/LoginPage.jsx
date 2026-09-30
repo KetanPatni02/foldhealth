@@ -8,6 +8,14 @@ import styles from './LoginPage.module.css';
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
+// Read at module load: Supabase redirects back from email-confirmation and
+// OAuth with `error_description` in the URL (e.g. the approval hook refusing a
+// Pending account), and App rewrites the hash to #/login before this page mounts.
+const REDIRECT_AUTH_ERROR = (() => {
+  const params = new URLSearchParams(window.location.hash.replace(/^#\/?/, '') || window.location.search);
+  return params.get('error_description') || '';
+})();
+
 export function LoginPage({ onBypass }) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
@@ -18,7 +26,7 @@ export function LoginPage({ onBypass }) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(REDIRECT_AUTH_ERROR);
   const [success, setSuccess] = useState('');
   const [unverifiedEmail, setUnverifiedEmail] = useState('');
   const [cooldown, setCooldown] = useState(0);
@@ -136,7 +144,7 @@ export function LoginPage({ onBypass }) {
         setError(authError.message);
       } else {
         track('auth.signup_succeeded');
-        setSuccess('Account created! Check your email to confirm, or sign in directly.');
+        setSuccess('Request submitted. Confirm your email, then an administrator will review your request. You can sign in once it is approved.');
         setIsSignUp(false);
         setConfirmPassword('');
       }

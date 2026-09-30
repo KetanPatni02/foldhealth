@@ -296,6 +296,15 @@ export const useAppStore = create((set, get) => ({
   pendingOpenPreferences: false,
   openPreferencesFromNotification: () => set({ pendingOpenPreferences: true }),
   clearPendingOpenPreferences: () => set({ pendingOpenPreferences: false }),
+  // Settings → Users status filter to apply on next mount (from a notification).
+  pendingUsersStatusFilter: null,
+  openPendingUsersFromNotification: () => {
+    set({ pendingUsersStatusFilter: ['Pending'] });
+    get().setActivePage('settings');
+    get().setSettingsNavItem('account');
+    get().setAccountTab('users');
+  },
+  clearPendingUsersStatusFilter: () => set({ pendingUsersStatusFilter: null }),
 
   // Top-level navigation (sidebar) — restored from sessionStorage
   activePage: _savedPage === 'builder' ? 'settings' : _savedPage,

@@ -39,8 +39,21 @@ export function useUsersTab() {
   const [editingUser, setEditingUser] = useState(null);
   const [viewingUser, setViewingUser] = useState(null);
   const [showInvite, setShowInvite] = useState(false);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [userFilters, setUserFilters] = useState({ status: [], roles: [], location: [] });
+  // A notification can hand over a status filter ("Pending") either before
+  // this tab mounts (seeded here) or while it is already open (subscription).
+  const [filterOpen, setFilterOpen] = useState(() => !!useAppStore.getState().pendingUsersStatusFilter);
+  const [userFilters, setUserFilters] = useState(() => ({
+    status: useAppStore.getState().pendingUsersStatusFilter || [], roles: [], location: [],
+  }));
+  useEffect(() => {
+    useAppStore.getState().clearPendingUsersStatusFilter();
+    return useAppStore.subscribe((s) => {
+      if (!s.pendingUsersStatusFilter) return;
+      setUserFilters({ status: s.pendingUsersStatusFilter, roles: [], location: [] });
+      setFilterOpen(true);
+      s.clearPendingUsersStatusFilter();
+    });
+  }, []);
   const currentUserIdRef = useRef(null);
   // Signed-in user's id, and the dev-bypass flag for "no session at all".
   // Only `getSession()` runs here — it reads the locally persisted session and
@@ -124,6 +137,28 @@ export function useUsersTab() {
       showToast(`${user.name} ${newStatus === 'Active' ? 'enabled' : 'disabled'}`);
     } else {
       showToast(error?.message || 'Failed to update user status (Check permissions)');
+    }
+  };
+
+  // Approving a Pending sign-up is what lets them sign in: the access-token
+  // hook refuses sessions while status is 'Pending' or 'Rejected'.
+  const reviewSignup = async (user, approve) => {
+    if (!isCurrentUserAdmin) {
+      showToast('Only Admin/Practice Manager can approve sign-ups');
+      return;
+    }
+    const newStatus = approve ? 'Active' : 'Rejected';
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({ status: newStatus })
+      .eq('id', user.id)
+      .select();
+
+    if (!error && data && data.length > 0) {
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      showToast(`${user.name} ${approve ? 'approved' : 'rejected'}`);
+    } else {
+      showToast(error?.message || 'Failed to update sign-up request (Check permissions)');
     }
   };
 
@@ -270,7 +305,7 @@ export function useUsersTab() {
       if (u.location) locations.add(u.location);
     }
     return {
-      status: ['Active', 'Invited', 'Inactive', 'Suspended'],
+      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected'],
       roles: [...roles].sort(),
       location: [...locations].sort(),
     };
@@ -298,6 +333,7 @@ export function useUsersTab() {
     isCurrentUserAdmin,
     fetchUsers,
     toggleUserStatus,
+    reviewSignup,
     deleteUser,
     deleteUsersBulk,
     resetPassword,

@@ -1,4 +1,5 @@
 export function statusBadge(status) {
+  if (status === 'Pending') return { variant: 'status-scheduled', icon: 'solar:clock-circle-linear' };
   const isActive = status === 'Active';
   const isInvited = status === 'Invited';
   return {
