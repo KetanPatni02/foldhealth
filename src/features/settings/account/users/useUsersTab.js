@@ -182,6 +182,11 @@ export function useUsersTab() {
         showToast(`${user.name} deleted`);
         return;
       }
+      const fnMessage = await fnError.context?.json?.().then(b => b?.error).catch(() => null);
+      if (fnMessage) {
+        fail(fnMessage);
+        return;
+      }
 
       const { data, error } = await supabase
         .from('profiles')
