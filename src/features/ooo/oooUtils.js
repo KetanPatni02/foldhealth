@@ -109,9 +109,10 @@ export function rangeChange(original, next) {
 
 /**
  * Form problems, keyed by field. A record may start today (it's out of
- * office from now) but not on an earlier day, and must end after it starts.
+ * office from now) but not on an earlier day, must end after it starts, and
+ * can't overlap another of the same provider's records (`existing`).
  */
-export function validateOoo(values, { now = new Date(), original = null } = {}) {
+export function validateOoo(values, { now = new Date(), original = null, existing = [] } = {}) {
   const errors = {};
   const s = values.startAt ? toMs(values.startAt) : NaN;
   const e = values.endAt ? toMs(values.endAt) : NaN;
@@ -123,6 +124,11 @@ export function validateOoo(values, { now = new Date(), original = null } = {}) 
   if (!errors.startAt && !startLocked && s < today.getTime()) errors.startAt = 'Start can\'t be before today.';
   if (!errors.startAt && !errors.endAt && e <= s) errors.endAt = 'End must be after the start.';
   if (!errors.endAt && e <= toMs(now)) errors.endAt = 'End must be in the future.';
+  if (!errors.startAt && !errors.endAt && values.userName) {
+    const clash = (existing || []).find(r => r.id !== original?.id && sameName(r.userName, values.userName)
+      && s < toMs(r.endAt) && e > toMs(r.startAt));
+    if (clash) errors.startAt = `Overlaps this provider's Out of Office record for ${describeRange(clash.startAt, clash.endAt).span}.`;
+  }
   if (values.autoReply && !String(values.autoReplyMessage || '').trim()) errors.autoReplyMessage = 'Add an auto reply message.';
   return errors;
 }
@@ -138,3 +144,29 @@ export function sortRecords(records, now = new Date()) {
 }
 
 export const initialsOf = (name) => String(name || '?').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
+
+/**
+ * A record's span in words, and how long it is: { span: "Oct 2 – Oct 15, 2026",
+ * length: "13 days" }. Times show when it doesn't start and end at midnight:
+ * { span: "Oct 20, 2026, 9:00 AM – 1:00 PM", length: "4 hours" }.
+ */
+export function describeRange(startAt, endAt) {
+  const s = new Date(startAt), e = new Date(endAt);
+  if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return { span: '', length: '' };
+  const md = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const t = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const allDay = s.getHours() === 0 && s.getMinutes() === 0 && e.getHours() === 0 && e.getMinutes() === 0;
+  const sameYear = s.getFullYear() === e.getFullYear();
+  const hours = Math.round((e - s) / 3600000);
+  const days = Math.round(hours / 24);
+  const length = hours < 24 ? `${hours} ${hours === 1 ? 'hour' : 'hours'}` : `${days} ${days === 1 ? 'day' : 'days'}`;
+  let span;
+  if (allDay) {
+    span = `${md(s)}${sameYear ? '' : `, ${s.getFullYear()}`} – ${md(e)}, ${e.getFullYear()}`;
+  } else if (s.toDateString() === e.toDateString()) {
+    span = `${md(s)}, ${s.getFullYear()}, ${t(s)} – ${t(e)}`;
+  } else {
+    span = `${md(s)}, ${t(s)} – ${md(e)}, ${t(e)}, ${e.getFullYear()}`;
+  }
+  return { span, length };
+}

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Icon } from '../../components/Icon/Icon';
 import { OooIcon } from '../../components/Icon/OooIcon';
-import { canEdit, daySpan, formatDate, recordsOnDate } from './oooUtils';
+import { canEdit, daySpan, recordsOnDate } from './oooUtils';
 import styles from './CalendarOooLayer.module.css';
 
 // Must match CalendarContent: dayBoundaries 00:00–23:00 on a 2000px grid.
@@ -124,10 +123,7 @@ export function CalendarOooLayer({ currentView, focusUser, records, renderTick, 
         <span className={styles.monthTitle}>
           <OooIcon size={16} color="var(--accent-magenta)" />
           Out of Office
-          <Icon name="solar:pen-linear" size={14} color="var(--neutral-300)" />
         </span>
-        <span className={styles.monthSub}>{formatDate(t.record.startAt)} - {formatDate(t.record.endAt)}</span>
-        {t.record.reason && <span className={styles.monthSub}>Reason: {t.record.reason}</span>}
       </span>
     ) : t.kind === 'strip' ? (
       <span className={styles.oooStrip}>

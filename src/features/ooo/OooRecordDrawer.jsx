@@ -33,6 +33,7 @@ import styles from './ooo.module.css';
  */
 export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) {
   const saveOooRecord = useAppStore(s => s.saveOooRecord);
+  const oooRecords = useAppStore(s => s.oooRecords);
   const isEdit = !!record;
 
   const [values, setValues] = useState(() => ({
@@ -52,7 +53,7 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
   const [saving, setSaving] = useState(false);
   const set = (patch) => setValues(v => ({ ...v, ...patch }));
 
-  const errors = validateOoo(values, { original: record });
+  const errors = validateOoo(values, { original: record, existing: oooRecords });
   const hasErrors = Object.keys(errors).length > 0 || !values.userName;
   const change = rangeChange(record, values);
   const dirty = !isEdit || ['startAt', 'endAt', 'reason', 'autoReply', 'autoReplyMessage']

@@ -22,29 +22,45 @@ import styles from './Tooltip.module.css';
  *             a centred bubble would be clipped.
  *  - variant ('dark' | 'light')  Visual treatment. Defaults to 'dark'; 'light'
  *             matches ActionButton tooltips (white bubble, border, shadow).
+ *  - followCursor (boolean)  Anchor to the pointer instead of the trigger, and
+ *             track it while hovering. For wide triggers (a whole form field)
+ *             where a bubble centred on the element lands far from the cursor.
  */
-export function Tooltip({ label, children, placement = 'top', className, maxWidth, align = 'center', variant = 'dark' }) {
+export function Tooltip({ label, children, placement = 'top', className, maxWidth, align = 'center', variant = 'dark', followCursor = false }) {
   const triggerRef = useRef(null);
   const openTimer = useRef(null);
   const [rect, setRect] = useState(null);
 
-  const open = () => {
+  // A zero-size rect at the pointer, so the placement maths below applies unchanged.
+  const pointRect = (e) => ({ left: e.clientX, right: e.clientX, width: 0, top: e.clientY - 4, bottom: e.clientY + 16 });
+  const open = (e) => {
     if (!label) return;
     if (openTimer.current) clearTimeout(openTimer.current);
+    const point = followCursor && e?.clientX != null ? pointRect(e) : null;
     openTimer.current = setTimeout(() => {
-      const r = triggerRef.current?.getBoundingClientRect();
+      const r = point || triggerRef.current?.getBoundingClientRect();
       if (r) setRect(r);
     }, 120);
   };
+  const move = (e) => { if (followCursor && rect) setRect(pointRect(e)); };
   const close = () => {
     if (openTimer.current) { clearTimeout(openTimer.current); openTimer.current = null; }
     setRect(null);
   };
   useEffect(() => () => clearTimeout(openTimer.current), []);
 
+  // Following the cursor near a viewport edge, the bubble opens away from
+  // that edge (its right edge at the cursor on the right side) so it isn't
+  // clipped or squeezed.
+  let side = align;
+  if (followCursor && rect) {
+    const half = (maxWidth || 200) / 2 + 8;
+    if (rect.left + half > window.innerWidth) side = 'right';
+    else if (rect.left - half < 0) side = 'left';
+  }
   const anchorX = rect
-    ? align === 'right' ? rect.right
-      : align === 'left' ? rect.left
+    ? side === 'right' ? rect.right
+      : side === 'left' ? rect.left
         : rect.left + rect.width / 2
     : 0;
   const style = rect
@@ -54,6 +70,8 @@ export function Tooltip({ label, children, placement = 'top', className, maxWidt
     : null;
   if (style && maxWidth) {
     style.maxWidth = maxWidth;
+    // Its own width, not what's left of the viewport past its left edge.
+    style.width = 'max-content';
     style.whiteSpace = 'normal';
     style.textAlign = 'left';
   }
@@ -63,6 +81,7 @@ export function Tooltip({ label, children, placement = 'top', className, maxWidt
       ref={triggerRef}
       className={[styles.wrap, className || ''].filter(Boolean).join(' ')}
       onMouseEnter={open}
+      onMouseMove={followCursor ? move : undefined}
       onMouseLeave={close}
       onFocus={open}
       onBlur={close}
@@ -75,8 +94,8 @@ export function Tooltip({ label, children, placement = 'top', className, maxWidt
             styles.bubble,
             variant === 'light' ? styles.bubbleLight : '',
             placement === 'bottom' ? styles.bubbleBottom : styles.bubbleTop,
-            align === 'right' ? styles.bubbleAlignRight : '',
-            align === 'left' ? styles.bubbleAlignLeft : '',
+            side === 'right' ? styles.bubbleAlignRight : '',
+            side === 'left' ? styles.bubbleAlignLeft : '',
           ].filter(Boolean).join(' ')}
           style={style}
         >

@@ -27,6 +27,12 @@
   gap: 8px;
 }
 
+.toolbarCenter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .toolbarRight {
   display: flex;
   align-items: center;
@@ -41,41 +47,8 @@
   white-space: nowrap;
 }
 
-/* View tabs (Week / Day / Month) */
-.viewTabs {
-  display: flex;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.viewTab {
-  padding: 4px 12px;
-  font-size: var(--font-md);
-  font-weight: 500;
-  color: var(--neutral-300);
-  background: var(--neutral-0);
-  border: none;
-  cursor: pointer;
-  transition:
-    background var(--duration-instant) var(--ease-hover),
-    color var(--duration-instant) var(--ease-hover),
-    border-color var(--duration-instant) var(--ease-hover);
-  border-right: 0.5px solid var(--neutral-150);
-}
-
-.viewTab:last-child {
-  border-right: none;
-}
-
-.viewTabActive {
-  color: var(--primary-300);
-  background: var(--primary-50);
-}
-
-.viewTab:hover:not(.viewTabActive) {
-  background: var(--neutral-50);
-}
+/* View picker (Week / Day / Month), sized to its longest label. */
+.viewSelect { width: calc(var(--space-16) + var(--space-10)); }
 
 .todayBtn {
   padding: 4px 12px;
@@ -236,6 +209,21 @@
   height: 100% !important;
   flex: 1;
 }
+
+/* Month: day names in their own row above the grid. */
+.monthDayNames {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  flex-shrink: 0;
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.monthDayNames span {
+  display: flex; align-items: center; justify-content: center;
+  height: var(--space-8);
+  font-size: var(--font-sm); font-weight: 500; letter-spacing: 0.02em; color: var(--neutral-400);
+}
+.monthDayNames span + span { border-left: 0.5px solid var(--neutral-150); }
+.calendarWrap :global(.sx__month-grid-day__header-day-name) { display: none; }
 
 /* Month grid — fill available height and distribute rows evenly */
 .calendarWrap :global(.sx__month-grid-wrapper) {
