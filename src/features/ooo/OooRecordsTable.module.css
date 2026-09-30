@@ -16,23 +16,34 @@
 .wrapEmbedded { display: block; }
 .wrap th:first-child, .wrap td:first-child,
 .wrapEmbedded th:first-child, .wrapEmbedded td:first-child { padding-left: var(--space-5); }
+/* Matching inset on the right, so Actions doesn't sit on the edge. */
+.wrap th:last-child, .wrap td:last-child,
+.wrapEmbedded th:last-child, .wrapEmbedded td:last-child { padding-right: var(--space-5); }
 
 /* The empty state's cell spans the table: top-aligned, and without the
    first column's inset so the message stays centred. */
-.wrap td[colspan], .wrapEmbedded td[colspan] { vertical-align: top; padding-left: 0; }
+.wrap td[colspan], .wrapEmbedded td[colspan] { vertical-align: top; padding-left: 0; padding-right: 0; }
 
 .empty thead { display: none; }
 
-/* No vertical rules: the shared row styles draw one after the User column
-   and before the sticky Actions column (with a shadow). */
-.wrap td, .wrapEmbedded td { border-left: none; border-right: none; box-shadow: none; }
+/* The row dividers after User and before the sticky Actions column run up
+   through the header too. */
+.wrap:has(.membersTd) th:first-child, .wrapEmbedded:has(.membersTd) th:first-child { border-right: 0.5px solid var(--neutral-150); }
+.wrap th:last-child, .wrapEmbedded th:last-child { border-left: 0.5px solid var(--neutral-150); }
+
+/* Hold the set column widths (auto layout let a long email widen User and
+   squeeze the gap before Reason); anything longer truncates instead. */
+.wrap table, .wrapEmbedded table { table-layout: fixed; }
+.wrap td, .wrapEmbedded td { overflow: hidden; }
+/* …except Actions, whose tooltips open outside the cell. */
+.wrap td:last-child, .wrapEmbedded td:last-child { overflow: visible; }
 
 .dates { font-variant-numeric: tabular-nums; }
 .reason { color: var(--neutral-300); white-space: normal; }
 
-.userCell { display: inline-flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.userCell { display: flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 100%; }
 .userText { display: flex; flex-direction: column; min-width: 0; }
-.userName { color: var(--neutral-400); }
+.userName { color: var(--neutral-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .userSub { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* A row picked from the calendar: tinted and outlined in Primary 300 for a

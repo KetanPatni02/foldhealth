@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScheduleDrawer } from '../../components/ScheduleDrawer/ScheduleDrawer';
 import { CalendarContent } from './CalendarContent';
 import { CalendarToolbar } from './CalendarToolbar';
@@ -13,12 +13,16 @@ import { ReassignAppointmentsDrawer } from '../ooo/ReassignAppointmentsDrawer';
 import styles from './CalendarView.module.css';
 
 export function CalendarView() {
-  const calendar = useCalendarView();
+  // A click on out-of-office time opens that record (the actions hook needs
+  // the calendar's users, so it's wired through a ref).
+  const editOooRef = useRef(null);
+  const calendar = useCalendarView({ onOooSlot: (record) => editOooRef.current?.(record) });
   const oooRecords = useAppStore(s => s.oooRecords);
   // Out of Office: everyone's records, from a Month day's "Providers Out of
   // Office" link, with that day highlighted.
   const [oooAll, setOooAll] = useState(null); // { highlightDate? }
   const oooActions = useOooRecordActions({ users: calendar.users });
+  useEffect(() => { editOooRef.current = oooActions.openEdit; });
   const [showReassign, setShowReassign] = useState(false);
   const showToast = useAppStore(s => s.showToast);
   const isDay = calendar.currentView === 'day';
@@ -62,6 +66,7 @@ export function CalendarView() {
         onFilterStatusChange={calendar.setFilterStatus}
         timezone={calendar.timezone}
         onTimezoneChange={calendar.setTimezone}
+        onOpenOoo={() => setOooAll({})}
         onScheduleSelect={(key) => {
           if (key === 'appointment') {
             setDayProvider(null);

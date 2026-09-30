@@ -7,6 +7,7 @@ import { Select } from '../../components/Select/Select';
 // same place keeps every chip option matchable against real rows.
 import { APPOINTMENT_STATUSES, LOCATION_OPTIONS } from '../../components/ScheduleDrawer/scheduleDrawerConstants';
 import { TIMEZONE_OPTIONS, VIEW_LABELS, VIEWS } from './calendarUtils';
+import { OOO_ICON } from '../ooo/oooUtils';
 import styles from './CalendarView.module.css';
 
 const SCHEDULE_MENU = [
@@ -37,6 +38,7 @@ export function CalendarToolbar({
   timezone,
   onTimezoneChange,
   onScheduleSelect,
+  onOpenOoo,
 }) {
   return (
     // Laid out like the legacy calendar bar: who / where / which view on
@@ -131,6 +133,9 @@ export function CalendarToolbar({
         >
           Schedule
         </Button>
+        <span className={styles.actionDivider} aria-hidden="true" />
+        {/* Everyone's Out of Office records, in a drawer. */}
+        <ActionButton icon={OOO_ICON} size="L" tooltip="Out of Office Records" onClick={onOpenOoo} />
         <span className={styles.actionDivider} aria-hidden="true" />
         <ActionButton icon="solar:tuning-2-linear" size="L" tooltip="Settings" />
         <span className={styles.actionDivider} aria-hidden="true" />

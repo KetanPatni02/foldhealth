@@ -56,5 +56,7 @@
 .countLink:hover { color: var(--primary-300); text-decoration: underline; }
 .countLink:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; border-radius: 2px; }
 
-/* Week: appointments stay above the OOO area and open as usual. */
-:global(.sx__time-grid-day) :global(.sx__event) { z-index: 2; }
+/* Week: appointments stay above the OOO area and open as usual. schedule-x
+   writes an inline `z-index: 0` on each event (its overlap order), which
+   otherwise tucks them under the block, so this has to be !important. */
+:global(.sx__time-grid-day) :global(.sx__time-grid-event) { z-index: 2 !important; }

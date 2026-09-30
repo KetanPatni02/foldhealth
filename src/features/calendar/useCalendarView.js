@@ -11,6 +11,7 @@ import {
   getTimezoneOffset,
   MONTH_NAMES,
 } from './calendarUtils';
+import { canEdit, recordsFor } from '../ooo/oooUtils';
 import styles from './CalendarView.module.css';
 
 // "8:30 am" → "9:00 am" (reminders have no end time; show a 30-min block).
@@ -45,7 +46,15 @@ function reminderToCalendarAppt(r) {
   };
 }
 
-export function useCalendarView() {
+/**
+ * @param {object}   [opts]
+ * @param {function} [opts.onOooSlot] – (record) => void, a click on the shown
+ *   user's out-of-office time (it opens the record instead of booking)
+ */
+export function useCalendarView({ onOooSlot } = {}) {
+  const onOooSlotRef = useRef(onOooSlot);
+  useEffect(() => { onOooSlotRef.current = onOooSlot; }, [onOooSlot]);
+  const oooRecords = useAppStore(s => s.oooRecords);
   const [currentView, setCurrentView] = useState('week');
   const [showSchedule, setShowSchedule] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -191,21 +200,21 @@ export function useCalendarView() {
     });
   }, [timezone]);
 
+  // Now-line on today's column only (none when today isn't in view), below
+  // the sticky header so it scrolls under it rather than over it.
   const applyTimeIndicator = useCallback(() => {
-    const START_HOUR = 0, END_HOUR = 23, GRID_HEIGHT = 2000;
-    const weekGridEl = document.querySelector('.sx__week-grid');
-    if (!weekGridEl) return;
-    weekGridEl.querySelectorAll('[data-time-indicator]').forEach(el => el.remove());
+    const GRID_MINUTES = 23 * 60; // dayBoundaries 00:00–23:00
+    document.querySelectorAll('[data-time-indicator]').forEach(el => el.remove());
+    const todayCol = document.querySelector(`.sx__time-grid-day[data-time-grid-date="${getTodayInTimezone(timezone)}"]`);
+    if (!todayCol) return;
     const { hours, minutes } = getNowInTimezone(timezone);
-    const totalMinutesFromStart = (hours - START_HOUR) * 60 + minutes;
-    if (totalMinutesFromStart >= 0 && totalMinutesFromStart <= (END_HOUR - START_HOUR) * 60) {
-      const topPx = (totalMinutesFromStart / ((END_HOUR - START_HOUR) * 60)) * GRID_HEIGHT;
-      const line = document.createElement('div');
-      line.setAttribute('data-time-indicator', '1');
-      line.className = styles.currentTimeLine;
-      line.style.top = `${topPx}px`;
-      weekGridEl.appendChild(line);
-    }
+    const mins = hours * 60 + minutes;
+    if (mins > GRID_MINUTES) return;
+    const line = document.createElement('div');
+    line.setAttribute('data-time-indicator', '1');
+    line.className = styles.currentTimeLine;
+    line.style.top = `${(mins / GRID_MINUTES) * 100}%`;
+    todayCol.appendChild(line);
   }, [timezone]);
 
   // schedule-x calls onRangeUpdate synchronously from a signal effect, i.e.
@@ -277,6 +286,29 @@ export function useCalendarView() {
     // for a click that landed on an appointment. Assert it from the DOM event
     // rather than the timing flag this used to keep.
     if (e?.target?.closest?.('.sx__event')) return;
+
+    // Out-of-office time can't be booked, wherever the click lands (the
+    // magenta block leaves a margin at the column edges). It opens the
+    // record instead; a past record is read-only.
+    const oooUser = currentView === 'week' ? viewUsers[0]
+      : currentView === 'month-grid' && filterUser.length === 1 ? filterUser[0] : null;
+    if (oooUser && dateTime) {
+      let from, to;
+      if (typeof dateTime.epochMilliseconds === 'number') {
+        const snapped = dateTime.with ? dateTime.with({ minute: dateTime.minute < 30 ? 0 : 30, second: 0, millisecond: 0, microsecond: 0, nanosecond: 0 }) : dateTime;
+        from = snapped.epochMilliseconds;
+        to = from + 30 * 60000;
+      } else if (typeof dateTime.day === 'number') {
+        from = new Date(dateTime.year, dateTime.month - 1, dateTime.day).getTime();
+        to = from + 86400000;
+      }
+      const hit = from != null && recordsFor(oooRecords, oooUser)
+        .find(r => from < new Date(r.endAt).getTime() && to > new Date(r.startAt).getTime());
+      if (hit) {
+        if (canEdit(hit)) onOooSlotRef.current?.(hit);
+        return;
+      }
+    }
 
     // schedule-x reports the raw click position (e.g. 3:13), not the slot.
     // Snap down to the 30-min slot the hover preview highlights so the
@@ -350,7 +382,7 @@ export function useCalendarView() {
         _options: { additionalClasses: ['is-selection'] },
       });
     }
-  }, [clearSelection, timezone, showToast, appointments]);
+  }, [clearSelection, timezone, showToast, appointments, currentView, viewUsers, filterUser, oooRecords]);
 
   const handleEventClick = useCallback((event) => {
     const reminder = reminderEvents.find(r => r.id === event.id);
@@ -405,6 +437,15 @@ export function useCalendarView() {
       const col = e.currentTarget;
       const rect = col.getBoundingClientRect();
       const y = e.clientY - rect.top;
+      // No "new appointment" preview over out-of-office time, including the
+      // margin beside its block.
+      const inOoo = Array.from(col.querySelectorAll('[data-ooo-host="block"]'))
+        .some(b => y >= b.offsetTop && y < b.offsetTop + b.offsetHeight);
+      if (inOoo) {
+        const overlay = hoverRef.current;
+        if (overlay) overlay.style.opacity = '0';
+        return;
+      }
       const slotIndex = Math.floor(y / PX_PER_30);
       const snappedY = slotIndex * PX_PER_30;
       const totalMinutes = (START_HOUR * 60) + (slotIndex * 30);
