@@ -15,9 +15,10 @@
 //   • When the fetched version doesn't match the running one, flip the
 //     `hasNewBuild` store flag and stop polling (the banner takes over).
 //
-// Also catches chunk-load errors as a backstop — if the poller hasn't
-// noticed yet and the user tries to open a lazy route whose chunk 404s,
-// we mark the flag so the banner appears instead of a blank screen.
+// Also catches chunk-load errors as a backstop. If the poller hasn't noticed
+// yet and the user opens a lazy route whose chunk 404s, that navigation is
+// already lost, so we reload once to pick up the fresh bundle (see
+// reloadForStaleChunk) and fall back to the banner when a reload can't help.
 
 import { useAppStore } from '../store/useAppStore';
 
@@ -48,6 +49,30 @@ function markNewBuild() {
   useAppStore.getState().setHasNewBuild(true);
 }
 
+const RELOAD_KEY = 'fold:chunk-reload-version';
+
+// A failed chunk import has already broken this navigation: React's lazy()
+// throws, and with no error boundary above AppLayout the whole tree unmounts,
+// taking UpdateAvailableBanner down with it. So the banner cannot be the
+// recovery here, and reloading onto the fresh bundle is the only way back.
+//
+// Once per build. The key holds the version that failed, so a genuinely
+// broken deploy (an asset that 404s for everyone, not just stale tabs)
+// reloads a single time and then leaves the banner to it instead of looping.
+// Storage can throw when site data is blocked; treat that as "don't reload"
+// rather than risking a loop we can't remember having started.
+function reloadForStaleChunk() {
+  if (!import.meta.env.PROD) return;
+  const version = currentVersion() || 'unknown';
+  try {
+    if (sessionStorage.getItem(RELOAD_KEY) === version) return;
+    sessionStorage.setItem(RELOAD_KEY, version);
+  } catch {
+    return;
+  }
+  window.location.reload();
+}
+
 export function startUpdateChecker() {
   if (started) return;
   started = true;
@@ -60,6 +85,7 @@ export function startUpdateChecker() {
     const msg = String(e?.reason?.message || e?.message || '');
     if (/Loading chunk|(Failed to fetch|[Ee]rror loading) dynamically imported module|Unable to preload CSS|ChunkLoadError/i.test(msg)) {
       markNewBuild();
+      reloadForStaleChunk();
     }
   };
   window.addEventListener('error', onChunkError);
@@ -67,7 +93,7 @@ export function startUpdateChecker() {
   // Vite's own signal from its preload helper. Fires even when a router
   // error boundary swallows the rejection, so it catches the cases the
   // two listeners above never see.
-  window.addEventListener('vite:preloadError', () => markNewBuild());
+  window.addEventListener('vite:preloadError', () => { markNewBuild(); reloadForStaleChunk(); });
 
   // Dev — no /version.json is emitted, so polling would 404 every minute.
   // Skip the poll but keep the chunk-error backstop in place.
