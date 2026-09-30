@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Admin approval for self sign-ups.** Accounts created from the login page
+  (password or OAuth) start as **Pending**. Every admin gets a "New sign-up
+  awaiting approval" notification that opens Settings → Users filtered to
+  Pending, where each row has Approve / Reject. A Supabase access-token hook
+  (`signup_approval_access_token_hook`) refuses sessions for Pending and
+  Rejected accounts, so the block is enforced server-side. Invited users skip
+  approval: the invite drawer writes the email to the admin-only
+  `signup_invites` allowlist before creating the account. See
+  `supabase/signup_approval_migration.sql`.
+
 - **LSC (Lead Screening in Children) Clinical Note, Phase 2.** LSC now has
   its own section in the consolidated Clinical Note: Location, Performed by
   (users with the new Phlebotomist role, listed by email), Procedure

@@ -7,10 +7,11 @@ import styles from '../AccountPanel.module.css';
 
 /**
  * Row-level actions for the Users table: Reset Password, Disable/Enable,
- * More menu (Edit / View OOO Records / Delete). Non-admins see a plain "—" — every action
- * on this component is admin-only.
+ * More menu (Edit / View OOO Records / Delete). Pending sign-ups get
+ * Approve / Reject in place of Reset Password and Disable/Enable.
+ * Non-admins see a plain "—" — every action on this component is admin-only.
  */
-export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, onEdit, onViewOoo, onDelete }) {
+export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, onApprove, onReject, onEdit, onViewOoo, onDelete }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -27,14 +28,24 @@ export function UserActions({ user, isAdmin, onResetPassword, onToggleStatus, on
 
   return (
     <div className={styles.actions}>
-      <ActionButton icon="solar:password-linear" size="L" tooltip="Reset Password" onClick={onResetPassword} />
-      <span className={styles.actionDivider} />
-      <ActionButton
-        icon={user.status === 'Active' ? 'solar:user-cross-linear' : 'solar:user-check-linear'}
-        size="L"
-        tooltip={user.status === 'Active' ? 'Disable User' : 'Enable User'}
-        onClick={onToggleStatus}
-      />
+      {user.status === 'Pending' ? (
+        <>
+          <ActionButton icon="solar:check-circle-linear" size="L" tooltip="Approve Sign-up" onClick={onApprove} />
+          <span className={styles.actionDivider} />
+          <ActionButton icon="solar:close-circle-linear" size="L" tooltip="Reject Sign-up" onClick={onReject} />
+        </>
+      ) : (
+        <>
+          <ActionButton icon="solar:password-linear" size="L" tooltip="Reset Password" onClick={onResetPassword} />
+          <span className={styles.actionDivider} />
+          <ActionButton
+            icon={user.status === 'Active' ? 'solar:user-cross-linear' : 'solar:user-check-linear'}
+            size="L"
+            tooltip={user.status === 'Active' ? 'Disable User' : 'Enable User'}
+            onClick={onToggleStatus}
+          />
+        </>
+      )}
       <span className={styles.actionDivider} />
       <div style={{ position: 'relative' }} ref={menuRef}>
         <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More Options" onClick={() => setMenuOpen(v => !v)} />

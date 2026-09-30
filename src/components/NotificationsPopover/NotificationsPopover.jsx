@@ -64,6 +64,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   const setPendingChatUserEmail = useAppStore(s => s.setPendingChatUserEmail);
   const setPendingEmailReferralId = useAppStore(s => s.setPendingEmailReferralId);
   const openPreferencesFromNotification = useAppStore(s => s.openPreferencesFromNotification);
+  const openPendingUsersFromNotification = useAppStore(s => s.openPendingUsersFromNotification);
 
   // Refetch on open. The realtime subscription is the fast path, not the
   // source of truth: a binding created before the table was published — or
@@ -110,6 +111,8 @@ export function NotificationsPopover({ onClose, anchorRef }) {
       // Land the user on the form that fixes it, rather than telling them to
       // go find it.
       openPreferencesFromNotification?.();
+    } else if (n.action === 'openPendingUsers') {
+      openPendingUsersFromNotification?.();
     }
     onClose?.();
   };
@@ -215,6 +218,7 @@ function iconForType(type) {
   if (type === 'hcc.comment_added') return 'solar:chat-round-line-linear';
   if (type === 'hcc.comment_mention') return 'solar:mention-square-linear';
   if (type === 'profile.name_incomplete') return 'solar:user-id-linear';
+  if (type === 'user.signup_requested') return 'solar:user-check-linear';
   return 'solar:bell-linear';
 }
 

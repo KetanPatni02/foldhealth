@@ -31,6 +31,18 @@ export async function assignUserRoles(userId, adminRole, clinicalRoles) {
   return !error;
 }
 
+/**
+ * Put the email on the admin-only `signup_invites` allowlist so the signup
+ * trigger marks the account 'Invited' instead of 'Pending' approval. Must run
+ * before signUp(). A non-admin's write is refused by RLS; their invitee still
+ * gets an account, it just waits for an admin to approve it.
+ */
+async function preapproveEmail(email) {
+  await supabase
+    .from('signup_invites')
+    .upsert({ email: email.trim().toLowerCase() }, { onConflict: 'email' });
+}
+
 export function downloadUserImportTemplate() {
   const csv = 'First Name,Middle Name,Last Name,Email,Admin Role\nAmy,,Brenneman,amy@fold.health,Employer\n';
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -63,6 +75,7 @@ export async function sendSingleInvite({ form, showToast, logAudit, onInvited })
     return false;
   }
 
+  await preapproveEmail(form.email);
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: form.email,
     password: crypto.randomUUID(),
@@ -137,6 +150,7 @@ export async function importBulkUsers({ bulkRows, showToast, logAudit, onInvited
   const results = await Promise.all(bulkRows.map(async (row) => {
     if (!row.email?.trim()) return false;
     try {
+      await preapproveEmail(row.email);
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: row.email, password: crypto.randomUUID(),
         options: {

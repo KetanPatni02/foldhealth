@@ -37,6 +37,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
       onViewOoo={setOooUser}
       onResetPassword={tab.resetPassword}
       onToggleStatus={tab.toggleUserStatus}
+      onReviewSignup={tab.reviewSignup}
       onDelete={tab.deleteUser}
       bulkMode={ctx.bulk?.active}
       selected={ctx.bulk?.isSelected(user.id)}

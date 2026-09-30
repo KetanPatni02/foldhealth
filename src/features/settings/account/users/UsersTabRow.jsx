@@ -15,6 +15,7 @@ export function UsersTabRow({
   onViewOoo,
   onResetPassword,
   onToggleStatus,
+  onReviewSignup,
   onDelete,
   bulkMode = false,
   selected = false,
@@ -84,6 +85,8 @@ export function UsersTabRow({
           isAdmin={isCurrentUserAdmin}
           onResetPassword={() => onResetPassword(user)}
           onToggleStatus={() => onToggleStatus(user)}
+          onApprove={() => onReviewSignup(user, true)}
+          onReject={() => onReviewSignup(user, false)}
           onEdit={() => onEdit(user)}
           onViewOoo={onViewOoo ? () => onViewOoo(user) : undefined}
           onDelete={() => onDelete(user)}
