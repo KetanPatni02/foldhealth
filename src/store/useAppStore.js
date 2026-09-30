@@ -81,6 +81,7 @@ import {
   campaignSendRowToJs,
   campaignRowToJs,
   campaignPatchToDb,
+  buildCampaignEmailTemplateDbPatch,
 } from './lib/campaignStoreMappers';
 import {
   formRowToJs,
@@ -13410,14 +13411,17 @@ export const useAppStore = create((set, get) => ({
     const s = get();
     if (s.editingComponent) return s.saveComponent();
     if (!s.editingCampaignId || !s.emailDocument) return false;
+    const campaign = s.campaigns.find(c => c.id === s.editingCampaignId);
+    const dbPatch = buildCampaignEmailTemplateDbPatch(
+      campaign,
+      s.emailDocument,
+      s.colorVariables,
+    );
+    if (!dbPatch) return true;
     track('email.template_saved', { templateId: s.editingCampaignId });
     const { error } = await supabase
       .from('campaigns')
-      .update({
-        email_template: s.emailDocument,
-        color_variables: s.colorVariables,
-        updated_at: new Date().toISOString(),
-      })
+      .update(dbPatch)
       .eq('id', s.editingCampaignId);
     if (error) {
       console.error('saveEmailTemplate error:', error);
@@ -13426,7 +13430,12 @@ export const useAppStore = create((set, get) => ({
     set(prev => ({
       campaigns: prev.campaigns.map(c =>
         c.id === s.editingCampaignId
-          ? { ...c, emailTemplate: s.emailDocument, colorVariables: s.colorVariables }
+          ? {
+              ...c,
+              ...(dbPatch.email_template != null ? { emailTemplate: s.emailDocument } : {}),
+              ...(dbPatch.color_variables != null ? { colorVariables: s.colorVariables } : {}),
+              updatedAt: dbPatch.updated_at,
+            }
           : c
       ),
     }));

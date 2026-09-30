@@ -81,3 +81,24 @@ export function campaignPatchToDb(patch) {
   }
   return out;
 }
+
+function jsonValueEqual(a, b) {
+  if (a === b) return true;
+  if (a == null || b == null) return a === b;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * DB patch for email-builder saves. Omits unchanged JSONB columns so a color-only
+ * edit does not rewrite the whole email_template TOAST blob (and vice versa).
+ * Returns null when nothing differs from the last loaded campaign row.
+ */
+export function buildCampaignEmailTemplateDbPatch(campaign, emailDocument, colorVariables) {
+  const docChanged = !jsonValueEqual(emailDocument, campaign?.emailTemplate);
+  const colorsChanged = !jsonValueEqual(colorVariables, campaign?.colorVariables);
+  if (!docChanged && !colorsChanged) return null;
+  const patch = { updated_at: new Date().toISOString() };
+  if (docChanged) patch.email_template = emailDocument;
+  if (colorsChanged) patch.color_variables = colorVariables;
+  return patch;
+}
