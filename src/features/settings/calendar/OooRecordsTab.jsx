@@ -13,7 +13,7 @@ import styles from './CalendarSettings.module.css';
  * @param {function} props.onTabChange
  */
 export function OooRecordsTab({ tabs, activeTab, onTabChange }) {
-  const all = useAllOooRecords();
+  const all = useAllOooRecords({ oneLineDates: true });
   return (
     <div className={styles.wrapper}>
       <SectionTitleBar tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} actions={[]} rightExtras={all.tools} />

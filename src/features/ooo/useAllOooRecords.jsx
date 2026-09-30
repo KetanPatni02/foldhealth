@@ -26,7 +26,7 @@ const HIGHLIGHT_MS = 4000;
  * OOO Record, split by hairlines), `filterRow` (null while closed), `body`
  * (the table) and `elements` (the record drawer and delete dialog).
  */
-export function useAllOooRecords({ highlightDate, embedded = false } = {}) {
+export function useAllOooRecords({ highlightDate, embedded = false, oneLineDates = false } = {}) {
   const { records, loading } = useOooRecords();
   const platformUsers = useAppStore(s => s.platformUsers);
   const taskProfiles = useAppStore(s => s.taskProfiles);
@@ -125,7 +125,6 @@ export function useAllOooRecords({ highlightDate, embedded = false } = {}) {
         onChange={(next) => resetPage(setStatus)(next.length ? next : ['All'])}
         singleSelect
         noClear
-        noClearNeutral={false}
       />
       <FilterChip label="User" options={userOptions} selected={userFilter} onChange={resetPage(setUserFilter)} searchable />
       {filterCount > 0 && (
@@ -144,6 +143,7 @@ export function useAllOooRecords({ highlightDate, embedded = false } = {}) {
         emptyLabel={query || filterCount ? 'No Out of Office Records match these filters' : 'No Out of Office Records yet'}
         actions={actions}
         showUser
+        oneLineDates={oneLineDates}
         highlightDate={flashing ? highlightDate : undefined}
         embedded={embedded}
         pagination={shown.length > PER_PAGE_DEFAULT ? {

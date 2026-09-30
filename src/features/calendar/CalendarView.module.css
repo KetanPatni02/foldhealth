@@ -286,18 +286,19 @@
 /* Current time indicator line */
 .currentTimeLine {
   position: absolute;
-  left: 48px;
+  left: 0;
   right: 0;
   height: 2px;
   background: var(--primary-300);
-  z-index: 10;
+  /* Above appointments (2), below the sticky week header (8). */
+  z-index: 3;
   pointer-events: none;
 }
 
 .currentTimeLine::before {
   content: '';
   position: absolute;
-  left: -5px;
+  left: -4px;
   top: -4px;
   width: 10px;
   height: 10px;
