@@ -70,3 +70,86 @@ export const rowToOoo = (row) => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
+
+/**
+ * Demo data for one provider (Abhay Chaudhary): a few more Out of Office
+ * records (past, a half day, a later stretch) and appointments on those
+ * days and across 1-15 Oct 2026, where he already has an OOO record, so the
+ * calendar shows appointments sitting inside OOO time.
+ */
+const DEMO_PATIENTS = ['Sandra Nguyen', 'Marcus Bell', 'Priya Raman', 'Helen Ortiz', 'James Whitfield', 'Aisha Khan', 'Robert Diaz', 'Linda Park'];
+const DEMO_TYPES = [
+  { name: 'Follow-up Appointment', calendarId: 'followup', mode: 'In-person', reason: 'Medication review' },
+  { name: 'Annual Wellness Visit', calendarId: 'awv', mode: 'In-person', reason: 'Yearly check-up' },
+  { name: 'Chronic Care Management Visit', calendarId: 'telehealth', mode: 'Virtual', reason: 'Blood pressure follow-up' },
+  { name: 'Specialty Consultation', calendarId: 'specialty', mode: 'In-person', reason: 'Cardiology referral' },
+];
+const DEMO_TIMES = [['9:00 am', '9:30 am'], ['11:00 am', '11:45 am'], ['2:30 pm', '3:00 pm']];
+
+// [id, start (local), end (local), reason]
+const DEMO_OOO = [
+  ['ooo-demo-abhay-1', [2026, 9, 22, 0], [2026, 9, 24, 0], 'Personal'],
+  ['ooo-demo-abhay-2', [2026, 10, 20, 9], [2026, 10, 20, 13], 'Professional Development'],
+  ['ooo-demo-abhay-3', [2026, 10, 27, 0], [2026, 10, 29, 0], 'Annual Leave'],
+];
+
+const localIso = ([y, m, d, h]) => new Date(y, m - 1, d, h, 0).toISOString();
+const apptDate = (y, m, d) => `${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}-${y}`;
+
+export function demoOooForUser(user, now = new Date()) {
+  const records = DEMO_OOO.map(([id, start, end, reason]) => ({
+    id,
+    userId: user.id || null,
+    userName: user.name,
+    userEmail: user.email || null,
+    userRole: user.role || 'Physician',
+    startAt: localIso(start),
+    endAt: localIso(end),
+    reason,
+    autoReply: false,
+    autoReplyMessage: '',
+    createdBy: user.name,
+    createdAt: localIso([2026, 9, 1, 10]),
+    updatedAt: localIso([2026, 9, 1, 10]),
+  }));
+
+  // Days with appointments: every weekday 1-15 Oct, plus the other OOO days.
+  const days = [];
+  for (let d = 1; d <= 15; d++) {
+    const dow = new Date(2026, 9, d).getDay();
+    if (dow !== 0 && dow !== 6) days.push([2026, 10, d]);
+  }
+  days.push([2026, 9, 22], [2026, 9, 23], [2026, 10, 20], [2026, 10, 27], [2026, 10, 28]);
+
+  const appointments = days.flatMap(([y, m, d], i) => {
+    // Two appointments most days, three every third day.
+    const slots = DEMO_TIMES.slice(0, i % 3 === 0 ? 3 : 2);
+    return slots.map(([start, end], j) => {
+      const type = DEMO_TYPES[(i + j) % DEMO_TYPES.length];
+      const past = new Date(y, m - 1, d, 23, 59) < now;
+      return {
+        patient_id: null,
+        patient_name: DEMO_PATIENTS[(i * 3 + j) % DEMO_PATIENTS.length],
+        appointment_type_id: null,
+        appointment_type_name: type.name,
+        mode: type.mode,
+        location: 'Fold Health, New York',
+        primary_user: user.name,
+        secondary_users: [],
+        date: apptDate(y, m, d),
+        time_start: start,
+        time_end: end,
+        reason_for_visit: type.reason,
+        member_instruction: '',
+        staff_instruction: '',
+        require_rsvp: false,
+        recurring: false,
+        recurring_config: null,
+        status: past ? 'Completed' : 'Scheduled',
+        calendar_id: type.calendarId,
+      };
+    });
+  });
+
+  return { records, appointments };
+}

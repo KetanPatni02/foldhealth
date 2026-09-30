@@ -14,7 +14,7 @@ import { OooRecordDrawer } from './OooRecordDrawer';
  */
 export function useOooRecordActions({ user, users } = {}) {
   const deleteOooRecord = useAppStore(s => s.deleteOooRecord);
-  const [form, setForm] = useState(null); // { record? }
+  const [form, setForm] = useState(null); // { record?, user? }
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -23,7 +23,7 @@ export function useOooRecordActions({ user, users } = {}) {
       {form && (
         <OooRecordDrawer
           record={form.record}
-          user={form.record ? undefined : user}
+          user={form.record ? undefined : (form.user || user)}
           users={users}
           onClose={() => setForm(null)}
         />
@@ -51,7 +51,8 @@ export function useOooRecordActions({ user, users } = {}) {
   );
 
   return {
-    openNew: () => setForm({}),
+    // `forUser` fixes who a new record is for (else `user`, else picked).
+    openNew: (forUser) => setForm({ user: forUser }),
     openEdit: (record) => setForm({ record }),
     askDelete: setToDelete,
     elements,

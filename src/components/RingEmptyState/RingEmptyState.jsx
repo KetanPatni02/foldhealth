@@ -9,15 +9,17 @@ import styles from './RingEmptyState.module.css';
  * @param {string} props.icon   – Solar linear icon name shown in the centre
  * @param {string} props.label  – caption beneath the disc
  * @param {number} [props.iconSize=46]
+ * @param {'M'|'S'} [props.size='M'] – S is the compact 80px medallion for inline slots
  * @param {React.ReactNode} [props.children] – optional action under the caption
  */
-export function RingEmptyState({ icon = 'solar:inbox-linear', label, iconSize = 46, children }) {
+export function RingEmptyState({ icon = 'solar:inbox-linear', label, iconSize, size = 'M', children }) {
+  const glyph = iconSize ?? (size === 'S' ? 30 : 46);
   return (
-    <div className={styles.emptyWrap}>
+    <div className={size === 'S' ? `${styles.emptyWrap} ${styles.sizeS}` : styles.emptyWrap}>
       <div className={styles.emptyCard}>
         <div className={styles.emptyIcon}>
           <span className={styles.iconInner}>
-            <Icon name={icon} size={iconSize} color="var(--neutral-200)" />
+            <Icon name={icon} size={glyph} color="var(--neutral-200)" />
           </span>
         </div>
         <div className={styles.emptyTextGroup}>

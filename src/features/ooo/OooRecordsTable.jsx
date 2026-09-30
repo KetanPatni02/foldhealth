@@ -93,7 +93,8 @@ export function OooRecordsTable({ records, showUser = false, highlightDate, load
 
   return (
     // The wrapper only sets the first column's left inset (header and cells).
-    <div className={embedded ? styles.wrapEmbedded : styles.wrap}>
+    // With no records, only the empty state shows (no column headers).
+    <div className={[embedded ? styles.wrapEmbedded : styles.wrap, !loading && !records?.length ? styles.empty : ''].filter(Boolean).join(' ')}>
     <WorklistShell
       header={null}
       columns={columns}

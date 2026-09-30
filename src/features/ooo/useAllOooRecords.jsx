@@ -103,7 +103,7 @@ export function useAllOooRecords({ highlightDate, embedded = false } = {}) {
         onClick={() => setFiltersOpen(v => !v)}
       />
       <span className={styles.actionDivider} aria-hidden="true" />
-      <NewButton onClick={actions.openNew} />
+      <NewButton onClick={() => actions.openNew()} />
     </>
   );
 

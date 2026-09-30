@@ -45,7 +45,6 @@
   font-size: var(--font-base); font-weight: 500; line-height: 1.2; color: var(--neutral-500);
   white-space: nowrap;
 }
-.monthSub { font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* Month view, everyone in view: how many providers are out that day. */
 .countLink {
   display: inline-flex; align-items: center; gap: var(--space-1);

@@ -9,7 +9,8 @@
 .userName { color: var(--neutral-400); }
 .userSub { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.emptyBox { border: 1px dashed var(--neutral-150); border-radius: 8px; padding: var(--space-6) var(--space-4); }
+/* No box around it; it sits 80px below the table header. */
+.emptyBox { padding: calc(var(--space-10) * 2) var(--space-4) var(--space-6); }
 
 /* ── Preferences section ── */
 .prefHeader {
@@ -58,7 +59,7 @@
 .changedTitle { font-size: var(--font-base); color: var(--neutral-500); }
 .changedSub { font-size: var(--font-sm); color: var(--neutral-300); }
 .optionCard {
-  display: flex; align-items: flex-start; gap: var(--space-3);
+  display: flex; align-items: center; gap: var(--space-3);
   padding: var(--space-3);
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150); border-radius: 8px;
@@ -80,12 +81,6 @@
 .groupHead { display: flex; align-items: center; justify-content: space-between; }
 .groupTools { display: inline-flex; align-items: center; gap: var(--space-1); }
 .radioRow { display: flex; flex-wrap: wrap; gap: var(--space-4); }
-.rangeBox {
-  display: inline-flex; align-items: center; gap: var(--space-3); align-self: flex-start;
-  padding: var(--space-2) var(--space-3);
-  border: 0.5px solid var(--neutral-200); border-radius: 4px;
-  font-size: var(--font-base); color: var(--neutral-400); font-variant-numeric: tabular-nums;
-}
 .checkRow { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-base); color: var(--neutral-400); }
 .groupCard {
   display: flex; align-items: center; gap: var(--space-3);
@@ -133,3 +128,45 @@
 @keyframes oooStepForward { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
 @keyframes oooStepBack { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .stepInForward, .stepInBack { animation: none; } }
+
+/* Reassign Appointments drawer: "+ New Out of Office Record" under the record picker. */
+.newRecordLink { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-sm); }
+/* Out of Office Record picker options: OOO tile, dates over length, status. */
+.recordOption { display: flex; align-items: center; gap: var(--space-3); flex: 1; min-width: 0; }
+.recordOption .recordAvatar { background: var(--neutral-0); }
+.recordOptionText { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-width: 0; }
+.recordOptionHead { color: var(--neutral-500); }
+.recordOptionSub { font-size: var(--font-sm); color: var(--neutral-300); }
+/* Reassign Appointments drawer (Figma Eventus 17574:114531): 24px between
+   sections, 12px inside the reassignment type group. */
+.form.reassignForm { gap: var(--space-6); }
+.fieldGroup.reassignGroup { gap: var(--space-3); }
+/* The picker's menu is portalled, so these key off the option content
+   rather than a wrapper class. Hover is a plain neutral tint; the picked
+   record is the shared Select's selected card. */
+:global(li):has(.recordOption):hover,
+:global(li):has(.recordOption):focus { background: var(--neutral-50); color: inherit; }
+:global(li[aria-selected="true"]):has(.recordOption) {
+  background: var(--primary-50);
+  box-shadow: inset 0 0 0 0.5px var(--primary-200);
+}
+/* Reassignment providers before there's anything to list. */
+.providersEmpty {
+  display: flex; align-items: center; justify-content: center;
+  height: 192px;
+  border: 0.5px dashed var(--neutral-150); border-radius: 12px;
+}
+/* Reassignment type "Other": the dates to reassign, as a 300px field. */
+.rangeField {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  align-self: flex-start; width: 300px; height: 32px; padding: 0 var(--space-3);
+  border: 0.5px solid var(--neutral-200); border-radius: 4px; background: var(--neutral-0);
+  font-size: var(--font-base); color: var(--neutral-400); font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.rangeField:hover { border-color: var(--primary-300); }
+.rangeField:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+.rangePlaceholder { color: var(--neutral-200); }
+/* The record picker's tooltip wrapper spans the field; a disabled trigger
+   passes the hover through so the tooltip still opens. */
+.recordPickerTip { display: flex; flex-direction: column; }
+.recordPickerTip button:disabled { pointer-events: none; }

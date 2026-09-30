@@ -52,6 +52,15 @@ describe('rangeChange', () => {
 });
 
 describe('validateOoo', () => {
+  it('rejects dates that overlap the same provider\'s other records', () => {
+    const existing = [rec('x', at(12), at(15)), rec('y', at(12), at(15), 'Someone Else')];
+    const base = { userName: 'Richard Willson' };
+    expect(validateOoo({ ...base, startAt: at(14), endAt: at(16) }, { now, existing }).startAt).toMatch(/Overlaps/);
+    // Touching end to start is fine, as is another provider's time or the record itself.
+    expect(validateOoo({ ...base, startAt: at(15), endAt: at(16) }, { now, existing })).toEqual({});
+    expect(validateOoo({ userName: 'Someone Else 2', startAt: at(13), endAt: at(14) }, { now, existing })).toEqual({});
+    expect(validateOoo({ ...base, startAt: at(12), endAt: at(16) }, { now, existing, original: existing[0] })).toEqual({});
+  });
   it('allows today, not earlier days, and needs the end after the start', () => {
     expect(validateOoo({ startAt: at(10, 8), endAt: at(12) }, { now })).toEqual({});
     expect(validateOoo({ startAt: at(9, 8), endAt: at(12) }, { now }).startAt).toBeTruthy();

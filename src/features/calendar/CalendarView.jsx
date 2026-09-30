@@ -9,6 +9,7 @@ import { CalendarOooLayer } from '../ooo/CalendarOooLayer';
 import { OooAllRecordsDrawer } from '../ooo/OooRecordsDrawers';
 import { recordsOnDate } from '../ooo/oooUtils';
 import { useOooRecordActions } from '../ooo/useOooRecordActions';
+import { ReassignAppointmentsDrawer } from '../ooo/ReassignAppointmentsDrawer';
 import styles from './CalendarView.module.css';
 
 export function CalendarView() {
@@ -17,7 +18,8 @@ export function CalendarView() {
   // Out of Office: everyone's records, from a Month day's "Providers Out of
   // Office" link, with that day highlighted.
   const [oooAll, setOooAll] = useState(null); // { highlightDate? }
-  const oooActions = useOooRecordActions();
+  const oooActions = useOooRecordActions({ users: calendar.users });
+  const [showReassign, setShowReassign] = useState(false);
   const showToast = useAppStore(s => s.showToast);
   const isDay = calendar.currentView === 'day';
   // Week and a one-user Month show that user's OOO time on the grid; Day
@@ -60,6 +62,20 @@ export function CalendarView() {
         onFilterStatusChange={calendar.setFilterStatus}
         timezone={calendar.timezone}
         onTimezoneChange={calendar.setTimezone}
+        onScheduleSelect={(key) => {
+          if (key === 'appointment') {
+            setDayProvider(null);
+            calendar.setClickedAppointment(null);
+            calendar.setSelectedSlot(null);
+            calendar.setShowSchedule(true);
+          } else if (key === 'ooo') {
+            oooActions.openNew();
+          } else if (key === 'reassign') {
+            setShowReassign(true);
+          } else {
+            showToast('Coming soon');
+          }
+        }}
       />
 
       {isDay && (
@@ -87,6 +103,14 @@ export function CalendarView() {
       {calendar.currentView === 'week' && calendar.viewUsers[0] && (
         <div className={styles.weekUserRow}><span aria-hidden="true" /><span>{calendar.viewUsers[0]}</span></div>
       )}
+      {/* Month: the day names get their own header row (schedule-x puts
+          them inside the first week's cells, hidden below). schedule-x
+          starts weeks on Monday. */}
+      {calendar.currentView === 'month-grid' && (
+        <div className={styles.monthDayNames} aria-hidden="true">
+          {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => <span key={d}>{d}</span>)}
+        </div>
+      )}
       {/* schedule-x stays mounted in Day view (it owns the date and the
           toolbar's navigation), just hidden behind the per-user columns. */}
       <div className={isDay ? `${styles.calendarWrap} ${styles.calendarHidden}` : styles.calendarWrap}>
@@ -109,6 +133,18 @@ export function CalendarView() {
       </div>
 
       {oooAll && <OooAllRecordsDrawer highlightDate={oooAll.highlightDate} onClose={() => setOooAll(null)} />}
+      {showReassign && (
+        <ReassignAppointmentsDrawer
+          users={calendar.users}
+          initialUser={focusUser || undefined}
+          onNewOoo={(name) => {
+            setShowReassign(false);
+            const u = calendar.users.find(x => x.name === name);
+            oooActions.openNew(u ? { id: u.id, name: u.name, email: u.email, role: u.role } : undefined);
+          }}
+          onClose={() => setShowReassign(false)}
+        />
+      )}
       {oooActions.elements}
       {calendar.showSchedule && (
         <ScheduleDrawer

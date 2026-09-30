@@ -31,7 +31,7 @@ import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
-import { sampleOooRecords, oooToRow } from '../src/features/ooo/oooSeed.js';
+import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/oooSeed.js';
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -970,7 +970,9 @@ async function main() {
   }
 
   // Out of Office: sample records for the first staff profiles, dated
-  // around today so ongoing, upcoming and past all show.
+  // around today so ongoing, upcoming and past all show. Abhay Chaudhary
+  // gets his own set instead (he already has a 1-15 Oct record), plus
+  // appointments on his OOO days so the calendar shows them overlapping.
   console.log('Seeding ooo_records...');
   {
     const { data: staff, error: pe } = await supabase
@@ -978,13 +980,37 @@ async function main() {
       .select('id, full_name, email, role')
       .not('full_name', 'is', null)
       .order('full_name')
-      .limit(7);
+      .limit(8);
+    const { data: abhayRows } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, role')
+      .ilike('full_name', 'abhay%chaudhary%')
+      .limit(1);
+    const toUser = p => ({ id: p.id, name: p.full_name.trim(), email: p.email, role: p.role });
+    const abhay = abhayRows?.[0] ? toUser(abhayRows[0]) : null;
     if (pe) {
       console.error('  ✗ profiles:', pe.message);
     } else {
-      const rows = sampleOooRecords((staff || []).map(p => ({ id: p.id, name: p.full_name.trim(), email: p.email, role: p.role }))).map(oooToRow);
+      const others = (staff || []).map(toUser).filter(u => u.name !== abhay?.name).slice(0, 7);
+      const demo = abhay ? demoOooForUser(abhay) : { records: [], appointments: [] };
+      const rows = [...sampleOooRecords(others), ...demo.records].map(oooToRow);
       const { error } = rows.length ? await supabase.from('ooo_records').upsert(rows, { onConflict: 'id' }) : { error: null };
       if (error) { console.error('  ✗', error.message); } else { console.log(`  ✓ ${rows.length} records`); }
+
+      if (!abhay) {
+        console.log('  - no Abhay Chaudhary profile; skipped his demo appointments');
+      } else {
+        // Appointment ids are generated, so skip any slot he already has
+        // booked; re-running the seed doesn't duplicate them.
+        const { data: existing } = await supabase
+          .from('appointments')
+          .select('date, time_start')
+          .eq('primary_user', abhay.name);
+        const booked = new Set((existing || []).map(a => `${a.date} ${a.time_start}`));
+        const fresh = demo.appointments.filter(a => !booked.has(`${a.date} ${a.time_start}`));
+        const { error: ae } = fresh.length ? await supabase.from('appointments').insert(fresh) : { error: null };
+        if (ae) { console.error('  ✗ appointments:', ae.message); } else { console.log(`  ✓ ${fresh.length} appointments for ${abhay.name}`); }
+      }
     }
   }
 

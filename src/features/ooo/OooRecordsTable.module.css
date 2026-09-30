@@ -17,6 +17,16 @@
 .wrap th:first-child, .wrap td:first-child,
 .wrapEmbedded th:first-child, .wrapEmbedded td:first-child { padding-left: var(--space-5); }
 
+/* The empty state's cell spans the table: top-aligned, and without the
+   first column's inset so the message stays centred. */
+.wrap td[colspan], .wrapEmbedded td[colspan] { vertical-align: top; padding-left: 0; }
+
+.empty thead { display: none; }
+
+/* No vertical rules: the shared row styles draw one after the User column
+   and before the sticky Actions column (with a shadow). */
+.wrap td, .wrapEmbedded td { border-left: none; border-right: none; box-shadow: none; }
+
 .dates { font-variant-numeric: tabular-nums; }
 .reason { color: var(--neutral-300); white-space: normal; }
 

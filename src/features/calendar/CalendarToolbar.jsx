@@ -1,11 +1,21 @@
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { Button } from '../../components/Button/Button';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { Select } from '../../components/Select/Select';
 // Locations and statuses come from the ScheduleDrawer constants — the booking
 // form is what writes these values, so sourcing the filter options from the
 // same place keeps every chip option matchable against real rows.
 import { APPOINTMENT_STATUSES, LOCATION_OPTIONS } from '../../components/ScheduleDrawer/scheduleDrawerConstants';
 import { TIMEZONE_OPTIONS, VIEW_LABELS, VIEWS } from './calendarUtils';
 import styles from './CalendarView.module.css';
+
+const SCHEDULE_MENU = [
+  { key: 'appointment', label: 'Appointment' },
+  { key: 'block-time', label: 'Block Time' },
+  { key: 'group-appointment', label: 'Group Appointment' },
+  { key: 'ooo', label: 'New Out of Office Record' },
+  { key: 'reassign', label: 'Reassign Appointments' },
+];
 
 export function CalendarToolbar({
   calendarTitle,
@@ -26,29 +36,18 @@ export function CalendarToolbar({
   onFilterStatusChange,
   timezone,
   onTimezoneChange,
+  onScheduleSelect,
 }) {
   return (
+    // Laid out like the legacy calendar bar: who / where / which view on
+    // the left, the date and its arrows in the middle, then what's shown,
+    // Schedule and the settings on the right.
     <div className={styles.toolbar}>
       <div className={styles.toolbarLeft}>
-        <h2 className={styles.monthTitle}>{calendarTitle}</h2>
-        <div className={styles.viewTabs}>
-          {VIEWS.map(v => (
-            <button key={v} className={`${styles.viewTab} ${currentView === v ? styles.viewTabActive : ''}`} onClick={() => onViewChange(v)}>
-              {VIEW_LABELS[v]}
-            </button>
-          ))}
-        </div>
-        <button className={styles.todayBtn} onClick={onToday}>Today</button>
-        <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" onClick={onPrev} />
-        <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" onClick={onNext} />
-      </div>
-      <div className={styles.toolbarRight}>
         {/* Users — multi-select FilterChip with an in-popover search box.
             Options are user names; the appointments payload's
             `primary_user` is a name too, so no id ↔ name mapping is
-            needed to filter. Trade-off vs. the old UserPickerDropdown:
-            per-user avatars in the option list are gone (FilterChip
-            options are strings). */}
+            needed to filter. */}
         <FilterChip
           label="Users"
           options={users.map(u => u.name)}
@@ -69,6 +68,22 @@ export function CalendarToolbar({
           onChange={onFilterLocationChange}
         />
 
+        <Select
+          options={VIEWS.map(v => ({ value: v, label: VIEW_LABELS[v] }))}
+          value={currentView}
+          onChange={onViewChange}
+          className={styles.viewSelect}
+        />
+      </div>
+
+      <div className={styles.toolbarCenter}>
+        <button className={styles.todayBtn} onClick={onToday}>Today</button>
+        <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" onClick={onPrev} />
+        <h2 className={styles.monthTitle}>{calendarTitle}</h2>
+        <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next" onClick={onNext} />
+      </div>
+
+      <div className={styles.toolbarRight}>
         {/* Appointment Types — pulled from DB with a fallback list. The
             per-type color dot the old Select rendered isn't shown inside
             the FilterChip popover options (strings only). */}
@@ -106,6 +121,16 @@ export function CalendarToolbar({
           <input type="checkbox" />
           <span>Availability</span>
         </label>
+        {/* Figma Eventus 17596:117364: the whole button opens the menu. */}
+        <Button
+          variant="secondary"
+          menuItems={SCHEDULE_MENU}
+          onMenuSelect={onScheduleSelect}
+          menuAriaLabel="Schedule"
+          menuWidth={220}
+        >
+          Schedule
+        </Button>
         <span className={styles.actionDivider} aria-hidden="true" />
         <ActionButton icon="solar:tuning-2-linear" size="L" tooltip="Settings" />
         <span className={styles.actionDivider} aria-hidden="true" />

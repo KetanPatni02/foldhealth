@@ -23,7 +23,7 @@ export function OooPreferencesSection() {
       <div className={styles.prefHeader}>
         <h3 className={styles.prefTitle}>Out of Office Records</h3>
         <span className={styles.prefTools}>
-          <NewButton onClick={actions.openNew} />
+          <NewButton onClick={() => actions.openNew()} />
         </span>
       </div>
       <div className={styles.prefBody}>
@@ -52,7 +52,7 @@ export function OooUserRecordsDrawer({ user, onClose }) {
       width={640}
       onClose={onClose}
       noCloseDivider
-      headerRight={<><NewButton onClick={actions.openNew} /><span className={styles.headerDivider} aria-hidden="true" /></>}
+      headerRight={<><NewButton onClick={() => actions.openNew()} /><span className={styles.headerDivider} aria-hidden="true" /></>}
     >
       <div className={styles.drawerBody}>
         <div className={styles.fieldGroup}>
