@@ -97,18 +97,7 @@
 
 /* ── Reassignment step ── */
 .groupTitle { font-size: var(--font-base); color: var(--neutral-500); }
-.groupHead { display: flex; align-items: center; justify-content: space-between; }
-.groupTools { display: inline-flex; align-items: center; gap: var(--space-1); }
 .radioRow { display: flex; flex-wrap: wrap; gap: var(--space-4); }
-.checkRow { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-base); color: var(--neutral-400); }
-.groupCard {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border: 0.5px solid var(--neutral-150); border-radius: 8px;
-}
-.groupCardText { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-.groupCardTitle { font-size: var(--font-base); color: var(--neutral-500); }
-.groupCardSub { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-sm); color: var(--neutral-300); }
 .viewToggle {
   display: inline-flex; gap: var(--space-1); padding: var(--space-1);
   background: var(--neutral-50); border-radius: 6px;
@@ -122,23 +111,12 @@
 }
 .assigneePicker:hover { background: var(--neutral-100); }
 .assigneePicker:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
-.unassignable {
-  display: flex; align-items: center; gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--status-error-light);
-  border: 0.5px solid var(--neutral-150); border-radius: 8px;
-  font-size: var(--font-base); color: var(--neutral-300);
-}
-.countBadge {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 16px; padding: 0 var(--space-1);
-  border-radius: 4px; background: var(--status-warning);
-  font-size: var(--font-xs); font-weight: 500; color: var(--neutral-0);
-}
 .reassignFooter {
   display: flex; justify-content: center; gap: var(--space-2);
   font-size: var(--font-base); color: var(--neutral-300);
 }
+.footerReassign { color: var(--status-success); }
+.footerCancel { color: var(--status-error); }
 
 
 /* Reassign Appointments drawer: "+ New Out of Office Record" under the record picker. */
@@ -170,16 +148,6 @@
   height: 192px;
   border: 0.5px dashed var(--neutral-150); border-radius: 12px;
 }
-/* Reassignment type "One-time": the dates to reassign, as a 300px field. */
-.rangeField {
-  display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-  align-self: flex-start; width: 300px; height: 32px; padding: 0 var(--space-3);
-  border: 0.5px solid var(--neutral-200); border-radius: 4px; background: var(--neutral-0);
-  font-size: var(--font-base); color: var(--neutral-400); font-variant-numeric: tabular-nums; cursor: pointer;
-}
-.rangeField:hover { border-color: var(--primary-300); }
-.rangeField:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
-.rangePlaceholder { color: var(--neutral-200); }
 /* The record picker's tooltip wrapper spans the field; a disabled trigger
    passes the hover through so the tooltip still opens. */
 .recordPickerTip { display: flex; flex-direction: column; }

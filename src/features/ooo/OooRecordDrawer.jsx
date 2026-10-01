@@ -58,6 +58,7 @@ function Reveal({ open, children }) {
 export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) {
   const saveOooRecord = useAppStore(s => s.saveOooRecord);
   const oooRecords = useAppStore(s => s.oooRecords);
+  const restoreReassigned = useAppStore(s => s.restoreReassignedAppointments);
   const meName = useAppStore(s => s.currentUserProfile?.name);
   const isEdit = !!record;
   // A record that has started: from a previous day, its start is fixed;
@@ -115,6 +116,17 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
         autoReplyMessage: values.autoReply ? values.autoReplyMessage.trim() : '',
       });
       if (!saved) return;
+      // Dates taken off the record: move appointments that were reassigned
+      // away for them back to the provider (from now on), if asked to.
+      if (isEdit && change.reduced && restore) {
+        const os = new Date(record.startAt).getTime(), oe = new Date(record.endAt).getTime();
+        const ns = new Date(saved.startAt).getTime(), ne = new Date(saved.endAt).getTime();
+        const removed = [
+          ns > os && { from: os, to: Math.min(ns, oe) },
+          ne < oe && { from: Math.max(ne, os), to: oe },
+        ].filter(Boolean);
+        if (removed.length) await restoreReassigned(saved.userName, removed);
+      }
       // When Reassign Appointments opens next, the toast says why.
       toast.success(needsReassign ? 'Out of Office record saved. Reassign appointments next.' : 'Out of Office Record Saved Successfully');
       onSaved?.(saved, { reassign: needsReassign });

@@ -1,0 +1,107 @@
+/* Reassignment planner and summary (Figma Eventus 16978:129171 and around). */
+
+/* ── Department card ── */
+.dept {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.deptHead { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); }
+.deptText { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.deptName { font-size: var(--font-base); color: var(--neutral-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deptCount {
+  display: inline-flex; align-items: center; gap: var(--space-1); align-self: flex-start;
+  padding: 0; border: none; background: none; cursor: pointer;
+  font-size: var(--font-sm); color: var(--neutral-400);
+}
+.deptCount:hover { color: var(--primary-300); }
+.deptCount:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; border-radius: 2px; }
+.deptDetail { color: var(--neutral-300); }
+.deptList { display: flex; flex-direction: column; border-top: 0.5px solid var(--neutral-150); border-left: 2px solid var(--primary-300); }
+.pager { display: flex; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-3); font-size: var(--font-sm); color: var(--neutral-300); }
+
+/* ── Appointment row ── */
+.apptRow { display: flex; flex-direction: column; background: var(--neutral-25); border-bottom: 0.5px solid var(--neutral-150); }
+.apptRow:last-child { border-bottom: none; }
+.apptMain { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); }
+.apptText { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.apptName { font-size: var(--font-base); color: var(--neutral-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apptSub { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.apptTrail { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.tone_conflict { background: var(--status-warning-light); border-left: 2px solid var(--status-warning); }
+.tone_failed { background: var(--status-error-light); }
+
+/* ── Controls on cards and rows ── */
+.controls { display: inline-flex; align-items: center; gap: var(--space-2); flex-shrink: 0; }
+.cancelLink { font-size: var(--font-sm); }
+.cancelledTag { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+/* ── "No users available for reassignment" ── */
+.noUsers {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  background: var(--status-error-light);
+  border: 0.5px solid color-mix(in srgb, var(--status-error) 20%, transparent); border-radius: 8px;
+}
+.noUsersHead { display: flex; align-items: center; gap: var(--space-2); min-height: 28px; }
+.noUsersToggle {
+  display: inline-flex; align-items: center; gap: var(--space-1); flex: 1;
+  padding: 0; border: none; background: none; cursor: pointer; text-align: left;
+  font-size: var(--font-base); color: var(--neutral-400);
+}
+.noUsersToggle:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; border-radius: 2px; }
+.countBadge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 16px; padding: 0 var(--space-1);
+  border-radius: 4px; background: var(--secondary-300);
+  font-size: var(--font-xs); font-weight: 500; color: var(--neutral-0);
+}
+
+/* ── Planner chrome ── */
+.planner { display: flex; flex-direction: column; gap: var(--space-3); }
+.plannerHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.plannerTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.plannerTools { display: inline-flex; align-items: center; gap: var(--space-1); }
+.filterRow { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.selectAll { display: inline-flex; align-items: center; gap: var(--space-2); align-self: flex-start; font-size: var(--font-base); color: var(--neutral-300); cursor: pointer; }
+.list { display: flex; flex-direction: column; gap: var(--space-2); }
+.listFlat { display: flex; flex-direction: column; overflow: hidden; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
+.empty { padding: var(--space-4); text-align: center; font-size: var(--font-sm); color: var(--neutral-300); }
+
+/* The bulk bar sits at the foot of the drawer's scroll area, not the window. */
+.bulkInDrawer { position: sticky; left: auto; bottom: var(--space-3); transform: none; align-self: center; margin-top: var(--space-2); }
+
+/* ── Summary ── */
+.summary { display: flex; flex-direction: column; gap: var(--space-4); }
+.summaryField { display: flex; flex-direction: column; gap: var(--space-1); }
+.summaryLabel { font-size: var(--font-base); color: var(--neutral-500); }
+.summaryCard {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.summaryCardText { display: flex; flex-direction: column; min-width: 0; }
+.summaryCardMain { font-size: var(--font-base); color: var(--neutral-500); }
+.summaryCardSub { font-size: var(--font-sm); color: var(--neutral-300); }
+.conflictNote { padding: 0 var(--space-3) var(--space-1) calc(var(--space-3) * 2 + var(--space-10)); font-size: var(--font-sm); color: var(--neutral-300); }
+.conflictWith { margin: 0 var(--space-3) var(--space-2) calc(var(--space-3) * 2 + var(--space-10)); overflow: hidden; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
+.failReason {
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) var(--space-3) var(--space-2);
+  font-size: var(--font-sm); color: var(--neutral-400);
+}
+.tagMuted { font-size: var(--font-xs); color: var(--neutral-300); padding: 0 var(--space-1); border-radius: 4px; background: var(--neutral-50); }
+
+/* ── History ── */
+.history { display: flex; flex-direction: column; gap: var(--space-2); }
+.historyRow {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-3); text-align: left; cursor: pointer;
+  background: var(--neutral-0); border: 0.5px solid var(--neutral-150); border-radius: 8px;
+  transition: box-shadow var(--duration-instant) var(--ease-hover);
+}
+.historyRow:hover { box-shadow: var(--shadow-card); }
+.historyRow:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+.historyText { display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); flex: 1; min-width: 0; }
+.historyMain { font-size: var(--font-base); color: var(--neutral-500); }
+.historySub { font-size: var(--font-sm); color: var(--neutral-300); }

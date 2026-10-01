@@ -26,7 +26,7 @@ export const STATUS_TONE = { Upcoming: 'success', Ongoing: 'primary', Past: 'gre
 export const canEdit = (record, now) => oooStatus(record, now) !== 'Past';
 export const canDelete = (record, now) => oooStatus(record, now) === 'Upcoming';
 
-const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+export const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 
 export const recordsFor = (records, userName) => (records || []).filter(r => sameName(r.userName, userName));
 

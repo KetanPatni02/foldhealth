@@ -46,7 +46,7 @@
 
 .userCell { display: flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 100%; }
 .userText { display: flex; flex-direction: column; min-width: 0; }
-.userName { color: var(--neutral-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.userName { color: var(--neutral-400); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .userSub { font-size: var(--font-sm); color: var(--neutral-300); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* A row picked from the calendar: tinted and outlined in Primary 300 for a
