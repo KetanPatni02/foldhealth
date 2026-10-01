@@ -33,7 +33,9 @@
   z-index: 3;
 }
 .stickyCheck  { left: 0; padding: 8px 10px !important; }
-.stickyMember { left: 36px; padding: 8px 12px !important; border-right: 1px solid var(--neutral-150); }
+/* Left padding trimmed from 12px to 4px so the patient avatar sits
+   closer to the selection column — matches the live HCC worklist. */
+.stickyMember { left: 36px; padding: 8px 12px 8px 4px !important; border-right: 1px solid var(--neutral-150); }
 
 /* Selected row */
 .rowChecked,

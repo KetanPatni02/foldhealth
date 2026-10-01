@@ -4,6 +4,12 @@
    same row still lines up. */
 
 .headerCell {
+  /* Fixed 32px header row across every worklist. Because sibling cells
+     (checkbox column, sticky Member column, custom Actions column)
+     share the same <tr>, the tallest wins — those overrides also set
+     `height: 32px` + zero vertical padding so the row stays at 32px
+     end-to-end. */
+  height: 32px;
   padding: 0 var(--space-3);
   font-size: var(--font-sm);
   font-weight: 500;

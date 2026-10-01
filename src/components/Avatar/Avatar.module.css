@@ -190,3 +190,23 @@
   border-color: var(--neutral-150);
   color: var(--neutral-300);
 }
+
+/* Billed avatar — mirror of .locked, but a green dollar badge marks a
+   record that has been billed out (post-billing terminal state). The
+   inner avatar keeps its colour (billing isn't a failure so we don't
+   grey it out) and the badge palette is success-green. */
+.billedBadge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  background: var(--status-success);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 0.5px var(--neutral-0);
+}
+.billedBadge svg { display: block; }

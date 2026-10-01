@@ -785,6 +785,19 @@ export function useDiagPanel() {
       r => s[r]?.status === 'Reject' || s[r]?.status === 'Rejected',
     );
   })();
+  // Billed is the post-billing terminal state — freezes every ICD-level
+  // action across roles the same way Rejected does, but with a green
+  // "Record Billed" treatment (no failure narrative). Rejection wins if
+  // both surface on the same DOS so the reviewer still sees why.
+  const isDosBilled = !isDosRejected && (() => {
+    const s = dosState || {};
+    return ['support', 'coder', 'reviewer', 'reviewer2'].some(
+      r => s[r]?.status === 'Billed',
+    );
+  })();
+  const billedLockReason = isDosBilled
+    ? 'Record has been billed. All ICD actions are locked.'
+    : null;
   // Human-readable "Rejected by X (role) on <date>" — used as the tooltip
   // on locked ICD action buttons so they explain the actual cause (a
   // rejection upstream) instead of the generic "Support hasn't reviewed
@@ -1169,6 +1182,8 @@ export function useDiagPanel() {
     hccUserRole,
     icdsRaw,
     isDosRejected,
+    isDosBilled,
+    billedLockReason,
     member,
     memberDosList,
     memberId,

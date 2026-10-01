@@ -15,6 +15,19 @@ import { useWorklistColumns } from '../../components/WorklistColumns/useWorklist
 import { FilterChipBar } from '../hcc/FilterChipBar';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
 import { FilterNameDialog } from '../hcc/FilterNameDialog';
+import { BulkBar } from '../../components/BulkBar/BulkBar';
+import { BulkChangeHedisAssigneeDialog } from './BulkChangeHedisAssigneeDialog';
+import { SortPopover } from '../../components/SortPopover/SortPopover';
+
+// Axes the reviewer can sort the Member column on. Age is stored as
+// "48y 4m" — useTableSort's number path would collapse that to 484
+// via a non-digit strip, so we sort on `_ageYears` (decorated below).
+const HEDIS_MEMBER_SORT_ITEMS = [
+  { key: 'name',      label: 'Name' },
+  { key: '_ageYears', label: 'Age' },
+  { key: 'gender',    label: 'Gender' },
+  { key: 'memberId',  label: 'ID' },
+];
 import {
   FILTER_DEF_MAP as HEDIS_FILTER_DEF_MAP,
   MORE_FILTER_ITEMS as HEDIS_MORE_FILTER_ITEMS,
@@ -50,6 +63,7 @@ export function HedisWorklistTable() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarOpen, setFilterBarOpen] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkAssigneeOpen, setBulkAssigneeOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [drawerMemberId, setDrawerMemberId] = useState(null);
   const [drawerGapCode, setDrawerGapCode] = useState(null);
@@ -100,12 +114,19 @@ export function HedisWorklistTable() {
     const ipa = new Set();
     const hpCode = new Set();
     const assignee = new Set();
+    // Care Gaps: enumerate every unique gap CODE the loaded members
+    // carry so the popover doubles as a live measure catalog. Codes are
+    // rendered as "CODE — Measure Name" via `careGapsLabelMap` below.
+    const careGaps = new Set();
     for (const m of (hedisMembers || [])) {
       if (m.state) state.add(m.state);
       if (m.city) city.add(m.city);
       if (m.ipa) ipa.add(m.ipa);
       if (m.hpCode) hpCode.add(m.hpCode);
       if (m.assignee) assignee.add(m.assignee);
+      for (const g of (m.gaps || [])) {
+        if (g?.code) careGaps.add(g.code);
+      }
     }
     return {
       assignee: platformUsers?.length ? platformUsers.map(u => u.name) : [...assignee].toSorted(),
@@ -113,12 +134,26 @@ export function HedisWorklistTable() {
       city:     [...city].toSorted(),
       ipa:      [...ipa].toSorted(),
       hpCode:   [...hpCode].toSorted(),
+      careGaps: [...careGaps].toSorted(),
     };
   }, [hedisMembers, platformUsers]);
 
   const activeFilterCount = countActiveHedisFilters(hedisFilters);
 
-  const { sorted, sortKey, sortDir, requestSort } = useTableSort(filtered, 'startDate', 'desc');
+  // Decorate members with `_ageYears` (leading integer of "48y 4m")
+  // so the SortPopover's Age axis ranks by actual years instead of the
+  // digit-concat useTableSort's number path would otherwise produce.
+  const filteredWithAge = useMemo(
+    () => filtered.map(m => ({
+      ...m,
+      _ageYears: parseInt(String(m.age || '').split('y')[0], 10) || 0,
+    })),
+    [filtered],
+  );
+  const { sorted, sortKey, sortDir, requestSort, setSort, clearSort } = useTableSort(filteredWithAge, 'startDate', 'desc');
+  // Anchor rect for the Member-column axis picker (opened by clicking
+  // the HeaderCell's sort icon).
+  const [memberSortPop, setMemberSortPop] = useState(null);
 
   // Reset to page 1 whenever the filtered result set changes size.
   useEffect(() => { setCurrentPage(1); }, [filtered.length, setCurrentPage]);
@@ -161,10 +196,21 @@ export function HedisWorklistTable() {
         variant="titleWithDropdown"
         leadingElement={<SubnavToggle />}
         title="HEDIS"
-        dropdownLabel="Year"
+        // Empty dropdown label collapses the chip to just its value
+        // ("2026 ⌄") — the worklist heading beside it already tells
+        // the reader what year picker they're looking at.
+        dropdownLabel=""
         dropdownOptions={YEARS.map(String)}
         dropdownValue={String(year)}
         onDropdownChange={(v) => setYear(Number(v) || 2026)}
+        // Year is a never-empty picker: clearing "2026" makes no sense,
+        // so the trailing glyph stays a chevron. Regular size aligns with
+        // the primary chip row below. Keep the primary purple palette
+        // (dropdownNoClearNeutral={false}) because this is a headline
+        // control next to the worklist title, not an ambient info chip.
+        dropdownNoClear
+        dropdownNoClearNeutral={false}
+        dropdownSize="M"
         actions={['search', 'filter', 'download', 'history']}
         searchPlaceholder="Search by member name…"
         searchValue={searchQuery}
@@ -206,27 +252,36 @@ export function HedisWorklistTable() {
                   aria-label="Select all"
                 />
               </th>
-              <th className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${styles.memberTh}`}>
-                Member
-              </th>
+              {/* Member header uses the shared HeaderCell so the sort
+                  icon chrome matches Start Date, but its click routes
+                  to a SortPopover (the Member column has four valid
+                  axes — Name / Age / Gender / ID — that a plain
+                  asc/desc toggle can't express). Same pattern the HCC
+                  worklist's Member header uses. */}
+              <HeaderCell
+                label="Member"
+                sortField="name"
+                activeKey={sortKey}
+                activeDir={sortDir}
+                onSort={(_field, rect) => setMemberSortPop(rect)}
+                className={`${rowStyles.stickyLeft} ${rowStyles.stickyMember} ${styles.memberTh}`}
+              />
+              {/* Every middle column renders as HeaderCell — sortable
+                  ones (col.sortKey) get the click-to-sort chevron;
+                  non-sortable ones fall through to HeaderCell's plain
+                  label rendering so type + padding stay in sync with
+                  the design system instead of inline styles. */}
               {visibleMiddle.map(col => (
-                col.sortKey
-                  ? <HeaderCell
-                      key={col.key}
-                      label={col.label}
-                      sortField={col.sortKey}
-                      activeKey={sortKey}
-                      activeDir={sortDir}
-                      onSort={requestSort}
-                    />
-                  : <th
-                      key={col.key}
-                      style={{ padding: '8px 14px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}
-                    >
-                      {col.label}
-                    </th>
+                <HeaderCell
+                  key={col.key}
+                  label={col.label}
+                  sortField={col.sortKey}
+                  activeKey={sortKey}
+                  activeDir={sortDir}
+                  onSort={col.sortKey ? requestSort : undefined}
+                />
               ))}
-              <th className={rowStyles.stickyRight} style={{ padding: '8px 12px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
+              <th className={rowStyles.stickyRight} style={{ height: 32, padding: '0 12px', fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 <ColumnsHeaderButton
                   columns={columnPrefs.orderedColumns}
                   hiddenSet={columnPrefs.hiddenSet}
@@ -293,6 +348,37 @@ export function HedisWorklistTable() {
       onSubmit={(name) => { saveHedisFilter(name); setSaveDialogOpen(false); }}
       onCancel={() => setSaveDialogOpen(false)}
     />
+    {/* Floating bulk-action bar — appears when one or more rows are
+        selected via the sticky-left checkbox column. Change Assignee is
+        the only wired verb for now; the rest of BulkBar's default cluster
+        (Run Automation / More menu) stays on its shared "coming soon"
+        toast until the HEDIS workflows for those actions exist. */}
+    <BulkBar
+      selectedIds={selectedIds}
+      onClear={() => setSelectedIds([])}
+      onChangeAssignee={() => setBulkAssigneeOpen(true)}
+    />
+    <BulkChangeHedisAssigneeDialog
+      open={bulkAssigneeOpen}
+      selectedIds={selectedIds}
+      onClose={() => setBulkAssigneeOpen(false)}
+      onApplied={() => { setBulkAssigneeOpen(false); setSelectedIds([]); }}
+    />
+    {memberSortPop && (
+      <SortPopover
+        anchorRect={memberSortPop}
+        items={HEDIS_MEMBER_SORT_ITEMS}
+        currentKey={sortKey}
+        currentDir={sortDir}
+        /* onSort no longer dismisses the popover — the picked
+           direction should stay highlighted in primary so the
+           reviewer can see the applied selection. Dismiss happens on
+           overlay click / Escape / Clear Sort. */
+        onSort={(k, dir) => setSort(k, dir)}
+        onClear={() => { clearSort(); setMemberSortPop(null); }}
+        onClose={() => setMemberSortPop(null)}
+      />
+    )}
     </>
   );
 }

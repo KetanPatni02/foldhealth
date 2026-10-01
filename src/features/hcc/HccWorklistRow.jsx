@@ -22,6 +22,7 @@ import styles from './HccWorklistRow.module.css';
 
 export {
   isRejectedStatus,
+  isBilledStatus,
   resolveStaffName,
   resolveCurrentAssignee,
 } from './HccWorklistRow.utils';
@@ -106,6 +107,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
   const innerCtx = { member, openClaimPreview, openDiagPanel, hasDoc, charts, setDiagOpenDocId, openHccClaimForDos };
 
   const rejectedStatuses = new Set(['Rejected', 'Reject']);
+  const billedStatuses = new Set(['Billed']);
   const dosState = dosStateFor(member);
   const isRecordRejected = (() => {
     if (dosState) {
@@ -117,6 +119,22 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
       || rejectedStatuses.has(member.cdrS)
       || rejectedStatuses.has(member.r1s)
       || rejectedStatuses.has(member.r2s);
+  })();
+  // Billed is the post-billing terminal state — locks the row read-only
+  // the same way Rejected does, but with a green Billed treatment
+  // (dollar badge on the avatar, green Billed chip in the Assignee cell).
+  // A rejected row wins visually over billed so a rejection late in the
+  // cycle still surfaces the red banner.
+  const isRecordBilled = !isRecordRejected && (() => {
+    if (dosState) {
+      for (const role of ['support', 'coder', 'reviewer', 'reviewer2']) {
+        if (billedStatuses.has(dosState[role]?.status)) return true;
+      }
+    }
+    return billedStatuses.has(member.supS)
+      || billedStatuses.has(member.cdrS)
+      || billedStatuses.has(member.r1s)
+      || billedStatuses.has(member.r2s);
   })();
 
   const rejectingRole = (() => {
@@ -136,6 +154,9 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
   const rejectedTooltip = isRecordRejected
     ? `Rejected${rejectingRole ? ` by ${rejectingRole}` : ''} — record is read-only. Expand DOSs or open the record to review comments.`
     : undefined;
+  const billedTooltip = isRecordBilled
+    ? 'Billed — record is read-only. Open the row to review the submitted claim.'
+    : undefined;
 
   return (
     <>
@@ -146,11 +167,12 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
         isOpenInDrawer ? styles.rowActive : '',
         expanded ? styles.rowExpanded : '',
         isRecordRejected ? styles.rowRejected : '',
+        isRecordBilled ? styles.rowBilled : '',
         justAdded ? styles.rowJustAdded : '',
       ].filter(Boolean).join(' ')}
       style={{ '--stagger-index': staggerIndex }}
-      aria-disabled={isRecordRejected || undefined}
-      title={rejectedTooltip}
+      aria-disabled={isRecordRejected || isRecordBilled || undefined}
+      title={rejectedTooltip || billedTooltip}
     >
       <td className={`${styles.checkTd} ${styles.stickyLeft} ${styles.stickyCheck}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.checkAlign}>
@@ -158,7 +180,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
             checked={checked}
             onCheckedChange={() => selectHccMember(member.id)}
             aria-label={`Select ${member.name}`}
-            disabled={isRecordRejected}
+            disabled={isRecordRejected || isRecordBilled}
           />
         </div>
       </td>
@@ -173,7 +195,7 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
         style={{ cursor: 'pointer' }}
       >
         <div className={styles.patientCell}>
-          <Avatar variant="patient" initials={member.in} locked={isRecordRejected} />
+          <Avatar variant="patient" initials={member.in} locked={isRecordRejected} billed={isRecordBilled} />
           <div>
             <div className={styles.patientName}>
               <button className={styles.patientNameLink} onClick={handleMemberCellClick} tabIndex={-1}>{member.name}</button>{' '}

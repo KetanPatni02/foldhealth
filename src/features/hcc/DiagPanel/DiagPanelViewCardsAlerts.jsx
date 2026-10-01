@@ -4,11 +4,37 @@ import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import styles from './DiagPanel.module.css';
 
 export function DiagPanelViewCardsAlerts({
-  isDosRejected, dosState, rejectInfo, member, newRowNotice, memberId,
+  isDosRejected, isDosBilled, dosState, rejectInfo, member, newRowNotice, memberId,
   dismissNewRowNotice, openDiagPanel,
 }) {
   return (
     <>
+      {isDosBilled && (() => {
+        const billedRole = ['support', 'coder', 'reviewer', 'reviewer2']
+          .find(r => dosState?.[r]?.status === 'Billed');
+        const roleRecord = billedRole ? dosState?.[billedRole] : null;
+        const ROLE_LABEL_B = { support: 'Support Team', coder: 'Coder', reviewer: 'QA', reviewer2: 'Compliance' };
+        const roleLabel = ROLE_LABEL_B[billedRole] || '';
+        const stamp = roleRecord?.at
+          ? new Date(roleRecord.at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+          : null;
+        return (
+          <div className={styles.billedBanner} role="status">
+            <Icon name="solar:dollar-linear" size={18} color="var(--status-success)" />
+            <div className={styles.billedBannerText}>
+              <div className={styles.billedBannerTitle}>Record Billed</div>
+              <div className={styles.billedBannerMeta}>
+                {roleLabel
+                  ? <>Marked billed by <strong>{roleLabel}</strong>{stamp ? ` on ${stamp}` : ''}</>
+                  : 'This record has been submitted and billed.'}
+              </div>
+              <div className={styles.billedBannerHint}>
+                All ICD actions are locked. You can still add a Comment.
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       {isDosRejected && (() => {
         const ROLE_LABEL_R = { support: 'Support Team', coder: 'Coder', reviewer: 'QA', reviewer2: 'Compliance' };
         const rejectingRole = ['support', 'coder', 'reviewer', 'reviewer2']

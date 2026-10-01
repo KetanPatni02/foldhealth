@@ -139,7 +139,11 @@
 }
 
 .table thead th {
-  padding: 8px 14px;
+  /* Header row fixed at 32px across every worklist. Vertical padding
+     goes to 0 so the sticky sibling cells (checkbox / member / actions)
+     don't stretch the row past the height HeaderCell asks for. */
+  height: 32px;
+  padding: 0 14px;
   font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
@@ -161,13 +165,17 @@
   z-index: 4;
 }
 
-/* Header cells for the split member columns */
+/* Header cells for the split member columns. Header row is fixed at
+   32px (see HeaderCell.module.css); vertical padding stripped so
+   these sticky sibling cells don't stretch the row taller. */
 .checkTh {
-  padding: 8px 10px !important;
+  height: 32px;
+  padding: 0 10px !important;
   width: 36px;
 }
 .memberTh {
-  padding: 8px 12px !important;
+  height: 32px;
+  padding: 0 12px !important;
   border-right: 0.5px solid var(--neutral-150);
 }
 
