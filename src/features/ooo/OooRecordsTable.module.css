@@ -7,6 +7,8 @@
 .membersTd    { composes: membersTd    from '../../components/WorklistShell/WorklistRow.module.css'; }
 .actionsCell  { composes: actionsCell  from '../../components/WorklistShell/WorklistRow.module.css'; }
 .actionDivider { composes: actionDivider from '../../components/WorklistShell/WorklistRow.module.css'; }
+/* 8px between each action and divider (the shared cell uses 6px). */
+.actionsGap { gap: var(--space-2); }
 
 /* Fills its pane like the shell it wraps (or grows with content when
    embedded). The first column, header and cells, sits 20px in from the
@@ -39,10 +41,8 @@
 .wrap td:last-child, .wrapEmbedded td:last-child { overflow: visible; }
 
 .dates { font-variant-numeric: tabular-nums; }
-.reason { color: var(--neutral-300); white-space: normal; }
-.muted { color: var(--neutral-300); }
-/* "N to reassign" without an action (no link): plain text. */
-.toReassign { color: var(--neutral-400); }
+/* Long reasons stay on one line and end in "…"; the full text is in a tooltip. */
+.row .reason { color: var(--neutral-300); }
 
 .userCell { display: flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 100%; }
 .userText { display: flex; flex-direction: column; min-width: 0; }

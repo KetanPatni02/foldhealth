@@ -4,35 +4,37 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
-import { Link } from '../../components/Link/Link';
+import { UserSwitchIcon } from '../../components/Icon/UserSwitchIcon';
+import { TruncatedText } from '../../components/TruncatedText/TruncatedText';
 import { useAppStore } from '../../store/useAppStore';
 import { appointmentsToReassign, canDelete, canEdit, capFirst, formatDateTime, initialsOf, oooStatus, recordsOnDate, STATUS_TONE } from './oooUtils';
 import styles from './OooRecordsTable.module.css';
 
-// In a drawer: fixed widths, dates stacked, Reason takes the rest. On the
-// full page: the row shared out in proportion, with room for the dates on
-// one line (the table scrolls sideways below its minimum width).
+// Start and end in their own columns, each on one line. On the full page
+// the user column takes a share of the row; in a drawer it's fixed. Reason
+// takes what's left (the table scrolls sideways below its minimum width).
 const columnsFor = (wide, showUser) => [
   ...(showUser ? [{ key: 'user', label: 'User', sticky: 'left', left: 0, width: wide ? '22%' : 280 }] : []),
-  { key: 'dates', label: 'Dates', width: wide ? '30%' : 200 },
+  { key: 'start', label: 'Start Date & Time', width: 184 },
+  { key: 'end', label: 'End Date & Time', width: 184 },
   { key: 'reason', label: 'Reason' },
-  { key: 'status', label: 'Status', width: wide ? '12%' : 120 },
-  { key: 'reassign', label: 'Reassignment', width: wide ? '14%' : 150 },
-  { key: 'actions', label: 'Actions', sticky: 'right', width: 104 },
+  // Just wide enough for the longest status badge ("Upcoming").
+  { key: 'status', label: 'Status', width: 112 },
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 156 },
 ];
 
 /**
- * Out of Office records in the shared WorklistShell table: Dates, Reason,
- * Status, Reassignment and Actions, with a sticky User column when it lists
- * several users. Past records are read-only; an ongoing one can be edited
- * but not deleted. Reassignment keeps the scheduler's to-do: how many of the
- * provider's upcoming appointments in those dates still need moving, which
- * opens Reassign Appointments for that record (a link).
+ * Out of Office records in the shared WorklistShell table: Start, End, Reason,
+ * Status and Actions, with a sticky User column when it lists several
+ * users. Past records are read-only; an ongoing one can be edited but not
+ * deleted. The Reassign action keeps the scheduler's to-do: it's enabled,
+ * with a dot, while the provider still has upcoming appointments in those
+ * dates to move, and opens Reassign Appointments for that record.
  *
  * @param {object}   props
  * @param {object[]} props.records
  * @param {boolean}  [props.showUser]      – Add the User column
- * @param {boolean}  [props.oneLineDates]  – Room for the dates on one line (full-page table)
+ * @param {boolean}  [props.oneLineDates]  – Full-page layout: the user column takes a share of the row
  * @param {string}   [props.highlightDate] – ISO date; rows out that day are tinted and outlined
  * @param {boolean}  [props.loading]
  * @param {React.ReactNode} [props.emptyState]
@@ -67,6 +69,7 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
     const status = oooStatus(r, now);
     const editable = canEdit(r, now);
     const deletable = canDelete(r, now);
+    const left = status === 'Past' ? 0 : appointmentsToReassign(r, appointments, now).length;
     return (
       <tr key={r.id} className={[styles.row, highlighted.has(r.id) ? styles.rowHighlight : ''].filter(Boolean).join(' ')}>
         {showUser && (
@@ -80,35 +83,30 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
             </span>
           </td>
         )}
-        <td className={`${styles.td} ${styles.dates}`}>
-          {formatDateTime(r.startAt)} -
-          {oneLineDates ? ' ' : <br />}
-          {formatDateTime(r.endAt)}
-        </td>
-        <td className={`${styles.td} ${styles.reason}`}>{capFirst(r.reason) || '–'}</td>
-        <td className={styles.td}><Badge tone={STATUS_TONE[status]} size="M" label={status} /></td>
-        <td className={styles.td}>
-          {status === 'Past' ? <span className={styles.muted}>–</span> : (() => {
-            const left = appointmentsToReassign(r, appointments, now).length;
-            if (!left) return <span className={styles.muted}>No appointments</span>;
-            const label = `${left} to reassign`;
-            return onReassign
-              ? (
-                <Link
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onReassign(r)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onReassign(r); } }}
-                  aria-label={`Reassign ${left} appointment${left === 1 ? '' : 's'}`}
-                >
-                  {label}
-                </Link>
-              )
-              : <span className={styles.toReassign}>{label}</span>;
-          })()}
-        </td>
+        <td className={`${styles.td} ${styles.dates}`}>{formatDateTime(r.startAt)}</td>
+        <td className={`${styles.td} ${styles.dates}`}>{formatDateTime(r.endAt)}</td>
+        <td className={`${styles.td} ${styles.reason}`}><TruncatedText text={capFirst(r.reason) || '–'} /></td>
+        <td className={styles.td}><Badge tone={STATUS_TONE[status]} size="S" label={status} /></td>
         <td className={`${styles.td} ${styles.stickyRight}`}>
-          <span className={styles.actionsCell}>
+          <span className={`${styles.actionsCell} ${styles.actionsGap}`}>
+            {/* Enabled only where appointments still need moving, and then
+                marked with a dot so the to-do stands out down the column. */}
+            {onReassign && (
+              <>
+                <ActionButton
+                  size="L"
+                  tooltip={left ? `Reassign ${left} Appointment${left === 1 ? '' : 's'}` : status === 'Past' ? 'Past records can\'t be reassigned' : 'No appointments to reassign'}
+                  tooltipLeft
+                  state={left ? 'active' : 'disabled'}
+                  dot={!!left}
+                  aria-label={left ? `Reassign ${left} appointment${left === 1 ? '' : 's'}` : 'Reassign appointments'}
+                  onClick={() => left && onReassign(r)}
+                >
+                  <UserSwitchIcon size={16} color={left ? 'var(--neutral-300)' : 'var(--neutral-150)'} />
+                </ActionButton>
+                <span className={styles.actionDivider} aria-hidden="true" />
+              </>
+            )}
             {/* Both glyphs at 16px (Solar's pen fills its frame, so the trash
                 at the default 20px read bigger). Tooltips open leftward, as
                 the column sits at the table's right edge; a disabled action
@@ -152,7 +150,8 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
       loading={loading}
       emptyState={emptyState}
       embedded={embedded}
-      minTableWidth={oneLineDates ? 1100 : showUser ? 900 : 560}
+      // Room for every fixed column plus a readable Reason before it scrolls sideways.
+      minTableWidth={showUser ? 1100 : 760}
       page={pagination?.page}
       perPage={pagination?.perPage}
       totalItems={pagination?.totalItems}
