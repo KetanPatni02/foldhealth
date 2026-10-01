@@ -98,6 +98,25 @@ const FOOTER_PAGES = 30;
 const ASSET_WAIT_MS = 3000;
 const PAGE_TOKEN = /\{\{\s*page[ _-]?number\s*\}\}/i;
 
+/** 'light' when the right-middle of a drawn footer is dark, else 'dark'. */
+function inkAtRight(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = 1; c.height = 1;
+        const g = c.getContext('2d');
+        g.drawImage(img, img.width * 0.96, img.height * 0.4, img.width * 0.02, img.height * 0.2, 0, 0, 1, 1);
+        const [r, gr, b, a] = g.getImageData(0, 0, 1, 1).data;
+        resolve(a > 128 && 0.2126 * r + 0.7152 * gr + 0.0722 * b < 140 ? 'light' : 'dark');
+      } catch { resolve('dark'); }
+    };
+    img.onerror = () => resolve('dark');
+    img.src = dataUrl;
+  });
+}
+
 /**
  * A report component (header / footer) drawn to PNG with its merge tags
  * filled from `ctx`, for the PDF. Redrawn once edits pause; until the first
@@ -130,6 +149,9 @@ function useComponentImage(component, ctx, fontFaces, enabled) {
         if (pages[0]) image = { width: pages[0].width, height: pages[0].height, images: pages.map(p => p?.dataUrl) };
       } else {
         image = await draw({});
+        // No page number of its own: the PDF adds one on the right, in
+        // white when the footer is dark there.
+        if (image) image = { ...image, pageInk: await inkAtRight(image.dataUrl) };
       }
       if (live) setResult({ key, image });
       // The first drawing starts at once; redraws wait for typing to pause.
@@ -918,7 +940,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
     const out = generateEmployerReport(report);
     // Called from the preview's timer and from Download / Print, never
     // during render, so setting state here is safe.
-    setPageCount(out.pages);
+    setPageCount(out.numberedPages);
     return out;
   }, [report]);
   // Where the preview should scroll after the next redraw: the part of the
@@ -1408,7 +1430,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
 
   return (
     <Drawer
-      title="Print Employer Impact Report"
+      title="Export Employer Impact Report"
       onClose={onClose}
       headerRight={headerRight}
       noCloseDivider

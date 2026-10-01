@@ -8,6 +8,7 @@ import styles from './DateTimePicker.module.css';
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const HOURS_12 = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -31,8 +32,16 @@ const toDate = (mmddyyyy) => {
  * @param {Date}     [props.minDate]     – Days before this can't be picked
  * @param {boolean}  [props.fullWidth]   – Fill the container instead of 200px
  * @param {string}   [props.className]   – Extra class on the trigger box
+ * @param {boolean}  [props.disabled]    – Shown but not changeable
+ * @param {string}   [props.helperText]  – Grey note below (e.g. why it's disabled); an error replaces it
+ * @param {boolean}  [props.hour12]      – Show and pick 12-hour time with AM/PM ("10/01/2026, 09:30AM");
+ *   the value stays 24-hour
+ * @param {boolean}  [props.invalid]     – Red border with no message of its own (e.g. a problem
+ *   with this field and another, explained once below both)
+ * @param {boolean}  [props.autoCommit]  – Apply each pick (day, hour, minute, AM/PM) at once,
+ *   with no Reset / Save footer; clicking outside closes it
  */
-export function DateTimePicker({ value, onChange, label, required = false, placeholder = 'MM/DD/YYYY, HH:MM', errorText, minDate, fullWidth = false, className }) {
+export function DateTimePicker({ value, onChange, label, required = false, placeholder = 'MM/DD/YYYY, HH:MM', errorText, minDate, fullWidth = false, className, disabled = false, helperText, hour12 = false, autoCommit = false, invalid = false }) {
   const id = useId();
   const parsed = parsePickerValue(value);
   const [open, setOpen] = useState(false);
@@ -54,9 +63,10 @@ export function DateTimePicker({ value, onChange, label, required = false, place
   for (let d = 1; d <= daysInMonth; d++) days.push(d);
   const minDay = minDate ? new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()).getTime() : null;
 
+  const to12 = (h) => h % 12 || 12;
   const scrollToTime = (h, m) => {
     setTimeout(() => {
-      hourColRef.current?.querySelector(`[data-h="${h}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      hourColRef.current?.querySelector(`[data-h="${hour12 ? to12(h) : h}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       minColRef.current?.querySelector(`[data-m="${m}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     }, 0);
   };
@@ -70,6 +80,14 @@ export function DateTimePicker({ value, onChange, label, required = false, place
     scrollToTime(p.hour, p.minute);
   };
 
+  // autoCommit: each pick is applied as soon as there's a day to go with it.
+  const commit = (date, h, m) => {
+    if (autoCommit && date) onChange(`${date}, ${pad(h)}:${pad(m)}`);
+  };
+  const pickDay = (key) => { setSelectedDate(key); commit(key, pickerHour, pickerMinute); };
+  const pickHour = (h) => { setPickerHour(h); commit(selectedDate, h, pickerMinute); };
+  const pickMinute = (m) => { setPickerMinute(m); commit(selectedDate, pickerHour, m); };
+
   const handleOk = () => {
     if (!selectedDate) return;
     onChange(`${selectedDate}, ${pad(pickerHour)}:${pad(pickerMinute)}`);
@@ -79,19 +97,22 @@ export function DateTimePicker({ value, onChange, label, required = false, place
   const box = (
     <div
       ref={triggerRef}
-      className={[styles.dateInputWrap, fullWidth ? styles.fullWidth : '', errorText ? styles.hasError : '', className || ''].filter(Boolean).join(' ')}
+      className={[styles.dateInputWrap, fullWidth ? styles.fullWidth : '', errorText || invalid ? styles.hasError : '', disabled ? styles.isDisabled : '', className || ''].filter(Boolean).join(' ')}
     >
       <button
         id={id}
         className={styles.datePickerTrigger}
         onClick={() => { setRect(triggerRef.current?.getBoundingClientRect() || null); setOpen(v => !v); }}
         type="button"
+        disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-invalid={errorText ? true : undefined}
+        aria-invalid={errorText || invalid ? true : undefined}
       >
         <span className={value ? styles.datePickerText : styles.datePickerPlaceholder}>
-          {value || placeholder}
+          {value && hour12 && parsed.date
+            ? `${parsed.date}, ${pad(to12(parsed.hour))}:${pad(parsed.minute)}${parsed.hour < 12 ? 'AM' : 'PM'}`
+            : value || placeholder}
         </span>
         <Icon name="solar:calendar-linear" size={14} color="var(--neutral-300)" />
       </button>
@@ -128,25 +149,33 @@ export function DateTimePicker({ value, onChange, label, required = false, place
                         type="button"
                         disabled={disabled}
                         className={`${styles.calendarDay} ${selectedDate === key ? styles.calendarDaySelected : ''}`}
-                        onClick={() => setSelectedDate(key)}
+                        onClick={() => pickDay(key)}
                       >{d}</button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className={styles.timeColumnsSection}>
+              <div className={hour12 ? `${styles.timeColumnsSection} ${styles.timeColumns12}` : styles.timeColumnsSection}>
                 <div className={styles.timeColsRow}>
                   <div className={styles.timeColWrap}>
                     <span className={styles.timeColLabel}>Hr</span>
                     <div className={styles.timeCol} ref={hourColRef}>
-                      {HOURS.map(h => (
-                        <button key={h} type="button" data-h={h}
-                          className={`${styles.timeColItem} ${pickerHour === h ? styles.timeColItemSelected : ''}`}
-                          onClick={() => setPickerHour(h)}>
-                          {pad(h)}
-                        </button>
-                      ))}
+                      {hour12
+                        ? HOURS_12.map(h => (
+                          <button key={h} type="button" data-h={h}
+                            className={`${styles.timeColItem} ${to12(pickerHour) === h ? styles.timeColItemSelected : ''}`}
+                            onClick={() => pickHour((h % 12) + (pickerHour >= 12 ? 12 : 0))}>
+                            {pad(h)}
+                          </button>
+                        ))
+                        : HOURS.map(h => (
+                          <button key={h} type="button" data-h={h}
+                            className={`${styles.timeColItem} ${pickerHour === h ? styles.timeColItemSelected : ''}`}
+                            onClick={() => pickHour(h)}>
+                            {pad(h)}
+                          </button>
+                        ))}
                     </div>
                   </div>
                   <div className={styles.timeColWrap}>
@@ -155,21 +184,37 @@ export function DateTimePicker({ value, onChange, label, required = false, place
                       {MINUTES.map(m => (
                         <button key={m} type="button" data-m={m}
                           className={`${styles.timeColItem} ${pickerMinute === m ? styles.timeColItemSelected : ''}`}
-                          onClick={() => setPickerMinute(m)}>
+                          onClick={() => pickMinute(m)}>
                           {pad(m)}
                         </button>
                       ))}
                     </div>
                   </div>
+                  {hour12 && (
+                    <div className={styles.timeColWrap}>
+                      <span className={styles.timeColLabel}>&nbsp;</span>
+                      <div className={styles.timeCol}>
+                        {['AM', 'PM'].map(p => (
+                          <button key={p} type="button"
+                            className={`${styles.timeColItem} ${(pickerHour >= 12) === (p === 'PM') ? styles.timeColItemSelected : ''}`}
+                            onClick={() => pickHour((pickerHour % 12) + (p === 'PM' ? 12 : 0))}>
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-            <div className={styles.pickerFooter}>
-              <button type="button" className={styles.nowBtn} onClick={handleReset}>Reset</button>
-              <button type="button"
-                className={`${styles.okBtn} ${!selectedDate ? styles.okBtnDisabled : ''}`}
-                onClick={handleOk} disabled={!selectedDate}>Save</button>
-            </div>
+            {!autoCommit && (
+              <div className={styles.pickerFooter}>
+                <button type="button" className={styles.nowBtn} onClick={handleReset}>Reset</button>
+                <button type="button"
+                  className={`${styles.okBtn} ${!selectedDate ? styles.okBtnDisabled : ''}`}
+                  onClick={handleOk} disabled={!selectedDate}>Save</button>
+              </div>
+            )}
           </div>
         </div>,
         document.body,
@@ -177,7 +222,7 @@ export function DateTimePicker({ value, onChange, label, required = false, place
     </div>
   );
 
-  if (!label && !errorText) return box;
+  if (!label && !errorText && !helperText) return box;
   return (
     <div className={styles.field}>
       {label && (
@@ -187,7 +232,9 @@ export function DateTimePicker({ value, onChange, label, required = false, place
         </label>
       )}
       {box}
-      {errorText && <span className={styles.errorText}>{errorText}</span>}
+      {errorText
+        ? <span className={styles.errorText}>{errorText}</span>
+        : helperText && <span className={styles.helperText}>{helperText}</span>}
     </div>
   );
 }

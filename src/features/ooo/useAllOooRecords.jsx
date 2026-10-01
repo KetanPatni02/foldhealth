@@ -71,7 +71,11 @@ export function useAllOooRecords({ highlightDate, embedded = false, oneLineDates
     }
     return list;
   }, [records, query, userFilter, status, dateRange, highlightDate]);
-  const pageRows = shown.slice((page - 1) * perPage, page * perPage);
+  // Never past the last page: deleting the only row on page 2 falls back to
+  // page 1 rather than showing an empty table.
+  const lastPage = Math.max(1, Math.ceil(shown.length / perPage));
+  const pageNow = Math.min(page, lastPage);
+  const pageRows = shown.slice((pageNow - 1) * perPage, pageNow * perPage);
   const userOptions = useMemo(() => [...new Set(records.map(r => r.userName))].sort(), [records]);
 
   const filterCount = (dateRange.length === 2 ? 1 : 0) + (status[0] !== 'All' ? 1 : 0) + (userFilter.length ? 1 : 0);
@@ -147,7 +151,7 @@ export function useAllOooRecords({ highlightDate, embedded = false, oneLineDates
         highlightDate={flashing ? highlightDate : undefined}
         embedded={embedded}
         pagination={shown.length > PER_PAGE_DEFAULT ? {
-          page,
+          page: pageNow,
           perPage,
           totalItems: shown.length,
           onPageChange: setPage,

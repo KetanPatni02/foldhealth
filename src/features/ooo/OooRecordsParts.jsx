@@ -25,6 +25,7 @@ export function RecordsBody({ loading, records, emptyLabel, actions, showUser, o
       )}
       onEdit={actions.openEdit}
       onDelete={actions.askDelete}
+      onReassign={(r) => actions.openReassign(r.userName, r.id)}
     />
   );
 }

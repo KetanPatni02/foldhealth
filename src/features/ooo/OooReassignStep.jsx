@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
-import { Input } from '../../components/Input/Input';
 import { InfoBar } from '../../components/InfoBar/InfoBar';
 import { Icon } from '../../components/Icon/Icon';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { RadioButton } from '../../components/RadioButton/RadioButton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
-import { describeRange, formatDate } from './oooUtils';
+import { formatDate } from './oooUtils';
 import styles from './ooo.module.css';
 
 // Static for now (Figma Eventus 16978:128520): the provider's appointments
@@ -34,37 +33,6 @@ export function OooReassignFooter() {
       <span aria-hidden="true">•</span>
       <span>No action: {TOTAL}</span>
     </div>
-  );
-}
-
-/**
- * Step 2 of New / Edit Out of Office Record, shown in the same drawer:
- * reassigning the provider's appointments in those dates (Figma Eventus
- * 17453:111722). For now this is a static layout: sample locations and
- * counts, nothing reassigned or cancelled.
- *
- * @param {object} props
- * @param {string} props.providerName
- * @param {string} props.startAt
- * @param {string} props.endAt
- */
-export function OooReassignStep({ providerName, startAt, endAt }) {
-  // Laid out as the Reassign Appointments drawer, with the record being
-  // saved in place of the record picker.
-  const { span, length } = describeRange(startAt, endAt);
-
-  return (
-      <div className={`${styles.form} ${styles.reassignForm}`}>
-        <Input label="Reassign From" required value={providerName} disabled readOnly />
-
-        <ReassignmentType
-          type="ooo"
-          locked
-          oooField={<Input label="Out of Office Record" value={span ? `${span} · ${length}` : ''} disabled readOnly />}
-        />
-
-        <ReassignProviders />
-      </div>
   );
 }
 
@@ -118,7 +86,7 @@ export function ReassignProviders({ ready = true }) {
           </span>
         </span>
       </div>
-      <InfoBar tone="info">Appointments are cancelled with the original provider and rebooked on the covering provider&apos;s EHR calendar. Double-booking may occur if that slot is already taken.</InfoBar>
+      <InfoBar tone="info" variant="inline">Appointments are cancelled with the original provider and rebooked on the covering provider&apos;s EHR calendar. Double-booking may occur if that slot is already taken.</InfoBar>
       <label className={styles.checkRow}>
         <Checkbox checked={false} aria-label="Select all" />
         <span>Select All</span>
@@ -150,9 +118,9 @@ export function ReassignProviders({ ready = true }) {
 }
 
 const TYPES = [
-  { key: 'ooo', label: 'Out of Office Reassignment' },
-  { key: 'permanent', label: 'Permanent Reassignment' },
-  { key: 'other', label: 'Other' },
+  { key: 'ooo', label: 'Out of Office' },
+  { key: 'permanent', label: 'Permanent' },
+  { key: 'other', label: 'One-time' },
 ];
 
 // "YYYY-MM-DD" → "MM/DD/YYYY" (local, so the day doesn't shift).
@@ -162,7 +130,7 @@ const isoToLabel = (iso) => { const [y, m, d] = iso.split('-').map(Number); retu
  * "Select Reassignment Type" (Figma Eventus 17599:119759): three radios,
  * and under them what that type needs. Out of office: the record
  * (`oooField`, a picker or the record being saved). Permanent: a note that
- * everything moves. Other: the date range to reassign.
+ * everything moves. One-time: the date range to reassign.
  *
  * @param {object}   props
  * @param {'ooo'|'permanent'|'other'} props.type
@@ -170,22 +138,20 @@ const isoToLabel = (iso) => { const [y, m, d] = iso.split('-').map(Number); retu
  * @param {string[]} props.range          – [startISO, endISO] or [] (Other)
  * @param {function} props.onRangeChange
  * @param {React.ReactNode} props.oooField
- * @param {boolean}  [props.locked]    – The type is fixed (a new or edited OOO
- *   record reassigns as out of office), so the radios are disabled
  */
-export function ReassignmentType({ type, onTypeChange, range = [], onRangeChange, oooField, locked = false }) {
+export function ReassignmentType({ type, onTypeChange, range = [], onRangeChange, oooField }) {
   const [anchor, setAnchor] = useState(null);
   return (
     <div className={`${styles.fieldGroup} ${styles.reassignGroup}`}>
       <span className={styles.groupTitle}>Select Reassignment Type</span>
       <div className={styles.radioRow} role="radiogroup" aria-label="Reassignment type">
         {TYPES.map(t => (
-          <RadioButton key={t.key} label={t.label} checked={type === t.key} disabled={locked} onChange={() => onTypeChange(t.key)} />
+          <RadioButton key={t.key} label={t.label} checked={type === t.key} onChange={() => onTypeChange(t.key)} />
         ))}
       </div>
       {type === 'ooo' && oooField}
       {type === 'permanent' && (
-        <InfoBar tone="warning">All appointments will be reassigned, this is typically done when provider leaves the organization.</InfoBar>
+        <InfoBar tone="warning" variant="inline">All appointments will be reassigned, this is typically done when provider leaves the organization.</InfoBar>
       )}
       {type === 'other' && (
         <>

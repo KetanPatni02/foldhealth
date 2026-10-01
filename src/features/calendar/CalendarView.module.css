@@ -210,21 +210,6 @@
   flex: 1;
 }
 
-/* Month: day names in their own row above the grid. */
-.monthDayNames {
-  display: grid; grid-template-columns: repeat(7, 1fr);
-  flex-shrink: 0;
-  background: var(--neutral-0);
-  border-bottom: 0.5px solid var(--neutral-150);
-}
-.monthDayNames span {
-  display: flex; align-items: center; justify-content: center;
-  height: var(--space-8);
-  font-size: var(--font-sm); font-weight: 500; letter-spacing: 0.02em; color: var(--neutral-400);
-}
-.monthDayNames span + span { border-left: 0.5px solid var(--neutral-150); }
-.calendarWrap :global(.sx__month-grid-day__header-day-name) { display: none; }
-
 /* Month grid — fill available height and distribute rows evenly */
 .calendarWrap :global(.sx__month-grid-wrapper) {
   height: 100% !important;

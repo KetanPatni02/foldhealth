@@ -1,20 +1,34 @@
 /* Out of Office on the calendar grid (Figma Eventus 17557:110750). */
 
-/* The provider's OOO time, as in the Day view (Figma Eventus 17587:116989):
-   an outlined area (its label is in the header), inset 4px, over the day
-   (Week) or the whole cell (Month). It takes the click, so the time can't
-   be booked; clicking opens the record to edit. */
+/* The provider's OOO time: a light pink area with a pink outline over the
+   day column (a part-day block is labelled along its top; a whole day in
+   the header). The fill multiplies with the grid beneath, so the time
+   slots' lines still show through at their own colour rather than being
+   washed over. It takes the click, so the time can't be booked; clicking
+   opens the record to edit. */
 .blockHost {
   position: absolute;
-  inset: 0 4px;
+  inset: 0;
   z-index: 1;
   border: 0.5px solid var(--accent-magenta);
-  border-radius: 4px;
-  /* Translucent so the time slots show through. */
-  background: color-mix(in srgb, var(--accent-light-magenta) 85%, transparent);
+  background: var(--accent-light-magenta);
+  mix-blend-mode: multiply;
   cursor: pointer;
   overflow: hidden;
+  transition: box-shadow var(--duration-instant) var(--ease-hover);
 }
+/* Dark theme: the tint is darker than the ground, so it lightens instead. */
+:global([data-theme="dark"]) .blockHost { mix-blend-mode: screen; }
+/* Lifts on hover like an appointment, so it reads as something to open
+   (the record), not an empty slot to book. */
+.blockHost:not(.blockHostPast):hover { box-shadow: var(--shadow-popover); }
+/* …and the day column's own hover tint stays off, so the block's colour
+   doesn't shift under the pointer. */
+:global(.sx__time-grid-day):has([data-ooo-host="block"]:hover) { background: transparent !important; }
+/* Fills the block so its tooltip opens anywhere over it. */
+.blockTipArea { position: absolute; inset: 0; }
+.blockHostPast { cursor: not-allowed; }
+.blockHost:focus-visible { outline: 2px solid var(--primary-300); outline-offset: -2px; }
 /* Week: the OOO day's header strip. Every header in that week gets room
    for it, so the day names stay in line. */
 :global(.sx__week-grid__date[data-ooo-day]) { position: relative; }
@@ -27,35 +41,6 @@
   font-size: var(--font-xs); font-weight: 500; line-height: 1; color: var(--neutral-0);
   white-space: nowrap;
 }
-/* Month (Figma Eventus 17590:117225): a dashed outline over the whole
-   cell, 2px in, labelled under the day number. */
-.blockHostMonth {
-  z-index: 0; inset: 2px;
-  border-style: dashed;
-  padding: var(--space-10) var(--space-3) var(--space-3);
-}
-/* The day number stays readable above the OOO block. */
-:global(.sx__month-grid-day:has([data-ooo-host="block"])) :global(.sx__month-grid-day__header) {
-  position: relative;
-  z-index: 1;
-}
-.monthLabel { display: flex; flex-direction: column; gap: 0; padding: var(--space-1) 0; min-width: 0; }
-.monthTitle {
-  display: flex; align-items: center; gap: var(--space-1); min-width: 0;
-  font-size: var(--font-base); font-weight: 500; line-height: 1.2; color: var(--neutral-500);
-  white-space: nowrap;
-}
-/* Month view, everyone in view: how many providers are out that day. */
-.countLink {
-  display: inline-flex; align-items: center; gap: var(--space-1);
-  margin: var(--space-1) var(--space-2);
-  padding: 0; border: none; background: none;
-  font-size: var(--font-sm); color: var(--neutral-400);
-  cursor: pointer; text-align: left;
-}
-.countLink:hover { color: var(--primary-300); text-decoration: underline; }
-.countLink:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; border-radius: 2px; }
-
 /* Week: appointments stay above the OOO area and open as usual. schedule-x
    writes an inline `z-index: 0` on each event (its overlap order), which
    otherwise tucks them under the block, so this has to be !important. */

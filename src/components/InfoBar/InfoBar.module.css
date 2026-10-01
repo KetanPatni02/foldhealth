@@ -27,3 +27,10 @@
 .tone-success { background: var(--status-success-light); color: var(--status-success); }
 .tone-warning { background: var(--status-warning-light); color: var(--status-warning); }
 .tone-error   { background: var(--status-error-light);   color: var(--status-error); }
+
+/* Inline: the compact in-flow alert (Figma Eventus 17629:122416). */
+.inline {
+  gap: var(--space-1);
+  padding: var(--space-1) calc(var(--space-1) * 1.5);
+  border: 0.5px solid color-mix(in srgb, currentColor 20%, transparent);
+}

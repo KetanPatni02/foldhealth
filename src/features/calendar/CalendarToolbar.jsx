@@ -6,7 +6,7 @@ import { Select } from '../../components/Select/Select';
 // form is what writes these values, so sourcing the filter options from the
 // same place keeps every chip option matchable against real rows.
 import { APPOINTMENT_STATUSES, LOCATION_OPTIONS } from '../../components/ScheduleDrawer/scheduleDrawerConstants';
-import { TIMEZONE_OPTIONS, VIEW_LABELS, VIEWS } from './calendarUtils';
+import { /* TIMEZONE_OPTIONS, */ VIEW_LABELS, VIEWS } from './calendarUtils';
 import { OOO_ICON } from '../ooo/oooUtils';
 import styles from './CalendarView.module.css';
 
@@ -35,8 +35,7 @@ export function CalendarToolbar({
   onFilterTypeChange,
   filterStatus,
   onFilterStatusChange,
-  timezone,
-  onTimezoneChange,
+  // timezone, onTimezoneChange: the Timezone filter is parked (see below).
   onScheduleSelect,
   onOpenOoo,
 }) {
@@ -105,9 +104,8 @@ export function CalendarToolbar({
           onChange={onFilterStatusChange}
         />
 
-        {/* Timezone — FilterChip singleSelect. Options are the human-
-            readable labels ("IST (GMT+5:30)"); we map back to the IANA
-            zone id (Asia/Kolkata) on change and forward. */}
+        {/* Timezone filter: parked for now (Day view doesn't follow it yet).
+            Uncomment to bring it back.
         <FilterChip
           label="Timezone"
           options={TIMEZONE_OPTIONS.map(t => t.label)}
@@ -118,6 +116,7 @@ export function CalendarToolbar({
           }}
           singleSelect
         />
+        */}
 
         <label className={styles.availabilityToggle}>
           <input type="checkbox" />

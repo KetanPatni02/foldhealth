@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ConfirmDialog } from '../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../store/useAppStore';
 import { toast } from '../../components/Toast/sonnerToast';
 import { OooRecordDrawer } from './OooRecordDrawer';
+import { ReassignAppointmentsDrawer } from './ReassignAppointmentsDrawer';
 
 /**
- * New / Edit / Delete for Out of Office records, shared by every list of
- * them. Render `elements` somewhere in the caller's tree.
+ * New / Edit / Delete for Out of Office records, and Reassign Appointments,
+ * shared by every list of them. Saving a new record (or new dates) opens
+ * Reassign Appointments with that provider and record filled in, each still
+ * changeable. Render `elements` somewhere in the caller's tree.
  *
  * @param {object}   [opts]
  * @param {object}   [opts.user]  – Who a new record is for; omit to pick in the form
@@ -17,6 +20,13 @@ export function useOooRecordActions({ user, users } = {}) {
   const [form, setForm] = useState(null); // { record?, user? }
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [reassign, setReassign] = useState(null); // { userName?, recordId? }
+  // Reassign From lists the caller's users, else everyone on the platform.
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  // Callers without their own list (e.g. Preferences) rely on everyone being loaded.
+  useEffect(() => { if (!users?.length) fetchPlatformUsers?.(); }, [users, fetchPlatformUsers]);
+  const pickUsers = users?.length ? users : (platformUsers || []);
 
   const elements = (
     <>
@@ -26,6 +36,22 @@ export function useOooRecordActions({ user, users } = {}) {
           user={form.record ? undefined : (form.user || user)}
           users={users}
           onClose={() => setForm(null)}
+          onSaved={(saved, { reassign: next } = {}) => {
+            if (next) setReassign({ userName: saved.userName, recordId: saved.id });
+          }}
+        />
+      )}
+      {reassign && (
+        <ReassignAppointmentsDrawer
+          users={pickUsers}
+          initialUser={reassign.userName}
+          initialRecordId={reassign.recordId}
+          onNewOoo={(name) => {
+            setReassign(null);
+            const u = pickUsers.find(x => x.name === name);
+            setForm({ user: u ? { id: u.id, name: u.name, email: u.email, role: u.role } : undefined });
+          }}
+          onClose={() => setReassign(null)}
         />
       )}
       {toDelete && (
@@ -58,6 +84,8 @@ export function useOooRecordActions({ user, users } = {}) {
     openNew: (forUser) => setForm({ user: forUser }),
     openEdit: (record) => setForm({ record }),
     askDelete: setToDelete,
+    // Reassign Appointments on its own, optionally for a provider (and one of their records).
+    openReassign: (userName, recordId) => setReassign({ userName, recordId }),
     elements,
   };
 }

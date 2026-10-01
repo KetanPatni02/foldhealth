@@ -12274,6 +12274,50 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // ── On call schedules (Create Schedule drawer) ──
+  // Shared by everyone; until the table exists they're kept for the
+  // session only (onCallLocal).
+  onCallSchedules: [],
+  onCallSchedulesLoading: false,
+  onCallSchedulesFetched: false,
+  onCallLocal: false,
+  fetchOnCallSchedules: async ({ force = false } = {}) => {
+    if (get().onCallSchedulesLoading || (get().onCallSchedulesFetched && !force)) return;
+    set({ onCallSchedulesLoading: true });
+    const { rowToOnCall, sampleOnCallSchedules } = await import('../features/ooo/onCallSeed');
+    const { data, error } = await supabase.from('on_call_schedules').select('*').order('from_date', { ascending: true });
+    if (!error) {
+      set({ onCallSchedules: (data || []).map(rowToOnCall), onCallSchedulesLoading: false, onCallSchedulesFetched: true, onCallLocal: false });
+      return;
+    }
+    console.warn('fetchOnCallSchedules:', error.message);
+    await get().fetchPlatformUsers?.();
+    set({ onCallSchedules: sampleOnCallSchedules(get().platformUsers || []), onCallSchedulesLoading: false, onCallSchedulesFetched: true, onCallLocal: true });
+  },
+  // Saves several at once (the drawer's "Add Another Schedule" blocks).
+  createOnCallSchedules: async (schedules) => {
+    const { onCallToRow } = await import('../features/ooo/onCallSeed');
+    await get().fetchOnCallSchedules();
+    const now = new Date().toISOString();
+    const me = get().currentUserProfile?.name || null;
+    const next = schedules.map((sc, i) => ({
+      ...sc,
+      id: `oncall-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 6)}`,
+      createdBy: me,
+      createdAt: now,
+    }));
+    if (!get().onCallLocal) {
+      const { error } = await supabase.from('on_call_schedules').insert(next.map(onCallToRow));
+      if (error) {
+        console.warn('createOnCallSchedules:', error.message);
+        get().showToast?.('Could not create the on call schedule. Try again.');
+        return null;
+      }
+    }
+    set(s => ({ onCallSchedules: [...s.onCallSchedules, ...next] }));
+    return next;
+  },
+
   analyticsCache: {},
   analyticsLoading: {},
   analyticsError: {},

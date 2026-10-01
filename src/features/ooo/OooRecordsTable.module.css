@@ -40,6 +40,9 @@
 
 .dates { font-variant-numeric: tabular-nums; }
 .reason { color: var(--neutral-300); white-space: normal; }
+.muted { color: var(--neutral-300); }
+/* "N to reassign" without an action (no link): plain text. */
+.toReassign { color: var(--neutral-400); }
 
 .userCell { display: flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 100%; }
 .userText { display: flex; flex-direction: column; min-width: 0; }

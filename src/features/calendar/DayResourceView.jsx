@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { OooIcon } from '../../components/Icon/OooIcon';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { canEdit, daySpan, recordsFor, recordsOnDate } from '../ooo/oooUtils';
 import styles from './DayResourceView.module.css';
 
@@ -69,7 +70,8 @@ export function DayResourceView({ date, users, appointments, oooRecords, timezon
 
   const clickSlot = (col, slot) => {
     const minute = slot * SLOT_MIN;
-    const inOoo = col.ooo.find(({ span }) => minute >= span.start * 1440 && minute < span.end * 1440);
+    // Any overlap counts: 11:00–11:30 can't be booked when OOO starts at 11:07.
+    const inOoo = oooAt(col, minute);
     if (inOoo) {
       // A past record is read-only; its time still can't be booked.
       if (canEdit(inOoo.record)) onEditOoo(inOoo.record);
@@ -88,6 +90,8 @@ export function DayResourceView({ date, users, appointments, oooRecords, timezon
   };
 
   const top = (min) => (min / 60) * HOUR_PX;
+  // The OOO record a half-hour slot starting at `minute` touches, if any.
+  const oooAt = (col, minute) => col.ooo.find(({ span }) => minute < span.end * 1440 && minute + SLOT_MIN > span.start * 1440);
 
   return (
     <div className={styles.wrap} ref={scrollRef}>
@@ -99,7 +103,9 @@ export function DayResourceView({ date, users, appointments, oooRecords, timezon
         {columns.map(col => (
           <div key={col.name} className={`${styles.colHead} ${styles.sticky}`}>
             <span className={styles.colName}>{col.name}</span>
-            {col.ooo.length > 0 && (
+            {/* Out for all of the day: labelled here. Part of a day
+                is labelled on its block instead. */}
+            {col.ooo.some(({ span }) => span.start <= 0 && span.end >= 1) && (
               <span className={styles.oooStrip}>
                 <OooIcon size={12} color="var(--neutral-0)" arrowColor="var(--accent-magenta)" />
                 Out of Office
@@ -121,7 +127,7 @@ export function DayResourceView({ date, users, appointments, oooRecords, timezon
               <button
                 key={slot}
                 type="button"
-                className={[styles.slot, slot % 2 ? styles.slotHalf : ''].filter(Boolean).join(' ')}
+                className={[styles.slot, slot % 2 ? styles.slotHalf : '', oooAt(col, slot * SLOT_MIN) ? styles.slotOoo : ''].filter(Boolean).join(' ')}
                 style={{ top: slot * (HOUR_PX / 2), height: HOUR_PX / 2 }}
                 aria-label={`${col.name}, ${hourLabel(Math.floor(slot / 2))}${slot % 2 ? ' 30' : ''}`}
                 onClick={() => clickSlot(col, slot)}
@@ -133,9 +139,31 @@ export function DayResourceView({ date, users, appointments, oooRecords, timezon
             {/* Figma Eventus 17587:116989: the OOO time as an outlined
                 area; its label lives in the header so it can't collide
                 with an appointment. */}
-            {col.ooo.map(({ record, span }) => (
-              <div key={record.id} className={styles.oooBlock} style={{ top: top(span.start * 1440), height: top((span.end - span.start) * 1440) }} />
-            ))}
+            {/* It takes the click (opening the record; a past one is read-only),
+                lifts on hover like an appointment and says what the click
+                does. A part-day block is labelled along its top. */}
+            {col.ooo.map(({ record, span }) => {
+              const block = (
+                <button
+                  key={record.id}
+                  type="button"
+                  className={canEdit(record) ? styles.oooBlock : `${styles.oooBlock} ${styles.oooBlockPast}`}
+                  style={{ top: top(span.start * 1440), height: top((span.end - span.start) * 1440) }}
+                  aria-label={canEdit(record) ? `Edit ${col.name}'s Out of Office record` : `${col.name}, Out of Office`}
+                  onClick={() => { if (canEdit(record)) onEditOoo(record); }}
+                >
+                  {!(span.start <= 0 && span.end >= 1) && (
+                    <span className={styles.oooStrip}>
+                      <OooIcon size={12} color="var(--neutral-0)" arrowColor="var(--accent-magenta)" />
+                      Out of Office
+                    </span>
+                  )}
+                </button>
+              );
+              return canEdit(record)
+                ? <Tooltip key={record.id} label="Edit Out of Office Record" followCursor>{block}</Tooltip>
+                : block;
+            })}
             {/* Calendar slot (Figma Eventus 17581:116489): a tinted card
                 with a 4px left bar, the patient with visit-mode and repeat
                 icons, then the reason and type • status. */}

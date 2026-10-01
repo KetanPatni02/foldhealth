@@ -149,7 +149,15 @@
   box-shadow: 0 12px 60px -15px rgba(0, 0, 0, 0.18);
   max-height: 240px;
   overflow-y: auto;
+  /* Opens with a short fade and drop instead of popping in. */
+  transform-origin: top center;
+  animation: selectMenuIn var(--duration-medium) var(--ease-out);
 }
+@keyframes selectMenuIn {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .menu { animation: none; } }
 
 /* Portaled variant — lives on document.body, so it's positioned against the
    viewport from the trigger's measured rect instead of its wrapper. Lets the
