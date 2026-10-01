@@ -125,7 +125,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
   //     shown on submitted / signed notes only.
   //   • reviewTask nests a Request-for-Sign-off task card inside a
   //     Pending Review card so the reviewer is visible right there.
-  const buildDetailCard = ({ codes, status, reviewer, signedDate, reviewTask } = {}) => {
+  const buildDetailCard = ({ codes, status, reviewer, signedDate, reviewTask, noteId, pdfDataUrl } = {}) => {
     const gapList = codes || [];
     const multi = gapList.length > 1;
     const singleCode = gapList[0];
@@ -144,6 +144,10 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
         : `Signed by ${reviewer || 'Provider'}`;
     }
     return {
+      noteId,
+      pdfDataUrl,
+      memberId: member?.id,
+      gapCode: singleCode,
       title,
       chip,
       status,
@@ -175,7 +179,7 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
       icon: 'solar:notes-linear',
       gapCodes: codes,
       t: 'clinical_note',
-      detailCard: buildDetailCard({ codes, status: 'Draft' }),
+      detailCard: buildDetailCard({ codes, status: 'Draft', noteId: note?.id }),
     });
     showToast('Draft saved');
   };
@@ -230,7 +234,10 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
         codes,
         status: 'Pending Review',
         reviewer: reviewer.name,
+        noteId: note?.id,
+        pdfDataUrl: pdf?.dataUrl,
         reviewTask: {
+          taskId: task?.id,
           title: 'Request for Sign-off - Consolidated Clinical Note',
           assignee: reviewer.name,
           status: 'Pending',
@@ -284,6 +291,8 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
         status: 'Signed',
         reviewer: 'Provider',
         signedDate: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        noteId: note?.id,
+        pdfDataUrl: pdf?.dataUrl,
       }),
     });
     showToast('Saved and signed — provider sign path');
@@ -322,6 +331,8 @@ export function useClinicalNotePanel({ member, gapCode, onClose, editingTaskId =
         status: 'Signed',
         reviewer: 'Provider',
         signedDate: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        noteId: note?.id,
+        pdfDataUrl: pdf?.dataUrl,
       }),
     });
     if (pdf?.dataUrl) {

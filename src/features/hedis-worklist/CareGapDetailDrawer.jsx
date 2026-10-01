@@ -7,6 +7,7 @@ import { ClinicalNotePanel } from './ClinicalNotePanel';
 import { useClinicalNotePanel } from './useClinicalNotePanel';
 import { ClinicalNoteWorkspaceBody, HeaderActions as ClinicalNoteHeaderActions } from './ClinicalNotePanelParts';
 import { ReviewerPickerPopover } from './ReviewerPickerPopover';
+import { ClinicalNotesTab } from './ClinicalNotesTab';
 import { useAddTaskDrawer } from '../tasks/useAddTaskDrawer';
 import { AddTaskDrawerBody } from '../tasks/AddTaskDrawerBody';
 import { useScheduleDrawer } from '../../components/ScheduleDrawer/useScheduleDrawer';
@@ -43,6 +44,18 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const appointments = useAppStore(s => s.appointments);
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
   useEffect(() => { fetchAppointments?.(); }, [fetchAppointments]);
+  // Clinical notes + tasks slices used by the Clinical Notes and Tasks tabs.
+  const memberNotes = useAppStore(s => (member?.id ? s.clinicalNotesByMember?.[member.id] : null)) || [];
+  const fetchClinicalNotesForMember = useAppStore(s => s.fetchClinicalNotesForMember);
+  useEffect(() => { if (member?.id) fetchClinicalNotesForMember?.(member.id); }, [member?.id, fetchClinicalNotesForMember]);
+  const allTasks = useAppStore(s => s.tasks);
+  const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
+  // The eye affordance inside the Clinical Notes tab (and Activity Log) can
+  // navigate to the Tasks page for a linked sign-off task. When that
+  // navigation fires (activePage flips to 'tasks'), close this drawer so
+  // the reviewer isn't looking at the Tasks page through our overlay.
+  const activePage = useAppStore(s => s.activePage);
+  useEffect(() => { if (activePage === 'tasks') onClose?.(); }, [activePage, onClose]);
   // Slice appointments to just this member. Supabase persists patient_id,
   // so a save from the inline Schedule pane immediately shows up here
   // after fetchAppointments refreshes.
@@ -195,10 +208,34 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
   const status = gap?.status ?? 'Open';
   const statusLocked = status === 'Completed';
   const activityLogEntries = toActivityLogEntries(activityEntries);
+  // Clinical Notes tab reuses the ActivityLog note-variant card by
+  // filtering activity entries to just t:'clinical_note'. That guarantees
+  // the tab and the log render the exact same Draft / Pending Review /
+  // Signed card format.
+  const clinicalNoteEntries = activityLogEntries.filter(e => e.t === 'clinical_note' || e.t === 'group');
+  // Count of actual note entries (excludes month-group headers) — used for
+  // the tab label and empty-state gating.
+  const clinicalNoteCount = clinicalNoteEntries.filter(e => e.t === 'clinical_note').length;
+  // Tasks tab lists every task tied to this HEDIS member — sign-off tasks
+  // (created by createCareGapSignOffTask) always have hedisMemberId set;
+  // manually created tasks land here via the `member` denormalized field.
+  const memberTasks = (allTasks || []).filter(
+    t => (t.hedisMemberId && t.hedisMemberId === member?.id)
+      || (member?.name && t.member === member.name),
+  );
+  const openTaskDetail = (task) => {
+    // Reuses the same task-drawer opener the notifications trigger uses:
+    // sets the Tasks page as active and stamps pendingOpenTaskId so
+    // TasksView mounts the TaskDetailDrawer for that task on next paint.
+    openTaskFromNotification?.(task.id);
+    onClose?.();
+  };
   const tabCounts = {
     'Activity Log': activityEntries?.length ?? 0,
     Outreaches: OUTREACH_LOG_COUNT,
     'Appt/Reminders': memberAppointments.length,
+    'Clinical Notes': clinicalNoteCount,
+    Tasks: memberTasks.length,
   };
 
   const goPrev = () => { if (canPrev) { setCurrentCode(gaps[idx - 1].code); setStatusOpen(false); } };
@@ -378,6 +415,43 @@ export function CareGapDetailDrawer({ member, gapCode, year, onClose }) {
               </div>
             ) : activeTab === 'Outreaches' ? (
               <OutreachTab defaultPrograms={[gap.code]} defaultLogFor="care-program" hideLogForRow />
+            ) : activeTab === 'Clinical Notes' ? (
+              // Flat column-headed list per Figma 1030:78586 — no timeline
+              // rail, no month grouping. Card affordances are shared with
+              // the Activity Log via ClinicalNoteCardActions.
+              <ClinicalNotesTab entries={clinicalNoteEntries} />
+            ) : activeTab === 'Tasks' ? (
+              memberTasks.length === 0 ? (
+                <div className={styles.emptyTab}>
+                  <Icon name="solar:checklist-minimalistic-linear" size={36} color="var(--neutral-200)" />
+                  <p className={styles.emptyTabTitle}>No tasks for this care gap yet.</p>
+                </div>
+              ) : (
+                <div className={styles.apptList}>
+                  {memberTasks.map(t => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={styles.apptCard}
+                      onClick={() => openTaskDetail(t)}
+                    >
+                      <Icon name="solar:hamburger-menu-linear" size={16} color="var(--secondary-300)" />
+                      <div className={styles.apptCardBody}>
+                        <div className={styles.apptCardTitle}>{t.name || 'Task'}</div>
+                        {t.assigned_to && (
+                          <div className={styles.apptCardMeta}>Assignee: {t.assigned_to}</div>
+                        )}
+                      </div>
+                      {t.status && (
+                        <span className={styles.apptCardStatus}>
+                          {t.status === 'completed' ? 'Completed' : t.status === 'pending' ? 'Pending' : t.status}
+                        </span>
+                      )}
+                      <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
+                    </button>
+                  ))}
+                </div>
+              )
             ) : activeTab === 'Appt/Reminders' ? (
               memberAppointments.length === 0 ? (
                 <div className={styles.emptyTab}>

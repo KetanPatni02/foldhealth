@@ -1225,6 +1225,20 @@ export const useAppStore = create((set, get) => ({
   },
   clearPendingOpenTaskId: () => set({ pendingOpenTaskId: null }),
 
+  // "Reopen this clinical note for editing" signal — set from the
+  // ActivityLog note-variant card's pencil affordance. The HEDIS worklist
+  // consumes it to open CareGapDetailDrawer at the requested gap and
+  // route the note back through the ClinicalNotePanel edit path.
+  pendingOpenClinicalNote: null,
+  openClinicalNoteDrawer: ({ memberId, gapCode } = {}) => {
+    if (!memberId || !gapCode) return;
+    set({ activePage: 'population', pendingOpenClinicalNote: { memberId, gapCode } });
+    try {
+      if (typeof window !== 'undefined') window.location.hash = `#/hedis?member=${encodeURIComponent(memberId)}&gap=${encodeURIComponent(gapCode)}`;
+    } catch { /* */ }
+  },
+  clearPendingOpenClinicalNote: () => set({ pendingOpenClinicalNote: null }),
+
   // One-shot signal for "open Preferences on the profile fields". The
   // `profile.name_incomplete` notification needs to land the user on the form
   // that fixes it; PreferencesDrawer's open state is local to TopBar, so the

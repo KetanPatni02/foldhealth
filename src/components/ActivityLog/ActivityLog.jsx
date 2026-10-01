@@ -442,74 +442,124 @@ function DetailCardEntryBody({ entry, variant }) {
               </div>
             </div>
           ) : (
-            <>
-              {dc.subMeta && <div className={styles.detailCardSubMeta}>{dc.subMeta}</div>}
-              <div className={styles.detailCardRow}>
-                <div className={styles.detailCardText}>
-                  <div className={styles.detailCardTitleRow}>
-                    <span className={styles.detailCardTitle}>{dc.title}</span>
-                    {dc.chip && <Badge tone="grey" size="M" label={dc.chip} />}
-                  </div>
-                  {dc.subtitle && <div className={styles.detailCardSubtitle}>{dc.subtitle}</div>}
-                </div>
-                <div className={styles.detailCardTrailing}>
-                  {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
-                  {/* Draft rows use a pencil (edit) affordance; every other
-                      state uses the read-only eye (preview) icon per the
-                      Figma Clinical Notes list spec. */}
-                  <button
-                    type="button"
-                    className={styles.detailCardIconBtn}
-                    aria-label={dc.status === 'Draft' ? 'Edit' : 'Preview'}
-                  >
-                    <Icon
-                      name={dc.status === 'Draft' ? 'solar:pen-linear' : 'solar:eye-linear'}
-                      size={14}
-                      color="var(--neutral-300)"
-                    />
-                  </button>
-                  <button type="button" className={styles.detailCardIconBtn} aria-label="More">
-                    <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
-                  </button>
-                </div>
-              </div>
-              {dc.linkedGroups && (
-                <button type="button" className={styles.detailCardLink}>
-                  Linked Score Groups
-                  <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--primary-300)" />
-                </button>
-              )}
-              {/* Nested Request-for-Sign-off task card — appears on Pending
-                  Review entries so the reviewer / assignee is visible right
-                  underneath the note without opening the task drawer. */}
-              {dc.reviewTask && (
-                <div className={styles.detailCardNested}>
-                  <span className={styles.detailCardHandle}>
-                    <Icon name="solar:hamburger-menu-linear" size={16} color="var(--secondary-300)" />
-                  </span>
-                  <div className={styles.detailCardText}>
-                    <div className={styles.detailCardTitleRow}>
-                      <span className={styles.detailCardTitle}>{dc.reviewTask.title || 'Request for Sign-off - Clinical Note'}</span>
-                      {dc.reviewTask.locked && (
-                        <span className={styles.detailCardLock}>
-                          <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="var(--neutral-300)" />
-                        </span>
-                      )}
-                    </div>
-                    {dc.reviewTask.assignee && (
-                      <div className={styles.detailCardSubtitle}>Assignee: {dc.reviewTask.assignee}</div>
-                    )}
-                  </div>
-                  <div className={styles.detailCardTrailing}>
-                    {dc.reviewTask.status && <Badge tone={statusTone(dc.reviewTask.status)} size="M" label={dc.reviewTask.status} />}
-                    <button type="button" className={styles.detailCardIconBtn} aria-label="Open task">
-                      <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+            <ClinicalNoteCardActions dc={dc} />
           )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/* Note-variant card body — the shared Clinical Note affordance. Extracted
+   so the eye / edit / task-arrow buttons can hook into the store's task
+   opener and PDF viewer instead of being visual-only. Exported so the
+   HEDIS Clinical Notes tab can render the same card without the
+   ActivityLog's timeline rail. */
+export function ClinicalNoteCardActions({ dc }) {
+  const openTaskFromNotification = useAppStore(s => s.openTaskFromNotification);
+  const openClinicalNoteDrawer = useAppStore(s => s.openClinicalNoteDrawer);
+  const showToast = useAppStore(s => s.showToast);
+  // Draft rows key on the pencil, which reopens the note (edit path).
+  // Submitted / Signed rows key on the eye — for a Pending Review note we
+  // reopen the linked sign-off task so the reviewer lands back in the
+  // ClinicalNotePanel with the exact same fields they filled out,
+  // matching Figma 511:105429. Signed notes without a review task fall
+  // back to the stored PDF dataUrl.
+  const handlePrimary = () => {
+    if (dc.status === 'Draft') {
+      if (openClinicalNoteDrawer && dc.memberId && dc.gapCode) {
+        openClinicalNoteDrawer({ memberId: dc.memberId, gapCode: dc.gapCode });
+      } else {
+        showToast?.('Reopening this draft — coming soon');
+      }
+      return;
+    }
+    if (dc.reviewTask?.taskId) {
+      openTaskFromNotification?.(dc.reviewTask.taskId);
+      return;
+    }
+    if (dc.pdfDataUrl) {
+      try {
+        const w = window.open(dc.pdfDataUrl, '_blank');
+        w?.focus?.();
+      } catch (_) { /* popup blocker */ }
+    } else {
+      showToast?.('No PDF attached to this note.');
+    }
+  };
+  const handleOpenTask = () => {
+    if (dc.reviewTask?.taskId) openTaskFromNotification?.(dc.reviewTask.taskId);
+    else showToast?.('No linked review task.');
+  };
+  return (
+    <>
+      {dc.subMeta && <div className={styles.detailCardSubMeta}>{dc.subMeta}</div>}
+      <div className={styles.detailCardRow}>
+        <div className={styles.detailCardText}>
+          <div className={styles.detailCardTitleRow}>
+            <span className={styles.detailCardTitle}>{dc.title}</span>
+            {dc.chip && <Badge tone="grey" size="M" label={dc.chip} />}
+          </div>
+          {dc.subtitle && <div className={styles.detailCardSubtitle}>{dc.subtitle}</div>}
+        </div>
+        <div className={styles.detailCardTrailing}>
+          <span className={styles.detailCardStatusSlot}>
+            {dc.status && <Badge tone={statusTone(dc.status)} size="M" label={dc.status} />}
+          </span>
+          <span className={styles.detailCardActionsSlot}>
+            <button
+              type="button"
+              className={styles.detailCardIconBtn}
+              aria-label={dc.status === 'Draft' ? 'Edit' : 'Preview'}
+              onClick={handlePrimary}
+            >
+              <Icon
+                name={dc.status === 'Draft' ? 'solar:pen-linear' : 'solar:eye-linear'}
+                size={14}
+                color="var(--neutral-300)"
+              />
+            </button>
+            <span className={styles.detailCardActionsDivider} aria-hidden="true" />
+            <button type="button" className={styles.detailCardIconBtn} aria-label="More">
+              <Icon name="solar:menu-dots-linear" size={14} color="var(--neutral-300)" />
+            </button>
+          </span>
+        </div>
+      </div>
+      {dc.linkedGroups && (
+        <button type="button" className={styles.detailCardLink}>
+          Linked Score Groups
+          <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--primary-300)" />
+        </button>
+      )}
+      {dc.reviewTask && (
+        <div className={styles.detailCardNested}>
+          <span className={styles.detailCardHandle}>
+            <Icon name="solar:hamburger-menu-linear" size={16} color="var(--secondary-300)" />
+          </span>
+          <div className={styles.detailCardText}>
+            <div className={styles.detailCardTitleRow}>
+              <span className={styles.detailCardTitle}>{dc.reviewTask.title || 'Request for Sign-off - Clinical Note'}</span>
+              {dc.reviewTask.locked && (
+                <span className={styles.detailCardLock}>
+                  <Icon name="solar:lock-keyhole-minimalistic-linear" size={12} color="var(--neutral-300)" />
+                </span>
+              )}
+            </div>
+            {dc.reviewTask.assignee && (
+              <div className={styles.detailCardSubtitle}>Assignee: {dc.reviewTask.assignee}</div>
+            )}
+          </div>
+          <div className={styles.detailCardTrailing}>
+            <span className={styles.detailCardStatusSlot}>
+              {dc.reviewTask.status && <Badge tone={statusTone(dc.reviewTask.status)} size="M" label={dc.reviewTask.status} />}
+            </span>
+            <span className={styles.detailCardActionsSlot}>
+              <button type="button" className={styles.detailCardIconBtn} aria-label="Open task" onClick={handleOpenTask}>
+                <Icon name="solar:arrow-right-up-linear" size={14} color="var(--neutral-400)" />
+              </button>
+            </span>
+          </div>
         </div>
       )}
     </>
