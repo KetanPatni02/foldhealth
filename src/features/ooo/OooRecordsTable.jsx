@@ -1,11 +1,12 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
+import { Link } from '../../components/Link/Link';
 import { useAppStore } from '../../store/useAppStore';
-import { canDelete, canEdit, formatDateTime, initialsOf, oooStatus, recordsOnDate, STATUS_TONE } from './oooUtils';
+import { appointmentsToReassign, canDelete, canEdit, capFirst, formatDateTime, initialsOf, oooStatus, recordsOnDate, STATUS_TONE } from './oooUtils';
 import styles from './OooRecordsTable.module.css';
 
 // In a drawer: fixed widths, dates stacked, Reason takes the rest. On the
@@ -15,15 +16,18 @@ const columnsFor = (wide, showUser) => [
   ...(showUser ? [{ key: 'user', label: 'User', sticky: 'left', left: 0, width: wide ? '22%' : 280 }] : []),
   { key: 'dates', label: 'Dates', width: wide ? '30%' : 200 },
   { key: 'reason', label: 'Reason' },
-  { key: 'status', label: 'Status', width: wide ? '15%' : 140 },
+  { key: 'status', label: 'Status', width: wide ? '12%' : 120 },
+  { key: 'reassign', label: 'Reassignment', width: wide ? '14%' : 150 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 104 },
 ];
 
 /**
  * Out of Office records in the shared WorklistShell table: Dates, Reason,
- * Status and Actions, with a sticky User column when it lists several
- * users. Past records are read-only; an ongoing one can be edited but not
- * deleted.
+ * Status, Reassignment and Actions, with a sticky User column when it lists
+ * several users. Past records are read-only; an ongoing one can be edited
+ * but not deleted. Reassignment keeps the scheduler's to-do: how many of the
+ * provider's upcoming appointments in those dates still need moving, which
+ * opens Reassign Appointments for that record (a link).
  *
  * @param {object}   props
  * @param {object[]} props.records
@@ -36,8 +40,9 @@ const columnsFor = (wide, showUser) => [
  * @param {object}   [props.pagination]    – { page, perPage, totalItems, onPageChange, onPageSizeChange }
  * @param {function} props.onEdit          – (record) => void
  * @param {function} props.onDelete        – (record) => void
+ * @param {function} [props.onReassign]    – (record) => void
  */
-export function OooRecordsTable({ records, showUser = false, oneLineDates = false, highlightDate, loading, emptyState, embedded = false, pagination, onEdit, onDelete }) {
+export function OooRecordsTable({ records, showUser = false, oneLineDates = false, highlightDate, loading, emptyState, embedded = false, pagination, onEdit, onDelete, onReassign }) {
   const columns = useMemo(() => columnsFor(oneLineDates, showUser), [showUser, oneLineDates]);
   const highlighted = new Set(highlightDate ? recordsOnDate(records, highlightDate).map(r => r.id) : []);
   const now = new Date();
@@ -48,6 +53,15 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
     const byName = new Map((taskProfiles || []).filter(p => p.email).map(p => [String(p.name || '').trim().toLowerCase(), p.email]));
     return (r) => r.userEmail || byName.get(String(r.userName || '').trim().toLowerCase()) || '';
   }, [taskProfiles]);
+
+  // Appointments feed the Reassignment column; load them once if this page
+  // is the first to need them (e.g. Settings opened before the calendar).
+  const appointments = useAppStore(s => s.appointments);
+  const fetchAppointments = useAppStore(s => s.fetchAppointments);
+  const askedRef = useRef(false);
+  useEffect(() => {
+    if (!askedRef.current && !(appointments || []).length) { askedRef.current = true; fetchAppointments?.(); }
+  }, [appointments, fetchAppointments]);
 
   const renderRow = (r) => {
     const status = oooStatus(r, now);
@@ -71,8 +85,28 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
           {oneLineDates ? ' ' : <br />}
           {formatDateTime(r.endAt)}
         </td>
-        <td className={`${styles.td} ${styles.reason}`}>{r.reason || '–'}</td>
+        <td className={`${styles.td} ${styles.reason}`}>{capFirst(r.reason) || '–'}</td>
         <td className={styles.td}><Badge tone={STATUS_TONE[status]} size="M" label={status} /></td>
+        <td className={styles.td}>
+          {status === 'Past' ? <span className={styles.muted}>–</span> : (() => {
+            const left = appointmentsToReassign(r, appointments, now).length;
+            if (!left) return <span className={styles.muted}>No appointments</span>;
+            const label = `${left} to reassign`;
+            return onReassign
+              ? (
+                <Link
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onReassign(r)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onReassign(r); } }}
+                  aria-label={`Reassign ${left} appointment${left === 1 ? '' : 's'}`}
+                >
+                  {label}
+                </Link>
+              )
+              : <span className={styles.toReassign}>{label}</span>;
+          })()}
+        </td>
         <td className={`${styles.td} ${styles.stickyRight}`}>
           <span className={styles.actionsCell}>
             {/* Both glyphs at 16px (Solar's pen fills its frame, so the trash

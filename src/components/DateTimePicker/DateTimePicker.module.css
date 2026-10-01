@@ -8,6 +8,7 @@
 }
 .required { width: 4px; height: 4px; border-radius: 50%; background: var(--status-error); flex-shrink: 0; font-size: 0; }
 .errorText { font-size: var(--font-sm); line-height: 1.2; color: var(--status-error); }
+.helperText { font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); }
 
 .dateInputWrap {
   width: 200px;
@@ -23,6 +24,9 @@
 }
 .fullWidth { width: 100%; }
 .hasError { border-color: var(--status-error); }
+.isDisabled { background: var(--neutral-50); }
+.isDisabled .datePickerTrigger { cursor: not-allowed; }
+.isDisabled .datePickerText { color: var(--neutral-200); }
 
 .datePickerTrigger {
   width: 100%;
@@ -132,6 +136,9 @@
   gap: var(--space-2);
   min-width: 100px;
 }
+
+/* 12-hour mode adds an AM/PM column: room for three 44px lists. */
+.timeColumns12 { min-width: 160px; }
 
 .timeColsRow { display: flex; gap: var(--space-1); align-items: stretch; flex: 1; min-height: 0; }
 

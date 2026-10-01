@@ -127,7 +127,8 @@ export function validateOoo(values, { now = new Date(), original = null, existin
   if (!errors.startAt && !errors.endAt && values.userName) {
     const clash = (existing || []).find(r => r.id !== original?.id && sameName(r.userName, values.userName)
       && s < toMs(r.endAt) && e > toMs(r.startAt));
-    if (clash) errors.startAt = `Overlaps this provider's Out of Office record for ${describeRange(clash.startAt, clash.endAt).span}.`;
+    // Keyed on its own: it's about the pair of dates, not either field.
+    if (clash) errors.overlap = 'An out of office record already exists for this duration';
   }
   if (values.autoReply && !String(values.autoReplyMessage || '').trim()) errors.autoReplyMessage = 'Add an auto reply message.';
   return errors;
@@ -143,30 +144,60 @@ export function sortRecords(records, now = new Date()) {
   });
 }
 
+/** "personal leave" → "Personal leave". */
+export const capFirst = (v) => { const t = String(v || ''); return t ? t[0].toUpperCase() + t.slice(1) : t; };
+
 export const initialsOf = (name) => String(name || '?').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
 
 /**
- * A record's span in words, and how long it is: { span: "Oct 2 – Oct 15, 2026",
- * length: "13 days" }. Times show when it doesn't start and end at midnight:
- * { span: "Oct 20, 2026, 9:00 AM – 1:00 PM", length: "4 hours" }.
+ * A record's span, and how long it is: { span: "10/02/2026 – 10/14/2026",
+ * length: "13 days" } for 10/02 to 10/15 at midnight (whole days show the
+ * last day out). Times show when it doesn't start and end at midnight:
+ * { span: "10/20/2026, 09:00AM – 01:00PM", length: "4 hours" }.
  */
 export function describeRange(startAt, endAt) {
   const s = new Date(startAt), e = new Date(endAt);
   if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) return { span: '', length: '' };
-  const md = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const t = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  // MM/DD/YYYY and "09:00AM", as formatDate / formatDateTime, so the
+  // whole flow reads one way.
+  const t = (d) => `${pad(d.getHours() % 12 || 12)}:${pad(d.getMinutes())}${d.getHours() < 12 ? 'AM' : 'PM'}`;
   const allDay = s.getHours() === 0 && s.getMinutes() === 0 && e.getHours() === 0 && e.getMinutes() === 0;
-  const sameYear = s.getFullYear() === e.getFullYear();
-  const hours = Math.round((e - s) / 3600000);
+  const mins = Math.round((e - s) / 60000);
+  const hours = Math.round(mins / 60);
   const days = Math.round(hours / 24);
-  const length = hours < 24 ? `${hours} ${hours === 1 ? 'hour' : 'hours'}` : `${days} ${days === 1 ? 'day' : 'days'}`;
+  const plural = (n, unit) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+  const length = mins < 60 ? plural(mins, 'minute') : hours < 24 ? plural(hours, 'hour') : plural(days, 'day');
   let span;
+  // Whole days end at midnight, so the last day out is the one before.
   if (allDay) {
-    span = `${md(s)}${sameYear ? '' : `, ${s.getFullYear()}`} – ${md(e)}, ${e.getFullYear()}`;
-  } else if (s.toDateString() === e.toDateString()) {
-    span = `${md(s)}, ${s.getFullYear()}, ${t(s)} – ${t(e)}`;
-  } else {
-    span = `${md(s)}, ${t(s)} – ${md(e)}, ${t(e)}, ${e.getFullYear()}`;
-  }
+    const last = new Date(e.getFullYear(), e.getMonth(), e.getDate() - 1);
+    span = last.getTime() <= s.getTime() ? formatDate(s) : `${formatDate(s)} – ${formatDate(last)}`;
+  } else if (s.toDateString() === e.toDateString()) span = `${formatDate(s)}, ${t(s)} – ${t(e)}`;
+  else span = `${formatDate(s)}, ${t(s)} – ${formatDate(e)}, ${t(e)}`;
   return { span, length };
+}
+
+// "10-02-2026" + "9:30 am" → that local moment (ms), or NaN.
+function apptStart(a) {
+  const d = /^(\d{2})-(\d{2})-(\d{4})$/.exec(a?.date || '');
+  const t = /^(\d{1,2}):(\d{2})\s*(am|pm)$/i.exec(String(a?.time_start || '').trim());
+  if (!d || !t) return NaN;
+  const h = (Number(t[1]) % 12) + (t[3].toLowerCase() === 'pm' ? 12 : 0);
+  return new Date(+d[3], +d[1] - 1, +d[2], h, +t[2]).getTime();
+}
+
+/**
+ * The provider's appointments still to reassign for a record: not
+ * cancelled, starting inside its dates and not yet in the past (what's
+ * already happened can't move). Until reassignment is tracked, every such
+ * appointment counts as still to move.
+ */
+export function appointmentsToReassign(record, appointments, now = new Date()) {
+  const from = Math.max(toMs(record.startAt), toMs(now));
+  const to = toMs(record.endAt);
+  return (appointments || []).filter((a) => {
+    if (a.status === 'Cancelled' || !sameName(a.primary_user, record.userName)) return false;
+    const at = apptStart(a);
+    return at >= from && at < to;
+  });
 }

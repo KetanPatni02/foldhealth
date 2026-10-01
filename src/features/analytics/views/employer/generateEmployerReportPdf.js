@@ -857,6 +857,25 @@ function pageHeader(doc, { title, generatedOn, logo, clientLogo }) {
   polygon(doc, [[179, top], [PAGE.w, top], [PAGE.w, bottom], [183.5, bottom]]);
 }
 
+/**
+ * The page number on a drawn footer: in a small rounded square so it reads
+ * apart from the footer's own content. A translucent white square with
+ * white digits on a dark footer; a grey one with dark digits on a light one.
+ * `right` is the square's right edge, `mid` its vertical centre.
+ */
+function footerPageBadge(doc, n, right, mid, onDark) {
+  const label = String(n);
+  setWeight(doc, 'medium');
+  doc.setFontSize(9);
+  const w = Math.max(16, doc.getTextWidth(label) + 8);
+  const h = 16;
+  if (onDark) doc.setGState(new doc.GState({ opacity: 0.2 }));
+  fill(doc, onDark ? C.white : C.border);
+  doc.roundedRect(right - w, mid - h / 2, w, h, 3, 3, 'F');
+  if (onDark) doc.setGState(new doc.GState({ opacity: 1 }));
+  text(doc, label, right - w / 2, mid, { size: 9, color: onDark ? C.white : C.footerText, weight: 'medium', align: 'center', baseline: 'middle' });
+}
+
 function pageFooter(doc, page) {
   fill(doc, C.footer);
   doc.rect(0, PAGE.h - FOOTER_H, PAGE.w, FOOTER_H, 'F');
@@ -1060,7 +1079,7 @@ function fadingGrid(doc, color, x0, y0, w, h, cx, cy, rx, ry) {
  * @param {string} [cover.clientLogoAlign] – 'left' | 'center' | 'right'
  */
 function coverPage(doc, {
-  title, range, description, background = DEFAULT_COVER_BACKGROUND, logo, clientLogo, withFooter = false,
+  title, range, description, background = DEFAULT_COVER_BACKGROUND, logo, clientLogo,
   logoScale = DEFAULT_LOGO_SCALE, logoAlign = 'middle-center', clientLogoScale = DEFAULT_CLIENT_LOGO_SCALE, clientLogoAlign = 'center',
 }) {
   const light = isLightBackground(background);
@@ -1147,8 +1166,6 @@ function coverPage(doc, {
     doc.addImage(clientLogo.dataUrl, clientLogo.format || 'PNG', gx + labelW + 4 + (boxW - logoW.w) / 2, rowTop + (rowH - logoW.h) / 2, logoW.w, logoW.h);
   }
 
-  // With no report footer the cover still carries its page number.
-  if (!withFooter) text(doc, '1', PAGE.w / 2, PAGE.h - 12, { size: 10, color: ink1, align: 'center', baseline: 'middle' });
 }
 
 /** A logo's size fitted inside a box, keeping its proportions. */
@@ -1176,9 +1193,10 @@ export function generatedOnLabel(date = new Date()) {
  *   page at full width (`images[n - 1]` for page n when it shows the page number); null for
  *   no header. Omitted, the built-in header (title, logos, band) is drawn.
  * @param {{ width: number, height: number, dataUrl?: string, images?: string[] } | null} [report.footer] –
- *   A footer component drawn to PNGs, at the foot of every page: `images[n - 1]` for page n when it
- *   shows the page number, else `dataUrl`. null for no footer; omitted (or a page with no image),
- *   the built-in footer.
+ *   A footer component drawn to PNGs, at the foot of every content page: `images[n - 1]` for page n
+ *   when it shows the page number, else `dataUrl` with the number drawn on its right (`pageInk:
+ *   'light'` for white on a dark footer). null for no footer; omitted (or a page with no image),
+ *   the built-in footer. The cover has no header or footer, and page 1 is the first content page.
  * @param {object} [report.cover] – Adds the cover page: `{ range, description?,
  *   background?, logo?, clientLogo? }` (see coverPage)
  * @param {{ regular, medium, semibold, bold, italic, boldItalic }} [report.fonts] – Inter TTFs, base64;
@@ -1199,7 +1217,8 @@ export function generateEmployerReportPdf(report) {
  * `top` in points down from the page top, a little above the element),
  * so a preview can open right at what changed.
  *
- * @returns {{ blob: Blob, anchors: Object<string, { page: number, top?: number }> }}
+ * @returns {{ blob: Blob, anchors: Object<string, { page: number, top?: number }>, pages: number,
+ *   numberedPages: number }} `pages` counts the cover; `numberedPages` doesn't
  */
 export function generateEmployerReport(report) {
   const doc = new jsPDF({ unit: 'pt', format: 'a4' });
@@ -1212,7 +1231,7 @@ export function generateEmployerReport(report) {
   const here = (yTop) => ({ page: doc.getNumberOfPages(), top: Math.max(0, Math.round(yTop - 12)) });
   if (hasCover) {
     anchors.cover = { page: 1 };
-    coverPage(doc, { title: report.title, ...report.cover, withFooter: report.footer !== null });
+    coverPage(doc, { title: report.title, ...report.cover });
     doc.addPage();
   }
   // Page header: a drawn header component (an image at the page's full
@@ -1352,21 +1371,23 @@ export function generateEmployerReport(report) {
 
   const chrome = { title: report.title, generatedOn: generatedOnLabel(report.generatedAt), logo: report.logo, clientLogo: report.clientLogo };
   const pages = doc.getNumberOfPages();
-  // The header is for content pages; the footer goes on every page, the
-  // cover (page 1) included.
-  for (let p = 1; p <= pages; p += 1) {
+  // Header and footer go on content pages only, and numbering starts on the
+  // first of them: with a cover, PDF page 2 is "page 1".
+  const offset = hasCover ? 1 : 0;
+  for (let p = 1 + offset; p <= pages; p += 1) {
     doc.setPage(p);
-    const isCover = hasCover && p === 1;
-    if (!isCover) {
-      // A header showing the page number ("Page 2 of 6") is drawn per page.
-      const headerImg = header && (header.images ? header.images[p - 1] : header.dataUrl);
-      if (headerImg) doc.addImage(headerImg, 'PNG', 0, 0, PAGE.w, headerH);
-      else if (header !== null) pageHeader(doc, chrome);
-    }
-    // A footer with the page number is drawn once per page number.
-    const footerImg = footer && (footer.images ? footer.images[p - 1] : footer.dataUrl);
-    if (footerImg) doc.addImage(footerImg, 'PNG', 0, PAGE.h - footerH, PAGE.w, footerH);
-    else if (footer !== null) pageFooter(doc, p);
+    const n = p - offset;
+    // A header showing the page number ("Page 2 of 6") is drawn per page.
+    const headerImg = header && (header.images ? header.images[n - 1] : header.dataUrl);
+    if (headerImg) doc.addImage(headerImg, 'PNG', 0, 0, PAGE.w, headerH);
+    else if (header !== null) pageHeader(doc, chrome);
+    // A footer with the page number is drawn once per page number; one
+    // without gets the number on its right, in ink that suits it.
+    const footerImg = footer && (footer.images ? footer.images[n - 1] : footer.dataUrl);
+    if (footerImg) {
+      doc.addImage(footerImg, 'PNG', 0, PAGE.h - footerH, PAGE.w, footerH);
+      if (!footer.images) footerPageBadge(doc, n, PAGE.w - MARGIN, PAGE.h - footerH / 2, footer.pageInk === 'light');
+    } else if (footer !== null) pageFooter(doc, n);
   }
-  return { blob: doc.output('blob'), anchors, pages };
+  return { blob: doc.output('blob'), anchors, pages, numberedPages: pages - offset };
 }

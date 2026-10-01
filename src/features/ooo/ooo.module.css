@@ -48,21 +48,40 @@
 .fieldGroup { display: flex; flex-direction: column; gap: var(--space-2); }
 .fieldLabel { font-size: var(--font-base); color: var(--neutral-300); }
 .fieldError { font-size: var(--font-sm); color: var(--status-error); }
+/* An error about a whole row of fields: one line across the drawer. */
+.rowError { display: block; margin-top: calc(-1 * var(--space-2)); font-size: var(--font-sm); line-height: 1.2; color: var(--status-error); }
+
+/* Reveal: a 0fr/1fr grid row animates the height without measuring it; the
+   negative margin cancels the form's gap while closed. */
+.reveal {
+  display: grid; grid-template-rows: 0fr; opacity: 0;
+  margin-top: calc(-1 * var(--space-4));
+  transition: grid-template-rows var(--duration-medium) var(--ease-out),
+    opacity var(--duration-medium) var(--ease-out),
+    margin-top var(--duration-medium) var(--ease-out);
+}
+.revealOpen { grid-template-rows: 1fr; opacity: 1; margin-top: 0; }
+.revealInner { min-height: 0; overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .reveal { transition: none; } }
 
 .changedCard {
-  display: flex; flex-direction: column; gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--status-warning-light);
-  border: 0.5px solid var(--neutral-150); border-radius: 8px;
-}
-.changedHead { display: flex; flex-direction: column; }
-.changedTitle { font-size: var(--font-base); color: var(--neutral-500); }
-.changedSub { font-size: var(--font-sm); color: var(--neutral-300); }
-.optionCard {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3);
+  display: flex; flex-direction: column; overflow: hidden;
   background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150); border-radius: 8px;
+  border: 0.5px solid var(--status-warning); border-radius: 8px;
+}
+.changedBody { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); }
+.changedTitle { font-size: var(--font-base); font-weight: 500; line-height: 1.2; color: var(--neutral-400); }
+.changedCheck {
+  display: inline-flex; align-items: center; gap: var(--space-2); align-self: flex-start;
+  font-size: var(--font-base); line-height: 1.2; color: var(--neutral-400); cursor: pointer;
+}
+/* Under way: a note strip along the card's foot. */
+.changedNote {
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-1) calc(var(--space-1) * 1.5);
+  background: var(--status-warning-light);
+  border-top: 0.5px solid color-mix(in srgb, var(--status-warning) 30%, transparent);
+  font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-400);
 }
 .optionText { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .optionTitle { font-size: var(--font-base); color: var(--neutral-500); }
@@ -121,20 +140,13 @@
   font-size: var(--font-base); color: var(--neutral-300);
 }
 
-/* Record drawer steps: Next slides the reassignment step in from the right,
-   Previous brings the details back from the left. */
-.stepInForward { animation: oooStepForward 220ms ease-out both; }
-.stepInBack { animation: oooStepBack 220ms ease-out both; }
-@keyframes oooStepForward { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
-@keyframes oooStepBack { from { opacity: 0; transform: translateX(-24px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .stepInForward, .stepInBack { animation: none; } }
 
 /* Reassign Appointments drawer: "+ New Out of Office Record" under the record picker. */
 .newRecordLink { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-sm); }
 /* Out of Office Record picker options: OOO tile, dates over length, status. */
 .recordOption { display: flex; align-items: center; gap: var(--space-3); flex: 1; min-width: 0; }
 .recordOption .recordAvatar { background: var(--neutral-0); }
-.recordOptionText { display: flex; flex-direction: column; gap: var(--space-1); flex: 1; min-width: 0; }
+.recordOptionText { display: flex; flex-direction: column; gap: 0; flex: 1; min-width: 0; }
 .recordOptionHead { color: var(--neutral-500); }
 .recordOptionSub { font-size: var(--font-sm); color: var(--neutral-300); }
 /* Reassign Appointments drawer (Figma Eventus 17574:114531): 24px between
@@ -144,6 +156,8 @@
 /* The picker's menu is portalled, so these key off the option content
    rather than a wrapper class. Hover is a plain neutral tint; the picked
    record is the shared Select's selected card. */
+/* 8px all round (the dropdown's 8px top and bottom, and 8px sides). */
+:global(li):has(.recordOption) { padding: var(--space-2); }
 :global(li):has(.recordOption):hover,
 :global(li):has(.recordOption):focus { background: var(--neutral-50); color: inherit; }
 :global(li[aria-selected="true"]):has(.recordOption) {
@@ -156,7 +170,7 @@
   height: 192px;
   border: 0.5px dashed var(--neutral-150); border-radius: 12px;
 }
-/* Reassignment type "Other": the dates to reassign, as a 300px field. */
+/* Reassignment type "One-time": the dates to reassign, as a 300px field. */
 .rangeField {
   display: inline-flex; align-items: center; justify-content: space-between; gap: var(--space-3);
   align-self: flex-start; width: 300px; height: 32px; padding: 0 var(--space-3);
@@ -170,3 +184,11 @@
    passes the hover through so the tooltip still opens. */
 .recordPickerTip { display: flex; flex-direction: column; }
 .recordPickerTip button:disabled { pointer-events: none; }
+/* The period picker's empty menu: the ring empty state, 212px tall. */
+.recordEmpty { display: flex; align-items: center; justify-content: center; min-height: 192px; }
+/* Create Schedule (on call). */
+.mandatoryNote { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-base); color: var(--neutral-300); }
+.scheduleBlock { display: flex; flex-direction: column; gap: var(--space-4); }
+/* Each added schedule starts under a rule, with its number and Remove. */
+.scheduleBlockNext { padding-top: var(--space-4); border-top: 0.5px solid var(--neutral-150); }
+.scheduleBlockHead { display: flex; align-items: center; justify-content: space-between; }

@@ -51,19 +51,30 @@
 }
 .slotHalf { border-top-style: dashed; border-top-color: var(--neutral-100); }
 .slot:hover { background: var(--primary-25); }
+/* A slot touching out-of-office time isn't bookable: no hover tint. */
+.slotOoo:hover { background: none; }
 .slot:focus-visible { outline: 2px solid var(--primary-300); outline-offset: -2px; }
 .past { position: absolute; top: 0; left: 0; right: 0; background: var(--neutral-50); opacity: 0.6; pointer-events: none; }
 
-/* Out of office (Figma Eventus 17587:116989): an outlined area (its label
-   is in the header), inset 4px in the column; the time slots show through
-   and clicks land on them (which open the record). */
+/* Out of office: a light pink area with a pink outline over the user's OOO
+   time across the full column.
+   It opens the record on click and lifts on hover like an appointment. */
 .oooBlock {
-  position: absolute; left: 4px; right: 4px; z-index: 1;
-  border: 0.5px solid var(--accent-magenta); border-radius: 4px;
-  background: color-mix(in srgb, var(--accent-light-magenta) 85%, transparent);
-  pointer-events: none;
-  overflow: hidden;
+  position: absolute; left: 0; right: 0; z-index: 1;
+  display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start;
+  padding: 0; overflow: hidden;
+  border: 0.5px solid var(--accent-magenta);
+  /* Light pink that multiplies with the slots beneath, so their lines keep
+     their colour (screen in the dark theme, where the tint is darker). */
+  background: var(--accent-light-magenta); mix-blend-mode: multiply; cursor: pointer;
+  transition: box-shadow var(--duration-instant) var(--ease-hover);
 }
+.oooBlock:hover { box-shadow: var(--shadow-popover); }
+.oooBlock:focus-visible { outline: 2px solid var(--primary-300); outline-offset: -2px; }
+:global([data-theme="dark"]) .oooBlock { mix-blend-mode: screen; }
+.oooBlock .oooStrip { margin-top: 0; }
+.oooBlockPast { cursor: not-allowed; }
+.oooBlockPast:hover { box-shadow: none; }
 
 /* Appointments (calendar slots, Figma Eventus 17581:116489) sit above the
    OOO area and open as usual. Colour follows the appointment type; cyan

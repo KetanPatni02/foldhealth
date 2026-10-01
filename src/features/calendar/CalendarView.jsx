@@ -3,13 +3,13 @@ import { ScheduleDrawer } from '../../components/ScheduleDrawer/ScheduleDrawer';
 import { CalendarContent } from './CalendarContent';
 import { CalendarToolbar } from './CalendarToolbar';
 import { DayResourceView } from './DayResourceView';
+import { MonthCountView } from './MonthCountView';
 import { useCalendarView } from './useCalendarView';
 import { useAppStore } from '../../store/useAppStore';
 import { CalendarOooLayer } from '../ooo/CalendarOooLayer';
 import { OooAllRecordsDrawer } from '../ooo/OooRecordsDrawers';
 import { recordsOnDate } from '../ooo/oooUtils';
 import { useOooRecordActions } from '../ooo/useOooRecordActions';
-import { ReassignAppointmentsDrawer } from '../ooo/ReassignAppointmentsDrawer';
 import styles from './CalendarView.module.css';
 
 export function CalendarView() {
@@ -23,9 +23,9 @@ export function CalendarView() {
   const [oooAll, setOooAll] = useState(null); // { highlightDate? }
   const oooActions = useOooRecordActions({ users: calendar.users });
   useEffect(() => { editOooRef.current = oooActions.openEdit; });
-  const [showReassign, setShowReassign] = useState(false);
   const showToast = useAppStore(s => s.showToast);
   const isDay = calendar.currentView === 'day';
+  const isMonth = calendar.currentView === 'month-grid';
   // Week and a one-user Month show that user's OOO time on the grid; Day
   // draws its own per-user columns.
   const focusUser = calendar.currentView === 'week'
@@ -76,7 +76,7 @@ export function CalendarView() {
           } else if (key === 'ooo') {
             oooActions.openNew();
           } else if (key === 'reassign') {
-            setShowReassign(true);
+            oooActions.openReassign(focusUser || undefined);
           } else {
             showToast('Coming soon');
           }
@@ -108,17 +108,27 @@ export function CalendarView() {
       {calendar.currentView === 'week' && calendar.viewUsers[0] && (
         <div className={styles.weekUserRow}><span aria-hidden="true" /><span>{calendar.viewUsers[0]}</span></div>
       )}
-      {/* Month: the day names get their own header row (schedule-x puts
-          them inside the first week's cells, hidden below). schedule-x
-          starts weeks on Monday. */}
-      {calendar.currentView === 'month-grid' && (
-        <div className={styles.monthDayNames} aria-hidden="true">
-          {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => <span key={d}>{d}</span>)}
-        </div>
+      {/* Month: daily counts, like the legacy calendar (the chip list
+          overflowed into "+N more"). */}
+      {isMonth && (
+        <MonthCountView
+          date={calendar.selectedDate}
+          appointments={calendar.filteredAppointments}
+          oooRecords={oooRecords}
+          focusUser={focusUser}
+          onOpenDay={calendar.openDay}
+          onAdd={(day) => {
+            const [year, month, d] = day.split('-').map(Number);
+            setDayProvider(calendar.filterUser.length === 1 ? calendar.filterUser[0] : null);
+            calendar.handleSlotClick({ year, month, day: d });
+          }}
+          onEditOoo={oooActions.openEdit}
+          onOpenOooDay={(date) => setOooAll({ highlightDate: date })}
+        />
       )}
-      {/* schedule-x stays mounted in Day view (it owns the date and the
-          toolbar's navigation), just hidden behind the per-user columns. */}
-      <div className={isDay ? `${styles.calendarWrap} ${styles.calendarHidden}` : styles.calendarWrap}>
+      {/* schedule-x stays mounted in Day and Month views (it owns the date
+          and the toolbar's navigation), just hidden behind our own grids. */}
+      <div className={isDay || isMonth ? `${styles.calendarWrap} ${styles.calendarHidden}` : styles.calendarWrap}>
         <CalendarContent
           onSlotClick={calendar.handleSlotClick}
           onEventClick={calendar.handleEventClick}
@@ -127,29 +137,17 @@ export function CalendarView() {
           eventsPluginRef={calendar.eventsPluginRef}
           dbAppointments={calendar.filteredAppointments}
         />
-        <CalendarOooLayer
-          currentView={calendar.currentView}
-          focusUser={focusUser}
-          records={oooRecords}
-          renderTick={`${calendar.renderTick}-${calendar.filteredAppointments.length}`}
-          onOpenDay={(date) => setOooAll({ highlightDate: date })}
-          onEdit={oooActions.openEdit}
-        />
+        {calendar.currentView === 'week' && (
+          <CalendarOooLayer
+            focusUser={focusUser}
+            records={oooRecords}
+            renderTick={`${calendar.renderTick}-${calendar.filteredAppointments.length}`}
+            onEdit={oooActions.openEdit}
+          />
+        )}
       </div>
 
       {oooAll && <OooAllRecordsDrawer highlightDate={oooAll.highlightDate} onClose={() => setOooAll(null)} />}
-      {showReassign && (
-        <ReassignAppointmentsDrawer
-          users={calendar.users}
-          initialUser={focusUser || undefined}
-          onNewOoo={(name) => {
-            setShowReassign(false);
-            const u = calendar.users.find(x => x.name === name);
-            oooActions.openNew(u ? { id: u.id, name: u.name, email: u.email, role: u.role } : undefined);
-          }}
-          onClose={() => setShowReassign(false)}
-        />
-      )}
       {oooActions.elements}
       {calendar.showSchedule && (
         <ScheduleDrawer

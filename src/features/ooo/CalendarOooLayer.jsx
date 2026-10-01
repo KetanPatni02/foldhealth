@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { OooIcon } from '../../components/Icon/OooIcon';
-import { canEdit, daySpan, recordsOnDate } from './oooUtils';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
+import { canEdit, daySpan, recordsFor, recordsOnDate } from './oooUtils';
 import styles from './CalendarOooLayer.module.css';
 
 // Must match CalendarContent: dayBoundaries 00:00–23:00 on a 2000px grid.
@@ -9,27 +10,22 @@ const GRID_HEIGHT = 2000;
 const GRID_HOURS = 23;
 
 /**
- * Out of Office on the calendar (Figma Eventus "Edit OOO Flow"), drawn into
- * schedule-x's grid through portals:
- *   - one user in view (the Users filter has exactly one user): their OOO
- *     time as dashed purple blocks in Day / Week (17363:111021, 17557:110750)
- *     and on each day in Month (17365:117557);
- *   - otherwise, Month shows "N Providers Out of Office" on each day, which
- *     opens everyone's records with that day highlighted (17363:113548).
- * Week shows one user; an OOO day's header gets an "Out of Office" strip,
- * and existing appointments stay visible and clickable
- * on top of the OOO area. OOO time can't be booked: clicking it opens the
- * record to edit. (Day view draws its own per-user columns.)
+ * Out of Office on the Week view (Figma Eventus "Edit OOO Flow"), drawn
+ * into schedule-x's grid through portals. Week shows one user: their OOO
+ * time is a pink block over each day it touches. A day out for all of it
+ * gets an "Out of Office" strip in its header; part of a day is labelled
+ * along the top of its block. Existing appointments stay visible and
+ * clickable on top. OOO time can't be booked: clicking it opens the record
+ * to edit (a past one is read-only). Day and Month views draw their own
+ * grids (DayResourceView, MonthCountView).
  *
  * @param {object}   props
- * @param {string}   props.currentView  – 'week' | 'day' | 'month-grid'
- * @param {string}   [props.focusUser]  – The one user in view, if any
+ * @param {string}   [props.focusUser]  – The user in view
  * @param {object[]} props.records
  * @param {number}   props.renderTick   – Changes whenever schedule-x redraws its grid
- * @param {function} props.onOpenDay    – (isoDate) => void
  * @param {function} props.onEdit       – (record) => void
  */
-export function CalendarOooLayer({ currentView, focusUser, records, renderTick, onOpenDay, onEdit }) {
+export function CalendarOooLayer({ focusUser, records, renderTick, onEdit }) {
   const [targets, setTargets] = useState([]);
   // Latest handler for the native click listeners added below.
   const onEditRef = useRef(onEdit);
@@ -40,85 +36,80 @@ export function CalendarOooLayer({ currentView, focusUser, records, renderTick, 
     let attempts = 0;
     let timer;
     const hosts = [];
+    // Listeners added to the hosts, removed on each redraw and on unmount.
     const disposers = [];
 
     const collect = () => {
       if (cancelled) return;
       disposers.splice(0).forEach((off) => off());
-      const isMonth = currentView === 'month-grid';
-      const cells = isMonth
-        ? [...document.querySelectorAll('.sx__month-grid-day')]
-        : [...document.querySelectorAll('.sx__time-grid-day')];
-      if (!cells.length && attempts++ < 60) {
-        timer = setTimeout(collect, 50);
-        return;
-      }
+      const cells = [...document.querySelectorAll('.sx__time-grid-day')];
+      if (!cells.length && attempts++ < 60) { timer = setTimeout(collect, 50); return; }
       document.querySelectorAll('[data-ooo-host]').forEach(el => el.remove());
       document.querySelectorAll('[data-ooo-day]').forEach(el => el.removeAttribute('data-ooo-day'));
-      const dates = isMonth ? null : [...document.querySelectorAll('.sx__week-grid__date')].map(el => el.getAttribute('data-date'));
+      const heads = [...document.querySelectorAll('.sx__week-grid__date')];
       const next = [];
       cells.forEach((cell, i) => {
-        const date = isMonth ? cell.getAttribute('data-date') : dates[i];
-        if (!date) return;
-        const on = recordsOnDate(records, date);
-        const mine = focusUser ? on.filter(r => r.userName === focusUser) : [];
-        if (isMonth && !focusUser) {
-          const count = new Set(on.map(r => r.userName)).size;
-          if (!count) return;
-          const host = document.createElement('div');
-          host.setAttribute('data-ooo-host', 'count');
-          cell.appendChild(host);
-          hosts.push(host);
-          next.push({ host, kind: 'count', date, count });
-          return;
-        }
+        const date = heads[i]?.getAttribute('data-date');
+        if (!date || !focusUser) return;
+        const mine = recordsFor(recordsOnDate(records, date), focusUser);
         if (!mine.length) return;
         if (getComputedStyle(cell).position === 'static') cell.style.position = 'relative';
-        // Week: the day's header gets an "Out of Office" strip at its foot,
-        // so the label can't collide with an appointment in the grid.
-        const headEl = !isMonth && document.querySelectorAll('.sx__week-grid__date')[i];
-        if (headEl) {
-          headEl.setAttribute('data-ooo-day', '1');
+        // A day out for all of it gets an "Out of Office" strip at the foot
+        // of its header (so the label can't collide with an appointment);
+        // part of a day is labelled on its block instead.
+        const isFullDay = (r) => { const sp = daySpan(r, date); return !!sp && sp.start <= 0 && sp.end >= 1; };
+        if (mine.some(isFullDay)) {
+          heads[i].setAttribute('data-ooo-day', '1');
           const strip = document.createElement('span');
           strip.setAttribute('data-ooo-host', 'strip');
           strip.className = styles.stripHost;
-          headEl.appendChild(strip);
+          heads[i].appendChild(strip);
           hosts.push(strip);
           next.push({ host: strip, kind: 'strip', date });
         }
         mine.forEach((record) => {
+          const span = daySpan(record, date);
+          if (!span) return;
           const host = document.createElement('div');
           host.setAttribute('data-ooo-host', 'block');
-          host.className = isMonth ? `${styles.blockHost} ${styles.blockHostMonth}` : styles.blockHost;
-          if (!isMonth) {
-            const span = daySpan(record, date);
-            if (!span) return;
-            const px = (f) => Math.min(GRID_HEIGHT, f * 24 * (GRID_HEIGHT / GRID_HOURS));
-            host.style.top = `${px(span.start)}px`;
-            host.style.height = `${Math.max(24, px(span.end) - px(span.start))}px`;
-            host.style.bottom = 'auto';
-          }
+          host.className = styles.blockHost;
+          // A past record is read-only: no lift, no pointer.
+          if (!canEdit(record)) host.classList.add(styles.blockHostPast);
+          const px = (f) => Math.min(GRID_HEIGHT, f * 24 * (GRID_HEIGHT / GRID_HOURS));
+          host.style.top = `${px(span.start)}px`;
+          host.style.height = `${Math.max(24, px(span.end) - px(span.start))}px`;
+          host.style.bottom = 'auto';
           // OOO time can't be booked: a click on it opens the record to
           // edit instead. Native and stopped here, since schedule-x listens
           // on the grid cell itself, before React's root listener would run.
-          // No hover "new appointment" preview over OOO time.
-          const stopMove = (e) => e.stopPropagation();
+          // (The "new appointment" hover preview skips OOO time itself, see
+          // useCalendarView, so the tooltip can follow the pointer here.)
           const onClick = (e) => {
             e.stopPropagation();
-            // A past record is read-only, but its time still can't be booked.
             if (canEdit(record)) onEditRef.current(record);
           };
-          host.addEventListener('mousemove', stopMove);
           host.addEventListener('click', onClick);
-          disposers.push(() => {
-            host.removeEventListener('mousemove', stopMove);
-            host.removeEventListener('click', onClick);
-          });
+          disposers.push(() => host.removeEventListener('click', onClick));
+          // Reachable by keyboard like the Day view's blocks: Enter or Space opens it.
+          if (canEdit(record)) {
+            host.setAttribute('role', 'button');
+            host.tabIndex = 0;
+            host.setAttribute('aria-label', `Edit ${focusUser}'s Out of Office record`);
+            const onKey = (e) => {
+              if (e.key !== 'Enter' && e.key !== ' ') return;
+              e.preventDefault();
+              e.stopPropagation();
+              onEditRef.current(record);
+            };
+            host.addEventListener('keydown', onKey);
+            disposers.push(() => host.removeEventListener('keydown', onKey));
+          }
           cell.appendChild(host);
           hosts.push(host);
-          // Month (Figma Eventus 17590:117225) labels the block itself; Week
-          // labels the day header instead, so its blocks stay empty.
-          if (isMonth) next.push({ host, kind: 'monthBlock', date, record });
+          // A part-day block is labelled along its top; an editable one
+          // also gets a hover tooltip.
+          if (!isFullDay(record)) next.push({ host, kind: 'blockLabel', date, record });
+          if (canEdit(record)) next.push({ host, kind: 'blockTip', date, record });
         });
       });
       if (cancelled) return;
@@ -132,30 +123,18 @@ export function CalendarOooLayer({ currentView, focusUser, records, renderTick, 
       disposers.forEach((off) => off());
       hosts.forEach(h => h.remove());
     };
-  }, [currentView, focusUser, records, renderTick]);
+  }, [focusUser, records, renderTick]);
 
   return targets.map((t) => createPortal(
-    t.kind === 'monthBlock' ? (
-      <span className={styles.monthLabel}>
-        <span className={styles.monthTitle}>
-          <OooIcon size={16} color="var(--accent-magenta)" />
-          Out of Office
-        </span>
-      </span>
-    ) : t.kind === 'strip' ? (
+    t.kind === 'blockTip' ? (
+      <Tooltip label="Edit Out of Office Record" followCursor>
+        <span className={styles.blockTipArea} aria-hidden="true" />
+      </Tooltip>
+    ) : (
       <span className={styles.oooStrip}>
         <OooIcon size={12} color="var(--neutral-0)" arrowColor="var(--accent-magenta)" />
         Out of Office
       </span>
-    ) : (
-      <button
-        type="button"
-        className={styles.countLink}
-        onClick={(e) => { e.stopPropagation(); onOpenDay(t.date); }}
-      >
-        <OooIcon size={14} color="var(--accent-magenta)" />
-        {t.count} Provider{t.count === 1 ? '' : 's'} Out of Office
-      </button>
     ),
     t.host,
     `${t.kind}-${t.date}-${t.record?.id || ''}`,

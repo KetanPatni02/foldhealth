@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fromPickerValue, toPickerValue, activeOooFor, canDelete, canEdit, daySpan, formatDateTime, oooStatus, rangeChange, recordsOnDate, sortRecords, validateOoo } from './oooUtils';
+import { fromPickerValue, toPickerValue, activeOooFor, canDelete, canEdit, daySpan, formatDateTime, oooStatus, rangeChange, recordsOnDate, sortRecords, validateOoo, describeRange, appointmentsToReassign } from './oooUtils';
 
 const at = (d, h = 0, m = 0) => new Date(2026, 8, d, h, m).toISOString(); // Sept 2026, local time
 const rec = (id, s, e, userName = 'Richard Willson') => ({ id, userName, startAt: s, endAt: e });
@@ -51,11 +51,34 @@ describe('rangeChange', () => {
   });
 });
 
+describe('appointmentsToReassign', () => {
+  it('counts the provider\'s upcoming, uncancelled appointments inside the dates', () => {
+    const r = rec('a', at(10), at(13));
+    const appts = [
+      { primary_user: 'Richard Willson', date: '09-11-2026', time_start: '9:00 am', status: 'Scheduled' },
+      { primary_user: 'richard willson', date: '09-12-2026', time_start: '2:30 pm', status: 'Scheduled' },
+      { primary_user: 'Richard Willson', date: '09-12-2026', time_start: '3:00 pm', status: 'Cancelled' },
+      { primary_user: 'Richard Willson', date: '09-10-2026', time_start: '9:00 am', status: 'Scheduled' }, // before now
+      { primary_user: 'Richard Willson', date: '09-13-2026', time_start: '9:00 am', status: 'Scheduled' }, // after the end
+      { primary_user: 'Someone Else', date: '09-11-2026', time_start: '9:00 am', status: 'Scheduled' },
+    ];
+    expect(appointmentsToReassign(r, appts, now)).toHaveLength(2);
+  });
+});
+
+describe('describeRange', () => {
+  it('ends whole days on the last day out, and shows short spans in minutes', () => {
+    expect(describeRange(new Date(2026, 9, 2), new Date(2026, 9, 15))).toEqual({ span: '10/02/2026 – 10/14/2026', length: '13 days' });
+    expect(describeRange(new Date(2026, 9, 2), new Date(2026, 9, 3)).span).toBe('10/02/2026');
+    expect(describeRange(new Date(2026, 9, 2, 9), new Date(2026, 9, 2, 9, 20)).length).toBe('20 minutes');
+  });
+});
+
 describe('validateOoo', () => {
   it('rejects dates that overlap the same provider\'s other records', () => {
     const existing = [rec('x', at(12), at(15)), rec('y', at(12), at(15), 'Someone Else')];
     const base = { userName: 'Richard Willson' };
-    expect(validateOoo({ ...base, startAt: at(14), endAt: at(16) }, { now, existing }).startAt).toMatch(/Overlaps/);
+    expect(validateOoo({ ...base, startAt: at(14), endAt: at(16) }, { now, existing }).overlap).toMatch(/already exists/);
     // Touching end to start is fine, as is another provider's time or the record itself.
     expect(validateOoo({ ...base, startAt: at(15), endAt: at(16) }, { now, existing })).toEqual({});
     expect(validateOoo({ userName: 'Someone Else 2', startAt: at(13), endAt: at(14) }, { now, existing })).toEqual({});

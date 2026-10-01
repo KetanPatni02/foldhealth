@@ -146,6 +146,15 @@ export function useCalendarView({ onOooSlot } = {}) {
     return filtered;
   }, [appointments, reminderEvents, viewUsers, filterType, filterLocation, filterStatus]);
 
+  // Month → Day: show that date in the Day view.
+  const openDay = (isoDate) => {
+    const app = calendarRef.current;
+    const T = globalThis.Temporal;
+    if (app?.$app && T) app.$app.datePickerState.selectedDate.value = T.PlainDate.from(isoDate);
+    setSelectedDate(isoDate);
+    handleViewChange('day');
+  };
+
   const handleViewChange = (view) => {
     setCurrentView(view);
     const app = calendarRef.current;
@@ -437,10 +446,13 @@ export function useCalendarView({ onOooSlot } = {}) {
       const col = e.currentTarget;
       const rect = col.getBoundingClientRect();
       const y = e.clientY - rect.top;
-      // No "new appointment" preview over out-of-office time, including the
-      // margin beside its block.
+      // No "new appointment" preview for a half hour that touches
+      // out-of-office time at all (e.g. 11:00–11:30 when OOO starts at
+      // 11:07): that slot can't be booked, and the preview would sit on the
+      // block's label.
+      const slotTop = Math.floor(y / PX_PER_30) * PX_PER_30;
       const inOoo = Array.from(col.querySelectorAll('[data-ooo-host="block"]'))
-        .some(b => y >= b.offsetTop && y < b.offsetTop + b.offsetHeight);
+        .some(b => slotTop < b.offsetTop + b.offsetHeight && slotTop + PX_PER_30 > b.offsetTop);
       if (inOoo) {
         const overlay = hoverRef.current;
         if (overlay) overlay.style.opacity = '0';
@@ -552,6 +564,7 @@ export function useCalendarView({ onOooSlot } = {}) {
   return {
     renderTick,
     selectedDate,
+    openDay,
     viewUsers,
     meName,
     setClickedAppointment,

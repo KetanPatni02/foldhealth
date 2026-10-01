@@ -32,6 +32,7 @@ import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
 import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/oooSeed.js';
+import { sampleOnCallSchedules, onCallToRow } from '../src/features/ooo/onCallSeed.js';
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -1011,6 +1012,24 @@ async function main() {
         const { error: ae } = fresh.length ? await supabase.from('appointments').insert(fresh) : { error: null };
         if (ae) { console.error('  ✗ appointments:', ae.message); } else { console.log(`  ✓ ${fresh.length} appointments for ${abhay.name}`); }
       }
+    }
+  }
+
+  // On call schedules: two samples (an OOO cover, a holiday weekend).
+  console.log('Seeding on_call_schedules...');
+  {
+    const { data: staff, error: pe } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .not('full_name', 'is', null)
+      .order('full_name')
+      .limit(2);
+    if (pe) {
+      console.error('  ✗ profiles:', pe.message);
+    } else {
+      const rows = sampleOnCallSchedules((staff || []).map(p => ({ id: p.id, name: p.full_name.trim() }))).map(onCallToRow);
+      const { error } = rows.length ? await supabase.from('on_call_schedules').upsert(rows, { onConflict: 'id' }) : { error: null };
+      if (error) { console.error('  ✗', error.message); } else { console.log(`  ✓ ${rows.length} schedules`); }
     }
   }
 

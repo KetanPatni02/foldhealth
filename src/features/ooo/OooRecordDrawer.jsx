@@ -5,36 +5,71 @@ import { Input } from '../../components/Input/Input';
 import { DateTimePicker } from '../../components/DateTimePicker/DateTimePicker';
 import { Select } from '../../components/Select/Select';
 import { Switch } from '../../components/Switch/Switch';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Icon } from '../../components/Icon/Icon';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { InfoBar } from '../../components/InfoBar/InfoBar';
 import { useAppStore } from '../../store/useAppStore';
-import { OooReassignFooter, OooReassignStep } from './OooReassignStep';
-import { DEFAULT_AUTO_REPLY, fromPickerValue, rangeChange, toPickerValue, validateOoo } from './oooUtils';
+import { capFirst, DEFAULT_AUTO_REPLY, fromPickerValue, rangeChange, toPickerValue, validateOoo } from './oooUtils';
 import { toast } from '../../components/Toast/sonnerToast';
+// import { Link } from '../../components/Link/Link';
+// import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
+// import { OnCallScheduleDrawer } from './OnCallScheduleDrawer';
 import styles from './ooo.module.css';
+
+// A picked date-time's local day, "YYYY-MM-DD" ('' when unset).
+// function isoDay(v) {
+//   const d = v ? new Date(v) : null;
+//   if (!d || Number.isNaN(d.getTime())) return '';
+//   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// }
+
+/**
+ * Opens and closes its content smoothly (height and fade) instead of
+ * popping it in; closed, it takes no room, including the form's gap.
+ */
+function Reveal({ open, children }) {
+  return (
+    <div className={open ? `${styles.reveal} ${styles.revealOpen}` : styles.reveal} aria-hidden={!open || undefined} inert={!open}>
+      <div className={styles.revealInner}>{children}</div>
+    </div>
+  );
+}
 
 /**
  * New / Edit Out of Office Record (Figma Eventus 17400:134395, 17400:136675).
  *
- * New: details, then Next to the reassignment step, where Save creates it.
+ * Save stores the record; a new record, or an edit that adds dates, then
+ * hands off to the Reassign Appointments drawer (see useOooRecordActions).
  * Edit, depending on how the dates change:
  *   - no new dates: Save, enabled once something changes;
- *   - dates removed: a "schedule has changed" card offers to restore the
- *     appointments of the dates no longer out of office (17401:138229);
- *   - dates added: a note that they're reassigned next, and Next (17465:116009);
- *   - both: the card and Next (17465:116148).
+ *   - dates removed: a "You have updated the Out of Office schedule" card offers to move
+ *     the removed dates' reassigned appointments back (17401:138229);
+ *   - dates added: a note that they can be reassigned after saving.
  *
  * @param {object}   props
  * @param {object}   [props.record]  – The record being edited; omit to create one
  * @param {object}   [props.user]    – { name, email, role } the new record is for; omit to pick one
  * @param {object[]} [props.users]   – Who can be picked when `user` is omitted
  * @param {function} props.onClose
- * @param {function} [props.onSaved] – (record) => void
+ * @param {function} [props.onSaved] – (record, { reassign }) => void; `reassign` when
+ *   there are newly out-of-office dates whose appointments need moving
  */
 export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) {
   const saveOooRecord = useAppStore(s => s.saveOooRecord);
   const oooRecords = useAppStore(s => s.oooRecords);
+  const meName = useAppStore(s => s.currentUserProfile?.name);
   const isEdit = !!record;
+  // A record that has started: from a previous day, its start is fixed;
+  // from earlier today, it can still move, but reassignments already in
+  // the past stay where they are.
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const origStart = isEdit ? new Date(record.startAt).getTime() : NaN;
+  const started = isEdit && origStart <= now.getTime();
+  const startLocked = started && origStart < todayStart;
+  const startedToday = started && !startLocked;
+  const isMine = !!meName && String(record?.userName || user?.name || '').trim().toLowerCase() === meName.trim().toLowerCase();
 
   const [values, setValues] = useState(() => ({
     userName: record?.userName || user?.name || '',
@@ -48,17 +83,21 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
     autoReplyMessage: record?.autoReplyMessage || DEFAULT_AUTO_REPLY,
   }));
   const [restore, setRestore] = useState(true);
-  const [step, setStep] = useState(1);
   const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+  // const [onCallOpen, setOnCallOpen] = useState(false); // on call schedule, parked
   const set = (patch) => setValues(v => ({ ...v, ...patch }));
 
   const errors = validateOoo(values, { original: record, existing: oooRecords });
   const hasErrors = Object.keys(errors).length > 0 || !values.userName;
   const change = rangeChange(record, values);
-  const dirty = !isEdit || ['startAt', 'endAt', 'reason', 'autoReply', 'autoReplyMessage']
-    .some(k => (values[k] || '') !== (record[k] || '') && !(k === 'autoReplyMessage' && !values.autoReply && !record.autoReply));
-  // A new record, or new dates on an edit, go through reassignment first.
+  // Dates compare as moments: the picker writes "…00.000Z" where the
+  // database returns "…+00:00" for the same time.
+  const sameTime = (a, b) => (!a && !b) || (!!a && !!b && new Date(a).getTime() === new Date(b).getTime());
+  const dirty = !isEdit || !sameTime(values.startAt, record.startAt) || !sameTime(values.endAt, record.endAt)
+    || ['reason', 'autoReply', 'autoReplyMessage']
+      .some(k => (values[k] || '') !== (record[k] || '') && !(k === 'autoReplyMessage' && !values.autoReply && !record.autoReply));
+  // A new record, or new dates on an edit, go on to reassignment.
   const needsReassign = !isEdit || change.extended;
 
   const providerLabel = values.userName ? `${values.userName}${values.userEmail ? ` (${values.userEmail})` : ''}` : '';
@@ -72,12 +111,13 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
       const saved = await saveOooRecord({
         ...record,
         ...values,
-        reason: values.reason.trim(),
+        reason: capFirst(values.reason.trim()),
         autoReplyMessage: values.autoReply ? values.autoReplyMessage.trim() : '',
       });
       if (!saved) return;
-      toast.success('Out of Office Record Saved Successfully');
-      onSaved?.(saved);
+      // When Reassign Appointments opens next, the toast says why.
+      toast.success(needsReassign ? 'Out of Office record saved. Reassign appointments next.' : 'Out of Office Record Saved Successfully');
+      onSaved?.(saved, { reassign: needsReassign });
       onClose();
     } finally {
       setSaving(false);
@@ -86,35 +126,18 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
 
   const title = isEdit ? 'Edit Out of Office Record' : 'New Out of Office Record';
 
-  // One drawer for both steps: the header actions and footer change, and
-  // the body slides in from the side it's heading to.
-  const [direction, setDirection] = useState('forward');
-  const goTo = (n) => { setDirection(n > step ? 'forward' : 'back'); setStep(n); };
-  const next = () => {
-    setTouched(true);
-    if (!hasErrors) goTo(2);
-  };
-
-  const headerRight = step === 2 ? (
+  const headerRight = (
     <>
-      <Button variant="secondary" size="L" onClick={() => goTo(1)}>Previous</Button>
-      <Button variant="primary" size="L" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>
-      <span className={styles.headerDivider} aria-hidden="true" />
-    </>
-  ) : (
-    <>
-      {needsReassign ? (
-        <Button variant="primary" size="L" disabled={touched && hasErrors} onClick={next}>Next</Button>
-      ) : (
-        <Button variant="primary" size="L" disabled={!dirty || saving || (touched && hasErrors)} onClick={save}>
-          {saving ? 'Saving…' : 'Save'}
-        </Button>
-      )}
+      <Button variant="primary" size="L" disabled={(isEdit && !dirty) || saving || (touched && hasErrors)} onClick={save}>
+        {saving ? 'Saving…' : 'Save'}
+      </Button>
       <span className={styles.headerDivider} aria-hidden="true" />
     </>
   );
 
   const err = (k) => (touched ? errors[k] : undefined);
+  // An overlap shows as soon as both dates are set, not only after Save.
+  const overlapError = values.startAt && values.endAt ? errors.overlap : undefined;
   const today = new Date();
 
   return (
@@ -124,18 +147,13 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
       onClose={onClose}
       headerRight={headerRight}
       noCloseDivider
-      footer={step === 2 ? <OooReassignFooter /> : undefined}
     >
-      <div key={step} className={direction === 'forward' ? styles.stepInForward : styles.stepInBack}>
-      {step === 2 ? (
-        <OooReassignStep providerName={values.userName} startAt={values.startAt} endAt={values.endAt} />
-      ) : (
       <div className={styles.form}>
         {!isEdit && (
-          <InfoBar tone="info">Mark users OOO by selecting date range below. Appointments will be reassigned in next step.</InfoBar>
+          <InfoBar tone="info" variant="inline">Mark users OOO by selecting date range below. Appointments will be reassigned after saving.</InfoBar>
         )}
         {isEdit && change.extended && (
-          <InfoBar tone="warning">Appointments for newly added dates will be reassigned in the next step.</InfoBar>
+          <InfoBar tone="warning" variant="inline">Appointments on the newly added dates can be reassigned once you save.</InfoBar>
         )}
 
         {user || isEdit ? (
@@ -157,43 +175,63 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
           />
         )}
 
+
         <div className={styles.dateRow}>
           <DateTimePicker
             label="Start Date & Time"
             required
             fullWidth
             placeholder="Select Start Date & Time"
+            hour12
+            autoCommit
             minDate={today}
             value={toPickerValue(values.startAt)}
             onChange={(v) => set({ startAt: fromPickerValue(v) })}
             errorText={err('startAt')}
+            invalid={!!overlapError}
+            disabled={startLocked}
+            helperText={startLocked ? 'Started on a previous day, so the start can\'t be changed.' : undefined}
           />
           <DateTimePicker
             label="End Date & Time"
             required
             fullWidth
             placeholder="Select End Date & Time"
-            minDate={values.startAt ? new Date(values.startAt) : today}
+            hour12
+            autoCommit
+            // Not before the start, and for a record under way, not before today.
+            minDate={values.startAt && (!started || new Date(values.startAt) > today) ? new Date(values.startAt) : today}
             value={toPickerValue(values.endAt)}
             onChange={(v) => set({ endAt: fromPickerValue(v) })}
             errorText={err('endAt')}
+            invalid={!!overlapError}
           />
         </div>
+        {/* Overlapping another record: both dates are marked, and the
+            reason is said once, across the row. */}
+        {overlapError && <span className={styles.rowError} role="alert">{overlapError}</span>}
 
-        {isEdit && change.reduced && (
-          <div className={styles.changedCard}>
-            <div className={styles.changedHead}>
-              <span className={styles.changedTitle}>The Out-of-office schedule has changed.</span>
-              <span className={styles.changedSub}>Update appointment settings for the affected days below:</span>
+        {/* Figma Eventus 17620:122123: what changed, whether to move the
+            removed dates' appointments back, and (under way) that only the
+            ones still ahead can move. Slides open as the dates are cut back. */}
+        {isEdit && (
+          <Reveal open={change.reduced}>
+            <div className={styles.changedCard}>
+              <div className={styles.changedBody}>
+                <span className={styles.changedTitle}>You have updated the Out of Office schedule:</span>
+                <label className={styles.changedCheck}>
+                  <Checkbox checked={restore} onCheckedChange={(v) => setRestore(v === true)} aria-label="Restore reassigned appointments from the removed dates" />
+                  <span>Move reassigned appointments on removed dates back to {isMine ? 'your' : 'this provider\'s'} calendar</span>
+                </label>
+              </div>
+              {startedToday && (
+                <div className={styles.changedNote}>
+                  <Icon name="solar:info-circle-linear" size={16} color="var(--status-warning)" />
+                  Only upcoming appointments will be restored as out of office period has started.
+                </div>
+              )}
             </div>
-            <div className={styles.optionCard}>
-              <Switch checked={restore} onChange={setRestore} ariaLabel="Restore calendar appointments for previously out-of-office dates" />
-              <span className={styles.optionText}>
-                <span className={styles.optionTitle}>Restore calendar appointments for previously out-of-office dates.</span>
-                <span className={styles.optionSub}>Reassigned appointments from previously OOO dates will return to this user&apos;s calendar.</span>
-              </span>
-            </div>
-          </div>
+          </Reveal>
         )}
 
         <Input
@@ -201,7 +239,8 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
           value={values.reason}
           placeholder="e.g. Personal, Annual Leave"
           maxLength={120}
-          onChange={(e) => set({ reason: e.target.value })}
+          // Sentence case: the first letter is always a capital.
+          onChange={(e) => set({ reason: capFirst(e.target.value) })}
         />
 
         {/* Figma 17436:107708: off, or on with the message to send. */}
@@ -227,9 +266,32 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
             </label>
           )}
         </div>
+
+        {/* On call schedule: parked for now (the drawer is built,
+            OnCallScheduleDrawer.jsx). Restore this link and the drawer below
+            to bring it back.
+        <span>
+          <Link
+            className={styles.newRecordLink}
+            role="button"
+            tabIndex={0}
+            onClick={() => setOnCallOpen(true)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOnCallOpen(true); } }}
+          >
+            <AddIconMinimalist size={12} color="currentColor" />
+            On Call Schedule
+          </Link>
+        </span>
+        */}
       </div>
-      )}
-      </div>
+      {/* {onCallOpen && (
+        <OnCallScheduleDrawer
+          preset={{ phoneTreeType: 'Out of Office', fromDate: isoDay(values.startAt), toDate: isoDay(values.endAt) }}
+          oooRecordId={record?.id}
+          excludeUser={values.userName}
+          onClose={() => setOnCallOpen(false)}
+        />
+      )} */}
     </Drawer>
   );
 }

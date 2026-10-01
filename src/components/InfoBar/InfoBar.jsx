@@ -15,13 +15,16 @@ import styles from './InfoBar.module.css';
  *                                          `solar:info-circle-linear`)
  * @param {'info'|'success'|'warning'|'error'} [props.tone='info'] – tint
  *                                          for the icon + surface
+ * @param {'banner'|'inline'} [props.variant='banner'] – 'inline' is the compact
+ *                                          in-flow alert (Figma Eventus 17629:122416):
+ *                                          16px icon, tighter padding, thin tinted border
  * @param {string}   [props.className]    – layout hook for the caller
  */
-export function InfoBar({ children, icon = 'solar:info-circle-linear', tone = 'info', className }) {
+export function InfoBar({ children, icon = 'solar:info-circle-linear', tone = 'info', variant = 'banner', className }) {
   const toneClass = styles[`tone-${tone}`] || styles['tone-info'];
   return (
-    <div className={[styles.root, toneClass, className].filter(Boolean).join(' ')} role="status">
-      <Icon name={icon} size={14} color="currentColor" className={styles.icon} />
+    <div className={[styles.root, toneClass, variant === 'inline' ? styles.inline : '', className].filter(Boolean).join(' ')} role="status">
+      <Icon name={icon} size={variant === 'inline' ? 16 : 14} color="currentColor" className={styles.icon} />
       <span className={styles.body}>{children}</span>
     </div>
   );
