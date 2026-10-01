@@ -7,7 +7,8 @@ import { SecondaryUserPicker } from './SecondaryUserPicker';
 import { DatePicker } from './DatePicker';
 import { ScheduleDrawerRecurringFields } from './ScheduleDrawerRecurringFields';
 import { ScheduleDrawerTimePicker } from './ScheduleDrawerTimePicker';
-import { MODE_OPTIONS, LOCATION_OPTIONS } from './scheduleDrawerConstants';
+import { MODE_OPTIONS } from './scheduleDrawerConstants';
+import { useLocationOptions } from './useLocationOptions';
 import styles from './ScheduleDrawer.module.css';
 
 export function ScheduleDrawerAppointmentDetails({
@@ -46,6 +47,7 @@ export function ScheduleDrawerAppointmentDetails({
   timeBtnRef,
   timezoneLabel,
 }) {
+  const locationOptions = useLocationOptions();
   const isSectionOpen = (key) => openSections.includes(key);
 
   return (
@@ -75,7 +77,7 @@ export function ScheduleDrawerAppointmentDetails({
             value={location}
             placeholder="Select Location"
             icon="solar:map-point-linear"
-            options={LOCATION_OPTIONS.map(l => ({ label: l }))}
+            options={locationOptions.map(l => ({ label: l }))}
             onSelect={v => setLocation(v)}
           />
         </div>

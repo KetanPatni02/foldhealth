@@ -65,6 +65,7 @@ export function NotificationsPopover({ onClose, anchorRef }) {
   const setPendingEmailReferralId = useAppStore(s => s.setPendingEmailReferralId);
   const openPreferencesFromNotification = useAppStore(s => s.openPreferencesFromNotification);
   const openPendingUsersFromNotification = useAppStore(s => s.openPendingUsersFromNotification);
+  const openReassignmentSummary = useAppStore(s => s.openReassignmentSummary);
 
   // Refetch on open. The realtime subscription is the fast path, not the
   // source of truth: a binding created before the table was published — or
@@ -113,6 +114,8 @@ export function NotificationsPopover({ onClose, anchorRef }) {
       openPreferencesFromNotification?.();
     } else if (n.action === 'openPendingUsers') {
       openPendingUsersFromNotification?.();
+    } else if (n.action === 'openReassignmentSummary' && n.reassignmentJobId) {
+      openReassignmentSummary?.(n.reassignmentJobId);
     }
     onClose?.();
   };
@@ -191,7 +194,19 @@ export function NotificationsPopover({ onClose, anchorRef }) {
               </span>
               <span className={styles.entryBody}>
                 <span className={styles.entryTitle}>{n.title}</span>
-                {n.body && (
+                {/* A reassignment job's result reads as a card (Figma Eventus
+                    16978:129436): what it is, then the counts. */}
+                {n.body && n.type === 'reassignment.summary' ? (
+                  <span className={styles.summaryCard}>
+                    <span className={styles.summaryIcon}>
+                      <Icon name="solar:calendar-linear" size={20} color="var(--neutral-400)" />
+                    </span>
+                    <span className={styles.summaryText}>
+                      <span className={styles.summaryTitle}>Appointment Reassignment Summary</span>
+                      <span className={styles.entrySub}>{n.body}</span>
+                    </span>
+                  </span>
+                ) : n.body && (
                   <span className={styles.entrySub}>
                     {n.actorName ? `${n.actorName} · ${n.body}` : n.body}
                   </span>
@@ -211,6 +226,7 @@ function iconForType(type) {
   if (type === 'task.assigned') return 'solar:user-plus-rounded-linear';
   if (type === 'task.mentioned') return 'solar:mention-square-linear';
   if (type === 'appointment.assigned') return 'solar:calendar-linear';
+  if (type === 'reassignment.summary') return 'solar:users-group-rounded-linear';
   if (type === 'message.received') return 'solar:chat-round-linear';
   if (type === 'referral.received') return 'solar:square-share-line-linear';
   if (type === 'hcc.extraction_complete') return 'solar:document-text-linear';

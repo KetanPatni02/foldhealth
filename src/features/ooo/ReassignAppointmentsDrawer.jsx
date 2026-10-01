@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../components/Drawer/Drawer';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { Badge } from '../../components/Badge/Badge';
@@ -11,6 +11,10 @@ import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
 import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../store/useAppStore';
 import { OooReassignFooter, ReassignmentType, ReassignProviders } from './OooReassignStep';
+import { ReassignPlanner } from './ReassignPlanner';
+import { ReassignHistory } from './ReassignHistory';
+import { reassignWindow, scopeAppointments, tallyPlan } from './reassignUtils';
+import { toast } from '../../components/Toast/sonnerToast';
 import { canEdit, describeRange, OOO_ICON, oooStatus, recordsFor, sortRecords, STATUS_TONE } from './oooUtils';
 import styles from './ooo.module.css';
 
@@ -20,10 +24,12 @@ const TABS = [
 ];
 
 /**
- * Reassign Appointments (Figma Eventus 17574:114531), from the calendar's
- * Schedule menu: pick whose appointments to move, why, and (for out of
- * office) which record. The provider list below is the same static block
- * as the OOO record's step 2, so Confirm stays disabled for now.
+ * Reassign Appointments (Figma Eventus 17574:114531): pick whose
+ * appointments, why (out of office, permanent, or a one-time start and
+ * end), then plan which ones move to which covering provider and which are
+ * cancelled. Nothing changes until Confirm, which runs the plan as a
+ * reassignment job; its summary arrives as a notification. History lists
+ * past jobs.
  *
  * @param {object}   props
  * @param {{ name: string }[]} props.users
@@ -48,7 +54,45 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
   // else the next upcoming (the list's own order). Still changeable.
   const latestFor = (name) => (name ? sortRecords(recordsFor(oooRecords, name).filter(r => canEdit(r)))[0]?.id || '' : '');
   const [recordId, setRecordId] = useState(() => initialRecordId || latestFor(initialUser));
-  const [range, setRange] = useState([]); // One-time: [startISO, endISO]
+  const [range, setRange] = useState({ startAt: null, endAt: null }); // One-time
+  const [plan, setPlan] = useState({});
+  const [running, setRunning] = useState(false);
+
+  const appointments = useAppStore(s => s.appointments);
+  const fetchAppointments = useAppStore(s => s.fetchAppointments);
+  const fetchPracticeLocations = useAppStore(s => s.fetchPracticeLocations);
+  const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  const platformUsers = useAppStore(s => s.platformUsers);
+  const runJob = useAppStore(s => s.runReassignmentJob);
+  useEffect(() => {
+    fetchAppointments?.();
+    fetchPracticeLocations?.();
+    fetchPlatformUsers?.();
+  }, [fetchAppointments, fetchPracticeLocations, fetchPlatformUsers]);
+
+  // What the plan covers: the provider's upcoming appointments in the window.
+  const record = oooRecords.find(r => r.id === recordId);
+  const timeWindow = useMemo(
+    () => (from ? reassignWindow({ type, record, startAt: range.startAt, endAt: range.endAt }) : null),
+    [from, type, record, range.startAt, range.endAt],
+  );
+  const scope = useMemo(() => scopeAppointments(appointments, from, timeWindow), [appointments, from, timeWindow]);
+  // A different provider, type or window is a different plan.
+  const scopeKey = `${from}|${type}|${timeWindow?.from}|${timeWindow?.to}`;
+  const [planKey, setPlanKey] = useState(scopeKey);
+  if (planKey !== scopeKey) { setPlanKey(scopeKey); setPlan({}); }
+  const tally = tallyPlan(plan, scope);
+  const planned = tally.reassigning + tally.cancelling;
+
+  const confirm = async () => {
+    if (!planned || running) return;
+    setRunning(true);
+    const fromRole = (platformUsers || []).find(u => u.name === from)?.clinicalRoles?.[0] || null;
+    // The job runs in the background; its summary comes as a notification.
+    toast.success('Reassignment started. You\'ll get a notification with the summary.');
+    onClose();
+    await runJob({ fromUser: from, fromUserRole: fromRole, type, window: timeWindow, oooRecordId: type === 'ooo' ? recordId : null, plan, appointments: scope });
+  };
 
   // The provider's current and upcoming records; past ones have nothing
   // left to reassign.
@@ -78,7 +122,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
 
   const headerRight = (
     <>
-      <Button variant="primary" size="L" disabled>Confirm</Button>
+      <Button variant="primary" size="L" disabled={!planned || running} onClick={confirm}>Confirm</Button>
       <span className={styles.headerDivider} aria-hidden="true" />
     </>
   );
@@ -92,10 +136,10 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
       noCloseDivider
       // The banner slot is already full-bleed, so the strip mustn't bleed again.
       banner={<TabStrip items={TABS} activeKey={tab} onChange={setTab} fullWidth={false} />}
-      footer={tab === 'reassign' ? <OooReassignFooter /> : undefined}
+      footer={tab === 'reassign' ? <OooReassignFooter {...tally} /> : undefined}
     >
       {tab === 'history' ? (
-        <RingEmptyState icon="solar:history-linear" label="No reassignments yet" />
+        <ReassignHistory />
       ) : (
         <div className={`${styles.form} ${styles.reassignForm}`}>
           <Select
@@ -163,8 +207,10 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
           />
 
           {/* Nothing to list until we know whose appointments, and for
-              out of office, which record's dates; for other, which dates. */}
-          <ReassignProviders ready={!!from && (type === 'ooo' ? !!recordId : type === 'other' ? range.length === 2 : true)} />
+              out of office, which record's dates; for one-time, which dates. */}
+          {from && timeWindow
+            ? <ReassignPlanner key={scopeKey} appointments={scope} awayUser={from} timeWindow={timeWindow} plan={plan} onPlan={setPlan} />
+            : <ReassignProviders hasProvider={!!from} />}
         </div>
       )}
     </Drawer>

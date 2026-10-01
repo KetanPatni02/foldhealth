@@ -8255,7 +8255,9 @@ export const useAppStore = create((set, get) => ({
       const authUser = sessionData?.session?.user;
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, first_name, last_name, email, clinical_roles')
+        // locations: the departments (practice locations) each person works
+        // at, for picking covering providers when reassigning appointments.
+        .select('id, full_name, first_name, last_name, email, clinical_roles, locations')
         .order('full_name', { ascending: true });
       if (error) throw error;
       const raw = data || [];
@@ -8334,14 +8336,16 @@ export const useAppStore = create((set, get) => ({
           || '').trim();
         if (!name) continue;
         const roles = r.clinical_roles || [];
+        const locs = Array.isArray(r.locations) ? r.locations : [];
         const existing = byName.get(name);
         if (existing) {
           const merged = Array.from(new Set([...existing.clinicalRoles, ...roles]));
-          byName.set(name, { ...existing, clinicalRoles: merged });
+          const mergedLocs = Array.from(new Set([...(existing.locations || []), ...locs]));
+          byName.set(name, { ...existing, clinicalRoles: merged, locations: mergedLocs });
           continue;
         }
         const initials = name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
-        byName.set(name, { id: r.id, name, initials, email: r.email || '', clinicalRoles: roles });
+        byName.set(name, { id: r.id, name, initials, email: r.email || '', clinicalRoles: roles, locations: locs });
       }
       set({
         platformUsers: [...byName.values()],
@@ -12272,6 +12276,101 @@ export const useAppStore = create((set, get) => ({
     }
     set(s => ({ oooRecords: s.oooRecords.filter(r => r.id !== id) }));
     return true;
+  },
+
+  // ── Appointment reassignment (Reassign Appointments drawer → Confirm) ──
+  // A job carries out a confirmed plan on `appointments` and keeps the
+  // outcome in reassignment_jobs (summary drawer, History tab). Until that
+  // table exists, jobs are kept for the session only (reassignmentLocal).
+  reassignmentJobs: [],
+  reassignmentJobsFetched: false,
+  reassignmentLocal: false,
+  reassignmentSummaryJobId: null,
+  openReassignmentSummary: (jobId) => set({ reassignmentSummaryJobId: jobId }),
+  closeReassignmentSummary: () => set({ reassignmentSummaryJobId: null }),
+  fetchReassignmentJobs: async ({ force = false } = {}) => {
+    if (get().reassignmentJobsFetched && !force) return;
+    const { rowToJob } = await import('../features/ooo/reassignJobs');
+    const { data, error } = await supabase.from('reassignment_jobs').select('*').order('created_at', { ascending: false }).limit(100);
+    if (error) {
+      console.warn('fetchReassignmentJobs:', error.message);
+      set({ reassignmentJobsFetched: true, reassignmentLocal: true });
+      return;
+    }
+    set({ reassignmentJobs: (data || []).map(rowToJob), reassignmentJobsFetched: true, reassignmentLocal: false });
+  },
+  /**
+   * Run a confirmed plan: move each "reassign" appointment to its covering
+   * provider (flagging a clash with one they already have), cancel each
+   * "cancel" one, and record what happened. Then a notification links to the
+   * summary. Resolves the saved job, or null if nothing could be saved.
+   *
+   * @param {{ fromUser, fromUserRole?, type, window: { from, to }, oooRecordId?, plan, appointments }} input
+   *   `appointments` are the ones in scope (plan keys are their ids).
+   */
+  runReassignmentJob: async ({ fromUser, fromUserRole, type, window, oooRecordId, plan, appointments }) => {
+    const { buildJob, jobToRow } = await import('../features/ooo/reassignJobs');
+    await get().fetchReassignmentJobs();
+    const job = buildJob({
+      fromUser, fromUserRole, type, window, oooRecordId, plan,
+      appointments,
+      everyone: get().appointments || [],
+      createdBy: get().currentUserProfile?.name || null,
+    });
+    // Carry out the plan on appointments. The reassigned_from /
+    // reassignment_job_id columns come with reassignment_jobs_migration.sql;
+    // until it runs, the move still happens without them.
+    const update = async (ids, patch, extra) => {
+      if (!ids.length) return;
+      let { error } = await supabase.from('appointments').update({ ...patch, ...extra }).in('id', ids);
+      if (error && extra) ({ error } = await supabase.from('appointments').update(patch).in('id', ids));
+      if (error) console.warn('runReassignmentJob update:', error.message);
+    };
+    const byTo = {};
+    const cancelIds = [];
+    job.results.forEach((r) => {
+      if (r.outcome === 'reassigned') (byTo[r.to] = byTo[r.to] || []).push(r.appointmentId);
+      if (r.outcome === 'cancelled') cancelIds.push(r.appointmentId);
+    });
+    for (const [to, ids] of Object.entries(byTo)) {
+      await update(ids, { primary_user: to }, { reassigned_from: fromUser, reassignment_job_id: job.id });
+    }
+    await update(cancelIds, { status: 'Cancelled' }, { reassignment_job_id: job.id });
+    if (!get().reassignmentLocal) {
+      const { error } = await supabase.from('reassignment_jobs').insert(jobToRow(job));
+      if (error) { console.warn('runReassignmentJob save:', error.message); set({ reassignmentLocal: true }); }
+    }
+    set(st => ({ reassignmentJobs: [job, ...st.reassignmentJobs] }));
+    await get().fetchAppointments?.();
+    get().addNotification?.({
+      type: 'reassignment.summary',
+      title: `Appointment reassignment summary is ready for ${fromUser}.`,
+      body: `${job.results.length} Appointments • ${job.conflictingCount} Conflicting • ${job.failedCount} Failed`,
+      action: 'openReassignmentSummary',
+      reassignmentJobId: job.id,
+    });
+    return job;
+  },
+  /**
+   * Move appointments that were reassigned away from `userName` back to
+   * them, for the given time ranges (e.g. dates taken off an Out of Office
+   * record), from now on only. Uses appointments.reassigned_from.
+   */
+  restoreReassignedAppointments: async (userName, ranges) => {
+    const { apptSpan } = await import('../features/ooo/reassignUtils');
+    const now = Date.now();
+    const back = (get().appointments || []).filter((a) => {
+      if (!a.reassigned_from || String(a.reassigned_from).trim().toLowerCase() !== String(userName).trim().toLowerCase()) return false;
+      const { start } = apptSpan(a);
+      return start >= now && ranges.some(r => start >= r.from && start < r.to);
+    });
+    if (!back.length) return 0;
+    const { error } = await supabase.from('appointments')
+      .update({ primary_user: userName, reassigned_from: null, reassignment_job_id: null })
+      .in('id', back.map(a => a.id));
+    if (error) { console.warn('restoreReassignedAppointments:', error.message); return 0; }
+    await get().fetchAppointments?.();
+    return back.length;
   },
 
   // ── On call schedules (Create Schedule drawer) ──
