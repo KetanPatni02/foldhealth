@@ -90,7 +90,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
     setRunning(true);
     const fromRole = (platformUsers || []).find(u => u.name === from)?.clinicalRoles?.[0] || null;
     // The job runs in the background; its summary comes as a notification.
-    toast.success('Reassignment started. You\'ll get a notification with the summary.');
+    toast.success('Reassignment Started. You\'ll Get a Notification with the Summary.');
     onClose();
     await runJob({ fromUser: from, fromUserRole: fromRole, type, window: timeWindow, oooRecordId: type === 'ooo' ? recordId : null, plan, appointments: scope });
   };

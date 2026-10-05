@@ -69,6 +69,7 @@ export function useReassignHistory() {
       // "01/18/2026, 01:15PM" → date, and "01:15 PM".
       const [date, time = ''] = formatDateTime(j.createdAt).split(', ');
       const running = j.status === 'running';
+      const failed = j.status === 'failed';
       const kind = kindOf(j.type);
       return {
         t: 'reassignment',
@@ -80,7 +81,11 @@ export function useReassignHistory() {
             <div className={htStyles.headlineRow}>
               <span className={htStyles.headline}>{kind} for: {j.fromUser}</span>
             </div>
-            {running ? (
+            {failed ? (
+              <span className={styles.historyLine}>
+                <Badge tone="error" size="S" label="Failed" />
+              </span>
+            ) : running ? (
               <span className={`${styles.historyLine} ${styles.historyRunning}`}>
                 <span className={styles.spinner} aria-hidden="true" />
                 Reassignment job in progress, Loading details...
