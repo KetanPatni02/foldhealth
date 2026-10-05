@@ -9,11 +9,11 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
 import { Textarea } from '../../components/Textarea/Textarea';
 import { InfoBar } from '../../components/InfoBar/InfoBar';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { useAppStore } from '../../store/useAppStore';
-import { capFirst, DEFAULT_AUTO_REPLY, fromPickerValue, rangeChange, toPickerValue, validateOoo } from './oooUtils';
+import { appointmentsToReassign, capFirst, DEFAULT_AUTO_REPLY, overlapPlan, fromPickerValue, rangeChange, toPickerValue, validateOoo } from './oooUtils';
 import { toast } from '../../components/Toast/sonnerToast';
-// import { Link } from '../../components/Link/Link';
-// import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
+// // import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
 // import { OnCallScheduleDrawer } from './OnCallScheduleDrawer';
 import styles from './ooo.module.css';
 
@@ -55,7 +55,9 @@ function Reveal({ open, children }) {
  * @param {function} [props.onSaved] – (record, { reassign }) => void; `reassign` when
  *   there are newly out-of-office dates whose appointments need moving
  */
-export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) {
+export function OooRecordDrawer({ record: initialRecord, user, users = [], onClose, onSaved }) {
+  // The record being edited; Edit Existing (below) switches to another one.
+  const [record, setRecord] = useState(initialRecord);
   const saveOooRecord = useAppStore(s => s.saveOooRecord);
   const oooRecords = useAppStore(s => s.oooRecords);
   const restoreReassigned = useAppStore(s => s.restoreReassignedAppointments);
@@ -104,6 +106,43 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
   const providerLabel = values.userName ? `${values.userName}${values.userEmail ? ` (${values.userEmail})` : ''}` : '';
   const pickable = useMemo(() => users.map(u => ({ value: u.name, label: u.email ? `${u.name} (${u.email})` : u.name })), [users]);
 
+  // After a save: Reassign Appointments opens next only if the dates hold
+  // appointments still to move; the toast says so when it does.
+  const finish = async (saved, wantsReassign) => {
+    // (Load appointments first if nothing on screen has yet.)
+    if (wantsReassign && !(useAppStore.getState().appointments || []).length) await useAppStore.getState().fetchAppointments?.();
+    const reassign = wantsReassign && appointmentsToReassign(saved, useAppStore.getState().appointments).length > 0;
+    toast.success(reassign ? 'Out of Office record saved. Reassign appointments next.' : 'Out of Office Record Saved Successfully');
+    onSaved?.(saved, { reassign });
+    onClose();
+  };
+
+  // New dates that clash with the provider's other records: say what's
+  // covered, and offer to extend those records or keep only the free time.
+  const overlap = useMemo(() => overlapPlan(values, oooRecords, record?.id), [values, oooRecords, record?.id]);
+  // Create New keeps the longest stretch of free time, wherever it falls
+  // (after, before or between the existing records). Shorter gaps are too
+  // rare to plan around, so they're left as they are.
+  // The card only helps when some of the new dates are still free; dates
+  // already fully covered just get the plain error.
+  const partial = !isEdit && !!overlap?.gaps.length;
+  const freeTime = overlap?.gaps.reduce((a, g) => (!a || g.to - g.from > a.to - a.from ? g : a), null);
+  // Edit Existing: this drawer slides out and the clashing record opens for
+  // editing, as saved (the user changes its dates on purpose).
+  const [swapTo, setSwapTo] = useState(null);
+  const editExisting = () => setSwapTo((overlap.extend.find(x => x.endAt !== x.record.endAt) || overlap.extend[0]).record);
+  const openSwapped = () => {
+    const r = swapTo;
+    setRecord(r);
+    setValues({
+      userName: r.userName, userEmail: r.userEmail || '', userRole: r.userRole || '', userId: r.userId || null,
+      startAt: r.startAt, endAt: r.endAt,
+      reason: r.reason || '', autoReply: !!r.autoReply, autoReplyMessage: r.autoReplyMessage || DEFAULT_AUTO_REPLY,
+    });
+    setTouched(false);
+    setSwapTo(null);
+  };
+
   const save = async () => {
     setTouched(true);
     if (hasErrors) return;
@@ -127,10 +166,7 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
         ].filter(Boolean);
         if (removed.length) await restoreReassigned(saved.userName, removed);
       }
-      // When Reassign Appointments opens next, the toast says why.
-      toast.success(needsReassign ? 'Out of Office record saved. Reassign appointments next.' : 'Out of Office Record Saved Successfully');
-      onSaved?.(saved, { reassign: needsReassign });
-      onClose();
+      await finish(saved, needsReassign);
     } finally {
       setSaving(false);
     }
@@ -154,15 +190,18 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
 
   return (
     <Drawer
+      // A new key on the swap mounts a fresh panel, which slides in.
+      key={record?.id || 'new'}
       title={title}
       width={640}
-      onClose={onClose}
+      dismissed={!!swapTo}
+      onClose={swapTo ? openSwapped : onClose}
       headerRight={headerRight}
       noCloseDivider
     >
       <div className={styles.form}>
         {!isEdit && (
-          <InfoBar tone="info" variant="inline">Mark users OOO by selecting date range below. Appointments will be reassigned after saving.</InfoBar>
+          <InfoBar tone="info" variant="inline">Mark users OOO by selecting date range below. Appointments (if any) will be reassigned next.</InfoBar>
         )}
         {isEdit && change.extended && (
           <InfoBar tone="warning" variant="inline">Appointments on the newly added dates can be reassigned once you save.</InfoBar>
@@ -189,6 +228,9 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
 
 
         <div className={styles.dateRow}>
+          {/* A record that began before today keeps its start; hovering the
+              locked field says why. */}
+          <Tooltip label={startLocked ? 'Started on a previous day, so the start can\'t be changed.' : ''} className={styles.recordPickerTip} followCursor maxWidth={240}>
           <DateTimePicker
             label="Start Date & Time"
             required
@@ -202,8 +244,8 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
             errorText={err('startAt')}
             invalid={!!overlapError}
             disabled={startLocked}
-            helperText={startLocked ? 'Started on a previous day, so the start can\'t be changed.' : undefined}
           />
+          </Tooltip>
           <DateTimePicker
             label="End Date & Time"
             required
@@ -221,7 +263,32 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
         </div>
         {/* Overlapping another record: both dates are marked, and the
             reason is said once, across the row. */}
-        {overlapError && <span className={styles.rowError} role="alert">{overlapError}</span>}
+        {overlapError && !partial && <span className={styles.rowError} role="alert">{overlapError}</span>}
+        {/* Part of the dates is already out of office (Figma Eventus 17654:115160):
+            stretch the existing record(s) over the rest, or keep only the free time.
+            New records only; editing one just says the dates clash. */}
+        {overlapError && partial && (
+          <div className={styles.overlapCard} role="alert">
+            <div className={styles.overlapHead}>
+              <Icon name="solar:info-circle-linear" size={16} color="var(--status-warning)" />
+              <span>This user is already out of office for some of these dates.</span>
+            </div>
+            <div className={styles.overlapBody}>
+              <p className={styles.overlapText}>Extend that record to cover the rest, or create a new one for the remaining dates.</p>
+              <div className={styles.overlapActions}>
+                <Button variant="primary" size="S" disabled={saving || !overlap.extend.length} onClick={editExisting}>Edit Existing</Button>
+                <Button
+                  variant="secondary"
+                  size="S"
+                  disabled={saving || !freeTime}
+                  onClick={() => set({ startAt: new Date(freeTime.from).toISOString(), endAt: new Date(freeTime.to).toISOString() })}
+                >
+                  Create New
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Figma Eventus 17620:122123: what changed, whether to move the
             removed dates' appointments back, and (under way) that only the
@@ -271,7 +338,7 @@ export function OooRecordDrawer({ record, user, users = [], onClose, onSaved }) 
                 rows={3}
                 value={values.autoReplyMessage}
                 maxLength={500}
-                onChange={(e) => set({ autoReplyMessage: e.target.value })}
+                onChange={(value) => set({ autoReplyMessage: value })}
                 aria-label="Auto reply message"
               />
               {err('autoReplyMessage') && <span className={styles.fieldError}>{err('autoReplyMessage')}</span>}

@@ -55,6 +55,9 @@ function readDrawerDurationMs(node) {
  *                              (e.g. 1300 for the HCC Document Review drawer).
  *                              Numbers are treated as px.
  *  - className    (string)     Extra class on the panel root (rare)
+ *  - dismissed    (boolean)    Close from outside: plays the close animation,
+ *                              then calls onClose (e.g. swapping one drawer
+ *                              for another)
  *
  * Design tokens (DO NOT change without design review):
  *  - Width: 700px
@@ -87,6 +90,7 @@ export function Drawer({
   // stays open and no animation runs, so the caller can show its own confirm
   // (e.g. "Discard unsaved changes?") over the still-open drawer.
   beforeClose,
+  dismissed = false,
 }) {
   // Stacking depth for nested drawers. When a second Drawer mounts on top
   // of an already-open one (e.g. TaskDetailDrawer over CareGapDetailDrawer
@@ -124,14 +128,23 @@ export function Drawer({
     setTimeout(() => onClose?.(), ms);
   }, [closing, onClose, beforeClose]);
 
+  // Closing from outside skips beforeClose: the caller already decided.
+  useEffect(() => {
+    if (!dismissed) return undefined;
+    const t = setTimeout(() => onClose?.(), readDrawerDurationMs(panelRef.current));
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dismissed]);
+  const shut = closing || dismissed;
+
   return createPortal(
     <>
       {/* Backdrop is a mouse-only convenience for closing. It is hidden from
           assistive tech on purpose — the header CloseButton is the keyboard and
           screen-reader path, so the backdrop must not appear as a second,
           unlabelled control. */}
-      <div className={styles.overlay} data-closing={closing ? 'true' : 'false'} onClick={requestClose} aria-hidden="true" style={overlayStyle} />
-      <div ref={panelRef} data-drawer-panel className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={closing ? 'true' : 'false'} style={Object.keys(panelStyle).length ? panelStyle : undefined}>
+      <div className={styles.overlay} data-closing={shut ? 'true' : 'false'} onClick={requestClose} aria-hidden="true" style={overlayStyle} />
+      <div ref={panelRef} data-drawer-panel className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={shut ? 'true' : 'false'} style={Object.keys(panelStyle).length ? panelStyle : undefined}>
         <div className={styles.header} style={headerStyle}>
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>
           <div className={styles.headerRight}>

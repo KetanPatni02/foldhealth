@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { OooIcon } from '../../components/Icon/OooIcon';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { HOLIDAY_ICON, holidaysForUser } from '../holidays/holidayUtils';
+import { HolidayBadgeIcon } from '../../components/Icon/HolidayBadgeIcon';
+import { holidaysForUser } from '../holidays/holidayUtils';
 import { canEdit, daySpan, recordsFor, recordsOnDate } from '../ooo/oooUtils';
 import styles from './DayResourceView.module.css';
 
@@ -35,13 +36,14 @@ const isoToAppt = (iso) => { const [y, m, d] = iso.split('-'); return `${m}-${d}
  * @param {object[]} props.oooRecords
  * @param {object[]} [props.holidays] – All holiday configurations (each column gets its user's)
  * @param {object[]} [props.people]   – Staff with their locations, to match holidays to columns
+ * @param {string[]} [props.holidayLocations] – The Location filter, for someone with no locations on file
  * @param {string}   [props.timezoneLabel]
  * @param {function} props.onSlotClick   – ({ year, month, day, hour, minute }, userName) => void
  * @param {function} props.onEventClick  – (appointment) => void
  * @param {function} props.onEditOoo     – (record) => void
  * @param {function} props.onBlocked     – (message) => void, for a slot that can't be booked
  */
-export function DayResourceView({ date, users, appointments, oooRecords, holidays = [], people = [], timezoneLabel, onSlotClick, onEventClick, onEditOoo, onBlocked }) {
+export function DayResourceView({ date, users, appointments, oooRecords, holidays = [], people = [], holidayLocations = [], timezoneLabel, onSlotClick, onEventClick, onEditOoo, onBlocked }) {
   const scrollRef = useRef(null);
   const now = new Date();
   const todayIso = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -69,11 +71,11 @@ export function DayResourceView({ date, users, appointments, oooRecords, holiday
       })
       .filter(Boolean);
     // Holidays at this user's locations, green under any OOO time.
-    const hol = recordsOnDate(holidaysForUser(holidays, people, name), date)
+    const hol = recordsOnDate(holidaysForUser(holidays, people, name, holidayLocations), date)
       .map(h => ({ holiday: h, span: daySpan(h, date) }))
       .filter(x => x.span);
     return { name, ooo, appts, hol };
-  }), [users, onDay, appointments, date, holidays, people]);
+  }), [users, onDay, appointments, date, holidays, people, holidayLocations]);
 
   const clickSlot = (col, slot) => {
     const minute = slot * SLOT_MIN;
@@ -126,7 +128,7 @@ export function DayResourceView({ date, users, appointments, oooRecords, holiday
             {/* A whole-day holiday, under the Out of Office strip. */}
             {col.hol.filter(({ span }) => span.start <= 0 && span.end >= 1).slice(0, 1).map(({ holiday }) => (
               <span key={holiday.id} className={styles.holidayStrip}>
-                <Icon name={HOLIDAY_ICON} size={12} color="var(--neutral-0)" />
+                <HolidayBadgeIcon size={12} color="var(--neutral-0)" starColor="var(--accent-green)" />
                 <span className={styles.stripText}>{holiday.name}</span>
               </span>
             ))}
@@ -171,7 +173,7 @@ export function DayResourceView({ date, users, appointments, oooRecords, holiday
                 >
                   {!(span.start <= 0 && span.end >= 1) && (
                     <span className={styles.holidayStrip}>
-                      <Icon name={HOLIDAY_ICON} size={12} color="var(--neutral-0)" />
+                      <HolidayBadgeIcon size={12} color="var(--neutral-0)" starColor="var(--accent-green)" />
                       <span className={styles.stripText}>{holiday.name}</span>
                     </span>
                   )}

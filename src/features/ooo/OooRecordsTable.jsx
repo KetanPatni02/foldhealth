@@ -20,8 +20,22 @@ const columnsFor = (wide, showUser) => [
   { key: 'reason', label: 'Reason' },
   // Just wide enough for the longest status badge ("Upcoming").
   { key: 'status', label: 'Status', width: 112 },
+  // When it was added and last changed, each over who did it.
+  { key: 'created', label: 'Created', width: 184 },
+  { key: 'updated', label: 'Last Updated', width: 184 },
   { key: 'actions', label: 'Actions', sticky: 'right', width: 156 },
 ];
+
+/** A date and time over the person, like Care Plan Library's Last Update. */
+function StampCell({ at, by }) {
+  if (!at) return '–';
+  return (
+    <span className={styles.stamp}>
+      <span className={`${styles.stampAt} ${styles.dates}`}>{formatDateTime(at)}</span>
+      {by && <span className={styles.stampBy}>{by}</span>}
+    </span>
+  );
+}
 
 /**
  * Out of Office records in the shared WorklistShell table: Start, End, Reason,
@@ -85,8 +99,10 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
         )}
         <td className={`${styles.td} ${styles.dates}`}>{formatDateTime(r.startAt)}</td>
         <td className={`${styles.td} ${styles.dates}`}>{formatDateTime(r.endAt)}</td>
-        <td className={`${styles.td} ${styles.reason}`}><TruncatedText text={capFirst(r.reason) || '–'} /></td>
+        <td className={styles.td}><TruncatedText text={capFirst(r.reason) || '–'} /></td>
         <td className={styles.td}><Badge tone={STATUS_TONE[status]} size="S" label={status} /></td>
+        <td className={styles.td}><StampCell at={r.createdAt} by={r.createdBy} /></td>
+        <td className={styles.td}><StampCell at={r.updatedAt || r.createdAt} by={r.updatedBy || r.createdBy} /></td>
         <td className={`${styles.td} ${styles.stickyRight}`}>
           <span className={`${styles.actionsCell} ${styles.actionsGap}`}>
             {/* Enabled only where appointments still need moving, and then
@@ -97,6 +113,7 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
                   size="L"
                   tooltip={left ? `Reassign ${left} Appointment${left === 1 ? '' : 's'}` : status === 'Past' ? 'Past records can\'t be reassigned' : 'No appointments to reassign'}
                   tooltipLeft
+                  tooltipBelow
                   state={left ? 'active' : 'disabled'}
                   dot={!!left}
                   aria-label={left ? `Reassign ${left} appointment${left === 1 ? '' : 's'}` : 'Reassign appointments'}
@@ -115,6 +132,7 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
               size="L"
               tooltip={editable ? 'Edit' : 'Past records can\'t be edited'}
               tooltipLeft
+              tooltipBelow
               state={editable ? 'active' : 'disabled'}
               aria-label="Edit Out of Office record"
               onClick={() => editable && onEdit(r)}
@@ -126,6 +144,7 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
               size="L"
               tooltip={deletable ? 'Delete' : status === 'Ongoing' ? 'Ongoing records can\'t be deleted' : 'Past records can\'t be deleted'}
               tooltipLeft
+              tooltipBelow
               state={deletable ? 'active' : 'disabled'}
               aria-label="Delete Out of Office record"
               onClick={() => deletable && onDelete(r)}
@@ -150,8 +169,9 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
       loading={loading}
       emptyState={emptyState}
       embedded={embedded}
-      // Room for every fixed column plus a readable Reason before it scrolls sideways.
-      minTableWidth={showUser ? 1100 : 760}
+      // Every fixed column plus at least 160px for Reason before it scrolls
+      // sideways (on the full page the User column is 22% of the table).
+      minTableWidth={showUser ? (oneLineDates ? 1492 : 1444) : 1164}
       page={pagination?.page}
       perPage={pagination?.perPage}
       totalItems={pagination?.totalItems}

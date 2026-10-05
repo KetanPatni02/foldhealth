@@ -9,7 +9,8 @@ import { toast } from '../../components/Toast/sonnerToast';
 import { useAppStore } from '../../store/useAppStore';
 import { HolidayDrawer } from './HolidayDrawer';
 import { HolidaysTable } from './HolidaysTable';
-import { HOLIDAY_ICON, holidaysInYear, holidayYears, sortHolidays } from './holidayUtils';
+import { HolidayIcon } from '../../components/Icon/HolidayIcon';
+import { holidaysInYear, holidayYears, sortHolidays } from './holidayUtils';
 import styles from './holidays.module.css';
 
 const PER_PAGE = 20;
@@ -89,7 +90,7 @@ export function useHolidays({ embedded = false } = {}) {
       embedded={embedded}
       emptyState={(
         <div className={styles.emptyBox}>
-          <RingEmptyState icon={HOLIDAY_ICON} label={query ? 'No holidays match your search' : `No holidays in ${year[0]} yet`} />
+          <RingEmptyState icon={HolidayIcon} label={query ? 'No holidays match your search' : `No holidays in ${year[0]} yet`} />
         </div>
       )}
       pagination={shown.length > PER_PAGE ? {

@@ -472,39 +472,9 @@
 
 /* Tooltip for summary cards */
 .summaryCardTooltip {
-  position: relative;
-  display: inline-flex;
   align-items: center;
   gap: 4px;
   cursor: help;
-}
-
-.summaryCardTooltip .tooltipText {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--neutral-0);
-  color: var(--neutral-400);
-  font-size: var(--font-xs);
-  font-weight: 400;
-  line-height: 1.4;
-  white-space: normal;
-  width: 200px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 0.5px solid var(--neutral-150);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s, visibility 0.15s;
-  z-index: 10;
-}
-
-.summaryCardTooltip:hover .tooltipText {
-  opacity: 1;
-  visibility: visible;
 }
 
 /* Month picker */

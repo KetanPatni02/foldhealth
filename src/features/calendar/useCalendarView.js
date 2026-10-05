@@ -327,7 +327,7 @@ export function useCalendarView({ onOooSlot } = {}) {
     // Nor can holiday time at the shown provider's locations (or, in Month
     // with no one picked, the filtered locations).
     if (from != null) {
-      const scoped = oooUser ? holidaysForUser(holidayConfigs, platformUsers, oooUser)
+      const scoped = oooUser ? holidaysForUser(holidayConfigs, platformUsers, oooUser, filterLocation)
         : currentView === 'month-grid' && filterLocation.length ? holidaysAt(holidayConfigs, filterLocation) : [];
       const holiday = holidayDuring(scoped, from, to);
       if (holiday) {

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { OooIcon } from '../../components/Icon/OooIcon';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { Icon } from '../../components/Icon/Icon';
-import { HOLIDAY_ICON } from '../holidays/holidayUtils';
+import { HolidayBadgeIcon } from '../../components/Icon/HolidayBadgeIcon';
 import { canEdit, daySpan, recordsFor, recordsOnDate } from './oooUtils';
 import styles from './CalendarOooLayer.module.css';
 
@@ -165,7 +165,7 @@ export function CalendarOooLayer({ focusUser, records, holidays = [], renderTick
   return targets.map((t) => createPortal(
     t.kind === 'holidayStrip' || t.kind === 'holidayLabel' ? (
       <span className={styles.holidayStrip}>
-        <Icon name={HOLIDAY_ICON} size={12} color="var(--neutral-0)" />
+        <HolidayBadgeIcon size={12} color="var(--neutral-0)" starColor="var(--accent-green)" />
         <span className={styles.stripText}>{t.holiday.name}</span>
       </span>
     ) : t.kind === 'holidayTip' ? (

@@ -108,6 +108,48 @@ export function rangeChange(original, next) {
 }
 
 /**
+ * How new dates [startAt, endAt) clash with a provider's other records, and
+ * the two ways out: extend what's there, or keep only the uncovered time.
+ *   - covered: the part of the new dates already out of office, { from, to } (ms)
+ *   - gaps: the uncovered parts, in order, { from, to } (ms)
+ *   - extend: the record changes that cover every new moment, [{ record, startAt,
+ *     endAt }]: the last record runs on to the new end, the first starts at the
+ *     new start, and a record before a gap between two of them runs on to the next
+ * Null when nothing clashes.
+ */
+export function overlapPlan(values, existing = [], originalId = null) {
+  const s = toMs(values.startAt), e = toMs(values.endAt);
+  if (Number.isNaN(s) || Number.isNaN(e) || e <= s || !values.userName) return null;
+  const clashes = (existing || [])
+    .filter(r => r.id !== originalId && sameName(r.userName, values.userName) && s < toMs(r.endAt) && e > toMs(r.startAt))
+    .sort((a, b) => toMs(a.startAt) - toMs(b.startAt));
+  if (!clashes.length) return null;
+  const gaps = [];
+  let at = s;
+  clashes.forEach((r) => {
+    const rs = toMs(r.startAt), re = toMs(r.endAt);
+    if (rs > at) gaps.push({ from: at, to: Math.min(rs, e) });
+    at = Math.max(at, re);
+  });
+  if (at < e) gaps.push({ from: at, to: e });
+  const first = Math.max(s, toMs(clashes[0].startAt));
+  const last = Math.min(e, Math.max(...clashes.map(r => toMs(r.endAt))));
+  const changes = new Map();
+  const change = (r, patch) => changes.set(r.id, { record: r, startAt: r.startAt, endAt: r.endAt, ...changes.get(r.id), ...patch });
+  gaps.forEach((g) => {
+    if (g.from === s && s < toMs(clashes[0].startAt)) {
+      change(clashes[0], { startAt: new Date(s).toISOString() });
+    } else {
+      // The record that ends where the gap starts runs on to where it ends.
+      const before = clashes.filter(r => toMs(r.endAt) <= g.from).reduce((a, r) => (!a || toMs(r.endAt) > toMs(a.endAt) ? r : a), null);
+      if (before) change(before, { endAt: new Date(g.to).toISOString() });
+    }
+  });
+  const extend = [...changes.values()];
+  return { clashes, covered: { from: first, to: last }, gaps, extend };
+}
+
+/**
  * Form problems, keyed by field. A record may start today (it's out of
  * office from now) but not on an earlier day, must end after it starts, and
  * can't overlap another of the same provider's records (`existing`).

@@ -165,11 +165,10 @@
 }
 
 /* ── Tooltip ── */
+/* Rendered on the page (see ActionTooltip), so containers never clip it;
+   the component places it and sets --arrow-x to the button's centre. */
 .tooltip {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   background: var(--neutral-0, #fff);
   color: var(--neutral-400, #3a485f);
   font-size: var(--font-sm);
@@ -181,49 +180,28 @@
   border: 0.5px solid var(--neutral-150, #d0d6e1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   pointer-events: none;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s, visibility 0.15s;
-  /* Sit above every other layer (drawers, modals, toasts) so it's never clipped. */
+  /* Sit above every other layer (drawers, modals, toasts). */
   z-index: 2147483647;
+  animation: tooltipIn 0.15s ease-out;
+}
+@keyframes tooltipIn { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .tooltip { animation: none; }
 }
 
-/* Tooltip arrow */
+/* Tooltip arrow, under the bubble pointing down at the button */
 .tooltip::after {
   content: '';
   position: absolute;
   top: 100%;
-  left: 50%;
+  left: var(--arrow-x, 50%);
   transform: translateX(-50%);
   border: 5px solid transparent;
   border-top-color: var(--neutral-0, #fff);
   filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.05));
 }
 
-.root:hover .tooltip {
-  opacity: 1;
-  visibility: visible;
-}
-
-/* Right-anchor the tooltip so it opens leftward — for buttons at a
-   container's right edge, this keeps the bubble from overflowing (and
-   inflating horizontal scroll width). */
-.tooltipLeft {
-  left: auto;
-  right: 0;
-  transform: none;
-}
-.tooltipLeft::after {
-  left: auto;
-  right: 12px;
-  transform: none;
-}
-
-/* Flip tooltip to appear below the button */
-.tooltipBelow {
-  bottom: auto;
-  top: calc(100% + 6px);
-}
+/* Below the button: the arrow sits on top, pointing up */
 .tooltipBelow::after {
   top: auto;
   bottom: 100%;

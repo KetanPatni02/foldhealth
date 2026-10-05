@@ -9,6 +9,7 @@ import { Badge } from '../../../components/Badge/Badge';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { useAppStore } from '../../../store/useAppStore';
 import { FoldIdTag } from '../../../components/FoldIdTag/FoldIdTag';
+import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { Phq9AssessmentDrawer } from './Phq9AssessmentDrawer/Phq9AssessmentDrawer';
 import rowStyles from '../worklist/WorklistRow.module.css';
 import styles from './QueueRow.module.css';
@@ -137,23 +138,31 @@ function StatusCell({ patient: p, voicemailCalls, completedCall }) {
         <Badge size="M" variant="status-failed" label="Failed" icon="solar:close-circle-linear" />
         {attempts?.length > 0 && (
           <div className={styles.attemptsWrapper}>
-            <span className={styles.attemptsBadge}>
-              <Icon name="solar:history-bold" size={14} />
-              {attempts.length} att.
-            </span>
-            <div className={styles.attemptsTooltip}>
-              <div className={styles.attemptsTooltipHeader}>Attempt History</div>
-              {attempts.map((a, i) => (
-                <div key={i} className={styles.attemptRow}>
-                  <Icon name="solar:phone-calling-bold" size={16} color="var(--status-error)" />
-                  <div className={styles.attemptDetail}>
-                    <div className={styles.attemptOutcome}>{a.outcome}</div>
-                    <div className={styles.attemptTime}>{a.time}</div>
-                  </div>
-                  <span className={styles.attemptNumBadge}>#{i + 1}</span>
+            <Tooltip
+              variant="light"
+              placement="bottom"
+              maxWidth={400}
+              label={(
+                <div className={styles.attemptsTooltip}>
+                  <div className={styles.attemptsTooltipHeader}>Attempt History</div>
+                  {attempts.map((a, i) => (
+                    <div key={i} className={styles.attemptRow}>
+                      <Icon name="solar:phone-calling-bold" size={16} color="var(--status-error)" />
+                      <div className={styles.attemptDetail}>
+                        <div className={styles.attemptOutcome}>{a.outcome}</div>
+                        <div className={styles.attemptTime}>{a.time}</div>
+                      </div>
+                      <span className={styles.attemptNumBadge}>#{i + 1}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            >
+              <span className={styles.attemptsBadge}>
+                <Icon name="solar:history-bold" size={14} />
+                {attempts.length} att.
+              </span>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -496,10 +505,11 @@ export function QueueRow({ patient, columns, hiddenSet, isSelected, onSelect, vo
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={p.memberId} className={rowStyles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()}>
-                {(p.language || 'en').toUpperCase()}
-                <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
-              </button>
+              <Tooltip label={`Preferred Language: ${LANG_MAP[p.language] || 'English'}`} variant="light">
+                <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()}>
+                  {(p.language || 'en').toUpperCase()}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

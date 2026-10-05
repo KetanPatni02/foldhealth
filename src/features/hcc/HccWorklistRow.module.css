@@ -455,25 +455,6 @@ th.stickyMember { left: 36px; border-right: 0.5px solid var(--neutral-150); }
   outline-offset: 2px;
   border-radius: 2px;
 }
-.langTooltip {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  padding: 6px 10px;
-  background: var(--neutral-500);
-  color: var(--neutral-0);
-  border-radius: 6px;
-  font-size: var(--font-sm);
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-  z-index: 10;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-.langBadge:hover .langTooltip { display: block; }
 
 /* ── Generic 2-line stack layout (Last Visit, Create Date, HCC Evidence, Role) ── */
 .stackCell {

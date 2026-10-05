@@ -4,6 +4,7 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { useAppStore } from '../../store/useAppStore';
 import { LANG_MAP, getCptCode, CPT_FEES, initialStatusOf } from './data/mock';
 import styles from './ApcmBillingRow.module.css';
@@ -93,8 +94,9 @@ function ReasonsCell({ reasons }) {
           <div key={i} className={styles.reasonItem}>
             <span className={styles.reasonBullet}>&bull;</span>
             <span className={styles.reasonTitleWrap}>
-              <span className={styles.reasonTitle}>{title}</span>
-              {desc && <span className={styles.reasonTooltip}>{desc}</span>}
+              <Tooltip label={desc} align="left" maxWidth={272}>
+                <span className={styles.reasonTitle}>{title}</span>
+              </Tooltip>
             </span>
           </div>
         );
@@ -188,10 +190,11 @@ export function ApcmBillingRow({ patient, isSelected, isActive, onSelect, onTrig
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={patient.memberId} display={patient.memberId || '—'} className={styles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
-                {langCode}
-                <span className={styles.langTooltip}>Preferred Language: {langFull}</span>
-              </button>
+              <Tooltip label={`Preferred Language: ${langFull}`} variant="light">
+                <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
+                  {langCode}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

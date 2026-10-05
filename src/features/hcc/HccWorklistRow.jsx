@@ -223,10 +223,11 @@ function HccWorklistRowImpl({ member, hiddenCols, columns, staggerIndex = 0 }) {
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />
               </span>{' '}&bull;{' '}
-              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
-                {(member.language || 'en').toUpperCase()}
-                <span className={styles.langTooltip}>Preferred Language: English</span>
-              </button>
+              <Tooltip label="Preferred Language: English" variant="light">
+                <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
+                  {(member.language || 'en').toUpperCase()}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -432,10 +433,11 @@ function HccEmptyPatientRowImpl({ patient, hiddenCols, columns, staggerIndex = 0
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={patient.memberId || patient.id} className={styles.foldId} showToast={showToast} />
               </span>{' '}&bull;{' '}
-              <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
-                {(patient.language || 'en').toUpperCase()}
-                <span className={styles.langTooltip}>Preferred Language: English</span>
-              </button>
+              <Tooltip label="Preferred Language: English" variant="light">
+                <button type="button" className={styles.langBadge} onClick={(e) => e.stopPropagation()}>
+                  {(patient.language || 'en').toUpperCase()}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

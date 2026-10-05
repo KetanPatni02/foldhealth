@@ -139,7 +139,7 @@ export function HolidayDrawer({ holiday, copyFrom, onClose }) {
             placeholder="Enter Message"
             value={values.autoReplyMessage}
             maxLength={500}
-            onChange={(e) => set({ autoReplyMessage: e.target.value })}
+            onChange={(value) => set({ autoReplyMessage: value })}
             aria-label="Auto reply message"
           />
           <span className={styles.helper}>Auto Replies trigger on designated holidays and follow holiday configurations specific to locations.</span>

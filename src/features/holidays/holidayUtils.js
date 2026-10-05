@@ -7,7 +7,6 @@
  */
 import { oooStatus, sameName } from '../ooo/oooUtils';
 
-export const HOLIDAY_ICON = 'solar:confetti-minimalistic-linear';
 export const HOLIDAY_NAME_MAX = 150;
 
 const toMs = (v) => (v instanceof Date ? v.getTime() : new Date(v).getTime());
@@ -61,10 +60,14 @@ export function validateHoliday(values, { now = new Date(), original = null } = 
   return errors;
 }
 
-/** Holidays at the locations this person works at (from their profile). */
-export function holidaysForUser(holidays, users, name) {
+/**
+ * Holidays at the locations this person works at (from their profile). Someone
+ * with no locations on file gets `fallback` instead (the calendar's Location
+ * filter), so a filtered location's holidays still show for them.
+ */
+export function holidaysForUser(holidays, users, name, fallback = []) {
   const u = (users || []).find(x => sameName(x.name, name));
-  return holidaysAt(holidays, u?.locations || []);
+  return holidaysAt(holidays, u?.locations?.length ? u.locations : fallback);
 }
 
 /** The holiday covering any of [from, to), if any. */

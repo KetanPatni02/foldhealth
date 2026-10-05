@@ -12239,9 +12239,16 @@ export const useAppStore = create((set, get) => ({
       createdBy: existing?.createdBy || record.createdBy || get().currentUserProfile?.name || null,
       createdAt: existing?.createdAt || now,
       updatedAt: now,
+      updatedBy: get().currentUserProfile?.name || record.updatedBy || null,
     };
     if (!get().oooLocal) {
-      const { error } = await supabase.from('ooo_records').upsert(oooToRow(next), { onConflict: 'id' });
+      let { error } = await supabase.from('ooo_records').upsert(oooToRow(next), { onConflict: 'id' });
+      // Until ooo_records_updated_by_migration.sql runs there's no updated_by
+      // column; save without it rather than failing.
+      if (error && /updated_by/.test(error.message || '')) {
+        const { updated_by: _skip, ...row } = oooToRow(next);
+        ({ error } = await supabase.from('ooo_records').upsert(row, { onConflict: 'id' }));
+      }
       if (error) {
         console.warn('saveOooRecord:', error.message);
         get().showToast?.('Could not save the Out of Office record. Try again.');

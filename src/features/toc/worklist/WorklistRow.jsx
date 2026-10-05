@@ -329,10 +329,11 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
                 <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                   <FoldIdTag id={p.memberId} className={styles.foldId} showToast={showToast} />
                 </span>{' '}•{' '}
-                <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
-                  {(p.language || 'en').toUpperCase()}
-                  <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[p.language] || 'English'}</span>
-                </button>
+                <Tooltip label={`Preferred Language: ${LANG_MAP[p.language] || 'English'}`} variant="light">
+                  <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
+                    {(p.language || 'en').toUpperCase()}
+                  </button>
+                </Tooltip>
               </div>
             </div>
           </div>

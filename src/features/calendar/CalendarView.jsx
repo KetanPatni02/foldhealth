@@ -43,7 +43,7 @@ export function CalendarView() {
   useEffect(() => { fetchHolidayConfigs(); }, [fetchHolidayConfigs]);
   const [showHolidays, setShowHolidays] = useState(false);
   const scopedHolidays = useMemo(() => {
-    if (focusUser) return holidaysForUser(holidayConfigs, platformUsers, focusUser);
+    if (focusUser) return holidaysForUser(holidayConfigs, platformUsers, focusUser, calendar.filterLocation);
     if (calendar.filterLocation.length) return holidaysAt(holidayConfigs, calendar.filterLocation);
     return holidayConfigs;
   }, [focusUser, holidayConfigs, platformUsers, calendar.filterLocation]);
@@ -108,6 +108,7 @@ export function CalendarView() {
           oooRecords={oooRecords}
           holidays={holidayConfigs}
           people={platformUsers}
+          holidayLocations={calendar.filterLocation}
           timezoneLabel={calendar.timezoneLabel}
           onSlotClick={(slot, userName) => {
             setDayProvider(userName);

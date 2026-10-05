@@ -132,8 +132,6 @@
   gap: 6px;
 }
 .cptInfoWrap {
-  position: relative;
-  display: inline-flex;
   align-items: center;
 }
 .cptInfo {
@@ -144,31 +142,15 @@
 }
 .cptInfoWrap:hover .cptInfo { color: var(--primary-300); }
 
+/* Content of the portaled Tooltip bubble. */
 .cptTooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
   min-width: 280px;
-  padding: 10px 12px;
-  background: var(--neutral-500);
-  color: var(--neutral-0);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s;
-  z-index: 40;
+  padding: var(--space-1) 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  white-space: normal;
-  text-transform: none;
-  letter-spacing: normal;
   font-weight: 400;
-  text-align: left;
 }
-.cptInfoWrap:hover .cptTooltip { opacity: 1; }
 
 .cptTooltipTitle {
   font-size: var(--font-xs);

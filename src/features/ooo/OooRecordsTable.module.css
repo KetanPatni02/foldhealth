@@ -41,8 +41,11 @@
 .wrap td:last-child, .wrapEmbedded td:last-child { overflow: visible; }
 
 .dates { font-variant-numeric: tabular-nums; }
-/* Long reasons stay on one line and end in "…"; the full text is in a tooltip. */
-.row .reason { color: var(--neutral-300); }
+.stamp { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.stampAt { white-space: nowrap; }
+.stampBy { font-size: var(--font-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Every column but the first (the user, or Start) reads in the secondary grey. */
+.row > td:not(:first-child) { color: var(--neutral-300); }
 
 .userCell { display: flex; align-items: center; gap: var(--space-2); min-width: 0; max-width: 100%; }
 .userText { display: flex; flex-direction: column; min-width: 0; }
