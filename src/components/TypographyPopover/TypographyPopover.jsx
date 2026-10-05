@@ -9,7 +9,8 @@ import styles from './TypographyPopover.module.css';
 
 /**
  * "Typography" popover (Figma Jan–Present 1119:10152): one row per piece of
- * text, each with a font, a weight and a size.
+ * text, each with a font, a weight and a size. Opened from inside a drawer,
+ * it dims that drawer slightly while open.
  *
  * @param {object}   props
  * @param {DOMRect}  props.anchorRect – The trigger's box; the popover opens under it, right-aligned
@@ -55,9 +56,13 @@ export function TypographyPopover({ anchorRect, anchorEl, rows, families, weight
     </span>
   );
   const open = menu && rows.find(r => r.key === menu.key);
+  const drawer = anchorEl?.closest('[data-drawer-panel]');
   const options = menu?.field === 'family' ? families : weights;
 
-  return createPortal(
+  return (
+    <>
+      {drawer && createPortal(<div className={styles.scrim} aria-hidden="true" />, drawer)}
+      {createPortal(
     <div ref={popRef} className={styles.popover} style={style} role="dialog" aria-label={title}>
       <div className={styles.head}>
         <span className={styles.title}>{title}</span>
@@ -104,5 +109,7 @@ export function TypographyPopover({ anchorRect, anchorEl, rows, families, weight
       )}
     </div>,
     document.body,
+      )}
+    </>
   );
 }

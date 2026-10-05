@@ -8,7 +8,7 @@
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
-  box-shadow: var(--shadow-popover-lifted);
+  box-shadow: var(--shadow-popover);
   overflow: hidden;
 }
 .head {
@@ -55,3 +55,11 @@
 .sizer { display: inline-grid; text-align: left; }
 .sizer > * { grid-area: 1 / 1; white-space: nowrap; }
 .ghost { visibility: hidden; }
+/* Dims the drawer behind the popover; the popover itself sits above it. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  background: var(--surface-overlay-subtle);
+  pointer-events: none;
+}

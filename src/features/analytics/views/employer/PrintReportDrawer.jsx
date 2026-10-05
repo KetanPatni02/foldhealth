@@ -1316,6 +1316,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                       tooltip="Typography"
                       tooltipLeft
                       active={!!typographyAt}
+                      className={typographyAt ? styles.actionOpen : undefined}
                       onClick={(e) => { const el = e.currentTarget; loadFontPreviews(); setTypographyAt(at => (at ? null : { rect: el.getBoundingClientRect(), el })); }}
                     />
                     <span className={styles.headerDivider} aria-hidden="true" />
