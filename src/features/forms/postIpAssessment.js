@@ -1,3 +1,4 @@
+import { parseLocalDate } from '../../lib/localDate';
 /**
  * Post IP (Inpatient) Assessment — the AstraConnect post-discharge follow-up
  * form. Shared definition consumed by:
@@ -36,8 +37,8 @@ function lastNameOf(fullName) {
 
 function formatVisitDate(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+  const d = parseLocalDate(iso);
+  if (!d) return iso;
   return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 }
 

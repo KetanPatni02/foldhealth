@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { parseLocalDate } from '../../../../../../../lib/localDate';
 
 const esc = (s) => String(s ?? '');
 
@@ -29,9 +30,8 @@ function statusStyle(status) {
 }
 
 function formatPdfDate(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
+  const d = parseLocalDate(value);
+  if (!d) return '—';
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 

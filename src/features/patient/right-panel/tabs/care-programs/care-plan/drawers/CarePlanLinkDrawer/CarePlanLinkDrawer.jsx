@@ -5,8 +5,12 @@ import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from './CarePlanLinkDrawer.module.css';
+import { parseLocalDate } from '../../../../../../../../lib/localDate';
 
-const apptLabel = (a) => `${a.appointment_type_name || 'Appointment'}${a.date ? ` · ${new Date(a.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`;
+const apptLabel = (a) => {
+  const d = parseLocalDate(a.date);
+  return `${a.appointment_type_name || 'Appointment'}${d ? ` · ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}`;
+};
 
 function CarePlanLinkRow({ type, id, icon, title, meta, linked, onToggle }) {
   return (

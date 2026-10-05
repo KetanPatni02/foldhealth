@@ -8,6 +8,7 @@ import { TaskDatePicker, DetailDropdown } from '../../../../../../features/tasks
 import { PRIORITY_OPTIONS, getInitials, isOverdue } from '../../../../../../features/tasks/TasksView.utils';
 import { PATIENT_TASKS_MOCK } from '../../../../data/patientTasksMock';
 import styles from './TasksTab.module.css';
+import { parseLocalDate } from '../../../../../../lib/localDate';
 
 const SCOPES = ['My Tasks', "Patient's Task"];
 
@@ -44,8 +45,8 @@ function useAssigneeOptions() {
 
 function fmtDue(iso) {
   if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+  const d = parseLocalDate(iso);
+  if (!d) return iso;
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
 }
 

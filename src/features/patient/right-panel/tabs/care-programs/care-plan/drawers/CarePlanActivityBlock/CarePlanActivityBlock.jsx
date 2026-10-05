@@ -4,6 +4,7 @@ import { ActionButton } from '../../../../../../../../components/ActionButton/Ac
 import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
 import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import styles from './CarePlanActivityBlock.module.css';
+import { localDateMs } from '../../../../../../../../lib/localDate';
 
 const DEFAULT_TABS = [
   { key: 'all',   label: 'All' },
@@ -56,7 +57,7 @@ export function CarePlanActivityBlock({ entries, lastVisit, filters = DEFAULT_FI
   const bucketed = useMemo(() => {
     const sinceCutoff = (() => {
       if (lastVisit) {
-        const t = new Date(lastVisit).getTime();
+        const t = localDateMs(lastVisit);
         if (!Number.isNaN(t)) return t;
       }
       return Date.now() - 30 * 86400000;

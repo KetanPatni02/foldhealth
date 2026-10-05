@@ -38,6 +38,7 @@ import { InterventionPreviewDrawer } from '../../drawers/InterventionPreviewDraw
 import { BarrierDetailDrawer } from '../../drawers/BarrierDetailDrawer/BarrierDetailDrawer';
 import sharedRow from '../../tables/carePlanTables.module.css';
 import styles from './CarePlanSummaryView.module.css';
+import { localDateMs } from '../../../../../../../../lib/localDate';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 const PRIORITIES = ['high', 'medium', 'low'];
@@ -862,7 +863,7 @@ export function CarePlanSummaryView({
         // program's own endDate as a last resort).
         const startISO = plan.plan?.signedAt || plan.plan?.createdDate || null;
         const goalEndTimes = (plan.goals || [])
-          .map(g => (g.targetDate ? new Date(g.targetDate).getTime() : NaN))
+          .map(g => localDateMs(g.targetDate))
           .filter(t => !Number.isNaN(t));
         const endISO = goalEndTimes.length
           ? new Date(Math.max(...goalEndTimes)).toISOString()

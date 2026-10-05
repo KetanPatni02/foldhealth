@@ -6,14 +6,10 @@
 export const isCompletedStatus = (status) => status === 'Met';
 const OUTCOME_STATUSES = new Set(['Met', 'Not Met']);
 
-// Stored plan dates are date-only ("2026-12-14"). `new Date()` reads those as
-// UTC midnight, which renders a day early west of UTC, so parse them locally.
-export function parseCarePlanDate(v) {
-  if (!v) return null;
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v));
-  const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
+import { parseLocalDate } from '../../../../../../../lib/localDate';
+
+// Stored plan dates are date-only ("2026-12-14"); see src/lib/localDate.
+export const parseCarePlanDate = parseLocalDate;
 
 const pad = (n) => String(n).padStart(2, '0');
 

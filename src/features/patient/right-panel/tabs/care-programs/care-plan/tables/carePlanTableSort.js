@@ -1,3 +1,4 @@
+import { parseLocalDate } from '../../../../../../../lib/localDate';
 const GBI_PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
 
 function parseSortNumber(value) {
@@ -7,9 +8,8 @@ function parseSortNumber(value) {
 }
 
 function toIsoDateKey(v) {
-  if (!v) return '';
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+  const d = parseLocalDate(v);
+  return d ? d.toISOString() : '';
 }
 
 export function enrichGoalRows(rows) {
@@ -32,8 +32,8 @@ export function enrichInterventionRows(rows) {
     let dueSortKey = '';
     const override = i.config?.dueDateOverride;
     if (override) {
-      const d = new Date(override);
-      if (!Number.isNaN(d.getTime())) dueSortKey = d.toISOString();
+      const d = parseLocalDate(override);
+      if (d) dueSortKey = d.toISOString();
     }
     if (!dueSortKey) {
       const start = i.createdAt ? new Date(i.createdAt) : null;

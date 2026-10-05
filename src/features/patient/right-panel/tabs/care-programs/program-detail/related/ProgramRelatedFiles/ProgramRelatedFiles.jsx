@@ -15,6 +15,7 @@ import { resolveFileKind } from '../../../../../../../../components/FilePreview/
 import { ProgramDocPreviewDrawer } from '../ProgramDocPreviewDrawer/ProgramDocPreviewDrawer';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from './ProgramRelatedFiles.module.css';
+import { parseLocalDate, localDateMs } from '../../../../../../../../lib/localDate';
 
 const SUB_TABS = ['Program Related', 'All Documents'];
 
@@ -42,14 +43,14 @@ const todayMMDDYYYY = () => {
 // Date so it can be compared against the ISO range from DateRangePopover.
 const parseMMDDYYYY = (s) => {
   const [m, d, y] = (s || '').split('/');
-  return m && d && y ? new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`) : null;
+  return m && d && y ? parseLocalDate(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`) : null;
 };
 
 const inRange = (date, [startIso, endIso]) => {
   if (!date) return false;
   const t = date.getTime();
-  if (startIso && t < new Date(startIso).getTime()) return false;
-  if (endIso && t > new Date(endIso).getTime()) return false;
+  if (startIso && t < localDateMs(startIso)) return false;
+  if (endIso && t > localDateMs(endIso)) return false;
   return true;
 };
 

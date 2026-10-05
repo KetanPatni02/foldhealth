@@ -4,11 +4,11 @@ import { Button } from '../../../../../../../components/Button/Button';
 import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { CarePlanProgressRing } from '../../../../../../../components/CarePlanProgressRing/CarePlanProgressRing';
 import styles from './CarePlanDuplicateFlag.module.css';
+import { parseLocalDate } from '../../../../../../../lib/localDate';
 
 function fmtDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
+  const d = parseLocalDate(iso);
+  if (!d) return '';
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 }
 

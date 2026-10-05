@@ -1,4 +1,5 @@
 import { normalizeCategory } from './goalCategories.js';
+import { parseLocalDate } from '../../../../lib/localDate.js';
 
 /* Measure shapes + the formatters the library table renders them with. */
 export const MEASURE_CONFIG = {
@@ -54,11 +55,8 @@ export const MEASURE_CONFIG = {
 // Stored dates are ISO (YYYY-MM-DD); the app shows MM/DD/YYYY everywhere.
 function formatDate(value) {
   if (!value) return '';
-  // Parse YYYY-MM-DD as a local date: `new Date()` reads it as UTC midnight,
-  // which renders a day early west of UTC.
-  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value));
-  const d = ymd ? new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3])) : new Date(value);
-  if (Number.isNaN(d.getTime())) return value;
+  const d = parseLocalDate(value);
+  if (!d) return value;
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 }
 
