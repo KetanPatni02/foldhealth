@@ -1,117 +1,41 @@
-import { useState } from 'react';
-import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
+import { DateTimePicker } from '../../components/DateTimePicker/DateTimePicker';
 import { InfoBar } from '../../components/InfoBar/InfoBar';
-import { Icon } from '../../components/Icon/Icon';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { RadioButton } from '../../components/RadioButton/RadioButton';
-import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
-import { formatDate } from './oooUtils';
+import { fromPickerValue, toPickerValue } from './oooUtils';
 import styles from './ooo.module.css';
 
-// Static for now (Figma Eventus 16978:128520): the provider's appointments
-// in those dates, grouped by location, plus the ones nobody can take.
-const GROUPS = [
-  { location: '7 Hills Department', count: 10 },
-  { location: 'Home Health Centre', count: 26 },
-  { location: 'Palm Health Centre', count: 30 },
-  { location: 'Mary Health', count: 15 },
-  { location: 'Sunrise Medical', count: 2 },
-  { location: 'Lifeline Clinic', count: 2 },
-];
-const UNASSIGNABLE = 31;
-
-const TOTAL = GROUPS.reduce((n, g) => n + g.count, 0) + UNASSIGNABLE;
-
-/** Step 2's footer: what the reassignment will do. */
-export function OooReassignFooter() {
+/**
+ * The Reassign Appointments drawer's footer: what the plan will do, live.
+ *
+ * @param {{ reassigning: number, cancelling: number, noAction: number }} props
+ */
+export function OooReassignFooter({ reassigning = 0, cancelling = 0, noAction = 0 }) {
   return (
     <div className={styles.reassignFooter}>
-      <span>Reassigning: 0</span>
+      <span>Reassigning: <span className={reassigning ? styles.footerReassign : undefined}>{reassigning}</span></span>
       <span aria-hidden="true">•</span>
-      <span>Cancelling: 0</span>
+      <span>Cancelling: <span className={cancelling ? styles.footerCancel : undefined}>{cancelling}</span></span>
       <span aria-hidden="true">•</span>
-      <span>No action: {TOTAL}</span>
+      <span>No action: {noAction}</span>
     </div>
   );
 }
 
 /**
- * "Select Reassignment Providers": the appointments grouped by location,
- * each with a covering-provider picker, plus the ones nobody can take.
- * Static for now (Figma Eventus 16978:128520). Shared by the OOO record's
- * step 2 and the Reassign Appointments drawer.
+ * "Select Reassignment Providers" before there's anything to plan (Figma
+ * Eventus 16898:43570): until a provider and their dates are chosen. Once
+ * the provider is picked, it only asks for the dates.
  *
  * @param {object}  props
- * @param {boolean} [props.ready=true] – false shows the "pick first" empty
- *   state (Figma Eventus 16898:43570), e.g. until an OOO record is chosen
+ * @param {boolean} [props.hasProvider]
  */
-export function ReassignProviders({ ready = true }) {
-  const [view, setView] = useState('grouped');
-  if (!ready) {
-    return (
-      <div className={styles.fieldGroup}>
-        <span className={styles.groupTitle}>Select Reassignment Providers</span>
-        <div className={styles.providersEmpty}>
-          <RingEmptyState size="S" icon="solar:users-group-rounded-linear" label="Select Provider and dates to Reassign Appointments" />
-        </div>
-      </div>
-    );
-  }
+export function ReassignProviders({ hasProvider = false }) {
   return (
     <div className={styles.fieldGroup}>
-      <div className={styles.groupHead}>
-        <span className={styles.groupTitle}>Select Reassignment Providers</span>
-        <span className={styles.groupTools}>
-          <ActionButton icon="solar:filter-linear" size="L" tooltip="Filter" />
-          <span className={styles.actionDivider} aria-hidden="true" />
-          <span className={styles.viewToggle} role="group" aria-label="Group appointments">
-            <ActionButton
-              icon="solar:sort-from-top-to-bottom-linear"
-              size="L"
-              tooltip="Group by location"
-              className={view === 'grouped' ? styles.viewToggleOn : undefined}
-              aria-pressed={view === 'grouped'}
-              onClick={() => setView('grouped')}
-            />
-            <ActionButton
-              icon="solar:sort-vertical-linear"
-              size="L"
-              tooltip="List every appointment"
-              tooltipLeft
-              className={view === 'list' ? styles.viewToggleOn : undefined}
-              aria-pressed={view === 'list'}
-              onClick={() => setView('list')}
-            />
-          </span>
-        </span>
-      </div>
-      <InfoBar tone="info" variant="inline">Appointments are cancelled with the original provider and rebooked on the covering provider&apos;s EHR calendar. Double-booking may occur if that slot is already taken.</InfoBar>
-      <label className={styles.checkRow}>
-        <Checkbox checked={false} aria-label="Select all" />
-        <span>Select All</span>
-      </label>
-      {GROUPS.map(g => (
-        <div key={g.location} className={styles.groupCard}>
-          <Checkbox checked={false} aria-label={`Select ${g.location}`} />
-          <span className={styles.groupCardText}>
-            <span className={styles.groupCardTitle}>{g.location}</span>
-            <span className={styles.groupCardSub}>
-              {g.count} Appointments
-              <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
-            </span>
-          </span>
-          <button type="button" className={styles.assigneePicker} aria-label={`Pick a covering provider for ${g.location}`}>
-            <Icon name="solar:user-linear" size={16} color="var(--neutral-300)" />
-            <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-          </button>
-          <ActionButton icon="solar:menu-dots-linear" size="L" tooltip="More Options" tooltipLeft />
-        </div>
-      ))}
-      <div className={styles.unassignable}>
-        <span>No users available for reassignment</span>
-        <span className={styles.countBadge}>{UNASSIGNABLE}</span>
-        <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" />
+      <span className={styles.groupTitle}>Select Reassignment Providers</span>
+      <div className={styles.providersEmpty}>
+        <RingEmptyState size="S" icon="solar:users-group-rounded-linear" label={hasProvider ? 'Select dates to Reassign Appointments' : 'Select Provider and dates to Reassign Appointments'} />
       </div>
     </div>
   );
@@ -123,24 +47,22 @@ const TYPES = [
   { key: 'other', label: 'One-time' },
 ];
 
-// "YYYY-MM-DD" → "MM/DD/YYYY" (local, so the day doesn't shift).
-const isoToLabel = (iso) => { const [y, m, d] = iso.split('-').map(Number); return formatDate(new Date(y, m - 1, d)); };
-
 /**
  * "Select Reassignment Type" (Figma Eventus 17599:119759): three radios,
  * and under them what that type needs. Out of office: the record
- * (`oooField`, a picker or the record being saved). Permanent: a note that
- * everything moves. One-time: the date range to reassign.
+ * (`oooField`). Permanent: a note that everything moves. One-time: a start
+ * and end date and time, the same fields as the Out of Office drawer.
  *
  * @param {object}   props
  * @param {'ooo'|'permanent'|'other'} props.type
  * @param {function} props.onTypeChange
- * @param {string[]} props.range          – [startISO, endISO] or [] (Other)
- * @param {function} props.onRangeChange
+ * @param {{ startAt: string|null, endAt: string|null }} props.range – One-time (ISO)
+ * @param {function} props.onRangeChange – (range) => void
  * @param {React.ReactNode} props.oooField
  */
-export function ReassignmentType({ type, onTypeChange, range = [], onRangeChange, oooField }) {
-  const [anchor, setAnchor] = useState(null);
+export function ReassignmentType({ type, onTypeChange, range = { startAt: null, endAt: null }, onRangeChange, oooField }) {
+  const today = new Date();
+  const endBeforeStart = range.startAt && range.endAt && new Date(range.endAt) <= new Date(range.startAt);
   return (
     <div className={`${styles.fieldGroup} ${styles.reassignGroup}`}>
       <span className={styles.groupTitle}>Select Reassignment Type</span>
@@ -154,22 +76,31 @@ export function ReassignmentType({ type, onTypeChange, range = [], onRangeChange
         <InfoBar tone="warning" variant="inline">All appointments will be reassigned, this is typically done when provider leaves the organization.</InfoBar>
       )}
       {type === 'other' && (
-        <>
-          <button
-            type="button"
-            className={styles.rangeField}
-            aria-label="Dates to reassign"
-            onClick={(e) => setAnchor(e.currentTarget.getBoundingClientRect())}
-          >
-            <span className={range.length ? undefined : styles.rangePlaceholder}>{range.length ? isoToLabel(range[0]) : 'Start Date'}</span>
-            <Icon name="solar:arrow-right-linear" size={14} color="var(--neutral-200)" />
-            <span className={range.length ? undefined : styles.rangePlaceholder}>{range.length ? isoToLabel(range[1]) : 'End Date'}</span>
-            <Icon name="solar:calendar-linear" size={16} color="var(--neutral-300)" />
-          </button>
-          {anchor && (
-            <DateRangePopover anchorRect={anchor} label="Dates to reassign" selected={range} onChange={onRangeChange} onClose={() => setAnchor(null)} />
-          )}
-        </>
+        <div className={styles.dateRow}>
+          <DateTimePicker
+            label="Start Date & Time"
+            required
+            fullWidth
+            hour12
+            autoCommit
+            placeholder="Select Start Date & Time"
+            minDate={today}
+            value={toPickerValue(range.startAt)}
+            onChange={(v) => onRangeChange({ ...range, startAt: fromPickerValue(v) })}
+          />
+          <DateTimePicker
+            label="End Date & Time"
+            required
+            fullWidth
+            hour12
+            autoCommit
+            placeholder="Select End Date & Time"
+            minDate={range.startAt ? new Date(range.startAt) : today}
+            value={toPickerValue(range.endAt)}
+            onChange={(v) => onRangeChange({ ...range, endAt: fromPickerValue(v) })}
+            errorText={endBeforeStart ? 'End must be after the start.' : undefined}
+          />
+        </div>
       )}
     </div>
   );

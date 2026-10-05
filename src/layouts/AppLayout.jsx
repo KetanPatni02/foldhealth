@@ -28,6 +28,7 @@ import { useNotificationsFeed } from '../components/NotificationsPopover/useNoti
 import { splitFullName } from '../lib/nameValidation';
 import { Toaster } from '../components/Toast/Toast';
 import { CallPopoverHost } from '../components/CallPopover/CallPopoverHost';
+import { ReassignmentSummaryHost } from '../features/ooo/ReassignmentSummaryHost';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
 
@@ -589,6 +590,7 @@ export function AppLayout() {
         {outreachStatusDrawerPatientId && <OutreachStatusDrawer />}
         {aiTasksDrawerPatientId && <AiTasksDrawer />}
         <PgProcessingHost />
+        <ReassignmentSummaryHost />{/* opens from a reassignment's "summary is ready" notification */}
       </Suspense>
       <Toaster />
     </div>

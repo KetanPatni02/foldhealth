@@ -5,7 +5,8 @@ import { Select } from '../../components/Select/Select';
 // Locations and statuses come from the ScheduleDrawer constants — the booking
 // form is what writes these values, so sourcing the filter options from the
 // same place keeps every chip option matchable against real rows.
-import { APPOINTMENT_STATUSES, LOCATION_OPTIONS } from '../../components/ScheduleDrawer/scheduleDrawerConstants';
+import { APPOINTMENT_STATUSES } from '../../components/ScheduleDrawer/scheduleDrawerConstants';
+import { useLocationOptions } from '../../components/ScheduleDrawer/useLocationOptions';
 import { /* TIMEZONE_OPTIONS, */ VIEW_LABELS, VIEWS } from './calendarUtils';
 import { OOO_ICON } from '../ooo/oooUtils';
 import styles from './CalendarView.module.css';
@@ -39,6 +40,7 @@ export function CalendarToolbar({
   onScheduleSelect,
   onOpenOoo,
 }) {
+  const locationOptions = useLocationOptions();
   return (
     // Laid out like the legacy calendar bar: who / where / which view on
     // the left, the date and its arrows in the middle, then what's shown,
@@ -64,7 +66,7 @@ export function CalendarToolbar({
         {/* Locations */}
         <FilterChip
           label="Location"
-          options={LOCATION_OPTIONS}
+          options={locationOptions}
           selected={filterLocation}
           onChange={onFilterLocationChange}
         />

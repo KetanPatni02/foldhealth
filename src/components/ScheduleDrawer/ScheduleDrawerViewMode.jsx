@@ -11,7 +11,8 @@ import { ProviderPicker } from './ProviderPicker';
 import { DatePicker } from './DatePicker';
 import { ScheduleDrawerTimePicker } from './ScheduleDrawerTimePicker';
 import { StaffInstructionIcon } from './ScheduleDrawerScreens';
-import { getInitials, MODE_OPTIONS, LOCATION_OPTIONS, APPOINTMENT_STATUSES } from './scheduleDrawerConstants';
+import { getInitials, MODE_OPTIONS, APPOINTMENT_STATUSES } from './scheduleDrawerConstants';
+import { useLocationOptions } from './useLocationOptions';
 import { usePatientCallButton } from '../../hooks/usePatientCallButton';
 import styles from './ScheduleDrawer.module.css';
 
@@ -71,6 +72,7 @@ export function ScheduleDrawerViewMode({
   setStaffInstructionDraft,
   handleSaveStaffInstruction,
 }) {
+  const locationOptions = useLocationOptions();
   const matchedType = appointmentTypes.find(t => t.name === ea.appointment_type_name);
   const apptTypeColor = matchedType?.color || (ea.appointment_type_name?.includes('Wellness') ? 'var(--status-warning)' : 'var(--primary-300)');
   const apptTypeForPicker = appointmentType || (ea.appointment_type_name ? { name: ea.appointment_type_name, color: matchedType?.color || apptTypeColor, id: matchedType?.id } : null);
@@ -186,7 +188,7 @@ export function ScheduleDrawerViewMode({
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Location</span>
-              <DetailDropdown value={location || ea.location} placeholder="Select Location" icon="solar:map-point-linear" options={LOCATION_OPTIONS.map(l => ({ label: l }))} onSelect={v => { setLocation(v); if (ea.id) updateAppointment(ea.id, { location: v }); }} />
+              <DetailDropdown value={location || ea.location} placeholder="Select Location" icon="solar:map-point-linear" options={locationOptions.map(l => ({ label: l }))} onSelect={v => { setLocation(v); if (ea.id) updateAppointment(ea.id, { location: v }); }} />
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Primary User</span>

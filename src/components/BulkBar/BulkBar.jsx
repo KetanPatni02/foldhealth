@@ -16,13 +16,14 @@ import styles from './BulkBar.module.css';
  *
  * `actions` (optional) lets a caller replace the default Change Assignee /
  * Run Automation / "More" cluster entirely. Each entry:
- *   { label, icon?, variant?: 'primary'|'secondary'|'destructive', onClick }
+ *   { label, icon?, variant?: 'primary'|'secondary'|'destructive', onClick(ids, event) }
+ * `noun` (optional) names what's selected: "26 Appointments Selected".
  * Reach for `actions` when the calling surface has a distinct verb-set
  * (e.g. SFTP review only needs "Add to Worklist" + "Delete"). When
  * omitted, BulkBar renders the default worklist actions, preserving
  * backward compatibility for every existing caller.
  */
-export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssignee, actions, iconActions, moreActions, className } = {}) {
+export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssignee, actions, iconActions, moreActions, className, noun } = {}) {
   const storeSelectedIds = useAppStore(s => s.selectedIds);
   const storeClearSelected = useAppStore(s => s.clearSelected);
   const setShowInvokeModal = useAppStore(s => s.setShowInvokeModal);
@@ -68,7 +69,7 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
           style={{ width: 20, height: 20 }}
           aria-label="Clear selection"
         />
-        <span className={styles.countText}>{selectedIds.length} Selected</span>
+        <span className={styles.countText}>{selectedIds.length}{noun ? ` ${noun}` : ''} Selected</span>
       </div>
       <div className={styles.divider} />
       {/* Icon-only affordances between the count and the labeled actions —
@@ -100,7 +101,7 @@ export function BulkBar({ selectedIds: selectedIdsProp, onClear, onChangeAssigne
               size="S"
               leadingIcon={a.icon}
               disabled={a.disabled}
-              onClick={() => a.onClick?.(selectedIds)}
+              onClick={(e) => a.onClick?.(selectedIds, e)}
             >
               {a.label}
             </Button>

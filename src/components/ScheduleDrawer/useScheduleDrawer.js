@@ -2,9 +2,11 @@ import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { supabase } from '../../lib/supabase';
 import { trackFunnel } from '../../lib/tracking';
-import { FALLBACK_APPOINTMENT_TYPES, LOCATION_OPTIONS, displayAppointmentStatus } from './scheduleDrawerConstants';
+import { FALLBACK_APPOINTMENT_TYPES, displayAppointmentStatus } from './scheduleDrawerConstants';
+import { useLocationOptions } from './useLocationOptions';
 
 export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppointment, initialPatientId, initialSelectedPatient, initialProvider, source }) {
+  const locationOptions = useLocationOptions();
   const isViewMode = !!existingAppointment;
   const patients = useAppStore(s => s.patients);
   const fetchPatients = useAppStore(s => s.fetchPatients);
@@ -156,7 +158,7 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
     setAppointmentTypeState(next);
     if (next) {
       setMode(next.mode === 'Virtual' ? 'Virtual' : 'At Clinic');
-      setLocation(LOCATION_OPTIONS[0]);
+      setLocation(locationOptions[0]);
       if (!isViewMode) {
         maxStepRef.current = Math.max(maxStepRef.current, 3);
         trackFunnel('schedule.type_selected', { typeId: next.id ?? null, typeName: next.name || null });
