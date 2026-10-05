@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
+import { FilterIcon } from '../../components/Icon/FilterIcon';
+import { Collapse } from '../../components/Collapse/Collapse';
+import { CollapseAllIcon } from '../../components/Icon/CollapseAllIcon';
+import { ExpandAllIcon } from '../../components/Icon/ExpandAllIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { AvatarGroup } from '../../components/AvatarGroup/AvatarGroup';
 import { Badge } from '../../components/Badge/Badge';
@@ -35,7 +39,7 @@ const pickerUser = (u) => ({ id: u.id, name: u.name, initials: u.initials, role:
  *     aren't out themselves), or mark appointments to cancel;
  *   - departments nobody else covers, grouped under "No users available for
  *     reassignment": they can only be marked to cancel.
- * Filters (State, Department, Appointment Type), a flat list view, and bulk
+ * Filters (State, Department, Appointment Type), Collapse / Expand All, and bulk
  * select with Reassign / Cancel / Undo Cancellation. Nothing changes until
  * the drawer's Confirm runs the plan.
  *
@@ -56,7 +60,8 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
   const [stateF, setStateF] = useState([]);
   const [deptF, setDeptF] = useState([]);
   const [typeF, setTypeF] = useState([]);
-  const [view, setView] = useState('grouped');
+  // 'collapsed': department cards folded shut; 'expanded': every card open.
+  const [view, setView] = useState('collapsed');
   const [selected, setSelected] = useState(() => new Set());
   const [picker, setPicker] = useState(null);   // { rect, users, selected?, onPick, onUnassign? }
   const [menu, setMenu] = useState(null);       // { rect, items, onSelect }
@@ -194,6 +199,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
     return (
       <DeptGroup
         key={g.name}
+        defaultOpen={view === 'expanded'}
         title={g.name}
         count={ids.length}
         detail={planDetail(plan, g.appointments)}
@@ -250,32 +256,31 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
       <div className={styles.plannerHead}>
         <span className={styles.plannerTitle}>Select Reassignment Providers</span>
         <span className={styles.plannerTools}>
-          <ActionButton icon="solar:filter-linear" size="L" tooltip="Filters" count={filterCount || undefined} active={filtersOpen} onClick={() => setFiltersOpen(o => !o)} />
+          <ActionButton size="L" tooltip="Filters" count={filterCount || undefined} active={filtersOpen} onClick={() => setFiltersOpen(o => !o)}>
+            <FilterIcon size={20} color="var(--neutral-300)" />
+          </ActionButton>
           <span className={ooo.actionDivider} aria-hidden="true" />
           <span className={ooo.viewToggle} role="group" aria-label="View">
-            <ActionButton icon="solar:sort-from-top-to-bottom-linear" size="L" tooltip="Group by department" className={view === 'grouped' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'grouped'} onClick={() => setView('grouped')} />
-            <ActionButton icon="solar:sort-vertical-linear" size="L" tooltip="List every appointment" tooltipLeft className={view === 'list' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'list'} onClick={() => setView('list')} />
+            <ActionButton size="L" tooltip="Collapse All" className={view === 'collapsed' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'collapsed'} onClick={() => setView('collapsed')}>
+              <CollapseAllIcon size={20} color="var(--neutral-300)" />
+            </ActionButton>
+            <ActionButton size="L" tooltip="Expand All" tooltipLeft className={view === 'expanded' ? ooo.viewToggleOn : undefined} aria-pressed={view === 'expanded'} onClick={() => setView('expanded')}>
+              <ExpandAllIcon size={20} color="var(--neutral-300)" />
+            </ActionButton>
           </span>
         </span>
       </div>
       {filtersOpen && (
         <div className={styles.filterRow}>
-          <FilterChip label="State" options={[...new Set(appointments.map(a => stateOf.get(a.location)).filter(Boolean))].sort()} selected={stateF} onChange={setStateF} />
-          <FilterChip label="Department" options={groupByDepartment(appointments).map(g => g.name)} selected={deptF} onChange={setDeptF} searchable />
-          <FilterChip label="Appointment Type" options={[...new Set(appointments.map(a => a.appointment_type_name).filter(Boolean))].sort()} selected={typeF} onChange={setTypeF} searchable />
+          <FilterChip size="S" label="State" options={[...new Set(appointments.map(a => stateOf.get(a.location)).filter(Boolean))].sort()} selected={stateF} onChange={setStateF} />
+          <FilterChip size="S" label="Department" options={groupByDepartment(appointments).map(g => g.name)} selected={deptF} onChange={setDeptF} searchable />
+          <FilterChip size="S" label="Appointment Type" options={[...new Set(appointments.map(a => a.appointment_type_name).filter(Boolean))].sort()} selected={typeF} onChange={setTypeF} searchable />
         </div>
       )}
       <InfoBar tone="info" variant="inline">Appointments are cancelled with the original provider and rebooked on the covering provider&apos;s EHR calendar. Double-booking may occur if that slot is already taken.</InfoBar>
 
       {!shown.length ? (
         <span className={styles.empty}>No appointments match these filters.</span>
-      ) : view === 'list' ? (
-        <>
-          <label className={styles.selectAll}>{box(allShownIds, 'Select all')}Select All</label>
-          <div className={styles.listFlat}>
-            {shown.map(a => row(a, !!covering.get(deptOf.get(a.id))?.length))}
-          </div>
-        </>
       ) : (
         <>
           <label className={styles.selectAll}>{box(allShownIds, 'Select all')}Select All</label>
@@ -287,16 +292,16 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
                   <button type="button" className={styles.noUsersToggle} onClick={() => setNoUsersOpen(o => !o)} aria-expanded={noUsersOpen}>
                     No users available for reassignment
                     <span className={styles.countBadge}>{uncoveredIds.length}</span>
-                    <Icon name={noUsersOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={12} color="var(--neutral-300)" />
+                    <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" className={noUsersOpen ? `${styles.chevron} ${styles.chevronOpen}` : styles.chevron} />
                   </button>
                   {allCancelled(uncoveredIds) ? cancelledTag(uncoveredIds) : markLink(uncoveredIds, 'Mark to Cancel All')}
                 </div>
-                {noUsersOpen && (
-                  <>
+                <Collapse open={noUsersOpen}>
+                  <div className={styles.noUsersBody}>
                     <label className={styles.selectAll}>{box(uncoveredIds, 'Select all without covering providers')}Select All</label>
                     {uncoveredGroups.map(g => deptCard(g, false))}
-                  </>
-                )}
+                  </div>
+                </Collapse>
               </div>
             )}
           </div>
@@ -320,6 +325,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
           onUnassign={picker.onUnassign}
           onClose={() => setPicker(null)}
           emptyText="No one else works at this department."
+          align="right"
         />
       )}
       {menu && (

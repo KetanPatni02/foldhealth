@@ -49,6 +49,21 @@
 .fieldLabel { font-size: var(--font-base); color: var(--neutral-300); }
 .fieldError { font-size: var(--font-sm); color: var(--status-error); }
 /* An error about a whole row of fields: one line across the drawer. */
+/* Figma Eventus 17654:115160: warning-outlined card, header over text and two buttons. */
+.overlapCard {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--status-warning); border-radius: 8px;
+}
+.overlapHead {
+  display: flex; align-items: center; gap: var(--space-1);
+  padding: var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-100);
+  font-size: var(--font-base); font-weight: 500; line-height: 1.2; color: var(--neutral-400);
+}
+.overlapBody { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2); }
+.overlapText { margin: 0; font-size: var(--font-base); line-height: 1.2; color: var(--neutral-300); }
+.overlapActions { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) 0; }
 .rowError { display: block; margin-top: calc(-1 * var(--space-2)); font-size: var(--font-sm); line-height: 1.2; color: var(--status-error); }
 
 /* Reveal: a 0fr/1fr grid row animates the height without measuring it; the

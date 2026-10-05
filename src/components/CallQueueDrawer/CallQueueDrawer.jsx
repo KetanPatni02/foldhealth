@@ -4,6 +4,7 @@ import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
 import { ActionButton } from '../ActionButton/ActionButton';
 import { Badge } from '../Badge/Badge';
+import { Tooltip } from '../Tooltip/Tooltip';
 import { PatientBanner } from '../PatientBanner/PatientBanner';
 import styles from './CallQueueDrawer.module.css';
 
@@ -394,11 +395,10 @@ function InQueueTab({ searchQuery }) {
 function SummaryCardWithTooltip({ label, value, tooltip }) {
   return (
     <div className={styles.summaryCard}>
-      <span className={styles.summaryCardTooltip}>
+      <Tooltip label={tooltip} variant="light" maxWidth={200} className={styles.summaryCardTooltip}>
         {label}{' '}
         <Icon name="solar:info-circle-linear" size={12} color="var(--neutral-200)" />
-        <span className={styles.tooltipText}>{tooltip}</span>
-      </span>
+      </Tooltip>
       <span className={styles.summaryCardValue}>{value}</span>
     </div>
   );

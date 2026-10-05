@@ -252,10 +252,11 @@ export function JsaWorklistRow({ member, columns, hiddenSet, selected, onToggle,
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
-                {language.toUpperCase()}
-                <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[language] || 'English'}</span>
-              </button>
+              <Tooltip label={`Preferred Language: ${LANG_MAP[language] || 'English'}`} variant="light">
+                <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
+                  {language.toUpperCase()}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { Icon } from '../../components/Icon/Icon';
 import { OooIcon } from '../../components/Icon/OooIcon';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { canEdit, recordsFor, recordsOnDate } from '../ooo/oooUtils';
-import { HOLIDAY_ICON } from '../holidays/holidayUtils';
+import { HolidayBadgeIcon } from '../../components/Icon/HolidayBadgeIcon';
 import styles from './MonthCountView.module.css';
 
 const DAY_NAMES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -126,7 +126,7 @@ export function MonthCountView({ date, appointments, oooRecords, holidays = [], 
               {/* Holidays that day, under any Out of Office line. */}
               {dayHolidays.slice(0, 2).map(h => (
                 <span key={h.id} className={styles.holidayLine} title={`Holiday: ${h.name}`}>
-                  <Icon name={HOLIDAY_ICON} size={14} color="var(--accent-green)" />
+                  <HolidayBadgeIcon size={14} />
                   <span className={styles.holidayName}>{h.name}</span>
                 </span>
               ))}

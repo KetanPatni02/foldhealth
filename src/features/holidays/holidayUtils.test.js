@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { holidaysAt, holidaysInYear, holidayYears, isPastHoliday, validateHoliday } from './holidayUtils';
+import { holidaysAt, holidaysForUser, holidaysInYear, holidayYears, isPastHoliday, validateHoliday } from './holidayUtils';
 
 const now = new Date(2026, 9, 1, 12, 0);
 const h = (id, s, e, locations = ['Mary Health']) => ({ id, name: id, startAt: s.toISOString(), endAt: e.toISOString(), locations });
@@ -26,5 +26,18 @@ describe('holidays', () => {
     });
     expect(validateHoliday({ name: 'Diwali', startAt: new Date(2026, 9, 5).toISOString(), endAt: new Date(2026, 9, 4).toISOString(), locations: ['Mary Health'] }, { now }).endAt).toBe('End must be after the start.');
     expect(validateHoliday({ name: 'Diwali', startAt: new Date(2026, 9, 5).toISOString(), endAt: new Date(2026, 9, 6).toISOString(), locations: ['Mary Health'] }, { now })).toEqual({});
+  });
+});
+
+describe('holidaysForUser', () => {
+  const holidays = [{ id: 'a', locations: ['7 Hills Department'] }, { id: 'b', locations: ['Mary Health'] }];
+  it("uses the person's own locations", () => {
+    const users = [{ name: 'Abhay Chaudhary', locations: ['Mary Health'] }];
+    expect(holidaysForUser(holidays, users, 'Abhay Chaudhary', ['7 Hills Department']).map(h => h.id)).toEqual(['b']);
+  });
+  it('falls back to the given locations for someone with none on file', () => {
+    const users = [{ name: 'Devanshi Sharma', locations: [] }];
+    expect(holidaysForUser(holidays, users, 'Devanshi Sharma', ['7 Hills Department']).map(h => h.id)).toEqual(['a']);
+    expect(holidaysForUser(holidays, users, 'Devanshi Sharma')).toEqual([]);
   });
 });

@@ -28,7 +28,6 @@
 .patientMeta     { composes: patientMeta     from '../../components/WorklistShell/WorklistRow.module.css'; }
 .foldId          { composes: foldId          from '../../components/WorklistShell/WorklistRow.module.css'; }
 .langBadge       { composes: langBadge       from '../../components/WorklistShell/WorklistRow.module.css'; }
-.langTooltip     { composes: langTooltip     from '../../components/WorklistShell/WorklistRow.module.css'; }
 
 .outreachWl       { composes: outreachWl       from '../../components/WorklistShell/WorklistRow.module.css'; }
 .outreachWlMain   { composes: outreachWlMain   from '../../components/WorklistShell/WorklistRow.module.css'; }

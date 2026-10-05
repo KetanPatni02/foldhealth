@@ -38,23 +38,30 @@
 
 /* ── "No users available for reassignment" ── */
 .noUsers {
-  display: flex; flex-direction: column; gap: var(--space-2);
-  padding: var(--space-2) var(--space-3) var(--space-3);
+  /* No gap: the body adds its own top space, so the shut card stays 8px top and bottom. */
+  display: flex; flex-direction: column;
+  padding: var(--space-2);
   background: var(--status-error-light);
   border: 0.5px solid color-mix(in srgb, var(--status-error) 20%, transparent); border-radius: 8px;
 }
-.noUsersHead { display: flex; align-items: center; gap: var(--space-2); min-height: 28px; }
+.noUsersBody { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); }
+/* The open/shut arrow turns rather than swapping icons, so it moves with the panel. */
+.chevron { flex-shrink: 0; transition: transform var(--duration-medium) var(--ease-out); }
+.chevronOpen { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+.noUsersHead { display: flex; align-items: center; gap: var(--space-2); }
 .noUsersToggle {
-  display: inline-flex; align-items: center; gap: var(--space-1); flex: 1;
+  /* Figma Eventus 16978:132243: 14px medium neutral-300, 2px to the count. */
+  display: inline-flex; align-items: center; gap: calc(var(--space-1) / 2); flex: 1;
   padding: 0; border: none; background: none; cursor: pointer; text-align: left;
-  font-size: var(--font-base); color: var(--neutral-400);
+  font-size: var(--font-base); font-weight: 500; line-height: 1.2; color: var(--neutral-300);
 }
 .noUsersToggle:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; border-radius: 2px; }
 .countBadge {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 16px; padding: 0 var(--space-1);
+  min-width: 16px; padding: calc(var(--space-1) / 2) var(--space-1);
   border-radius: 4px; background: var(--secondary-300);
-  font-size: var(--font-xs); font-weight: 500; color: var(--neutral-0);
+  font-size: var(--font-2xs); font-weight: 500; line-height: 1.2; color: var(--neutral-0);
 }
 
 /* ── Planner chrome ── */
@@ -63,9 +70,9 @@
 .plannerTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
 .plannerTools { display: inline-flex; align-items: center; gap: var(--space-1); }
 .filterRow { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.selectAll { display: inline-flex; align-items: center; gap: var(--space-2); align-self: flex-start; font-size: var(--font-base); color: var(--neutral-300); cursor: pointer; }
+/* Inset to line its checkbox up with the department cards' own. */
+.selectAll { display: inline-flex; align-items: center; gap: var(--space-3); align-self: flex-start; padding-left: var(--space-3); font-size: var(--font-base); color: var(--neutral-300); cursor: pointer; }
 .list { display: flex; flex-direction: column; gap: var(--space-2); }
-.listFlat { display: flex; flex-direction: column; overflow: hidden; border: 0.5px solid var(--neutral-150); border-radius: 8px; }
 .empty { padding: var(--space-4); text-align: center; font-size: var(--font-sm); color: var(--neutral-300); }
 
 /* The bulk bar sits at the foot of the drawer's scroll area, not the window. */
@@ -93,15 +100,5 @@
 .tagMuted { font-size: var(--font-xs); color: var(--neutral-300); padding: 0 var(--space-1); border-radius: 4px; background: var(--neutral-50); }
 
 /* ── History ── */
-.history { display: flex; flex-direction: column; gap: var(--space-2); }
-.historyRow {
-  display: flex; align-items: center; gap: var(--space-3);
-  padding: var(--space-3); text-align: left; cursor: pointer;
-  background: var(--neutral-0); border: 0.5px solid var(--neutral-150); border-radius: 8px;
-  transition: box-shadow var(--duration-instant) var(--ease-hover);
-}
-.historyRow:hover { box-shadow: var(--shadow-card); }
-.historyRow:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
-.historyText { display: flex; flex-direction: column; gap: calc(var(--space-1) / 2); flex: 1; min-width: 0; }
-.historyMain { font-size: var(--font-base); color: var(--neutral-500); }
-.historySub { font-size: var(--font-sm); color: var(--neutral-300); }
+.historySub { display: block; font-size: var(--font-sm); color: var(--neutral-300); }
+.historyLink { display: inline-block; margin-top: var(--space-1); font-size: var(--font-sm); }

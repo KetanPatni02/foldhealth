@@ -168,10 +168,11 @@ function MemberCell({ item, onOpen, showToast }) {
             <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
               <FoldIdTag id={item.memberId} className={styles.foldId} showToast={showToast} />
             </span>{' '}•{' '}
-            <span className={styles.langBadge} onClick={e => e.stopPropagation()} role="note">
-              {(item.language || 'en').toUpperCase()}
-              <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[item.language] || 'English'}</span>
-            </span>
+            <Tooltip label={`Preferred Language: ${LANG_MAP[item.language] || 'English'}`} variant="light">
+              <span className={styles.langBadge} onClick={e => e.stopPropagation()} role="note">
+                {(item.language || 'en').toUpperCase()}
+              </span>
+            </Tooltip>
           </div>
         </div>
       </div>

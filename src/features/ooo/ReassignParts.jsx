@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
+import { Collapse } from '../../components/Collapse/Collapse';
 import { initialsOf } from './oooUtils';
 import { apptLine } from './reassignUtils';
 import styles from './reassign.module.css';
@@ -19,7 +20,7 @@ export function ApptRow({ appt, lead, trail, tone, children }) {
     <div className={[styles.apptRow, tone ? styles[`tone_${tone}`] : ''].filter(Boolean).join(' ')}>
       <div className={styles.apptMain}>
         {lead}
-        <Avatar variant="patient" initials={initialsOf(name)} size="L" />
+        <Avatar variant="patient" initials={initialsOf(name)} size="M" />
         <span className={styles.apptText}>
           <span className={styles.apptName}>{name}</span>
           <span className={styles.apptSub}>{apptLine(appt)}</span>
@@ -34,10 +35,14 @@ export function ApptRow({ appt, lead, trail, tone, children }) {
 /**
  * A department card: a header (checkbox, name, "N Appointments (…)" that
  * toggles the list, then the caller's controls) over its appointments,
- * ten to a page.
+ * ten to a page, with the range and page arrows under them.
  */
 export function DeptGroup({ title, count, detail, lead, controls, items, renderItem, defaultOpen = false, tone }) {
   const [open, setOpen] = useState(defaultOpen);
+  // Collapse All / Expand All changes `defaultOpen`; follow it (animated),
+  // while each card can still be opened or shut on its own in between.
+  const [seenDefault, setSeenDefault] = useState(defaultOpen);
+  if (seenDefault !== defaultOpen) { setSeenDefault(defaultOpen); setOpen(defaultOpen); }
   const [page, setPage] = useState(0);
   const pages = Math.max(1, Math.ceil(items.length / PAGE));
   const pageNow = Math.min(page, pages - 1);
@@ -51,15 +56,15 @@ export function DeptGroup({ title, count, detail, lead, controls, items, renderI
           <button type="button" className={styles.deptCount} onClick={() => setOpen(o => !o)} aria-expanded={open}>
             {count} Appointment{count === 1 ? '' : 's'}
             {detail && <span className={styles.deptDetail}>({detail})</span>}
-            <Icon name={open ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={12} color="var(--neutral-300)" />
+            <Icon name="solar:alt-arrow-right-linear" size={12} color="var(--neutral-300)" className={open ? `${styles.chevron} ${styles.chevronOpen}` : styles.chevron} />
           </button>
         </span>
         {controls}
       </div>
-      {open && (
+      <Collapse open={open}>
         <div className={styles.deptList}>
           {shown.map(renderItem)}
-          {items.length > PAGE && (
+          {items.length > 0 && (
             <div className={styles.pager}>
               <span>{pageNow * PAGE + 1}–{Math.min(items.length, pageNow * PAGE + PAGE)} of {items.length}</span>
               <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous" state={pageNow === 0 ? 'disabled' : 'active'} onClick={() => pageNow > 0 && setPage(pageNow - 1)} />
@@ -67,7 +72,7 @@ export function DeptGroup({ title, count, detail, lead, controls, items, renderI
             </div>
           )}
         </div>
-      )}
+      </Collapse>
     </div>
   );
 }

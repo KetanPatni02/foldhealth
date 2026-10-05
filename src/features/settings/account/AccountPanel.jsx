@@ -31,6 +31,7 @@ import { useBulkSelect } from '../../../components/BulkSelect/useBulkSelect';
 import { OrgPanel } from './OrgPanel';
 import { UsersTab } from './users/UsersTab';
 import { LocationsTab } from './locations/LocationsTab';
+import { HolidaysTab } from '../calendar/HolidaysTab';
 import { HCC_ROLES, ROLE_COLORS, getInitials } from './AccountPanel.constants';
 import { useLocationNames, AddColumnDropdown } from './AccountPanelParts';
 import { ADMIN_ROLES, GENDER_OPTIONS, LANGUAGE_OPTIONS, MOCK_ROLES, isCapitalizedName } from './InviteUserDrawer.utils';
@@ -78,6 +79,7 @@ export function AccountPanel() {
   const isInsurancePlans = activeTab === 'Insurance Plans';
   const isUsers = activeTab === 'Users';
   const isLocations = activeTab === 'Locations';
+  const isHolidays = activeTab === 'Holiday Configuration';
   const tabsForBar = ALL_TABS.map(t => ({ key: t, label: t }));
 
   return (
@@ -95,7 +97,7 @@ export function AccountPanel() {
           onPrimaryAction={() => setShowCreateInsurance(true)}
           rightExtras={<BulkSelectToggle active={planBulk.bulkMode} onToggle={planBulk.toggleBulk} />}
         />
-      ) : !isUsers && !isLocations ? (
+      ) : !isUsers && !isLocations && !isHolidays ? (
         <SectionTitleBar
           tabs={tabsForBar}
           activeTab={activeTab}
@@ -111,6 +113,9 @@ export function AccountPanel() {
       ) : isLocations ? (
         // Locations tab — same shell + drawers pattern as Users.
         <LocationsTab tabsForBar={tabsForBar} activeTab={activeTab} setActiveTab={setActiveTab} />
+      ) : isHolidays ? (
+        // The same holidays as Settings → Calendar → Holiday configuration.
+        <HolidaysTab tabs={tabsForBar} activeTab={activeTab} onTabChange={setActiveTab} />
       ) : (
         <div className={styles.tableWrap}>
           {activeTab === 'Org' ? (

@@ -1,5 +1,6 @@
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { CPT_RULES, thStyle } from './apcmBillingUtils';
 import styles from './ApcmBillingTable.module.css';
 import rowStyles from './ApcmBillingRow.module.css';
@@ -26,23 +27,29 @@ export function ApcmBillingTableHead({
         <th style={thStyle}>
           <span className={styles.cptHeader}>
             CPT Code
-            <span className={styles.cptInfoWrap}>
+            <Tooltip
+              placement="bottom"
+              maxWidth={320}
+              className={styles.cptInfoWrap}
+              label={(
+                <span className={styles.cptTooltip}>
+                  <span className={styles.cptTooltipTitle}>Billing code &amp; fee</span>
+                  {CPT_RULES.map(r => (
+                    <span key={r.code} className={styles.cptTooltipRow}>
+                      <span className={styles.cptTooltipLabel}>{r.label}</span>
+                      <span className={styles.cptTooltipCode}>{r.code} · ${r.fee}</span>
+                    </span>
+                  ))}
+                  <span className={styles.cptTooltipFoot}>
+                    Checking Chronic on an ICD syncs to Athena and may change the code + fee.
+                  </span>
+                </span>
+              )}
+            >
               <span className={styles.cptInfo} aria-label="CPT rule">
                 <Icon name="solar:info-circle-linear" size={12} color="currentColor" />
               </span>
-              <span className={styles.cptTooltip} role="tooltip">
-                <span className={styles.cptTooltipTitle}>Billing code &amp; fee</span>
-                {CPT_RULES.map(r => (
-                  <span key={r.code} className={styles.cptTooltipRow}>
-                    <span className={styles.cptTooltipLabel}>{r.label}</span>
-                    <span className={styles.cptTooltipCode}>{r.code} · ${r.fee}</span>
-                  </span>
-                ))}
-                <span className={styles.cptTooltipFoot}>
-                  Checking Chronic on an ICD syncs to Athena and may change the code + fee.
-                </span>
-              </span>
-            </span>
+            </Tooltip>
           </span>
         </th>
         <th style={{ ...thStyle, minWidth: 360 }}>ICD Codes</th>

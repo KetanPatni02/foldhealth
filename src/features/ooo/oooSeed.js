@@ -34,6 +34,7 @@ export function sampleOooRecords(users, now = new Date()) {
       createdBy: u.name,
       createdAt: at(offset - 7, 10),
       updatedAt: at(offset - 7, 10),
+      updatedBy: u.name,
     };
   });
 }
@@ -53,6 +54,7 @@ export const oooToRow = (r) => ({
   created_by: r.createdBy || null,
   created_at: r.createdAt || new Date().toISOString(),
   updated_at: r.updatedAt || new Date().toISOString(),
+  updated_by: r.updatedBy || r.createdBy || null,
 });
 
 export const rowToOoo = (row) => ({
@@ -69,6 +71,7 @@ export const rowToOoo = (row) => ({
   createdBy: row.created_by,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
+  updatedBy: row.updated_by || row.created_by,
 });
 
 /**
@@ -111,6 +114,7 @@ export function demoOooForUser(user, now = new Date()) {
     createdBy: user.name,
     createdAt: localIso([2026, 9, 1, 10]),
     updatedAt: localIso([2026, 9, 1, 10]),
+    updatedBy: user.name,
   }));
 
   // Days with appointments: every weekday 1-15 Oct, plus the other OOO days.

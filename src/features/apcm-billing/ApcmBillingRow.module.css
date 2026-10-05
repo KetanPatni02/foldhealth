@@ -110,38 +110,6 @@
 }
 .langBadge:hover { color: var(--primary-300); text-decoration: underline; }
 
-/* Tooltip renders ABOVE the badge so it doesn't get clipped by the
-   next row's top border / table overflow. Mirrors TOC Worklist. */
-.langTooltip {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  padding: 6px 10px;
-  background: var(--neutral-500);
-  color: var(--neutral-0);
-  border-radius: 6px;
-  font-size: var(--font-sm);
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-  z-index: 100;
-  pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0,0,0,.14);
-}
-/* Arrow pointing down from the tooltip toward the badge below it. */
-.langTooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-top-color: var(--neutral-500);
-}
-.langBadge:hover .langTooltip { display: block; }
 
 /* EHR ID link */
 .ehrLink {
@@ -257,7 +225,6 @@
 }
 
 .reasonTitleWrap {
-  position: relative;
   display: inline-block;
   cursor: default;
 }
@@ -271,37 +238,6 @@
   text-decoration: underline dotted;
   text-underline-offset: 3px;
 }
-
-/* Tooltip — same visual language as .langTooltip: dark neutral-500
-   background, neutral-0 text, arrow pointing down at the trigger,
-   anchored above so it isn't clipped by table chrome below. */
-.reasonTooltip {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 0;
-  width: 272px;
-  padding: 6px 10px;
-  font-size: var(--font-sm);
-  font-weight: 400;
-  color: var(--neutral-0);
-  background: var(--neutral-500);
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, .14);
-  line-height: 1.5;
-  white-space: normal;
-  z-index: 100;
-  pointer-events: none;
-}
-.reasonTooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 16px;
-  border: 5px solid transparent;
-  border-top-color: var(--neutral-500);
-}
-.reasonTitleWrap:hover .reasonTooltip { display: block; }
 
 .noReason { font-size: var(--font-sm); color: var(--neutral-200); }
 

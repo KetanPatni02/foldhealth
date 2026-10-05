@@ -402,10 +402,11 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={member.memberId} className={styles.foldId} showToast={showToast} />
               </span>{' '}&bull;{' '}
-              <span className={styles.langBadge}>
-                {langShort}
-                <span className={styles.langTooltip}>Preferred Language: {langFull}</span>
-              </span>
+              <Tooltip label={`Preferred Language: ${langFull}`} variant="light">
+                <span className={styles.langBadge}>
+                  {langShort}
+                </span>
+              </Tooltip>
             </div>
           </div>
         </div>

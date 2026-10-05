@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fromPickerValue, toPickerValue, activeOooFor, canDelete, canEdit, daySpan, formatDateTime, oooStatus, rangeChange, recordsOnDate, sortRecords, validateOoo, describeRange, appointmentsToReassign } from './oooUtils';
+import { fromPickerValue, toPickerValue, activeOooFor, canDelete, canEdit, daySpan, formatDateTime, oooStatus, rangeChange, recordsOnDate, overlapPlan, sortRecords, validateOoo, describeRange, appointmentsToReassign } from './oooUtils';
 
 const at = (d, h = 0, m = 0) => new Date(2026, 8, d, h, m).toISOString(); // Sept 2026, local time
 const rec = (id, s, e, userName = 'Richard Willson') => ({ id, userName, startAt: s, endAt: e });
@@ -118,5 +118,36 @@ describe('picker values', () => {
     expect(toPickerValue(at(11, 14, 5))).toBe('09/11/2026, 14:05');
     expect(fromPickerValue('09/11/2026, 14:05')).toBe(at(11, 14, 5));
     expect(fromPickerValue('')).toBeNull();
+  });
+});
+
+describe('overlapPlan', () => {
+  const iso = (d, h = 0) => new Date(2026, 9, d, h).toISOString();
+  const name = 'Abhay Chaudhary';
+  const existing = [
+    { id: 'a', userName: name, startAt: iso(2), endAt: iso(15) },
+    { id: 'b', userName: name, startAt: iso(15), endAt: iso(20) },
+    { id: 'c', userName: name, startAt: iso(20, 9), endAt: iso(20, 13) },
+  ];
+  it('finds the covered part and the time left after it', () => {
+    const p = overlapPlan({ userName: name, startAt: iso(8), endAt: iso(22) }, existing);
+    expect(p.covered).toEqual({ from: new Date(iso(8)).getTime(), to: new Date(iso(20, 13)).getTime() });
+    // 10/20 midnight to 9am is a gap between records; extending fills it too.
+    expect(p.gaps.map(g => [new Date(g.from).getDate(), new Date(g.from).getHours()])).toEqual([[20, 0], [20, 13]]);
+    expect(p.extend).toEqual([
+      { record: existing[1], startAt: existing[1].startAt, endAt: iso(20, 9) },
+      { record: existing[2], startAt: existing[2].startAt, endAt: iso(22) },
+    ]);
+  });
+  it('extends the last record to the new end, or the first back to the new start', () => {
+    const tail = overlapPlan({ userName: name, startAt: iso(3), endAt: iso(17) }, [existing[0]]);
+    expect(tail.extend).toEqual([{ record: existing[0], startAt: existing[0].startAt, endAt: iso(17) }]);
+    expect(tail.gaps).toEqual([{ from: new Date(iso(15)).getTime(), to: new Date(iso(17)).getTime() }]);
+    const head = overlapPlan({ userName: name, startAt: iso(1), endAt: iso(10) }, [existing[0]]);
+    expect(head.extend).toEqual([{ record: existing[0], startAt: iso(1), endAt: existing[0].endAt }]);
+  });
+  it('is null with no clash, and ignores the record being edited', () => {
+    expect(overlapPlan({ userName: name, startAt: iso(23), endAt: iso(24) }, existing)).toBeNull();
+    expect(overlapPlan({ userName: name, startAt: iso(3), endAt: iso(4) }, existing, 'a')).toBeNull();
   });
 });

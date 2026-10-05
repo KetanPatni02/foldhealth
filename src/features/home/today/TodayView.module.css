@@ -227,7 +227,6 @@
 .patientMeta { composes: patientMeta from '../../../components/WorklistShell/WorklistRow.module.css'; }
 .foldId { composes: foldId from '../../../components/WorklistShell/WorklistRow.module.css'; }
 .langBadge { composes: langBadge from '../../../components/WorklistShell/WorklistRow.module.css'; }
-.langTooltip { composes: langTooltip from '../../../components/WorklistShell/WorklistRow.module.css'; }
 .actionsCell { composes: actionsCell from '../../../components/WorklistShell/WorklistRow.module.css'; }
 .actionDivider { composes: actionDivider from '../../../components/WorklistShell/WorklistRow.module.css'; }
 

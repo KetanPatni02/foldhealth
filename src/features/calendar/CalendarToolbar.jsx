@@ -9,7 +9,7 @@ import { APPOINTMENT_STATUSES } from '../../components/ScheduleDrawer/scheduleDr
 import { useLocationOptions } from '../../components/ScheduleDrawer/useLocationOptions';
 import { /* TIMEZONE_OPTIONS, */ VIEW_LABELS, VIEWS } from './calendarUtils';
 import { OOO_ICON } from '../ooo/oooUtils';
-import { HOLIDAY_ICON } from '../holidays/holidayUtils';
+import { HolidayIcon } from '../../components/Icon/HolidayIcon';
 import styles from './CalendarView.module.css';
 
 const SCHEDULE_MENU = [
@@ -139,7 +139,8 @@ export function CalendarToolbar({
         <span className={styles.actionDivider} aria-hidden="true" />
         {/* Everyone's Out of Office records, and the holidays, in drawers. */}
         <ActionButton icon={OOO_ICON} size="L" tooltip="Out of Office Records" onClick={onOpenOoo} />
-        <ActionButton icon={HOLIDAY_ICON} size="L" tooltip="Holidays" onClick={onOpenHolidays} />
+        <span className={styles.actionDivider} aria-hidden="true" />
+        <ActionButton size="L" tooltip="Holidays" onClick={onOpenHolidays}><HolidayIcon size={20} color="var(--neutral-300)" /></ActionButton>
         <span className={styles.actionDivider} aria-hidden="true" />
         <ActionButton icon="solar:tuning-2-linear" size="L" tooltip="Settings" />
         <span className={styles.actionDivider} aria-hidden="true" />

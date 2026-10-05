@@ -85,32 +85,6 @@
   text-decoration-color: var(--primary-300);
   text-underline-offset: 2px;
 }
-.langTooltip {
-  display: none;
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  padding: 6px 10px;
-  background: var(--neutral-500);
-  color: var(--neutral-0);
-  border-radius: 6px;
-  font-size: var(--font-sm);
-  z-index: 100;
-  pointer-events: none;
-  text-transform: none;
-}
-.langTooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-top-color: var(--neutral-500);
-}
-.langBadge:hover .langTooltip { display: block; }
 
 .outreachCell { display: inline-flex; align-items: center; gap: 6px; }
 .outreachStatus { font-size: var(--font-md); color: var(--neutral-400); }

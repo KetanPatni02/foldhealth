@@ -312,10 +312,11 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={row.memberId || row.id} className={rowStyles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()}>
-                {(row.language || 'en').toUpperCase()}
-                <span className={rowStyles.langTooltip}>Preferred Language: {LANG_MAP[row.language] || 'English'}</span>
-              </button>
+              <Tooltip label={`Preferred Language: ${LANG_MAP[row.language] || 'English'}`} variant="light">
+                <button type="button" className={rowStyles.langBadge} onClick={e => e.stopPropagation()}>
+                  {(row.language || 'en').toUpperCase()}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

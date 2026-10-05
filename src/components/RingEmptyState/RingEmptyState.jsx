@@ -6,7 +6,8 @@ import styles from './RingEmptyState.module.css';
  * (e.g. "No Active Programs"). A gradient disc holds a single linear Solar icon
  * at 1px stroke in neutral-200, ringed by two dashed circles, with a caption.
  *
- * @param {string} props.icon   – Solar linear icon name shown in the centre
+ * @param {string|function} props.icon – Solar linear icon name shown in the centre, or a
+ *   custom icon component (called with `size` and `color`)
  * @param {string} props.label  – caption beneath the disc
  * @param {number} [props.iconSize=46]
  * @param {'M'|'S'} [props.size='M'] – S is the compact 80px medallion for inline slots
@@ -19,7 +20,9 @@ export function RingEmptyState({ icon = 'solar:inbox-linear', label, iconSize, s
       <div className={styles.emptyCard}>
         <div className={styles.emptyIcon}>
           <span className={styles.iconInner}>
-            <Icon name={icon} size={glyph} color="var(--neutral-200)" />
+            {typeof icon === 'function'
+              ? (() => { const Glyph = icon; return <Glyph size={glyph} color="var(--neutral-200)" />; })()
+              : <Icon name={icon} size={glyph} color="var(--neutral-200)" />}
           </span>
         </div>
         <div className={styles.emptyTextGroup}>

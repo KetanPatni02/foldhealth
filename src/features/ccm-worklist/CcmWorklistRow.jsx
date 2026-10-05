@@ -263,10 +263,11 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
               <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex' }}>
                 <FoldIdTag id={m.memberId} className={styles.foldId} showToast={showToast} />
               </span>{' '}•{' '}
-              <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
-                {(m.language || 'en').toUpperCase()}
-                <span className={styles.langTooltip}>Preferred Language: {LANG_MAP[m.language] || 'English'}</span>
-              </button>
+              <Tooltip label={`Preferred Language: ${LANG_MAP[m.language] || 'English'}`} variant="light">
+                <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
+                  {(m.language || 'en').toUpperCase()}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

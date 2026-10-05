@@ -21,8 +21,10 @@ const initialsOf = (name) => String(name || '?').trim().split(/\s+/).map(w => w[
  * @param {function} props.onClose
  * @param {string}   [props.title='Select User']
  * @param {string}   [props.emptyText='No users available.']
+ * @param {'left'|'right'} [props.align='left'] – Line up with the trigger's left edge, or its right edge
+ *   (opening leftward, for triggers at the right of a panel)
  */
-export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, onUnassign, onClose, title = 'Select User', emptyText = 'No users available.' }) {
+export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, onUnassign, onClose, title = 'Select User', emptyText = 'No users available.', align = 'left' }) {
   const ref = useRef(null);
   const searchRef = useRef(null);
   const [query, setQuery] = useState('');
@@ -40,7 +42,8 @@ export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, 
   if (!anchorRect) return null;
   // Opens below the trigger, or above it near the bottom of the window.
   const width = 280;
-  const left = Math.max(8, Math.min(anchorRect.left, window.innerWidth - width - 8));
+  const want = align === 'right' ? anchorRect.right - width : anchorRect.left;
+  const left = Math.max(8, Math.min(want, window.innerWidth - width - 8));
   const below = anchorRect.bottom + 320 < window.innerHeight;
   const style = below ? { top: anchorRect.bottom + 4, left } : { bottom: window.innerHeight - anchorRect.top + 4, left };
 
