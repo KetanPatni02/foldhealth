@@ -20,13 +20,15 @@ const HIGHLIGHT_MS = 4000;
  * Status, User) and New OOO Record, for Settings → Calendar → OOO Records
  * and the calendar's month-view drawer (Figma Eventus 17367:121995,
  * 17414:107368). With `highlightDate`, the records out that day come first,
- * tinted and outlined for a few seconds (17507:108921).
+ * tinted and outlined for a few seconds (17507:108921); with `highlightId`,
+ * just that one record is, left in its place in the list: the table opens
+ * on its page and scrolls to it.
  *
  * Returns the pieces for the host to place: `tools` (search, filter, New
  * OOO Record, split by hairlines), `filterRow` (null while closed), `body`
  * (the table) and `elements` (the record drawer and delete dialog).
  */
-export function useAllOooRecords({ highlightDate, embedded = false, oneLineDates = false } = {}) {
+export function useAllOooRecords({ highlightDate, highlightId, embedded = false, oneLineDates = false } = {}) {
   const { records, loading } = useOooRecords();
   const platformUsers = useAppStore(s => s.platformUsers);
   const taskProfiles = useAppStore(s => s.taskProfiles);
@@ -42,12 +44,12 @@ export function useAllOooRecords({ highlightDate, embedded = false, oneLineDates
   const [perPage, setPerPage] = useState(PER_PAGE_DEFAULT);
   // The day's rows are tinted and outlined for 4s after opening, then fade
   // back; they stay first in the list.
-  const [flashing, setFlashing] = useState(!!highlightDate);
+  const [flashing, setFlashing] = useState(!!(highlightDate || highlightId));
   useEffect(() => {
-    if (!highlightDate) return undefined;
+    if (!highlightDate && !highlightId) return undefined;
     const t = window.setTimeout(() => setFlashing(false), HIGHLIGHT_MS);
     return () => window.clearTimeout(t);
-  }, [highlightDate]);
+  }, [highlightDate, highlightId]);
 
   const users = useMemo(() => {
     const emails = Object.fromEntries((taskProfiles || []).map(p => [p.name, p.email]));
@@ -65,14 +67,18 @@ export function useAllOooRecords({ highlightDate, embedded = false, oneLineDates
       && (status[0] === 'All' || oooStatus(r) === status[0])
       && (from == null || (new Date(r.startAt).getTime() < to && new Date(r.endAt).getTime() > from)));
     list = sortRecords(list);
-    if (highlightDate) {
+    if (highlightDate && !highlightId) {
       const on = new Set(recordsOnDate(list, highlightDate).map(r => r.id));
       list = [...list.filter(r => on.has(r.id)), ...list.filter(r => !on.has(r.id))];
     }
     return list;
-  }, [records, query, userFilter, status, dateRange, highlightDate]);
+  }, [records, query, userFilter, status, dateRange, highlightDate, highlightId]);
   // Never past the last page: deleting the only row on page 2 falls back to
   // page 1 rather than showing an empty table.
+  // Opening on one record: jump to its page once, when it's in the list.
+  const [jumped, setJumped] = useState(false);
+  const at = highlightId && !jumped ? shown.findIndex(r => r.id === highlightId) : -1;
+  if (at >= 0) { setJumped(true); setPage(Math.floor(at / perPage) + 1); }
   const lastPage = Math.max(1, Math.ceil(shown.length / perPage));
   const pageNow = Math.min(page, lastPage);
   const pageRows = shown.slice((pageNow - 1) * perPage, pageNow * perPage);
@@ -149,6 +155,7 @@ export function useAllOooRecords({ highlightDate, embedded = false, oneLineDates
         showUser
         oneLineDates={oneLineDates}
         highlightDate={flashing ? highlightDate : undefined}
+        highlightId={flashing ? highlightId : undefined}
         embedded={embedded}
         pagination={shown.length > PER_PAGE_DEFAULT ? {
           page: pageNow,

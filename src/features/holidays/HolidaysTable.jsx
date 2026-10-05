@@ -53,8 +53,8 @@ export function HolidaysTable({ holidays, loading, embedded = false, emptyState,
       <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 0 }}>
         <TruncatedText text={h.name} className={styles.name} />
       </td>
-      <td className={`${styles.td} ${styles.dates}`}>{formatDateTime(h.startAt)}</td>
-      <td className={`${styles.td} ${styles.dates}`}>{formatDateTime(h.endAt)}</td>
+      <td className={styles.td}>{formatDateTime(h.startAt)}</td>
+      <td className={styles.td}>{formatDateTime(h.endAt)}</td>
       <td className={styles.td}><BadgeRow items={h.locations || []} maxLines={1} icon="solar:map-point-linear" /></td>
       <td className={`${styles.td} ${styles.stickyRight}`}>
         <span className={styles.actionsCell}>

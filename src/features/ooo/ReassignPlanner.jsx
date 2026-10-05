@@ -227,7 +227,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
         label: 'Reassign',
         icon: 'solar:user-plus-rounded-linear',
         onClick: (ids, e) => {
-          if (!common.length) { showToast?.('No one covers all the selected departments. Pick fewer departments.'); return; }
+          if (!common.length) { showToast?.('No One Covers All the Selected Departments. Pick Fewer Departments.'); return; }
           setPicker({ rect: e.currentTarget.getBoundingClientRect(), users: common, onPick: (u) => { assign(ids, u.name); setSelected(new Set()); } });
         },
       },

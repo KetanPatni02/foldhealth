@@ -45,6 +45,5 @@
 .emptyBox { padding: calc(var(--space-10) * 2) var(--space-4) var(--space-6); }
 
 .name { font-weight: 500; color: var(--neutral-400); }
-.dates { font-variant-numeric: tabular-nums; }
 /* The calendar's Holidays drawer: the table runs edge to edge. */
 .flushBody { padding: 0 !important; display: flex; flex-direction: column; }

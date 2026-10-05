@@ -100,5 +100,35 @@
 .tagMuted { font-size: var(--font-xs); color: var(--neutral-300); padding: 0 var(--space-1); border-radius: 4px; background: var(--neutral-50); }
 
 /* ── History ── */
-.historySub { display: block; font-size: var(--font-sm); color: var(--neutral-300); }
-.historyLink { display: inline-block; margin-top: var(--space-1); font-size: var(--font-sm); }
+/* History (activity log): the rail tile, the status / result line under the headline. */
+.historyTile {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 6px;
+  background: var(--neutral-50); border: 0.5px solid var(--neutral-150);
+}
+/* Figma Eventus 17654:114749: badges, a dot and the link, 4px apart, 12px text. */
+.historyLine { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin-top: calc(var(--space-1) / 2); font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); }
+.historyRunning { font-size: var(--font-base); }
+.historyDot { color: var(--neutral-300); }
+.historyRange { display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.historyLink { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-sm); white-space: nowrap; }
+.spinner {
+  width: 16px; height: 16px; flex-shrink: 0; border-radius: 50%;
+  border: 1.5px solid var(--primary-100); border-top-color: var(--primary-300);
+  animation: historySpin 0.8s linear infinite;
+}
+@keyframes historySpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+
+/* History tab tools on the tab row, and its filter row (Figma Eventus 17646:114218). */
+.historyTools { display: inline-flex; align-items: center; gap: var(--space-2); }
+.historySearch { width: 284px; }
+.toolDivider { width: 0.5px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+.toolOn { background: color-mix(in srgb, var(--neutral-500) 5%, transparent); }
+/* No padding of its own: 12px under the tab bar (pulling up through the
+   drawer body's 16px top padding) and 12px above the log. */
+.historyFilters {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  margin: calc(var(--space-3) - var(--space-4)) 0 var(--space-3);
+}
+.clearAll { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-sm); }

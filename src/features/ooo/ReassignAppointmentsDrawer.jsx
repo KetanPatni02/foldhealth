@@ -12,7 +12,7 @@ import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../store/useAppStore';
 import { OooReassignFooter, ReassignmentType, ReassignProviders } from './OooReassignStep';
 import { ReassignPlanner } from './ReassignPlanner';
-import { ReassignHistory } from './ReassignHistory';
+import { useReassignHistory } from './ReassignHistory';
 import { reassignWindow, scopeAppointments, tallyPlan } from './reassignUtils';
 import { toast } from '../../components/Toast/sonnerToast';
 import { canEdit, describeRange, OOO_ICON, oooStatus, recordsFor, sortRecords, STATUS_TONE } from './oooUtils';
@@ -41,6 +41,7 @@ const TABS = [
 export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId, onNewOoo, onClose }) {
   const oooRecords = useAppStore(s => s.oooRecords);
   const [tab, setTab] = useState('reassign');
+  const history = useReassignHistory();
   // The preselected provider is always in the list, even before everyone
   // has loaded, so Reassign From never shows blank.
   const fromOptions = useMemo(() => {
@@ -89,7 +90,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
     setRunning(true);
     const fromRole = (platformUsers || []).find(u => u.name === from)?.clinicalRoles?.[0] || null;
     // The job runs in the background; its summary comes as a notification.
-    toast.success('Reassignment started. You\'ll get a notification with the summary.');
+    toast.success('Reassignment Started. You\'ll Get a Notification with the Summary.');
     onClose();
     await runJob({ fromUser: from, fromUserRole: fromRole, type, window: timeWindow, oooRecordId: type === 'ooo' ? recordId : null, plan, appointments: scope });
   };
@@ -135,11 +136,11 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
       headerRight={headerRight}
       noCloseDivider
       // The banner slot is already full-bleed, so the strip mustn't bleed again.
-      banner={<TabStrip items={TABS} activeKey={tab} onChange={setTab} fullWidth={false} />}
+      banner={<TabStrip items={TABS} activeKey={tab} onChange={setTab} fullWidth={false} trailing={tab === 'history' ? history.tools : undefined} />}
       footer={tab === 'reassign' ? <OooReassignFooter {...tally} /> : undefined}
     >
       {tab === 'history' ? (
-        <ReassignHistory />
+        history.body
       ) : (
         <div className={`${styles.form} ${styles.reassignForm}`}>
           <Select

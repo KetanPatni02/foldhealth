@@ -12272,7 +12272,7 @@ export const useAppStore = create((set, get) => ({
       }
       if (error) {
         console.warn('saveOooRecord:', error.message);
-        get().showToast?.('Could not save the Out of Office record. Try again.');
+        get().showToast?.('Could Not Save the Out of Office Record. Try Again.');
         return null;
       }
     }
@@ -12284,7 +12284,7 @@ export const useAppStore = create((set, get) => ({
       const { error } = await supabase.from('ooo_records').delete().eq('id', id);
       if (error) {
         console.warn('deleteOooRecord:', error.message);
-        get().showToast?.('Could not delete the Out of Office record. Try again.');
+        get().showToast?.('Could Not Delete the Out of Office Record. Try Again.');
         return false;
       }
     }
@@ -12385,6 +12385,9 @@ export const useAppStore = create((set, get) => ({
       everyone: get().appointments || [],
       createdBy: get().currentUserProfile?.name || null,
     });
+    // Shown in History as in progress while the plan is carried out, then
+    // replaced by the finished job.
+    set(st => ({ reassignmentJobs: [{ ...job, status: 'running' }, ...st.reassignmentJobs] }));
     // Carry out the plan on appointments. The reassigned_from /
     // reassignment_job_id columns come with reassignment_jobs_migration.sql;
     // until it runs, the move still happens without them.
@@ -12392,7 +12395,7 @@ export const useAppStore = create((set, get) => ({
       if (!ids.length) return;
       let { error } = await supabase.from('appointments').update({ ...patch, ...extra }).in('id', ids);
       if (error && extra) ({ error } = await supabase.from('appointments').update(patch).in('id', ids));
-      if (error) console.warn('runReassignmentJob update:', error.message);
+      if (error) throw new Error(error.message);
     };
     const byTo = {};
     const cancelIds = [];
@@ -12400,15 +12403,26 @@ export const useAppStore = create((set, get) => ({
       if (r.outcome === 'reassigned') (byTo[r.to] = byTo[r.to] || []).push(r.appointmentId);
       if (r.outcome === 'cancelled') cancelIds.push(r.appointmentId);
     });
-    for (const [to, ids] of Object.entries(byTo)) {
-      await update(ids, { primary_user: to }, { reassigned_from: fromUser, reassignment_job_id: job.id });
+    // Any error carrying out the plan fails the job: History shows it as
+    // failed (never stuck in progress) and the calendar reloads to show
+    // whatever did move.
+    try {
+      for (const [to, ids] of Object.entries(byTo)) {
+        await update(ids, { primary_user: to }, { reassigned_from: fromUser, reassignment_job_id: job.id });
+      }
+      await update(cancelIds, { status: 'Cancelled' }, { reassignment_job_id: job.id });
+    } catch (err) {
+      console.warn('runReassignmentJob update:', err.message);
+      set(st => ({ reassignmentJobs: st.reassignmentJobs.map(j => (j.id === job.id ? { ...job, status: 'failed' } : j)) }));
+      get().showToast?.('Reassignment Failed. Try Again.');
+      await get().fetchAppointments?.();
+      return null;
     }
-    await update(cancelIds, { status: 'Cancelled' }, { reassignment_job_id: job.id });
     if (!get().reassignmentLocal) {
       const { error } = await supabase.from('reassignment_jobs').insert(jobToRow(job));
       if (error) { console.warn('runReassignmentJob save:', error.message); set({ reassignmentLocal: true }); }
     }
-    set(st => ({ reassignmentJobs: [job, ...st.reassignmentJobs] }));
+    set(st => ({ reassignmentJobs: st.reassignmentJobs.map(j => (j.id === job.id ? job : j)) }));
     await get().fetchAppointments?.();
     get().addNotification?.({
       type: 'reassignment.summary',
