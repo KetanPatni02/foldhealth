@@ -131,7 +131,7 @@ export function Drawer({
           screen-reader path, so the backdrop must not appear as a second,
           unlabelled control. */}
       <div className={styles.overlay} data-closing={closing ? 'true' : 'false'} onClick={requestClose} aria-hidden="true" style={overlayStyle} />
-      <div ref={panelRef} className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={closing ? 'true' : 'false'} style={Object.keys(panelStyle).length ? panelStyle : undefined}>
+      <div ref={panelRef} data-drawer-panel className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={closing ? 'true' : 'false'} style={Object.keys(panelStyle).length ? panelStyle : undefined}>
         <div className={styles.header} style={headerStyle}>
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>
           <div className={styles.headerRight}>

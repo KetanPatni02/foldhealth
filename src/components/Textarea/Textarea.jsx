@@ -286,6 +286,10 @@ const EnhancedTextarea = forwardRef(function EnhancedTextarea({
   const handleRichInput = () => {
     const el = editorRef.current;
     if (!el) return;
+    // Deleting everything leaves a stray line break behind (innerText "\n"),
+    // which would hide the placeholder and count as a character; clear it.
+    // An empty bullet or numbered list is kept.
+    if (!el.innerText.replace(/\n/g, '') && !el.querySelector('ul, ol')) el.innerHTML = '';
     // Blank list items are spacing: unnumbered, and skipped by the numbers.
     numberListItems(el);
     const html = el.innerHTML;
