@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { OooIcon } from '../../components/Icon/OooIcon';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { canEdit, recordsFor, recordsOnDate } from '../ooo/oooUtils';
+import { canEdit, OOO_ICON, recordsFor, recordsOnDate } from '../ooo/oooUtils';
 import { HolidayBadgeIcon } from '../../components/Icon/HolidayBadgeIcon';
 import styles from './MonthCountView.module.css';
 
@@ -112,13 +111,13 @@ export function MonthCountView({ date, appointments, oooRecords, holidays = [], 
                 canEdit(mine) ? (
                   <Tooltip label="Edit Out of Office Record" followCursor className={styles.oooTip}>
                     <button type="button" className={styles.oooLine} onClick={(e) => { e.stopPropagation(); onEditOoo(mine); }}>
-                      <OooIcon size={14} color="var(--accent-magenta)" />
+                      <Icon name={OOO_ICON} size={14} color="var(--accent-magenta)" />
                       Out of Office
                     </button>
                   </Tooltip>
                 ) : (
                   <span className={`${styles.oooLine} ${styles.oooLinePast}`}>
-                    <OooIcon size={14} color="var(--accent-magenta)" />
+                    <Icon name={OOO_ICON} size={14} color="var(--accent-magenta)" />
                     Out of Office
                   </span>
                 )
@@ -133,7 +132,7 @@ export function MonthCountView({ date, appointments, oooRecords, holidays = [], 
               {dayHolidays.length > 2 && <span className={styles.line}>+{dayHolidays.length - 2} more holidays</span>}
               {othersOut > 0 && (
                 <button type="button" className={styles.oooCount} onClick={(e) => { e.stopPropagation(); onOpenOooDay(day); }}>
-                  <OooIcon size={14} color="var(--accent-magenta)" />
+                  <Icon name={OOO_ICON} size={14} color="var(--accent-magenta)" />
                   {othersOut} Provider{othersOut === 1 ? '' : 's'} Out of Office
                 </button>
               )}

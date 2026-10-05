@@ -12378,6 +12378,9 @@ export const useAppStore = create((set, get) => ({
       everyone: get().appointments || [],
       createdBy: get().currentUserProfile?.name || null,
     });
+    // Shown in History as in progress while the plan is carried out, then
+    // replaced by the finished job.
+    set(st => ({ reassignmentJobs: [{ ...job, status: 'running' }, ...st.reassignmentJobs] }));
     // Carry out the plan on appointments. The reassigned_from /
     // reassignment_job_id columns come with reassignment_jobs_migration.sql;
     // until it runs, the move still happens without them.
@@ -12401,7 +12404,7 @@ export const useAppStore = create((set, get) => ({
       const { error } = await supabase.from('reassignment_jobs').insert(jobToRow(job));
       if (error) { console.warn('runReassignmentJob save:', error.message); set({ reassignmentLocal: true }); }
     }
-    set(st => ({ reassignmentJobs: [job, ...st.reassignmentJobs] }));
+    set(st => ({ reassignmentJobs: st.reassignmentJobs.map(j => (j.id === job.id ? job : j)) }));
     await get().fetchAppointments?.();
     get().addNotification?.({
       type: 'reassignment.summary',

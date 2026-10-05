@@ -3,6 +3,8 @@ import { Avatar } from '../../components/Avatar/Avatar';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Icon } from '../../components/Icon/Icon';
 import { Collapse } from '../../components/Collapse/Collapse';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
 import { initialsOf } from './oooUtils';
 import { apptLine } from './reassignUtils';
 import styles from './reassign.module.css';
@@ -74,5 +76,25 @@ export function DeptGroup({ title, count, detail, lead, controls, items, renderI
         </div>
       </Collapse>
     </div>
+  );
+}
+
+// [startISO, endISO] (YYYY-MM-DD) → "MM/DD/YYYY – MM/DD/YYYY".
+const rangeText = ([from, to]) => `${from.slice(5, 7)}/${from.slice(8)}/${from.slice(0, 4)} – ${to.slice(5, 7)}/${to.slice(8)}/${to.slice(0, 4)}`;
+
+/** A date-range filter chip with the shared DateRangePopover. */
+export function RangeChip({ label, value, onChange }) {
+  const on = value.length === 2;
+  return (
+    <FilterChip
+      size="S"
+      label={label}
+      active={on}
+      activeSummary={on ? rangeText(value) : undefined}
+      onClear={() => onChange([])}
+      renderPopover={({ anchorRect, onClose }) => (
+        <DateRangePopover anchorRect={anchorRect} label={label} selected={value} onChange={onChange} onClose={onClose} />
+      )}
+    />
   );
 }

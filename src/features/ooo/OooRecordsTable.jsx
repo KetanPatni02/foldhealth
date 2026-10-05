@@ -31,7 +31,7 @@ function StampCell({ at, by }) {
   if (!at) return '–';
   return (
     <span className={styles.stamp}>
-      <span className={`${styles.stampAt} ${styles.dates}`}>{formatDateTime(at)}</span>
+      <span className={styles.stampAt}>{formatDateTime(at)}</span>
       {by && <span className={styles.stampBy}>{by}</span>}
     </span>
   );
@@ -97,8 +97,8 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
             </span>
           </td>
         )}
-        <td className={`${styles.td} ${styles.dates}`}>{formatDateTime(r.startAt)}</td>
-        <td className={`${styles.td} ${styles.dates}`}>{formatDateTime(r.endAt)}</td>
+        <td className={styles.td}>{formatDateTime(r.startAt)}</td>
+        <td className={styles.td}>{formatDateTime(r.endAt)}</td>
         <td className={styles.td}><TruncatedText text={capFirst(r.reason) || '–'} /></td>
         <td className={styles.td}><Badge tone={STATUS_TONE[status]} size="S" label={status} /></td>
         <td className={styles.td}><StampCell at={r.createdAt} by={r.createdBy} /></td>
