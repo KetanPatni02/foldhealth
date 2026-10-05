@@ -1,3 +1,4 @@
+import { parseLocalDate } from '../../../lib/localDate';
 /* ─── Excel date helper ──────────────────────────────────────────────────── */
 export function parseXlsxDate(val) {
   if (val instanceof Date) {
@@ -15,9 +16,8 @@ export function parseXlsxDate(val) {
 
 /* ─── Age formatter ─────────────────────────────────────────────────────── */
 export function fmtAge(dob) {
-  if (!dob) return '';
-  const b = new Date(dob);
-  if (isNaN(b)) return '';
+  const b = parseLocalDate(dob);
+  if (!b) return '';
   const now = new Date();
   const age = now.getFullYear() - b.getFullYear() - (now < new Date(now.getFullYear(), b.getMonth(), b.getDate()) ? 1 : 0);
   const m = String(b.getMonth()+1).padStart(2,'0'), d = String(b.getDate()).padStart(2,'0');

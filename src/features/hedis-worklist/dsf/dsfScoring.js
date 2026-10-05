@@ -8,6 +8,7 @@
 // canonical questions of each instrument in a fixed order.
 
 import { INSTRUMENTS } from '../../forms/builder/validatedInstruments';
+import { parseLocalDate } from '../../../lib/localDate';
 
 const PHQ2 = INSTRUMENTS.find(i => i.key === 'phq2');
 const PHQ9 = INSTRUMENTS.find(i => i.key === 'phq9');
@@ -97,8 +98,8 @@ export function computeDsfbDueDateISO({ dsfaSavedAt, dsfbGap } = {}) {
   if (dsfaSavedAt) return plus30(new Date(dsfaSavedAt));
   if (dsfbGap?.dueDateISO) return dsfbGap.dueDateISO;
   if (dsfbGap?.startDate) {
-    const parsed = new Date(dsfbGap.startDate);
-    if (!Number.isNaN(parsed.getTime())) return plus30(parsed);
+    const parsed = parseLocalDate(dsfbGap.startDate);
+    if (parsed) return plus30(parsed);
   }
   return plus30(new Date());
 }

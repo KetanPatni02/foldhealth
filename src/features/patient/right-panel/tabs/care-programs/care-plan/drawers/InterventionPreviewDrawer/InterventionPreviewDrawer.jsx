@@ -26,6 +26,7 @@ import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { adherenceBand, adherenceTone } from '../../lib/goalMetrics';
 import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
+import { parseLocalDate } from '../../../../../../../../lib/localDate';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 const STATUS_TONE = {
@@ -60,9 +61,8 @@ function progressSliderColor(pct) {
 }
 
 function fmtDate(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
+  const d = parseLocalDate(iso);
+  if (!d) return '';
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
 }
 
@@ -598,8 +598,8 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           });
           const kindIcon = CARE_PLAN_INTERVENTION_ICONS[live?.kind] || live?.icon || 'solar:clipboard-list-linear';
           const fmtRow = (iso) => {
-            const d = new Date(iso);
-            if (Number.isNaN(d.getTime())) return iso;
+            const d = parseLocalDate(iso);
+            if (!d) return iso;
             return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
           };
           return (

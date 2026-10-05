@@ -19,6 +19,7 @@ import { SYSTEM_USER_NAMES } from './systemUsers';
 import { dosSourceLetter, DOS_SOURCE_LABELS, DOS_SOURCE_LABEL_TO_LETTER } from './dosSource';
 import { canonicalStatus } from './statusSpec';
 import { POS_CODES } from './data/posCodes';
+import { parseLocalDate } from '../../lib/localDate';
 
 export const MORE_FILTER_ITEMS = [
   // Primary — shown in chip row by default. Order matches Paper 21UY.
@@ -471,8 +472,8 @@ function matchOne(m, k, vals) {
       // No DOB on the row — fall back to age-bucket containment (rough).
       if (vals.length < 2) return true;
       const ageNum = parseInt(String(m.age || '').match(/(\d+)/)?.[1] || '0', 10);
-      const start = new Date(vals[0]);
-      const end = new Date(vals[1]);
+      const start = parseLocalDate(vals[0]);
+      const end = parseLocalDate(vals[1]);
       const today = new Date();
       const inferred = new Date(today.getFullYear() - ageNum, 0, 1);
       return inferred >= start && inferred <= end;
@@ -490,29 +491,17 @@ function parseMdY(s) {
   return new Date(Number(m[3]), Number(m[1]) - 1, Number(m[2]));
 }
 
-// Parse "YYYY-MM-DD" → Date (local midnight). `new Date(iso)` would parse it as
-// UTC midnight, which shifts the day in non-UTC timezones and drops rows that
-// sit exactly on a range boundary — so parse it in the same frame as parseMdY.
-function parseIsoLocal(s) {
-  if (!s) return null;
-  const m = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (!m) return null;
-  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-}
-
 function matchDateRange(value, vals /* [startISO, endISO] */, format) {
   if (vals.length < 2) return true;
-  // ISO timestamps ('2026-01-24T00:00:00.000Z') come off the wire from the
-  // v3 per-role date columns; parse with the Date constructor. MM/DD/YYYY
-  // strings (create_date, dos_list dates) use parseMdY. Anything unlabeled
-  // falls back to the constructor.
+  // MM/DD/YYYY strings (create_date, dos_list dates) use parseMdY. Anything
+  // else (ISO timestamps from the v3 per-role date columns, date-only values)
+  // goes through parseLocalDate.
   let target;
   if (format === 'mdY') target = parseMdY(value);
-  else if (format === 'iso') target = value ? new Date(value) : null;
-  else target = value ? new Date(value) : null;
-  if (!target || isNaN(+target)) return false;
-  const start = parseIsoLocal(vals[0]);
-  const end = parseIsoLocal(vals[1]);
+  else target = parseLocalDate(value);
+  if (!target) return false;
+  const start = parseLocalDate(vals[0]);
+  const end = parseLocalDate(vals[1]);
   if (!start || !end) return false;
   end.setHours(23, 59, 59, 999); // inclusive of the end day
   return target >= start && target <= end;

@@ -1,3 +1,4 @@
+import { parseLocalDate } from '../../../../../../lib/localDate';
 /** Map store task rows into the shape TasksTab expects. */
 export function groupTasksForTab(tasks) {
   const today = new Date();
@@ -25,8 +26,8 @@ export function groupTasksForTab(tasks) {
       overdue.push(shared);
       return;
     }
-    const dueDate = t.due_date ? new Date(t.due_date) : null;
-    if (dueDate && !Number.isNaN(dueDate.getTime()) && dueDate < today) {
+    const dueDate = parseLocalDate(t.due_date);
+    if (dueDate && dueDate < today) {
       overdue.push(shared);
     } else {
       pending.push(shared);

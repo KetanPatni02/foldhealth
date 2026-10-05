@@ -16,6 +16,7 @@ import { TaskDetailDrawer } from '../../../../../tasks/TaskDetailDrawer';
 import { HeaderCell } from '../../../../../../components/HeaderCell/HeaderCell';
 import { useTableSort } from '../../../../../../components/HeaderCell/useTableSort';
 import styles from './PatientNotesTab.module.css';
+import { parseLocalDate } from '../../../../../../lib/localDate';
 
 /**
  * PatientNotesTab — the P360 → Notes surface.
@@ -542,9 +543,8 @@ function LinkedTasksTooltip({ tasks }) {
 // import here without cycles; inline the same "due_date is a past
 // date at day granularity" rule the TasksView already uses.
 function isTaskOverdue(t) {
-  if (!t?.due_date) return false;
-  const d = new Date(t.due_date);
-  if (Number.isNaN(d.getTime())) return false;
+  const d = parseLocalDate(t?.due_date);
+  if (!d) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   d.setHours(0, 0, 0, 0);

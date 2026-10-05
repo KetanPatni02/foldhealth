@@ -5,6 +5,7 @@ import { FilterChip } from '../../../../../../../components/FilterChip/FilterChi
 import { DateRangePopover } from '../../../../../../../components/DateRangePopover/DateRangePopover';
 import { getOpenIcdsForMember } from '../../../../../../hcc/data/icds';
 import styles from './ProgramDiagnosisGapsTable.module.css';
+import { parseLocalDate } from '../../../../../../../lib/localDate';
 
 // Program-step surface for the AWV / APE "Open Diagnosis Gaps" step. Same
 // data source as the sidebar Diagnosis Gaps section, but the row UX
@@ -162,8 +163,8 @@ export function ProgramDiagnosisGapsTable({ memberName, search }) {
     const hccActive = filters.hcc.length > 0;
     const icdActive = filters.icd.length > 0;
     const [rangeStart, rangeEnd] = filters.date;
-    const start = rangeStart ? new Date(rangeStart) : null;
-    const end = rangeEnd ? new Date(rangeEnd) : null;
+    const start = parseLocalDate(rangeStart);
+    const end = parseLocalDate(rangeEnd);
 
     return allGroups.filter(g => {
       // Group-level HCC filter — the whole HCC row drops out when its
@@ -265,8 +266,8 @@ export function ProgramDiagnosisGapsTable({ memberName, search }) {
 // Short display (MM/DD) for the Documented Date chip. Keeps the pill
 // value legible without repeating the full 10-char date twice.
 function fmtShort(iso) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return String(iso);
+  const d = parseLocalDate(iso);
+  if (!d) return String(iso);
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${mm}/${dd}`;

@@ -1,3 +1,4 @@
+import { parseLocalDate } from '../../../../../../../lib/localDate';
 // Shared helpers for the comprehensive (cross-program) care plan snapshot —
 // used by CarePlanSummaryView to render and by the Care Management Download
 // CTA to export the same data.
@@ -61,9 +62,7 @@ function matchesDatePreset(d, preset) {
 // due chip filter is a no-op there — leaving them visible avoids
 // mysterious disappearances. All three types carry createdAt.
 function dueDateOf(row) {
-  if (!row?.targetDate) return null;
-  const d = new Date(row.targetDate);
-  return Number.isNaN(d.getTime()) ? null : d;
+  return parseLocalDate(row?.targetDate);
 }
 function createdDateOf(row) {
   if (!row?.createdAt) return null;

@@ -19,13 +19,14 @@ import { MED_RECON_MOCK } from '../../../../../data/medReconMock';
 import { carePlanSignShareEnabled } from '../../care-plan/lib/carePlanSignState';
 import { EMPTY_TASK_FILTERS } from './ProgramDetailView.utils';
 import styles from './ProgramDetailView.module.css';
+import { parseLocalDate } from '../../../../../../../lib/localDate';
 
 function fmtCarePlanDate(isoOrDisplay) {
   if (!isoOrDisplay) return '';
   const short = typeof isoOrDisplay === 'string' && /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(isoOrDisplay);
   if (short) return `${short[1]}/${short[2]}/20${short[3]}`;
-  const d = new Date(isoOrDisplay);
-  if (Number.isNaN(d.getTime())) return String(isoOrDisplay);
+  const d = parseLocalDate(isoOrDisplay);
+  if (!d) return String(isoOrDisplay);
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 }
 
@@ -136,8 +137,8 @@ export function ProgramDetailViewContentHeader({
     // is worse than naming none.
     const sameDay = (a, b) => {
       if (!a || !b) return false;
-      const x = new Date(a); const y = new Date(b);
-      return !Number.isNaN(x) && !Number.isNaN(y) && x.toDateString() === y.toDateString();
+      const x = parseLocalDate(a); const y = parseLocalDate(b);
+      return !!x && !!y && x.toDateString() === y.toDateString();
     };
     const firstVersion = carePlanVersions?.length ? carePlanVersions[carePlanVersions.length - 1] : null;
     const createdBy = plan?.createdBy

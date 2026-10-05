@@ -46,6 +46,7 @@ import { LinkItemsToGoalDrawer } from './LinkItemsToGoalDrawer';
 import styles from './GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
+import { localDateMs } from '../../../../../../../../lib/localDate';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 
@@ -650,7 +651,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       .map(mapAuditEntry);
     const sinceCutoff = (() => {
       if (lastVisit) {
-        const t = new Date(lastVisit).getTime();
+        const t = localDateMs(lastVisit);
         if (!Number.isNaN(t)) return t;
       }
       return Date.now() - 30 * 86400000;

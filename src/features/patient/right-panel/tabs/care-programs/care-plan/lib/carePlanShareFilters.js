@@ -1,3 +1,4 @@
+import { localDateMs } from '../../../../../../../lib/localDate';
 export const SHARE_GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 export const SHARE_PRIORITY_LABELS = ['High', 'Medium', 'Low'];
 
@@ -31,7 +32,7 @@ export function matchesShareDatePreset(item, datePreset, lastVisitIso) {
   if (datePreset === 'sinceVisit') {
     let cutoff = Date.now() - 30 * 86400000;
     if (lastVisitIso) {
-      const lv = new Date(lastVisitIso).getTime();
+      const lv = localDateMs(lastVisitIso);
       if (Number.isFinite(lv)) cutoff = lv;
     }
     return t >= cutoff;

@@ -1,3 +1,4 @@
+import { parseLocalDate } from '../../lib/localDate';
 // HEDIS worklist filter definitions — parallel to `src/features/hcc/filters.js`
 // so the shared FilterChipBar / MoreFiltersPopover can drive both worklists
 // with the same UX (chip → popover, Label|Value active state, More Filters,
@@ -243,19 +244,12 @@ function matchesAnyLiteralSubstring(haystack, needles) {
   return new RegExp(pattern).test(haystack);
 }
 
-function parseIsoLocal(s) {
-  if (!s) return null;
-  const match = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
-  if (!match) return null;
-  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
-}
-
 function matchDateRange(value, vals) {
   if (!Array.isArray(vals) || vals.length < 2) return true;
-  const target = value ? new Date(value) : null;
-  if (!target || Number.isNaN(+target)) return false;
-  const start = parseIsoLocal(vals[0]);
-  const end   = parseIsoLocal(vals[1]);
+  const target = parseLocalDate(value);
+  if (!target) return false;
+  const start = parseLocalDate(vals[0]);
+  const end   = parseLocalDate(vals[1]);
   if (!start || !end) return false;
   end.setHours(23, 59, 59, 999);
   return target >= start && target <= end;

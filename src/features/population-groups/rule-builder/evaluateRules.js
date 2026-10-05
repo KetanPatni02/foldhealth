@@ -1,4 +1,5 @@
 import { FIELD_BY_KEY, RULE_FIELDS } from './fieldCatalog';
+import { parseLocalDate, localDateMs } from '../../../lib/localDate';
 
 /* Pure rule evaluation — no React, no Supabase — so the same logic runs in
    the browser (useQualifiedMembers) and in node scripts
@@ -58,8 +59,8 @@ export function matchesRule(profile, rule) {
   }
 
   if (field.valueType === 'date') {
-    const left = raw ? new Date(raw).getTime() : NaN;
-    const right = v.text ? new Date(v.text).getTime() : NaN;
+    const left = localDateMs(raw);
+    const right = localDateMs(v.text);
     if (!Number.isFinite(left) || !Number.isFinite(right)) return false;
     switch (rule.operator) {
       case '<=': return left <= right;
@@ -104,7 +105,7 @@ function matchesCodedTerm(profile, rule, field) {
   const cutoff = lookbackCutoff(v.lookback);
   const match = events.some(ev => {
     if (ev.code !== v.code) return false;
-    if (cutoff && ev.effective_date && new Date(ev.effective_date) < cutoff) return false;
+    if (cutoff && ev.effective_date && parseLocalDate(ev.effective_date) < cutoff) return false;
     return true;
   });
   return rule.operator === 'notHasCode' ? !match : match;
@@ -118,7 +119,7 @@ function matchesObservation(profile, rule, field) {
   const target = Number(v.numericValue);
   return events.some(ev => {
     if (ev.code !== v.analyte.code) return false;
-    if (cutoff && ev.effective_date && new Date(ev.effective_date) < cutoff) return false;
+    if (cutoff && ev.effective_date && parseLocalDate(ev.effective_date) < cutoff) return false;
     const val = Number(ev.numeric_value);
     if (!Number.isFinite(val)) return false;
     switch (rule.operator) {
@@ -141,7 +142,7 @@ function matchesEventCount(profile, rule, field) {
   let count = 0;
   for (const ev of events) {
     if (v.filter?.code && ev.code !== v.filter.code) continue;
-    if (cutoff && ev.effective_date && new Date(ev.effective_date) < cutoff) continue;
+    if (cutoff && ev.effective_date && parseLocalDate(ev.effective_date) < cutoff) continue;
     count++;
   }
   const target = Number(v.count);

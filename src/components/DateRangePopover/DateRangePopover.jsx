@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
 import { Button } from '../Button/Button';
 import styles from './DateRangePopover.module.css';
+import { parseLocalDate } from '../../lib/localDate';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -47,8 +48,8 @@ export function DateRangePopover({
   }));
   const [viewR, setViewR] = useState(() => ({ y: today.getFullYear(), m: today.getMonth() }));
 
-  const [start, setStart] = useState(() => (selected[0] ? new Date(selected[0]) : null));
-  const [end, setEnd]     = useState(() => (selected[1] ? new Date(selected[1]) : null));
+  const [start, setStart] = useState(() => parseLocalDate(selected[0]));
+  const [end, setEnd]     = useState(() => parseLocalDate(selected[1]));
   const [hover, setHover] = useState(null);
 
   useEffect(() => {
