@@ -79,10 +79,11 @@ export function OooUserRecordsDrawer({ user, onClose }) {
  *
  * @param {object}   props
  * @param {string}   [props.highlightDate] – ISO date
+ * @param {string}   [props.highlightId]   – One record to highlight instead
  * @param {function} props.onClose
  */
-export function OooAllRecordsDrawer({ highlightDate, onClose }) {
-  const all = useAllOooRecords({ highlightDate });
+export function OooAllRecordsDrawer({ highlightDate, highlightId, onClose }) {
+  const all = useAllOooRecords({ highlightDate, highlightId });
   return (
     <Drawer
       title="Out of Office Records"

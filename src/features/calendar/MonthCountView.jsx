@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { canEdit, OOO_ICON, recordsFor, recordsOnDate } from '../ooo/oooUtils';
+import { OOO_ICON, recordsFor, recordsOnDate } from '../ooo/oooUtils';
 import { HolidayBadgeIcon } from '../../components/Icon/HolidayBadgeIcon';
 import styles from './MonthCountView.module.css';
 
@@ -29,10 +28,10 @@ const isoToAppt = (s) => { const [y, m, d] = s.split('-'); return `${m}-${d}-${y
  * @param {boolean}  [props.holidayBlocks] – Holidays block booking here (a user or location is picked)
  * @param {function} props.onOpenDay     – (iso) => void, a day's Day view
  * @param {function} props.onAdd         – (iso) => void, book on that day
- * @param {function} props.onEditOoo     – (record) => void
+ * @param {function} props.onOpenOooRecord – (record) => void, the focus user's record that day
  * @param {function} props.onOpenOooDay  – (iso) => void, everyone out that day
  */
-export function MonthCountView({ date, appointments, oooRecords, holidays = [], holidayBlocks = false, focusUser, onOpenDay, onAdd, onEditOoo, onOpenOooDay }) {
+export function MonthCountView({ date, appointments, oooRecords, holidays = [], holidayBlocks = false, focusUser, onOpenDay, onAdd, onOpenOooRecord, onOpenOooDay }) {
   const todayIso = iso(new Date());
   const weeks = useMemo(() => {
     const [y, m] = date.split('-').map(Number);
@@ -107,20 +106,12 @@ export function MonthCountView({ date, appointments, oooRecords, holidays = [], 
                 <Icon name="solar:users-group-rounded-linear" size={14} color="var(--neutral-300)" />
                 {c.groups} Group Events
               </span>
+              {/* Opens Out of Office Records with this record highlighted. */}
               {mine && (
-                canEdit(mine) ? (
-                  <Tooltip label="Edit Out of Office Record" followCursor className={styles.oooTip}>
-                    <button type="button" className={styles.oooLine} onClick={(e) => { e.stopPropagation(); onEditOoo(mine); }}>
-                      <Icon name={OOO_ICON} size={14} color="var(--accent-magenta)" />
-                      Out of Office
-                    </button>
-                  </Tooltip>
-                ) : (
-                  <span className={`${styles.oooLine} ${styles.oooLinePast}`}>
-                    <Icon name={OOO_ICON} size={14} color="var(--accent-magenta)" />
-                    Out of Office
-                  </span>
-                )
+                <button type="button" className={styles.oooLine} onClick={(e) => { e.stopPropagation(); onOpenOooRecord(mine); }}>
+                  <Icon name={OOO_ICON} size={14} color="var(--accent-magenta)" />
+                  Out of Office
+                </button>
               )}
               {/* Holidays that day, under any Out of Office line. */}
               {dayHolidays.slice(0, 2).map(h => (

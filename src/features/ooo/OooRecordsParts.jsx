@@ -8,13 +8,14 @@ export function NewButton({ onClick }) {
   return <Button variant="secondary" size="L" leadingIcon="solar:add-circle-linear" onClick={onClick}>New OOO Record</Button>;
 }
 
-export function RecordsBody({ loading, records, emptyLabel, actions, showUser, oneLineDates, highlightDate, embedded = true, pagination }) {
+export function RecordsBody({ loading, records, emptyLabel, actions, showUser, oneLineDates, highlightDate, highlightId, embedded = true, pagination }) {
   return (
     <OooRecordsTable
       records={records}
       showUser={showUser}
       oneLineDates={oneLineDates}
       highlightDate={highlightDate}
+      highlightId={highlightId}
       loading={loading}
       embedded={embedded}
       pagination={pagination}

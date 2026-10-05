@@ -22,7 +22,7 @@ export function CalendarView() {
   const oooRecords = useAppStore(s => s.oooRecords);
   // Out of Office: everyone's records, from a Month day's "Providers Out of
   // Office" link, with that day highlighted.
-  const [oooAll, setOooAll] = useState(null); // { highlightDate? }
+  const [oooAll, setOooAll] = useState(null); // { highlightDate? , highlightId? }
   const oooActions = useOooRecordActions({ users: calendar.users });
   useEffect(() => { editOooRef.current = oooActions.openEdit; });
   const showToast = useAppStore(s => s.showToast);
@@ -144,8 +144,8 @@ export function CalendarView() {
             setDayProvider(calendar.filterUser.length === 1 ? calendar.filterUser[0] : null);
             calendar.handleSlotClick({ year, month, day: d });
           }}
-          onEditOoo={oooActions.openEdit}
           onOpenOooDay={(date) => setOooAll({ highlightDate: date })}
+          onOpenOooRecord={(r) => setOooAll({ highlightId: r.id })}
         />
       )}
       {/* schedule-x stays mounted in Day and Month views (it owns the date
@@ -172,7 +172,7 @@ export function CalendarView() {
       </div>
 
       {showHolidays && <HolidaysDrawer onClose={() => setShowHolidays(false)} />}
-      {oooAll && <OooAllRecordsDrawer highlightDate={oooAll.highlightDate} onClose={() => setOooAll(null)} />}
+      {oooAll && <OooAllRecordsDrawer highlightDate={oooAll.highlightDate} highlightId={oooAll.highlightId} onClose={() => setOooAll(null)} />}
       {oooActions.elements}
       {calendar.showSchedule && (
         <ScheduleDrawer

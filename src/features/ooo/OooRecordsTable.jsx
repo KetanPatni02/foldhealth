@@ -50,6 +50,7 @@ function StampCell({ at, by }) {
  * @param {boolean}  [props.showUser]      – Add the User column
  * @param {boolean}  [props.oneLineDates]  – Full-page layout: the user column takes a share of the row
  * @param {string}   [props.highlightDate] – ISO date; rows out that day are tinted and outlined
+ * @param {string}   [props.highlightId]   – One record to tint and outline instead
  * @param {boolean}  [props.loading]
  * @param {React.ReactNode} [props.emptyState]
  * @param {boolean}  [props.embedded]      – Grow with the content inside a scrolling parent
@@ -58,9 +59,15 @@ function StampCell({ at, by }) {
  * @param {function} props.onDelete        – (record) => void
  * @param {function} [props.onReassign]    – (record) => void
  */
-export function OooRecordsTable({ records, showUser = false, oneLineDates = false, highlightDate, loading, emptyState, embedded = false, pagination, onEdit, onDelete, onReassign }) {
+export function OooRecordsTable({ records, showUser = false, oneLineDates = false, highlightDate, highlightId, loading, emptyState, embedded = false, pagination, onEdit, onDelete, onReassign }) {
   const columns = useMemo(() => columnsFor(oneLineDates, showUser), [showUser, oneLineDates]);
-  const highlighted = new Set(highlightDate ? recordsOnDate(records, highlightDate).map(r => r.id) : []);
+  const highlighted = new Set(highlightId ? [highlightId] : highlightDate ? recordsOnDate(records, highlightDate).map(r => r.id) : []);
+  // A single highlighted record scrolls into view (it keeps its place in the list).
+  const onPage = !!highlightId && (records || []).some(r => r.id === highlightId);
+  useEffect(() => {
+    if (!onPage) return;
+    document.querySelector(`[data-ooo-record="${highlightId}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [onPage, highlightId]);
   const now = new Date();
   // Records saved without an email (seeded, or picked by name) take it from
   // the staff profiles, so every row reads name over email.
@@ -85,7 +92,7 @@ export function OooRecordsTable({ records, showUser = false, oneLineDates = fals
     const deletable = canDelete(r, now);
     const left = status === 'Past' ? 0 : appointmentsToReassign(r, appointments, now).length;
     return (
-      <tr key={r.id} className={[styles.row, highlighted.has(r.id) ? styles.rowHighlight : ''].filter(Boolean).join(' ')}>
+      <tr key={r.id} data-ooo-record={r.id} className={[styles.row, highlighted.has(r.id) ? styles.rowHighlight : ''].filter(Boolean).join(' ')}>
         {showUser && (
           <td className={`${styles.membersTd} ${styles.stickyLeft}`} style={{ left: 0 }}>
             <span className={styles.userCell}>
