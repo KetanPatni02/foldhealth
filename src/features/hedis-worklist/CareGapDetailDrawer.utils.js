@@ -15,6 +15,7 @@ export const MEASURE_NAMES = {
   'DSF-A':  'Depression Screening (PHQ-2)',
   'DSF-B':  'Depression Follow-Up (PHQ-9)',
   LSC:      'Lead Screening in Children',
+  'CIS-CMB10': 'Childhood Immunization Status (Combo 10)',
 };
 
 export const STATUSES = [

@@ -1,0 +1,131 @@
+/* Care Gap drawer: Immunizations tab (CIS-CMB10). Summary card mirrors the
+   Orders tab (CareGapLabs.module.css) so both evaluations read alike. */
+.tab {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* ── Gap summary ── */
+.summary,
+.tracker {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.summary {
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.summaryHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.summaryTitleCol {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.eyebrow {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.summaryTitle {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.reason {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.facts div {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.facts dt {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.facts dd {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+  overflow-wrap: anywhere;
+}
+.note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+/* ── Vaccine tracker ── */
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-top: 0.5px solid var(--neutral-150);
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.headRow {
+  border-top: none;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.vaccineCol {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.vaccineLabel {
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.vaccineName {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.doseDates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  font-size: var(--font-xs);
+  color: var(--neutral-300);
+}
+.invalidDose {
+  text-decoration: line-through;
+  color: var(--status-error);
+  cursor: help;
+}
+.doses {
+  font-variant-numeric: tabular-nums;
+  color: var(--neutral-500);
+}
+.nextDue {
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
