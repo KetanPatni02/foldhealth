@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **CIS-CMB10 immunization tracker (phase 1).** The HEDIS Care Gap drawer
+  shows an Immunizations tab on Childhood Immunization Status (Combination 10)
+  gaps. It evaluates the ten vaccines (DTaP, IPV, MMR, HiB, Hep B, VZV, PCV,
+  Hep A, Rotavirus, Influenza) from the member's `patient_immunizations`
+  rows: HEDIS counting rules decide which doses count, ACIP minimums decide
+  the next due date and whether the remaining doses can still fit before the
+  2nd birthday. The gap reads Compliant, On track, At risk, Can't be met or
+  Not eligible. Read-only for now; recording doses comes in phase 2. The
+  measure code is renamed from `CISCMG10` to `CIS-CMB10`
+  (`supabase/cis_cmb10_migration.sql`, which also seeds five pediatric demo
+  members).
 - **Care plan notes keep their history, Save as Template saves one template,
   and new interventions can start from the library.** Goal, Intervention and
   Barrier drawers show a "Change log" of every note under the note editor,

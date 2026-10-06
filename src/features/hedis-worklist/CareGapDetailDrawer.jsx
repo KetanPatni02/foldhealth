@@ -46,6 +46,8 @@ import { CareGapReferralDetail } from './CareGapReferralDetail';
 import { CareGapReferralsTab } from './CareGapReferralsTab';
 import { useCareGapLabs } from './labs/useCareGapLabs';
 import { CareGapLabsTab } from './labs/CareGapLabsTab';
+import { CisImmunizationsTab } from './cis/CisImmunizationsTab';
+import { CIS_CODE } from './cis/cisRules';
 import { LabOrderForm } from './labs/LabOrderForm';
 import { LabOrderDetail } from './labs/LabOrderDetail';
 import { LabResultReview } from './labs/LabResultReview';
@@ -432,6 +434,15 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const [selectedYear, setSelectedYear] = useState(year);
   // Lab Order + Result workflow for this gap (Orders tab, Order Lab pane).
   const labs = useCareGapLabs({ member, gapCode: currentCode, year: selectedYear });
+  // CIS-CMB10 gets an Immunizations tab, evaluated from the member's
+  // patient_immunizations rows.
+  const isCis = currentCode === CIS_CODE;
+  const immunizations = useAppStore(s => s.patientImmunizations[member?.id]);
+  const immunizationsLoaded = useAppStore(s => !!s.patientImmunizationsLoadedFor[member?.id]);
+  const fetchPatientImmunizations = useAppStore(s => s.fetchPatientImmunizations);
+  useEffect(() => {
+    if (isCis && member?.id) fetchPatientImmunizations(member.id);
+  }, [isCis, member?.id, fetchPatientImmunizations]);
   const [labForm, setLabForm] = useState(null);
   const [labOrderId, setLabOrderId] = useState(null);
   const [labResultId, setLabResultId] = useState(null);
@@ -1119,6 +1130,11 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       || (member?.name && t.member === member.name),
   );
   const openTaskDetail = (task) => handleOpenTaskInPlace(task);
+  const visibleTabs = isCis
+    ? [TABS[0], { key: 'Immunizations', label: 'Immunizations' }, ...TABS.slice(1)]
+    : TABS;
+  // Prev/next can land on a non-CIS gap while Immunizations is selected.
+  const shownTab = !isCis && activeTab === 'Immunizations' ? 'Activity Log' : activeTab;
   const tabCounts = {
     'Activity Log': allActivityEntries.length,
     Outreaches: outreach.logGroups.reduce((n, g) => n + (g.logs?.length ?? 0), 0),
@@ -1750,20 +1766,20 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
               default bleed would apply a -24px margin and push the row
               past the drawer's own edges. */}
           <TabStrip
-            items={TABS.map((tab) => ({
+            items={visibleTabs.map((tab) => ({
               key: tab.key,
               label: tabCounts[tab.key] != null
                 ? `${tab.label} (${tabCounts[tab.key]})`
                 : tab.label,
             }))}
-            activeKey={activeTab}
+            activeKey={shownTab}
             onChange={setActiveTab}
             fullWidth={false}
             size="S"
           />
 
-          <div className={`${styles.tabContentWrap} ${(activeTab === 'Tasks' || activeTab === 'Outreaches') ? styles.tabContentWrapFlush : ''}`}>
-            {activeTab === 'Activity Log' ? (
+          <div className={`${styles.tabContentWrap} ${(shownTab === 'Tasks' || shownTab === 'Outreaches') ? styles.tabContentWrapFlush : ''}`}>
+            {shownTab === 'Activity Log' ? (
               <div className={styles.activityLog}>
                 <div className={styles.commentInput}>
                   {/* Same composer as the HCC Diagnosis Gaps drawer: @mention
@@ -1785,13 +1801,13 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                     />
                   : <TimelineSkeleton />}
               </div>
-            ) : activeTab === 'Outreaches' ? (
+            ) : shownTab === 'Outreaches' ? (
               // While Add Outreach is open in the left pane, the tab shows
               // only the log so the same form isn't rendered twice.
               <OutreachTabView tab={outreach} hideLogForRow hideForm={leftWorkspace === 'outreach'} taskMember={member?.name} schedulePatient={schedulePatient}
                 onLogNew={openOutreachWorkspace}
                 onTaskCreated={logTaskAdded} onAppointmentScheduled={(row) => { logAppointmentScheduled(row); fetchAppointments?.(); }} />
-            ) : activeTab === 'Documents' ? (
+            ) : shownTab === 'Documents' ? (
               programDocumentsDidFetch ? (
                 <DocumentList
                   documents={memberDocs.map(d => ({
@@ -1818,7 +1834,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   emptyLabel="No documents uploaded for this member yet."
                 />
               ) : <CardSkeleton />
-            ) : activeTab === 'Referrals' ? (
+            ) : shownTab === 'Referrals' ? (
               <CareGapReferralsTab
                 referrals={memberReferrals}
                 providers={referralProviders}
@@ -1828,7 +1844,15 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 onViewEmail={(id) => { setActivePage?.('messages'); setPendingEmailReferralId?.(id); }}
                 selectedId={leftWorkspace === 'referral-detail' ? openReferralId : leftWorkspace === 'referral' ? referralForm.values.draftId : null}
               />
-            ) : activeTab === 'Orders' ? (
+            ) : shownTab === 'Immunizations' ? (
+              <CisImmunizationsTab
+                member={member}
+                immunizations={immunizations}
+                loading={!immunizationsLoaded}
+                measurementYear={selectedYear}
+                measureName={`${currentCode} - ${MEASURE_NAMES[currentCode] || currentCode}`}
+              />
+            ) : shownTab === 'Orders' ? (
               <CareGapLabsTab
                 labs={labs}
                 measureName={`${currentCode} - ${MEASURE_NAMES[currentCode] || currentCode}`}
@@ -1837,12 +1861,12 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 onReviewResult={openLabResult}
                 onCancelOrder={setLabOrderToCancel}
               />
-            ) : activeTab === 'Clinical Notes' ? (
+            ) : shownTab === 'Clinical Notes' ? (
               // Flat column-headed list per Figma 1030:78586 — no timeline
               // rail, no month grouping. Card affordances are shared with
               // the Activity Log via ClinicalNoteCardActions.
               <ClinicalNotesTab entries={clinicalNoteEntries} onOpenNote={openNoteInWorkspace} onOpenTask={handleOpenTaskInPlace} />
-            ) : activeTab === 'Tasks' ? (
+            ) : shownTab === 'Tasks' ? (
               // Same layout as the P360 patient profile's Tasks tab —
               // Pending / Overdue / Completed sections, checkbox rows,
               // priority + due columns, so a task looks identical in
@@ -1852,7 +1876,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 data={groupTasksForTab(memberTasks)}
                 onTaskClick={openTaskDetail}
               />
-            ) : activeTab === 'Appt/Reminders' ? (
+            ) : shownTab === 'Appt/Reminders' ? (
               <CareGapAppointmentsTab
                 appointments={memberAppointments}
                 platformUsers={platformUsers}
@@ -1897,7 +1921,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
             ) : (
               <div className={styles.emptyTab}>
                 <Icon name="solar:hourglass-line-linear" size={36} color="var(--neutral-200)" />
-                <p className={styles.emptyTabTitle}>{activeTab} — coming soon</p>
+                <p className={styles.emptyTabTitle}>{shownTab} — coming soon</p>
               </div>
             )}
           </div>

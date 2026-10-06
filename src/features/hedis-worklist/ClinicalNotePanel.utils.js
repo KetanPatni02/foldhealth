@@ -20,7 +20,7 @@ export const MEASURE_NAMES = {
   BPD:        'Blood Pressure Documentation',
   CCS:        'Cervical Cancer Screening',
   CHL:        'Chlamydia Screening',
-  CISCMG10:   'Childhood Immunization Status (Combo 10)',
+  'CIS-CMB10': 'Childhood Immunization Status (Combo 10)',
   COB:        'Care for Older Adults: Body / BMI',
   DEV:        'Developmental Screening (First 3 Years)',
   IMACMB2:    'Immunizations for Adolescents (Combo 2)',
@@ -329,7 +329,7 @@ export const GAP_TEMPLATES = {
       ] },
     { key: 'treatmentGiven', label: 'Treatment provided?', type: 'radio', options: YES_NO },
   ],
-  CISCMG10: [
+  'CIS-CMB10': [
     { key: 'assessmentDate', label: 'Assessment Date', type: 'date', required: true },
     { key: 'upToDate', label: 'All required immunizations up to date?', type: 'radio', options: YES_NO, required: true },
     { key: 'missingCount', label: 'Number of Missing Immunizations', type: 'number', column: 2 },
