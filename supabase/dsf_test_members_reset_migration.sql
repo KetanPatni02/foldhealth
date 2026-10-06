@@ -37,6 +37,11 @@
 
 BEGIN;
 
+-- Deleting a sign-off task makes Postgres null clinical_notes.review_task_id
+-- (ON DELETE SET NULL), and the lifecycle guard rejects any change to a
+-- signed note when no signer is in session. Bypass it for this transaction.
+SET LOCAL app.bypass_clinical_note_lifecycle = 'on';
+
 CREATE TEMP TABLE dsf_reset_members (id text PRIMARY KEY) ON COMMIT DROP;
 INSERT INTO dsf_reset_members (id) VALUES
   ('ap-dsfa-01'),   -- Rita Naidoo
