@@ -16,6 +16,8 @@ const FORM_TYPE_LABEL = {
   cbp_visit_note: 'CBP Visit Note',
 };
 
+const isDraftNote = (n) => n?.status === 'draft';
+
 export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, onClose, editingTaskId = null, amendNoteId = null, onPromoteToConsolidated = null }) {
   const showToast = useAppStore(s => s.showToast);
   const bulkUpdateGapStatuses = useAppStore(s => s.bulkUpdateGapStatuses);
@@ -74,8 +76,12 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     // e.g. the DSF-A auto-promote draft written seconds before this
     // panel mounted. Without this, a Save-as-Draft racing the async
     // fetch effect would overwrite the DB row with the empty defaults.
+    // Only drafts resume: a signed / submitted note is a finished record,
+    // so its answers must not pre-fill (and lock) a brand-new note.
+    // Amend / reviewer / selected-note flows hydrate their own target
+    // after fetch.
     const gapsSeen = new Set();
-    for (const n of (notesForMember || [])) {
+    for (const n of (notesForMember || []).filter(isDraftNote)) {
       const gapsPayload = n?.payload?.gaps;
       if (!gapsPayload) continue;
       for (const [code, data] of Object.entries(gapsPayload)) {
@@ -312,8 +318,11 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
         setRestored(true);
         return;
       }
+      // Re-saves upsert onto an existing draft, never onto a signed /
+      // submitted row (the lifecycle guard rejects those writes).
+      const drafts = notes.filter(isDraftNote);
       const idSeed = {};
-      notes.forEach(n => (n.gapCodes || []).forEach(c => { if (!(c in idSeed)) idSeed[c] = n.id; }));
+      drafts.forEach(n => (n.gapCodes || []).forEach(c => { if (!(c in idSeed)) idSeed[c] = n.id; }));
       setNoteIdByCode(prev => ({ ...idSeed, ...prev }));
       if (amendNoteId) {
         const amended = notes.find(n => n.id === amendNoteId);
@@ -335,6 +344,11 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
       if (!target && editingTaskId) {
         target = notes.find(n => String(n.reviewTaskId) === String(editingTaskId)) || null;
       }
+      if (target) {
+        const targetIds = {};
+        (target.gapCodes || []).forEach(c => { targetIds[c] = target.id; });
+        setNoteIdByCode(prev => ({ ...prev, ...targetIds }));
+      }
       if (target?.payload) {
         if (target.payload.dateOfService) setDateOfService(target.payload.dateOfService);
         if (target.payload.audioOnly !== undefined) setAudioOnly(!!target.payload.audioOnly);
@@ -344,7 +358,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
         }
       } else {
         let dosSeed = null;
-        for (const n of notes) {
+        for (const n of drafts) {
           if (!n.payload?.gaps) continue;
           if (n.payload.dateOfService) {
             dosSeed = {
@@ -355,7 +369,7 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
             break;
           }
         }
-        setGapState(prev => mergeGapsFromNotes(prev, notes));
+        setGapState(prev => mergeGapsFromNotes(prev, drafts));
         if (dosSeed) {
           setDateOfService(dosSeed.dateOfService);
           if (dosSeed.audioOnly !== undefined) setAudioOnly(!!dosSeed.audioOnly);
@@ -874,7 +888,6 @@ export function useClinicalNotePanel({ member, gapCode, selectedNoteId = null, o
     // DSF: exposed so the bespoke DsfaEvidenceForm can fire the
     // native "open DSF-B" trigger on PHQ-2 Positive.
     openDsfbGap,
-    openDsfbView,
     // True when this hook is driving the reviewer's sign-off drawer
     // (editingTaskId set). Downstream forms use it to switch into
     // read-only mode and hide author-only actions (Save Score, Open

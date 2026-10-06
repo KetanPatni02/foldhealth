@@ -1781,7 +1781,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                       onOpenTask={handleOpenTaskInPlace}
                       onOpenNote={openNoteInWorkspace}
                       toolbar={activityToolbar}
-                      toolbarBelow={activityChips}
+                      toolbarAbove={activityChips}
                     />
                   : <TimelineSkeleton />}
               </div>

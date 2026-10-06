@@ -50,9 +50,20 @@ export function TabStrip({
     const row = rowRef.current;
     const el = tabRefs.current.get(activeKey);
     if (!row || !el) return;
-    const rowRect = row.getBoundingClientRect();
-    const elRect = el.getBoundingClientRect();
-    setIndicator({ x: elRect.left - rowRect.left, w: elRect.width, ready: true });
+    // The underline lives in the row's scrolled content, so add scrollLeft
+    // back; otherwise it lands under the wrong tab once the row scrolls.
+    const measure = () => {
+      const rowRect = row.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      setIndicator({ x: elRect.left - rowRect.left + row.scrollLeft, w: elRect.width, ready: true });
+    };
+    measure();
+    // Re-measure when tab widths change after mount (web font swap, count
+    // badges updating, container resize).
+    const ro = new ResizeObserver(measure);
+    ro.observe(row);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [activeKey, items]);
 
   const classes = [

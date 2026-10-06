@@ -161,10 +161,10 @@ function markSupersededDrafts(list) {
 
 /**
  * `toolbar` sits at the right of the first month header (search / filter
- * actions); `toolbarBelow` renders under that row (e.g. filter chips). Both
+ * actions); `toolbarAbove` renders above that row (e.g. filter chips). Both
  * stay visible when filtering leaves nothing to show.
  */
-export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote, toolbar, toolbarBelow }) {
+export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote, toolbar, toolbarAbove }) {
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggleGroup = (label) => setCollapsed(prev => {
     const next = new Set(prev);
@@ -184,10 +184,10 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
     if (!toolbar) return emptyState;
     return (
       <div className={htStyles.wrap}>
+        {toolbarAbove}
         <div className={[styles.groupRow, styles.groupRowToolbarOnly].join(' ')}>
           <span className={styles.groupToolbar}>{toolbar}</span>
         </div>
-        {toolbarBelow}
         {emptyState}
       </div>
     );
@@ -250,11 +250,11 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
         if (idx !== 0 || !toolbar) return groupBtn;
         return (
           <div key={it.key} className={styles.groupRowWrap}>
+            {toolbarAbove}
             <div className={styles.groupRow}>
               {groupBtn}
               <span className={styles.groupToolbar}>{toolbar}</span>
             </div>
-            {toolbarBelow}
           </div>
         );
       })}
