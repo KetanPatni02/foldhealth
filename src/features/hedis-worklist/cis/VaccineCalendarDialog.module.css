@@ -1,5 +1,6 @@
 /* Vaccine Calendar dialog (CIS-CMB10). Wide modal over the Care Gap
-   drawer: header, summary strip, dose table, Cancel / Save footer.
+   drawer: header, dose progress, then the dose table or timeline. Changes
+   save as they are made, so there is no footer.
    Doubled selector so it wins over the dialog shell's 420px default. */
 .content.content {
   max-width: 1120px;
@@ -20,48 +21,44 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-4) var(--space-6);
+  box-sizing: border-box;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0 var(--space-6);
   border-bottom: 0.5px solid var(--neutral-150);
 }
-.titleCol {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  flex: 1;
-  min-width: 0;
-}
-.titleRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
 .title {
+  flex: 1;
   margin: 0;
   font-size: var(--font-lg);
   font-weight: 500;
   color: var(--neutral-500);
 }
-.subtitle {
-  margin: 0;
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-}
-.lastSaved {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  white-space: nowrap;
-}
-.lastSaved strong {
-  font-weight: 500;
-  color: var(--neutral-400);
-}
 .headerDivider {
   width: 1px;
   height: 16px;
   background: var(--neutral-150);
+}
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Last saved, under the table. */
+.lastSaved {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.lastSaved strong {
+  font-weight: 500;
+  color: var(--neutral-400);
 }
 
 /* ── Body ── */
@@ -119,6 +116,29 @@
   justify-content: space-between;
   gap: var(--space-3);
 }
+.toolbarStart {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.tableWrap[hidden] {
+  display: none;
+}
+/* Same card as the tab's dose progress. */
+.progressCard {
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+}
+.toolbarEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+/* View by Age: the dose column carries the vaccine name too. */
+.tableByAge .colDose { width: 11%; }
+.tableByAge .colRecommended { width: 14%; }
 .toolbarCount {
   font-size: var(--font-sm);
   color: var(--neutral-300);
@@ -198,29 +218,22 @@
   font-size: var(--font-sm);
   color: var(--status-error);
 }
-.editDate {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  /* Quiet inputs carry 8px of inner padding; pull them back so their text
-     lines up with the plain text in the other columns. */
-  margin-left: calc(-1 * var(--space-2));
-  /* …and up, so the 32px field's text sits on the row's first line. */
-  margin-block: calc(-1.5 * var(--space-1));
-}
 .noteCell > input {
   margin-left: calc(-1 * var(--space-2));
   margin-block: calc(-1.5 * var(--space-1));
   width: calc(100% + var(--space-2));
 }
-/* Remove-dose icon only shows on the row being worked on. */
-.removeBtn {
-  opacity: 0;
-  transition: opacity 120ms ease-out;
+/* Dose picked from the progress bar: flashed for 2s. The row-spanning
+   vaccine / age cell stays as is. */
+.doseHighlight td:not([rowspan]) {
+  animation: doseFlash 2s ease-out;
 }
-.table tr:hover .removeBtn,
-.removeBtn:focus-within {
-  opacity: 1;
+@keyframes doseFlash {
+  0%, 60% { background: var(--primary-100); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .doseHighlight td:not([rowspan]) { animation: none; background: var(--primary-100); }
 }
 .empty {
   margin: 0;
@@ -230,17 +243,3 @@
   color: var(--neutral-300);
 }
 
-/* ── Footer ── */
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-6);
-  border-top: 0.5px solid var(--neutral-150);
-}
-.unsaved {
-  margin-right: auto;
-  font-size: var(--font-sm);
-  color: var(--status-warning);
-}

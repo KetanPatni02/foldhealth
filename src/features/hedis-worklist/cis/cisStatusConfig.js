@@ -28,3 +28,11 @@ export const DOSE_BADGE = {
 };
 
 export const fmtDate = (d) => (d ? d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '—');
+
+/** A planned dose whose window hasn't opened yet can't be dated. */
+export const isLocked = (r) => r.kind === 'planned' && r.nextDue && r.nextDue > new Date();
+
+/** The series started with the earliest recorded dose. */
+export const seriesStartDate = (result) => result.antigens
+  .flatMap(a => a.rows.filter(r => r.record).map(r => r.record.date))
+  .reduce((min, dt) => (!min || dt < min ? dt : min), null);

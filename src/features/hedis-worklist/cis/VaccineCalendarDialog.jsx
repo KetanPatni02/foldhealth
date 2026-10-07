@@ -1,7 +1,6 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../../components/ShadcnDialog/ShadcnDialog';
-import { Badge } from '../../../components/Badge/Badge';
-import { Button } from '../../../components/Button/Button';
+import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Icon } from '../../../components/Icon/Icon';
@@ -9,10 +8,15 @@ import { Input } from '../../../components/Input/Input';
 import { FilterChip } from '../../../components/FilterChip/FilterChip';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
-import { CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, CIS_CODE } from './cisRules';
-import { useCisTracker, toIso } from './useCisTracker';
-import { CisStatusBadge, CisSummaryStrip } from './CisStatus';
-import { DOSE_BADGE, fmtDate } from './cisStatusConfig';
+import { Toggle } from '../../../components/Toggle/Toggle';
+import { CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, CIS_CODE, evaluateCis } from './cisRules';
+import { isoToMdy } from './useCisTracker';
+import { CisStatusBadge } from './CisStatus';
+import { CisDoseProgress } from './CisDoseProgress';
+import { DOSE_BADGE, fmtDate, seriesStartDate } from './cisStatusConfig';
+import { VaccineTimeline } from './VaccineTimeline';
+import { DoseDateField } from './DoseDateField';
+import { downloadCisSchedule } from './downloadCisSchedule';
 import styles from './VaccineCalendarDialog.module.css';
 
 // Rows that need action get an accent bar down the dose column.
@@ -32,7 +36,6 @@ const URGENCY = [
   CIS_ANTIGEN_STATUS.met,
 ];
 
-const ageLabel = (months) => `${Math.floor(months / 12)}Y ${months % 12}M`;
 const fmtSaved = (iso) => {
   const d = iso ? new Date(iso) : null;
   if (!d || Number.isNaN(d.getTime())) return null;
@@ -48,7 +51,6 @@ const fmtSaved = (iso) => {
  *
  * @param {object}   props
  * @param {object}   props.member
- * @param {object}   props.gap             – the CIS-CMB10 gap ({ status })
  * @param {Array}    props.immunizations   – patient_immunizations rows
  * @param {object}   props.savedNotes      – { 'dtap:1': { note } }
  * @param {number}   props.measurementYear
@@ -56,13 +58,16 @@ const fmtSaved = (iso) => {
  * @param {function} props.onSave          – (payload) => Promise<boolean>
  * @param {function} props.onClose
  */
-export function VaccineCalendarDialog({ member, gap, immunizations, savedNotes, measurementYear, lastSaved, onSave, onClose }) {
-  const tracker = useCisTracker({ immunizations, savedNotes, measurementYear, dob: member?.dob });
-  const { result } = tracker;
+export function VaccineCalendarDialog({ member, immunizations, savedNotes, measurementYear, lastSaved, onSave, onClose }) {
+  const result = useMemo(
+    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear }),
+    [member?.dob, immunizations, measurementYear],
+  );
   const [statusFilter, setStatusFilter] = useState([]);
-  const [saving, setSaving] = useState(false);
+  const [view, setView] = useState('table');
+  // Table rows grouped by vaccine, or by the routine age the dose starts at.
+  const [viewBy, setViewBy] = useState('vaccine');
   const [confirmRemove, setConfirmRemove] = useState(null);
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const statusOptions = useMemo(() => {
     const present = new Set(result.antigens.flatMap(a => a.rows.map(r => r.status)));
@@ -74,77 +79,139 @@ export function VaccineCalendarDialog({ member, gap, immunizations, savedNotes, 
   const [order] = useState(() => [...result.antigens]
     .sort((x, y) => URGENCY.indexOf(x.status) - URGENCY.indexOf(y.status))
     .map(a => a.key));
-  const groups = order
-    .map(key => result.antigens.find(a => a.key === key))
-    .map(a => ({ antigen: a, rows: statusFilter.length ? a.rows.filter(r => statusFilter.includes(r.status)) : a.rows }))
-    .filter(g => g.rows.length > 0);
+  const keep = (r) => !statusFilter.length || statusFilter.includes(r.status);
+  const groups = viewBy === 'age'
+    ? Object.values(result.antigens.flatMap(a => a.rows.filter(keep).map(row => ({ antigen: a, row })))
+      .reduce((acc, item) => {
+        const k = item.row.ageMonths;
+        (acc[k] ||= { key: `age-${k}`, age: k, items: [] }).items.push(item);
+        return acc;
+      }, {}))
+      .sort((x, y) => x.age - y.age)
+    : order
+      .map(key => result.antigens.find(a => a.key === key))
+      .map(a => ({ key: a.key, antigen: a, items: a.rows.filter(keep).map(row => ({ antigen: a, row })) }))
+      .filter(g => g.items.length > 0);
   const totalDoses = result.antigens.reduce((n, a) => n + a.rows.length, 0);
-  const shownDoses = groups.reduce((n, g) => n + g.rows.length, 0);
+  const shownDoses = groups.reduce((n, g) => n + g.items.length, 0);
 
-  const requestClose = () => (tracker.dirty ? setConfirmDiscard(true) : onClose());
-  const save = async () => {
-    setSaving(true);
-    const ok = await onSave(tracker.buildSave());
-    setSaving(false);
-    if (ok) tracker.discard();
+  // Every change saves straight away, as on the tab.
+  const changeDate = (antigen, row, iso) => {
+    const when = iso ? fmtDate(new Date(`${iso}T00:00`)) : '';
+    if (!row.record) {
+      if (iso) onSave({ inserts: [{ ...antigen.record, dateAdministered: isoToMdy(iso) }], summary: `${antigen.label} dose ${row.number} recorded (${when})` });
+      return;
+    }
+    const shared = result.antigens
+      .filter(a => a.key !== antigen.key && a.rows.some(r => r.record?.id === row.record.id))
+      .map(a => a.label);
+    if (!iso) setConfirmRemove({ antigen, row, shared });
+    else onSave({ updates: [{ id: row.record.id, dateAdministered: isoToMdy(iso) }], summary: `${antigen.label} dose ${row.number} date changed to ${when}` });
   };
-  const clearDate = (antigen, row) => {
-    const target = tracker.removalFor(antigen.key, row);
-    if (!target) return;
-    if (target.existing) setConfirmRemove({ ...target, antigen });
-    else tracker.removeDose(target);
+  const saveNote = (antigen, row, text) => onSave({
+    notes: [{ antigenKey: antigen.key, doseNumber: row.number, note: text.trim() }],
+    summary: `Note ${text.trim() ? 'updated' : 'removed'} on ${antigen.label} dose ${row.number}`,
+  });
+  // A block in the progress bar jumps to its dose in the table and
+  // flashes the row for 2s.
+  const [focusDose, setFocusDose] = useState(null);
+  useEffect(() => {
+    if (!focusDose) return undefined;
+    document.getElementById(`cis-cal-${focusDose}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const t = setTimeout(() => setFocusDose(null), 2000);
+    return () => clearTimeout(t);
+  }, [focusDose]);
+  const goToDose = (a, r) => {
+    setView('table');
+    setStatusFilter([]);
+    setFocusDose(`${a.key}-${r.number}`);
   };
 
   const saved = lastSaved ? fmtSaved(lastSaved.when) : null;
-  const gender = member?.gender === 'F' ? 'Female' : member?.gender === 'M' ? 'Male' : member?.gender;
+  const byAge = viewBy === 'age';
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) requestClose(); }}>
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent
         hideClose
         className={styles.content}
         overlayClassName="z-[7999]"
         style={{ zIndex: 8000 }}
         onOpenAutoFocus={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => { if (tracker.dirty) { e.preventDefault(); setConfirmDiscard(true); } }}
+        // The date picker and filter popovers are portaled outside the
+        // dialog (content role="group", click-away layer aria-hidden);
+        // using them must not close it.
+        onInteractOutside={(e) => { if (e.target.closest?.('[role="group"], [aria-hidden="true"]')) e.preventDefault(); }}
       >
         <header className={styles.header}>
-          <div className={styles.titleCol}>
-            <div className={styles.titleRow}>
-              <DialogTitle className={styles.title}>Vaccine Calendar</DialogTitle>
-              <Badge tone="grey" size="M" label={gap?.status || 'Open'} />
-            </div>
-            <DialogDescription className={styles.subtitle}>
-              {[member?.name, gender, result.dob ? ageLabel(result.ageMonths) : null, result.dob ? `DOB ${fmtDate(result.dob)}` : null, CIS_CODE]
-                .filter(Boolean).join(' · ')}
-            </DialogDescription>
-          </div>
-          <span className={styles.lastSaved}>
-            <Icon name="solar:history-linear" size={16} color="var(--neutral-300)" />
-            {saved
-              ? <>Last saved by <strong>{lastSaved.actor}</strong> on <strong>{saved.date}</strong> at <strong>{saved.time}</strong></>
-              : 'Not saved yet'}
-          </span>
-          <span className={styles.headerDivider} />
-          <CloseButton onClick={requestClose} />
+          <DialogTitle className={styles.title}>Vaccine Calendar</DialogTitle>
+          <DialogDescription className={styles.srOnly}>
+            {`${CIS_CODE} vaccine calendar for ${member?.name || 'this patient'}`}
+          </DialogDescription>
+          <ActionButton
+            size="L"
+            icon="solar:download-minimalistic-linear"
+            tooltip="Download schedule (PDF)"
+            tooltipLeft
+            onClick={() => downloadCisSchedule({ member, result, notes: savedNotes, startedOn: seriesStartDate(result) })}
+          />
+          <span className={styles.headerDivider} aria-hidden="true" />
+          <CloseButton onClick={onClose} />
         </header>
+        {/* Patient context, as in the Care Gap drawer, edge to edge. */}
+        <PatientBanner
+          initials={member?.in}
+          name={member?.name}
+          gender={member?.gender}
+          age={member?.age}
+          dob={member?.dob}
+          memberId={member?.memberId}
+          patientId={member?.id}
+          hidePatientLabel
+        />
 
         <div className={styles.body}>
-          <CisSummaryStrip result={result} />
+          {result.dob && (
+            <section className={styles.progressCard} aria-label="Dose progress">
+              <CisDoseProgress result={result} startedOn={seriesStartDate(result)} onSelect={goToDose} />
+            </section>
+          )}
 
           <div className={styles.toolbar}>
-            <span className={styles.toolbarCount}>
-              {statusFilter.length ? `${shownDoses} of ${totalDoses} doses` : `${totalDoses} doses across ${result.antigens.length} vaccines`}
+            <span className={styles.toolbarStart}>
+              <Toggle
+                size="S"
+                items={[{ key: 'table', label: 'Table' }, { key: 'timeline', label: 'Timeline' }]}
+                active={view}
+                onChange={setView}
+              />
+              <span className={styles.toolbarCount}>
+                {statusFilter.length ? `${shownDoses} of ${totalDoses} doses` : `${totalDoses} doses across ${result.antigens.length} vaccines`}
+              </span>
             </span>
-            <FilterChip size="S" label="Status" options={statusOptions} selected={statusFilter} onChange={setStatusFilter} />
+            <span className={styles.toolbarEnd}>
+              {view === 'table' && (
+                <FilterChip
+                  size="S"
+                  singleSelect
+                  label="View by"
+                  options={['Vaccine', 'Age']}
+                  selected={[viewBy === 'age' ? 'Age' : 'Vaccine']}
+                  // Clearing the chip falls back to the default, by vaccine.
+                  onChange={(v) => setViewBy(v[0] === 'Age' ? 'age' : 'vaccine')}
+                />
+              )}
+              <FilterChip size="S" label="Status" options={statusOptions} selected={statusFilter} onChange={setStatusFilter} />
+            </span>
           </div>
 
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
+          {view === 'timeline' && result.dob && <VaccineTimeline result={result} antigenOrder={order} statusFilter={statusFilter} />}
+          <div className={styles.tableWrap} hidden={view === 'timeline' && !!result.dob}>
+            <table className={`${styles.table} ${byAge ? styles.tableByAge : ''}`}>
               <thead>
                 <tr>
-                  <th className={styles.colVaccine}>Vaccine</th>
-                  <th className={styles.colDose}>Dose</th>
+                  <th className={styles.colVaccine}>{byAge ? 'Age' : 'Vaccine'}</th>
+                  <th className={styles.colDose}>{byAge ? 'Vaccine (Dose)' : 'Dose'}</th>
                   <th className={styles.colRecommended}>Recommended Age</th>
                   <th className={styles.colEarliest}>
                     <span className={styles.thHint}>
@@ -154,32 +221,42 @@ export function VaccineCalendarDialog({ member, gap, immunizations, savedNotes, 
                       </Tooltip>
                     </span>
                   </th>
-                  <th className={styles.colDate}>Date Given</th>
+                  <th className={styles.colDate}>Date Administered</th>
                   <th className={styles.colStatus}>Status</th>
                   <th className={styles.colNotes}>Notes</th>
                 </tr>
               </thead>
               <tbody>
-                {groups.map(({ antigen, rows }) => (
-                  <Fragment key={antigen.key}>
-                    {rows.map((row, i) => {
-                      const key = `${antigen.key}:${row.number}`;
-                      const note = tracker.noteFor(antigen.key, row.number);
+                {groups.map(group => (
+                  <Fragment key={group.key}>
+                    {group.items.map(({ antigen, row }, i) => {
+                      const savedNote = savedNotes?.[`${antigen.key}:${row.number}`]?.note || '';
                       return (
-                        <tr key={key} className={i === 0 ? styles.groupStart : undefined}>
+                        <tr
+                          key={`${antigen.key}:${row.number}`}
+                          id={`cis-cal-${antigen.key}-${row.number}`}
+                          className={[
+                            i === 0 ? styles.groupStart : '',
+                            focusDose === `${antigen.key}-${row.number}` ? styles.doseHighlight : '',
+                          ].filter(Boolean).join(' ') || undefined}
+                        >
                           {i === 0 && (
-                            <td rowSpan={rows.length} className={styles.vaccineCell}>
-                              <span className={styles.vaccineName}>
-                                {antigen.status !== CIS_ANTIGEN_STATUS.met && <span className={styles.dot} aria-label="Incomplete" />}
-                                {antigen.label}
-                              </span>
-                              <span className={styles.vaccineMeta}>
-                                {antigen.measureCode} · {Math.min(antigen.valid.length, antigen.required)} of {antigen.requiredLabel}
-                              </span>
+                            <td rowSpan={group.items.length} className={styles.vaccineCell}>
+                              {byAge ? <AgeCell group={group} /> : (
+                                <>
+                                  <span className={styles.vaccineName}>
+                                    {antigen.status !== CIS_ANTIGEN_STATUS.met && <span className={styles.dot} aria-label="Incomplete" />}
+                                    {antigen.label}
+                                  </span>
+                                  <span className={styles.vaccineMeta}>
+                                    {antigen.measureCode} · {Math.min(antigen.valid.length, antigen.required)} of {antigen.requiredLabel}
+                                  </span>
+                                </>
+                              )}
                             </td>
                           )}
                           <td className={`${styles.doseCell} ${ACCENT[row.status] || ''}`}>
-                            Dose {row.number}
+                            {byAge ? <>{antigen.label}<span className={styles.subtle}>Dose {row.number}</span></> : <>Dose {row.number}</>}
                             {row.extra && <span className={styles.subtle}>Extra</span>}
                           </td>
                           <td>
@@ -190,23 +267,7 @@ export function VaccineCalendarDialog({ member, gap, immunizations, savedNotes, 
                           </td>
                           <td><span className={styles.primary}>{fmtDate(row.earliest)}</span></td>
                           <td>
-                            <span className={styles.editDate}>
-                              <Input
-                                type="date"
-                                variant="quiet"
-                                value={row.record ? toIso(row.record.date) : ''}
-                                onChange={(e) => tracker.setDoseDate(antigen.key, row, e.target.value)}
-                                min={toIso(result.dob)}
-                                max={toIso(new Date())}
-                                placeholder="Add date"
-                                aria-label={`${antigen.label} dose ${row.number} date given`}
-                              />
-                              {row.record && (
-                                <span className={styles.removeBtn}>
-                                  <ActionButton icon="solar:trash-bin-minimalistic-linear" size="S" tooltip="Remove this dose" onClick={() => clearDate(antigen, row)} />
-                                </span>
-                              )}
-                            </span>
+                            <DoseDateField row={row} label={antigen.label} dob={result.dob} onChange={(iso) => changeDate(antigen, row, iso)} />
                             {row.record && <RecordHint antigenKey={antigen.key} row={row} result={result} />}
                           </td>
                           <td>
@@ -214,12 +275,11 @@ export function VaccineCalendarDialog({ member, gap, immunizations, savedNotes, 
                             {row.reason && <span className={styles.reasonText}>{row.reason}</span>}
                           </td>
                           <td className={styles.noteCell}>
-                            <Input
-                              variant="quiet"
-                              value={note}
-                              onChange={(e) => tracker.setNote(antigen.key, row.number, e.target.value)}
-                              placeholder="Add a note"
-                              aria-label={`${antigen.label} dose ${row.number} note`}
+                            <NoteInput
+                              key={savedNote}
+                              saved={savedNote}
+                              label={`${antigen.label} dose ${row.number} note`}
+                              onSave={(text) => saveNote(antigen, row, text)}
                             />
                           </td>
                         </tr>
@@ -231,39 +291,66 @@ export function VaccineCalendarDialog({ member, gap, immunizations, savedNotes, 
             </table>
             {groups.length === 0 && <p className={styles.empty}>No doses match this status.</p>}
           </div>
+          <p className={styles.lastSaved}>
+            <Icon name="solar:history-linear" size={14} color="var(--neutral-300)" />
+            {saved
+              ? <>Last saved by <strong>{lastSaved.actor}</strong> on <strong>{saved.date}</strong> at <strong>{saved.time}</strong></>
+              : 'Not saved yet'}
+          </p>
         </div>
-
-        <footer className={styles.footer}>
-          {tracker.dirty && <span className={styles.unsaved}>Unsaved changes</span>}
-          <Button variant="secondary" onClick={requestClose}>Cancel</Button>
-          <Button variant="primary" disabled={!tracker.dirty || saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</Button>
-        </footer>
 
         {confirmRemove && (
           <ConfirmDialog
             variant="warning"
             title={`Remove ${confirmRemove.antigen.label} dose ${confirmRemove.row.number}?`}
             description={[
-              `The dose given ${fmtDate(confirmRemove.row.record.date)} will be removed from the patient's immunization history when you save.`,
+              `The dose given ${fmtDate(confirmRemove.row.record.date)} will be removed from the patient's immunization history.`,
               confirmRemove.shared.length ? `This ${confirmRemove.row.record.title} record also counts for ${confirmRemove.shared.join(', ')}, so it is removed there too.` : '',
             ].filter(Boolean).join(' ')}
             confirmLabel="Remove"
-            onConfirm={() => { tracker.removeDose(confirmRemove); setConfirmRemove(null); }}
+            onConfirm={() => {
+              const { antigen, row } = confirmRemove;
+              setConfirmRemove(null);
+              onSave({ deletes: [row.record.id], summary: `${antigen.label} dose ${row.number} date cleared` });
+            }}
             onCancel={() => setConfirmRemove(null)}
-          />
-        )}
-        {confirmDiscard && (
-          <ConfirmDialog
-            variant="warning"
-            title="Discard unsaved changes?"
-            description="Dates and notes you changed in the Vaccine Calendar will be lost."
-            confirmLabel="Discard"
-            onConfirm={() => { setConfirmDiscard(false); tracker.discard(); onClose(); }}
-            onCancel={() => setConfirmDiscard(false)}
           />
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+// Age group cell (View by Age): age, the date the child reaches it, and
+// how many of its doses are given.
+function AgeCell({ group }) {
+  const given = group.items.filter(({ row }) => row.status === CIS_DOSE_STATUS.completed).length;
+  return (
+    <>
+      <span className={styles.vaccineName}>
+        {given < group.items.length && <span className={styles.dot} aria-label="Incomplete" />}
+        {group.age === 0 ? 'At birth' : `${group.age} Month${group.age === 1 ? '' : 's'}`}
+      </span>
+      <span className={styles.vaccineMeta}>{fmtDate(group.items[0].row.start)}</span>
+      <span className={styles.vaccineMeta}>{given} of {group.items.length} given</span>
+    </>
+  );
+}
+
+// Note saves when the field loses focus (or on Enter), if it changed.
+function NoteInput({ saved, label, onSave }) {
+  const [text, setText] = useState(saved);
+  const commit = () => { if (text.trim() !== saved) onSave(text); };
+  return (
+    <Input
+      variant="quiet"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+      placeholder="Add a note"
+      aria-label={label}
+    />
   );
 }
 

@@ -1,0 +1,29 @@
+/* Date administered: a white Badge (Figma) that opens the date picker. */
+.trigger {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.trigger:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+}
+.trigger .placeholder {
+  color: var(--neutral-300);
+}
+.locked {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+/* Picker footer: the popover's slot bleeds to the card edges, so inset
+   it back to the month grid and divide it like the range picker's footer. */
+.pickerFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border-top: 0.5px solid var(--neutral-100);
+}

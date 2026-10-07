@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **CIS-CMB10 Vaccine Calendar (phase 3).** The first CIS tab is now
+  "Vaccine Calendar". It adds View by Vaccine / Age (Age follows a printed
+  schedule; each age group shows dose dots, start date and status, so it
+  reads when collapsed), a PDF schedule download, and a short celebration on
+  the progress block when a dose is given. The Vaccine Calendar dialog gains
+  a Timeline view (vaccines by routine age, birth to 2 years, each dose
+  across its range with dates and status), View by Vaccine / Age, the same
+  dose-progress card and date field as the tab, the patient banner, and
+  saves each change as it is made (no Save footer). Shared pieces:
+  `CisDoseProgress`, `DoseDateField`, `VaccineTimeline`. Date picker and
+  FilterChip popovers now take clicks inside modal dialogs.
+
 - **CIS-CMB10 immunization tracker (phase 2).** The Immunizations tab (first
   tab on CIS gaps) now records doses inline. A dose-progress card shows one
   block per required dose as a timeline (given, due now, overdue / does not

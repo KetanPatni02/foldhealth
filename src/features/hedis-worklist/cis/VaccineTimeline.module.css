@@ -1,0 +1,198 @@
+/* Vaccine Calendar timeline: vaccines down, routine ages across. */
+.wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 128px repeat(var(--cols), minmax(72px, 1fr));
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+/* Header: age, then the date the child reaches it. */
+.head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  padding: var(--space-2) var(--space-1);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  border-left: 0.5px solid var(--neutral-100);
+}
+.vaccineHead {
+  left: 0;
+  z-index: 3;
+  align-items: flex-start;
+  justify-content: center;
+  padding-left: var(--space-3);
+  border-left: none;
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.age {
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.ageDate {
+  font-size: var(--font-xs);
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+.todayHead {
+  background: var(--primary-50);
+}
+.todayTag {
+  padding: 0 var(--space-1);
+  border-radius: 4px;
+  background: var(--primary-300);
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  color: var(--neutral-0);
+}
+
+/* Vaccine name column, pinned while scrolling sideways. */
+.vaccine {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: calc(var(--space-1) / 2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-0);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.vaccineName {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.vaccineMeta {
+  font-size: var(--font-xs);
+  color: var(--neutral-300);
+}
+
+.cell {
+  min-height: 52px;
+  border-left: 0.5px solid var(--neutral-100);
+}
+.groupEnd {
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.todayCell {
+  background: var(--primary-25);
+}
+
+/* A dose spans its recommended age range. */
+.doseSlot {
+  display: flex;
+  min-width: 0;
+  padding: var(--space-1) calc(var(--space-1) / 2);
+}
+.doseTip {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+.dose {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+  padding: var(--space-1) calc(var(--space-1) / 2);
+  border: 0.5px solid transparent;
+  border-radius: 6px;
+  text-align: center;
+  cursor: default;
+  transition: box-shadow 120ms ease-out, opacity 120ms ease-out;
+}
+.dose:hover,
+.dose:focus-visible {
+  box-shadow: var(--shadow-card);
+  outline: none;
+}
+.doseTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.doseDate {
+  max-width: 100%;
+  font-size: var(--font-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dimmed {
+  opacity: 0.35;
+}
+
+.toneSuccess { background: var(--status-success-light); border-color: var(--status-success); color: var(--status-success-dark); }
+.toneWarning { background: var(--status-warning-light); border-color: var(--status-warning); color: var(--status-warning-dark); }
+.toneError { background: var(--status-error-light); border-color: var(--status-error); color: var(--status-error-dark); }
+.toneGrey { background: var(--neutral-75); border-color: var(--neutral-150); color: var(--neutral-400); }
+.toneWhite { background: var(--neutral-0); border-color: var(--neutral-150); color: var(--neutral-400); }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.swatch {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+}
+.swatchToday {
+  background: var(--primary-50);
+  border-color: var(--primary-300);
+}
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  text-align: left;
+}
+.detailTitle {
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.detailReason {
+  color: var(--status-error-dark);
+}

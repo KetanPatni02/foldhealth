@@ -1143,7 +1143,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       .reduce((latest, e) => (!latest || new Date(e.when ?? e.at) > new Date(latest.when) ? { actor: e.actor, when: e.when ?? e.at } : latest), null)
     : null;
   const visibleTabs = isCis
-    ? [{ key: 'Immunizations', label: 'Immunizations' }, ...TABS]
+    ? [{ key: 'Immunizations', label: 'Vaccine Calendar' }, ...TABS]
     : TABS;
   // Prev/next can land on a non-CIS gap while Immunizations is selected.
   const shownTab = !isCis && activeTab === 'Immunizations' ? 'Activity Log' : activeTab;
@@ -1859,7 +1859,6 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
             ) : shownTab === 'Immunizations' ? (
               <CisImmunizationsTab
                 member={member}
-                gap={gap}
                 immunizations={immunizations}
                 savedNotes={cisDoseNotes}
                 loading={!immunizationsLoaded}
