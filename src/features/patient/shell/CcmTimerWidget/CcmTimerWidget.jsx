@@ -39,7 +39,8 @@ import styles from './CcmTimerWidget.module.css';
 // own, stays until answered, and every answer is recorded.
 //
 // The timer starts itself when a patient profile opens. Leaving the profile
-// screen pauses it and coming back resumes it (as Fold does, VBC-22802):
+// screen, or switching to another browser tab, pauses it and coming back
+// resumes it (as Fold does, VBC-22802):
 // each patient's timer is parked on the way out and picked up on return,
 // running again only if it was running when they left. Drag the handle to
 // move it anywhere; drop it on the tag row to dock it back there.
@@ -299,6 +300,8 @@ export function CcmTimerWidget({ patient }) {
   // cleanup below runs after this render's state is gone).
   const liveRef = useRef(null);
   useEffect(() => { liveRef.current = { mode, sessionId, quietSession }; });
+  // Set while the timer is paused only because the browser tab is hidden.
+  const hiddenPausedRef = useRef(false);
 
   // Leaving this patient's profile (another patient, or another screen)
   // parks the timer, paused, with the time it had.
@@ -317,7 +320,8 @@ export function CcmTimerWidget({ patient }) {
       const ms = accumulatedRef.current + (running ? performance.now() - startedAtRef.current : 0);
       parkedTimers.set(pid, {
         ms,
-        wasRunning: running,
+        // Paused only by a hidden tab still counts as running.
+        wasRunning: running || hiddenPausedRef.current,
         // Mid-log, it comes back stopped with the time intact.
         mode: live.mode === 'classifying' ? 'stopped' : live.mode,
         sessionId: live.sessionId,
@@ -325,6 +329,28 @@ export function CcmTimerWidget({ patient }) {
       });
     };
   }, [patientId]);
+
+  // Switching to another browser tab (or minimising the window) pauses the
+  // timer too, and coming back resumes it, but only if it was running when
+  // the tab was hidden: a timer the user paused stays paused. An open
+  // inactivity reminder stays up; its count restarts when the timer resumes.
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (liveRef.current?.mode === 'running') {
+          hiddenPausedRef.current = true;
+          stopTick();
+          setMode('paused');
+        }
+      } else if (hiddenPausedRef.current) {
+        hiddenPausedRef.current = false;
+        startTick();
+        setMode('running');
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [startTick, stopTick]);
 
   useEffect(() => () => {
     cancelAnimationFrame(rafRef.current);
