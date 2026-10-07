@@ -269,6 +269,15 @@
   min-width: 12px;
 }
 
+/* While the CCM timer is dragged over the tag row, the row shows it'll dock
+   there on drop. */
+.row2[data-ccm-drop-target] {
+  outline: 1px dashed var(--primary-300);
+  outline-offset: 2px;
+  border-radius: var(--space-1);
+  background: var(--primary-25);
+}
+
 .timerDockSlot {
   flex-shrink: 0;
   margin-left: auto;

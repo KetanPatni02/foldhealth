@@ -272,7 +272,7 @@ export function PatientDetailView() {
     <CcmTimerDockProvider>
     <div className={styles.wrapper}>
       <PatientP360Banner patient={patientWithAppStatus} />
-      <CcmTimerWidget />
+      <CcmTimerWidget patient={patient} />
       <div className={styles.body} ref={bodyRef}>
         {leftMounted && (
           <>

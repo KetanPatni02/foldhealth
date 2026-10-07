@@ -1,28 +1,58 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../../../../components/Icon/Icon';
+import { Avatar } from '../../../../components/Avatar/Avatar';
 import { Button } from '../../../../components/Button/Button';
+import { ConfirmDialog } from '../../../../components/ConfirmDialog/ConfirmDialog';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
+import { Link } from '../../../../components/Link/Link';
 import { Select } from '../../../../components/Select/Select';
 import { Textarea } from '../../../../components/Textarea/Textarea';
 import { useAppStore } from '../../../../store/useAppStore';
+import { formatFoldId } from '../../../../lib/foldId';
 import { CCM_ACTIVITY_TYPES, secondsToTime } from '../../data/ccmBillingMock';
 import { useCcmTimerDock } from './CcmTimerDockContext';
+import { armAlertAudio, formatIdleDuration, inactivitySecondsFor, playAlertChime, useInactivity } from './inactivity';
 import styles from './CcmTimerWidget.module.css';
 
-// Time Tracker Control workflow (Time Tracker Control standalone.html):
-//   idle     → grey chip, Start + Log
-//   running  → green chip + pulse dot, Pause + Log (disabled)
-//   paused   → green chip, Resume + Reset + Log
-//   reset    → idle at 00:00, Start + Log
-//   logged   → brief confirmation after save, then auto-restart
-//   classifying → log form (app extension — opened via Log)
+// CCM activity timer (Figma CCM Timer 324:84077), drawn in our timer's own
+// style. Two sizes:
+//   mini     — the control bar; docked in the banner's tag row by default
+//   expanded — a card with the patient, the time large, and the actions
+// and these states (Figma variant in brackets):
+//   idle        → 00:00, Start Timer                         (Start / Mini Start)
+//   running     → green time, Pause · Stop                   (Mini / Expanded)
+//   paused      → grey time, Resume · Reset · Log            (Variant8 / Paused)
+//   stopped     → grey time, Resume · Log Time               (Stoped)
+//   confirm     → "Reset Timer?" over the card               (Variant7)
+//   classifying → the log form in the card
+//   logged      → brief confirmation, then a fresh session starts
+// A banner can sit on top: "Accrued time not billable." when this month's
+// period is already billed (error).
 //
-// Timer auto-starts when a patient profile opens.
+// Inactivity reminder (story: notify when the timer runs with no activity):
+// after the patient's threshold with no mouse, key, scroll or touch activity
+// while running, the timer asks "Are you still working on this patient?"
+// with Keep Timer Running / Pause Timer and a "Don't remind me again" checkbox
+// (Figma Dialog Box 2, 2810:68907). It never pauses on its
+// own, stays until answered, and every answer is recorded. Prototype: on for
+// one demo patient only (inactivity.js).
+//
+// The timer starts itself when a patient profile opens. Leaving the profile
+// screen pauses it and coming back resumes it (as Fold does, VBC-22802):
+// each patient's timer is parked on the way out and picked up on return,
+// running again only if it was running when they left. Drag the handle to
+// move it anywhere; drop it on the tag row to dock it back there.
 const DRAG_GHOST_CLASS = 'ccm-timer-dragging';
 const LOGGED_FEEDBACK_MS = 1600;
-const MAGNET_RADIUS = 160;
-const SNAP_RADIUS = 80;
+// How far outside the tag row a drop still counts as "in" it.
+const DOCK_SLOP = 16;
+
+// Timers parked when their patient's profile was left, by patient id:
+// { ms, wasRunning, mode, sessionId, quietSession }. Lives for the page.
+const parkedTimers = new Map();
+
+const newSessionId = () => `tms-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
 function activityId() {
   return `act-${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
@@ -35,113 +65,165 @@ function fixedPosFromRect(rect) {
   };
 }
 
-/** Tags-row dock zone — uses row2 so the target stays valid while undocked. */
-function getDockTargetRect(dockEl, controlWidth = 200) {
+/** The tag row the timer docks into, or null when it isn't on screen. */
+function dockRowRect(dockEl) {
   const row = dockEl?.closest('[data-ccm-timer-row]') ?? dockEl?.parentElement;
-  if (!row) return null;
-  const rowRect = row.getBoundingClientRect();
-  if (rowRect.width <= 0 || rowRect.height <= 0) return null;
-  const width = Math.max(controlWidth, 160);
-  return {
-    left: rowRect.right - width,
-    top: rowRect.top,
-    right: rowRect.right,
-    bottom: rowRect.bottom,
-    width,
-    height: rowRect.height,
-  };
+  const rect = row?.getBoundingClientRect();
+  return rect && rect.width > 0 && rect.height > 0 ? rect : null;
 }
 
-function distanceToDockZone(cx, cy, targetRect) {
-  const closestX = Math.max(targetRect.left, Math.min(cx, targetRect.right));
-  const closestY = Math.max(targetRect.top, Math.min(cy, targetRect.bottom));
-  return Math.hypot(cx - closestX, cy - closestY);
+/** Whether a pointer at (x, y) is over the tag row, give or take DOCK_SLOP. */
+function overDock(x, y, dockEl) {
+  const r = dockRowRect(dockEl);
+  return !!r && x >= r.left - DOCK_SLOP && x <= r.right + DOCK_SLOP
+    && y >= r.top - DOCK_SLOP && y <= r.bottom + DOCK_SLOP;
 }
 
-function floatPosForDockedPlacement(controlRect, targetRect) {
-  const top = targetRect.top + (targetRect.height - controlRect.height) / 2;
-  const left = targetRect.right - controlRect.width;
-  return {
-    right: Math.max(8, window.innerWidth - left - controlRect.width),
-    bottom: Math.max(8, window.innerHeight - top - controlRect.height),
-  };
+const initialsOf = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('') || '?';
+
+/** "MM:SS", with the colon set apart like the design's. */
+function TimeText({ seconds, className }) {
+  const [m, s] = secondsToTime(seconds).split(':');
+  return (
+    <span className={className}>
+      {m}<span className={styles.colon}>:</span>{s}
+    </span>
+  );
 }
 
-function magnetizePos(pos, controlEl, dockEl) {
-  if (!controlEl || !dockEl) return { pos, snap: false };
-  const controlRect = controlEl.getBoundingClientRect();
-  const targetRect = getDockTargetRect(dockEl, controlRect.width);
-  if (!targetRect) return { pos, snap: false };
-
-  const cx = controlRect.left + controlRect.width / 2;
-  const cy = controlRect.top + controlRect.height / 2;
-  const dist = distanceToDockZone(cx, cy, targetRect);
-  if (dist >= MAGNET_RADIUS) return { pos, snap: false };
-  if (dist <= SNAP_RADIUS) return { pos, snap: true };
-
-  const pull = (1 - dist / MAGNET_RADIUS) ** 2 * 0.88;
-  const dockedPos = floatPosForDockedPlacement(controlRect, targetRect);
-  return {
-    pos: {
-      right: pos.right + (dockedPos.right - pos.right) * pull,
-      bottom: pos.bottom + (dockedPos.bottom - pos.bottom) * pull,
-    },
-    snap: false,
-  };
+/** The six-dot grip; `horizontal` lays it on its side for the card's top strip. */
+function Grip({ horizontal = false }) {
+  return (
+    <svg width={horizontal ? 14 : 8} height={horizontal ? 8 : 14} viewBox={horizontal ? '0 0 14 8' : '0 0 8 14'} fill="currentColor" aria-hidden="true">
+      {horizontal
+        ? [2, 7, 12].flatMap(x => [<circle key={`a${x}`} cx={x} cy="2" r="1.3" />, <circle key={`b${x}`} cx={x} cy="6" r="1.3" />])
+        : [2, 7, 12].flatMap(y => [<circle key={`a${y}`} cx="2" cy={y} r="1.3" />, <circle key={`b${y}`} cx="6" cy={y} r="1.3" />])}
+    </svg>
+  );
 }
 
-function shouldSnapToDock(controlEl, dockEl) {
-  if (!controlEl || !dockEl) return false;
-  const controlRect = controlEl.getBoundingClientRect();
-  const targetRect = getDockTargetRect(dockEl, controlRect.width);
-  if (!targetRect) return false;
-  const cx = controlRect.left + controlRect.width / 2;
-  const cy = controlRect.top + controlRect.height / 2;
-  return distanceToDockZone(cx, cy, targetRect) <= SNAP_RADIUS;
+/** A one-line notice that sits on top of the timer (error or info). */
+function TimerNotice({ notice, onClose }) {
+  if (!notice) return null;
+  return (
+    <div className={`${styles.notice} ${notice.tone === 'error' ? styles.noticeError : styles.noticeInfo}`} role="status">
+      <Icon
+        name={notice.tone === 'error' ? 'solar:danger-triangle-linear' : 'solar:info-circle-linear'}
+        size={12}
+        color={notice.tone === 'error' ? 'var(--status-error)' : 'var(--status-info)'}
+      />
+      <span className={styles.noticeText}>{notice.text}</span>
+      {onClose && (
+        <button type="button" className={styles.noticeClose} onClick={onClose} aria-label="Dismiss">
+          <Icon name="solar:close-linear" size={12} color="currentColor" />
+        </button>
+      )}
+    </div>
+  );
 }
 
-export function CcmTimerWidget() {
+/**
+ * "Are you still working on this patient?" — our ConfirmDialog, inline so it
+ * sits above the timer (where the banners go) without blocking the page.
+ * Keep Timer Running continues; Pause Timer pauses. "Don't remind me
+ * again" is a checkbox that rides along with either answer and quiets
+ * reminders for the rest of this session.
+ */
+function InactivityPrompt({ seconds, onAnswer }) {
+  const [quiet, setQuiet] = useState(false);
+  return (
+    <ConfirmDialog
+      inline
+      align="start"
+      className={styles.prompt}
+      variant="primary"
+      icon="solar:clock-circle-linear"
+      iconColor="var(--neutral-300)"
+      title="Are you still working?"
+      description={`No activity detected for ${formatIdleDuration(seconds)}. Please confirm to keep the timer running or pause it if you're not working on their profile right now.`}
+      confirmLabel="Keep Timer Running"
+      cancelLabel="Pause Timer"
+      checkbox={{ label: 'Don’t remind me again', checked: quiet, onChange: setQuiet }}
+      onConfirm={() => onAnswer('continue', quiet)}
+      onCancel={() => onAnswer('pause', quiet)}
+    />
+  );
+}
+
+export function CcmTimerWidget({ patient }) {
   const patientId = useAppStore(s => s.selectedPatientId);
   const periods = useAppStore(s => s.ccmBillingPeriodsByPatient[patientId]);
   const fetchCcmBilling = useAppStore(s => s.fetchCcmBilling);
   const addCcmBillableActivity = useAppStore(s => s.addCcmBillableActivity);
+  const logTimerInactivityEvent = useAppStore(s => s.logTimerInactivityEvent);
   const currentPeriod = periods && periods[0];
 
   const { dockEl, isDocked, setIsDocked, floatPos, setFloatPos } = useCcmTimerDock();
 
   const [mode, setMode] = useState('idle');
   const [elapsed, setElapsed] = useState(0);
+  const [expanded, setExpanded] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
   const [activityType, setActivityType] = useState(CCM_ACTIVITY_TYPES[0]);
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [overDockZone, setOverDockZone] = useState(false);
+  const [anchor, setAnchor] = useState(null); // docked bar's box, for the card below it
+  // A timer session runs from start to log or reset; "Don't remind me again"
+  // holds for the session it was chosen in.
+  const [sessionId, setSessionId] = useState(newSessionId);
+  const [prompt, setPrompt] = useState(null); // { shownAt } while asking
+  const [quietSession, setQuietSession] = useState(null);
+  const [continuedAt, setContinuedAt] = useState(0);
 
   const startedAtRef = useRef(null);
   const accumulatedRef = useRef(0);
   const rafRef = useRef(null);
   const loggedTimeoutRef = useRef(null);
   const autoStartedForRef = useRef(null);
-  const shellRef = useRef(null);
-  const controlRef = useRef(null);
+  const barRef = useRef(null);
 
   const isIdle = mode === 'idle';
   const isRunning = mode === 'running';
   const isPaused = mode === 'paused';
+  const isStopped = mode === 'stopped';
   const isLogged = mode === 'logged';
   const isClassifying = mode === 'classifying';
-  const chipIdle = isIdle;
-  const chipActive = !isIdle && !isClassifying;
-  const canLog = (isIdle || isPaused) && !isClassifying;
-  const logDisabled = isRunning || isLogged || isClassifying;
+  const isHeld = isPaused || isStopped; // time frozen, waiting for a decision
+  // The card shows when asked for, and always for the log form and the reset
+  // confirmation, which don't fit in the bar.
+  const showCard = expanded || isClassifying || confirmReset;
+
+  // This month is already billed, so time added now can't be.
+  const notice = currentPeriod?.billStatus === 'sent' && !noticeDismissed
+    ? { tone: 'error', text: 'Accrued time not billable.' }
+    : null;
 
   useEffect(() => {
     if (!patientId) return;
     if (periods == null) fetchCcmBilling(patientId);
   }, [patientId, periods, fetchCcmBilling]);
 
+  // A new patient starts docked, small, with nothing pending. The inactivity
+  // demo patient starts floating in the bottom-right corner instead, where
+  // the reminder has room above it (it can still be dragged and docked).
   useEffect(() => {
-    setIsDocked(true);
-  }, [patientId, setIsDocked]);
+    const floats = inactivitySecondsFor(patientId) != null;
+    setIsDocked(!floats);
+    if (floats) setFloatPos({ right: 16, bottom: 16 });
+  }, [patientId, setIsDocked, setFloatPos]);
+  const [shownFor, setShownFor] = useState(patientId);
+  if (shownFor !== patientId) {
+    setShownFor(patientId);
+    setExpanded(false);
+    setConfirmReset(false);
+    setNoticeDismissed(false);
+    setPrompt(null);
+    setQuietSession(null);
+    setSessionId(newSessionId());
+  }
 
   const tick = useCallback(() => {
     if (startedAtRef.current == null) return;
@@ -169,6 +251,8 @@ export function CcmTimerWidget() {
     setElapsed(0);
     setDescription('');
     setActivityType(CCM_ACTIVITY_TYPES[0]);
+    setSessionId(newSessionId());
+    setPrompt(null);
     startTick();
     setMode('running');
   }, [startTick, stopTick]);
@@ -177,50 +261,119 @@ export function CcmTimerWidget() {
     stopTick();
     accumulatedRef.current = 0;
     setElapsed(0);
+    setSessionId(newSessionId());
+    setPrompt(null);
     setMode('idle');
   }, [stopTick]);
+
+  // Opening a profile: pick its parked timer back up (the time it had, its
+  // session, running again only if it was running when the profile was
+  // left), or start a fresh one.
+  const openTimerFor = useCallback((pid) => {
+    const saved = parkedTimers.get(String(pid));
+    parkedTimers.delete(String(pid));
+    if (!saved) { restartTimer(); return; }
+    stopTick();
+    accumulatedRef.current = saved.ms;
+    setElapsed(Math.floor(saved.ms / 1000));
+    setSessionId(saved.sessionId);
+    setQuietSession(saved.quietSession);
+    setPrompt(null);
+    if (saved.wasRunning) {
+      startTick();
+      setMode('running');
+    } else {
+      setMode(saved.mode);
+    }
+  }, [restartTimer, startTick, stopTick]);
 
   useEffect(() => {
     if (!patientId || !currentPeriod) return;
     const key = `${patientId}:${currentPeriod.id}`;
     if (autoStartedForRef.current === key) return;
     autoStartedForRef.current = key;
-    restartTimer();
-  }, [patientId, currentPeriod, restartTimer]);
+    openTimerFor(patientId);
+  }, [patientId, currentPeriod, openTimerFor]);
+
+  // The latest timer state, for parking it when the profile is left (the
+  // cleanup below runs after this render's state is gone).
+  const liveRef = useRef(null);
+  useEffect(() => { liveRef.current = { mode, sessionId, quietSession }; });
+
+  // Leaving this patient's profile (another patient, or another screen)
+  // parks the timer, paused, with the time it had.
+  useEffect(() => {
+    const pid = String(patientId);
+    return () => {
+      const live = liveRef.current;
+      if (!patientId || !live || live.mode === 'idle' || live.mode === 'logged') {
+        parkedTimers.delete(pid);
+        return;
+      }
+      // Snapshot only. Opening the next patient stops this clock (and the
+      // unmount cleanup cancels its frame); stopping it here would freeze a
+      // timer that React remounts in place (StrictMode).
+      const running = startedAtRef.current != null;
+      const ms = accumulatedRef.current + (running ? performance.now() - startedAtRef.current : 0);
+      parkedTimers.set(pid, {
+        ms,
+        wasRunning: running,
+        // Mid-log, it comes back stopped with the time intact.
+        mode: live.mode === 'classifying' ? 'stopped' : live.mode,
+        sessionId: live.sessionId,
+        quietSession: live.quietSession,
+      });
+    };
+  }, [patientId]);
 
   useEffect(() => () => {
     cancelAnimationFrame(rafRef.current);
     clearTimeout(loggedTimeoutRef.current);
   }, []);
 
-  const onPrimary = () => {
-    if (isIdle || isPaused) {
-      startTick();
-      setMode('running');
-      return;
-    }
-    if (isRunning) {
-      stopTick();
-      setMode('paused');
-    }
-  };
+  // ── Actions ──────────────────────────────────────────────────────────
+  const start = () => { startTick(); setMode('running'); };
+  const pause = () => { stopTick(); setPrompt(null); setMode('paused'); };
+  const stop = () => { stopTick(); setPrompt(null); setMode('stopped'); };
+  const resume = () => { startTick(); setMode('running'); };
+  const askReset = () => setConfirmReset(true);
+  const discard = () => { setConfirmReset(false); resetTimer(); };
+  const openLog = () => { stopTick(); setConfirmReset(false); setPrompt(null); setMode('classifying'); };
 
-  const onReset = () => {
-    resetTimer();
+  // ── Inactivity reminder ──────────────────────────────────────────────
+  const idleSeconds = inactivitySecondsFor(patientId);
+  // Ready the alert sound on the first click, for Safari (see armAlertAudio).
+  useEffect(() => { if (idleSeconds) armAlertAudio(); }, [idleSeconds]);
+  useInactivity({
+    enabled: !!idleSeconds && isRunning && !prompt && quietSession !== sessionId,
+    seconds: idleSeconds,
+    resetKey: continuedAt,
+    onIdle: () => {
+      setPrompt({ shownAt: new Date().toISOString() });
+      playAlertChime(); // once, as it appears
+    },
+  });
+  // `action` is continue | pause; `dontRemind` is the checkbox.
+  const answerPrompt = (action, dontRemind) => {
+    logTimerInactivityEvent?.({
+      sessionId,
+      patientId,
+      thresholdSeconds: idleSeconds,
+      elapsedSeconds: elapsed,
+      shownAt: prompt?.shownAt,
+      respondedAt: new Date().toISOString(),
+      action,
+      dontRemind,
+    });
+    setPrompt(null);
+    if (dontRemind) setQuietSession(sessionId);
+    if (action === 'continue') setContinuedAt(Date.now());
+    if (action === 'pause') pause();
   };
-
-  const onLog = () => {
-    if (logDisabled) return;
-    stopTick();
-    setMode('classifying');
-  };
-
-  const discardClassifying = () => {
-    if (elapsed > 0) {
-      setMode('paused');
-    } else {
-      resetTimer();
-    }
+  const promptEl = prompt && <InactivityPrompt seconds={idleSeconds} onAnswer={answerPrompt} />;
+  const cancelLog = () => {
+    if (elapsed > 0) setMode('stopped');
+    else resetTimer();
   };
 
   const persist = async () => {
@@ -253,220 +406,293 @@ export function CcmTimerWidget() {
     }, LOGGED_FEEDBACK_MS);
   };
 
-  const dockTimer = useCallback((endDrag) => {
-    endDrag?.();
-    setIsDragging(false);
-    setIsDocked(true);
-    document.body.classList.remove(DRAG_GHOST_CLASS);
-  }, [setIsDocked]);
+  // ── Card placement while docked: just under the bar, right-aligned. ──
+  const docked = isDocked && !!dockEl;
+  useLayoutEffect(() => {
+    if (!docked || !(showCard || prompt)) return undefined;
+    const place = () => {
+      const r = barRef.current?.getBoundingClientRect();
+      // The card grows out of the bar, from its top-right corner; the
+      // reminder alone opens just under it.
+      if (r) setAnchor({ top: showCard ? r.top : r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [docked, showCard, prompt]);
 
+  // ── Drag: move anywhere; dropping on the tag row docks it there. ─────
   const onDragPointerDown = (e) => {
-    if (isClassifying) return;
     e.preventDefault();
     const handle = e.currentTarget;
     const { pointerId } = e;
     try { handle.setPointerCapture(pointerId); } catch { /* ignore */ }
 
-    const controlRect = controlRef.current?.getBoundingClientRect();
-    let dragStartPos = floatPos;
-    if (isDocked && controlRect) {
-      dragStartPos = fixedPosFromRect(controlRect);
-      setIsDocked(false);
-      setFloatPos(dragStartPos);
-    }
+    // Start from wherever the dragged surface is now (the bar, or the card).
+    const surface = handle.closest('[data-ccm-timer-surface]');
+    const rect = surface?.getBoundingClientRect();
+    const startPos = rect ? fixedPosFromRect(rect) : floatPos;
+    setIsDocked(false);
+    setFloatPos(startPos);
 
-    const startClientX = e.clientX;
-    const startClientY = e.clientY;
-    const startPos = dragStartPos;
+    const startX = e.clientX;
+    const startY = e.clientY;
     setIsDragging(true);
     document.body.classList.add(DRAG_GHOST_CLASS);
 
-    const endDrag = () => {
+    const onMove = (ev) => {
+      if (ev.pointerId !== pointerId) return;
+      setFloatPos({
+        right: Math.max(8, startPos.right - (ev.clientX - startX)),
+        bottom: Math.max(8, startPos.bottom - (ev.clientY - startY)),
+      });
+      setOverDockZone(overDock(ev.clientX, ev.clientY, dockEl));
+    };
+    const onUp = (ev) => {
+      if (ev.pointerId !== pointerId) return;
       handle.removeEventListener('pointermove', onMove);
       handle.removeEventListener('pointerup', onUp);
       handle.removeEventListener('pointercancel', onUp);
       try { handle.releasePointerCapture(pointerId); } catch { /* ignore */ }
-    };
-
-    const onMove = (ev) => {
-      if (ev.pointerId !== pointerId) return;
-      const dx = ev.clientX - startClientX;
-      const dy = ev.clientY - startClientY;
-      let nextPos = {
-        right: Math.max(8, startPos.right - dx),
-        bottom: Math.max(8, startPos.bottom - dy),
-      };
-      const magnet = magnetizePos(nextPos, controlRef.current, dockEl);
-      nextPos = magnet.pos;
-      setFloatPos(nextPos);
-      if (magnet.snap) dockTimer(endDrag);
-    };
-
-    const onUp = (ev) => {
-      if (ev.pointerId !== pointerId) return;
-      endDrag();
       setIsDragging(false);
+      setOverDockZone(false);
       document.body.classList.remove(DRAG_GHOST_CLASS);
-      if (shouldSnapToDock(controlRef.current, dockEl)) dockTimer();
+      if (overDock(ev.clientX, ev.clientY, dockEl)) setIsDocked(true);
     };
-
     handle.addEventListener('pointermove', onMove);
     handle.addEventListener('pointerup', onUp);
     handle.addEventListener('pointercancel', onUp);
   };
 
+  // Show where a drop would land: the tag row lights up while dragging over it.
+  useEffect(() => {
+    const row = dockEl?.closest('[data-ccm-timer-row]');
+    if (!row) return undefined;
+    row.toggleAttribute('data-ccm-drop-target', overDockZone);
+    return () => row.removeAttribute('data-ccm-drop-target');
+  }, [dockEl, overDockZone]);
+
   if (!currentPeriod) return null;
 
-  const shellClass = [
-    isDocked ? styles.dockHost : styles.wrap,
-    isDocked && !isClassifying ? styles.dockHostInline : '',
-    !isDocked && !isDragging ? styles.wrapAnimated : '',
-    isDragging ? styles.wrapDragging : '',
-  ].filter(Boolean).join(' ');
+  const timeTone = isRunning ? styles.timeRunning : styles.timeHeld;
+  const name = patient?.name || 'Patient';
 
-  const controlClass = [
-    styles.control,
-    isDocked ? styles.controlDocked : '',
-  ].filter(Boolean).join(' ');
+  // ── Mini: the control bar ────────────────────────────────────────────
+  const bar = (
+    <div
+      ref={barRef}
+      className={[styles.control, docked ? styles.controlDocked : '', docked && showCard ? styles.controlExpanded : ''].filter(Boolean).join(' ')}
+      data-ccm-timer-surface
+      inert={docked && showCard}
+    >
+      <button type="button" className={styles.dragHandle} onPointerDown={onDragPointerDown} aria-label="Drag timer" title="Drag to move; drop on the tag row to dock">
+        <Grip />
+      </button>
 
-  const chipWrapClass = [
-    styles.chipWrap,
-    isDocked ? styles.chipWrapDocked : '',
-    isDocked && chipIdle ? styles.chipWrapIdle : '',
-    isDocked && chipActive ? styles.chipWrapActive : '',
-  ].filter(Boolean).join(' ');
+      <div className={styles.chipWrap}>
+        <span className={`${styles.chip} ${isRunning ? styles.chipActive : isIdle ? styles.chipIdle : styles.chipHeld}`}>
+          {isRunning && <span className={styles.chipDot} aria-hidden="true" />}
+          {isHeld && <Icon name={isPaused ? 'solar:pause-circle-linear' : 'solar:stop-circle-linear'} size={14} color="var(--neutral-200)" />}
+          {isIdle && <Icon name="solar:stopwatch-linear" size={14} color="var(--neutral-300)" />}
+          {isLogged
+            ? <><Icon name="solar:check-circle-linear" size={14} color="var(--status-success)" /><span className={styles.loggedLabel}>Logged</span></>
+            : <TimeText seconds={elapsed} className={`${styles.chipTime} ${isRunning ? styles.chipTimeActive : styles.chipTimeIdle}`} />}
+        </span>
+      </div>
 
-  const ui = (
-    <div ref={shellRef} className={shellClass} style={isDocked ? undefined : { right: floatPos.right, bottom: floatPos.bottom }}>
-      {isClassifying && (
-        <div className={styles.formPanel}>
-          <div className={styles.formHead}>
-            <span className={styles.formTitle}>Log {secondsToTime(elapsed)}</span>
-            <ActionButton icon="solar:close-linear" size="S" tooltip="Discard" onClick={discardClassifying} />
+      {isIdle && (
+        <button type="button" className={styles.segmentBtn} onClick={start}>
+          <span className={`${styles.segmentLabel} ${styles.segmentStart}`}>Start Timer</span>
+        </button>
+      )}
+      {isRunning && (
+        <>
+          <button type="button" className={styles.segmentBtn} onClick={pause}>
+            <span className={`${styles.segmentLabel} ${styles.segmentPause}`}>Pause</span>
+          </button>
+          <button type="button" className={styles.segmentBtn} onClick={stop}>
+            <span className={`${styles.segmentLabel} ${styles.segmentStop}`}>Stop</span>
+          </button>
+        </>
+      )}
+      {(isHeld || isClassifying) && (
+        <>
+          <button type="button" className={styles.segmentBtn} onClick={resume} disabled={isClassifying}>
+            <span className={`${styles.segmentLabel} ${styles.segmentResume}`}>Resume</span>
+          </button>
+          <button type="button" className={styles.segmentBtn} onClick={askReset} disabled={isClassifying}>
+            <span className={`${styles.segmentLabel} ${styles.segmentPause}`}>Reset</span>
+          </button>
+          <button type="button" className={styles.segmentBtn} onClick={openLog} disabled={isClassifying}>
+            <span className={`${styles.segmentLabel} ${styles.segmentStart}`}>Log</span>
+          </button>
+        </>
+      )}
+
+      {/* Docked, the tag row has no room for the banner: a mark stands in
+          for it, and the banner shows on the card. */}
+      {docked && notice && !showCard && (
+        <span className={styles.noticeMark} title={notice.text} aria-label={notice.text} role="img">
+          <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
+        </span>
+      )}
+      <button
+        type="button"
+        className={styles.expandBtn}
+        onClick={() => setExpanded(v => !v)}
+        aria-label={showCard ? 'Collapse timer' : 'Expand timer'}
+        title={showCard ? 'Collapse' : 'Expand'}
+        aria-expanded={showCard}
+      >
+        <Icon name={showCard ? 'solar:minimize-square-linear' : 'solar:maximize-square-linear'} size={14} color="currentColor" />
+      </button>
+    </div>
+  );
+
+  // ── Expanded: the card ───────────────────────────────────────────────
+  const cardBody = (() => {
+    if (confirmReset) {
+      return (
+        <div className={styles.confirm}>
+          <span className={styles.confirmTitle}>Reset Timer?</span>
+          <p className={styles.confirmText}>
+            This permanently removes <strong>{secondsToTime(elapsed)}</strong> of unlogged time. This can&apos;t be undone.
+          </p>
+          <div className={styles.confirmActions}>
+            <Button variant="secondary" size="L" onClick={() => setConfirmReset(false)}>Cancel</Button>
+            <Button variant="danger" size="L" onClick={discard}>Discard</Button>
           </div>
-          <label className={styles.field}>
-            <span className={styles.label}>Activity</span>
-            <Select
-              options={CCM_ACTIVITY_TYPES.map(t => ({ value: t, label: t }))}
-              value={activityType}
-              onChange={setActivityType}
-            />
-          </label>
-          <label className={styles.field}>
-            <span className={styles.label}>Notes</span>
-            <Textarea
-              placeholder="What did you work on?"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={3}
-            />
-          </label>
+        </div>
+      );
+    }
+    if (isClassifying) {
+      return (
+        <div className={styles.form}>
+          <span className={styles.formTitle}>Log {secondsToTime(elapsed)}</span>
+          <Select
+            label="Activity"
+            options={CCM_ACTIVITY_TYPES.map(t => ({ value: t, label: t }))}
+            value={activityType}
+            onChange={setActivityType}
+          />
+          <Textarea
+            placeholder="What did you work on?"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            rows={3}
+          />
           <div className={styles.formActions}>
-            <Button variant="ghost" size="S" onClick={discardClassifying} disabled={saving}>Cancel</Button>
+            <Button variant="secondary" size="S" onClick={cancelLog} disabled={saving}>Cancel</Button>
             <Button variant="primary" size="S" onClick={persist} disabled={saving || elapsed === 0}>
               {saving ? 'Saving…' : 'Save'}
             </Button>
           </div>
         </div>
-      )}
-
-      <div ref={controlRef} className={controlClass}>
-        <button
-          type="button"
-          className={styles.dragHandle}
-          onPointerDown={onDragPointerDown}
-          aria-label="Drag timer"
-          title="Drag to move or dock"
-        >
-          <svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor" aria-hidden="true">
-            <circle cx="2" cy="2" r="1.3" />
-            <circle cx="6" cy="2" r="1.3" />
-            <circle cx="2" cy="7" r="1.3" />
-            <circle cx="6" cy="7" r="1.3" />
-            <circle cx="2" cy="12" r="1.3" />
-            <circle cx="6" cy="12" r="1.3" />
-          </svg>
-        </button>
-
-        <div className={chipWrapClass}>
-          {isDocked ? (
+      );
+    }
+    const timeIcon = isRunning || isIdle ? 'solar:stopwatch-linear' : isPaused ? 'solar:pause-circle-linear' : 'solar:stop-circle-linear';
+    return (
+      <div className={styles.cardBody}>
+        <div className={styles.cardTime}>
+          <span className={styles.cardLabel}>Activity Timer</span>
+          <span className={`${styles.bigTime} ${timeTone}`}>
+            {isLogged
+              ? <><Icon name="solar:check-circle-linear" size={20} color="var(--status-success)" /><span className={styles.loggedBig}>Logged</span></>
+              : <><Icon name={timeIcon} size={20} color="currentColor" /><TimeText seconds={elapsed} /></>}
+          </span>
+          {isHeld && (
+            <Link variant="secondary" className={styles.resetLink} onClick={askReset}>
+              <Icon name="solar:restart-linear" size={12} color="currentColor" />
+              Reset
+            </Link>
+          )}
+        </div>
+        <div className={styles.cardActions}>
+          {isIdle && <Button variant="alt" size="L" onClick={start}>Start Timer</Button>}
+          {isRunning && (
             <>
-              {isRunning && <span className={styles.chipDot} aria-hidden="true" />}
-              <span className={`${styles.chipTime} ${chipIdle ? styles.chipTimeIdle : styles.chipTimeActive}`}>
-                {secondsToTime(elapsed)}
-              </span>
+              <Button variant="secondary" size="L" onClick={pause}>Pause</Button>
+              <Button variant="danger" size="L" onClick={openLog}>Stop &amp; Log</Button>
             </>
-          ) : (
+          )}
+          {isPaused && (
             <>
-              {chipIdle && (
-                <div className={styles.chipIdle}>
-                  <span className={`${styles.chipTime} ${styles.chipTimeIdle}`}>{secondsToTime(elapsed)}</span>
-                </div>
-              )}
-              {chipActive && (
-                <div className={styles.chipActive}>
-                  {isRunning && <span className={styles.chipDot} aria-hidden="true" />}
-                  <span className={`${styles.chipTime} ${styles.chipTimeActive}`}>{secondsToTime(elapsed)}</span>
-                </div>
-              )}
+              <Button variant="success" size="L" onClick={resume}>Resume</Button>
+              <Button variant="danger" size="L" onClick={openLog}>Stop &amp; Log</Button>
+            </>
+          )}
+          {isStopped && (
+            <>
+              <Button variant="success" size="L" onClick={resume}>Resume</Button>
+              <Button variant="primary" size="L" onClick={openLog}>Log Time</Button>
             </>
           )}
         </div>
-
-        {!isLogged && !isClassifying && (
-          <button type="button" className={styles.segmentBtn} onClick={onPrimary}>
-            {isIdle && (
-              <>
-                <Icon name="solar:play-circle-linear" size={isDocked ? 14 : 17} color="var(--primary-300)" />
-                <span className={`${styles.segmentLabel} ${styles.segmentStart}`}>Start</span>
-              </>
-            )}
-            {isRunning && (
-              <>
-                <Icon name="solar:pause-circle-linear" size={isDocked ? 14 : 16} color="var(--neutral-400)" />
-                <span className={`${styles.segmentLabel} ${styles.segmentPause}`}>Pause</span>
-              </>
-            )}
-            {isPaused && (
-              <>
-                <Icon name="solar:play-linear" size={isDocked ? 14 : 15} color="var(--status-success)" />
-                <span className={`${styles.segmentLabel} ${styles.segmentResume}`}>Resume</span>
-              </>
-            )}
-          </button>
-        )}
-
-        {isPaused && !isClassifying && (
-          <button type="button" className={styles.resetBtn} onClick={onReset} title="Reset timer" aria-label="Reset timer">
-            <Icon name="solar:restart-linear" size={16} color="currentColor" />
-          </button>
-        )}
-
-        {isLogged && (
-          <div className={styles.loggedBadge}>
-            <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
-            <span className={styles.loggedLabel}>Logged</span>
-          </div>
-        )}
-
-        {canLog ? (
-          <button type="button" className={styles.logBtn} onClick={onLog}>
-            <Icon name="solar:add-circle-linear" size={isDocked ? 14 : 16} color="var(--neutral-0)" />
-            <span className={styles.logBtnLabel}>Log</span>
-          </button>
-        ) : (
-          <div className={styles.logBtnDisabled} aria-disabled="true">
-            <Icon name="solar:add-circle-linear" size={isDocked ? 14 : 16} color="var(--neutral-200)" />
-            <span className={styles.logBtnLabel}>Log</span>
-          </div>
-        )}
       </div>
+    );
+  })();
+
+  const card = (
+    <div className={styles.card} data-ccm-timer-surface>
+      <button type="button" className={styles.cardGrip} onPointerDown={onDragPointerDown} aria-label="Drag timer" title="Drag to move; drop on the tag row to dock">
+        <Grip horizontal />
+      </button>
+      <div className={styles.cardHead}>
+        <Avatar type="initial" variant="patient" size="M" initials={initialsOf(name)} />
+        <span className={styles.cardWho}>
+          <span className={styles.cardName}>{name}</span>
+          {patient?.memberId != null && <span className={styles.cardId}>{formatFoldId(patient.memberId)}</span>}
+        </span>
+        <ActionButton icon="solar:history-linear" size="S" tooltip="Time Log" />
+        <span className={styles.headDivider} aria-hidden="true" />
+        <ActionButton
+          icon="solar:minimize-square-linear"
+          size="S"
+          tooltip="Collapse"
+          tooltipLeft
+          onClick={() => { setExpanded(false); setConfirmReset(false); if (isClassifying) cancelLog(); }}
+        />
+      </div>
+      {cardBody}
     </div>
   );
 
-  if (isDocked && dockEl) {
-    return createPortal(ui, dockEl);
+  // Floating: the card replaces the bar in place. Docked: the bar stays in
+  // the tag row and the card opens under it.
+  const floatingStyle = { right: floatPos.right, bottom: floatPos.bottom };
+  const wrapClass = [styles.wrap, !isDragging ? styles.wrapAnimated : '', isDragging ? styles.wrapDragging : ''].filter(Boolean).join(' ');
+
+  if (docked) {
+    return (
+      <>
+        {createPortal(
+          <div className={styles.dockHost}>{bar}</div>,
+          dockEl,
+        )}
+        {/* Expanding turns the bar into the card in place (the bar keeps
+            its spot in the tag row, hidden). The reminder shows here even
+            with the card closed: the tag row has no room for it. */}
+        {(showCard || prompt) && anchor && createPortal(
+          <div className={`${styles.dockedCard} ${showCard ? styles.dockedCardExpanded : ''}`} style={{ top: anchor.top, right: anchor.right }}>
+            {showCard && <TimerNotice notice={notice} onClose={() => setNoticeDismissed(true)} />}
+            {showCard && card}
+            {prompt && <div className={showCard ? styles.promptBelow : undefined}>{promptEl}</div>}
+          </div>,
+          document.body,
+        )}
+      </>
+    );
   }
 
-  return ui;
+  return (
+    <div className={wrapClass} style={floatingStyle}>
+      {promptEl}
+      <TimerNotice notice={notice} onClose={() => setNoticeDismissed(true)} />
+      {showCard ? card : bar}
+    </div>
+  );
 }

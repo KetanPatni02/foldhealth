@@ -71,6 +71,9 @@
   --shadow-drawer:  -2px 0 24px rgba(0, 0, 0, 0.04);
   --shadow-card:    0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow-bulk-bar: 4px 15px 60px 24px rgba(0, 0, 0, 0.15);
+  /* Something waiting on an answer (CCM timer's inactivity reminder): a
+     higher lift with a soft red glow (--status-error-dark, #D72825). */
+  --shadow-alert:   0 24px 56px -12px rgba(215, 40, 37, 0.28), 0 8px 20px -6px rgba(215, 40, 37, 0.18);
   --shadow-progress-ring-inset: 1px 1px 1px rgba(0, 0, 0, 0.1);
 
   /* Modal / dialog backdrop tint */
@@ -413,6 +416,7 @@ html[data-font-scale="larger"]  { --root-font-scale: 1.25; }
   --shadow-drawer:  -2px 0 24px rgba(0, 0, 0, 0.40);
   --shadow-card:    0 1px 3px rgba(0, 0, 0, 0.30);
   --shadow-bulk-bar: 4px 15px 60px 24px rgba(0, 0, 0, 0.45);
+  --shadow-alert:   0 24px 56px -12px rgba(215, 40, 37, 0.45), 0 8px 20px -6px rgba(215, 40, 37, 0.30);
   --shadow-progress-ring-inset: 1px 1px 1px rgba(0, 0, 0, 0.35);
 
   /* Modal backdrop a touch denser on dark */

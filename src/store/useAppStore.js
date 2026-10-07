@@ -6351,6 +6351,26 @@ export const useAppStore = create((set, get) => ({
   // include a client id (`act-<uuid>`), periodId, patientId, activityType,
   // durationSeconds, occurredAt. Called by the timer widget on Stop and by
   // the unlogged-time drawer when classifying entries.
+  // Audit trail for the CCM timer's inactivity reminder: when it showed and
+  // what the user chose. Fire and forget: a failed write never blocks the
+  // timer (the table may not exist yet; timer_inactivity_events_migration.sql).
+  logTimerInactivityEvent: async (event) => {
+    const me = get().currentUserProfile || {};
+    const { error } = await supabase.from('timer_inactivity_events').insert({
+      id: `tie-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      session_id: event.sessionId,
+      patient_id: String(event.patientId),
+      user_id: me.id || null,
+      user_name: me.name || null,
+      threshold_seconds: event.thresholdSeconds,
+      elapsed_seconds: event.elapsedSeconds,
+      shown_at: event.shownAt,
+      responded_at: event.respondedAt,
+      action: event.action,
+      dont_remind: !!event.dontRemind,
+    });
+    if (error) console.warn('logTimerInactivityEvent:', error.message);
+  },
   addCcmBillableActivity: async (activity) => {
     const { patientId } = activity;
     set(s => {

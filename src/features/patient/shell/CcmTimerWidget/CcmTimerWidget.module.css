@@ -1,55 +1,135 @@
-/* CCM time tracker — horizontal control bar (Figma Time Tracker Control). */
+/* CCM activity timer: the control bar (mini) and the card (expanded), in
+   the timer's own look; states from Figma CCM Timer 324:84077. */
+
+/* ── Floating host ───────────────────────────────────────────────────── */
 .wrap {
   position: fixed;
   z-index: 60;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
+  align-items: stretch;
 }
 
 .wrapAnimated {
   transition:
     right 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    bottom 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.24s ease;
+    bottom 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .wrapDragging {
   transition: none;
 }
 
+/* Docked in the banner's tag row. */
 .dockHost {
-  position: relative;
-  z-index: 2;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-2);
+  align-items: center;
   animation: ccmTimerDockIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Merges into row2 flex when only the control bar is shown — no extra padding. */
-.dockHostInline {
-  display: contents;
-  animation: none;
-}
-
 @keyframes ccmTimerDockIn {
-  from {
-    opacity: 0.72;
-    transform: translateY(6px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0.72; transform: translateY(6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* Docked: the reminder opens just under the bar; the expanded card takes the
+   bar's place, growing out of its top-right corner. */
+.dockedCard {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  animation: ccmTimerDockIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dockedCardExpanded {
+  transform-origin: top right;
+  animation: ccmTimerExpand 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes ccmTimerExpand {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* While expanded, the docked bar holds its place in the tag row unseen. */
+.controlExpanded {
+  visibility: hidden;
+}
+
+/* With the card open, the reminder follows under it. */
+.promptBelow .prompt {
+  margin: var(--space-2) 0 0;
+}
+
+/* ── Notice over the timer (Figma "error" / "Start" banners) ─────────── */
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  /* Tucks under the timer's top edge, like a tab. */
+  margin: 0 var(--space-1) -0.375rem;
+  padding: var(--space-1) 0.375rem 0.625rem;
+  border: 0.5px solid;
+  border-radius: var(--space-2) var(--space-2) 0 0;
+  font-size: var(--font-2xs);
+  line-height: 1.2;
+}
+
+.noticeError {
+  background: var(--status-error-light);
+  border-color: color-mix(in srgb, var(--status-error) 40%, transparent);
+  color: var(--status-error);
+}
+
+.noticeInfo {
+  background: var(--status-info-light);
+  border-color: color-mix(in srgb, var(--status-info) 40%, transparent);
+  color: var(--neutral-400);
+}
+
+.noticeText {
+  flex: 1;
+  min-width: 0;
+}
+
+.noticeClose {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
+.noticeMark {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-1);
+}
+
+/* ── Inactivity reminder: an inline ConfirmDialog over the timer ──────── */
+
+.prompt {
+  width: 400px;
+  max-width: calc(100vw - 32px);
+  margin-bottom: var(--space-2);
+  align-self: flex-end;
+  border: 0.5px solid var(--neutral-100);
+  border-radius: 12px;
+  /* Lifted well off the page with a soft red glow, so it reads as needing
+     an answer. */
+  box-shadow: var(--shadow-card), var(--shadow-alert), var(--shadow-bulk-bar);
+  animation: ccmTimerDockIn 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Mini: the control bar ───────────────────────────────────────────── */
 .control {
+  position: relative;
   display: inline-flex;
   align-items: stretch;
+  align-self: flex-end;
   height: 40px;
   background: var(--neutral-0);
   border: 0.5px solid var(--primary-200);
@@ -61,67 +141,8 @@
 .controlDocked {
   height: 22px;
   border-color: var(--neutral-150);
-  border-radius: 4px;
+  border-radius: var(--space-1);
   box-shadow: none;
-  background: var(--neutral-0);
-}
-
-.controlDocked .dragHandle {
-  width: 14px;
-  background: var(--neutral-50);
-}
-
-.chipWrapDocked {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: 0 var(--space-2);
-  min-width: var(--space-12);
-  height: 100%;
-  border-right: 0.5px solid var(--neutral-100);
-}
-
-.chipWrapIdle {
-  background: var(--neutral-0);
-}
-
-.chipWrapActive {
-  background: var(--status-success-light);
-}
-
-.controlDocked .chipTime {
-  font-size: var(--font-sm);
-}
-
-.controlDocked .chipDot {
-  width: 5px;
-  height: 5px;
-}
-
-.controlDocked .segmentBtn {
-  padding: 0 var(--space-2);
-  gap: var(--space-1);
-}
-
-.controlDocked .segmentLabel,
-.controlDocked .logBtnLabel,
-.controlDocked .loggedLabel {
-  font-size: var(--font-sm);
-}
-
-.controlDocked .logBtn,
-.controlDocked .logBtnDisabled {
-  padding: 0 var(--space-2);
-  gap: var(--space-1);
-}
-
-.controlDocked .loggedBadge {
-  padding: 0 var(--space-2);
-  gap: var(--space-1);
-}
-
-.controlDocked .resetBtn {
-  width: 24px;
 }
 
 .dragHandle {
@@ -140,32 +161,51 @@
 .dragHandle:hover { color: var(--neutral-200); }
 .dragHandle:active { cursor: grabbing; }
 
+.controlDocked .dragHandle {
+  width: 14px;
+  background: var(--neutral-50);
+}
+
 .chipWrap {
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0 var(--space-2);
   border-right: 0.5px solid var(--neutral-100);
   flex-shrink: 0;
 }
 
-.chipIdle,
-.chipActive {
+.chip {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 0.375rem;
   height: 26px;
-  padding: 0 10px;
+  padding: 0 var(--space-2);
   border-radius: 6px;
-}
-
-.chipIdle {
-  background: var(--neutral-0);
   border: 0.5px solid var(--neutral-150);
+  background: var(--neutral-0);
 }
 
 .chipActive {
   background: var(--status-success-light);
-  border: 0.5px solid color-mix(in srgb, var(--status-success) 25%, transparent);
+  border-color: color-mix(in srgb, var(--status-success) 25%, transparent);
+}
+
+.chipHeld {
+  background: var(--neutral-50);
+  border-color: var(--neutral-100);
+}
+
+.controlDocked .chipWrap {
+  padding: 0;
+  border-right: none;
+}
+
+.controlDocked .chip {
+  height: 100%;
+  gap: var(--space-1);
+  border: none;
+  border-right: 0.5px solid var(--neutral-100);
+  border-radius: 0;
 }
 
 .chipDot {
@@ -177,6 +217,11 @@
   flex-shrink: 0;
 }
 
+.controlDocked .chipDot {
+  width: 5px;
+  height: 5px;
+}
+
 @keyframes foldPulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: 0.5; transform: scale(0.75); }
@@ -185,36 +230,48 @@
 .chipTime {
   font-size: var(--font-base);
   font-weight: 600;
-  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   white-space: nowrap;
 }
 
+.controlDocked .chipTime,
+.controlDocked .segmentLabel,
+.controlDocked .loggedLabel {
+  font-size: var(--font-sm);
+}
+
 .chipTimeIdle { color: var(--neutral-300); }
 .chipTimeActive { color: var(--status-success); }
 
-.chipRec {
-  font-size: var(--font-xs);
+/* The colon sits a hair apart from the digits, as in the design. */
+.colon {
+  margin: 0 0.125rem;
+}
+
+.loggedLabel {
+  font-size: var(--font-base);
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--status-success);
   line-height: 1.2;
+  color: var(--status-success);
 }
 
 .segmentBtn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 14px;
+  padding: 0 var(--space-3);
   border: none;
   border-right: 0.5px solid var(--neutral-100);
   background: transparent;
   cursor: pointer;
   flex-shrink: 0;
 }
-.segmentBtn:hover { background: var(--neutral-50); }
+.segmentBtn:hover:not(:disabled) { background: var(--neutral-50); }
+.segmentBtn:disabled { cursor: default; opacity: 0.5; }
+
+.controlDocked .segmentBtn {
+  padding: 0 var(--space-2);
+}
 
 .segmentLabel {
   font-size: 0.8438rem;
@@ -224,92 +281,197 @@
 }
 
 .segmentStart  { color: var(--primary-300); }
-.segmentPause   { color: var(--neutral-400); }
-.segmentResume  { color: var(--status-success); }
+.segmentPause  { color: var(--neutral-400); }
+.segmentResume { color: var(--status-success); }
+.segmentStop   { color: var(--status-error); }
 
-.resetBtn {
+.expandBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
+  width: 32px;
   border: none;
-  border-right: 0.5px solid var(--neutral-100);
   background: transparent;
-  cursor: pointer;
   color: var(--neutral-300);
+  cursor: pointer;
   flex-shrink: 0;
 }
-.resetBtn:hover {
+.expandBtn:hover {
   background: var(--neutral-50);
   color: var(--neutral-400);
 }
 
-.loggedBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 14px;
-  border-right: 0.5px solid var(--neutral-100);
-  color: var(--status-success);
-  flex-shrink: 0;
+.controlDocked .expandBtn {
+  width: 24px;
 }
 
-.loggedLabel {
-  font-size: 0.8438rem;
-  font-weight: 600;
-  line-height: 1.2;
+/* ── Expanded: the card ──────────────────────────────────────────────── */
+.card {
+  position: relative;
+  width: 300px;
+  max-width: calc(100vw - 32px);
+  display: flex;
+  flex-direction: column;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--primary-200);
+  border-radius: 12px;
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
 }
 
-.logBtn {
-  display: inline-flex;
+/* The drag strip along the top. */
+.cardGrip {
+  display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 15px;
+  justify-content: center;
+  height: 14px;
+  padding: 0;
   border: none;
-  background: var(--primary-300);
-  color: var(--neutral-0);
-  cursor: pointer;
-  flex-shrink: 0;
+  border-bottom: 0.5px solid var(--neutral-100);
+  background: var(--neutral-25);
+  color: var(--neutral-150);
+  cursor: grab;
 }
-.logBtn:hover { background: var(--primary-400); }
+.cardGrip:hover { color: var(--neutral-200); }
+.cardGrip:active { cursor: grabbing; }
 
-.logBtnDisabled {
-  display: inline-flex;
+.cardHead {
+  display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 15px;
-  background: var(--neutral-50);
-  color: var(--neutral-200);
-  cursor: not-allowed;
-  flex-shrink: 0;
+  gap: var(--space-2);
+  padding: 0.375rem var(--space-2) 0.375rem var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  background: linear-gradient(90deg, var(--primary-25), var(--neutral-0));
 }
 
-.logBtnLabel {
-  font-size: 0.8438rem;
-  font-weight: 600;
+.cardWho {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.cardName {
+  font-size: var(--font-base);
+  font-weight: 500;
   line-height: 1.2;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Classification panel — opens above the control bar. */
-.formPanel {
-  width: 320px;
-  max-width: calc(100vw - 32px);
-  padding: 12px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 12px;
-  box-shadow: var(--shadow-popover);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.cardId {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-300);
 }
 
-.formHead {
+.headDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+
+.cardBody {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.cardTime {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+
+.cardLabel {
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-300);
+}
+
+.bigTime {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--font-2xl);
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeRunning { color: var(--status-success); }
+.timeHeld { color: var(--neutral-300); }
+
+.loggedBig {
+  color: var(--status-success);
+  font-size: var(--font-lg);
+}
+
+.resetLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 0.5px solid var(--neutral-150);
+  font-size: var(--font-sm);
+}
+
+.cardActions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  min-width: 96px;
+}
+
+/* Reset confirmation (Figma Variant7). */
+.confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  text-align: center;
+}
+
+.confirmTitle {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+.confirmText {
+  margin: -0.375rem 0 0;
+  font-size: var(--font-base);
+  line-height: 1.3;
+  color: var(--neutral-200);
+}
+
+.confirmText strong {
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.confirmActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+/* The log form, inside the card. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
 }
 
 .formTitle {
@@ -318,28 +480,23 @@
   color: var(--neutral-500);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.label {
-  font-size: var(--font-xs);
-  font-weight: 500;
-  color: var(--neutral-300);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .formActions {
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 0.375rem;
   padding-top: 2px;
 }
 
 :global(body.ccm-timer-dragging) {
   cursor: grabbing !important;
   user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrapAnimated { transition: none; }
+  .dockHost,
+  .dockedCard,
+  .dockedCardExpanded,
+  .prompt,
+  .chipDot { animation: none; }
 }
