@@ -3,8 +3,9 @@
  *
  * A record is { id, userId, userName, userEmail, userRole, startAt, endAt,
  * reason, autoReply, autoReplyMessage, createdBy, createdAt, updatedAt },
- * with startAt / endAt as ISO strings. Users are matched by name, the same
- * key appointments use for their provider (`primary_user`).
+ * with startAt / endAt as ISO strings. People are matched by id (two staff
+ * can share a name): a record's `userId`, an appointment's `primary_user_id`.
+ * Only rows saved before ids were stored fall back to the name.
  */
 
 export const OOO_ICON = 'solar:square-arrow-right-linear';
@@ -28,12 +29,42 @@ export const canDelete = (record, now) => oooStatus(record, now) === 'Upcoming';
 
 export const sameName = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 
-export const recordsFor = (records, userName) => (records || []).filter(r => sameName(r.userName, userName));
+/** A person as { id, name }; a bare string is a name (data from before ids). */
+export const personOf = (who) => (who && typeof who === 'object' ? { id: who.id || null, name: who.name || '' } : { id: null, name: who || '' });
+export const recordPerson = (r) => ({ id: r?.userId || null, name: r?.userName || '' });
+export const apptPerson = (a) => ({ id: a?.primary_user_id || null, name: a?.primary_user || '' });
 
-/** The record a user is out on right now, if any. */
-export function activeOooFor(records, userName, now = new Date()) {
-  if (!userName) return null;
-  return (records || []).find(r => sameName(r.userName, userName) && oooStatus(r, now) === 'Ongoing') || null;
+/** Same person: by id when both have one, else (older data) by name. */
+export function samePerson(a, b) {
+  const x = personOf(a), y = personOf(b);
+  if (x.id && y.id) return String(x.id) === String(y.id);
+  return !!x.name && sameName(x.name, y.name);
+}
+
+/** A stable key for a person in pickers: their id, else (older data) the name. */
+export const personKey = (who) => { const p = personOf(who); return p.id ? String(p.id) : p.name; };
+
+/**
+ * Picker options for people, valued by `personKey`. Two people with the same
+ * name are told apart by their email (else role).
+ */
+export function peopleOptions(people) {
+  const count = new Map();
+  (people || []).forEach(u => { const k = String(u.name || '').trim().toLowerCase(); count.set(k, (count.get(k) || 0) + 1); });
+  return (people || []).map((u) => {
+    const shared = count.get(String(u.name || '').trim().toLowerCase()) > 1;
+    const extra = u.email || u.role || '';
+    return { value: personKey(u), label: shared && extra ? `${u.name} (${extra})` : u.name };
+  });
+}
+
+/** A person's records; `who` is { id, name } (or, for older data, a name). */
+export const recordsFor = (records, who) => (records || []).filter(r => samePerson(recordPerson(r), who));
+
+/** The record a person is out on right now, if any. */
+export function activeOooFor(records, who, now = new Date()) {
+  if (!who) return null;
+  return (records || []).find(r => samePerson(recordPerson(r), who) && oooStatus(r, now) === 'Ongoing') || null;
 }
 
 /** Local-day bounds of an ISO date ("2026-09-08"). */
@@ -121,7 +152,7 @@ export function overlapPlan(values, existing = [], originalId = null) {
   const s = toMs(values.startAt), e = toMs(values.endAt);
   if (Number.isNaN(s) || Number.isNaN(e) || e <= s || !values.userName) return null;
   const clashes = (existing || [])
-    .filter(r => r.id !== originalId && sameName(r.userName, values.userName) && s < toMs(r.endAt) && e > toMs(r.startAt))
+    .filter(r => r.id !== originalId && samePerson(recordPerson(r), recordPerson(values)) && s < toMs(r.endAt) && e > toMs(r.startAt))
     .sort((a, b) => toMs(a.startAt) - toMs(b.startAt));
   if (!clashes.length) return null;
   const gaps = [];
@@ -167,7 +198,7 @@ export function validateOoo(values, { now = new Date(), original = null, existin
   if (!errors.startAt && !errors.endAt && e <= s) errors.endAt = 'End must be after the start.';
   if (!errors.endAt && e <= toMs(now)) errors.endAt = 'End must be in the future.';
   if (!errors.startAt && !errors.endAt && values.userName) {
-    const clash = (existing || []).find(r => r.id !== original?.id && sameName(r.userName, values.userName)
+    const clash = (existing || []).find(r => r.id !== original?.id && samePerson(recordPerson(r), recordPerson(values))
       && s < toMs(r.endAt) && e > toMs(r.startAt));
     // Keyed on its own: it's about the pair of dates, not either field.
     if (clash) errors.overlap = 'An out of office record already exists for this duration';
@@ -238,7 +269,7 @@ export function appointmentsToReassign(record, appointments, now = new Date()) {
   const from = Math.max(toMs(record.startAt), toMs(now));
   const to = toMs(record.endAt);
   return (appointments || []).filter((a) => {
-    if (a.status === 'Cancelled' || !sameName(a.primary_user, record.userName)) return false;
+    if (a.status === 'Cancelled' || !samePerson(apptPerson(a), recordPerson(record))) return false;
     const at = apptStart(a);
     return at >= from && at < to;
   });

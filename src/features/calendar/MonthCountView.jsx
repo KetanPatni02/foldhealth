@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { OOO_ICON, recordsFor, recordsOnDate } from '../ooo/oooUtils';
+import { OOO_ICON, personKey, recordPerson, recordsFor, recordsOnDate } from '../ooo/oooUtils';
 import { HolidayBadgeIcon } from '../../components/Icon/HolidayBadgeIcon';
 import styles from './MonthCountView.module.css';
 
@@ -23,7 +23,7 @@ const isoToAppt = (s) => { const [y, m, d] = s.split('-'); return `${m}-${d}-${y
  * @param {string}   props.date          – Any ISO date in the month shown
  * @param {object[]} props.appointments  – Already filtered by the toolbar
  * @param {object[]} props.oooRecords
- * @param {string}   [props.focusUser]   – The one user picked, if any
+ * @param {{ id: string, name: string }} [props.focusUser] – The one user picked, if any
  * @param {object[]} [props.holidays]    – Holidays for what's shown (the user's or filtered locations, else all)
  * @param {boolean}  [props.holidayBlocks] – Holidays block booking here (a user or location is picked)
  * @param {function} props.onOpenDay     – (iso) => void, a day's Day view
@@ -70,7 +70,7 @@ export function MonthCountView({ date, appointments, oooRecords, holidays = [], 
           const isToday = day === todayIso;
           const on = recordsOnDate(oooRecords, day);
           const mine = focusUser ? recordsFor(on, focusUser)[0] : null;
-          const othersOut = !focusUser ? new Set(on.map(r => r.userName)).size : 0;
+          const othersOut = !focusUser ? new Set(on.map(r => personKey(recordPerson(r)))).size : 0;
           const dayNum = day.slice(8);
           const dayHolidays = recordsOnDate(holidays, day);
           const blockedByHoliday = holidayBlocks && dayHolidays.length > 0;

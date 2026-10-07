@@ -18,6 +18,7 @@ import { AllergySelect } from './AllergySelect';
 import { ALLERGY_REACTIONS, REACTION_SYSTEM } from '../../../../../../reference-data/allergyReactions';
 import { toast } from '../../../../../../components/Toast/sonnerToast';
 import { todayIso, toIsoDate, formatClinicalDate } from '../../../../../../lib/clinicalDates';
+import { Collapse } from '../../../../../../components/Collapse/Collapse';
 import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 
 const STATUS_OPTIONS = ['Active', 'Past'].map(v => ({ value: v, label: v }));
@@ -69,7 +70,7 @@ function AllergyRow({ allergy, onStatusChange, onEdit, dimmed }) {
                 {meta.length > 0 && <span className={styles.dot} aria-hidden="true">•</span>}
                 <Link className={styles.viewNote} onClick={() => setOpen(v => !v)}>
                   View Details
-                  <DownChevronIcon size={12} className={open ? styles.chevronOpen : undefined} />
+                  <DownChevronIcon size={12} color="currentColor" className={open ? styles.chevronOpen : undefined} />
                 </Link>
               </>
             )}
@@ -91,25 +92,27 @@ function AllergyRow({ allergy, onStatusChange, onEdit, dimmed }) {
           onClick={() => onEdit(allergy)}
         />
       </div>
-      {hasDetails && open && (
-        <div className={styles.rowDetails}>
-          {allergy.reactions?.length > 0 && (
-            <p className={styles.rowNote}>
-              <span className={styles.rowNoteLabel}>Reactions:</span>
-              {allergy.reactions.map(r => (
-                <span key={r.code || r.display || r} className={styles.reaction}>
-                  <Icon name="solar:flag-linear" size={14} color="var(--status-error)" />
-                  {r.display || r}{r.severity ? ` (${r.severity})` : ''}
-                </span>
-              ))}
-            </p>
-          )}
-          {allergy.note && (
-            <p className={styles.rowNote}>
-              <span className={styles.rowNoteLabel}>Note:</span> {allergy.note}
-            </p>
-          )}
-        </div>
+      {hasDetails && (
+        <Collapse open={open}>
+          <div className={styles.rowDetails}>
+            {allergy.reactions?.length > 0 && (
+              <p className={`${styles.rowNote} ${styles.rowReactions}`}>
+                <span className={styles.rowNoteLabel}>Reactions:</span>
+                {allergy.reactions.map(r => (
+                  <span key={r.code || r.display || r} className={styles.reaction}>
+                    <Icon name="solar:flag-linear" size={14} color="var(--status-error)" />
+                    {r.display || r}{r.severity ? ` (${r.severity})` : ''}
+                  </span>
+                ))}
+              </p>
+            )}
+            {allergy.note && (
+              <p className={styles.rowNote}>
+                <span className={styles.rowNoteLabel}>Note:</span> {allergy.note}
+              </p>
+            )}
+          </div>
+        </Collapse>
       )}
     </div>
   );

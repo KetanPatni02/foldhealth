@@ -76,3 +76,21 @@ describe('buildJob', () => {
     expect(job.windowEnd).toBeNull();
   });
 });
+
+describe('reassigning between people with the same name', () => {
+  it('scopes, covers and clashes by id', () => {
+    const away = { id: 'u-1', name: 'John Smith' };
+    const other = { id: 'u-2', name: 'John Smith', locations: ['Mary Health'] };
+    const window = { from: new Date(2026, 9, 10).getTime(), to: new Date(2026, 9, 11).getTime() };
+    const now = new Date(2026, 9, 1);
+    const appts = [
+      { id: 'x', primary_user: 'John Smith', primary_user_id: 'u-1', date: '10-10-2026', time_start: '9:00 am', time_end: '9:30 am' },
+      { id: 'y', primary_user: 'John Smith', primary_user_id: 'u-2', date: '10-10-2026', time_start: '9:00 am', time_end: '9:30 am' },
+    ];
+    expect(scopeAppointments(appts, away, window, now).map(a => a.id)).toEqual(['x']);
+    // The other John Smith can cover: he isn't the one away.
+    expect(coveringProviders('Mary Health', [other], { awayUser: away, window }).map(u => u.id)).toEqual(['u-2']);
+    // And his own 9:00 appointment is a clash for him, not for the one away.
+    expect(findConflict(appts[0], other, appts)?.id).toBe('y');
+  });
+});

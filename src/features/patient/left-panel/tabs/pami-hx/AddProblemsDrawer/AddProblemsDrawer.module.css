@@ -53,7 +53,8 @@
 @media (prefers-reduced-motion: reduce) {
   .sectionBody,
   .chevron,
-  .chevronClosed { transition: none; }
+  .chevronClosed,
+  .viewNote svg { transition: none; }
 }
 
 /* The row is a column so opening a note extends the bottom instead of
@@ -61,14 +62,16 @@
 .row {
   display: flex;
   flex-direction: column;
-  padding: var(--space-1) 0;
+  padding: var(--space-2) 0;
   border-bottom: 0.5px solid var(--neutral-100);
 }
+/* No min-height: a fixed height centred the text and left slack under the
+   meta line, so opened details sat further below it than the meta line sits
+   below the title. The row's padding gives the breathing room instead. */
 .rowTop {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  min-height: 52px;
 }
 .rowMain {
   display: flex;
@@ -241,10 +244,13 @@
   align-items: center;
   gap: var(--space-1);
 }
+.viewNote svg { transition: transform var(--duration-medium) var(--ease-out); }
 .chevronOpen { transform: rotate(180deg); }
 .rowNoteLabel { color: var(--neutral-400); }
+/* Every line in a row is 4px from the next, the same as title to meta, so
+   an opened note sits 4px under the meta line. */
 .rowNote {
-  margin: 0 0 var(--space-1);
+  margin: var(--space-1) 0 0;
   font-size: var(--font-base);
   color: var(--neutral-300);
   line-height: 1.4;
@@ -262,13 +268,24 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  margin-bottom: var(--space-1);
+  padding-top: var(--space-1);
+}
+/* Inside the details block the gap does the spacing, not the margins. */
+.rowDetails .rowNote {
+  margin: 0;
+}
+/* Reactions: the label, then each reaction, evenly spaced and wrapping
+   onto a new line as a group rather than mid-reaction. */
+.rowReactions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
 }
 .reaction {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  margin-left: var(--space-2);
 }
 .reactionChips {
   display: flex;
@@ -298,55 +315,43 @@
    from the search, and the date is edited on the row. The trailing column
    holds Remove, shown only on hover or focus so the resting table is just
    the two columns. */
-.procTable {
+/* History drawer tables (HistoryTable): WorklistShell with no outer
+   border, so nothing has rounded corners to clip. No overflow clip either,
+   so pickers inside cells open in full. */
+.historyTable tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* Names wrap rather than widen the table. Scoped under .historyTable so it
+   beats WorklistRow's .td whatever order the two stylesheets load in. */
+.historyTable .historyCell {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--neutral-500);
+}
+
+.historyTable .historyCellTop {
+  vertical-align: top;
+}
+
+/* Family History: a relation's conditions are rows of their own (so each
+   delete sits in the Actions column), with no divider between them; the
+   divider falls under the relation's last row. */
+.historyTable .famInnerRow {
+  border-bottom: none;
+}
+
+.famAddCell {
   display: flex;
   flex-direction: column;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
+  gap: var(--space-2);
 }
 
-.procHeadRow,
-.procRow {
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr) var(--space-6);
+.famAddLink {
+  display: inline-flex;
   align-items: center;
-  column-gap: var(--space-4);
-  padding: var(--space-3) var(--space-3);
-}
-
-.procHeadRow {
-  border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-base);
-  color: var(--neutral-300);
-  line-height: 1.2;
-}
-
-.procRow + .procRow {
-  border-top: 0.5px solid var(--neutral-100);
-}
-
-.procName {
-  font-size: var(--font-base);
-  color: var(--neutral-500);
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-
-.procAction {
-  display: flex;
-  justify-content: flex-end;
-  opacity: 0;
-  transition: opacity var(--duration-base) var(--ease-out);
-}
-
-.procRow:hover .procAction,
-.procRow:focus-within .procAction {
-  opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .procAction { transition: none; }
+  gap: var(--space-1);
+  font-size: var(--font-sm);
 }
 
 /* Social History questionnaire. Each section is a CollapsibleSection card,
@@ -354,10 +359,6 @@
    label so every question reads the same whichever control answers it. */
 /* Section toggle: segments hug their labels. The drawer body is a flex
    column, which would otherwise stretch it to full width. */
-.qToggle {
-  align-self: flex-start;
-}
-
 .qField {
   display: flex;
   flex-direction: column;

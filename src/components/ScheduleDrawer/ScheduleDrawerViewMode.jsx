@@ -192,7 +192,7 @@ export function ScheduleDrawerViewMode({
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Primary User</span>
-              <ProviderPicker value={provider || ea.primary_user} onSelect={v => { setProvider(v); if (ea.id) updateAppointment(ea.id, { primary_user: v }); }} profileUsers={profileUsers} onAddSecondary={() => setSectionOpen('secondary', true)} />
+              <ProviderPicker value={provider || ea.primary_user} onSelect={(v, p) => { setProvider(v, p); if (ea.id) updateAppointment(ea.id, { primary_user: v, primary_user_id: p?.id || null }); }} profileUsers={profileUsers} onAddSecondary={() => setSectionOpen('secondary', true)} />
             </div>
             <div className={styles.detailRow}>
               <span className={styles.detailLabel}>Date</span>

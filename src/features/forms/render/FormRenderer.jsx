@@ -8,6 +8,9 @@
  *  - by-section  : same one-question-at-a-time flow + a top section stepper and
  *                  section progress.
  * Paged modes replace the header/footer with configurable Start / End screens.
+ *
+ * `embedded` ignores the layout and renders only the questions, for a host
+ * with its own chrome (the Social History drawer's SDOH section).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
@@ -15,6 +18,7 @@ import { Button } from '../../../components/Button/Button';
 import { FieldInput } from '../builder/FieldInput';
 import { FieldDescription } from './FieldDescription';
 import { ratingElement } from '../builder/rating';
+import { toggleMultiChoice } from '../builder/multiChoice';
 import { FormHeader, FormFooter } from '../builder/FormChrome';
 import { getFontStack } from '../../email-builder/googleFonts';
 import { isAnswered } from '../scoring/util';
@@ -86,7 +90,7 @@ function TypeformChoice({ field, value, onChange }) {
         const checked = multi ? selectedSet.has(o.value) : value === o.value;
         const select = () => {
           if (multi) {
-            onChange(checked ? arr.filter((v) => v !== o.value) : [...arr, o.value]);
+            onChange(toggleMultiChoice(arr, field.options || [], o.value));
           } else {
             onChange(field.control === 'consent' && checked ? '' : o.value);
           }
@@ -181,11 +185,11 @@ function SectionStepper({ sections, current }) {
 
 export function FormRenderer({
   fields = EMPTY_FIELDS, settings, scoring, formName, formDescription,
-  answers, onAnswer, onSubmit, submitting, compact,
+  answers, onAnswer, onSubmit, submitting, compact, embedded = false,
   scope = 'standalone', onValidationFail, // eslint-disable-line no-unused-vars
 }) {
   const layout = normalizeLayout(settings?.layout);
-  const paged = layout !== 'entire-page';
+  const paged = !embedded && layout !== 'entire-page';
   const mode = layout === 'by-question' ? 'by-question' : 'by-section';
 
   // Branching + scores: run the (pure) engine over the current answers once.
@@ -351,6 +355,17 @@ export function FormRenderer({
   const sheetClass = paged
     ? `${styles.pagedSheet} ${compact ? styles.compact : ''}`
     : `${styles.sheet} ${compact ? styles.compact : ''}`;
+
+  // ── Embedded: just the questions, inside a host that has its own chrome
+  // (a drawer that saves each answer as it is given), so no title, Submit
+  // or page frame. ──
+  if (embedded) {
+    return (
+      <div className={styles.embedded}>
+        {fields.map((f) => <FieldNode key={f.linkId} field={f} answers={answers || {}} onAnswer={handleAnswer} missing={missing} visibility={visibility} pipe={pipe} />)}
+      </div>
+    );
+  }
 
   // ── Entire page ──
   if (!paged) {

@@ -8,7 +8,7 @@ import styles from './RatingInput.module.css';
  *   slider: a track filled up to the chosen point, with `thumb` (a filled
  *            icon: star, heart, user, thumbs-up) riding the end of the fill
  *   dots  : a row of dots, filled up to the chosen point
- *   tiles : numbered tiles; the chosen one is coloured by `toneOf`
+ *   tiles : numbered tiles, filled up to the chosen one in its `toneOf` tone
  *
  * Slider and dots are one ARIA slider: click or drag anywhere along the row,
  * or use the arrow keys, Home and End. Tiles are a radio group of real radio
@@ -22,10 +22,13 @@ import styles from './RatingInput.module.css';
  * @param {Array<{value: string, label?: string}>} props.points – In scale order
  * @param {string}   [props.value]        – The chosen point's value
  * @param {function} [props.onChange]     – Called with a point's value
- * @param {string}   [props.thumb]        – Icon name for the slider's thumb
+ * @param {string}   [props.thumb]        – Icon name for the slider's thumb, or
+ *   'dot' for a plain round handle
  * @param {string}   [props.fillColor]
- * @param {boolean}  [props.showScale=true] – Numbers (slider, dots) or the
- *   agreement anchors (tiles) under the row
+ * @param {boolean}  [props.showScale=true] – Numbers under the row (slider, dots;
+ *   tiles always carry theirs)
+ * @param {{ low?: string, mid?: string, high?: string }} [props.anchors] – Words
+ *   under the start, middle and end of the scale (e.g. Disagree … Agree)
  * @param {function} [props.toneOf]       – (index, count) → 'low'|'mid'|'high'
  * @param {string}   props.name           – Groups the tiles' radios
  * @param {string}   [props.ariaLabel]
@@ -39,6 +42,7 @@ export function RatingInput({
   thumb,
   fillColor,
   showScale = true,
+  anchors,
   toneOf,
   name,
   ariaLabel,
@@ -50,7 +54,7 @@ export function RatingInput({
         points={points}
         value={value}
         onChange={onChange}
-        showScale={showScale}
+        anchors={anchors}
         toneOf={toneOf}
         name={name}
         ariaLabel={ariaLabel}
@@ -67,13 +71,35 @@ export function RatingInput({
       thumb={thumb}
       fillColor={fillColor}
       showScale={showScale}
+      anchors={anchors}
       ariaLabel={ariaLabel}
       disabled={disabled}
     />
   );
 }
 
-function SliderRating({ look, points, value, onChange, thumb, fillColor, showScale, ariaLabel, disabled }) {
+/**
+ * The words under the scale's ends, and under its middle point when there is
+ * one, each centred under its number. On an even count the middle falls
+ * between two points; it goes under the lower of them.
+ */
+function Anchors({ anchors, count }) {
+  if (!anchors) return null;
+  const cell = (text, column, className) => (
+    <span className={[styles.anchorCell, className].filter(Boolean).join(' ')} style={{ gridColumn: column }}>
+      <span>{text}</span>
+    </span>
+  );
+  return (
+    <div className={styles.anchors} style={{ '--rating-count': count }} aria-hidden="true">
+      {cell(anchors.low, 1)}
+      {anchors.mid && cell(anchors.mid, Math.floor((count - 1) / 2) + 1)}
+      {cell(anchors.high, count, styles.anchorEnd)}
+    </div>
+  );
+}
+
+function SliderRating({ look, points, value, onChange, thumb, fillColor, showScale, anchors, ariaLabel, disabled }) {
   const rowRef = useRef(null);
   const dragging = useRef(false);
   // Dots preview on hover: the row fills to the dot under the pointer, so it
@@ -172,16 +198,21 @@ function SliderRating({ look, points, value, onChange, thumb, fillColor, showSca
           {chosen > 0 && <span className={styles.fill} style={{ width: centre }} />}
           {thumb && (
             <span className={styles.thumb} style={{ left: thumbAt }}>
-              <Icon name={thumb} size={24} color={fillColor} />
+              {thumb === 'dot'
+                ? <span className={styles.thumbDot} />
+                : <Icon name={thumb} size={24} color={fillColor} />}
             </span>
           )}
         </div>
       )}
       {showScale && (
         <div className={styles.numbers} aria-hidden="true">
-          {points.map(p => <span key={p.value} className={styles.number}>{p.label || p.value}</span>)}
+          {points.map((p, i) => (
+            <span key={p.value} className={[styles.number, i === index ? styles.numberOn : ''].filter(Boolean).join(' ')}>{p.label || p.value}</span>
+          ))}
         </div>
       )}
+      <Anchors anchors={anchors} count={n} />
     </div>
   );
 }
@@ -189,11 +220,11 @@ function SliderRating({ look, points, value, onChange, thumb, fillColor, showSca
 const TILE_TONE_CLASS = { low: 'toneLow', mid: 'toneMid', high: 'toneHigh' };
 const NAV_KEYS = new Set(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Home', 'End']);
 
-function TileRating({ points, value, onChange, showScale, toneOf, name, ariaLabel, disabled }) {
+function TileRating({ points, value, onChange, anchors, toneOf, name, ariaLabel, disabled }) {
   const n = points.length;
-  // Like the dots, tiles fill cumulatively: every tile up to the point is
-  // coloured, all in that point's tone, so the run reads as the score's
-  // sentiment. Hover previews exactly the fill a click there would give.
+  // Tiles fill cumulatively: every tile up to the point is coloured, all in
+  // that point's tone, so the run reads as the score's group. Hover previews
+  // exactly the fill a click there would give.
   const [hoverIdx, setHoverIdx] = useState(null);
   const chosenIdx = points.findIndex(p => p.value === value);
   const shownIdx = hoverIdx != null ? hoverIdx : chosenIdx;
@@ -206,8 +237,8 @@ function TileRating({ points, value, onChange, showScale, toneOf, name, ariaLabe
         className={styles.tiles}
         role="radiogroup"
         aria-label={ariaLabel}
-        onKeyDown={(e) => { if (NAV_KEYS.has(e.key)) e.stopPropagation(); }}
         onMouseLeave={() => setHoverIdx(null)}
+        onKeyDown={(e) => { if (NAV_KEYS.has(e.key)) e.stopPropagation(); }}
       >
         {points.map((p, i) => {
           const checked = value === p.value;
@@ -232,13 +263,7 @@ function TileRating({ points, value, onChange, showScale, toneOf, name, ariaLabe
           );
         })}
       </div>
-      {showScale && (
-        <div className={styles.anchors} aria-hidden="true">
-          <span>Strongly Disagree</span>
-          <span className={styles.anchorMid}>Neutral</span>
-          <span className={styles.anchorEnd}>Strongly Agree</span>
-        </div>
-      )}
+      <Anchors anchors={anchors} count={n} />
     </div>
   );
 }

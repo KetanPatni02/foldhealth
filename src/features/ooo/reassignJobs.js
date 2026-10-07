@@ -24,7 +24,7 @@ export const snapshot = (a) => ({
  *     has an overlapping appointment (it still goes ahead).
  * Appointments moved earlier in the same job count when checking clashes.
  */
-export function buildJob({ fromUser, fromUserRole, type, window, oooRecordId, plan, appointments, everyone, createdBy, now = new Date() }) {
+export function buildJob({ fromUser, fromUserId, fromUserRole, type, window, oooRecordId, plan, appointments, everyone, createdBy, now = new Date() }) {
   const id = `rj-${now.getTime()}-${Math.random().toString(36).slice(2, 7)}`;
   const calendar = [...(everyone || [])];
   const results = [];
@@ -32,16 +32,18 @@ export function buildJob({ fromUser, fromUserRole, type, window, oooRecordId, pl
     const p = plan[a.id];
     if (!p) return;
     const base = { appointmentId: a.id, appointment: snapshot(a) };
-    if (a.ehr_missing) { results.push({ ...base, outcome: 'failed', to: p.to || null, reason: 'Unable to Find Appointment' }); return; }
+    // `to` is the covering provider's name (shown), `toId` who they are.
+    if (a.ehr_missing) { results.push({ ...base, outcome: 'failed', to: p.to || null, toId: p.toId || null, reason: 'Unable to Find Appointment' }); return; }
     if (p.action === 'cancel') { results.push({ ...base, outcome: 'cancelled' }); return; }
-    const clash = findConflict(a, p.to, calendar);
-    results.push({ ...base, outcome: 'reassigned', to: p.to, conflict: clash ? { appointmentId: clash.id, appointment: snapshot(clash) } : null });
-    calendar.push({ ...a, primary_user: p.to });
+    const clash = findConflict(a, { id: p.toId, name: p.to }, calendar);
+    results.push({ ...base, outcome: 'reassigned', to: p.to, toId: p.toId || null, conflict: clash ? { appointmentId: clash.id, appointment: snapshot(clash) } : null });
+    calendar.push({ ...a, primary_user: p.to, primary_user_id: p.toId || null });
   });
   const count = (o) => results.filter(r => r.outcome === o).length;
   return {
     id,
     fromUser,
+    fromUserId: fromUserId || null,
     fromUserRole: fromUserRole || null,
     type,
     windowStart: window && Number.isFinite(window.from) ? new Date(window.from).toISOString() : null,
@@ -61,6 +63,7 @@ export function buildJob({ fromUser, fromUserRole, type, window, oooRecordId, pl
 export const jobToRow = (j) => ({
   id: j.id,
   from_user: j.fromUser,
+  from_user_id: j.fromUserId || null,
   from_user_role: j.fromUserRole,
   type: j.type,
   window_start: j.windowStart,
@@ -79,6 +82,7 @@ export const jobToRow = (j) => ({
 export const rowToJob = (r) => ({
   id: r.id,
   fromUser: r.from_user,
+  fromUserId: r.from_user_id || null,
   fromUserRole: r.from_user_role,
   type: r.type,
   windowStart: r.window_start,

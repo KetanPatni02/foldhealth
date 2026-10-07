@@ -16,6 +16,7 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { toast } from '../../../../../../components/Toast/sonnerToast';
 import { ImmunizationSelect } from './ImmunizationSelect';
 import { todayIso, toIsoDate, formatClinicalDate } from '../../../../../../lib/clinicalDates';
+import { Collapse } from '../../../../../../components/Collapse/Collapse';
 import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 
 // An immunization is either part of the current schedule or a finished
@@ -55,7 +56,7 @@ function ImmunizationRow({ immunization, onStatusChange, onEdit, dimmed }) {
                   onClick={() => setNoteOpen(v => !v)}
                 >
                   View Note
-                  <DownChevronIcon size={12} className={noteOpen ? styles.chevronOpen : undefined} />
+                  <DownChevronIcon size={12} color="currentColor" className={noteOpen ? styles.chevronOpen : undefined} />
                 </Link>
               </>
             )}
@@ -77,10 +78,12 @@ function ImmunizationRow({ immunization, onStatusChange, onEdit, dimmed }) {
           onClick={() => onEdit(immunization)}
         />
       </div>
-      {immunization.note && noteOpen && (
-        <p className={styles.rowNote}>
-          <span className={styles.rowNoteLabel}>Note:</span> {immunization.note}
-        </p>
+      {immunization.note && (
+        <Collapse open={noteOpen}>
+          <p className={styles.rowNote}>
+            <span className={styles.rowNoteLabel}>Note:</span> {immunization.note}
+          </p>
+        </Collapse>
       )}
     </div>
   );

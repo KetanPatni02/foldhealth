@@ -4,11 +4,11 @@ import { Select } from '../../../../../../components/Select/Select';
 import { Input } from '../../../../../../components/Input/Input';
 import { Textarea } from '../../../../../../components/Textarea/Textarea';
 import { RadioButton } from '../../../../../../components/RadioButton/RadioButton';
-import { Toggle } from '../../../../../../components/Toggle/Toggle';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { CollapsibleSection } from '../../../../../../components/CollapsibleSection/CollapsibleSection';
 import { useAppStore } from '../../../../../../store/useAppStore';
-import { SOCIAL_HISTORY_SECTIONS, isValidNumberAnswer } from '../../../../../../reference-data/socialHistoryQuestionnaire';
+import { FormRenderer } from '../../../../../forms/render/FormRenderer';
+import { SOCIAL_HISTORY_SECTIONS, isValidNumberAnswer, normalizeSocialAnswers } from '../../../../../../reference-data/socialHistoryQuestionnaire';
 import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 
 // How long typing pauses before a text answer saves. Choices save at once.
@@ -166,12 +166,13 @@ function Question({ question, answers, onSave }) {
 
 /**
  * Social History: the questionnaire the Fold QA app asks (Tobacco,
- * Exercise, SDOH, and Alcohol, tobacco and other substances), defined in
+ * Exercise, SDOH, and Alcohol and other substances), defined in
  * src/reference-data/socialHistoryQuestionnaire.js.
  *
- * A toggle at the top picks one section, and only that section's questions
- * render. Switching unmounts the previous section's fields, which flushes any
- * text still waiting to save, so nothing typed is lost to a switch.
+ * Every section is stacked as a collapsible card, all open, so the whole
+ * questionnaire can be scanned at once. SDOH and AUDIT-C render as forms: the
+ * same locked fields the Form Builder offers (src/reference-data/
+ * sdohScreening.js, validatedInstruments.js).
  *
  * Like the source form there is no Save button: each answer saves as it is
  * given, and closing the drawer keeps everything.
@@ -184,7 +185,6 @@ export function AddSocialHistoryDrawer({ patientId, onClose }) {
   const loadedFor = useAppStore(s => (patientId ? s.patientSocialHistoryLoadedFor[patientId] : false));
   const fetchPatientSocialHistory = useAppStore(s => s.fetchPatientSocialHistory);
   const savePatientSocialHistory = useAppStore(s => s.savePatientSocialHistory);
-  const [activeId, setActiveId] = useState(SOCIAL_HISTORY_SECTIONS[0].id);
 
   useEffect(() => {
     if (patientId) fetchPatientSocialHistory(patientId);
@@ -192,7 +192,6 @@ export function AddSocialHistoryDrawer({ patientId, onClose }) {
 
   const loading = !!patientId && !loadedFor;
   const answers = record?.answers || {};
-  const active = SOCIAL_HISTORY_SECTIONS.find(sec => sec.id === activeId) || SOCIAL_HISTORY_SECTIONS[0];
 
   const saveAnswer = (questionId, value) => savePatientSocialHistory(patientId, { answers: { [questionId]: value } });
 
@@ -202,20 +201,21 @@ export function AddSocialHistoryDrawer({ patientId, onClose }) {
         {loading ? (
           <CardSkeleton rows={6} />
         ) : (
-          <>
-            <Toggle
-              className={styles.qToggle}
-              items={SOCIAL_HISTORY_SECTIONS.map(sec => ({ key: sec.id, label: sec.shortTitle }))}
-              active={active.id}
-              onChange={setActiveId}
-            />
-            {/* Keyed by section, so a switch starts the card fresh (open). */}
-            <CollapsibleSection key={active.id} icon={SECTION_ICONS[active.id]} title={active.title}>
-              {active.questions.map(q => (
+          // Every section stacked, each a card that folds away, so the whole
+          // questionnaire can be scanned and walked top to bottom.
+          SOCIAL_HISTORY_SECTIONS.map(sec => (
+            <CollapsibleSection key={sec.id} icon={SECTION_ICONS[sec.id]} title={sec.title}>
+              {/* SDOH and AUDIT-C are the Form Builder's own fields, drawn by
+                  the form renderer and keyed by the drawer's answer ids; any
+                  other questions in the section follow as before. */}
+              {sec.form && (
+                <FormRenderer embedded fields={sec.form} answers={normalizeSocialAnswers(answers)} onAnswer={saveAnswer} />
+              )}
+              {sec.questions.filter(q => q.type !== 'form').map(q => (
                 <Question key={q.id} question={q} answers={answers} onSave={saveAnswer} />
               ))}
             </CollapsibleSection>
-          </>
+          ))
         )}
       </div>
     </Drawer>

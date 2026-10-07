@@ -146,7 +146,6 @@
  * collapsed; the icon primitive stays the same for expanded (▼) and
  * collapsed (▶) states. */
 .chevronCollapsed { transform: rotate(-90deg); transition: transform 0.12s ease; }
-.placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 48px; color: var(--neutral-200); font-size: var(--font-md); }
 
 /* Smooth collapse transition (grid-template-rows trick) */
 .collapseOuter { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 0.22s ease; overflow: hidden; }

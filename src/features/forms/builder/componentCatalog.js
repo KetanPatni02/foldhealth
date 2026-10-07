@@ -22,6 +22,7 @@
 import { validatedPaletteEntries } from './validatedInstruments';
 import { makeMemberConsent } from './memberConsent';
 import { makeRatingField } from './rating';
+import { makeSdohGroup } from '../../../reference-data/sdohScreening';
 
 const opt = (value, score) => (score == null ? { value } : { value, score });
 
@@ -139,6 +140,9 @@ export const HEALTH = [
       choice('Do you smoke?', 'radio', [opt('Never'), opt('Former'), opt('Current')]),
       choice('Alcohol use', 'radio', [opt('None'), opt('Occasional'), opt('Regular')]),
     ]) },
+  // Locked: the same questions the Social History drawer asks, so answers
+  // stay comparable wherever the screening is used.
+  { key: 'sdoh', label: 'SDOH (Social Needs)', icon: 'custom:sdoh', make: makeSdohGroup },
   { key: 'family-history', label: 'Family History', icon: 'solar:users-group-two-rounded-linear',
     make: () => group('Family History', 'familyHistory', [
       { type: 'string', text: 'Condition' },

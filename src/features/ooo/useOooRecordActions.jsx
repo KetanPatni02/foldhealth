@@ -4,6 +4,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { toast } from '../../components/Toast/sonnerToast';
 import { OooRecordDrawer } from './OooRecordDrawer';
 import { ReassignAppointmentsDrawer } from './ReassignAppointmentsDrawer';
+import { samePerson } from './oooUtils';
 
 /**
  * New / Edit / Delete for Out of Office records, and Reassign Appointments,
@@ -17,12 +18,13 @@ import { ReassignAppointmentsDrawer } from './ReassignAppointmentsDrawer';
  */
 export function useOooRecordActions({ user, users } = {}) {
   const deleteOooRecord = useAppStore(s => s.deleteOooRecord);
+  const restoreReassigned = useAppStore(s => s.restoreReassignedAppointments);
   const [form, setForm] = useState(null); // { record?, user? }
   const [toDelete, setToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [reassign, setReassign] = useState(null); // { userName?, recordId? }
+  const [reassign, setReassign] = useState(null); // { who?: { id, name }, recordId? }
   // Reassign From lists the caller's users, else everyone on the platform.
-  const platformUsers = useAppStore(s => s.platformUsers);
+  const platformUsers = useAppStore(s => (s.platformPeople?.length ? s.platformPeople : s.platformUsers));
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   // Callers without their own list (e.g. Preferences) rely on everyone being loaded.
   useEffect(() => { if (!users?.length) fetchPlatformUsers?.(); }, [users, fetchPlatformUsers]);
@@ -37,18 +39,18 @@ export function useOooRecordActions({ user, users } = {}) {
           users={users}
           onClose={() => setForm(null)}
           onSaved={(saved, { reassign: next } = {}) => {
-            if (next) setReassign({ userName: saved.userName, recordId: saved.id });
+            if (next) setReassign({ who: { id: saved.userId, name: saved.userName }, recordId: saved.id });
           }}
         />
       )}
       {reassign && (
         <ReassignAppointmentsDrawer
           users={pickUsers}
-          initialUser={reassign.userName}
+          initialUser={reassign.who}
           initialRecordId={reassign.recordId}
-          onNewOoo={(name) => {
+          onNewOoo={(who) => {
             setReassign(null);
-            const u = pickUsers.find(x => x.name === name);
+            const u = who && pickUsers.find(x => samePerson(x, who));
             setForm({ user: u ? { id: u.id, name: u.name, email: u.email, role: u.role } : undefined });
           }}
           onClose={() => setReassign(null)}
@@ -68,7 +70,13 @@ export function useOooRecordActions({ user, users } = {}) {
             setDeleting(true);
             try {
               const ok = await deleteOooRecord(toDelete.id);
-              if (ok) toast.success('Out of Office Record Deleted Successfully');
+              // As the dialog says: appointments reassigned away for these
+              // dates go back to the provider (upcoming ones only).
+              if (ok) {
+                await restoreReassigned({ id: toDelete.userId, name: toDelete.userName },
+                  [{ from: new Date(toDelete.startAt).getTime(), to: new Date(toDelete.endAt).getTime() }]);
+                toast.success('Out of Office Record Deleted Successfully');
+              }
               setToDelete(null);
             } finally {
               setDeleting(false);
@@ -84,8 +92,9 @@ export function useOooRecordActions({ user, users } = {}) {
     openNew: (forUser) => setForm({ user: forUser }),
     openEdit: (record) => setForm({ record }),
     askDelete: setToDelete,
-    // Reassign Appointments on its own, optionally for a provider (and one of their records).
-    openReassign: (userName, recordId) => setReassign({ userName, recordId }),
+    // Reassign Appointments on its own, optionally for a provider ({ id, name })
+    // and one of their records.
+    openReassign: (who, recordId) => setReassign({ who, recordId }),
     elements,
   };
 }

@@ -1,12 +1,13 @@
 /**
  * Report tab — question-wise breakdown. One card per question: choice questions
- * get a distribution donut + legend + "Most Voted"; numeric questions get a
+ * get a distribution donut + legend + "Most Voted"; NPS questions get the
+ * score, its three groups and the 0–10 spread; numeric questions get a
  * votes bar chart; free-text questions list the answers (with Show more).
  */
 import { useMemo, useState } from 'react';
 import { Icon } from '../../../components/Icon/Icon';
 import { DonutChart, VotesBarChart } from './FormCharts';
-import { leafFields, questionStats, perQuestionDropoff } from './aggregate';
+import { leafFields, questionStats, perQuestionDropoff, formatNps } from './aggregate';
 import { fieldIcon, SERIES_COLORS } from './formAnalyticsUi';
 import styles from './FormAnalyticsPanel.module.css';
 
@@ -39,6 +40,34 @@ function NumericBreakdown({ stats }) {
       {stats.mostVoted && stats.mostVoted.count > 0 && (
         <span className={styles.mostVoted}>Most Voted:<strong>{stats.mostVoted.label}</strong></span>
       )}
+    </div>
+  );
+}
+
+// Same tones as the NPS tiles, so a group reads the same in the form and here.
+const NPS_GROUPS = [
+  { key: 'promoter', label: 'Promoters (9–10)', color: 'var(--status-success-dark)' },
+  { key: 'passive', label: 'Passives (7–8)', color: 'var(--status-warning-dark)' },
+  { key: 'detractor', label: 'Detractors (0–6)', color: 'var(--status-error-dark)' },
+];
+
+/** NPS: the score, each group's share, and how the 0–10 answers spread. */
+function NpsBreakdown({ stats }) {
+  const { nps } = stats;
+  const pct = (n) => (nps.total ? `${Math.round((n / nps.total) * 100)}%` : '0%');
+  return (
+    <div className={styles.choiceGrid}>
+      <div className={styles.choiceLegend}>
+        {NPS_GROUPS.map((g) => (
+          <div key={g.key} className={styles.choiceRow}>
+            <span className={styles.legendDot} style={{ background: g.color }} />
+            <span className={styles.choiceLabel}>{g.label}</span>
+            <span className={styles.choiceCount}>{nps[g.key]} · {pct(nps[g.key])}</span>
+          </div>
+        ))}
+      </div>
+      <VotesBarChart data={stats.distribution} />
+      <span className={styles.mostVoted}>NPS:<strong>{formatNps(nps.score)}</strong></span>
     </div>
   );
 }
@@ -96,6 +125,7 @@ export function ReportView({ fields, responses, pending = EMPTY_PENDING }) {
               </div>
             </div>
             <div className={styles.qBody}>
+              {stats.kind === 'nps' && <NpsBreakdown stats={stats} />}
               {stats.kind === 'choice' && <ChoiceBreakdown stats={stats} />}
               {stats.kind === 'numeric' && <NumericBreakdown stats={stats} />}
               {stats.kind === 'text' && <TextBreakdown stats={stats} />}

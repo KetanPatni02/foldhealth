@@ -6,6 +6,7 @@
  * A response row: { id, answers:{linkId:value}, scores:{scores:[{id,value,band}], criticalsTriggered:[]}, createdAt, submittedByName }
  */
 import { isAnswered } from '../scoring/util';
+import { isNpsField, npsScore } from '../builder/rating';
 
 /** Split raw responses into completed submissions and in-progress (Pending) fills. */
 export function splitByStatus(responses) {
@@ -87,6 +88,7 @@ export function completionStats(fields, responses) {
 
 /** What kind of breakdown a field gets in the question-wise Report. */
 export function questionKind(field) {
+  if (isNpsField(field)) return 'nps';
   if (field.type === 'choice') return 'choice';
   if (field.type === 'integer' || field.type === 'decimal') return 'numeric';
   return 'text';
@@ -112,6 +114,16 @@ export function questionStats(field, responses) {
   }
   const answeredCount = raw.length;
   const kind = questionKind(field);
+
+  if (kind === 'nps') {
+    // Every point 0–10 in order, so the bar chart shows the gaps too.
+    const distribution = (field.options || []).map((o) => ({
+      label: o.value,
+      count: raw.filter((v) => v === o.value).length,
+    }));
+    const points = raw.map(Number).filter(Number.isFinite);
+    return { answeredCount, total, kind, distribution, nps: npsScore(points) };
+  }
 
   if (kind === 'choice') {
     const opts = field.options || [];
@@ -183,9 +195,16 @@ export function averageScoreSeries(scoring, responses) {
     .map((b) => ({ month: b.label, value: Math.round((b.sum / b.n) * 10) / 10 }));
 }
 
+/** An NPS as shown: signed, e.g. "+40", "-15", "0"; "—" with no answers. */
+export function formatNps(score) {
+  if (score == null) return '—';
+  return score > 0 ? `+${score}` : String(score);
+}
+
 /** Display string for the "Avg." column in the Responses detail. */
 export function answerAverage(field, responses) {
   const stats = questionStats(field, responses);
+  if (stats.kind === 'nps') return formatNps(stats.nps.score);
   if (stats.kind === 'numeric') return stats.average == null ? '—' : `~${Math.round(stats.average)}`;
   if (stats.kind === 'choice') return stats.mostVoted?.count ? stats.mostVoted.label : '—';
   return '—';

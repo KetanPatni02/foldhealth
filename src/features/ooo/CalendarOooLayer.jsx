@@ -22,7 +22,7 @@ const GRID_HOURS = 23;
  * grids (DayResourceView, MonthCountView).
  *
  * @param {object}   props
- * @param {string}   [props.focusUser]  – The user in view
+ * @param {{ id: string, name: string }} [props.focusUser] – The user in view
  * @param {object[]} props.records
  * @param {object[]} [props.holidays] – Holidays at the user's locations (shown green, not bookable)
  * @param {function} [props.onHoliday] – (holiday) => void, a click on holiday time
@@ -131,7 +131,7 @@ export function CalendarOooLayer({ focusUser, records, holidays = [], renderTick
           if (canEdit(record)) {
             host.setAttribute('role', 'button');
             host.tabIndex = 0;
-            host.setAttribute('aria-label', `Edit ${focusUser}'s Out of Office record`);
+            host.setAttribute('aria-label', `Edit ${focusUser.name}'s Out of Office record`);
             const onKey = (e) => {
               if (e.key !== 'Enter' && e.key !== ' ') return;
               e.preventDefault();

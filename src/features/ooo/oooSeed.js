@@ -139,6 +139,7 @@ export function demoOooForUser(user, now = new Date()) {
         mode: type.mode,
         location: 'Fold Health, New York',
         primary_user: user.name,
+        primary_user_id: user.id || null,
         secondary_users: [],
         date: apptDate(y, m, d),
         time_start: start,

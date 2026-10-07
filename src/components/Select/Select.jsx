@@ -25,6 +25,9 @@ import styles from './Select.module.css';
  *  - id         (string)        — passes through to the trigger button
  *  - menuAlign  'left' | 'right' — popover horizontal anchor (defaults left)
  *  - leadingIcon (string)       — optional Solar icon shown before the label
+ *  - defaultOpen (boolean)      — mount with the menu already open (and the
+ *                                 search focused), for a picker revealed by
+ *                                 a click so the user can type straight away
  *  - portal     (boolean)       — render the menu into document.body with
  *                                 fixed positioning. Needed when the Select
  *                                 sits inside a scroll container (e.g. a
@@ -81,6 +84,7 @@ export function Select({
   // "first + N" text summary. Opt-in for the same reason.
   badges = false,
   portal = false,
+  defaultOpen = false,
 }) {
   // Ensure a stable label↔trigger association even when `id` isn't set.
   const autoId = useId();
@@ -92,7 +96,7 @@ export function Select({
     [multiple, value],
   );
   const isSelected = (v) => multiple ? valueSet.has(v) : v === value;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   // 'bottom' by default; flipped to 'top' when the trigger sits too close
   // to the bottom of the viewport for the 240px menu to fit downward.
   const [menuPlacement, setMenuPlacement] = useState('bottom');

@@ -178,6 +178,7 @@ import {
 import { HCC_TRANSITION_LABEL, HCC_ROLE_LABEL, hccTransitionRole, hccRoleStatusHeadline } from '../features/hcc/hccTransitionLabels';
 import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActivityFeed';
 import { createShellSlice } from './slices/shellSlice';
+import { rowToCrm, sampleCrmActivities } from '../features/patient/data/crmActivity';
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
 
 // Timer handle for the 3-second row-flash on the tasks page.
@@ -685,6 +686,22 @@ export const useAppStore = create((set, get) => ({
     }));
   },
   // ── Social History questionnaire (one row per patient) ──
+  // CRM Activity: every communication with a patient, newest first. Falls
+  // back to sample activity until patient_crm_activities exists or has rows.
+  patientCrmActivities: {},           // { [patientId]: activity[] }
+  patientCrmActivitiesLoadedFor: {},  // { [patientId]: true }: gates the skeleton
+  fetchPatientCrmActivities: async (patientId) => {
+    if (!patientId) return;
+    const { data, error } = await supabase.from('patient_crm_activities')
+      .select('*').eq('patient_id', String(patientId)).order('occurred_at', { ascending: false });
+    if (error) console.warn('fetchPatientCrmActivities:', error.message);
+    const list = !error && data?.length ? data.map(rowToCrm) : sampleCrmActivities(patientId);
+    set(s => ({
+      patientCrmActivities: { ...s.patientCrmActivities, [patientId]: list },
+      patientCrmActivitiesLoadedFor: { ...s.patientCrmActivitiesLoadedFor, [patientId]: true },
+    }));
+  },
+
   patientSocialHistory: {},           // { [patientId]: { answers } }
   patientSocialHistoryLoadedFor: {},  // { [patientId]: true }: gates the skeleton
   fetchPatientSocialHistory: async (patientId) => {
@@ -8348,6 +8365,9 @@ export const useAppStore = create((set, get) => ({
   // the JS mock in features/hcc/systemUsers.js remains as fallback so
   // filter option lists never render empty on cold load.
   platformUsers: [],           // [{ id, name, initials }]
+  // One entry per profile, never merged by name (two staff can share one):
+  // the calendar and Out of Office match people by id.
+  platformPeople: [],          // [{ id, name, initials, email, clinicalRoles, locations }]
   platformUsersDidFetch: false,
   // In-flight promise cache. Many components (RoleAssigneePicker,
   // CommentComposer, mention menus, DiagPanel, ChartDetailDrawer) each
@@ -8459,8 +8479,21 @@ export const useAppStore = create((set, get) => ({
         const initials = name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
         byName.set(name, { id: r.id, name, initials, email: r.email || '', clinicalRoles: roles, locations: locs });
       }
+      const platformPeople = raw.map((r) => {
+        const name = (r.full_name?.trim()
+          || [r.first_name, r.last_name].filter(Boolean).join(' ').trim()
+          || r.email?.split('@')[0]
+          || '').trim();
+        if (!name) return null;
+        return {
+          id: r.id, name, email: r.email || '',
+          initials: name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase(),
+          clinicalRoles: r.clinical_roles || [], locations: Array.isArray(r.locations) ? r.locations : [],
+        };
+      }).filter(Boolean);
       set({
         platformUsers: [...byName.values()],
+        platformPeople,
         platformUsersDidFetch: true,
         taskProfiles,
         currentUserProfile: me,
@@ -12484,11 +12517,11 @@ export const useAppStore = create((set, get) => ({
    * @param {{ fromUser, fromUserRole?, type, window: { from, to }, oooRecordId?, plan, appointments }} input
    *   `appointments` are the ones in scope (plan keys are their ids).
    */
-  runReassignmentJob: async ({ fromUser, fromUserRole, type, window, oooRecordId, plan, appointments }) => {
+  runReassignmentJob: async ({ fromUser, fromUserId, fromUserRole, type, window, oooRecordId, plan, appointments }) => {
     const { buildJob, jobToRow } = await import('../features/ooo/reassignJobs');
     await get().fetchReassignmentJobs();
     const job = buildJob({
-      fromUser, fromUserRole, type, window, oooRecordId, plan,
+      fromUser, fromUserId, fromUserRole, type, window, oooRecordId, plan,
       appointments,
       everyone: get().appointments || [],
       createdBy: get().currentUserProfile?.name || null,
@@ -12496,29 +12529,36 @@ export const useAppStore = create((set, get) => ({
     // Shown in History as in progress while the plan is carried out, then
     // replaced by the finished job.
     set(st => ({ reassignmentJobs: [{ ...job, status: 'running' }, ...st.reassignmentJobs] }));
-    // Carry out the plan on appointments. The reassigned_from /
-    // reassignment_job_id columns come with reassignment_jobs_migration.sql;
-    // until it runs, the move still happens without them.
-    const update = async (ids, patch, extra) => {
+    // Carry out the plan on appointments. The id columns
+    // (person_ids_migration.sql) and reassigned_from / reassignment_job_id
+    // (reassignment_jobs_migration.sql) may not exist yet; until they do,
+    // the move still happens by name.
+    const update = async (ids, patch, extra, byName) => {
       if (!ids.length) return;
       let { error } = await supabase.from('appointments').update({ ...patch, ...extra }).in('id', ids);
-      if (error && extra) ({ error } = await supabase.from('appointments').update(patch).in('id', ids));
+      if (error && byName) ({ error } = await supabase.from('appointments').update(byName).in('id', ids));
       if (error) throw new Error(error.message);
     };
-    const byTo = {};
+    const byTo = new Map(); // covering provider (id, else name) → { to, toId, ids }
     const cancelIds = [];
     job.results.forEach((r) => {
-      if (r.outcome === 'reassigned') (byTo[r.to] = byTo[r.to] || []).push(r.appointmentId);
+      if (r.outcome === 'reassigned') {
+        const key = r.toId || r.to;
+        if (!byTo.has(key)) byTo.set(key, { to: r.to, toId: r.toId || null, ids: [] });
+        byTo.get(key).ids.push(r.appointmentId);
+      }
       if (r.outcome === 'cancelled') cancelIds.push(r.appointmentId);
     });
     // Any error carrying out the plan fails the job: History shows it as
     // failed (never stuck in progress) and the calendar reloads to show
     // whatever did move.
     try {
-      for (const [to, ids] of Object.entries(byTo)) {
-        await update(ids, { primary_user: to }, { reassigned_from: fromUser, reassignment_job_id: job.id });
+      for (const { to, toId, ids } of byTo.values()) {
+        await update(ids, { primary_user: to, primary_user_id: toId },
+          { reassigned_from: fromUser, reassigned_from_id: fromUserId || null, reassignment_job_id: job.id },
+          { primary_user: to });
       }
-      await update(cancelIds, { status: 'Cancelled' }, { reassignment_job_id: job.id });
+      await update(cancelIds, { status: 'Cancelled' }, { reassignment_job_id: job.id }, { status: 'Cancelled' });
     } catch (err) {
       console.warn('runReassignmentJob update:', err.message);
       set(st => ({ reassignmentJobs: st.reassignmentJobs.map(j => (j.id === job.id ? { ...job, status: 'failed' } : j)) }));
@@ -12527,7 +12567,11 @@ export const useAppStore = create((set, get) => ({
       return null;
     }
     if (!get().reassignmentLocal) {
-      const { error } = await supabase.from('reassignment_jobs').insert(jobToRow(job));
+      let { error } = await supabase.from('reassignment_jobs').insert(jobToRow(job));
+      if (error && /from_user_id/.test(error.message || '')) {
+        const { from_user_id: _skip, ...row } = jobToRow(job);
+        ({ error } = await supabase.from('reassignment_jobs').insert(row));
+      }
       if (error) { console.warn('runReassignmentJob save:', error.message); set({ reassignmentLocal: true }); }
     }
     set(st => ({ reassignmentJobs: st.reassignmentJobs.map(j => (j.id === job.id ? job : j)) }));
@@ -12542,22 +12586,28 @@ export const useAppStore = create((set, get) => ({
     return job;
   },
   /**
-   * Move appointments that were reassigned away from `userName` back to
-   * them, for the given time ranges (e.g. dates taken off an Out of Office
-   * record), from now on only. Uses appointments.reassigned_from.
+   * Move appointments that were reassigned away from `who` ({ id, name })
+   * back to them, for the given time ranges (e.g. dates taken off an Out of
+   * Office record), from now on only. Uses appointments.reassigned_from_id
+   * (the name, for appointments moved before ids were stored).
    */
-  restoreReassignedAppointments: async (userName, ranges) => {
+  restoreReassignedAppointments: async (who, ranges) => {
     const { apptSpan } = await import('../features/ooo/reassignUtils');
+    const { personOf, samePerson } = await import('../features/ooo/oooUtils');
+    const person = personOf(who);
     const now = Date.now();
     const back = (get().appointments || []).filter((a) => {
-      if (!a.reassigned_from || String(a.reassigned_from).trim().toLowerCase() !== String(userName).trim().toLowerCase()) return false;
+      if (!a.reassigned_from || !samePerson({ id: a.reassigned_from_id, name: a.reassigned_from }, person)) return false;
       const { start } = apptSpan(a);
       return start >= now && ranges.some(r => start >= r.from && start < r.to);
     });
     if (!back.length) return 0;
-    const { error } = await supabase.from('appointments')
-      .update({ primary_user: userName, reassigned_from: null, reassignment_job_id: null })
-      .in('id', back.map(a => a.id));
+    const ids = back.map(a => a.id);
+    let { error } = await supabase.from('appointments')
+      .update({ primary_user: person.name, primary_user_id: person.id, reassigned_from: null, reassigned_from_id: null, reassignment_job_id: null })
+      .in('id', ids);
+    // Before person_ids_migration.sql runs, there are no id columns.
+    if (error) ({ error } = await supabase.from('appointments').update({ primary_user: person.name, reassigned_from: null, reassignment_job_id: null }).in('id', ids));
     if (error) { console.warn('restoreReassignedAppointments:', error.message); return 0; }
     await get().fetchAppointments?.();
     return back.length;
@@ -12755,17 +12805,24 @@ export const useAppStore = create((set, get) => ({
   _appointmentInvolvesMe: (appt) => {
     const me = get().currentUserProfile;
     if (!me?.name || !appt) return false;
-    if (appt.primary_user === me.name) return true;
+    // By id when the appointment has one (two staff can share a name).
+    if (appt.primary_user_id && me.id) { if (String(appt.primary_user_id) === String(me.id)) return true; }
+    else if (appt.primary_user === me.name) return true;
     if (Array.isArray(appt.secondary_users) && appt.secondary_users.includes(me.name)) return true;
     return false;
   },
 
   createAppointment: async (appt) => {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('appointments')
       .insert(appt)
       .select()
       .single();
+    // Before person_ids_migration.sql runs there's no primary_user_id column.
+    if (error && 'primary_user_id' in appt && /primary_user_id/.test(error.message || '')) {
+      const { primary_user_id: _skip, ...byName } = appt;
+      ({ data, error } = await supabase.from('appointments').insert(byName).select().single());
+    }
     if (error) { console.error('Create appointment error:', error); return null; }
     // Refresh list
     get().fetchAppointments();
@@ -12789,10 +12846,14 @@ export const useAppStore = create((set, get) => ({
 
   updateAppointment: async (id, updates) => {
     const prev = get().appointments.find(a => a.id === id) || null;
-    const { error } = await supabase
+    let { error } = await supabase
       .from('appointments')
       .update(updates)
       .eq('id', id);
+    if (error && 'primary_user_id' in updates && /primary_user_id/.test(error.message || '')) {
+      const { primary_user_id: _skip, ...byName } = updates;
+      ({ error } = await supabase.from('appointments').update(byName).eq('id', id));
+    }
     if (error) { console.error('Update appointment error:', error); return false; }
     get().fetchAppointments();
     // Notify me if this update newly puts me on the appointment (name

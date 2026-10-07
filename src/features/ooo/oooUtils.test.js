@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fromPickerValue, toPickerValue, activeOooFor, canDelete, canEdit, daySpan, formatDateTime, oooStatus, rangeChange, recordsOnDate, overlapPlan, sortRecords, validateOoo, describeRange, appointmentsToReassign } from './oooUtils';
+import { fromPickerValue, toPickerValue, activeOooFor, canDelete, canEdit, daySpan, formatDateTime, oooStatus, rangeChange, recordsOnDate, overlapPlan, recordsFor, samePerson, peopleOptions, sortRecords, validateOoo, describeRange, appointmentsToReassign } from './oooUtils';
 
 const at = (d, h = 0, m = 0) => new Date(2026, 8, d, h, m).toISOString(); // Sept 2026, local time
 const rec = (id, s, e, userName = 'Richard Willson') => ({ id, userName, startAt: s, endAt: e });
@@ -149,5 +149,36 @@ describe('overlapPlan', () => {
   it('is null with no clash, and ignores the record being edited', () => {
     expect(overlapPlan({ userName: name, startAt: iso(23), endAt: iso(24) }, existing)).toBeNull();
     expect(overlapPlan({ userName: name, startAt: iso(3), endAt: iso(4) }, existing, 'a')).toBeNull();
+  });
+});
+
+describe('people with the same name', () => {
+  const iso = (d) => new Date(2026, 9, d).toISOString();
+  const a = { id: 'u-1', name: 'John Smith' };
+  const b = { id: 'u-2', name: 'John Smith' };
+  const recA = { id: 'r1', userId: 'u-1', userName: 'John Smith', startAt: iso(10), endAt: iso(12) };
+  it('tells them apart by id, and falls back to the name only without one', () => {
+    expect(samePerson(a, b)).toBe(false);
+    expect(samePerson(a, { id: 'u-1', name: 'J. Smith' })).toBe(true);
+    expect(samePerson('John Smith', b)).toBe(true);
+  });
+  it("keeps one person's records and appointments off the other's", () => {
+    expect(recordsFor([recA], b)).toEqual([]);
+    expect(recordsFor([recA], a)).toEqual([recA]);
+    const now = new Date(2026, 9, 1);
+    const appts = [
+      { id: 'x', primary_user: 'John Smith', primary_user_id: 'u-1', date: '10-10-2026', time_start: '9:00 am', time_end: '9:30 am' },
+      { id: 'y', primary_user: 'John Smith', primary_user_id: 'u-2', date: '10-10-2026', time_start: '10:00 am', time_end: '10:30 am' },
+    ];
+    expect(appointmentsToReassign(recA, appts, now).map(x => x.id)).toEqual(['x']);
+  });
+  it("doesn't call one person's new dates a clash with the other's record", () => {
+    const now = new Date(2026, 9, 1);
+    expect(validateOoo({ userId: 'u-2', userName: 'John Smith', startAt: iso(10), endAt: iso(12) }, { now, existing: [recA] }).overlap).toBeUndefined();
+    expect(validateOoo({ userId: 'u-1', userName: 'John Smith', startAt: iso(10), endAt: iso(12) }, { now, existing: [recA] }).overlap).toBeTruthy();
+  });
+  it('labels shared names with their email', () => {
+    expect(peopleOptions([{ ...a, email: 'john1@x.com' }, { ...b, email: 'john2@x.com' }, { id: 'u-3', name: 'Ann Lee' }]).map(o => o.label))
+      .toEqual(['John Smith (john1@x.com)', 'John Smith (john2@x.com)', 'Ann Lee']);
   });
 });

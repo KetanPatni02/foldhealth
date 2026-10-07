@@ -16,7 +16,7 @@ import styles from './ooo.module.css';
 export function OooPreferencesSection() {
   const me = useAppStore(s => s.currentUserProfile);
   const { records, loading } = useOooRecords();
-  const mine = useMemo(() => sortRecords(recordsFor(records, me?.name)), [records, me?.name]);
+  const mine = useMemo(() => (me ? sortRecords(recordsFor(records, me)) : []), [records, me]);
   const actions = useOooRecordActions({ user: me ? { id: me.id, name: me.name, email: me.email } : undefined });
   return (
     <>
@@ -44,7 +44,7 @@ export function OooPreferencesSection() {
  */
 export function OooUserRecordsDrawer({ user, onClose }) {
   const { records, loading } = useOooRecords();
-  const theirs = useMemo(() => sortRecords(recordsFor(records, user.name)), [records, user.name]);
+  const theirs = useMemo(() => sortRecords(recordsFor(records, user)), [records, user]);
   const actions = useOooRecordActions({ user });
   return (
     <Drawer

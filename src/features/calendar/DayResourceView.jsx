@@ -4,7 +4,7 @@ import { OooIcon } from '../../components/Icon/OooIcon';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { HolidayBadgeIcon } from '../../components/Icon/HolidayBadgeIcon';
 import { holidaysForUser } from '../holidays/holidayUtils';
-import { canEdit, daySpan, recordsFor, recordsOnDate } from '../ooo/oooUtils';
+import { apptPerson, canEdit, daySpan, personKey, recordsFor, recordsOnDate, samePerson } from '../ooo/oooUtils';
 import styles from './DayResourceView.module.css';
 
 const HOUR_PX = 80;
@@ -31,14 +31,14 @@ const isoToAppt = (iso) => { const [y, m, d] = iso.split('-'); return `${m}-${d}
  *
  * @param {object}   props
  * @param {string}   props.date          – ISO date shown ("2026-09-29")
- * @param {string[]} props.users         – User names, one column each
+ * @param {{ id: string, name: string }[]} props.users – One column each
  * @param {object[]} props.appointments  – Already filtered by the toolbar
  * @param {object[]} props.oooRecords
  * @param {object[]} [props.holidays] – All holiday configurations (each column gets its user's)
  * @param {object[]} [props.people]   – Staff with their locations, to match holidays to columns
  * @param {string[]} [props.holidayLocations] – The Location filter, for someone with no locations on file
  * @param {string}   [props.timezoneLabel]
- * @param {function} props.onSlotClick   – ({ year, month, day, hour, minute }, userName) => void
+ * @param {function} props.onSlotClick   – ({ year, month, day, hour, minute }, person) => void
  * @param {function} props.onEventClick  – (appointment) => void
  * @param {function} props.onEditOoo     – (record) => void
  * @param {function} props.onBlocked     – (message) => void, for a slot that can't be booked
@@ -58,12 +58,13 @@ export function DayResourceView({ date, users, appointments, oooRecords, holiday
   }, [date]);
 
   const onDay = useMemo(() => recordsOnDate(oooRecords, date), [oooRecords, date]);
-  const columns = useMemo(() => users.map((name) => {
-    const ooo = recordsFor(onDay, name)
+  const columns = useMemo(() => users.map((person) => {
+    const { name } = person;
+    const ooo = recordsFor(onDay, person)
       .map(r => ({ record: r, span: daySpan(r, date) }))
       .filter(x => x.span);
     const appts = (appointments || [])
-      .filter(a => a.primary_user === name && a.date === isoToAppt(date))
+      .filter(a => samePerson(apptPerson(a), person) && a.date === isoToAppt(date))
       .map(a => {
         const start = toMinutes(a.time_start);
         const end = toMinutes(a.time_end) ?? (start != null ? start + 30 : null);
@@ -71,10 +72,10 @@ export function DayResourceView({ date, users, appointments, oooRecords, holiday
       })
       .filter(Boolean);
     // Holidays at this user's locations, green under any OOO time.
-    const hol = recordsOnDate(holidaysForUser(holidays, people, name, holidayLocations), date)
+    const hol = recordsOnDate(holidaysForUser(holidays, people, person, holidayLocations), date)
       .map(h => ({ holiday: h, span: daySpan(h, date) }))
       .filter(x => x.span);
-    return { name, ooo, appts, hol };
+    return { person, key: personKey(person), name, ooo, appts, hol };
   }), [users, onDay, appointments, date, holidays, people, holidayLocations]);
 
   const clickSlot = (col, slot) => {
@@ -100,7 +101,7 @@ export function DayResourceView({ date, users, appointments, oooRecords, holiday
       return;
     }
     const [year, month, day] = date.split('-').map(Number);
-    onSlotClick({ year, month, day, hour: Math.floor(minute / 60), minute: minute % 60 }, col.name);
+    onSlotClick({ year, month, day, hour: Math.floor(minute / 60), minute: minute % 60 }, col.person);
   };
 
   const top = (min) => (min / 60) * HOUR_PX;
@@ -115,7 +116,7 @@ export function DayResourceView({ date, users, appointments, oooRecords, holiday
         {/* The user's name, with an "Out of Office" strip under it when
             they're out that day. */}
         {columns.map(col => (
-          <div key={col.name} className={`${styles.colHead} ${styles.sticky}`}>
+          <div key={col.key} className={`${styles.colHead} ${styles.sticky}`}>
             <span className={styles.colName}>{col.name}</span>
             {/* Out for all of the day: labelled here. Part of a day
                 is labelled on its block instead. */}
@@ -143,7 +144,7 @@ export function DayResourceView({ date, users, appointments, oooRecords, holiday
         </div>
 
         {columns.map(col => (
-          <div key={col.name} className={styles.col} style={{ height: 24 * HOUR_PX }}>
+          <div key={col.key} className={styles.col} style={{ height: 24 * HOUR_PX }}>
             {SLOTS.map(slot => (
               <button
                 key={slot}

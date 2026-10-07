@@ -137,7 +137,7 @@ export const INSTRUMENTS = [
   {
     key: 'auditc',
     label: 'AUDIT-C (Alcohol use)',
-    icon: 'solar:bottle-linear',
+    icon: 'custom:social-history',
     source: 'Bush K, Kivlahan DR, McDonell MB, et al. Arch Intern Med. 1998;158(16):1789-1795.',
     instruction: 'The following questions are about your use of alcoholic beverages over the past year.',
     // AUDIT-C uses per-item response sets, so options live on each item.
@@ -251,6 +251,19 @@ export function instantiateInstrument(inst) {
   }));
 
   return { field, score, criticalTriggers };
+}
+
+/**
+ * An instrument's questions (and its instruction) as locked fields with fixed
+ * linkIds, for a host that renders it outside a form and needs stable answer
+ * keys: the Social History drawer renders AUDIT-C this way.
+ *
+ * @param {string} key          – The instrument's key, e.g. 'auditc'
+ * @param {object} linkIdByCode – { [item code]: linkId }
+ */
+export function instrumentFields(key, linkIdByCode) {
+  const inst = INSTRUMENTS.find((i) => i.key === key);
+  return buildField(inst).items.map((it) => ({ ...it, linkId: it.code ? linkIdByCode[it.code] : `${key}_instruction` }));
 }
 
 /** Palette entries for the validated instruments (rendered in Health tab). */

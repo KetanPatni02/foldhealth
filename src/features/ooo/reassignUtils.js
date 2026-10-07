@@ -7,7 +7,7 @@
  * A plan maps appointment id → { action: 'reassign', to: userName } or
  * { action: 'cancel' }; anything not in it is left as is.
  */
-import { sameName } from './oooUtils';
+import { apptPerson, personOf, recordPerson, sameName, samePerson } from './oooUtils';
 
 export const NO_DEPARTMENT = 'No Department';
 
@@ -46,11 +46,11 @@ export function reassignWindow({ type, record, startAt, endAt }, now = new Date(
  * window and not already in the past.
  */
 export function scopeAppointments(appointments, fromUser, window, now = new Date()) {
-  if (!fromUser || !window) return [];
+  if (!fromUser || !window || !personOf(fromUser).name && !personOf(fromUser).id) return [];
   const from = Math.max(window.from, toMs(now));
   return (appointments || [])
     .filter((a) => {
-      if (a.status === 'Cancelled' || !sameName(a.primary_user, fromUser)) return false;
+      if (a.status === 'Cancelled' || !samePerson(apptPerson(a), fromUser)) return false;
       const { start } = apptSpan(a);
       return start >= from && start < window.to;
     })
@@ -76,13 +76,13 @@ export function groupByDepartment(appts) {
  * office themselves at any point in the window.
  */
 export function coveringProviders(dept, users, { awayUser, oooRecords = [], window }) {
-  const outNames = new Set((oooRecords || [])
+  const out = (oooRecords || [])
     .filter(r => window && toMs(r.startAt) < window.to && toMs(r.endAt) > window.from)
-    .map(r => String(r.userName || '').trim().toLowerCase()));
+    .map(recordPerson);
   return (users || []).filter(u =>
     (u.locations || []).some(l => sameName(l, dept))
-    && !sameName(u.name, awayUser)
-    && !outNames.has(String(u.name || '').trim().toLowerCase()));
+    && !samePerson(u, awayUser)
+    && !out.some(p => samePerson(u, p)));
 }
 
 /**
@@ -92,7 +92,7 @@ export function coveringProviders(dept, users, { awayUser, oooRecords = [], wind
 export function findConflict(appt, toUser, appointments) {
   const { start, end } = apptSpan(appt);
   return (appointments || []).find((b) => {
-    if (b.id === appt.id || b.status === 'Cancelled' || !sameName(b.primary_user, toUser)) return false;
+    if (b.id === appt.id || b.status === 'Cancelled' || !samePerson(apptPerson(b), toUser)) return false;
     const s = apptSpan(b);
     return s.start < end && s.end > start;
   }) || null;

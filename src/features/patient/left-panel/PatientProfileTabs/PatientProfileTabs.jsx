@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Icon } from '../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { OverflowTabStrip } from '../../../../components/TabStrip/OverflowTabStrip';
@@ -16,6 +15,7 @@ import { OutreachTab } from '../tabs/outreach/OutreachTab/OutreachTab.jsx';
 import { SummaryTab } from '../tabs/summary/SummaryTab/SummaryTab.jsx';
 import { TasksTab } from '../tabs/tasks/TasksTab/TasksTab.jsx';
 import { ProfileTab } from '../tabs/profile/ProfileTab/ProfileTab.jsx';
+import { CrmTab } from '../tabs/crm/CrmTab/CrmTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS, CARE_GAP_TABS_DRAWER } from '../../data/careGapsMock';
 import { CareGapDetailDrawer } from '../../../hedis-worklist/CareGapDetailDrawer';
 import styles from './PatientProfileTabs.module.css';
@@ -283,12 +283,7 @@ export function PatientProfileTabs({
             keyed off tabs[idx] rather than a hard-coded index. */}
         {tabs[activeIdx] === 'Tasks' && <TasksTab />}
 
-        {tabs[activeIdx] === 'CRM' && (
-          <div className={styles.placeholder}>
-            <Icon name="solar:document-text-linear" size={32} color="var(--neutral-150)" />
-            <span>Coming soon</span>
-          </div>
-        )}
+        {tabs[activeIdx] === 'CRM' && <CrmTab patientId={patientId} />}
 
         {tabs[activeIdx] === 'Profile' && (
           <ProfileTab patient={patient || { id: patientId }} />

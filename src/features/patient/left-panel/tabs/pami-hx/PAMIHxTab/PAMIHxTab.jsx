@@ -7,6 +7,9 @@ import { AddMedicationsDrawer } from '../AddMedicationsDrawer';
 import { AddAllergiesDrawer } from '../AddAllergiesDrawer';
 import { AddImmunizationsDrawer } from '../AddImmunizationsDrawer';
 import { AddSurgicalHistoryDrawer } from '../AddSurgicalHistoryDrawer';
+import { AddMedicalHistoryDrawer } from '../AddMedicalHistoryDrawer';
+import { AddFamilyHistoryDrawer } from '../AddFamilyHistoryDrawer';
+import { groupByRelation } from '../../../../../../reference-data/familyRelations';
 import { AddSocialHistoryDrawer } from '../AddSocialHistoryDrawer';
 import { answeredSocialHistory } from '../../../../../../reference-data/socialHistoryQuestionnaire';
 import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
@@ -309,7 +312,7 @@ function FamilyHistoryRow({ item }) {
     <div className={styles.historyFamilyRow}>
       <span className={styles.familyRelation}>{item.relation}</span>
       <span className={styles.familyName}>{item.title}</span>
-      <span className={styles.familyDesc}>{item.detail}</span>
+      {item.detail && <span className={styles.familyDesc}>{item.detail}</span>}
     </div>
   );
 }
@@ -683,6 +686,8 @@ function HistoryEntries({ entries, loading, emptyIcon, emptyLabel, render }) {
 
 function HistorySection({ patientId, history, loading }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [medicalOpen, setMedicalOpen] = useState(false);
+  const [familyOpen, setFamilyOpen] = useState(false);
   const [surgicalOpen, setSurgicalOpen] = useState(false);
   const [socialOpen, setSocialOpen] = useState(false);
 
@@ -702,13 +707,20 @@ function HistorySection({ patientId, history, loading }) {
   // Newest first, matching the drawer.
   const surgical = byKind('surgical').sort((a, b) => (b.recordedOn || '').localeCompare(a.recordedOn || ''));
   const family = byKind('family');
+  // One row per relation, its conditions listed together.
+  const familyGroups = groupByRelation(family).map(g => ({
+    id: g.relation,
+    relation: g.relation,
+    title: g.entries.map(e => e.title).join(', '),
+    detail: g.entries.map(e => e.detail).filter(Boolean).join(' '),
+  }));
 
   return (
     <div className={styles.section}>
       <SectionHeader title="History" collapsed={collapsed} onToggle={() => setCollapsed(v => !v)} />
       <CollapseWrapper collapsed={collapsed}>
       <div className={styles.historyWrapper}>
-        <HistorySubCard title="Medical History" actions={<AddBtn onClick={NOOP} />} footer={unsyncedFooter(medical)}>
+        <HistorySubCard title="Medical History" actions={<AddBtn onClick={() => setMedicalOpen(true)} disabled={!patientId} />} footer={unsyncedFooter(medical)}>
           <HistoryEntries
             entries={medical}
             loading={loading}
@@ -741,12 +753,13 @@ function HistorySection({ patientId, history, loading }) {
             <>
               <ActionButton icon="solar:sort-linear" size="S" tooltip="Sort" />
               <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+              <AddBtn onClick={() => setFamilyOpen(true)} disabled={!patientId} />
             </>
           }
           footer={unsyncedFooter(family)}
         >
           <HistoryEntries
-            entries={family}
+            entries={familyGroups}
             loading={loading}
             emptyIcon="custom:family-history"
             emptyLabel="No Family History"
@@ -777,6 +790,12 @@ function HistorySection({ patientId, history, loading }) {
         </HistorySubCard>
       </div>
       </CollapseWrapper>
+      {familyOpen && (
+        <AddFamilyHistoryDrawer patientId={patientId} onClose={() => setFamilyOpen(false)} />
+      )}
+      {medicalOpen && (
+        <AddMedicalHistoryDrawer patientId={patientId} onClose={() => setMedicalOpen(false)} />
+      )}
       {surgicalOpen && (
         <AddSurgicalHistoryDrawer patientId={patientId} onClose={() => setSurgicalOpen(false)} />
       )}

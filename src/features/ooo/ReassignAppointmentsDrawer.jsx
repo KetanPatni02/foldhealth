@@ -15,7 +15,7 @@ import { ReassignPlanner } from './ReassignPlanner';
 import { useReassignHistory } from './ReassignHistory';
 import { reassignWindow, scopeAppointments, tallyPlan } from './reassignUtils';
 import { toast } from '../../components/Toast/sonnerToast';
-import { canEdit, describeRange, OOO_ICON, oooStatus, recordsFor, sortRecords, STATUS_TONE } from './oooUtils';
+import { canEdit, describeRange, OOO_ICON, oooStatus, peopleOptions, personKey, personOf, recordsFor, samePerson, sortRecords, STATUS_TONE } from './oooUtils';
 import styles from './ooo.module.css';
 
 const TABS = [
@@ -32,28 +32,34 @@ const TABS = [
  * past jobs.
  *
  * @param {object}   props
- * @param {{ name: string }[]} props.users
- * @param {string}   [props.initialUser]   – Preselected "Reassign From"
+ * @param {{ id: string, name: string }[]} props.users
+ * @param {object|string} [props.initialUser] – Preselected "Reassign From": { id, name } (a name for older data)
  * @param {string}   [props.initialRecordId] – Preselected period (else the provider's latest)
- * @param {function} props.onNewOoo        – (userName) => void, "+ New Out of Office"
+ * @param {function} props.onNewOoo        – (person) => void, "+ New Out of Office"
  * @param {function} props.onClose
  */
 export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId, onNewOoo, onClose }) {
   const oooRecords = useAppStore(s => s.oooRecords);
   const [tab, setTab] = useState('reassign');
   const history = useReassignHistory();
-  // The preselected provider is always in the list, even before everyone
-  // has loaded, so Reassign From never shows blank.
-  const fromOptions = useMemo(() => {
-    const names = (users || []).map(u => u.name);
-    if (initialUser && !names.includes(initialUser)) names.unshift(initialUser);
-    return names.map(n => ({ value: n, label: n }));
+  // Reassign From holds a person's key (their id). The preselected provider
+  // is always in the list, even before everyone has loaded, so it never
+  // shows blank.
+  const people = useMemo(() => {
+    const list = users || [];
+    const pre = initialUser ? (list.find(u => samePerson(u, initialUser)) || personOf(initialUser)) : null;
+    return pre && !list.some(u => personKey(u) === personKey(pre)) ? [pre, ...list] : list;
   }, [users, initialUser]);
-  const [from, setFrom] = useState(initialUser || '');
+  const fromOptions = useMemo(() => peopleOptions(people), [people]);
+  const [from, setFrom] = useState(() => {
+    const pre = initialUser ? ((users || []).find(u => samePerson(u, initialUser)) || personOf(initialUser)) : null;
+    return pre ? personKey(pre) : '';
+  });
+  const fromPerson = people.find(u => personKey(u) === from) || null;
   const [type, setType] = useState('ooo');
   // Picked by default: the provider's latest period, i.e. the ongoing one,
   // else the next upcoming (the list's own order). Still changeable.
-  const latestFor = (name) => (name ? sortRecords(recordsFor(oooRecords, name).filter(r => canEdit(r)))[0]?.id || '' : '');
+  const latestFor = (who) => (who ? sortRecords(recordsFor(oooRecords, who).filter(r => canEdit(r)))[0]?.id || '' : '');
   const [recordId, setRecordId] = useState(() => initialRecordId || latestFor(initialUser));
   const [range, setRange] = useState({ startAt: null, endAt: null }); // One-time
   const [plan, setPlan] = useState({});
@@ -63,7 +69,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
   const fetchAppointments = useAppStore(s => s.fetchAppointments);
   const fetchPracticeLocations = useAppStore(s => s.fetchPracticeLocations);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
-  const platformUsers = useAppStore(s => s.platformUsers);
+  const platformUsers = useAppStore(s => (s.platformPeople?.length ? s.platformPeople : s.platformUsers));
   const runJob = useAppStore(s => s.runReassignmentJob);
   useEffect(() => {
     fetchAppointments?.();
@@ -77,7 +83,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
     () => (from ? reassignWindow({ type, record, startAt: range.startAt, endAt: range.endAt }) : null),
     [from, type, record, range.startAt, range.endAt],
   );
-  const scope = useMemo(() => scopeAppointments(appointments, from, timeWindow), [appointments, from, timeWindow]);
+  const scope = useMemo(() => scopeAppointments(appointments, fromPerson, timeWindow), [appointments, fromPerson, timeWindow]);
   // A different provider, type or window is a different plan.
   const scopeKey = `${from}|${type}|${timeWindow?.from}|${timeWindow?.to}`;
   const [planKey, setPlanKey] = useState(scopeKey);
@@ -88,16 +94,16 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
   const confirm = async () => {
     if (!planned || running) return;
     setRunning(true);
-    const fromRole = (platformUsers || []).find(u => u.name === from)?.clinicalRoles?.[0] || null;
+    const fromRole = (platformUsers || []).find(u => samePerson(u, fromPerson))?.clinicalRoles?.[0] || null;
     // The job runs in the background; its summary comes as a notification.
     toast.success('Reassignment Started. You\'ll Get a Notification with the Summary.');
     onClose();
-    await runJob({ fromUser: from, fromUserRole: fromRole, type, window: timeWindow, oooRecordId: type === 'ooo' ? recordId : null, plan, appointments: scope });
+    await runJob({ fromUser: fromPerson.name, fromUserId: fromPerson.id, fromUserRole: fromRole, type, window: timeWindow, oooRecordId: type === 'ooo' ? recordId : null, plan, appointments: scope });
   };
 
   // The provider's current and upcoming records; past ones have nothing
   // left to reassign.
-  const recordOptions = useMemo(() => sortRecords(recordsFor(oooRecords, from).filter(r => canEdit(r)))
+  const recordOptions = useMemo(() => sortRecords(recordsFor(oooRecords, fromPerson).filter(r => canEdit(r)))
     .map((r) => {
       const status = oooStatus(r);
       const { span, length } = describeRange(r.startAt, r.endAt);
@@ -119,7 +125,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
         searchText: span,
       };
     }),
-  [oooRecords, from]);
+  [oooRecords, fromPerson]);
 
   const headerRight = (
     <>
@@ -151,7 +157,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
             placeholder="Select a provider"
             options={fromOptions}
             value={from || undefined}
-            onChange={(name) => { setFrom(name); setRecordId(latestFor(name)); }}
+            onChange={(key) => { setFrom(key); setRecordId(latestFor(people.find(u => personKey(u) === key))); }}
           />
 
           <ReassignmentType
@@ -180,8 +186,8 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
                             className={styles.newRecordLink}
                             role="button"
                             tabIndex={0}
-                            onClick={() => onNewOoo(from)}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNewOoo(from); } }}
+                            onClick={() => onNewOoo(fromPerson)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNewOoo(fromPerson); } }}
                           >
                             <AddIconMinimalist size={12} color="currentColor" />
                             Add New
@@ -196,8 +202,8 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
                     className={styles.newRecordLink}
                     role="button"
                     tabIndex={0}
-                    onClick={() => onNewOoo(from)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNewOoo(from); } }}
+                    onClick={() => onNewOoo(fromPerson)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onNewOoo(fromPerson); } }}
                   >
                     <AddIconMinimalist size={12} color="currentColor" />
                     New Out of Office
@@ -210,7 +216,7 @@ export function ReassignAppointmentsDrawer({ users, initialUser, initialRecordId
           {/* Nothing to list until we know whose appointments, and for
               out of office, which record's dates; for one-time, which dates. */}
           {from && timeWindow
-            ? <ReassignPlanner key={scopeKey} appointments={scope} awayUser={from} timeWindow={timeWindow} plan={plan} onPlan={setPlan} />
+            ? <ReassignPlanner key={scopeKey} appointments={scope} awayUser={fromPerson} timeWindow={timeWindow} plan={plan} onPlan={setPlan} />
             : <ReassignProviders hasProvider={!!from} />}
         </div>
       )}
