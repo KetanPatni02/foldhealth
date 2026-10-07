@@ -181,7 +181,6 @@ export function CcmTimerWidget({ patient }) {
 
   const startedAtRef = useRef(null);
   const accumulatedRef = useRef(0);
-  const rafRef = useRef(null);
   const loggedTimeoutRef = useRef(null);
   const autoStartedForRef = useRef(null);
   const barRef = useRef(null);
@@ -226,25 +225,32 @@ export function CcmTimerWidget({ patient }) {
     setSessionId(newSessionId());
   }
 
-  const tick = useCallback(() => {
-    if (startedAtRef.current == null) return;
-    const now = performance.now();
-    setElapsed(Math.floor((accumulatedRef.current + (now - startedAtRef.current)) / 1000));
-    rafRef.current = requestAnimationFrame(tick);
-  }, []);
-
+  // startTick / stopTick only do the time maths (when this run started, and
+  // what earlier runs added up to). The display ticks from the effect below,
+  // which follows `mode`, so a remount can never leave a running timer frozen.
   const stopTick = useCallback(() => {
     if (startedAtRef.current != null) {
       accumulatedRef.current += performance.now() - startedAtRef.current;
       startedAtRef.current = null;
     }
-    cancelAnimationFrame(rafRef.current);
   }, []);
 
   const startTick = useCallback(() => {
-    startedAtRef.current = performance.now();
-    rafRef.current = requestAnimationFrame(tick);
-  }, [tick]);
+    if (startedAtRef.current == null) startedAtRef.current = performance.now();
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'running') return undefined;
+    let frame;
+    const loop = () => {
+      if (startedAtRef.current != null) {
+        setElapsed(Math.floor((accumulatedRef.current + (performance.now() - startedAtRef.current)) / 1000));
+      }
+      frame = requestAnimationFrame(loop);
+    };
+    frame = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(frame);
+  }, [mode]);
 
   const restartTimer = useCallback(() => {
     stopTick();
@@ -313,9 +319,9 @@ export function CcmTimerWidget({ patient }) {
         parkedTimers.delete(pid);
         return;
       }
-      // Snapshot only. Opening the next patient stops this clock (and the
-      // unmount cleanup cancels its frame); stopping it here would freeze a
-      // timer that React remounts in place (StrictMode).
+      // Snapshot only. Opening the next patient restarts the clock's maths;
+      // stopping it here would freeze a timer that React remounts in place
+      // (StrictMode).
       const running = startedAtRef.current != null;
       const ms = accumulatedRef.current + (running ? performance.now() - startedAtRef.current : 0);
       parkedTimers.set(pid, {
@@ -352,10 +358,7 @@ export function CcmTimerWidget({ patient }) {
     return () => document.removeEventListener('visibilitychange', onVisibility);
   }, [startTick, stopTick]);
 
-  useEffect(() => () => {
-    cancelAnimationFrame(rafRef.current);
-    clearTimeout(loggedTimeoutRef.current);
-  }, []);
+  useEffect(() => () => clearTimeout(loggedTimeoutRef.current), []);
 
   // ── Actions ──────────────────────────────────────────────────────────
   const start = () => { startTick(); setMode('running'); };
