@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../../components/Button/Button';
 import { ActionButton } from '../../../components/ActionButton/ActionButton';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
@@ -88,6 +88,15 @@ export function CisImmunizationsTab({ member, gap, immunizations, savedNotes, lo
   const [searchOpen, setSearchOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState([]);
+  // Dose picked from the progress bar: scrolled to and flashed for 2s.
+  const [focusDose, setFocusDose] = useState(null);
+  useEffect(() => {
+    if (!focusDose) return undefined;
+    const el = document.getElementById(`cis-dose-${focusDose.key}-${focusDose.number}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const t = setTimeout(() => setFocusDose(null), 2000);
+    return () => clearTimeout(t);
+  }, [focusDose]);
   if (loading) return <CardSkeleton />;
 
   const isOpen = (a) => toggled[a.key] ?? NEEDS_ACTION.includes(a.status);
@@ -97,6 +106,16 @@ export function CisImmunizationsTab({ member, gap, immunizations, savedNotes, lo
   const setAllOpen = (open) => {
     setToggled(Object.fromEntries(result.antigens.map(a => [a.key, open])));
     if (open) setClosedGroups({});
+  };
+  // Open the dose's vaccine (and group), clear anything hiding it, then
+  // let the effect above scroll to and highlight the row.
+  const goToDose = (a, r) => {
+    const group = GROUPS.find(g => g.statuses.includes(a.status));
+    if (group) setClosedGroups(g => ({ ...g, [group.key]: false }));
+    setToggled(t => ({ ...t, [a.key]: true }));
+    setSearch('');
+    setStatusFilter([]);
+    setFocusDose({ key: a.key, number: r.number, at: Date.now() });
   };
   const query = search.trim().toLowerCase();
   const visible = (a) => (!query || `${a.label} ${a.name}`.toLowerCase().includes(query))
@@ -221,7 +240,7 @@ export function CisImmunizationsTab({ member, gap, immunizations, savedNotes, lo
               <span className={styles.factDivider} aria-hidden="true" />
               <CisStatusBadge map={EVALUATION_BADGE} status={result.evaluation} />
             </div>
-            <DoseBlocks result={result} />
+            <DoseBlocks result={result} onSelect={goToDose} />
           </div>
         )}
       </section>
@@ -229,7 +248,9 @@ export function CisImmunizationsTab({ member, gap, immunizations, savedNotes, lo
       {/* Recommended action sits on its own, between the summary and the list. */}
       {action && (
         <div className={[styles.action, action.done ? styles.actionDone : ''].join(' ')}>
-          <Icon name={action.done ? 'solar:check-circle-linear' : 'solar:lightbulb-bolt-linear'} size={18} color="currentColor" />
+          <span className={`${styles.actionIcon} ${action.done ? styles.actionIconDone : ''}`} aria-hidden="true">
+            <Icon name={action.done ? 'solar:check-circle-linear' : 'solar:lightbulb-bolt-linear'} size={16} color="var(--neutral-0)" />
+          </span>
           <div className={styles.actionText}>
             <span className={styles.actionLabel}>Recommended Action</span>
             <span>{action.text}</span>
@@ -285,6 +306,7 @@ export function CisImmunizationsTab({ member, gap, immunizations, savedNotes, lo
                     onDateChange={changeDate}
                     onNoteSave={saveNote}
                     dob={result.dob}
+                    focusNumber={focusDose?.key === a.key ? focusDose.number : null}
                   />
                 ))}
                 </div>
@@ -382,13 +404,13 @@ const isLocked = (r) => r.kind === 'planned' && r.nextDue && r.nextDue > new Dat
 // Timeline position: when it was given, else when its window opens.
 const blockDate = (r) => r.record?.date ?? r.nextDue ?? r.start;
 
-function DoseBlocks({ result }) {
+function DoseBlocks({ result, onSelect }) {
   const blocks = result.antigens
     .flatMap(a => a.rows.filter(r => !r.extra).slice(0, a.required).map(r => ({ a, r })))
     .sort((x, y) => blockDate(x.r) - blockDate(y.r));
   return (
     <div className={styles.blocksWrap}>
-      <div className={styles.blocks} role="list" aria-label={`${result.doses.completed} of ${result.doses.total} doses complete`}>
+      <div className={styles.blocks} role="group" aria-label={`${result.doses.completed} of ${result.doses.total} doses complete`}>
         {blocks.map(({ a, r }, i) => (
           <Tooltip
             key={`${a.key}-${r.number}`}
@@ -401,9 +423,11 @@ function DoseBlocks({ result }) {
             className={styles.blockTip}
           >
             <span
-              role="listitem"
+              role="button"
               tabIndex={0}
-              aria-label={`${a.label} dose ${r.number}: ${isLocked(r) ? `opens ${fmtDate(r.nextDue)}` : r.status}`}
+              aria-label={`${a.label} dose ${r.number}: ${isLocked(r) ? `opens ${fmtDate(r.nextDue)}` : r.status}. Go to dose`}
+              onClick={() => onSelect(a, r)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(a, r); } }}
               className={`${styles.block} ${styles[BLOCK_CLASS[r.status]] || ''}`}
             >
               {isLocked(r) && <Icon name="solar:lock-keyhole-minimalistic-linear" size={10} color="var(--placeholder-text)" />}
@@ -470,7 +494,7 @@ function DoseList({ antigen }) {
 // Collapsed: name, dose dots, next step, status. Expanded: one row per
 // dose with its recommended age, earliest allowed date, an editable given
 // date, status and note (Figma: New Care Gap Workflow, Component 109).
-function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, dob }) {
+function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, dob, focusNumber }) {
   const counted = Math.min(antigen.valid.length, antigen.required);
   const next = antigen.rows.find(r => r.kind === 'planned');
   let when;
@@ -538,6 +562,7 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
               onDateChange={onDateChange}
               onNoteSave={onNoteSave}
               dob={dob}
+              highlight={focusNumber === row.number}
             />
           ))}
         </div>
@@ -546,14 +571,17 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
   );
 }
 
-function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob }) {
+function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [pickerRect, setPickerRect] = useState(null);
   const [draft, setDraft] = useState(note);
   const range = row.recommendedEnd ? `${fmtDate(row.start)} - ${fmtDate(row.recommendedEnd)}` : fmtDate(row.start);
   const notCounted = row.status === CIS_DOSE_STATUS.notCounted;
   return (
-    <div className={notCounted ? styles.doseItemError : undefined}>
+    <div
+      id={`cis-dose-${antigen.key}-${row.number}`}
+      className={[notCounted ? styles.doseItemError : '', highlight ? styles.doseHighlight : ''].filter(Boolean).join(' ') || undefined}
+    >
       <div className={styles.doseRow} role="row">
         <span role="cell" className={styles.doseCol}>
           <span className={styles.doseName}>
