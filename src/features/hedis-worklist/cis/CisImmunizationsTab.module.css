@@ -1,131 +1,604 @@
-/* Care Gap drawer: Immunizations tab (CIS-CMB10). Summary card mirrors the
-   Orders tab (CareGapLabs.module.css) so both evaluations read alike. */
+/* Care Gap drawer: Immunizations tab (CIS-CMB10). Summary card as on the
+   Orders tab (labs/CareGapLabs.module.css), then a flat vaccine accordion
+   (Figma: New Care Gap Workflow, Component 109). */
 .tab {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-/* ── Gap summary ── */
-.summary,
-.tracker {
+.summary {
   display: flex;
   flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border: 0.5px solid var(--neutral-150);
   border-radius: 8px;
   background: var(--neutral-0);
 }
-.summary {
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-}
-.summaryHead {
+
+/* ── Summary ── */
+
+/* Dose progress (HRCM "Tier History" card, Figma 1:44829): title + facts,
+   a 16px block per required dose (hovered block grows to 24px with a
+   detail card), and a small legend. Status colours stay the CIS ones. */
+.doseProgress {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
+  flex-direction: column;
+  gap: var(--space-2);
 }
-.summaryTitleCol {
+.doseProgressHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.doseProgressTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-300);
+}
+.doseFact {
+  font-size: var(--font-sm);
+  color: var(--placeholder-text);
+  white-space: nowrap;
+}
+.doseFact b {
+  font-weight: 400;
+  color: var(--neutral-400);
+}
+.factDivider {
+  align-self: stretch;
+  width: 0.5px;
+  min-height: 16px;
+  background: var(--neutral-150);
+}
+.blocksWrap {
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-1) / 2);
+}
+.blocks {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  height: 24px;
+}
+.blockTip {
+  flex: 1;
+  display: flex;
   min-width: 0;
 }
-.eyebrow {
+.block {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--neutral-75);
+  transition: height 120ms ease-out, box-shadow 120ms ease-out;
+  cursor: pointer;
+}
+.block:hover,
+.block:focus-visible {
+  height: 24px;
+  box-shadow: var(--shadow-card);
+  outline: none;
+}
+/* Base swatch before the status colours so they win (same specificity). */
+.swatch {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--neutral-75);
+}
+.blockDone { background: var(--status-success); }
+.blockDue { background: var(--status-warning); }
+.blockLate { background: var(--status-error); }
+.legend {
+  display: flex;
+  gap: var(--space-3);
+}
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-xs);
+  color: var(--placeholder-text);
+}
+.blockCard {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  text-align: left;
+}
+.blockCardTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.blockCardStatus {
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
-.summaryTitle {
-  font-size: var(--font-lg);
-  font-weight: 500;
-  color: var(--neutral-500);
+.blockCardWhen {
+  font-size: var(--font-sm);
+  color: var(--placeholder-text);
 }
+
 .reason {
   margin: 0;
   font-size: var(--font-base);
   color: var(--neutral-400);
 }
-.facts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+
+/* Recommended action: the one obvious next step (as on the Orders tab). */
+.action {
+  display: flex;
+  align-items: center;
   gap: var(--space-3);
-  margin: 0;
+  padding: calc(1.5 * var(--space-1)) var(--space-3);
+  border: none;
+  border-radius: 8px;
+  /* Soft Unity gradient (12% tints) so the text stays readable. */
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--unity-gradient-from) 12%, var(--neutral-0)) 0%,
+    color-mix(in srgb, var(--unity-gradient-mid) 12%, var(--neutral-0)) 51%,
+    color-mix(in srgb, var(--unity-gradient-to) 12%, var(--neutral-0)) 96%
+  );
+  color: var(--primary-300);
 }
-.facts div {
+/* 3D icon tile: Unity gradient lit from the top-left, a glossy top
+   highlight, a darker lower edge and a soft tinted drop shadow. */
+.actionIcon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(
+    135deg,
+    var(--unity-gradient-from) 0%,
+    var(--unity-gradient-mid) 55%,
+    var(--unity-gradient-to) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-0) 55%, transparent),
+    inset 0 -2px 3px color-mix(in srgb, var(--neutral-500) 22%, transparent),
+    0 3px 6px color-mix(in srgb, var(--unity-gradient-mid) 35%, transparent);
+}
+.actionIcon::before {
+  content: '';
+  position: absolute;
+  inset: 2px 3px 50%;
+  border-radius: 6px 6px 10px 10px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--neutral-0) 45%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+.actionIcon :global(svg) {
+  position: relative;
+  filter: drop-shadow(0 1px 1px color-mix(in srgb, var(--neutral-500) 35%, transparent));
+}
+.actionIconDone {
+  background: linear-gradient(135deg, var(--status-success) 0%, color-mix(in srgb, var(--status-success) 70%, var(--neutral-500)) 100%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--neutral-0) 55%, transparent),
+    inset 0 -2px 3px color-mix(in srgb, var(--neutral-500) 22%, transparent),
+    0 3px 6px color-mix(in srgb, var(--status-success) 35%, transparent);
+}
+.actionDone {
+  background: var(--status-success-light);
+  color: var(--status-success);
+}
+.actionText {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: calc(var(--space-1) / 2);
-  min-width: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
 }
-.facts dt {
+.actionLabel {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+/* ── Vaccines card ── */
+.cardTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.cardMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.vaccines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+/* Figma "Card Header": title + collapse chevron, no fill. */
+/* Group title line; the first one also carries the list toolbar. */
+.groupLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.listToolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.calendarLink {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
   font-size: var(--font-sm);
+  white-space: nowrap;
+}
+.listSearch {
+  width: 180px;
+}
+.toolbarDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+.listFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) 0 var(--space-2);
+}
+.clearAll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.clearAll:hover {
+  color: var(--neutral-400);
+}
+.notEligible {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+.groupHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  padding: calc(1.5 * var(--space-1)) var(--space-1);
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  cursor: pointer;
+}
+.groupHeader:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.groupBody {
+  display: flex;
+  flex-direction: column;
+  border-top: 0.5px solid var(--neutral-150);
+}
+
+.vaccine {
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+/* Columns shared by the header row and every vaccine row (Figma: flex,
+   120, 184, 120); fixed widths keep separate row grids aligned. */
+.vaccineRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 184px 120px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: var(--neutral-0);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.vaccineRow > :nth-child(1) { padding: var(--space-2) var(--space-3) var(--space-2) calc(1.5 * var(--space-1)); }
+.vaccineRow > :nth-child(2) { padding: var(--space-2); }
+.vaccineRow > :nth-child(3),
+.vaccineRow > :nth-child(4) { padding: var(--space-2) var(--space-3); }
+.vaccineRow:hover {
+  background: var(--neutral-50);
+}
+.vaccineRow:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: -2px;
+}
+.colHead {
+  min-height: 24px;
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+  cursor: default;
+}
+.colHead:hover {
+  background: var(--neutral-0);
+}
+.vaccineRow.colHead > * {
+  padding-block: 0;
+  white-space: nowrap;
+}
+.vaccineRow.colHead > :nth-child(1) { padding-left: var(--space-3); }
+.vaccineRow.colHead > :nth-child(2) { padding-inline: calc(2.25 * var(--space-1)); }
+.vaccineName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.statusCell {
+  display: flex;
+  align-items: center;
+}
+.chevronClosed {
+  transform: rotate(-90deg);
+}
+.vaccineLabel {
+  font-size: var(--font-base);
+  font-weight: 400;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}
+.progressCell {
+  display: flex;
+  align-items: center;
+}
+/* Dose list in the progress cell's hover card. */
+.doseList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 240px;
+}
+.doseListTitle {
+  padding-bottom: var(--space-1);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.doseListRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-sm);
+}
+.doseListDose {
+  color: var(--neutral-400);
+}
+.doseListDate {
+  color: var(--neutral-500);
+}
+.progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Dose block (expanded vaccine) ── */
+.doseTable {
+  display: flex;
+  flex-direction: column;
+  border-left: 2px solid var(--primary-300);
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--primary-25);
+}
+.doseRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 120px 120px 50px;
+  align-items: center;
+  min-height: 51px;
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.doseRow > * { padding: var(--space-2); }
+.doseRow > :nth-child(1) { padding-inline: var(--space-3); }
+.doseRow > :nth-child(5) { padding-inline: var(--space-3); }
+/* 4px more air between Given Date and Status (header + rows alike). */
+.doseRow > :nth-child(4) { padding-left: var(--space-3); }
+.doseHead {
+  min-height: 0;
+  background: var(--neutral-50);
+  border-bottom-color: var(--neutral-150);
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--placeholder-text);
+}
+.doseRow.doseHead > * {
+  padding-block: calc(1.5 * var(--space-1));
+  white-space: nowrap;
+}
+.noteHead {
+  justify-self: start;
+}
+.doseCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.doseName {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.doseAge {
   color: var(--neutral-300);
 }
-.facts dd {
-  margin: 0;
-  font-size: var(--font-base);
-  color: var(--neutral-500);
-  overflow-wrap: anywhere;
+/* A dose that does not count: red edge over the block's purple one, and
+   an inline error InfoBar with the reason under the row. */
+/* Dose picked from the progress bar: primary wash that fades out. */
+.doseHighlight {
+  animation: doseFlash 2s ease-out;
 }
-.note {
+@keyframes doseFlash {
+  0%, 60% { background: var(--primary-100); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .doseHighlight { animation: none; background: var(--primary-100); }
+}
+.doseItemError {
+  margin-left: calc(-0.5 * var(--space-1));
+  border-left: 2px solid var(--status-error);
+}
+.doseItemError .doseRow {
+  border-bottom: none;
+}
+.doseError {
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+/* Edge-to-edge reason bar: no stroke or radius, error-50 on the left
+   fading out to the right. Keeps the row's 12px inset for the icon. */
+.doseError .doseErrorBar {
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(90deg, var(--status-error-light) 0%, transparent 100%);
+}
+.doseRange {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.doseValue {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.dateCell {
+  min-width: 0;
+}
+/* Given date: a white Badge (Figma) that opens the date picker. */
+.dateTrigger {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.dateTrigger:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+}
+.dateLocked {
+  display: inline-flex;
+  cursor: not-allowed;
+}
+.dateTrigger .datePlaceholder {
+  color: var(--neutral-300);
+}
+/* Picker footer: the popover's slot bleeds to the card edges, so inset
+   it back to the month grid and divide it like the range picker's footer. */
+.pickerFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border-top: 0.5px solid var(--neutral-100);
+}
+.noteCol {
+  justify-self: start;
+}
+.noteEditor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.noteEditor > :first-child {
+  flex: 1;
+}
+
+.pips {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+.pip {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--neutral-200);
+  box-sizing: border-box;
+}
+.pipDone {
+  border-color: var(--status-success);
+  background: var(--status-success);
+}
+.pipNext {
+  border-color: var(--neutral-150);
+  background: var(--neutral-150);
+}
+.pipDue {
+  border-color: var(--status-warning);
+  background: transparent;
+}
+.pipLate {
+  border-color: var(--status-error);
+  background: transparent;
+}
+.progressText {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.when {
+  min-width: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.empty {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   margin: 0;
   font-size: var(--font-sm);
   color: var(--neutral-300);
-}
-
-/* ── Vaccine tracker ── */
-.row {
-  display: grid;
-  grid-template-columns: minmax(0, 2.2fr) minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(0, 1.2fr);
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  border-top: 0.5px solid var(--neutral-150);
-  font-size: var(--font-base);
-  color: var(--neutral-400);
-}
-.headRow {
-  border-top: none;
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-}
-.vaccineCol {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-1) / 2);
-  min-width: 0;
-}
-.vaccineLabel {
-  font-weight: 500;
-  color: var(--neutral-500);
-}
-.vaccineName {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-}
-.doseDates {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  font-size: var(--font-xs);
-  color: var(--neutral-300);
-}
-.invalidDose {
-  text-decoration: line-through;
-  color: var(--status-error);
-  cursor: help;
-}
-.doses {
-  font-variant-numeric: tabular-nums;
-  color: var(--neutral-500);
-}
-.nextDue {
-  font-size: var(--font-sm);
-  color: var(--neutral-400);
 }

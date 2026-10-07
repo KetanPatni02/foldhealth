@@ -129,6 +129,11 @@
   /* AI gradient — the teal→violet ramp used by AIIcon and "Write with AI". */
   --ai-gradient-from:    #1E9DAE;
   --ai-gradient-to:      #D478FF;
+  /* Unity gradient — the coral→pink→blue brand ramp on Unity surfaces
+     (e.g. the Unity name in Patient Synopsis). */
+  --unity-gradient-from: #FF907F;
+  --unity-gradient-mid:  #FF57CD;
+  --unity-gradient-to:   #68A7FF;
   --accent-cyan:         #109CAE;
   --accent-blue:         #2196F3;
   --accent-persian-blue: #5800FF;

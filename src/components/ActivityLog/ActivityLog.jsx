@@ -78,6 +78,7 @@ const TYPE_ICON = {
   appointment:     { icon: 'solar:calendar-linear',         color: 'var(--primary-300)',    bg: 'var(--primary-50)',           border: 'rgba(107,68,168,0.2)' },
   referral:        { icon: 'solar:square-share-line-linear', tileClass: 'referralTile' },
   lab:             { icon: 'solar:test-tube-linear' },
+  immunization:    { icon: 'solar:syringe-linear' },
 };
 const DEFAULT_ICON = { icon: 'solar:document-text-linear', color: 'var(--neutral-300)', bg: 'var(--neutral-0)', border: 'var(--neutral-150)' };
 

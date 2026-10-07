@@ -37,6 +37,21 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **CIS-CMB10 immunization tracker (phase 2).** The Immunizations tab (first
+  tab on CIS gaps) now records doses inline. A dose-progress card shows one
+  block per required dose as a timeline (given, due now, overdue / does not
+  count, upcoming; doses whose window has not opened carry a lock), with
+  start / end dates and the evaluation; a Recommended Action follows. Vaccines
+  are grouped (Action Needed, Upcoming, Later, Met) with search, a status
+  filter and Expand all; expanding a vaccine lists its doses with recommended
+  age, earliest allowed date, a date badge that opens the picker (locked until
+  the window opens), status and a note. A dose that does not count (same day,
+  too early, after the 2nd birthday) keeps its slot and shows the reason.
+  Given dates save to `patient_immunizations`, notes to the new
+  `cis_dose_notes` table (`supabase/cis_dose_notes_migration.sql`), and each
+  change logs an activity entry. The Vaccine Calendar dialog offers the same
+  edits in one table. `Input` gains a `variant="quiet"`.
+
 - **CIS-CMB10 immunization tracker (phase 1).** The HEDIS Care Gap drawer
   shows an Immunizations tab on Childhood Immunization Status (Combination 10)
   gaps. It evaluates the ten vaccines (DTaP, IPV, MMR, HiB, Hep B, VZV, PCV,

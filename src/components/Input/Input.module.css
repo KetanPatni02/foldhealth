@@ -291,3 +291,11 @@
   line-height: 1.2;
   color: var(--status-error);
 }
+
+/* variant="quiet": reads as plain text in dense tables (inline-editable
+   cells) and shows the field chrome only on hover / focus. */
+.inputQuiet:not(:hover):not(:focus),
+.shellQuiet:not(:hover):not(:focus-within) {
+  border-color: transparent;
+  background: transparent;
+}
