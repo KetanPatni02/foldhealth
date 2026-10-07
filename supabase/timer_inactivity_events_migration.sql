@@ -9,7 +9,7 @@
 -- session_id groups the reminders of one timer session (start to log or
 -- reset); threshold_seconds is the inactivity threshold in effect then.
 --
--- Read with the anon key, so the table needs a permissive policy.
+-- Shared by every signed-in user; anon gets no access.
 
 CREATE TABLE IF NOT EXISTS public.timer_inactivity_events (
   id                 text PRIMARY KEY,
@@ -35,4 +35,4 @@ ALTER TABLE public.timer_inactivity_events ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow all on timer_inactivity_events" ON public.timer_inactivity_events;
 CREATE POLICY "Allow all on timer_inactivity_events" ON public.timer_inactivity_events
-  FOR ALL USING (true) WITH CHECK (true);
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
