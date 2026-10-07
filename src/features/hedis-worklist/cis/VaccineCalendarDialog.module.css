@@ -1,0 +1,246 @@
+/* Vaccine Calendar dialog (CIS-CMB10). Wide modal over the Care Gap
+   drawer: header, summary strip, dose table, Cancel / Save footer.
+   Doubled selector so it wins over the dialog shell's 420px default. */
+.content.content {
+  max-width: 1120px;
+  width: calc(100% - var(--space-8));
+  height: calc(100vh - var(--space-8));
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Focus moves into the table, not onto the dialog frame. */
+.content.content:focus {
+  outline: none;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.titleCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.title {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.subtitle {
+  margin: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.lastSaved {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+.lastSaved strong {
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+.headerDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+
+/* ── Body ── */
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+}
+.tableWrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+  text-align: left;
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-100);
+  vertical-align: top;
+}
+
+.table tr.groupStart td {
+  border-top: 0.5px solid var(--neutral-150);
+}
+.table tbody tr:first-child td {
+  border-top: none;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.toolbarCount {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.combo {
+  display: block;
+  margin-top: calc(var(--space-1) / 2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: help;
+}
+.thHint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.colVaccine { width: 12%; }
+.colDose { width: 8%; }
+.colRecommended { width: 17%; }
+.colEarliest { width: 13%; }
+.colDate { width: 18%; }
+.colStatus { width: 12%; }
+.colNotes { width: auto; }
+
+.vaccineCell {
+  border-right: 0.5px solid var(--neutral-100);
+  background: var(--neutral-0);
+}
+.vaccineName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-warning);
+  flex-shrink: 0;
+}
+.vaccineMeta {
+  display: block;
+  margin-top: calc(var(--space-1) / 2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.doseCell {
+  font-weight: 500;
+  color: var(--neutral-500);
+  white-space: nowrap;
+  box-shadow: inset 3px 0 0 transparent;
+}
+.accentWarning { box-shadow: inset 3px 0 0 var(--status-warning); }
+.accentError { box-shadow: inset 3px 0 0 var(--status-error); }
+
+.primary {
+  display: block;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+.subtle {
+  display: block;
+  margin-top: calc(var(--space-1) / 2);
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+.reasonText {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--font-sm);
+  color: var(--status-error);
+}
+.editDate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  /* Quiet inputs carry 8px of inner padding; pull them back so their text
+     lines up with the plain text in the other columns. */
+  margin-left: calc(-1 * var(--space-2));
+  /* …and up, so the 32px field's text sits on the row's first line. */
+  margin-block: calc(-1.5 * var(--space-1));
+}
+.noteCell > input {
+  margin-left: calc(-1 * var(--space-2));
+  margin-block: calc(-1.5 * var(--space-1));
+  width: calc(100% + var(--space-2));
+}
+/* Remove-dose icon only shows on the row being worked on. */
+.removeBtn {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.table tr:hover .removeBtn,
+.removeBtn:focus-within {
+  opacity: 1;
+}
+.empty {
+  margin: 0;
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+/* ── Footer ── */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-6);
+  border-top: 0.5px solid var(--neutral-150);
+}
+.unsaved {
+  margin-right: auto;
+  font-size: var(--font-sm);
+  color: var(--status-warning);
+}

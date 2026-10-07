@@ -440,9 +440,14 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const immunizations = useAppStore(s => s.patientImmunizations[member?.id]);
   const immunizationsLoaded = useAppStore(s => !!s.patientImmunizationsLoadedFor[member?.id]);
   const fetchPatientImmunizations = useAppStore(s => s.fetchPatientImmunizations);
+  const cisDoseNotes = useAppStore(s => s.cisDoseNotes[member?.id]);
+  const fetchCisDoseNotes = useAppStore(s => s.fetchCisDoseNotes);
+  const saveCisTracker = useAppStore(s => s.saveCisTracker);
   useEffect(() => {
-    if (isCis && member?.id) fetchPatientImmunizations(member.id);
-  }, [isCis, member?.id, fetchPatientImmunizations]);
+    if (!isCis || !member?.id) return;
+    fetchPatientImmunizations(member.id);
+    fetchCisDoseNotes(member.id);
+  }, [isCis, member?.id, fetchPatientImmunizations, fetchCisDoseNotes]);
   const [labForm, setLabForm] = useState(null);
   const [labOrderId, setLabOrderId] = useState(null);
   const [labResultId, setLabResultId] = useState(null);
@@ -505,7 +510,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     else showToast(`${a.label} — coming soon`);
   };
 
-  const [activeTab, setActiveTab] = useState('Activity Log');
+  // A CIS-CMB10 gap opens on its Immunizations tab (the first tab there).
+  const [activeTab, setActiveTab] = useState(gapCode === CIS_CODE ? 'Immunizations' : 'Activity Log');
   const [showClinicalNote, setShowClinicalNote] = useState(false);
   // Single-slot left workspace — only one workspace mounts at a time
   // ('task' | 'schedule' | null). Sharing the slot means widening the
@@ -1130,8 +1136,14 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       || (member?.name && t.member === member.name),
   );
   const openTaskDetail = (task) => handleOpenTaskInPlace(task);
+  // Newest tracker save, for the Immunizations tab's "Last Saved".
+  const cisLastSaved = isCis
+    ? (activityEntries || [])
+      .filter(e => e.t === 'immunization')
+      .reduce((latest, e) => (!latest || new Date(e.when ?? e.at) > new Date(latest.when) ? { actor: e.actor, when: e.when ?? e.at } : latest), null)
+    : null;
   const visibleTabs = isCis
-    ? [TABS[0], { key: 'Immunizations', label: 'Immunizations' }, ...TABS.slice(1)]
+    ? [{ key: 'Immunizations', label: 'Immunizations' }, ...TABS]
     : TABS;
   // Prev/next can land on a non-CIS gap while Immunizations is selected.
   const shownTab = !isCis && activeTab === 'Immunizations' ? 'Activity Log' : activeTab;
@@ -1847,10 +1859,13 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
             ) : shownTab === 'Immunizations' ? (
               <CisImmunizationsTab
                 member={member}
+                gap={gap}
                 immunizations={immunizations}
+                savedNotes={cisDoseNotes}
                 loading={!immunizationsLoaded}
                 measurementYear={selectedYear}
-                measureName={`${currentCode} - ${MEASURE_NAMES[currentCode] || currentCode}`}
+                lastSaved={cisLastSaved}
+                onSave={(payload) => saveCisTracker(member.id, payload)}
               />
             ) : shownTab === 'Orders' ? (
               <CareGapLabsTab

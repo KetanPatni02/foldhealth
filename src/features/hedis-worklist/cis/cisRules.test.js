@@ -5,6 +5,7 @@ import {
   ageInMonths,
   CIS_EVALUATION,
   CIS_ANTIGEN_STATUS,
+  CIS_DOSE_STATUS,
 } from './cisRules';
 
 const TODAY = new Date(2026, 9, 6); // Oct 6, 2026
@@ -89,7 +90,7 @@ describe('evaluateCis', () => {
     imms.push(shot('ActHIB', '48', atMonths(dob, 0, 30)), shot('ActHIB', '48', atMonths(dob, 4)), shot('ActHIB', '48', atMonths(dob, 12)));
     const hib = status(evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY }), 'hib');
     expect(hib.valid).toHaveLength(2);
-    expect(hib.invalid[0].reason).toBe('Given before 42 days of age');
+    expect(hib.invalid[0].reason).toMatch(/^Given before 42 days of age \(\d\d\/\d\d\/\d{4}\)$/);
   });
 
   it('only counts MMR, VZV and Hep A between the 1st and 2nd birthday', () => {
@@ -98,7 +99,7 @@ describe('evaluateCis', () => {
     imms.push(shot('MMR', '03', atMonths(dob, 11)));
     const mmr = status(evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY }), 'mmr');
     expect(mmr.valid).toHaveLength(0);
-    expect(mmr.invalid[0].reason).toBe('Given before the 1st birthday');
+    expect(mmr.invalid[0].reason).toBe('Given before the 1st birthday (11/20/2025)');
   });
 
   it('counts two doses on the same day once', () => {
@@ -141,7 +142,8 @@ describe('evaluateCis', () => {
     const r = evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY });
     expect(r.evaluation).toBe(CIS_EVALUATION.onTrack);
     expect(r.reportingYear).toBe(2028);
-    expect(status(r, 'dtap').status).toBe(CIS_ANTIGEN_STATUS.onTrack);
+    // DTaP #3's window (6 months) opens in 4 days.
+    expect(status(r, 'dtap').status).toBe(CIS_ANTIGEN_STATUS.upcoming);
     expect(status(r, 'rv').status).toBe(CIS_ANTIGEN_STATUS.met);
   });
 
@@ -152,5 +154,79 @@ describe('evaluateCis', () => {
 
   it('is Not eligible without a date of birth', () => {
     expect(evaluateCis({ dob: '', immunizations: [], today: TODAY }).evaluation).toBe(CIS_EVALUATION.notEligible);
+  });
+});
+
+describe('dose rows', () => {
+  const dob = new Date(2026, 3, 10); // Apr 10, 2026
+  const infant = () => fullSeries(dob).filter(s => new Date(s.dateAdministered) <= TODAY);
+
+  it('lists given doses, then planned ones, with window and earliest date', () => {
+    const dtap = status(evaluateCis({ dob: fmt(dob), immunizations: infant(), today: TODAY }), 'dtap');
+    expect(dtap.rows.map(r => r.kind)).toEqual(['given', 'given', 'planned', 'planned']);
+    expect(dtap.rows.map(r => r.number)).toEqual([1, 2, 3, 4]);
+    const third = dtap.rows[2];
+    expect(third.recommended).toBe('6 months');
+    expect(fmt(third.start)).toBe('10/10/2026');
+    expect(fmt(third.due)).toBe('11/10/2026');
+    // 28 days after dose 2 (Aug 10) is Sep 7, but ACIP's minimum age for
+    // dose 3 (98 days) is earlier still, so the interval wins.
+    expect(fmt(third.earliest)).toBe('09/07/2026');
+    expect(third.status).toBe(CIS_DOSE_STATUS.upcoming);
+    expect(dtap.rows[3].recommended).toBe('15–18 months');
+  });
+
+  it('keeps a not-counted dose visible with its reason', () => {
+    const imms = [shot('ActHIB', '48', atMonths(dob, 0, 30))];
+    const hib = status(evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY }), 'hib');
+    expect(hib.rows[0]).toMatchObject({ kind: 'given', counts: false, status: CIS_DOSE_STATUS.notCounted });
+    expect(hib.rows[0].reason).toMatch(/^Given before 42 days of age/);
+    // It takes dose 1's slot: the list stays at the series length (3).
+    expect(hib.rows).toHaveLength(3);
+    expect(hib.rows.filter(r => r.kind === 'planned')).toHaveLength(2);
+  });
+
+  it('a dose marked given without a date fills the next slot', () => {
+    const imms = [...infant(), { id: 'draft-1', title: 'DTaP', code: '107', dateAdministered: '', pendingFor: 'dtap' }];
+    const dtap = status(evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY }), 'dtap');
+    expect(dtap.rows.map(r => r.kind)).toEqual(['given', 'given', 'pending', 'planned']);
+    expect(dtap.rows[2].status).toBe(CIS_DOSE_STATUS.pending);
+  });
+
+  it('summarises doses across all ten vaccines', () => {
+    const r = evaluateCis({ dob: fmt(dob), immunizations: infant(), today: TODAY });
+    expect(r.doses.total).toBe(24); // 4+3+1+3+3+1+4+1+2+2 with Rotarix
+    expect(r.doses.completed).toBe(13); // DTaP 2, IPV 2, HiB 2, Hep B 3, PCV 2, RV 2
+    const statusSum = r.doses.dueNow + r.doses.overdue + r.doses.upcoming + r.doses.onTrack + r.doses.cannotMeet;
+    expect(r.doses.completed + statusSum).toBe(r.doses.total);
+  });
+});
+
+describe('does not count', () => {
+  it('a dose after the 2nd birthday takes its slot, names the deadline, and the vaccine cannot be met', () => {
+    const dob = new Date(2024, 2, 31); // 2nd birthday 03/31/2026
+    const imms = [
+      ...fullSeries(dob).filter(s => !(s.title === 'Influenza' && s.dateAdministered === atMonths(dob, 7))),
+      shot('Influenza', '140', '04/25/2026'),
+    ];
+    const flu = status(evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY }), 'flu');
+    expect(flu.rows.map(r => r.kind)).toEqual(['given', 'given']);
+    expect(flu.rows[1]).toMatchObject({ counts: false, status: CIS_DOSE_STATUS.notCounted, reason: 'Given after the 2nd birthday (03/31/2026)' });
+    expect(flu.status).toBe(CIS_ANTIGEN_STATUS.cannotMeet);
+  });
+
+  it('same-day duplicates take their slots instead of adding doses', () => {
+    const dob = new Date(2024, 10, 5);
+    const imms = [
+      shot('PCV20', '216', atMonths(dob, 2)), shot('PCV20', '216', atMonths(dob, 4)),
+      shot('PCV20', '216', '10/06/2026'), shot('PCV', '152', '10/06/2026'), shot('PCV', '152', '10/06/2026'),
+    ];
+    const pcv = status(evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY }), 'pcv');
+    expect(pcv.rows.map(r => r.status)).toEqual([
+      CIS_DOSE_STATUS.completed, CIS_DOSE_STATUS.completed, CIS_DOSE_STATUS.completed,
+      CIS_DOSE_STATUS.notCounted, CIS_DOSE_STATUS.notCounted,
+    ]);
+    expect(pcv.rows.some(r => r.kind === 'planned')).toBe(false);
+    expect(pcv.status).toBe(CIS_ANTIGEN_STATUS.cannotMeet);
   });
 });

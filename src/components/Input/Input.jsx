@@ -73,6 +73,10 @@ const TYPE_DEFAULTS = {
  *                      the cap. Uses `value.length`
  *                      when controlled, otherwise tracks length internally.
  *
+ *   Variant
+ *     - variant        'error' (red chrome) or 'quiet' (no border until
+ *                      hover / focus; for inline-editable table cells).
+ *
  *   Below the field
  *     - helperText     Muted text below the input, hidden while an error shows.
  *     - errorText      Explicit error message. Forces the error state.
@@ -277,6 +281,7 @@ export const Input = forwardRef(function Input(
   if (!needsWrapper) {
     const inputCls = [
       styles.input,
+      variant === 'quiet' && !isError ? styles.inputQuiet : '',
       isError ? styles.inputError : '',
       className || '',
     ].filter(Boolean).join(' ');
@@ -481,6 +486,7 @@ export const Input = forwardRef(function Input(
 
   const shellCls = [
     styles.shell,
+    variant === 'quiet' && !isError ? styles.shellQuiet : '',
     isError ? styles.shellError : '',
     props.disabled ? styles.shellDisabled : '',
     props.readOnly ? styles.shellReadonly : '',

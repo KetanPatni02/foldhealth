@@ -561,6 +561,106 @@ export const useAppStore = create((set, get) => ({
     await get().fetchPatientImmunizations(patientId);
     return true;
   },
+  // ── CIS-CMB10 tracker: per-dose notes (cis_dose_notes) + batch save ──
+  cisDoseNotes: {},          // { [memberId]: { 'dtap:1': { note, updatedByName, updatedAt } } }
+  cisDoseNotesTableMissing: false,
+  fetchCisDoseNotes: async (memberId) => {
+    if (!memberId) return;
+    const { data, error } = await supabase.from('cis_dose_notes')
+      .select('*').eq('hedis_member_id', String(memberId));
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[fetchCisDoseNotes] cis_dose_notes table missing — run supabase/cis_dose_notes_migration.sql');
+        set({ cisDoseNotesTableMissing: true });
+      } else console.warn('fetchCisDoseNotes:', error.message);
+      return;
+    }
+    const byKey = {};
+    for (const r of data || []) {
+      byKey[`${r.antigen_key}:${r.dose_number}`] = { note: r.note || '', updatedByName: r.updated_by_name || '', updatedAt: r.updated_at };
+    }
+    set(s => ({ cisDoseNotes: { ...s.cisDoseNotes, [memberId]: byKey } }));
+  },
+  // One Save from the Immunizations tab. Given doses live in
+  // patient_immunizations (so they show in the patient's PAMI/Hx history);
+  // notes live in cis_dose_notes. `summary` becomes the activity entry.
+  saveCisTracker: async (memberId, { inserts = [], updates = [], deletes = [], notes = [], summary = '' }) => {
+    if (!memberId) return false;
+    const me = get().currentUserProfile;
+    const actor = get().currentActorName();
+    const now = new Date().toISOString();
+    const stamp = Date.now();
+    const ops = [];
+    if (inserts.length) {
+      ops.push(supabase.from('patient_immunizations').insert(inserts.map((d, i) => ({
+        id: `pi-${memberId}-${stamp}-${i}`,
+        patient_id: String(memberId),
+        title: d.title,
+        code: d.code || null,
+        code_system: 'http://hl7.org/fhir/sid/cvx',
+        date_administered: d.dateAdministered,
+        dose_quantity: '',
+        dose_units: '',
+        status: 'Completed',
+        note: '',
+        sort_order: 999,
+      }))));
+    }
+    for (const u of updates) {
+      ops.push(supabase.from('patient_immunizations')
+        .update({ date_administered: u.dateAdministered, updated_at: now }).eq('id', u.id));
+    }
+    if (deletes.length) ops.push(supabase.from('patient_immunizations').delete().in('id', deletes));
+    const results = await Promise.all(ops);
+    const failed = results.find(r => r.error);
+    if (failed) {
+      console.warn('saveCisTracker:', failed.error.message);
+      get().showToast?.('Could not save immunizations');
+      await get().fetchPatientImmunizations(memberId);
+      return false;
+    }
+
+    if (notes.length) {
+      const rows = notes.map(n => ({
+        id: `${memberId}:${n.antigenKey}:${n.doseNumber}`,
+        hedis_member_id: String(memberId),
+        antigen_key: n.antigenKey,
+        dose_number: n.doseNumber,
+        note: n.note,
+        updated_by: me?.id || null,
+        updated_by_name: actor,
+        updated_at: now,
+      }));
+      const { error } = get().cisDoseNotesTableMissing
+        ? { error: { code: 'PGRST205' } }
+        : await supabase.from('cis_dose_notes').upsert(rows, { onConflict: 'id' });
+      if (error && error.code !== '42P01' && error.code !== 'PGRST205') {
+        console.warn('saveCisTracker notes:', error.message);
+        get().showToast?.('Doses saved, but notes could not be saved');
+      }
+      // Session copy either way, so notes survive until the table exists.
+      set(s => {
+        const next = { ...(s.cisDoseNotes[memberId] || {}) };
+        for (const n of notes) next[`${n.antigenKey}:${n.doseNumber}`] = { note: n.note, updatedByName: actor, updatedAt: now };
+        return {
+          cisDoseNotes: { ...s.cisDoseNotes, [memberId]: next },
+          cisDoseNotesTableMissing: s.cisDoseNotesTableMissing || error?.code === '42P01' || error?.code === 'PGRST205',
+        };
+      });
+    }
+
+    await get().fetchPatientImmunizations(memberId);
+    get().logCareGapActivity(memberId, {
+      when: now,
+      actor,
+      t: 'immunization',
+      title: 'Immunizations updated',
+      outcome: summary,
+      gapCodes: ['CIS-CMB10'],
+    });
+    toast.success('Immunizations saved');
+    return true;
+  },
   removePatientImmunization: async (patientId, id) => {
     const { error } = await supabase.from('patient_immunizations').delete().eq('id', id);
     if (error) { console.warn('removePatientImmunization:', error.message); get().showToast?.('Could not remove immunization'); return false; }
