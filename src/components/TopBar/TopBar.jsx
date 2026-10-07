@@ -88,9 +88,9 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
 
   const initials = getUserInitials(user);
   const displayName = getUserDisplayName(user);
-  // The store's profile name is what Out of Office records are keyed by.
-  const oooName = useAppStore(s => s.currentUserProfile?.name) || displayName;
-  const isOoo = useAppStore(s => !!activeOooFor(s.oooRecords, oooName));
+  // Out of Office records point at the profile's id (the name, for older ones).
+  const profile = useAppStore(s => s.currentUserProfile);
+  const isOoo = useAppStore(s => !!activeOooFor(s.oooRecords, { id: profile?.id, name: profile?.name || displayName }));
   const email = user?.email || '';
 
   const handleLogout = async () => {
@@ -126,7 +126,7 @@ function ProfilePopover({ user, onClose, onPreferences, anchorRef }) {
       {/* User info */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
         <span style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
-          <Avatar variant="staff" size="XL" initials={initials} userName={oooName} />
+          <Avatar variant="staff" size="XL" initials={initials} userName={profile?.name || displayName} userId={profile?.id} />
           {/* Online-status dot — sits on the avatar's top-right corner.
               Out of office, the avatar's OOO badge says so instead. */}
           {!isOoo && <span style={{

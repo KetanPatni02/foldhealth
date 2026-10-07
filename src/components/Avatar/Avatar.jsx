@@ -37,12 +37,14 @@ function OooWrapper({ record, size, children }) {
 }
 
 /**
- * Avatar, plus the Out of Office badge. Pass `userName` (a staff user's
- * name) and the badge shows whenever that user is out of office now; or
- * pass `ooo` (a record, or null) to decide it yourself.
+ * Avatar, plus the Out of Office badge. Pass `userName` (and `userId`, so
+ * two staff with the same name aren't confused) and the badge shows whenever
+ * that user is out of office now; or pass `ooo` (a record, or null) to
+ * decide it yourself.
  */
-export function Avatar({ userName, ooo, ...props }) {
-  const found = useAppStore(s => (ooo !== undefined || !userName ? null : activeOooFor(s.oooRecords, userName)));
+export function Avatar({ userName, userId, ooo, ...props }) {
+  const found = useAppStore(s => (ooo !== undefined || !userName ? null
+    : activeOooFor(s.oooRecords, userId ? { id: userId, name: userName } : userName)));
   const record = ooo !== undefined ? ooo : found;
   const el = <AvatarBase {...props} />;
   return record ? <OooWrapper record={record} size={props.size}>{el}</OooWrapper> : el;

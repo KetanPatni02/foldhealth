@@ -18,7 +18,7 @@ import { RingEmptyState } from '../../components/RingEmptyState/RingEmptyState';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { UserPickerPopover } from '../../components/UserPickerPopover/UserPickerPopover';
 import { useAppStore } from '../../store/useAppStore';
-import { initialsOf } from './oooUtils';
+import { initialsOf, samePerson } from './oooUtils';
 import { coveringProviders, groupByDepartment, planDetail } from './reassignUtils';
 import { ApptRow, DeptGroup } from './ReassignParts';
 import ooo from './ooo.module.css';
@@ -45,13 +45,13 @@ const pickerUser = (u) => ({ id: u.id, name: u.name, initials: u.initials, role:
  *
  * @param {object}   props
  * @param {object[]} props.appointments – In scope (see scopeAppointments)
- * @param {string}   props.awayUser
+ * @param {{ id: string, name: string }} props.awayUser
  * @param {{ from, to }} props.timeWindow
  * @param {object}   props.plan        – appointment id → { action, to? }
  * @param {function} props.onPlan      – (updater: plan => plan) => void
  */
 export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPlan }) {
-  const users = useAppStore(s => s.platformUsers);
+  const users = useAppStore(s => (s.platformPeople?.length ? s.platformPeople : s.platformUsers));
   const oooRecords = useAppStore(s => s.oooRecords);
   const locations = useAppStore(s => s.practiceLocations);
   const showToast = useAppStore(s => s.showToast);
@@ -88,7 +88,8 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
   const deptOf = useMemo(() => new Map(appointments.map(a => [a.id, (a.location || '').trim() || 'No Department'])), [appointments]);
 
   // ── Plan edits ──
-  const assign = (ids, to) => onPlan(p => { const n = { ...p }; ids.forEach(id => { n[id] = { action: 'reassign', to }; }); return n; });
+  // `to` is the covering provider's name (shown), `toId` who they are.
+  const assign = (ids, u) => onPlan(p => { const n = { ...p }; ids.forEach(id => { n[id] = { action: 'reassign', to: u.name, toId: u.id || null }; }); return n; });
   const clear = (ids) => onPlan(p => { const n = { ...p }; ids.forEach(id => { delete n[id]; }); return n; });
   const cancel = (ids) => onPlan(p => { const n = { ...p }; ids.forEach(id => { n[id] = { action: 'cancel' }; }); return n; });
   const allCancelled = (ids) => ids.length > 0 && ids.every(id => plan[id]?.action === 'cancel');
@@ -100,13 +101,13 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
 
   const openPicker = (e, ids, dept) => {
     const list = covering.get(dept) || [];
-    const names = [...new Set(ids.map(id => plan[id]?.to).filter(Boolean))];
+    const picked = [...new Set(ids.map(id => plan[id]?.toId || plan[id]?.to).filter(Boolean))];
     setPicker({
       rect: e.currentTarget.getBoundingClientRect(),
       users: list,
-      selected: names.length === 1 ? names[0] : undefined,
-      onPick: (u) => assign(ids, u.name),
-      onUnassign: names.length ? () => clear(ids) : undefined,
+      selected: picked.length === 1 ? picked[0] : undefined,
+      onPick: (u) => assign(ids, u),
+      onUnassign: picked.length ? () => clear(ids) : undefined,
     });
   };
   const openMenu = (e, ids, canReassign) => {
@@ -219,8 +220,8 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
     }
     const depts = [...new Set(selectedIds.map(id => deptOf.get(id)))];
     const common = depts.reduce((acc, d) => {
-      const names = new Set((covering.get(d) || []).map(u => u.name));
-      return acc === null ? [...(covering.get(d) || [])] : acc.filter(u => names.has(u.name));
+      const here = covering.get(d) || [];
+      return acc === null ? [...here] : acc.filter(u => here.some(x => samePerson(x, u)));
     }, null) || [];
     return [
       {
@@ -228,7 +229,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
         icon: 'solar:user-plus-rounded-linear',
         onClick: (ids, e) => {
           if (!common.length) { showToast?.('No One Covers All the Selected Departments. Pick Fewer Departments.'); return; }
-          setPicker({ rect: e.currentTarget.getBoundingClientRect(), users: common, onPick: (u) => { assign(ids, u.name); setSelected(new Set()); } });
+          setPicker({ rect: e.currentTarget.getBoundingClientRect(), users: common, onPick: (u) => { assign(ids, u); setSelected(new Set()); } });
         },
       },
       { label: 'Cancel', icon: 'solar:calendar-mark-linear', variant: 'destructive', onClick: (ids) => setConfirm({ ids, clearSelection: true }) },
@@ -342,7 +343,7 @@ export function ReassignPlanner({ appointments, awayUser, timeWindow, plan, onPl
         <ConfirmDialog
           variant="destructive"
           title="Mark for Cancellation?"
-          description={`You are about to mark ${confirm.ids.length} appointment${confirm.ids.length === 1 ? '' : 's'} assigned to ${awayUser} for ${confirmDepts} Department${confirmDepts === 1 ? '' : 's'} for cancellation.`}
+          description={`You are about to mark ${confirm.ids.length} appointment${confirm.ids.length === 1 ? '' : 's'} assigned to ${awayUser?.name} for ${confirmDepts} Department${confirmDepts === 1 ? '' : 's'} for cancellation.`}
           confirmLabel="Mark To Cancel"
           cancelLabel="Dismiss"
           onCancel={() => setConfirm(null)}

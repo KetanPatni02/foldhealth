@@ -12,7 +12,8 @@ import { DatePicker } from '../../../components/DatePicker/DatePicker';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { RatingInput } from '../../../components/RatingInput/RatingInput';
-import { ratingElement, ratingBand, DEFAULT_RATING_FILL } from './rating';
+import { toggleMultiChoice } from './multiChoice';
+import { ratingElement, ratingAnchors, npsGroup, NPS_TONE, DEFAULT_RATING_FILL } from './rating';
 import styles from './FormBuilder.module.css';
 
 /**
@@ -35,7 +36,8 @@ function RatingField({ field, value, onChange, interactive, name }) {
       onChange={interactive ? (v) => onChange?.(v) : setTryValue}
       fillColor={field.fillColor || DEFAULT_RATING_FILL}
       showScale={field.showRatingScale !== false}
-      toneOf={(i, n) => ratingBand(i + 1, n)}
+      anchors={ratingAnchors(field)}
+      toneOf={(i) => NPS_TONE[npsGroup(Number(points[i].value))]}
       name={name}
       ariaLabel={field.text}
     />
@@ -154,7 +156,7 @@ export function FieldInput({ field, value, onChange, interactive = false, idPref
                   <Checkbox
                     checked={checked}
                     disabled={disabled}
-                    onCheckedChange={() => set(checked ? arr.filter((v) => v !== o.value) : [...arr, o.value])}
+                    onCheckedChange={() => set(toggleMultiChoice(arr, opts, o.value))}
                   />
                   <span>{o.label || o.value}</span>
                 </label>

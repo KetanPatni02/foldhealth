@@ -57,6 +57,25 @@ describe('questionStats', () => {
   });
 });
 
+describe('NPS', () => {
+  const nps = {
+    linkId: 'n', type: 'choice', control: 'rating', ratingElement: 'nps',
+    options: Array.from({ length: 11 }, (_, i) => ({ value: String(i), score: i })),
+  };
+  const rs = ['10', '9', '8', '7', '6', '0'].map((v) => ({ answers: { n: v } }));
+  it('groups 0–6 / 7–8 / 9–10 and scores promoters minus detractors', () => {
+    const s = questionStats(nps, rs);
+    expect(s.kind).toBe('nps');
+    expect(s.nps).toEqual({ detractor: 2, passive: 2, promoter: 2, total: 6, score: 0 });
+    expect(s.distribution).toHaveLength(11);
+  });
+  it('formats the score signed', () => {
+    expect(answerAverage(nps, rs.slice(0, 3))).toBe('+67');
+    expect(answerAverage(nps, [{ answers: { n: '3' } }])).toBe('-100');
+    expect(answerAverage(nps, [])).toBe('—');
+  });
+});
+
 describe('scoreGroupStats', () => {
   it('averages a score and resolves its band', () => {
     const scoring = { scores: [{ id: 's1', label: 'Total', interpretations: [{ min: 0, max: 5, label: 'Low', severity: 'neutral' }, { min: 6, max: 10, label: 'High', severity: 'high' }] }] };

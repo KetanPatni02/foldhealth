@@ -40,7 +40,7 @@ import { formShareLink, copyToClipboard } from '../formLink';
 import { FieldInput } from './FieldInput';
 import { FieldDescription } from '../render/FieldDescription';
 import {
-  RATING_ELEMENTS, RATING_SCALES, DEFAULT_RATING_FILL, DEFAULT_RATING_SCALE, ratingElement, ratingOptions,
+  RATING_ELEMENTS, RATING_SCALES, RATING_LABELS, DEFAULT_RATING_FILL, DEFAULT_RATING_SCALE, NPS_QUESTION, ratingElement, ratingLabelsKey, ratingOptions, upgradeRatingFields,
 } from './rating';
 import { ScorePanel } from './ScorePanel';
 import { LogicPanel } from './LogicPanel';
@@ -324,17 +324,19 @@ const RATING_ELEMENT_OPTIONS = RATING_ELEMENTS.map((e) => ({
   ),
 }));
 const RATING_SCALE_OPTIONS = RATING_SCALES.map((n) => ({ value: String(n), label: String(n) }));
+const RATING_LABEL_OPTIONS = RATING_LABELS.map((l) => ({ value: l.key, label: l.label }));
 
 /**
  * Settings for a Rating question: label, required, reusable, a rich-text
  * description, then how the scale looks: which element, how many points,
- * whether the numbers show, and the fill colour. Changing the scale rewrites
+ * whether the numbers show, the words at its ends, and the fill colour. Changing the scale rewrites
  * the options, so scoring always matches the points on screen.
  */
 function RatingProperties({ field, onPatch }) {
   const uid = useId();
   const element = ratingElement(field.ratingElement);
   const scale = field.ratingScale || DEFAULT_RATING_SCALE;
+  const labelsKey = ratingLabelsKey(field);
   const labelMissing = !String(field.text || '').trim();
 
   return (
@@ -378,29 +380,80 @@ function RatingProperties({ field, onPatch }) {
           options={RATING_ELEMENT_OPTIONS}
           value={element.key}
           leadingIcon={element.icon}
-          onChange={(key) => onPatch({ ratingElement: key })}
-        />
-
-        <CheckRow
-          label="Show rating scale"
-          checked={field.showRatingScale !== false}
-          onChange={(v) => onPatch({ showRatingScale: v })}
-        />
-
-        <label className={styles.propLabel} htmlFor={`${uid}-scale`}>Rating Scale</label>
-        <Select
-          portal
-          id={`${uid}-scale`}
-          options={RATING_SCALE_OPTIONS}
-          value={String(scale)}
-          onChange={(v) => {
-            const n = Number(v);
-            onPatch({ ratingScale: n, options: ratingOptions(n) });
+          onChange={(key) => {
+            // NPS is a fixed instrument: 0–10, likelihood labels, and the
+            // standard question unless the author already wrote their own.
+            const next = ratingElement(key);
+            if (!next.fixedScale) { onPatch({ ratingElement: key }); return; }
+            onPatch({
+              ratingElement: key,
+              ratingScale: next.fixedScale,
+              options: ratingOptions(next.fixedScale),
+              ratingLabels: next.labels,
+              ...(String(field.text || '').trim() === 'Rating' || !String(field.text || '').trim() ? { text: NPS_QUESTION } : {}),
+            });
           }}
         />
 
-        {/* NPS tiles colour by where the point falls (error / warning /
-            success dark), so a fill colour would have nothing to change. */}
+        {/* NPS tiles carry their numbers, so there is nothing to hide. */}
+        {element.look !== 'tiles' && (
+          <CheckRow
+            label="Show rating scale"
+            checked={field.showRatingScale !== false}
+            onChange={(v) => onPatch({ showRatingScale: v })}
+          />
+        )}
+
+        {/* NPS is always 0–10. */}
+        {!element.fixedScale && (
+          <>
+            <label className={styles.propLabel} htmlFor={`${uid}-scale`}>Rating Scale</label>
+            <Select
+              portal
+              id={`${uid}-scale`}
+              options={RATING_SCALE_OPTIONS}
+              value={String(scale)}
+              onChange={(v) => {
+                const n = Number(v);
+                onPatch({ ratingScale: n, options: ratingOptions(n) });
+              }}
+            />
+          </>
+        )}
+
+        <label className={styles.propLabel} htmlFor={`${uid}-labels`}>Scale Labels</label>
+        <Select
+          portal
+          id={`${uid}-labels`}
+          options={RATING_LABEL_OPTIONS}
+          value={labelsKey}
+          onChange={(key) => onPatch({ ratingLabels: key })}
+        />
+        {labelsKey === 'custom' && (
+          <>
+            <label className={styles.propLabel} htmlFor={`${uid}-low`}>Start Label</label>
+            <Input
+              id={`${uid}-low`}
+              className={styles.ctl}
+              placeholder="e.g. Poor"
+              maxLength={30}
+              value={field.ratingLowLabel || ''}
+              onChange={(e) => onPatch({ ratingLowLabel: e.target.value })}
+            />
+            <label className={styles.propLabel} htmlFor={`${uid}-high`}>End Label</label>
+            <Input
+              id={`${uid}-high`}
+              className={styles.ctl}
+              placeholder="e.g. Excellent"
+              maxLength={30}
+              value={field.ratingHighLabel || ''}
+              onChange={(e) => onPatch({ ratingHighLabel: e.target.value })}
+            />
+          </>
+        )}
+
+        {/* NPS tiles colour by the answer's group (detractor, passive,
+            promoter), so a fill colour would have nothing to change. */}
         {element.look !== 'tiles' && (
           <>
             <label className={styles.propLabel} htmlFor={`${uid}-fill`}>Fill Color</label>
@@ -617,18 +670,18 @@ function Properties({ field, onPatch, settings, onSettingsChange }) {
   if (field.healthKey === 'memberConsent') {
     return <ConsentProperties field={field} onPatch={onPatch} />;
   }
-  if (field.control === 'rating') {
-    return <RatingProperties field={field} onPatch={onPatch} />;
-  }
-  // Validated instruments are locked: show their config read-only.
+  // Validated instruments and locked Health Components (SDOH) show their
+  // config read-only. Checked before Rating, so a locked Rating can't be
+  // edited through the Rating settings.
   if (field.locked) {
+    const validated = field.validated || !!field.instrument;
     return (
       <aside className={styles.props}>
-        <div className={styles.propsHeader}>{field.type === 'group' ? 'Validated Scale' : 'Question'}</div>
+        <div className={styles.propsHeader}>{field.type === 'group' ? (validated ? 'Validated Scale' : 'Health Component') : 'Question'}</div>
         <div className={styles.propsBody}>
           <div className={styles.lockedBanner}>
             <Icon name="solar:lock-keyhole-minimalistic-linear" size={14} color="var(--status-success)" />
-            Validated &amp; locked — items and scoring can’t be edited.
+            {validated ? <>Validated &amp; locked — items and scoring can’t be edited.</> : 'Locked: questions and options can’t be edited.'}
           </div>
           <label className={styles.propLabel} htmlFor={`${uid}-locked-label`}>Label</label>
           <Input id={`${uid}-locked-label`} className={styles.ctl} value={field.text || ''} disabled readOnly />
@@ -647,6 +700,9 @@ function Properties({ field, onPatch, settings, onSettingsChange }) {
         </div>
       </aside>
     );
+  }
+  if (field.control === 'rating') {
+    return <RatingProperties field={field} onPatch={onPatch} />;
   }
 
   const isChoice = field.type === 'choice';
@@ -756,7 +812,7 @@ export function FormBuilder() {
   };
 
   const [name, setName] = useState(form?.name || 'Untitled Form');
-  const [fields, setFields] = useState(() => form?.schema?.items || []);
+  const [fields, setFields] = useState(() => upgradeRatingFields(form?.schema?.items));
   const [scoring, setScoring] = useState(() => form?.scoring || { scores: [], criticalTriggers: [] });
   const [settings, setSettings] = useState(() => ({ ...DEFAULT_SETTINGS, ...(form?.settings || {}) }));
   const [selectedId, setSelectedId] = useState(null);
@@ -771,7 +827,7 @@ export function FormBuilder() {
   // Re-sync when a different form is opened.
   useEffect(() => {
     setName(form?.name || 'Untitled Form');
-    setFields(form?.schema?.items || []);
+    setFields(upgradeRatingFields(form?.schema?.items));
     setScoring(form?.scoring || { scores: [], criticalTriggers: [] });
     setSettings({ ...DEFAULT_SETTINGS, ...(form?.settings || {}) });
     setSelectedId(null);

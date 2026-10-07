@@ -11,11 +11,17 @@ export function ProviderPicker({ value, onSelect, profileUsers = EMPTY_PROFILE_U
   const btnRef = useRef(null);
 
   const allProviders = useMemo(() => {
-    const dbUsers = profileUsers.map(u => ({ name: u.name, gender: 'Staff', dob: '', age: '', slots: 'Available' }));
+    const dbUsers = profileUsers.map(u => ({ id: u.id, name: u.name, email: u.email, gender: 'Staff', dob: '', age: '', slots: 'Available' }));
     return dbUsers.length > 0 ? dbUsers : PROVIDER_OPTIONS;
   }, [profileUsers]);
 
   const filtered = allProviders.filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()));
+  // Two staff with the same name are told apart by their email.
+  const shared = useMemo(() => {
+    const n = new Map();
+    allProviders.forEach(p => n.set(p.name, (n.get(p.name) || 0) + 1));
+    return new Set([...n].filter(([, c]) => c > 1).map(([name]) => name));
+  }, [allProviders]);
 
   return (
     <div style={{ position: 'relative', flex: 1 }}>
@@ -34,11 +40,11 @@ export function ProviderPicker({ value, onSelect, profileUsers = EMPTY_PROFILE_U
           <div className={styles.providerDropdown} style={{ position: 'fixed', top: btnRef.current?.getBoundingClientRect().bottom + 4, left: btnRef.current?.getBoundingClientRect().left, zIndex: 9999 }} onClick={e => e.stopPropagation()}>
             <div className={styles.apptSearchWrap}><Icon name="solar:magnifer-linear" size={14} color="var(--neutral-200)" /><input aria-label="Search providers" className={styles.apptSearchInput} placeholder="Search" value={search} onChange={e => setSearch(e.target.value)} autoFocus /></div>
             {filtered.map(p => (
-              <button key={p.name} className={styles.providerItem} onClick={() => { onSelect(p.name); setOpen(false); }}>
+              <button key={p.id || p.name} className={styles.providerItem} onClick={() => { onSelect(p.name, p); setOpen(false); }}>
                 <Avatar variant="assignee" initials={getInitials(p.name).toUpperCase()} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-400)' }}>{p.name}</div>
-                  <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{p.gender}</div>
+                  <div style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{shared.has(p.name) && p.email ? p.email : p.gender}</div>
                 </div>
                 <span style={{ fontSize: 'var(--font-sm)', color: p.slots === 'Not Available' ? 'var(--neutral-200)' : 'var(--primary-300)' }}>{p.slots || ''}</span>
               </button>

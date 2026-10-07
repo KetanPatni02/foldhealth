@@ -25,13 +25,14 @@
   height: var(--space-6);
 }
 
-/* The grey rail and the coloured fill share its shape: 14px, 4px corners. */
+/* The grey rail and the coloured fill share its shape: a thin 4px line with
+   round ends, so the thumb is what carries the weight. */
 .track::before,
 .fill {
   position: absolute;
   left: 0;
   top: 50%;
-  height: 14px;
+  height: var(--space-1);
   translate: 0 -50%;
   border-radius: var(--space-1);
 }
@@ -55,6 +56,15 @@
   cursor: grab;
   transition: left var(--duration-fast) var(--ease-out);
   filter: drop-shadow(var(--shadow-card));
+}
+
+/* A plain round handle in the fill colour, ringed white like the icons. */
+.thumbDot {
+  width: var(--space-5);
+  height: var(--space-5);
+  border: 2px solid var(--neutral-0);
+  border-radius: 50%;
+  background: var(--rating-fill);
 }
 
 .slider:active .thumb {
@@ -101,7 +111,6 @@
   font-size: var(--font-base);
   line-height: 1.2;
   color: var(--neutral-400);
-  font-variant-numeric: tabular-nums;
 }
 
 /* A slider's numbers sit a little further from the track than the dots' do:
@@ -112,37 +121,48 @@
 
 .number {
   text-align: center;
+  color: var(--neutral-200);
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+/* The chosen number stands out from the quieter scale. */
+.numberOn {
+  color: var(--neutral-500);
+  font-weight: 500;
 }
 
 /* ── Tiles (NPS 209:19439, selected tones 247:6000) ────────────────────── */
 .tileRating {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  width: 100%;
+  gap: var(--space-2);
+  /* As wide as the tiles, so the labels below line up with 0 and 10. */
+  width: fit-content;
+  max-width: 100%;
 }
 
 .tiles {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-2);
 }
 
 .tile {
   position: relative;
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-2) 0;
+  /* 32px squares; the small gap keeps 11 tiles reading as one scale rather
+     than a row of buttons. */
+  width: var(--space-8);
+  height: var(--space-8);
   border: 0.5px solid transparent;
   border-radius: var(--space-1);
-  background: var(--primary-25);
-  box-shadow: var(--shadow-popover);
-  font-size: var(--font-lg);
+  /* Unfilled tiles are the same grey as the slider's rail. */
+  background: var(--neutral-100);
+  font-size: var(--font-base);
   line-height: 1.2;
   color: var(--neutral-400);
-  font-variant-numeric: tabular-nums;
   cursor: pointer;
   user-select: none;
   transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
@@ -185,15 +205,56 @@
 }
 
 .anchors {
+  /* The same columns as the scale (and the tiles' gap), so each word can
+     centre under its number. */
+  --anchor-gap: 0px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--rating-count), minmax(0, 1fr));
+  column-gap: var(--anchor-gap);
   font-size: var(--font-base);
+  font-weight: 500;
   line-height: 1.2;
+  /* A step under the chosen number (neutral-500), so the answer stays the
+     darkest thing on the scale. */
   color: var(--neutral-400);
 }
 
-.anchorMid { text-align: center; }
-.anchorEnd { text-align: right; }
+.tileRating .anchors {
+  --anchor-gap: var(--space-2);
+}
+
+/* Under a slider the words sit just below the numbers they name, a size
+   smaller so the numbers stay the thing being picked; the weight and darker
+   ink keep them from reading as faint captions. */
+.slider .anchors {
+  margin-top: var(--space-1);
+  font-size: var(--font-sm);
+}
+
+/* With the numbers hidden they sit where the numbers would. */
+.track + .anchors {
+  margin-top: 0.875rem;
+}
+
+/* Centred under its number; a word wider than its column falls back to the
+   row's edge (`safe`) instead of hanging off it, and spills inward. */
+.anchorCell {
+  grid-row: 1;
+  display: flex;
+  justify-content: safe center;
+  white-space: nowrap;
+}
+
+/* The end word falls back to the right edge: in a right-to-left cell the
+   fallback start is the right, while the text itself still reads left to
+   right. */
+.anchorEnd {
+  direction: rtl;
+}
+
+.anchorEnd > span {
+  direction: ltr;
+}
 
 /* ── Inert (builder canvas) ───────────────────────────────────────────── */
 .disabled,
@@ -208,6 +269,7 @@
 @media (prefers-reduced-motion: reduce) {
   .fill,
   .thumb,
+  .number,
   .dot,
   .tile { transition: none; }
 }

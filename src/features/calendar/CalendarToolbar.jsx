@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
@@ -8,7 +9,7 @@ import { Select } from '../../components/Select/Select';
 import { APPOINTMENT_STATUSES } from '../../components/ScheduleDrawer/scheduleDrawerConstants';
 import { useLocationOptions } from '../../components/ScheduleDrawer/useLocationOptions';
 import { /* TIMEZONE_OPTIONS, */ VIEW_LABELS, VIEWS } from './calendarUtils';
-import { OOO_ICON } from '../ooo/oooUtils';
+import { OOO_ICON, peopleOptions } from '../ooo/oooUtils';
 import { HolidayIcon } from '../../components/Icon/HolidayIcon';
 import styles from './CalendarView.module.css';
 
@@ -42,6 +43,10 @@ export function CalendarToolbar({
   onOpenOoo,
   onOpenHolidays,
 }) {
+  // People by id; the chip speaks labels (a name, plus email when shared).
+  const userOptions = useMemo(() => peopleOptions(users), [users]);
+  const labelOf = useMemo(() => new Map(userOptions.map(o => [o.value, o.label])), [userOptions]);
+  const keyOf = useMemo(() => new Map(userOptions.map(o => [o.label, o.value])), [userOptions]);
   const locationOptions = useLocationOptions();
   return (
     // Laid out like the legacy calendar bar: who / where / which view on
@@ -50,14 +55,13 @@ export function CalendarToolbar({
     <div className={styles.toolbar}>
       <div className={styles.toolbarLeft}>
         {/* Users — multi-select FilterChip with an in-popover search box.
-            Options are user names; the appointments payload's
-            `primary_user` is a name too, so no id ↔ name mapping is
-            needed to filter. */}
+            `filterUser` holds people's ids; the chip shows their names, and
+            two people with the same name are told apart by email. */}
         <FilterChip
           label="Users"
-          options={users.map(u => u.name)}
-          selected={filterUser}
-          onChange={onFilterUserChange}
+          options={userOptions.map(o => o.label)}
+          selected={filterUser.map(k => labelOf.get(k) || k)}
+          onChange={(labels) => onFilterUserChange(labels.map(l => keyOf.get(l) || l))}
           searchable
           // Week shows one user's calendar: pick one, and it always has one.
           singleSelect={currentView === 'week'}

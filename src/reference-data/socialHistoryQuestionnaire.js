@@ -9,16 +9,26 @@
 //   question), multi → string[], text → string,
 //   number → string of a whole number within the question's min / max
 //
-// Two labels repeat on purpose, because the source form repeats them:
-// "Tobacco status" and "Tobacco comment" appear under both Tobacco and
-// Alcohol, tobacco and other substances. The two statuses are different
-// questions: the first uses the tobacco-use value set ("Never user"), the
-// second the smoking-status one ("Never smoker"): so they get distinct ids,
-// and a `summaryLabel` so the PAMI/Hx card, which lists answers by label,
-// doesn't show two identical "Tobacco status" rows. The drawer keeps the
-// source form's wording.
+// Tobacco has its own section: "Tobacco status" uses the tobacco-use value
+// set ("Never user"). Alcohol and other substances used to repeat
+// the tobacco questions; they were dropped there since Tobacco covers them.
+//
+// SDOH and AUDIT-C render as forms (`form` on the section): the same fields
+// the Form Builder offers, so they read and score the same everywhere.
 
-const SDOH_FREQUENCY = ['0 - Never', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10 - Always'];
+import { SDOH_ITEMS, SDOH_TITLE, normalizeSdohAnswers } from './sdohScreening';
+import { instrumentFields } from '../features/forms/builder/validatedInstruments';
+
+// AUDIT-C's three questions, keyed as the drawer has always saved them.
+const AUDIT_C_FIELDS = instrumentFields('auditc', { c1: 'audit_c_frequency', c2: 'audit_c_intensity', c3: 'audit_c_binge' });
+
+// The PAMI/Hx card lists answers by label; the instrument's full questions
+// are too long there, so it keeps the short names.
+const AUDIT_C_SUMMARY = {
+  c1: 'Drink frequency (AUDIT-C)',
+  c2: 'Drink intensity (AUDIT-C)',
+  c3: 'Binge frequency (AUDIT-C)',
+};
 
 // `shortTitle` labels the drawer's section toggle, where the full titles
 // ("Social Determinants of Health (SDOH)") would not fit a segment.
@@ -62,84 +72,39 @@ export const SOCIAL_HISTORY_SECTIONS = [
   {
     id: 'sdoh',
     shortTitle: 'SDOH',
-    title: 'Social Determinants of Health (SDOH)',
-    questions: [
-      { id: 'sdoh_food', label: '1. I worried about not having enough food or money for food.', type: 'select', options: SDOH_FREQUENCY },
-      { id: 'sdoh_utilities', label: '2. I worried that my electric, gas, or water would be shut off.', type: 'select', options: SDOH_FREQUENCY },
-      { id: 'sdoh_housing', label: '3. I worried that I would not have a steady place to live.', type: 'select', options: SDOH_FREQUENCY },
-      { id: 'sdoh_isolation', label: '4. I feel lonely or isolated from others around me.', type: 'select', options: SDOH_FREQUENCY },
-      {
-        id: 'sdoh_safety',
-        label: '5. I have others in my life, including friends and family, who threaten, insult, or make fun of me.',
-        type: 'select',
-        options: SDOH_FREQUENCY,
-      },
-      {
-        id: 'sdoh_household',
-        label: '6. Who lives at home with you?',
-        type: 'multi',
-        options: [
-          'No one (I live alone)', 'Spouse/Partner/Significant Other', 'Parent(s)', 'Child(ren)',
-          'Sibling(s)', 'Other family member(s)', 'Non-family friend, housemate, roommate, or tenant',
-        ],
-      },
-      {
-        id: 'sdoh_access',
-        label: '7. Which things are at a distance you can comfortably get to on your own?',
-        type: 'multi',
-        options: ['Grocery store / Market', 'Community Center', 'Public Park', 'Public Pool', 'Gym or Fitness Center', 'Church'],
-      },
-      {
-        id: 'sdoh_transport',
-        label: '8. For transportation, what do you rely on?',
-        type: 'multi',
-        options: [
-          'Personal car / vehicle', 'Public Transportation (bus, metro, light rail, train)',
-          'Someone to drive me (Family, friend, taxi, Lyft/Uber)', 'Bike / e-bike',
-          'Motorized scooter', 'Walk', 'Wheelchair',
-        ],
-      },
-    ],
+    title: SDOH_TITLE,
+    // Rendered as a form: the same locked fields the Form Builder offers as
+    // a Health Component (see sdohScreening.js). `questions` mirrors them so
+    // the PAMI/Hx card can list the answers like any other section's.
+    form: SDOH_ITEMS,
+    questions: SDOH_ITEMS.map(it => ({ id: it.code, label: it.text, type: 'form' })),
   },
   {
     id: 'substances',
     shortTitle: 'Substances',
-    title: 'Alcohol, tobacco and other substances',
+    title: 'Alcohol and other substances',
+    // AUDIT-C renders as the Form Builder's validated instrument, under the
+    // answer keys the drawer always used. Tobacco lives in its own section.
+    form: AUDIT_C_FIELDS,
     questions: [
-      {
-        id: 'audit_c_frequency',
-        label: 'Drink frequency (AUDIT-C)',
-        type: 'select',
-        options: ['Never', 'Monthly or less', '2-4 times a month', '2-3 times a week', '4 or more times a week'],
-      },
-      {
-        id: 'audit_c_intensity',
-        label: 'Drink intensity (AUDIT-C)',
-        type: 'select',
-        options: ['None', '1 or 2', '3 or 4', '5 or 6', '7 to 9', '10 or more'],
-      },
-      {
-        id: 'audit_c_binge',
-        label: 'Binge frequency (AUDIT-C)',
-        type: 'select',
-        options: ['Never', 'Less than monthly', 'Monthly', 'Weekly', 'Daily or almost daily'],
-      },
-      {
-        id: 'smoking_status',
-        label: 'Tobacco status',
-        summaryLabel: 'Smoking status',
-        type: 'select',
-        options: [
-          'Never smoker', 'Former smoker', 'Current everyday smoker', 'Current some day smoker',
-          'Current Heavy tobacco smoker', 'Current Light tobacco smoker',
-          'Smoker, current status unknown', 'Unknown if ever smoked',
-        ],
-      },
-      { id: 'substances_tobacco_comment', label: 'Tobacco comment', summaryLabel: 'Smoking comment', type: 'text' },
+      ...AUDIT_C_FIELDS.filter(f => f.code).map(f => ({ id: f.linkId, label: f.text, summaryLabel: AUDIT_C_SUMMARY[f.code], type: 'form' })),
       { id: 'other_substances', label: 'Other substances', type: 'text' },
     ],
   },
 ];
+
+/**
+ * Saved answers in the form the current fields expect: SDOH's old "0 - Never"
+ * style ends, and AUDIT-C answers saved with a hyphen ("2-4 times a month")
+ * where the instrument uses an en dash.
+ */
+export function normalizeSocialAnswers(answers = {}) {
+  const out = normalizeSdohAnswers(answers);
+  ['audit_c_frequency', 'audit_c_intensity', 'audit_c_binge'].forEach((k) => {
+    if (typeof out[k] === 'string') out[k] = out[k].replace(/(\d)-(\d)/, '$1–$2');
+  });
+  return out;
+}
 
 /** Every question, in form order. */
 export const SOCIAL_HISTORY_QUESTIONS = SOCIAL_HISTORY_SECTIONS.flatMap(s => s.questions);

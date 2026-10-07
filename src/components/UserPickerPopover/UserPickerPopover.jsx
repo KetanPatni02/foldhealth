@@ -15,7 +15,7 @@ const initialsOf = (name) => String(name || '?').trim().split(/\s+/).map(w => w[
  * @param {object}   props
  * @param {DOMRect}  props.anchorRect
  * @param {{ id?, name, role?, initials? }[]} props.users
- * @param {string}   [props.selected]     – Name currently picked (ticked)
+ * @param {string}   [props.selected]     – Who's currently picked (ticked): their id, or (older data) name
  * @param {function} props.onSelect       – (user) => void
  * @param {function} [props.onUnassign]   – Shows an "Unassign" row when given
  * @param {function} props.onClose
@@ -39,6 +39,7 @@ export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, 
 
   const q = query.trim().toLowerCase();
   const shown = useMemo(() => users.filter(u => !q || `${u.name} ${u.role || ''}`.toLowerCase().includes(q)), [users, q]);
+  const isPicked = (u) => selected != null && (String(u.id) === String(selected) || u.name === selected);
   if (!anchorRect) return null;
   // Opens below the trigger, or above it near the bottom of the window.
   const width = 280;
@@ -76,7 +77,7 @@ export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, 
             key={u.id || u.name}
             type="button"
             role="menuitem"
-            className={u.name === selected ? `${styles.row} ${styles.rowActive}` : styles.row}
+            className={isPicked(u) ? `${styles.row} ${styles.rowActive}` : styles.row}
             onClick={() => { onSelect(u); onClose(); }}
           >
             <Avatar variant="staff" initials={u.initials || initialsOf(u.name)} size="M" />
@@ -84,7 +85,7 @@ export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, 
               <span className={styles.name}>{u.name}</span>
               {u.role && <span className={styles.role}>{u.role}</span>}
             </span>
-            {u.name === selected && <Icon name="solar:check-circle-linear" size={16} color="var(--primary-300)" />}
+            {isPicked(u) && <Icon name="solar:check-circle-linear" size={16} color="var(--primary-300)" />}
           </button>
         ))}
       </div>

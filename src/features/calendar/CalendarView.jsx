@@ -10,7 +10,7 @@ import { useCalendarView } from './useCalendarView';
 import { useAppStore } from '../../store/useAppStore';
 import { CalendarOooLayer } from '../ooo/CalendarOooLayer';
 import { OooAllRecordsDrawer } from '../ooo/OooRecordsDrawers';
-import { recordsOnDate } from '../ooo/oooUtils';
+import { apptPerson, personKey, recordPerson, recordsOnDate, samePerson } from '../ooo/oooUtils';
 import { useOooRecordActions } from '../ooo/useOooRecordActions';
 import styles from './CalendarView.module.css';
 
@@ -30,16 +30,19 @@ export function CalendarView() {
   const isMonth = calendar.currentView === 'month-grid';
   // Week and a one-user Month show that user's OOO time on the grid; Day
   // draws its own per-user columns.
-  const focusUser = calendar.currentView === 'week'
+  // { id, name }, kept stable while the same person is in view.
+  const focusKey = calendar.currentView === 'week'
     ? calendar.viewUsers[0] || null
     : calendar.filterUser.length === 1 ? calendar.filterUser[0] : null;
+  const { personFor } = calendar;
+  const focusUser = useMemo(() => (focusKey ? personFor(focusKey) : null), [focusKey, personFor]);
   const [dayProvider, setDayProvider] = useState(null);
   // Holidays apply by location: the shown provider's, else (Month) the
   // Location filter's; with neither, Month shows every holiday but none
   // blocks booking.
   const holidayConfigs = useAppStore(s => s.holidayConfigs);
   const fetchHolidayConfigs = useAppStore(s => s.fetchHolidayConfigs);
-  const platformUsers = useAppStore(s => s.platformUsers);
+  const platformUsers = useAppStore(s => (s.platformPeople?.length ? s.platformPeople : s.platformUsers));
   useEffect(() => { fetchHolidayConfigs(); }, [fetchHolidayConfigs]);
   const [showHolidays, setShowHolidays] = useState(false);
   const scopedHolidays = useMemo(() => {
@@ -49,17 +52,24 @@ export function CalendarView() {
   }, [focusUser, holidayConfigs, platformUsers, calendar.filterLocation]);
   const holidayBlocks = !!focusUser || calendar.filterLocation.length > 0;
 
-  // Day columns: the picked users, else everyone with an appointment or an
-  // OOO record that day, else the signed-in user.
+  // Day columns, one per person: the picked users, else everyone with an
+  // appointment or an OOO record that day, else the signed-in user.
   const dayUsers = useMemo(() => {
     if (!isDay) return [];
-    if (calendar.filterUser.length) return calendar.filterUser;
+    if (calendar.filterUser.length) return calendar.viewPeople;
     const [y, m, d] = calendar.selectedDate.split('-');
-    const booked = calendar.filteredAppointments.filter(a => a.date === `${m}-${d}-${y}`).map(a => a.primary_user);
-    const away = recordsOnDate(oooRecords, calendar.selectedDate).map(r => r.userName);
-    const names = [...new Set([...booked, ...away].filter(Boolean))].sort();
-    return names.length ? names : [calendar.meName].filter(Boolean);
-  }, [isDay, calendar.filterUser, calendar.selectedDate, calendar.filteredAppointments, oooRecords, calendar.meName]);
+    const booked = calendar.filteredAppointments.filter(a => a.date === `${m}-${d}-${y}`).map(apptPerson);
+    const away = recordsOnDate(oooRecords, calendar.selectedDate).map(recordPerson);
+    const byKey = new Map();
+    [...booked, ...away].filter(p => p.name).forEach((p) => {
+      // A row without an id (older data) is shown as whoever has that name.
+      const known = p.id ? personFor(p.id) : calendar.users.find(u => samePerson(u, p));
+      const who = known && known.name ? known : p;
+      byKey.set(personKey(who), who);
+    });
+    const people = [...byKey.values()].sort((a, b) => a.name.localeCompare(b.name));
+    return people.length ? people : [calendar.users.find(u => u.name === calendar.meName)].filter(Boolean);
+  }, [isDay, calendar.filterUser, calendar.viewPeople, calendar.selectedDate, calendar.filteredAppointments, calendar.users, oooRecords, calendar.meName, personFor]);
 
   return (
     <div className={styles.wrapper}>
@@ -110,8 +120,8 @@ export function CalendarView() {
           people={platformUsers}
           holidayLocations={calendar.filterLocation}
           timezoneLabel={calendar.timezoneLabel}
-          onSlotClick={(slot, userName) => {
-            setDayProvider(userName);
+          onSlotClick={(slot, person) => {
+            setDayProvider(person);
             calendar.setClickedAppointment(null);
             calendar.setSelectedSlot(slot);
             calendar.setShowSchedule(true);
@@ -126,7 +136,7 @@ export function CalendarView() {
         />
       )}
       {calendar.currentView === 'week' && calendar.viewUsers[0] && (
-        <div className={styles.weekUserRow}><span aria-hidden="true" /><span>{calendar.viewUsers[0]}</span></div>
+        <div className={styles.weekUserRow}><span aria-hidden="true" /><span>{focusUser?.name}</span></div>
       )}
       {/* Month: daily counts, like the legacy calendar (the chip list
           overflowed into "+N more"). */}
@@ -141,7 +151,7 @@ export function CalendarView() {
           onOpenDay={calendar.openDay}
           onAdd={(day) => {
             const [year, month, d] = day.split('-').map(Number);
-            setDayProvider(calendar.filterUser.length === 1 ? calendar.filterUser[0] : null);
+            setDayProvider(calendar.filterUser.length === 1 ? personFor(calendar.filterUser[0]) : null);
             calendar.handleSlotClick({ year, month, day: d });
           }}
           onOpenOooDay={(date) => setOooAll({ highlightDate: date })}

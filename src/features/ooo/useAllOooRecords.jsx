@@ -30,7 +30,7 @@ const HIGHLIGHT_MS = 4000;
  */
 export function useAllOooRecords({ highlightDate, highlightId, embedded = false, oneLineDates = false } = {}) {
   const { records, loading } = useOooRecords();
-  const platformUsers = useAppStore(s => s.platformUsers);
+  const platformUsers = useAppStore(s => (s.platformPeople?.length ? s.platformPeople : s.platformUsers));
   const taskProfiles = useAppStore(s => s.taskProfiles);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
@@ -53,7 +53,7 @@ export function useAllOooRecords({ highlightDate, highlightId, embedded = false,
 
   const users = useMemo(() => {
     const emails = Object.fromEntries((taskProfiles || []).map(p => [p.name, p.email]));
-    return (platformUsers || []).map(u => ({ id: u.id, name: u.name, email: emails[u.name] }));
+    return (platformUsers || []).map(u => ({ id: u.id, name: u.name, email: u.email || emails[u.name] }));
   }, [platformUsers, taskProfiles]);
   const actions = useOooRecordActions({ users });
 

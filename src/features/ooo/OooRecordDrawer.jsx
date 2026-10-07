@@ -11,7 +11,7 @@ import { Textarea } from '../../components/Textarea/Textarea';
 import { InfoBar } from '../../components/InfoBar/InfoBar';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
 import { useAppStore } from '../../store/useAppStore';
-import { appointmentsToReassign, capFirst, DEFAULT_AUTO_REPLY, overlapPlan, fromPickerValue, rangeChange, toPickerValue, validateOoo } from './oooUtils';
+import { appointmentsToReassign, capFirst, DEFAULT_AUTO_REPLY, overlapPlan, personKey, fromPickerValue, rangeChange, toPickerValue, validateOoo } from './oooUtils';
 import { toast } from '../../components/Toast/sonnerToast';
 // // import { AddIconMinimalist } from '../../components/Icon/AddIconMinimalist';
 // import { OnCallScheduleDrawer } from './OnCallScheduleDrawer';
@@ -104,7 +104,8 @@ export function OooRecordDrawer({ record: initialRecord, user, users = [], onClo
   const needsReassign = !isEdit || change.extended;
 
   const providerLabel = values.userName ? `${values.userName}${values.userEmail ? ` (${values.userEmail})` : ''}` : '';
-  const pickable = useMemo(() => users.map(u => ({ value: u.name, label: u.email ? `${u.name} (${u.email})` : u.name })), [users]);
+  // Valued by id: two providers can share a name (each shows with their email).
+  const pickable = useMemo(() => users.map(u => ({ value: personKey(u), label: u.email ? `${u.name} (${u.email})` : u.name })), [users]);
 
   // After a save: Reassign Appointments opens next only if the dates hold
   // appointments still to move; the toast says so when it does.
@@ -164,7 +165,7 @@ export function OooRecordDrawer({ record: initialRecord, user, users = [], onClo
           ns > os && { from: os, to: Math.min(ns, oe) },
           ne < oe && { from: Math.max(ne, os), to: oe },
         ].filter(Boolean);
-        if (removed.length) await restoreReassigned(saved.userName, removed);
+        if (removed.length) await restoreReassigned({ id: saved.userId, name: saved.userName }, removed);
       }
       await finish(saved, needsReassign);
     } finally {
@@ -217,11 +218,11 @@ export function OooRecordDrawer({ record: initialRecord, user, users = [], onClo
             searchable
             placeholder="Select a provider"
             options={pickable}
-            value={values.userName || undefined}
+            value={values.userName ? personKey({ id: values.userId, name: values.userName }) : undefined}
             errorText={touched && !values.userName ? 'Pick a provider.' : undefined}
-            onChange={(name) => {
-              const u = users.find(x => x.name === name);
-              set({ userName: name, userEmail: u?.email || '', userRole: u?.role || '', userId: u?.id || null });
+            onChange={(key) => {
+              const u = users.find(x => personKey(x) === key);
+              if (u) set({ userName: u.name, userEmail: u.email || '', userRole: u.role || '', userId: u.id || null });
             }}
           />
         )}

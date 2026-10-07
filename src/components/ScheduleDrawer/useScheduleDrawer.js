@@ -51,7 +51,11 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
   const [mode, setMode] = useState('');
   const [location, setLocation] = useState('');
   // A Day-view column click books for that column's user.
-  const [provider, setProvider] = useState(initialProvider || '');
+  // The provider's name (shown) and id (who they are: two staff can share a
+  // name). `initialProvider` is { id, name } or, from older callers, a name.
+  const [provider, setProviderName] = useState(typeof initialProvider === 'object' && initialProvider ? initialProvider.name : (initialProvider || ''));
+  const [providerId, setProviderId] = useState(typeof initialProvider === 'object' && initialProvider ? initialProvider.id || null : null);
+  const setProvider = (name, person) => { setProviderName(name); setProviderId(person?.id || null); };
   const [date, setDate] = useState(initialDate);
   const [time, setTime] = useState(initialTime);
   const [recurring, setRecurring] = useState(false);
@@ -143,6 +147,7 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
       for (const u of data) {
         if (u.status !== 'Active') continue;
         users.push({
+          id: u.id,
           name: u.full_name?.trim() || `${u.first_name || ''} ${u.last_name || ''}`.trim() || u.email,
           email: u.email,
         });
@@ -190,6 +195,7 @@ export function useScheduleDrawer({ onClose, selectedSlot, onSave, existingAppoi
       mode,
       location,
       primary_user: provider,
+      ...(provider ? { primary_user_id: providerId || (profileUsers.filter(u => u.name === provider).length === 1 ? profileUsers.find(u => u.name === provider).id : null) } : {}),
       secondary_users: secondaryUsers,
       date,
       time_start: time,

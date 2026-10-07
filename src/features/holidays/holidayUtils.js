@@ -5,7 +5,7 @@
  * autoReplyMessage, createdBy, createdAt, updatedAt } (ISO dates).
  * Status works like Out of Office: Upcoming, Ongoing or Past.
  */
-import { oooStatus, sameName } from '../ooo/oooUtils';
+import { oooStatus, sameName, samePerson } from '../ooo/oooUtils';
 
 export const HOLIDAY_NAME_MAX = 150;
 
@@ -61,12 +61,12 @@ export function validateHoliday(values, { now = new Date(), original = null } = 
 }
 
 /**
- * Holidays at the locations this person works at (from their profile). Someone
+ * Holidays at the locations this person (`who`: { id, name }) works at (from their profile). Someone
  * with no locations on file gets `fallback` instead (the calendar's Location
  * filter), so a filtered location's holidays still show for them.
  */
-export function holidaysForUser(holidays, users, name, fallback = []) {
-  const u = (users || []).find(x => sameName(x.name, name));
+export function holidaysForUser(holidays, users, who, fallback = []) {
+  const u = (users || []).find(x => samePerson(x, who));
   return holidaysAt(holidays, u?.locations?.length ? u.locations : fallback);
 }
 

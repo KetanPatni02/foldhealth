@@ -11,7 +11,7 @@ import {
   getTimezoneOffset,
   MONTH_NAMES,
 } from './calendarUtils';
-import { canEdit, recordsFor } from '../ooo/oooUtils';
+import { apptPerson, canEdit, personKey, personOf, recordsFor, samePerson } from '../ooo/oooUtils';
 import { holidayDuring, holidaysAt, holidaysForUser } from '../holidays/holidayUtils';
 import styles from './CalendarView.module.css';
 
@@ -57,7 +57,7 @@ export function useCalendarView({ onOooSlot } = {}) {
   useEffect(() => { onOooSlotRef.current = onOooSlot; }, [onOooSlot]);
   const oooRecords = useAppStore(s => s.oooRecords);
   const holidayConfigs = useAppStore(s => s.holidayConfigs);
-  const platformUsers = useAppStore(s => s.platformUsers);
+  const platformUsers = useAppStore(s => (s.platformPeople?.length ? s.platformPeople : s.platformUsers));
   const [currentView, setCurrentView] = useState('week');
   const [showSchedule, setShowSchedule] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
@@ -113,27 +113,33 @@ export function useCalendarView({ onOooSlot } = {}) {
           setUsers(data.map(u => ({
             id: u.id,
             name: u.full_name?.trim() || u.email?.split('@')[0] || 'Unknown',
+            email: u.email || '',
           })));
         }
       });
   }, []);
 
-  // Week shows one user at a time: the picked one, else the signed-in
-  // user, else the first user. Day and Month take any number.
-  const meName = useAppStore(s => s.currentUserProfile?.name);
+  // People are picked by id (`filterUser` holds personKeys): two staff can
+  // share a name. Week shows one user at a time: the picked one, else the
+  // signed-in user, else the first user. Day and Month take any number.
+  const me = useAppStore(s => s.currentUserProfile);
+  const meName = me?.name;
+  const meUser = users.find(u => samePerson(u, me || {}));
   const weekUser = filterUser[0]
-    || (users.some(u => u.name === meName) ? meName : users[0]?.name)
+    || (meUser ? personKey(meUser) : users[0] ? personKey(users[0]) : null)
     || null;
   const viewUsers = useMemo(
     () => (currentView === 'week' ? [weekUser].filter(Boolean) : filterUser),
     [currentView, weekUser, filterUser],
   );
+  // A key back to { id, name, email }; an unknown key is a name (older data).
+  const personFor = useCallback((key) => users.find(u => personKey(u) === key) || personOf(key), [users]);
+  const viewPeople = useMemo(() => viewUsers.map(personFor), [viewUsers, personFor]);
 
   const filteredAppointments = useMemo(() => {
     let filtered = [...(appointments || []), ...reminderEvents];
-    if (viewUsers.length > 0) {
-      const userSet = new Set(viewUsers);
-      filtered = filtered.filter(a => userSet.has(a.primary_user));
+    if (viewPeople.length > 0) {
+      filtered = filtered.filter(a => viewPeople.some(p => samePerson(apptPerson(a), p)));
     }
     if (filterType.length > 0) {
       const typeSet = new Set(filterType);
@@ -147,7 +153,7 @@ export function useCalendarView({ onOooSlot } = {}) {
       filtered = filtered.filter(a => appointmentMatchesStatuses(a, filterStatus));
     }
     return filtered;
-  }, [appointments, reminderEvents, viewUsers, filterType, filterLocation, filterStatus]);
+  }, [appointments, reminderEvents, viewPeople, filterType, filterLocation, filterStatus]);
 
   // Month → Day: show that date in the Day view.
   const openDay = (isoDate) => {
@@ -313,8 +319,8 @@ export function useCalendarView({ onOooSlot } = {}) {
     // Out-of-office time can't be booked, wherever the click lands (the
     // magenta block leaves a margin at the column edges). It opens the
     // record instead; a past record is read-only.
-    const oooUser = currentView === 'week' ? viewUsers[0]
-      : currentView === 'month-grid' && filterUser.length === 1 ? filterUser[0] : null;
+    const oooUser = currentView === 'week' ? viewPeople[0]
+      : currentView === 'month-grid' && filterUser.length === 1 ? personFor(filterUser[0]) : null;
     if (oooUser && from != null) {
       const hit = recordsFor(oooRecords, oooUser)
         .find(r => from < new Date(r.endAt).getTime() && to > new Date(r.startAt).getTime());
@@ -408,7 +414,7 @@ export function useCalendarView({ onOooSlot } = {}) {
         _options: { additionalClasses: ['is-selection'] },
       });
     }
-  }, [clearSelection, timezone, showToast, appointments, currentView, viewUsers, filterUser, oooRecords, holidayConfigs, platformUsers, filterLocation]);
+  }, [clearSelection, timezone, showToast, appointments, currentView, viewPeople, filterUser, personFor, oooRecords, holidayConfigs, platformUsers, filterLocation]);
 
   const handleEventClick = useCallback((event) => {
     const reminder = reminderEvents.find(r => r.id === event.id);
@@ -596,6 +602,8 @@ export function useCalendarView({ onOooSlot } = {}) {
     timezone,
     timezoneLabel,
     filterUser,
+    viewPeople,
+    personFor,
     filterLocation,
     filterType,
     filterStatus,

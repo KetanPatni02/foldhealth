@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../../../../../components/Drawer/Drawer';
 import { Input } from '../../../../../../components/Input/Input';
-import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
-import { ConfirmDialog } from '../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
 import { RingEmptyState } from '../../../../../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { toast } from '../../../../../../components/Toast/sonnerToast';
 import { todayIso, toIsoDate, isFutureDate } from '../../../../../../lib/clinicalDates';
 import { ProcedureSelect } from './ProcedureSelect';
+import { HistoryTable, HistoryDelete, HISTORY_ACTIONS_COLUMN, historyRowClass, historyCellClass } from '../HistoryTable';
 import styles from '../AddProblemsDrawer/AddProblemsDrawer.module.css';
 
 const KIND = 'surgical';
+
+const SURGICAL_COLUMNS = [
+  { key: 'name', label: 'Name' },
+  { key: 'performedOn', label: 'Performed Date', width: 200 },
+  HISTORY_ACTIONS_COLUMN,
+];
 
 // Newest-added first, so the row just picked lands at the top, beside the
 // search it came from. Ordering by performed date instead would make a row
@@ -26,8 +31,6 @@ const byAddedDesc = (a, b) => (b.createdAt || '').localeCompare(a.createdAt || '
 function SurgeryRow({ entry, others, onDateChange, onRemove }) {
   const [value, setValue] = useState(toIsoDate(entry.recordedOn));
   const [error, setError] = useState('');
-  const [confirming, setConfirming] = useState(false);
-  const [removing, setRemoving] = useState(false);
 
   const change = async (iso) => {
     setValue(iso);
@@ -43,17 +46,10 @@ function SurgeryRow({ entry, others, onDateChange, onRemove }) {
     if (!ok) setValue(toIsoDate(entry.recordedOn));
   };
 
-  const remove = async () => {
-    setRemoving(true);
-    await onRemove(entry);
-    setRemoving(false);
-    setConfirming(false);
-  };
-
   return (
-    <div className={styles.procRow} role="row">
-      <span className={styles.procName} role="cell">{entry.title}</span>
-      <span role="cell">
+    <tr className={historyRowClass}>
+      <td className={historyCellClass}>{entry.title}</td>
+      <td className={historyCellClass}>
         <Input
           type="date"
           aria-label={`Performed date for ${entry.title}`}
@@ -63,28 +59,11 @@ function SurgeryRow({ entry, others, onDateChange, onRemove }) {
           onChange={e => change(e.target.value)}
           errorText={error || undefined}
         />
-      </span>
-      <span className={styles.procAction} role="cell">
-        <ActionButton
-          icon="solar:trash-bin-trash-linear"
-          size="S"
-          tooltip="Remove"
-          aria-label={`Remove ${entry.title}`}
-          onClick={() => setConfirming(true)}
-        />
-      </span>
-      {confirming && (
-        <ConfirmDialog
-          variant="destructive"
-          title={`Remove ${entry.title}?`}
-          description="This removes it from the patient's record and can't be undone."
-          confirmLabel="Remove"
-          loading={removing}
-          onConfirm={remove}
-          onCancel={() => setConfirming(false)}
-        />
-      )}
-    </div>
+      </td>
+      <td className={historyCellClass}>
+        <HistoryDelete name={entry.title} onRemove={() => onRemove(entry)} />
+      </td>
+    </tr>
   );
 }
 
@@ -144,13 +123,11 @@ export function AddSurgicalHistoryDrawer({ patientId, onClose }) {
             <RingEmptyState icon="custom:scalpel" label="No Surgical History" iconSize={31} />
           </div>
         ) : (
-          <div className={styles.procTable} role="table" aria-label="Surgical history">
-            <div className={styles.procHeadRow} role="row">
-              <span role="columnheader">Name</span>
-              <span role="columnheader">Performed Date</span>
-              <span role="columnheader" aria-label="Actions" />
-            </div>
-            {surgeries.map(entry => (
+          <HistoryTable
+            label="Surgical history"
+            columns={SURGICAL_COLUMNS}
+            rows={surgeries}
+            renderRow={entry => (
               <SurgeryRow
                 key={entry.id}
                 entry={entry}
@@ -158,8 +135,8 @@ export function AddSurgicalHistoryDrawer({ patientId, onClose }) {
                 onDateChange={setDate}
                 onRemove={remove}
               />
-            ))}
-          </div>
+            )}
+          />
         )}
       </div>
     </Drawer>

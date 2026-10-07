@@ -19,6 +19,7 @@ import { POS_CODES } from '../src/features/hcc/data/posCodes.js';
 import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../src/features/hcc/data/icds.js';
 import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.js';
 import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
+import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
@@ -231,8 +232,11 @@ const PATIENT_HISTORY_ENTRIES = [
   { id: 'phe-11089-med-1', kind: 'medical', title: 'Hypertension', recorded_on: daysAgoIso(182) },
   { id: 'phe-11089-sur-1', kind: 'surgical', title: 'Appendectomy', recorded_on: daysAgoIso(20), synced: false,
     code: '377', code_system: 'https://clinicaltables.nlm.nih.gov/api/procedures/v3' },
-  { id: 'phe-11089-fam-1', kind: 'family', relation: 'Father', title: 'Will Blaine', synced: false,
-    detail: 'History of coronary artery disease (diagnosed at age 55), hypertension, and Type 2 diabetes.' },
+  // Family history is one entry per relation and condition.
+  { id: 'phe-11089-fam-1', kind: 'family', relation: 'Father', title: 'Coronary artery disease', synced: false,
+    detail: 'Diagnosed at age 55.' },
+  { id: 'phe-11089-fam-2', kind: 'family', relation: 'Father', title: 'Hypertension' },
+  { id: 'phe-11089-fam-3', kind: 'family', relation: 'Father', title: 'Type 2 diabetes' },
 ];
 // The old Social History sample ("Former smoker, 1 pack per day for 10 years,
 // quit in 2015"; "Occasional social drinker, 1-2 drinks per week") expressed
@@ -243,8 +247,7 @@ const PATIENT_SOCIAL_HISTORY = [{
     tobacco_status: 'Former user',
     tobacco_type: ['Cigarettes'],
     tobacco_comment: '1 pack per day for 10 years, quit in 2015',
-    smoking_status: 'Former smoker',
-    audit_c_frequency: '2-4 times a month',
+    audit_c_frequency: '2–4 times a month',
     audit_c_intensity: '1 or 2',
     audit_c_binge: 'Never',
   },
@@ -824,6 +827,8 @@ async function main() {
     await db.query(PATIENT_IMMUNIZATIONS_DDL);
     await db.query(PAMI_HISTORY_DDL);
     await db.query(SOCIAL_HISTORY_DDL);
+    await db.query(readFileSync(new URL('../supabase/patient_crm_activities_migration.sql', import.meta.url), 'utf8'));
+    console.log('  ✓ patient_crm_activities: created / already exists');
     // Run the migration itself rather than a copy of it, so the two can't drift.
     await db.query(readFileSync(new URL('../supabase/employer_impact_migration.sql', import.meta.url), 'utf8'));
     await db.query(readFileSync(new URL('../supabase/email_components_migration.sql', import.meta.url), 'utf8'));
@@ -1010,7 +1015,11 @@ async function main() {
           .eq('primary_user', abhay.name);
         const booked = new Set((existing || []).map(a => `${a.date} ${a.time_start}`));
         const fresh = demo.appointments.filter(a => !booked.has(`${a.date} ${a.time_start}`));
-        const { error: ae } = fresh.length ? await supabase.from('appointments').insert(fresh) : { error: null };
+        let { error: ae } = fresh.length ? await supabase.from('appointments').insert(fresh) : { error: null };
+        // Before person_ids_migration.sql there's no primary_user_id column.
+        if (ae && /primary_user_id/.test(ae.message || '')) {
+          ({ error: ae } = await supabase.from('appointments').insert(fresh.map(({ primary_user_id: _skip, ...a }) => a)));
+        }
         if (ae) { console.error('  ✗ appointments:', ae.message); } else { console.log(`  ✓ ${fresh.length} appointments for ${abhay.name}`); }
       }
     }
@@ -1047,6 +1056,13 @@ async function main() {
     .from('patient_social_history')
     .upsert(PATIENT_SOCIAL_HISTORY, { onConflict: 'patient_id' });
   if (psh) { console.error('  ✗', psh.message); } else { console.log(`  ✓ ${PATIENT_SOCIAL_HISTORY.length} patient`); }
+
+  console.log('Seeding patient_crm_activities...');
+  const crmRows = sampleCrmActivities(PAMI_DEMO_PATIENT).map(crmToRow);
+  const { error: crmErr } = await supabase
+    .from('patient_crm_activities')
+    .upsert(crmRows, { onConflict: 'id' });
+  if (crmErr) { console.error('  ✗', crmErr.message); } else { console.log(`  ✓ ${crmRows.length} activities`); }
 
   console.log('Seeding patient_monitoring...');
   const monitoringRows = Object.values(MONITORING_SEED).map(monitoringToRow);

@@ -52,6 +52,13 @@
 .desc { font-size: var(--font-md); color: var(--neutral-300); margin: 0; }
 .missing { font-size: var(--font-sm); color: var(--status-error); }
 
+/* Embedded in a host's form (the Social History drawer): match the host's
+   rhythm and field labels, so its own questions and these read as one list.
+   16px between questions like the host, 8px from a label to its answers. */
+.embedded { display: flex; flex-direction: column; gap: var(--space-4); }
+.embedded .field { gap: var(--space-2); }
+.embedded .label { font-weight: 400; line-height: 1.2; color: var(--neutral-200); }
+
 .submitRow { display: flex; justify-content: flex-start; padding-top: 8px; }
 
 /* ── Paged (section / question) chrome ── */
