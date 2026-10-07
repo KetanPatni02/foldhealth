@@ -1,13 +1,17 @@
+/* Portaled to body; a modal dialog sets pointer-events: none there, so
+   both layers take clicks back. */
 .overlay {
   position: fixed;
   inset: 0;
   z-index: 8998;
+  pointer-events: auto;
   background: transparent;
 }
 
 .popover {
   position: fixed;
   z-index: 8999;
+  pointer-events: auto;
   padding: 12px;
   background: var(--neutral-0);
   border: 0.5px solid var(--neutral-100);

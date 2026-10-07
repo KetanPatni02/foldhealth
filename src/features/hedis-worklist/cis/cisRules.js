@@ -171,6 +171,9 @@ const maxDate = (...ds) => ds.filter(Boolean).reduce((a, b) => (b > a ? b : a));
 const sameDay = (a, b) => daysBetween(a, b) === 0;
 const normCvx = (code) => String(code ?? '').trim().replace(/^0+(?=\d)/, '');
 
+/** Last routine month of a schedule slot, within the 2nd year. */
+export const scheduleEndMonth = (slot) => (slot.from === 0 || slot.by - slot.from <= 1 ? slot.from : Math.min(slot.by - 1, 23));
+
 /** Whole months between `dob` and `on`. */
 export function ageInMonths(dob, on) {
   let m = (on.getFullYear() - dob.getFullYear()) * 12 + (on.getMonth() - dob.getMonth());
@@ -270,7 +273,18 @@ function evaluateAntigen(antigen, doses, ctx, pending = 0) {
     const recommendedShort = slot.from === 0 || slot.by - slot.from <= 1
       ? `${slot.from} mo`
       : `${slot.from}-${slot.by - 1} mo`;
-    return { recommended: recommendedLabel(slot), recommendedShort, earliest, start, recommendedEnd, due };
+    // `ageMonths` (routine age the dose starts at) drives the by-age view;
+    // `ageEndMonths` is the last month of its range, for the timeline.
+    return {
+      recommended: recommendedLabel(slot),
+      recommendedShort,
+      ageMonths: slot.from,
+      ageEndMonths: scheduleEndMonth(slot),
+      earliest,
+      start,
+      recommendedEnd,
+      due,
+    };
   };
 
   const rows = [];
