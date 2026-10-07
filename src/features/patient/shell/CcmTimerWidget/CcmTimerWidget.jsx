@@ -12,7 +12,7 @@ import { useAppStore } from '../../../../store/useAppStore';
 import { formatFoldId } from '../../../../lib/foldId';
 import { CCM_ACTIVITY_TYPES, secondsToTime } from '../../data/ccmBillingMock';
 import { useCcmTimerDock } from './CcmTimerDockContext';
-import { armAlertAudio, formatIdleDuration, inactivitySecondsFor, playAlertChime, useInactivity } from './inactivity';
+import { armAlertAudio, formatIdleDuration, inactivitySecondsFor, isInactivityDemoPatient, playAlertChime, useInactivity } from './inactivity';
 import styles from './CcmTimerWidget.module.css';
 
 // CCM activity timer (Figma CCM Timer 324:84077), drawn in our timer's own
@@ -34,9 +34,9 @@ import styles from './CcmTimerWidget.module.css';
 // after the patient's threshold with no mouse, key, scroll or touch activity
 // while running, the timer asks "Are you still working on this patient?"
 // with Keep Timer Running / Pause Timer and a "Don't remind me again" checkbox
-// (Figma Dialog Box 2, 2810:68907). It never pauses on its
-// own, stays until answered, and every answer is recorded. Prototype: on for
-// one demo patient only (inactivity.js).
+// (Figma Dialog Box 2, 2810:68907). 30 minutes for every patient; 30 seconds
+// for the demo patient (inactivity.js). It never pauses on its
+// own, stays until answered, and every answer is recorded.
 //
 // The timer starts itself when a patient profile opens. Leaving the profile
 // screen pauses it and coming back resumes it (as Fold does, VBC-22802):
@@ -210,7 +210,7 @@ export function CcmTimerWidget({ patient }) {
   // demo patient starts floating in the bottom-right corner instead, where
   // the reminder has room above it (it can still be dragged and docked).
   useEffect(() => {
-    const floats = inactivitySecondsFor(patientId) != null;
+    const floats = isInactivityDemoPatient(patientId);
     setIsDocked(!floats);
     if (floats) setFloatPos({ right: 16, bottom: 16 });
   }, [patientId, setIsDocked, setFloatPos]);
@@ -406,15 +406,14 @@ export function CcmTimerWidget({ patient }) {
     }, LOGGED_FEEDBACK_MS);
   };
 
-  // ── Card placement while docked: just under the bar, right-aligned. ──
+  // ── Card placement while docked: in the bar's place, right-aligned. ──
   const docked = isDocked && !!dockEl;
   useLayoutEffect(() => {
-    if (!docked || !(showCard || prompt)) return undefined;
+    if (!docked || !showCard) return undefined;
     const place = () => {
       const r = barRef.current?.getBoundingClientRect();
-      // The card grows out of the bar, from its top-right corner; the
-      // reminder alone opens just under it.
-      if (r) setAnchor({ top: showCard ? r.top : r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+      // The card grows out of the bar, from its top-right corner.
+      if (r) setAnchor({ top: r.top, right: Math.max(8, window.innerWidth - r.right) });
     };
     place();
     window.addEventListener('scroll', place, true);
@@ -423,7 +422,42 @@ export function CcmTimerWidget({ patient }) {
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
     };
-  }, [docked, showCard, prompt]);
+  }, [docked, showCard]);
+
+  // ── Reminder placement: always fully on screen. ──────────────────────
+  // It sits on its own layer, above the timer if there's room (else below),
+  // lined up with the timer's right edge when it fits to the left, else with
+  // its left edge, and is nudged inside the window either way. Re-placed as
+  // the timer moves, expands or the window changes.
+  const cardRef = useRef(null);
+  const promptRef = useRef(null);
+  const [promptPos, setPromptPos] = useState(null);
+  useLayoutEffect(() => {
+    if (!prompt) return undefined;
+    const place = () => {
+      const surface = (showCard ? cardRef.current : barRef.current)?.getBoundingClientRect();
+      const box = promptRef.current?.getBoundingClientRect();
+      if (!surface || !box) return;
+      const EDGE = 8;
+      const GAP = 8;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const rightAligned = surface.right - box.width;
+      let left = rightAligned >= EDGE ? rightAligned : surface.left;
+      left = Math.min(Math.max(EDGE, left), vw - box.width - EDGE);
+      let top = surface.top - GAP - box.height;
+      if (top < EDGE) top = surface.bottom + GAP;
+      top = Math.min(Math.max(EDGE, top), vh - box.height - EDGE);
+      setPromptPos({ top, left });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [prompt, showCard, docked, floatPos.right, floatPos.bottom]);
 
   // ── Drag: move anywhere; dropping on the tag row docks it there. ─────
   const onDragPointerDown = (e) => {
@@ -637,7 +671,7 @@ export function CcmTimerWidget({ patient }) {
   })();
 
   const card = (
-    <div className={styles.card} data-ccm-timer-surface>
+    <div ref={cardRef} className={styles.card} data-ccm-timer-surface>
       <button type="button" className={styles.cardGrip} onPointerDown={onDragPointerDown} aria-label="Drag timer" title="Drag to move; drop on the tag row to dock">
         <Grip horizontal />
       </button>
@@ -661,6 +695,19 @@ export function CcmTimerWidget({ patient }) {
     </div>
   );
 
+  // The reminder, on its own layer (placed by the effect above; hidden for
+  // the first measure so it never flashes in the wrong spot).
+  const promptLayer = prompt && createPortal(
+    <div
+      ref={promptRef}
+      className={styles.promptLayer}
+      style={promptPos ? { top: promptPos.top, left: promptPos.left } : { top: 0, left: 0, visibility: 'hidden' }}
+    >
+      {promptEl}
+    </div>,
+    document.body,
+  );
+
   // Floating: the card replaces the bar in place. Docked: the bar stays in
   // the tag row and the card opens under it.
   const floatingStyle = { right: floatPos.right, bottom: floatPos.bottom };
@@ -674,23 +721,22 @@ export function CcmTimerWidget({ patient }) {
           dockEl,
         )}
         {/* Expanding turns the bar into the card in place (the bar keeps
-            its spot in the tag row, hidden). The reminder shows here even
-            with the card closed: the tag row has no room for it. */}
-        {(showCard || prompt) && anchor && createPortal(
-          <div className={`${styles.dockedCard} ${showCard ? styles.dockedCardExpanded : ''}`} style={{ top: anchor.top, right: anchor.right }}>
-            {showCard && <TimerNotice notice={notice} onClose={() => setNoticeDismissed(true)} />}
-            {showCard && card}
-            {prompt && <div className={showCard ? styles.promptBelow : undefined}>{promptEl}</div>}
+            its spot in the tag row, hidden). */}
+        {showCard && anchor && createPortal(
+          <div className={`${styles.dockedCard} ${styles.dockedCardExpanded}`} style={{ top: anchor.top, right: anchor.right }}>
+            <TimerNotice notice={notice} onClose={() => setNoticeDismissed(true)} />
+            {card}
           </div>,
           document.body,
         )}
+        {promptLayer}
       </>
     );
   }
 
   return (
     <div className={wrapClass} style={floatingStyle}>
-      {promptEl}
+      {promptLayer}
       <TimerNotice notice={notice} onClose={() => setNoticeDismissed(true)} />
       {showCard ? card : bar}
     </div>

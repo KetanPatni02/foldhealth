@@ -7,16 +7,23 @@ import { useEffect, useRef } from 'react';
  * changes the timer on its own.
  *
  * The threshold is meant to be set per customer account. In this prototype
- * it's on for one demo patient only, with a short threshold so the reminder
- * can be shown live: Victor Hargrove (Fold ID 10042), enrolled in CCM.
- * Everyone else has it off.
+ * it's 30 minutes for every patient, except one demo patient with a short
+ * threshold so the reminder can be shown live: Victor Hargrove (Fold ID
+ * 10042), enrolled in CCM, at 30 seconds.
  */
-export const INACTIVITY_SECONDS_BY_PATIENT = {
-  10042: 30,
-};
+export const DEFAULT_INACTIVITY_SECONDS = 30 * 60;
 
-export const inactivitySecondsFor = (patientId) =>
-  (patientId == null ? null : INACTIVITY_SECONDS_BY_PATIENT[String(patientId)] ?? null);
+// The live-demo patient: a 30-second threshold, and the timer starts
+// floating bottom-right where the reminder has room.
+export const INACTIVITY_DEMO_PATIENT_ID = '10042';
+const DEMO_INACTIVITY_SECONDS = 30;
+
+export const isInactivityDemoPatient = (patientId) => String(patientId) === INACTIVITY_DEMO_PATIENT_ID;
+
+export const inactivitySecondsFor = (patientId) => {
+  if (patientId == null) return null;
+  return isInactivityDemoPatient(patientId) ? DEMO_INACTIVITY_SECONDS : DEFAULT_INACTIVITY_SECONDS;
+};
 
 /** "30 seconds", "1 minute", "10 minutes". */
 export function formatIdleDuration(seconds) {
