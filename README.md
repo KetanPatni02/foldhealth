@@ -37,6 +37,20 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **CIS-CMB10 follow-ups from the clinical review call.** Doses given after
+  their recommended window but by the 2nd birthday show **Completed late**
+  (they still count). The team can track vaccine appointments booked with the
+  child's own provider: a "Schedule Vaccine Appointment" left panel (date,
+  time, provider, doses, note) puts a "Scheduled <date>" chip on each dose,
+  turning to "Confirm <date>" once the visit passes unrecorded, and sets a
+  follow-up reminder for the day after (new `cis_dose_appointments` table,
+  `supabase/cis_dose_appointments_migration.sql`). A new immunization record
+  PDF (doses given, product, CVX) can be downloaded or saved to the gap's
+  Documents as evidence (non-standard note, nothing billed). The tab's actions
+  move into a ⋯ menu; fully given vaccines group under Completed as Met / Not
+  Met; doses unlock on their earliest allowed date; Add Outreach leads the
+  suggested actions on CIS gaps; the Vaccine Calendar opens as a drawer.
+
 - **PR Autopilot.** When Alok, Ketan or Devanshi open or update a PR, a
   GitHub Action (`.github/workflows/pr-autopilot.yml`) has Claude review it,
   wait for the required checks, merge it (resolving conflicts on an

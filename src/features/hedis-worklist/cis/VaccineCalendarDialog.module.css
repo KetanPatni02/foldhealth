@@ -1,51 +1,10 @@
-/* Vaccine Calendar dialog (CIS-CMB10). Wide modal over the Care Gap
-   drawer: header, dose progress, then the dose table or timeline. Changes
-   save as they are made, so there is no footer.
-   Doubled selector so it wins over the dialog shell's 420px default. */
-.content.content {
-  max-width: 1120px;
-  width: calc(100% - var(--space-8));
-  height: calc(100vh - var(--space-8));
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-/* Focus moves into the table, not onto the dialog frame. */
-.content.content:focus {
-  outline: none;
-}
-
-/* ── Header ── */
-.header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  box-sizing: border-box;
-  height: 44px;
-  flex-shrink: 0;
-  padding: 0 var(--space-6);
-  border-bottom: 0.5px solid var(--neutral-150);
-}
-.title {
-  flex: 1;
-  margin: 0;
-  font-size: var(--font-lg);
-  font-weight: 500;
-  color: var(--neutral-500);
-}
+/* Vaccine Calendar drawer (CIS-CMB10): wide shared Drawer over the Care
+   Gap drawer. Patient banner, dose progress, then the dose table or
+   timeline. Changes save as they are made, so there is no footer. */
 .headerDivider {
   width: 1px;
   height: 16px;
   background: var(--neutral-150);
-}
-.srOnly {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 /* Last saved, under the table. */
 .lastSaved {
@@ -61,14 +20,16 @@
   color: var(--neutral-400);
 }
 
-/* ── Body ── */
-.body {
+/* ── Body ── Doubled selector so it wins over the Drawer body's own
+   padding and scroll: here the table / timeline scrolls, not the body. */
+.body.body {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4) var(--space-6);
+  overflow: hidden;
 }
 .tableWrap {
   flex: 1;
@@ -143,16 +104,6 @@
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
-.combo {
-  display: block;
-  margin-top: calc(var(--space-1) / 2);
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: help;
-}
 .thHint {
   display: inline-flex;
   align-items: center;
@@ -162,7 +113,7 @@
 .colDose { width: 8%; }
 .colRecommended { width: 17%; }
 .colEarliest { width: 13%; }
-.colDate { width: 18%; }
+.colDate { width: 140px; }
 .colStatus { width: 12%; }
 .colNotes { width: auto; }
 
@@ -176,13 +127,6 @@
   gap: var(--space-2);
   font-weight: 500;
   color: var(--neutral-500);
-}
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--status-warning);
-  flex-shrink: 0;
 }
 .vaccineMeta {
   display: block;
@@ -234,6 +178,25 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .doseHighlight td:not([rowspan]) { animation: none; background: var(--primary-100); }
+}
+/* "Does Not Count" reason bar under its dose, as on the tab: edge to
+   edge, error-50 fading out to the right, no stroke or radius. */
+.table tr.hasReasonBar td:not([rowspan]) {
+  border-bottom: none;
+}
+.table tr.reasonBarRow td {
+  padding: 0;
+}
+.reasonBar {
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-radius: 0;
+  background: linear-gradient(90deg, var(--status-error-light) 0%, transparent 100%);
+}
+/* Completed late: counts, so the same bar in grey instead of red. */
+.reasonBar.reasonBarQuiet {
+  background: linear-gradient(90deg, var(--neutral-75) 0%, transparent 100%);
+  color: var(--neutral-400);
 }
 .empty {
   margin: 0;

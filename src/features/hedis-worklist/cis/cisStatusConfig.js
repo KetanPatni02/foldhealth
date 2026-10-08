@@ -18,6 +18,7 @@ export const ANTIGEN_BADGE = {
 };
 export const DOSE_BADGE = {
   [CIS_DOSE_STATUS.completed]: { tone: 'success', icon: 'solar:check-circle-linear' },
+  [CIS_DOSE_STATUS.completedLate]: { tone: 'success', icon: 'solar:history-linear' },
   [CIS_DOSE_STATUS.notCounted]: { tone: 'error', icon: 'solar:forbidden-circle-linear' },
   [CIS_DOSE_STATUS.pending]: { tone: 'warning', icon: 'solar:pen-new-square-linear' },
   [CIS_DOSE_STATUS.dueNow]: { tone: 'warning', icon: 'solar:clock-circle-linear' },
@@ -29,10 +30,13 @@ export const DOSE_BADGE = {
 
 export const fmtDate = (d) => (d ? d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '—');
 
-/** A planned dose whose window hasn't opened yet can't be dated. */
-export const isLocked = (r) => r.kind === 'planned' && r.nextDue && r.nextDue > new Date();
+/** A planned dose can't be dated before its earliest allowed date. */
+export const isLocked = (r) => r.kind === 'planned' && !!r.earliest && r.earliest > new Date();
 
 /** The series started with the earliest recorded dose. */
 export const seriesStartDate = (result) => result.antigens
   .flatMap(a => a.rows.filter(r => r.record).map(r => r.record.date))
   .reduce((min, dt) => (!min || dt < min ? dt : min), null);
+
+/** Given and counted, on time or late. */
+export const isGiven = (status) => status === CIS_DOSE_STATUS.completed || status === CIS_DOSE_STATUS.completedLate;

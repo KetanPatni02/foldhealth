@@ -222,11 +222,35 @@ describe('does not count', () => {
       shot('PCV20', '216', '10/06/2026'), shot('PCV', '152', '10/06/2026'), shot('PCV', '152', '10/06/2026'),
     ];
     const pcv = status(evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY }), 'pcv');
+    // Dose 3 (10/06/2026) is past its 6-month window, so it counts late.
     expect(pcv.rows.map(r => r.status)).toEqual([
-      CIS_DOSE_STATUS.completed, CIS_DOSE_STATUS.completed, CIS_DOSE_STATUS.completed,
+      CIS_DOSE_STATUS.completed, CIS_DOSE_STATUS.completed, CIS_DOSE_STATUS.completedLate,
       CIS_DOSE_STATUS.notCounted, CIS_DOSE_STATUS.notCounted,
     ]);
     expect(pcv.rows.some(r => r.kind === 'planned')).toBe(false);
     expect(pcv.status).toBe(CIS_ANTIGEN_STATUS.cannotMeet);
+  });
+});
+
+describe('completed late', () => {
+  it('a dose after its recommended window but before the 2nd birthday counts, flagged late', () => {
+    const dob = new Date(2025, 0, 10); // 4-month DTaP window ends 06/10/2025
+    const imms = [shot('DTaP', '20', atMonths(dob, 2)), shot('DTaP', '20', '08/01/2025')];
+    const r = evaluateCis({ dob: fmt(dob), immunizations: imms, today: TODAY });
+    const dtap = status(r, 'dtap');
+    expect(dtap.rows[0].status).toBe(CIS_DOSE_STATUS.completed);
+    expect(dtap.rows[1]).toMatchObject({
+      counts: true,
+      status: CIS_DOSE_STATUS.completedLate,
+      reason: 'Given after the recommended window (ended 06/10/2025)',
+    });
+    expect(dtap.valid).toHaveLength(2);
+  });
+
+  it('a dose inside its window stays Completed', () => {
+    const dob = new Date(2025, 0, 10);
+    const dtap = status(evaluateCis({ dob: fmt(dob), immunizations: [shot('DTaP', '20', atMonths(dob, 2, 20))], today: TODAY }), 'dtap');
+    expect(dtap.rows[0]).toMatchObject({ status: CIS_DOSE_STATUS.completed });
+    expect(dtap.rows[0].reason).toBeUndefined();
   });
 });

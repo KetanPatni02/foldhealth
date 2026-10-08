@@ -1,22 +1,23 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '../../../components/ShadcnDialog/ShadcnDialog';
+import { Drawer } from '../../../components/Drawer/Drawer';
 import { PatientBanner } from '../../../components/PatientBanner/PatientBanner';
-import { ActionButton } from '../../../components/ActionButton/ActionButton';
-import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Icon } from '../../../components/Icon/Icon';
 import { Input } from '../../../components/Input/Input';
 import { FilterChip } from '../../../components/FilterChip/FilterChip';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
+import { InfoBar } from '../../../components/InfoBar/InfoBar';
 import { ConfirmDialog } from '../../../components/ConfirmDialog/ConfirmDialog';
 import { Toggle } from '../../../components/Toggle/Toggle';
-import { CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, CIS_CODE, evaluateCis } from './cisRules';
+import { CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, evaluateCis } from './cisRules';
 import { isoToMdy } from './useCisTracker';
 import { CisStatusBadge } from './CisStatus';
 import { CisDoseProgress } from './CisDoseProgress';
-import { DOSE_BADGE, fmtDate, seriesStartDate } from './cisStatusConfig';
+import { DOSE_BADGE, fmtDate, isGiven, seriesStartDate } from './cisStatusConfig';
 import { VaccineTimeline } from './VaccineTimeline';
 import { DoseDateField } from './DoseDateField';
-import { downloadCisSchedule } from './downloadCisSchedule';
+import { DoseAppointmentChip } from './DoseAppointmentChip';
+import { appointmentForDose } from './cisAppointments';
+import { CisMoreMenu } from './CisMoreMenu';
 import styles from './VaccineCalendarDialog.module.css';
 
 // Rows that need action get an accent bar down the dose column.
@@ -24,9 +25,17 @@ const ACCENT = {
   [CIS_DOSE_STATUS.dueNow]: styles.accentWarning,
   [CIS_DOSE_STATUS.pending]: styles.accentWarning,
   [CIS_DOSE_STATUS.overdue]: styles.accentError,
+  [CIS_DOSE_STATUS.notCounted]: styles.accentError,
   [CIS_DOSE_STATUS.cannotMeet]: styles.accentError,
 };
 const STATUS_ORDER = Object.values(CIS_DOSE_STATUS);
+// Doses whose reason shows as a full-width bar under the row: red when the
+// dose does not count, grey when it counts but was given late.
+const REASON_BAR = {
+  [CIS_DOSE_STATUS.notCounted]: { tone: 'error', icon: 'solar:danger-triangle-linear', quiet: false },
+  [CIS_DOSE_STATUS.completedLate]: { tone: 'info', icon: 'solar:history-linear', quiet: true },
+};
+const reasonBarFor = (r) => (r.reason ? REASON_BAR[r.status] : null);
 const URGENCY = [
   CIS_ANTIGEN_STATUS.overdue,
   CIS_ANTIGEN_STATUS.cannotMeet,
@@ -58,7 +67,7 @@ const fmtSaved = (iso) => {
  * @param {function} props.onSave          – (payload) => Promise<boolean>
  * @param {function} props.onClose
  */
-export function VaccineCalendarDialog({ member, immunizations, savedNotes, measurementYear, lastSaved, onSave, onClose }) {
+export function VaccineCalendarDialog({ member, immunizations, savedNotes, measurementYear, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence, onClose }) {
   const result = useMemo(
     () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear }),
     [member?.dob, immunizations, measurementYear],
@@ -131,34 +140,26 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
   const byAge = viewBy === 'age';
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent
-        hideClose
-        className={styles.content}
-        overlayClassName="z-[7999]"
-        style={{ zIndex: 8000 }}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        // The date picker and filter popovers are portaled outside the
-        // dialog (content role="group", click-away layer aria-hidden);
-        // using them must not close it.
-        onInteractOutside={(e) => { if (e.target.closest?.('[role="group"], [aria-hidden="true"]')) e.preventDefault(); }}
-      >
-        <header className={styles.header}>
-          <DialogTitle className={styles.title}>Vaccine Calendar</DialogTitle>
-          <DialogDescription className={styles.srOnly}>
-            {`${CIS_CODE} vaccine calendar for ${member?.name || 'this patient'}`}
-          </DialogDescription>
-          <ActionButton
+    <Drawer
+      title="Vaccine Calendar"
+      onClose={onClose}
+      width={1120}
+      headerRight={(
+        <>
+          <CisMoreMenu
             size="L"
-            icon="solar:download-minimalistic-linear"
-            tooltip="Download schedule (PDF)"
-            tooltipLeft
-            onClick={() => downloadCisSchedule({ member, result, notes: savedNotes, startedOn: seriesStartDate(result) })}
+            member={member}
+            result={result}
+            notes={savedNotes}
+            onSchedule={onOpenSchedule ? () => onOpenSchedule() : undefined}
+            onSaveEvidence={onSaveEvidence}
           />
           <span className={styles.headerDivider} aria-hidden="true" />
-          <CloseButton onClick={onClose} />
-        </header>
-        {/* Patient context, as in the Care Gap drawer, edge to edge. */}
+        </>
+      )}
+      noCloseDivider
+      // Patient context, as in the Care Gap drawer, edge to edge.
+      banner={(
         <PatientBanner
           initials={member?.in}
           name={member?.name}
@@ -169,8 +170,9 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
           patientId={member?.id}
           hidePatientLabel
         />
-
-        <div className={styles.body}>
+      )}
+      bodyClassName={styles.body}
+    >
           {result.dob && (
             <section className={styles.progressCard} aria-label="Dose progress">
               <CisDoseProgress result={result} startedOn={seriesStartDate(result)} onSelect={goToDose} />
@@ -194,10 +196,10 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                 <FilterChip
                   size="S"
                   singleSelect
+                  noClear
                   label="View by"
                   options={['Vaccine', 'Age']}
                   selected={[viewBy === 'age' ? 'Age' : 'Vaccine']}
-                  // Clearing the chip falls back to the default, by vaccine.
                   onChange={(v) => setViewBy(v[0] === 'Age' ? 'age' : 'vaccine')}
                 />
               )}
@@ -231,21 +233,23 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                   <Fragment key={group.key}>
                     {group.items.map(({ antigen, row }, i) => {
                       const savedNote = savedNotes?.[`${antigen.key}:${row.number}`]?.note || '';
+                      const bar = reasonBarFor(row);
                       return (
+                        <Fragment key={`${antigen.key}:${row.number}`}>
                         <tr
-                          key={`${antigen.key}:${row.number}`}
                           id={`cis-cal-${antigen.key}-${row.number}`}
                           className={[
                             i === 0 ? styles.groupStart : '',
+                            bar ? styles.hasReasonBar : '',
                             focusDose === `${antigen.key}-${row.number}` ? styles.doseHighlight : '',
                           ].filter(Boolean).join(' ') || undefined}
                         >
                           {i === 0 && (
-                            <td rowSpan={group.items.length} className={styles.vaccineCell}>
+                            // The reason bars under "Does Not Count" doses are rows too.
+                            <td rowSpan={group.items.length + group.items.filter(it => reasonBarFor(it.row)).length} className={styles.vaccineCell}>
                               {byAge ? <AgeCell group={group} /> : (
                                 <>
                                   <span className={styles.vaccineName}>
-                                    {antigen.status !== CIS_ANTIGEN_STATUS.met && <span className={styles.dot} aria-label="Incomplete" />}
                                     {antigen.label}
                                   </span>
                                   <span className={styles.vaccineMeta}>
@@ -268,11 +272,14 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                           <td><span className={styles.primary}>{fmtDate(row.earliest)}</span></td>
                           <td>
                             <DoseDateField row={row} label={antigen.label} dob={result.dob} onChange={(iso) => changeDate(antigen, row, iso)} />
-                            {row.record && <RecordHint antigenKey={antigen.key} row={row} result={result} />}
+                            <DoseAppointmentChip
+                              match={appointmentForDose(appointments, antigen.key, row)}
+                              onOpen={(appt) => onOpenSchedule?.(appt)}
+                            />
                           </td>
                           <td>
-                            <CisStatusBadge map={DOSE_BADGE} status={row.status} />
-                            {row.reason && <span className={styles.reasonText}>{row.reason}</span>}
+                            <CisStatusBadge map={DOSE_BADGE} status={row.status} hideIcon />
+                            {row.reason && !bar && <span className={styles.reasonText}>{row.reason}</span>}
                           </td>
                           <td className={styles.noteCell}>
                             <NoteInput
@@ -283,6 +290,17 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                             />
                           </td>
                         </tr>
+                        {/* Same reason bar as the Vaccine Calendar tab. */}
+                        {bar && (
+                          <tr className={styles.reasonBarRow}>
+                            <td colSpan={6}>
+                              <InfoBar tone={bar.tone} variant="inline" icon={bar.icon} className={`${styles.reasonBar} ${bar.quiet ? styles.reasonBarQuiet : ''}`}>
+                                {row.status}: {row.reason}.
+                              </InfoBar>
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                   </Fragment>
@@ -297,7 +315,6 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
               ? <>Last saved by <strong>{lastSaved.actor}</strong> on <strong>{saved.date}</strong> at <strong>{saved.time}</strong></>
               : 'Not saved yet'}
           </p>
-        </div>
 
         {confirmRemove && (
           <ConfirmDialog
@@ -316,19 +333,18 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
             onCancel={() => setConfirmRemove(null)}
           />
         )}
-      </DialogContent>
-    </Dialog>
+
+    </Drawer>
   );
 }
 
 // Age group cell (View by Age): age, the date the child reaches it, and
 // how many of its doses are given.
 function AgeCell({ group }) {
-  const given = group.items.filter(({ row }) => row.status === CIS_DOSE_STATUS.completed).length;
+  const given = group.items.filter(({ row }) => isGiven(row.status)).length;
   return (
     <>
       <span className={styles.vaccineName}>
-        {given < group.items.length && <span className={styles.dot} aria-label="Incomplete" />}
         {group.age === 0 ? 'At birth' : `${group.age} Month${group.age === 1 ? '' : 's'}`}
       </span>
       <span className={styles.vaccineMeta}>{fmtDate(group.items[0].row.start)}</span>
@@ -351,19 +367,5 @@ function NoteInput({ saved, label, onSave }) {
       placeholder="Add a note"
       aria-label={label}
     />
-  );
-}
-
-// Combination shots name the other vaccines the same record counts for.
-function RecordHint({ antigenKey, row, result }) {
-  const covers = result.antigens
-    .filter(a => a.key !== antigenKey && a.rows.some(r => r.record?.id === row.record.id))
-    .map(a => a.label);
-  if (!covers.length) return null;
-  const brand = String(row.record.title || '').replace(/\s*\(.*\)\s*$/, '');
-  return (
-    <Tooltip label={`${row.record.title} is a combination vaccine. This record also counts for ${covers.join(', ')}.`}>
-      <span className={styles.combo}>{brand} · also {covers.join(', ')}</span>
-    </Tooltip>
   );
 }

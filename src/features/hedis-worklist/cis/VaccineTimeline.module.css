@@ -176,6 +176,13 @@
   border: 1px solid transparent;
   border-radius: 2px;
 }
+/* Legend only: solid swatches so each status reads at 10px. The blocks
+   above keep their light fills. */
+.swatch.toneSuccess { background: var(--status-success); border-color: var(--status-success); }
+.swatch.toneWarning { background: var(--status-warning); border-color: var(--status-warning); }
+.swatch.toneError { background: var(--status-error); border-color: var(--status-error); }
+.swatch.toneGrey { background: var(--neutral-150); border-color: var(--neutral-200); }
+.swatch.toneWhite { background: var(--neutral-0); border-color: var(--neutral-300); }
 .swatchToday {
   background: var(--primary-50);
   border-color: var(--primary-300);

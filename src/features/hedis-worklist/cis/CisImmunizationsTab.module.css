@@ -224,11 +224,6 @@
 .ageProgress {
   width: 120px;
 }
-/* Same width as the Vaccine view's Status column, so start dates line up. */
-.ageStatus {
-  display: flex;
-  width: 120px;
-}
 .ageStart {
   font-size: var(--font-sm);
   color: var(--placeholder-text);
@@ -393,14 +388,14 @@
 }
 .doseRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px 120px 120px 50px;
+  grid-template-columns: minmax(0, 1fr) 120px 132px 130px 48px;
   align-items: center;
   min-height: 51px;
   border-bottom: 0.5px solid var(--neutral-100);
 }
 .doseRow > * { padding: var(--space-2); }
 .doseRow > :nth-child(1) { padding-inline: var(--space-3); }
-.doseRow > :nth-child(5) { padding-inline: var(--space-3); }
+.doseRow > :nth-child(5) { padding-inline: var(--space-2); }
 /* 4px more air between Date Administered and Status (header + rows alike). */
 .doseRow > :nth-child(4) { padding-left: var(--space-3); }
 .doseHead {
@@ -416,7 +411,7 @@
   white-space: nowrap;
 }
 .noteHead {
-  justify-self: start;
+  justify-self: center;
 }
 .doseCol {
   display: flex;
@@ -471,10 +466,13 @@
   color: var(--neutral-300);
 }
 .dateCell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   min-width: 0;
 }
 .noteCol {
-  justify-self: start;
+  justify-self: center;
 }
 .noteEditor {
   display: flex;
