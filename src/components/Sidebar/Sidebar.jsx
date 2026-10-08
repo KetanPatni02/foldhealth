@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   // No hardcoded `badge` here any more — Messages and Tasks both read live
   // counts (see navBadges below). The old `badge: 8` was already unreachable
   // once Messages switched to the store count, and read as a real number.
-  { icon: 'solar:chat-round-dots-linear', filledIcon: 'solar:chat-round-dots-bold', label: 'Messages', page: 'messages' },
+  { icon: 'solar:chat-round-dots-linear', filledIcon: 'solar:chat-round-dots-bold', label: 'Comms', page: 'messages' },
   { icon: 'solar:phone-linear', filledIcon: 'solar:phone-bold', label: 'Calls', page: 'calls' },
   { icon: 'solar:user-speak-linear', filledIcon: 'solar:user-speak-bold', label: 'Leads', page: 'leads' },
   { icon: 'custom:campaign', filledIcon: 'custom:campaign-bold', label: 'Campaign', page: 'campaign' },

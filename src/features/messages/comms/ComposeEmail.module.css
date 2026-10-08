@@ -1,0 +1,291 @@
+/* Compose Email + Select Template (Figma Communications 1:24088, 1:24005). */
+
+.composeBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.composeLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.composeRight {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: calc(100vh - 8.5rem);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-3);
+  overflow: hidden;
+}
+
+.recipient {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.ccLinks {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ccDivider {
+  width: 1px;
+  height: 0.75rem;
+  background: var(--neutral-150);
+}
+
+.error {
+  font-size: var(--font-sm);
+  color: var(--status-error);
+}
+
+
+
+.archive {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+
+.previewBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.previewTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.previewLinks {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-sm);
+}
+
+/* ── Editable email frame ─────────────────────────────────────────────── */
+.canvas {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.toolbarDivider {
+  width: 1px;
+  height: 1rem;
+  margin: 0 var(--space-1);
+  background: var(--neutral-150);
+}
+
+.frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: none;
+  background: var(--neutral-0);
+}
+
+/* ── Select Template ──────────────────────────────────────────────────── */
+.pickerBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.pickerBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pickerDivider {
+  width: 1px;
+  height: 1rem;
+  background: var(--neutral-150);
+}
+
+.pickerSearch {
+  margin-left: auto;
+  width: 18.75rem;
+}
+
+.pickerEmpty {
+  padding: var(--space-6);
+  text-align: center;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+
+.gridCard {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  padding: 0 0 var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.gridCard:hover { border-color: var(--primary-200); box-shadow: var(--shadow-card); }
+
+.scratchCard {
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 18rem;
+  padding: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+
+.thumb {
+  position: relative;
+  width: 100%;
+  height: 15rem;
+  margin-bottom: var(--space-2);
+  overflow: hidden;
+  border-bottom: 0.5px solid var(--neutral-150);
+  pointer-events: none;
+}
+
+/* A 600px email drawn at 40% so the whole width fits the card. */
+.thumbFrame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 250%;
+  height: 250%;
+  border: none;
+  transform: scale(0.4);
+  transform-origin: 0 0;
+}
+
+.cardName {
+  padding: 0 var(--space-2);
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+}
+
+.cardCategory {
+  padding: 0 var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 20rem minmax(0, 1fr);
+  min-height: 0;
+  height: calc(100vh - 11rem);
+  border-top: 0.5px solid var(--neutral-150);
+}
+
+.listCol {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) 0 0;
+  border-right: 0.5px solid var(--neutral-150);
+  min-height: 0;
+}
+
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.listItem {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  width: 100%;
+  padding: var(--space-2) 0;
+  border: none;
+  border-bottom: 0.5px solid var(--neutral-150);
+  border-left: 2px solid transparent;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.listItem:hover { background: var(--primary-25); }
+
+.listItemActive {
+  background: var(--primary-25);
+  border-left-color: var(--primary-300);
+}
+.listItemActive .cardName { color: var(--primary-300); }
+
+.previewCol {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.previewHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.previewName {
+  font-size: var(--font-md);
+  color: var(--neutral-500);
+}
+
+.previewBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+}
+
+.previewFrame {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+}

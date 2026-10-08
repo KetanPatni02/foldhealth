@@ -8,10 +8,15 @@ import { SideNav } from '../../components/SideNav/SideNav';
 import { useAppStore } from '../../store/useAppStore';
 import { ChatArea } from './ChatArea';
 import { ConversationListPanel } from './ConversationListPanel';
-import { NewChatModal } from './NewChatModal';
 import { EmailWorkspace } from './email/EmailWorkspace';
 import { useReferralEmails } from './email/useReferralEmails';
 import { getDisplayName } from './messageUtils';
+import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
+import { useCommsConversations } from './comms/useComms';
+import { useCommsPeople } from './comms/useCommsPeople';
+import { CommsWorkspace } from './comms/CommsWorkspace';
+import { isMissedCall } from './comms/commsUtils';
+import { CommsPanelEmpty } from './comms/CommsEmptyState';
 import styles from './MessagesView.module.css';
 
 const INBOX_ITEMS = [
@@ -22,6 +27,18 @@ const INBOX_ITEMS = [
   { id: 'missed',     icon: 'solar:call-missed-linear',         label: 'Missed Calls', isCustomIcon: true },
   { id: 'starred',    icon: 'solar:star-linear',                label: 'Starred' },
   { id: 'archived',   icon: 'solar:archive-linear',             label: 'Archived' },
+];
+
+// Views backed by patient conversations (Chat, SMS, Calls and the inbox
+// filters that apply to them). Internal Chat stays staff-to-staff.
+const COMMS_VIEWS = new Set(['all', 'chat', 'sms', 'calls', 'missed', 'starred', 'archived']);
+
+const CREATE_ITEMS = [
+  { key: 'chat',  icon: 'solar:chat-round-linear',      label: 'New Chat' },
+  { key: 'sms',   icon: 'solar:chat-square-linear',     label: 'New SMS' },
+  { key: 'email', icon: 'solar:letter-linear',          label: 'New Email' },
+  { key: 'call',  icon: 'solar:phone-calling-linear',   label: 'Voice Call' },
+  { key: 'internal', icon: 'solar:user-speak-linear',   label: 'Internal Chat' },
 ];
 
 const CHANNEL_ITEMS = [
@@ -51,15 +68,24 @@ export function MessagesView() {
   const [filterTab, setFilterTab]         = useState('all');
   const [activeChannel, setActiveChannel] = useState('chat');
   const [searchQuery, setSearchQuery]     = useState('');
-  const [showNewChat, setShowNewChat]     = useState(false);
-  const [newChatSearch, setNewChatSearch] = useState('');
   const [convRefreshKey, setConvRefreshKey] = useState(0);
   // Starts true so the very first paint is a skeleton, not the empty state.
   // Only the FIRST load flips it — background refreshes (a realtime nudge
   // bumping convRefreshKey) must not blank a list the user is reading.
   const [convLoading, setConvLoading] = useState(true);
   const [showSearch, setShowSearch]       = useState(false);
-  const newChatRef = useRef(null);
+  const createBtnRef = useRef(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  // The Comms menu folds to an icon rail from the list header's collapse button.
+  const [navCollapsed, setNavCollapsed] = useState(false);
+  const toggleNav = () => setNavCollapsed(v => !v);
+  const openCommsDrawer = useAppStore(s => s.openCommsDrawer);
+  const commsFocus = useAppStore(s => s.commsFocus);
+  const [seenCommsFocus, setSeenCommsFocus] = useState(null);
+  const [selectedCommsId, setSelectedCommsId] = useState(null);
+  const [emailFocusConvId, setEmailFocusConvId] = useState(null);
+  const { conversations: commsConversations, loading: commsLoading } = useCommsConversations();
+  const { patients, me } = useCommsPeople();
 
   // getSession() reads the persisted session locally; getUser() makes a
   // network call to re-validate it. Nothing here needs re-validation — the
@@ -182,24 +208,10 @@ export function MessagesView() {
     if (match) {
       setProfiles(prev => ({ ...prev, [match.id]: match }));
       setSelectedUserId(match.id);
-      setShowNewChat(false);
-      setNewChatSearch('');
-      setActiveChannel('chat');
+      setActiveChannel('internal');
     }
     setPendingChatUserEmail(null);
   }, [pendingChatUserEmail, allProfiles, setPendingChatUserEmail]);
-
-  useEffect(() => {
-    if (!showNewChat) return;
-    const handler = (e) => {
-      if (newChatRef.current && !newChatRef.current.contains(e.target)) {
-        setShowNewChat(false);
-        setNewChatSearch('');
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [showNewChat]);
 
   // Email count in the channel list needs referrals loaded before the Email
   // channel is opened; a referral-email notification switches to it.
@@ -210,7 +222,7 @@ export function MessagesView() {
     setActiveChannel('email');
   }
 
-  const showConversations = ['all', 'chat', 'internal'].includes(activeChannel);
+  const showConversations = activeChannel === 'internal';
 
   const filteredConversations = conversations.filter(conv => {
     if (filterTab === 'unread' && conv.unreadCount === 0) return false;
@@ -220,25 +232,45 @@ export function MessagesView() {
     return getDisplayName(profile).toLowerCase().includes(q) || (profile?.email || '').toLowerCase().includes(q);
   });
 
-  const filteredNewUsers = allProfiles.filter(p => {
-    if (p.id === currentUser?.id) return false;
-    if (!newChatSearch) return true;
-    const q = newChatSearch.toLowerCase();
-    return getDisplayName(p).toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q);
-  });
-
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
   const selectedProfile = selectedUserId ? profiles[selectedUserId] : null;
 
-  const openConversation = (userId) => {
-    setSelectedUserId(userId);
-    setShowNewChat(false);
-    setNewChatSearch('');
+  const openConversation = (userId) => setSelectedUserId(userId);
+  // Bulk "Mark as Read" on Internal Chat: everything those people sent me.
+  const markInternalRead = async (userIds) => {
+    if (!currentUser || !userIds.length) return;
+    await supabase.from('direct_messages').update({ read_at: new Date().toISOString() })
+      .in('sender_id', userIds).eq('recipient_id', currentUser.id).is('read_at', null);
+    handleConversationUpdate();
   };
 
-  const closeNewChat = () => {
-    setShowNewChat(false);
-    setNewChatSearch('');
+  const openCreate = (key, props = {}) => {
+    setCreateOpen(false);
+    openCommsDrawer(key, key === 'internal' ? { initialType: 'internal' } : props);
+  };
+  const compose = (initial) => openCommsDrawer('email', { initial });
+
+  // After a new chat / SMS / email (from here or the top bar), land on it.
+  if (commsFocus && commsFocus !== seenCommsFocus) {
+    setSeenCommsFocus(commsFocus);
+    if (commsFocus.channel === 'email') {
+      setActiveChannel('email');
+      setEmailFocusConvId(commsFocus.conversationId);
+    } else {
+      setActiveChannel(commsFocus.channel === 'call' ? 'calls' : commsFocus.channel);
+      setSelectedCommsId(commsFocus.conversationId);
+    }
+  }
+
+  const live = commsConversations.filter(c => !c.archived);
+  const unreadIn = (pick) => live.filter(c => pick(c) && c.unread_count > 0).length;
+  const commsCounts = {
+    all: unreadIn(() => true),
+    chat: unreadIn(c => c.channel === 'chat'),
+    sms: unreadIn(c => c.channel === 'sms'),
+    calls: unreadIn(c => c.channel === 'call'),
+    missed: live.filter(isMissedCall).length,
+    email: (unreadEmails || 0) + unreadIn(c => c.channel === 'email'),
   };
 
   return (
@@ -248,15 +280,20 @@ export function MessagesView() {
       <div className={styles.panels}>
         <SideNav
           width={200}
+          sectionLabelVariant="sentence"
+          collapsed={navCollapsed}
           header={
             <Button
               variant="primary"
               size="L"
               leadingIcon="solar:add-circle-bold"
               fullWidth
-              onClick={() => setShowNewChat(true)}
+              iconOnly={navCollapsed}
+              aria-label="Create New"
+              ref={createBtnRef}
+              onClick={() => setCreateOpen(v => !v)}
             >
-              Create New
+              {navCollapsed ? null : 'Create New'}
             </Button>
           }
           sections={[
@@ -270,7 +307,7 @@ export function MessagesView() {
                 iconElement: item.isCustomIcon
                   ? <MissedCallIcon size={16} color={activeChannel === item.id ? 'var(--primary-300)' : 'var(--neutral-300)'} />
                   : undefined,
-                count: item.badge ?? undefined,
+                count: commsCounts[item.id] || undefined,
               })),
             },
             {
@@ -280,9 +317,9 @@ export function MessagesView() {
                 key: item.id,
                 label: item.label,
                 icon: item.icon,
-                count: item.id === 'email'
-                  ? (unreadEmails || undefined)
-                  : ['all', 'chat', 'internal'].includes(item.id) && totalUnread > 0 ? totalUnread : undefined,
+                count: item.id === 'internal'
+                  ? (totalUnread || undefined)
+                  : (commsCounts[item.id] || undefined),
               })),
             },
           ]}
@@ -290,7 +327,31 @@ export function MessagesView() {
           onSelect={setActiveChannel}
         />
 
-        {activeChannel === 'email' ? <EmailWorkspace /> : (<>
+        {activeChannel === 'email' ? (
+          <EmailWorkspace
+            onCompose={compose}
+            selectConversationId={emailFocusConvId}
+            onSelectedConversation={() => setEmailFocusConvId(null)}
+            navCollapsed={navCollapsed}
+            onToggleNav={toggleNav}
+          />
+        ) : COMMS_VIEWS.has(activeChannel) ? (
+          <CommsWorkspace
+            view={activeChannel}
+            conversations={commsConversations}
+            loading={commsLoading}
+            patients={patients}
+            me={me}
+            selectedId={selectedCommsId}
+            onSelect={setSelectedCommsId}
+            onCreate={() => openCreate(activeChannel === 'sms' ? 'sms' : activeChannel === 'calls' || activeChannel === 'missed' ? 'call' : 'chat')}
+            onCreateType={openCreate}
+            navCollapsed={navCollapsed}
+            onToggleNav={toggleNav}
+            onCompose={compose}
+            onDial={(number) => openCreate('call', { initialMode: 'dial', initialNumber: number })}
+          />
+        ) : (<>
         <ConversationListPanel
           activeChannel={activeChannel}
           showConversations={showConversations}
@@ -302,7 +363,9 @@ export function MessagesView() {
           loading={convLoading}
           profiles={profiles}
           selectedUserId={selectedUserId}
-          onShowNewChat={() => setShowNewChat(true)}
+          onMarkRead={markInternalRead}
+          navCollapsed={navCollapsed}
+          onToggleNav={toggleNav}
           onToggleSearch={() => { setShowSearch(v => !v); if (showSearch) setSearchQuery(''); }}
           onSearchChange={setSearchQuery}
           onClearSearch={() => { setSearchQuery(''); setShowSearch(false); }}
@@ -318,35 +381,27 @@ export function MessagesView() {
             onConversationUpdate={handleConversationUpdate}
           />
         ) : (
-          <div className={styles.chatPanel}>
-            <div className={styles.noConvPlaceholder}>
-              <div className={styles.noConvIcon}>
-                <Icon name="solar:chat-round-linear" size={32} />
-              </div>
-              <div className={styles.noConvText}>Select a conversation or start a new one</div>
-              <Button variant="primary" size="L" leadingIcon="solar:pen-new-square-linear" onClick={() => setShowNewChat(true)}>
-                New Message
-              </Button>
-            </div>
-          </div>
+          <CommsPanelEmpty
+            viewKey={activeChannel}
+            hasConversations={showConversations && conversations.length > 0}
+            onCreate={openCreate}
+          />
         )}
         </>)}
       </div>
 
-      {showNewChat && (
-        <NewChatModal
-          modalRef={newChatRef}
-          newChatSearch={newChatSearch}
-          filteredNewUsers={filteredNewUsers}
-          onSearchChange={setNewChatSearch}
-          onClose={closeNewChat}
-          onSelectUser={(p) => {
-            setProfiles(prev => ({ ...prev, [p.id]: p }));
-            openConversation(p.id);
-            setActiveChannel('chat');
-          }}
+      {createOpen && (
+        <MenuPopover
+          anchorRef={createBtnRef}
+          align="left"
+          width={184}
+          items={CREATE_ITEMS}
+          onSelect={(key) => openCreate(key)}
+          onClose={() => setCreateOpen(false)}
+          ariaLabel="Create new"
         />
       )}
+
     </div>
   );
 }

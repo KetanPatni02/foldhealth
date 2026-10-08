@@ -1,0 +1,332 @@
+/* Fold-Pixel 1.0 "Chat Bubble Web" (1288:19893). */
+
+/* Hugs its content up to the max width, then the text wraps. */
+.wrap {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  align-self: flex-start;
+  width: fit-content;
+  max-width: min(31.25rem, 80%);
+}
+
+.wrapRight { align-self: flex-end; }
+.wrapInternal { flex-direction: column; align-self: flex-end; }
+
+/* The sender's avatar sits level with the bubble's bottom (above the time). */
+.avatarCol {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 1.5rem;
+  flex-shrink: 0;
+  width: 1.5rem;
+}
+
+.col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* The bubble keeps to its own width even when the name row is wider. */
+.wrapRight .col { align-items: flex-end; }
+
+.nameRow,
+.timeRow { align-self: stretch; }
+
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 1.5rem;
+  padding: 0 var(--space-1);
+}
+
+.name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 100%;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  font-size: var(--font-base);
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.bubbleLeft {
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2) var(--space-2) var(--space-2) 0;
+  color: var(--neutral-400);
+}
+
+.bubbleRight {
+  background: var(--primary-300);
+  border: 0.5px solid var(--neutral-100);
+  border-radius: var(--space-2) var(--space-2) 0 var(--space-2);
+  color: var(--neutral-0);
+}
+
+.bubbleCall { padding: var(--space-2) var(--space-3); }
+
+.text { white-space: pre-wrap; }
+
+.timeRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-1);
+}
+
+.time {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-200);
+  white-space: nowrap;
+}
+
+/* ── Inside the bubble ── */
+.quote {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--primary-200);
+  border-left-width: 3px;
+  border-radius: var(--space-2);
+  background: var(--primary-100);
+}
+
+.bubbleRight .quote {
+  background: var(--neutral-0);
+  border-color: var(--neutral-100);
+}
+
+.quoteName {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-300);
+}
+
+.quoteText {
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+.attachment {
+  display: flex;
+  flex-direction: column;
+  max-width: 18.75rem;
+  overflow: hidden;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--primary-100);
+  color: inherit;
+  text-decoration: none;
+}
+
+.bubbleRight .attachment {
+  background: var(--neutral-0);
+  border-color: var(--neutral-100);
+}
+
+.attachImage {
+  display: block;
+  height: 9.375rem;
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.attachImage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.attachText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.attachName {
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-400);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachSize {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  overflow: hidden;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--primary-100);
+}
+
+.bubbleRight .link {
+  background: var(--neutral-0);
+  border-color: var(--neutral-100);
+}
+
+.linkText {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--primary-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.call {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--neutral-300);
+}
+
+.bubbleRight .call { color: var(--neutral-0); }
+
+.callLabel {
+  flex: 1;
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+
+.callDuration {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+
+.bubbleRight .callLabel,
+.bubbleRight .callDuration { color: var(--neutral-0); }
+
+/* ── Internal note ── */
+.internal {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1.5px dashed var(--secondary-300);
+  border-radius: var(--space-2);
+  background: var(--secondary-50);
+  color: var(--neutral-400);
+  font-size: var(--font-base);
+  line-height: 1.2;
+}
+
+.internal .quote,
+.internal .attachment,
+.internal .link {
+  background: var(--neutral-0);
+  border-color: var(--secondary-200);
+}
+
+.internal .timeRow { padding: 0; }
+
+.internalHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 1rem;
+}
+
+.internalBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--secondary-300);
+}
+
+.internalName {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-300);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Missed call marker ── */
+.missed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.missedRule {
+  flex: 1;
+  min-width: 3.125rem;
+  max-width: 6.25rem;
+  border-top: 1.5px dotted var(--status-error);
+}
+
+.missedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--status-error);
+  white-space: nowrap;
+}
+
+.missedFrom {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-400);
+  white-space: nowrap;
+}

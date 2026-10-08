@@ -1,0 +1,113 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+.req {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: var(--status-error);
+}
+
+.counter {
+  align-self: flex-end;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.radios {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.memberRow {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.dial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.dialInputRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: stretch;
+}
+
+.country {
+  width: 7.5rem;
+  flex-shrink: 0;
+}
+
+.backspace {
+  display: inline-flex;
+  padding: var(--space-1);
+  border: none;
+  background: none;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+
+.pad {
+  display: grid;
+  grid-template-columns: repeat(3, 2.5rem);
+  gap: var(--space-3) var(--space-6);
+}
+
+.key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: 0.5px solid var(--neutral-200);
+  background: var(--neutral-25);
+  color: var(--neutral-400);
+  font-size: var(--font-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+.key:hover { background: var(--neutral-50); }
+.key:active { background: var(--primary-50); border-color: var(--primary-200); }
+
+.keySub {
+  font-size: 0.4375rem;
+  letter-spacing: 0.04em;
+  color: var(--neutral-300);
+}
+
+.callBtn { width: 15.625rem; justify-content: center; }
+
+.dialHint {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}

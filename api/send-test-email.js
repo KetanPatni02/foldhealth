@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     });
   }
 
-  const { to, subject, html, fromName, listUnsubscribe } = req.body || {};
+  const { to, cc, bcc, replyTo, subject, html, fromName, listUnsubscribe } = req.body || {};
   if (!to || !html) {
     return res.status(400).json({ error: { message: 'Missing required fields: to, html' } });
   }
@@ -38,6 +38,9 @@ export default async function handler(req, res) {
     const { data, error } = await resend.emails.send({
       from,
       to,
+      ...(cc?.length ? { cc } : {}),
+      ...(bcc?.length ? { bcc } : {}),
+      ...(replyTo ? { replyTo } : {}),
       subject: subject || 'Test Email from Fold Health',
       html,
       ...(headers ? { headers } : {}),

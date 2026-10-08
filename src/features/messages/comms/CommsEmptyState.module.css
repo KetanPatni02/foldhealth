@@ -1,0 +1,36 @@
+/* Comms reading pane with nothing open (Figma 1707:71560, 1682:2868). */
+.panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  background: var(--neutral-0);
+}
+
+.art {
+  display: block;
+  height: 6.25rem;
+  width: auto;
+  margin: var(--space-4);
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  line-height: 1.2;
+}
+
+.title { color: var(--neutral-400); }
+.sub { color: var(--neutral-300); }
+
+/* The list column is a scroll box, not a flex column: take its full height. */
+.listEmpty {
+  display: flex;
+  min-height: 100%;
+}

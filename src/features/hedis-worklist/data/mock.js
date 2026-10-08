@@ -7,7 +7,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/22/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 234-5678', dob: '05/20/1957',
+    memberStatus: 'Active', phone: '(917) 555-0148', dob: '05/20/1957',
     ipa: 'CFC', hpCode: 'HP-002', zip: '10016', city: 'Queens', state: 'NY',
   },
   {
@@ -21,7 +21,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/21/2026',
     advIllness: 0, frailty: 0, riskLevel: '2_Mod-High', tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 123-4567', dob: '06/23/1949',
+    memberStatus: 'Active', phone: '(415) 555-0129', dob: '06/23/1949',
     ipa: 'IPA-North', hpCode: 'HP-001', zip: '07102', city: 'Newark', state: 'NJ',
   },
   {
@@ -43,7 +43,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/18/2026',
     advIllness: 1, frailty: 0, riskLevel: '3_Moderate', tasks: 2,
     outreachDots: ['success', 'pending', 'pending'], outreachDate: '05/19/2026',
-    memberStatus: 'Active', phone: '(555) 876-5432', dob: '03/24/1974',
+    memberStatus: 'Active', phone: '(917) 555-0180', dob: '03/24/1974',
     ipa: 'LA Care', hpCode: 'H1234', zip: '10016', city: 'New York', state: 'NY',
   },
   {
@@ -58,7 +58,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/15/2026',
     advIllness: 3, frailty: 1, riskLevel: '1_High', tasks: 1,
     outreachDots: ['failed', 'pending', 'pending'], outreachDate: '05/16/2026',
-    memberStatus: 'Active', phone: '(555) 345-6789', dob: '07/10/1966',
+    memberStatus: 'Active', phone: '(312) 555-0163', dob: '07/10/1966',
     ipa: 'Astrana', hpCode: 'H5678', zip: '10451', city: 'Bronx', state: 'NY',
   },
   {
@@ -73,7 +73,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/14/2026',
     advIllness: 0, frailty: 0, riskLevel: '2_Mod-High', tasks: null,
     outreachDots: ['success', 'success', 'pending'], outreachDate: '05/15/2026',
-    memberStatus: 'Active', phone: '(555) 456-7890', dob: '09/08/1977',
+    memberStatus: 'Active', phone: '+917838997914', dob: '09/08/1977',
     ipa: 'CFC', hpCode: 'HP-001', zip: '10016', city: 'Manhattan', state: 'NY',
   },
   {
@@ -84,7 +84,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/12/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 010-0099', dob: '02/14/1962',
+    memberStatus: 'Active', phone: '(718) 555-0135', dob: '02/14/1962',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10001', city: 'Bronx', state: 'NY',
   },
   {
@@ -95,7 +95,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/12/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: 3,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 567-8901', dob: '09/08/1954',
+    memberStatus: 'Active', phone: '(415) 555-0106', dob: '09/08/1954',
     ipa: 'IPA-North', hpCode: 'HP-002', zip: '07302', city: 'Jersey City', state: 'NJ',
   },
   {
@@ -106,7 +106,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/10/2026',
     advIllness: 0, frailty: 0, riskLevel: '4_Mod-Low', tasks: null,
     outreachDots: ['success', 'pending', 'pending'], outreachDate: '05/11/2026',
-    memberStatus: 'Active', phone: '(555) 678-9012', dob: '01/08/1968',
+    memberStatus: 'Active', phone: '(213) 555-0182', dob: '01/08/1968',
     ipa: 'IPA-West', hpCode: 'HP-002', zip: '06901', city: 'Stamford', state: 'CT',
   },
   {
@@ -117,7 +117,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/08/2026',
     advIllness: 2, frailty: 2, riskLevel: '1_High', tasks: 1,
     outreachDots: ['failed', 'failed', 'pending'], outreachDate: '05/09/2026',
-    memberStatus: 'Active', phone: '(555) 789-0123', dob: '10/11/1960',
+    memberStatus: 'Active', phone: '(702) 555-0140', dob: '10/11/1960',
     ipa: 'LA Care', hpCode: 'HP-002', zip: '07501', city: 'Paterson', state: 'NJ',
   },
   {
@@ -157,7 +157,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/07/2026',
     advIllness: 0, frailty: 0, riskLevel: '3_Moderate', tasks: 2,
     outreachDots: ['success', 'success', 'success'], outreachDate: '05/08/2026',
-    memberStatus: 'Active', phone: '(555) 890-1234', dob: '10/11/1981',
+    memberStatus: 'Active', phone: '(713) 555-0141', dob: '10/11/1981',
     ipa: 'CFC', hpCode: 'H5678', zip: '11375', city: 'Queens', state: 'NY',
   },
   {
@@ -168,7 +168,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/05/2026',
     advIllness: 1, frailty: 0, riskLevel: '2_Mod-High', tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 901-2345', dob: '06/03/1971',
+    memberStatus: 'Active', phone: '(503) 555-0100', dob: '06/03/1971',
     ipa: 'IPA-North', hpCode: 'HP-002', zip: '10601', city: 'White Plains', state: 'NY',
   },
   {
@@ -179,7 +179,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/03/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: 1,
     outreachDots: ['success', 'pending', 'pending'], outreachDate: '05/04/2026',
-    memberStatus: 'Active', phone: '(555) 012-3456', dob: '01/20/1988',
+    memberStatus: 'Active', phone: '(347) 555-0173', dob: '01/20/1988',
     ipa: 'IPA-West', hpCode: 'HP-002', zip: '11550', city: 'Hempstead', state: 'NY',
   },
   {
@@ -190,7 +190,7 @@ export const HEDIS_MEMBERS = [
     startDate: '05/01/2026',
     advIllness: 0, frailty: 1, riskLevel: '3_Moderate', tasks: null,
     outreachDots: ['failed', 'pending', 'pending'], outreachDate: '05/02/2026',
-    memberStatus: 'Active', phone: '(555) 111-2222', dob: '03/10/1964',
+    memberStatus: 'Active', phone: '(347) 555-0131', dob: '03/10/1964',
     ipa: 'LA Care', hpCode: 'HP-001', zip: '07030', city: 'Hoboken', state: 'NJ',
   },
   {
@@ -201,7 +201,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/28/2026',
     advIllness: 4, frailty: 3, riskLevel: '1_High', tasks: 2,
     outreachDots: ['success', 'success', 'pending'], outreachDate: '04/29/2026',
-    memberStatus: 'Active', phone: '(555) 222-3333', dob: '08/05/1969',
+    memberStatus: 'Active', phone: '(917) 555-0143', dob: '08/05/1969',
     ipa: 'Astrana', hpCode: 'H5678', zip: '11215', city: 'Brooklyn', state: 'NY',
   },
   {
@@ -212,7 +212,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/25/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 333-4444', dob: '10/19/1976',
+    memberStatus: 'Active', phone: '(773) 555-0165', dob: '10/19/1976',
     ipa: 'CFC', hpCode: 'H1234', zip: '11375', city: 'Queens', state: 'NY',
   },
   {
@@ -223,7 +223,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/16/2026',
     advIllness: 0, frailty: 1, riskLevel: '3_Moderate', tasks: null,
     outreachDots: ['failed', 'pending', 'pending'], outreachDate: '04/17/2026',
-    memberStatus: 'Active', phone: '(555) 444-5555', dob: '10/23/1955',
+    memberStatus: 'Active', phone: '(503) 555-0116', dob: '10/23/1955',
     ipa: 'IPA-North', hpCode: 'HP-002', zip: '10701', city: 'Yonkers', state: 'NY',
   },
   {
@@ -244,7 +244,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/24/2026',
     advIllness: 2, frailty: 1, riskLevel: '1_High', tasks: 3,
     outreachDots: ['success', 'pending', 'pending'], outreachDate: '04/25/2026',
-    memberStatus: 'Active', phone: '(555) 555-6666', dob: '08/21/2007',
+    memberStatus: 'Active', phone: '(312) 555-0161', dob: '08/21/2007',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10451', city: 'Bronx', state: 'NY',
   },
   {
@@ -261,7 +261,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/22/2026',
     advIllness: 1, frailty: 0, riskLevel: '2_Mod-High', tasks: 1,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 666-7777', dob: '07/22/1959',
+    memberStatus: 'Active', phone: '(773) 555-0111', dob: '07/22/1959',
     ipa: 'CFC', hpCode: 'HP-002', zip: '10016', city: 'Manhattan', state: 'NY',
   },
   {
@@ -276,7 +276,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/20/2026',
     advIllness: 0, frailty: 0, riskLevel: '3_Moderate', tasks: null,
     outreachDots: ['success', 'pending', 'pending'], outreachDate: '04/21/2026',
-    memberStatus: 'Active', phone: '(555) 777-8888', dob: '04/25/1996',
+    memberStatus: 'Active', phone: '(818) 555-0167', dob: '04/25/1996',
     ipa: 'IPA-North', hpCode: 'HP-002', zip: '11215', city: 'Brooklyn', state: 'NY',
   },
   {
@@ -293,7 +293,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/18/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 888-9999', dob: '06/27/1968',
+    memberStatus: 'Active', phone: '(503) 555-0145', dob: '06/27/1968',
     ipa: 'IPA-West', hpCode: 'HP-001', zip: '11189', city: 'Queens', state: 'NY',
   },
   {
@@ -308,7 +308,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/16/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: 1,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 999-0000', dob: '02/27/1982',
+    memberStatus: 'Active', phone: '(310) 555-0131', dob: '02/27/1982',
     ipa: 'LA Care', hpCode: 'H5678', zip: '11550', city: 'Hempstead', state: 'NY',
   },
   {
@@ -323,7 +323,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/14/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['failed', 'pending', 'pending'], outreachDate: '04/15/2026',
-    memberStatus: 'Active', phone: '(555) 000-1111', dob: '12/01/1949',
+    memberStatus: 'Active', phone: '(626) 555-0101', dob: '12/01/1949',
     ipa: 'Astrana', hpCode: 'H1234', zip: '10601', city: 'White Plains', state: 'NY',
   },
   {
@@ -347,7 +347,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/12/2026',
     advIllness: 3, frailty: 2, riskLevel: '1_High', tasks: 4,
     outreachDots: ['success', 'success', 'pending'], outreachDate: '04/13/2026',
-    memberStatus: 'Active', phone: '(555) 111-2222', dob: '06/11/1969',
+    memberStatus: 'Active', phone: '(718) 555-0121', dob: '06/11/1969',
     ipa: 'CFC', hpCode: 'HP-002', zip: '07030', city: 'Hoboken', state: 'NJ',
   },
   {
@@ -368,7 +368,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/10/2026',
     advIllness: 2, frailty: 1, riskLevel: '1_High', tasks: 2,
     outreachDots: ['success', 'success', 'success'], outreachDate: '04/11/2026',
-    memberStatus: 'Active', phone: '(555) 121-2323', dob: '04/13/1979',
+    memberStatus: 'Active', phone: '(914) 555-0143', dob: '04/13/1979',
     ipa: 'IPA-North', hpCode: 'HP-002', zip: '07302', city: 'Paterson', state: 'NJ',
   },
   {
@@ -384,7 +384,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/08/2026',
     advIllness: 0, frailty: 0, riskLevel: '2_Mod-High', tasks: 1,
     outreachDots: ['failed', 'pending', 'pending'], outreachDate: '04/09/2026',
-    memberStatus: 'Active', phone: '(555) 232-3434', dob: '07/14/1966',
+    memberStatus: 'Active', phone: '(617) 555-0153', dob: '07/14/1966',
     ipa: 'IPA-West', hpCode: 'HP-002', zip: '10701', city: 'Yonkers', state: 'NY',
   },
   {
@@ -400,7 +400,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/06/2026',
     advIllness: 0, frailty: 0, riskLevel: '3_Moderate', tasks: null,
     outreachDots: ['success', 'pending', 'pending'], outreachDate: '04/07/2026',
-    memberStatus: 'Active', phone: '(555) 343-4545', dob: '02/27/1954',
+    memberStatus: 'Active', phone: '(213) 555-0132', dob: '02/27/1954',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '07030', city: 'Hoboken', state: 'NJ',
   },
   {
@@ -415,7 +415,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/04/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 454-5656', dob: '08/25/2000',
+    memberStatus: 'Active', phone: '(702) 555-0119', dob: '08/25/2000',
     ipa: 'CFC', hpCode: 'HP-001', zip: '10601', city: 'White Plains', state: 'NY',
   },
   {
@@ -429,7 +429,7 @@ export const HEDIS_MEMBERS = [
     startDate: '04/02/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['success', 'pending', 'pending'], outreachDate: '04/03/2026',
-    memberStatus: 'Active', phone: '(555) 565-6767', dob: '09/24/2011',
+    memberStatus: 'Active', phone: '(310) 555-0169', dob: '09/24/2011',
     ipa: 'IPA-West', hpCode: 'HP-002', zip: '11192', city: 'Yonkers', state: 'NY',
   },
   {
@@ -453,7 +453,7 @@ export const HEDIS_MEMBERS = [
     startDate: '03/31/2026',
     advIllness: 4, frailty: 3, riskLevel: '1_High', tasks: 5,
     outreachDots: ['success', 'failed', 'pending'], outreachDate: '04/01/2026',
-    memberStatus: 'Active', phone: '(555) 676-7878', dob: '03/02/1995',
+    memberStatus: 'Active', phone: '(347) 555-0149', dob: '03/02/1995',
     ipa: 'CFC', hpCode: 'H1234', zip: '06901', city: 'Stamford', state: 'CT',
   },
   {
@@ -469,7 +469,7 @@ export const HEDIS_MEMBERS = [
     startDate: '03/29/2026',
     advIllness: 0, frailty: 0, riskLevel: '2_Mod-High', tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 787-8989', dob: '06/27/1969',
+    memberStatus: 'Active', phone: '(718) 555-0194', dob: '06/27/1969',
     ipa: 'CFC', hpCode: 'HP-002', zip: '07302', city: 'Paterson', state: 'NJ',
   },
   {
@@ -484,7 +484,7 @@ export const HEDIS_MEMBERS = [
     startDate: '03/27/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: 1,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 898-9090', dob: '06/27/1969',
+    memberStatus: 'Active', phone: '(503) 555-0148', dob: '06/27/1969',
     ipa: 'CFC', hpCode: 'HP-002', zip: '07030', city: 'Hoboken', state: 'NJ',
   },
 
@@ -498,7 +498,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '05/20/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 201-0201', dob: '02/14/1963',
+    memberStatus: 'Active', phone: '(626) 555-0108', dob: '02/14/1963',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10001', city: 'New York', state: 'NY',
   },
   {
@@ -508,7 +508,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '05/19/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 202-0202', dob: '11/03/1968',
+    memberStatus: 'Active', phone: '(212) 555-0163', dob: '11/03/1968',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10002', city: 'New York', state: 'NY',
   },
   {
@@ -518,7 +518,7 @@ export const HEDIS_MEMBERS = [
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP', startDate: '05/18/2026',
     advIllness: 1, frailty: 0, riskLevel: '3_Moderate', tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 203-0203', dob: '07/22/1955',
+    memberStatus: 'Active', phone: '(818) 555-0103', dob: '07/22/1955',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10003', city: 'New York', state: 'NY',
   },
   {
@@ -528,7 +528,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '05/17/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 204-0204', dob: '01/12/1972',
+    memberStatus: 'Active', phone: '(310) 555-0102', dob: '01/12/1972',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10004', city: 'New York', state: 'NY',
   },
   {
@@ -538,7 +538,7 @@ export const HEDIS_MEMBERS = [
     assignee: 'Marcus Chen', assigneeInitials: 'MC', startDate: '05/17/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 205-0205', dob: '04/30/1959',
+    memberStatus: 'Active', phone: '(626) 555-0101', dob: '04/30/1959',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10005', city: 'New York', state: 'NY',
   },
   {
@@ -548,7 +548,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '05/16/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 206-0206', dob: '09/09/1978',
+    memberStatus: 'Active', phone: '(713) 555-0184', dob: '09/09/1978',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10006', city: 'Newark', state: 'NJ',
   },
   {
@@ -558,7 +558,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '05/15/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 207-0207', dob: '03/18/1965',
+    memberStatus: 'Active', phone: '(213) 555-0103', dob: '03/18/1965',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10007', city: 'Newark', state: 'NJ',
   },
   {
@@ -568,7 +568,7 @@ export const HEDIS_MEMBERS = [
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP', startDate: '05/14/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 208-0208', dob: '12/05/1971',
+    memberStatus: 'Active', phone: '(626) 555-0130', dob: '12/05/1971',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10008', city: 'Jersey City', state: 'NJ',
   },
   {
@@ -578,7 +578,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '05/13/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 209-0209', dob: '06/24/1974',
+    memberStatus: 'Active', phone: '(914) 555-0199', dob: '06/24/1974',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10009', city: 'Jersey City', state: 'NJ',
   },
   {
@@ -588,7 +588,7 @@ export const HEDIS_MEMBERS = [
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP', startDate: '05/12/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 210-0210', dob: '08/17/1957',
+    memberStatus: 'Active', phone: '(702) 555-0144', dob: '08/17/1957',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10010', city: 'Newark', state: 'NJ',
   },
 
@@ -603,7 +603,7 @@ export const HEDIS_MEMBERS = [
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP', startDate: '05/20/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 301-0301', dob: '10/12/1962',
+    memberStatus: 'Active', phone: '(718) 555-0127', dob: '10/12/1962',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10011', city: 'New York', state: 'NY',
   },
   {
@@ -613,7 +613,7 @@ export const HEDIS_MEMBERS = [
     assignee: 'Marcus Chen', assigneeInitials: 'MC', startDate: '05/19/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 302-0302', dob: '05/07/1967',
+    memberStatus: 'Active', phone: '(713) 555-0153', dob: '05/07/1967',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10012', city: 'Bronx', state: 'NY',
   },
   {
@@ -623,7 +623,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '05/18/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 303-0303', dob: '02/28/1980',
+    memberStatus: 'Active', phone: '(626) 555-0130', dob: '02/28/1980',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10013', city: 'Brooklyn', state: 'NY',
   },
   {
@@ -633,7 +633,7 @@ export const HEDIS_MEMBERS = [
     assignee: 'Isabeth Partida Fra', assigneeInitials: 'IP', startDate: '05/17/2026',
     advIllness: 1, frailty: 0, riskLevel: '3_Moderate', tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 304-0304', dob: '11/16/1952',
+    memberStatus: 'Active', phone: '(818) 555-0105', dob: '11/16/1952',
     ipa: 'Astrana', hpCode: 'HP-002', zip: '10014', city: 'Queens', state: 'NY',
   },
   {
@@ -643,7 +643,7 @@ export const HEDIS_MEMBERS = [
     assignee: 'Marcus Chen', assigneeInitials: 'MC', startDate: '05/15/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 305-0305', dob: '07/09/1976',
+    memberStatus: 'Active', phone: '(213) 555-0161', dob: '07/09/1976',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '10015', city: 'Queens', state: 'NY',
   },
   // CIS-CMB10 pediatric members (supabase/cis_cmb10_migration.sql seeds
@@ -655,7 +655,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '09/01/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 301-9301', dob: '11/20/2024',
+    memberStatus: 'Active', phone: '(702) 555-0188', dob: '11/20/2024',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
   },
   {
@@ -665,7 +665,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '09/01/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 301-9302', dob: '12/15/2024',
+    memberStatus: 'Active', phone: '(312) 555-0144', dob: '12/15/2024',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
   },
   {
@@ -675,7 +675,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '09/01/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 301-9303', dob: '11/05/2024',
+    memberStatus: 'Active', phone: '(503) 555-0166', dob: '11/05/2024',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
   },
   {
@@ -685,7 +685,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '09/01/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 301-9304', dob: '04/10/2026',
+    memberStatus: 'Active', phone: '(914) 555-0184', dob: '04/10/2026',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
   },
   {
@@ -695,7 +695,7 @@ export const HEDIS_MEMBERS = [
     assignee: null, assigneeInitials: null, startDate: '09/01/2026',
     advIllness: 0, frailty: 0, riskLevel: null, tasks: null,
     outreachDots: ['pending', 'pending', 'pending'], outreachDate: null,
-    memberStatus: 'Active', phone: '(555) 301-9305', dob: '08/25/2026',
+    memberStatus: 'Active', phone: '(347) 555-0115', dob: '08/25/2026',
     ipa: 'Astrana', hpCode: 'HP-001', zip: '90012', city: 'Los Angeles', state: 'CA',
   },
 ];

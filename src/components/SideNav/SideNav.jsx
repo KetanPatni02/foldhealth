@@ -57,12 +57,19 @@ function renderItemBody(item) {
  *                                        still fire so callers can toast.
  * @param {ReactNode}[props.header]     – slot rendered above the sections
  * @param {number}   [props.width=200]  – rail width in px
- * @param {'uppercase'|'title'} [props.sectionLabelVariant='uppercase']
+ * @param {'uppercase'|'title'|'sentence'} [props.sectionLabelVariant='uppercase']
+ *                                        'sentence': 14px medium, as written (Comms)
  * @param {string}   [props.sortableSection] – key of ONE section whose items
  *                                        can be drag-reordered (8px pointer
  *                                        threshold keeps clicks working)
  * @param {function} [props.onReorder]  – (orderedItemKeys) => void, fired on drop
  * @param {boolean}  [props.loading]    – render skeleton rows instead of items
+ * @param {boolean}  [props.collapsed]  – icon-only 56px rail (Figma
+ *                                        Communications 1:29533): labels
+ *                                        hidden, counts as orange badges on
+ *                                        the icons, section labels cut to
+ *                                        two letters (or `shortLabel`); the
+ *                                        header slot should shrink to match
  * @param {string}   [props.className]
  */
 export function SideNav({
@@ -75,6 +82,7 @@ export function SideNav({
   sortableSection,
   onReorder,
   loading = false,
+  collapsed = false,
   className,
 }) {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -98,11 +106,12 @@ export function SideNav({
     }
     setIndicator({ top: el.offsetTop, height: el.offsetHeight, ready: true });
     if (!animated) requestAnimationFrame(() => setAnimated(true));
-  }, [activeKey, sections, loading]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeKey, sections, loading, collapsed]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const labelCls = [
     styles.sectionLabel,
     sectionLabelVariant === 'uppercase' ? styles.sectionLabelUppercase : '',
+    sectionLabelVariant === 'sentence' ? styles.sectionLabelSentence : '',
   ].filter(Boolean).join(' ');
 
   const itemCls = (item) => [
@@ -142,6 +151,8 @@ export function SideNav({
                 className={itemCls(item)}
                 role="button"
                 tabIndex={0}
+                title={collapsed ? item.label : undefined}
+                aria-label={collapsed ? item.label : undefined}
                 onClick={() => onSelect?.(item.key, item)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect?.(item.key, item); } }}
               >
@@ -170,7 +181,11 @@ export function SideNav({
 
     return (
       <div key={section.key} className={styles.section}>
-        {section.label && <div className={labelCls}>{section.label}</div>}
+        {section.label && (
+          <div className={labelCls} title={collapsed ? section.label : undefined}>
+            {collapsed ? (section.shortLabel || section.label.slice(0, 2)) : section.label}
+          </div>
+        )}
         {body}
       </div>
     );
@@ -178,8 +193,8 @@ export function SideNav({
 
   return (
     <aside
-      className={[styles.nav, className || ''].filter(Boolean).join(' ')}
-      style={{ width }}
+      className={[styles.nav, collapsed ? styles.collapsed : '', className || ''].filter(Boolean).join(' ')}
+      style={{ width: collapsed ? 56 : width }}
     >
       <span
         className={[styles.activeIndicator, animated ? styles.activeIndicatorAnimated : ''].filter(Boolean).join(' ')}

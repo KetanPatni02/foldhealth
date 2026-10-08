@@ -43,7 +43,10 @@ export function devApiPlugin() {
 
         // For send-test-email specifically: if there's no local key, fall
         // back to the deployed API which already has RESEND_API_KEY set.
-        if (req.url.startsWith('/api/send-test-email') && !hasResendKey) {
+        // Same for the Comms endpoints whose provider key lives on Vercel.
+        const needsProxy = (req.url.startsWith('/api/send-test-email') && !hasResendKey)
+          || (req.url.startsWith('/api/comms-sms') && !process.env.TEXTBEE_API_KEY);
+        if (needsProxy) {
           try {
             const upstream = await fetch(`${proxyBase}${req.url}`, {
               method: req.method,

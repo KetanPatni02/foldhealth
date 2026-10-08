@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, lazy, Suspense } from 'react';
 const Analytics = lazy(() => import('@vercel/analytics/react').then(m => ({ default: m.Analytics })).catch(() => ({ default: () => null })));
 const SpeedInsights = lazy(() => import('@vercel/speed-insights/react').then(m => ({ default: m.SpeedInsights })).catch(() => ({ default: () => null })));
 import { AppLayout } from './layouts/AppLayout';
+import { Toaster } from './components/Toast/Toast';
 import { UpdateAvailableBanner } from './components/UpdateAvailableBanner/UpdateAvailableBanner';
 import { LoginPage } from './features/auth/LoginPage';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
@@ -15,6 +16,9 @@ import { maybeApplyOrgDefaults } from './lib/orgDefaults';
 // link can be opened by anyone. RLS on forms/form_responses ('Allow all')
 // permits anonymous read + submit.
 const PublicFormView = lazy(() => import('./features/forms/view/FormView').then(m => ({ default: m.FormView })));
+// The patient's Comms page (#/p/{token}): their chat with the care team and
+// browser calls. No sign-in, for patients and for staff checking the view.
+const PatientCommsPage = lazy(() => import('./features/patient-portal/PatientCommsPage').then(m => ({ default: m.PatientCommsPage })));
 
 function App() {
   const routerInit = useRef(false);
@@ -156,6 +160,16 @@ function App() {
           }
         }}
       />
+    );
+  }
+
+  const patientPageMatch = hash.match(/^#\/p\/([^/?#]+)/);
+  if (patientPageMatch) {
+    return (
+      <Suspense fallback={<div style={{ height: '100vh' }} />}>
+        <PatientCommsPage token={decodeURIComponent(patientPageMatch[1])} />
+        <Toaster />
+      </Suspense>
     );
   }
 

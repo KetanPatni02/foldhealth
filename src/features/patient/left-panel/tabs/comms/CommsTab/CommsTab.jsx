@@ -3,94 +3,69 @@ import { SmsIcon } from '../../../../../../components/Icon/SmsIcon';
 import { MissedCallIcon } from '../../../../../../components/Icon/MissedCallIcon';
 import { Avatar } from '../../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../../components/Badge/Badge';
+import { useAppStore } from '../../../../../../store/useAppStore';
+import { useCommsConversations } from '../../../../../messages/comms/useComms';
+import { CommsListEmpty } from '../../../../../messages/comms/CommsEmptyState';
+import { isMissedCall } from '../../../../../messages/comms/commsUtils';
+import { formatTime } from '../../../../../messages/messageUtils';
 import msgStyles from '../../../../../messages/MessagesView.module.css';
-import styles from './CommsTab.module.css';
 
-const CONVERSATIONS = [
-  {
-    id: 1, type: 'group', name: 'Care for Annette Brave',
-    preview: [{ text: '@Rio', highlight: true }, { text: ' he is having some stomach aches lately.' }],
-    time: 'Now', unread: 3,
-  },
-  {
-    id: 2, type: 'chat', name: 'Dr. Robert Langdon',
-    preview: [{ text: "You: Sure thing, I'll have a look today. They're looking great!" }],
-    time: 'Now', unread: 2,
-  },
-  {
-    id: 3, type: 'chat', name: 'Juanita Douglas Jr.',
-    preview: [{ text: '@Rio', highlight: true }, { text: ' absolutely. Have a read of this and we can talk more in our session.' }],
-    time: '12:30pm', unread: 2,
-  },
-  {
-    id: 4, type: 'sms', name: 'Kristen Fay',
-    preview: [{ text: "Patient's appointment booked successful" }],
-    time: 'Saturday', unread: 1,
-  },
-  {
-    id: 5, type: 'missed', name: 'Dr. Robert Langdon',
-    preview: [{ text: 'Missed Call' }],
-    time: 'Friday', unread: 0,
-  },
-  {
-    id: 6, type: 'missed', name: 'Dr. Robert Langdon',
-    preview: [{ text: 'Missed Call' }],
-    time: 'Friday', unread: 0,
-  },
-  {
-    id: 7, type: 'missed', name: 'Dr. Robert Langdon',
-    preview: [{ text: 'Missed Call' }],
-    time: 'Friday', unread: 0,
-  },
-];
-
-function ConvAvatar({ type }) {
-  const isMissed = type === 'missed';
-  const backgroundColor = isMissed ? 'var(--status-error-light)' : 'var(--primary-50)';
-  const borderColor     = isMissed ? 'rgba(215, 40, 37, 0.3)'   : 'var(--primary-200)';
-
+function ConvAvatar({ conversation }) {
+  const missed = isMissedCall(conversation);
   const icon =
-    type === 'group'  ? <Icon name="solar:users-group-rounded-linear" size={20} color="var(--primary-300)" /> :
-    type === 'chat'   ? <Icon name="solar:chat-round-linear"          size={20} color="var(--primary-300)" /> :
-    type === 'sms'    ? <SmsIcon    size={20} color="var(--primary-300)" /> :
-    type === 'missed' ? <MissedCallIcon size={20} color="var(--status-error)" /> : null;
+    missed ? <MissedCallIcon size={20} color="var(--status-error)" /> :
+    conversation.channel === 'sms' ? <SmsIcon size={20} color="var(--primary-300)" /> :
+    conversation.channel === 'call' ? <Icon name="solar:phone-calling-linear" size={20} color="var(--primary-300)" /> :
+    conversation.channel === 'email' ? <Icon name="solar:letter-linear" size={20} color="var(--primary-300)" /> :
+    <Icon name="solar:users-group-rounded-linear" size={20} color="var(--primary-300)" />;
 
   return (
     <Avatar
       variant="generic"
       size="36px"
-      backgroundColor={backgroundColor}
-      borderColor={borderColor}
+      backgroundColor={missed ? 'var(--status-error-light)' : 'var(--primary-50)'}
+      borderColor={missed ? 'color-mix(in srgb, var(--status-error) 30%, transparent)' : 'var(--primary-200)'}
       icon={icon}
     />
   );
 }
 
-export function CommsTab() {
+/**
+ * The patient's conversations on every channel (Comms), newest first.
+ * Opening one goes to it in Comms.
+ */
+export function CommsTab({ patient }) {
+  const { conversations, loading } = useCommsConversations();
+  const goToComms = useAppStore(s => s.goToComms);
+
+  const id = patient?.id != null ? String(patient.id) : null;
+  const mine = conversations.filter(c => (id && c.patient_id === id) || (!c.patient_id && patient?.name && c.patient_name === patient.name));
+
+  if (!loading && mine.length === 0) return <CommsListEmpty viewKey="all" />;
+
   return (
     <div className={msgStyles.convList}>
-      {CONVERSATIONS.map(conv => (
-        <div key={conv.id} className={msgStyles.convItem}>
-          <ConvAvatar type={conv.type} />
+      {mine.map(c => (
+        <button
+          type="button"
+          key={c.id}
+          className={msgStyles.convItem}
+          onClick={() => goToComms({ channel: c.channel, conversationId: c.id })}
+        >
+          <ConvAvatar conversation={c} />
           <div className={msgStyles.convInfo}>
             <div className={msgStyles.convNameRow}>
-              <div className={msgStyles.convName}>{conv.name}</div>
-              <div className={msgStyles.convTime}>{conv.time}</div>
+              <div className={[msgStyles.convName, c.unread_count ? '' : msgStyles.muted].join(' ')}>
+                {c.channel === 'chat' ? (c.group_name || `Care for ${c.patient_name}`) : c.channel === 'email' ? (c.subject || 'Email') : c.patient_name}
+              </div>
+              <div className={msgStyles.convTime}>{formatTime(c.last_message_at)}</div>
             </div>
             <div className={msgStyles.convPreviewRow}>
-              <div className={msgStyles.convPreview}>
-                {conv.preview.map((part, i) =>
-                  part.highlight
-                    ? <span key={i} className={styles.mention}>{part.text}</span>
-                    : <span key={i}>{part.text}</span>
-                )}
-              </div>
-              {conv.unread > 0 && (
-                <Badge variant="notification" label={conv.unread} />
-              )}
+              <div className={msgStyles.convPreview}>{c.last_preview || 'No messages yet'}</div>
+              {c.unread_count > 0 && <Badge variant="notification" label={c.unread_count} />}
             </div>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   );

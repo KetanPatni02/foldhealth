@@ -51,6 +51,13 @@
   letter-spacing: 0.5px;
 }
 
+/* Sentence-case variant (Comms, Figma Communications 1:29504): the label at
+   item size, set apart by weight. */
+.sectionLabelSentence {
+  font-size: var(--font-base);
+  font-weight: 500;
+}
+
 /* Sliding highlight for the active row — one element translated to the
    active item (measured in JS). Carries the background + left accent so the
    rows themselves never change padding and labels never shift. */
@@ -160,4 +167,49 @@
 @keyframes sideNavPulse {
   0%, 100% { opacity: 1; }
   50% { opacity: .5; }
+}
+
+/* ── Collapsed: icon-only rail (Figma Communications 1:29533) ── */
+.nav { transition: width 0.2s cubic-bezier(0.22, 1, 0.36, 1); }
+
+.collapsed .header { padding: var(--space-2) var(--space-2) 0.875rem; }
+
+.collapsed .sectionLabel,
+.collapsed .sectionLabelUppercase {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-base);
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  text-align: center;
+  color: var(--neutral-500);
+}
+
+.collapsed .item {
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 var(--space-2);
+}
+
+.collapsed .itemLabel { display: none; }
+
+/* The count rides on the icon's top-right corner as an orange badge. */
+.collapsed .count,
+.collapsed .item.active .count {
+  position: absolute;
+  top: 0.25rem;
+  left: calc(50% + 0.125rem);
+  min-width: 0.875rem;
+  padding: 0 0.1875rem;
+  border: none;
+  border-radius: var(--space-1);
+  background: var(--secondary-300);
+  color: var(--neutral-0);
+  font-size: 0.625rem;
+  line-height: 0.875rem;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav { transition: none; }
 }

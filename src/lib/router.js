@@ -341,6 +341,10 @@ export function hashToState(route, state = null) {
     carePlanSummaryOpen: false,
   };
 
+  // The patient's Comms page (#/p/{token}) renders outside the app; leave
+  // app state alone so nothing rewrites its hash.
+  if (route.page === 'p') return {};
+
   // Shareable form fill-view: #/f/{id}
   if (route.page === 'f' && route.section) {
     const numId = isNaN(Number(route.section)) ? route.section : Number(route.section);

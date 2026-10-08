@@ -1,4 +1,6 @@
 import { Icon } from '../../components/Icon/Icon';
+import { MessageStatus } from '../../components/MessageStatus/MessageStatus';
+import { ChatBubble } from '../../components/ChatBubble/ChatBubble';
 import { getInitials, getDisplayName, formatMsgTime, shouldShowTimestamp } from './messageUtils';
 import styles from './MessagesView.module.css';
 
@@ -38,88 +40,30 @@ export function ChatMessagesList({
         const isOwn    = msg.sender_id === currentUser.id;
         const prevMsg  = messages[idx - 1];
         const showTs   = shouldShowTimestamp(msg, prevMsg);
-        const showAv   = !isOwn && (!prevMsg || prevMsg.sender_id !== msg.sender_id);
+        const compact  = !showTs && prevMsg && prevMsg.sender_id === msg.sender_id;
         const replyMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null;
         const isPending = String(msg.id).startsWith('opt-');
+        const name = isOwn ? 'You' : displayName;
+        const attachment = msg.media_url
+          ? { url: msg.media_url, name: msg.media_name || (msg.media_type === 'form' ? 'Form' : 'Attachment'), type: msg.media_type === 'image' ? 'image' : 'file' }
+          : undefined;
 
         return (
-          <div key={msg.id}>
+          <div key={msg.id} className={styles.bubbleItem}>
             {showTs && <div className={styles.msgDateSep}>{formatMsgTime(msg.created_at)}</div>}
-            <div
-              className={[styles.msgRow, isOwn ? styles.own : ''].filter(Boolean).join(' ')}
-              style={{ marginTop: showTs || showAv ? 8 : 2 }}
-            >
-              {!isOwn && (
-                <div className={styles.msgAvatar} style={{ visibility: showAv ? 'visible' : 'hidden' }}>
-                  {initials}
-                </div>
-              )}
-
-              <div className={styles.msgBubbleWrap}>
-                {replyMsg && (
-                  <div className={[styles.msgReplyQuote, isOwn ? styles.own : ''].join(' ')}>
-                    <div className={styles.msgReplyBar} />
-                    <div>
-                      <div className={styles.msgReplyName}>
-                        {replyMsg.sender_id === currentUser.id ? 'You' : displayName}
-                      </div>
-                      <div className={styles.msgReplyText}>{replyMsg.content || '📎 Media'}</div>
-                    </div>
-                  </div>
-                )}
-                <div className={[styles.msgBubble, isOwn ? styles.mine : styles.other].join(' ')}>
-                  {msg.media_url && msg.media_type === 'image' && (
-                    /* A link, not an <img onClick>: opening the full image in a new
-                       tab is exactly what an anchor does, it is keyboard-reachable,
-                       and it matches the file/form attachments below. */
-                    <a
-                      href={msg.media_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.msgImageLink}
-                    >
-                      <img
-                        src={msg.media_url}
-                        alt={msg.media_name || 'image'}
-                        className={styles.msgImage}
-                      />
-                    </a>
-                  )}
-                  {msg.media_url && msg.media_type === 'file' && (
-                    <a href={msg.media_url} target="_blank" rel="noreferrer" className={styles.msgFile}>
-                      <Icon name="solar:file-bold" size={16} />
-                      <span>{msg.media_name}</span>
-                    </a>
-                  )}
-                  {msg.media_url && msg.media_type === 'form' && (
-                    <a href={msg.media_url} className={styles.msgFormCard}>
-                      <span className={styles.msgFormIcon}>
-                        <Icon name="solar:clipboard-text-linear" size={18} color="var(--primary-300)" />
-                      </span>
-                      <span className={styles.msgFormMain}>
-                        <span className={styles.msgFormLabel}>Form</span>
-                        <span className={styles.msgFormName}>{msg.media_name || 'Open form'}</span>
-                      </span>
-                      <Icon name="solar:arrow-right-linear" size={14} color="var(--neutral-300)" />
-                    </a>
-                  )}
-                  {msg.content && <span>{msg.content}</span>}
-                </div>
-                {isOwn && (
-                  <div className={[styles.msgStatus, msg.read_at ? styles.msgStatusRead : ''].join(' ')}>
-                    {isPending
-                      ? <Icon name="solar:clock-circle-linear" size={11} />
-                      : msg.read_at
-                        ? <Icon name="solar:check-read-bold"   size={12} />
-                        : <Icon name="solar:check-bold"        size={12} />}
-                  </div>
-                )}
-              </div>
-
-              <button className={styles.msgReplyBtn} onClick={() => onReply(msg)} title="Reply">
-                <Icon name="solar:reply-linear" size={14} />
-              </button>
-            </div>
+            <ChatBubble
+              side={isOwn ? 'right' : 'left'}
+              name={name}
+              initials={isOwn ? 'Y' : initials}
+              text={msg.content || ''}
+              attachment={attachment}
+              reply={replyMsg ? { name: replyMsg.sender_id === currentUser.id ? 'You' : displayName, text: replyMsg.content || 'Attachment' } : undefined}
+              compact={compact}
+              time={formatMsgTime(msg.created_at)}
+              status={isOwn ? <MessageStatus status={isPending ? 'delay' : msg.read_at ? 'read' : 'sent'} /> : null}
+              menuItems={[{ key: 'reply', icon: 'solar:reply-linear', label: 'Reply' }]}
+              onMenuSelect={(key) => { if (key === 'reply') onReply(msg); }}
+            />
           </div>
         );
       })}

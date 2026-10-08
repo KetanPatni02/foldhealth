@@ -5,10 +5,9 @@ import styles from './CreateNewPopover.module.css';
 
 export function CreateNewPopover({ onClose }) {
   const showToast = useAppStore(s => s.showToast);
-  const setActivePage = useAppStore(s => s.setActivePage);
-  const setCurrentPage = useAppStore(s => s.setCurrentPage);
   const requestAddTask = useAppStore(s => s.requestAddTask);
   const openInvitePatient = useAppStore(s => s.openInvitePatient);
+  const openCommsDrawer = useAppStore(s => s.openCommsDrawer);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -22,6 +21,14 @@ export function CreateNewPopover({ onClose }) {
 
   const item = (icon, label, key) => (
     <button key={key} className={styles.item} onClick={() => { showToast(`${label} – coming soon`); onClose(); }}>
+      <Icon name={icon} size={16} className={styles.itemIcon} />
+      {label}
+    </button>
+  );
+
+  // Opens the Comms drawer here, over whatever page is showing.
+  const comms = (icon, label, type) => (
+    <button key={type} className={styles.item} onClick={() => { openCommsDrawer(type); onClose(); }}>
       <Icon name={icon} size={16} className={styles.itemIcon} />
       {label}
     </button>
@@ -45,13 +52,10 @@ export function CreateNewPopover({ onClose }) {
       <div className={styles.col}>
         <div className={styles.section}>Start New</div>
         {item('solar:videocamera-record-linear', 'Video Meeting', 'vm')}
-        {item('solar:phone-calling-linear', 'Voice Call', 'vc')}
-        <button key="ch" className={styles.item} onClick={() => { setActivePage('messages'); setCurrentPage(1); onClose(); }}>
-          <Icon name="solar:chat-dots-linear" size={16} className={styles.itemIcon} />
-          Chat
-        </button>
-        {item('solar:chat-square-linear', 'SMS', 'sms')}
-        {item('solar:letter-linear', 'Email', 'em')}
+        {comms('solar:phone-calling-linear', 'Voice Call', 'call')}
+        {comms('solar:chat-dots-linear', 'Chat', 'chat')}
+        {comms('solar:chat-square-linear', 'SMS', 'sms')}
+        {comms('solar:letter-linear', 'Email', 'email')}
       </div>
       <div className={styles.col}>
         <div className={styles.section}>Build New</div>

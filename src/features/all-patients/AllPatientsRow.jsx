@@ -230,7 +230,9 @@ export function AllPatientsRow({ row, columns, hiddenSet, isSelected, onSelect }
     { key: 'Open Workflow', icon: 'solar:clipboard-list-linear', label: 'Open Workflow' },
   ]);
 
+  const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
   const handleMenuSelect = (key) => {
+    if (runPatientRowAction(key, row)) return;
     if (key === 'Upload File') {
       // Pre-seed the upload session with this patient so ambiguous OCR
       // matches auto-link to them in the review panel (AC-1 + AC-9 helper).

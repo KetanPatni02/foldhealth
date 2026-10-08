@@ -298,7 +298,9 @@ export function WorklistRow({ patient, columns, hiddenSet, isSelected, onSelect 
       : []),
   ]);
 
+  const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
   const handleMenuSelect = (key) => {
+    if (runPatientRowAction(key, p)) return;
     if (key === 'Add Task') { requestAddTask({ member: p.name }); return; }
     if (key === 'Cancel Call') { showToast('Cancelled call'); return; }
     if (key === 'Edit Details') { openPatientEdit('basic', p); return; }

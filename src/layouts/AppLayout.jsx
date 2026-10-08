@@ -28,6 +28,8 @@ import { useNotificationsFeed } from '../components/NotificationsPopover/useNoti
 import { splitFullName } from '../lib/nameValidation';
 import { Toaster } from '../components/Toast/Toast';
 import { CallPopoverHost } from '../components/CallPopover/CallPopoverHost';
+import { BrowserCallCard } from '../features/messages/comms/call/BrowserCallCard';
+import { CommsDrawerHost } from '../features/messages/comms/CommsDrawerHost';
 import { ReassignmentSummaryHost } from '../features/ooo/ReassignmentSummaryHost';
 import { supabase } from '../lib/supabase';
 import styles from './AppLayout.module.css';
@@ -138,6 +140,8 @@ function PopulationView() {
           </Suspense>
         </div>
         <CallPopoverHost />
+        <BrowserCallCard />
+        <CommsDrawerHost />
       </div>
     );
   }
@@ -558,6 +562,8 @@ export function AppLayout() {
         {showCreateAgent && <CreateAgentDrawer />}
         <CallPopoverHost />
         <ActiveCallCard />
+        <BrowserCallCard />
+        <CommsDrawerHost />
         <InvokeAgentModal />
         {detailPatient && <DetailDrawer />}
         {liveDrawerPatient && <LiveDrawer />}
