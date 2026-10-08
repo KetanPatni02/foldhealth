@@ -97,9 +97,10 @@
   align-items: center;
   gap: var(--space-2);
 }
-/* View by Age: the dose column carries the vaccine name too. */
-.tableByAge .colDose { width: 11%; }
-.tableByAge .colRecommended { width: 14%; }
+/* View by Age: Vaccine and Dose columns instead of Recommended Age; the
+   dose cell shows its date window under the number. */
+.tableByAge .colVaccineName { width: 11%; }
+.tableByAge .colDose { width: 18%; }
 .toolbarCount {
   font-size: var(--font-sm);
   color: var(--neutral-300);

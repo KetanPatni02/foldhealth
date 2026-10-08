@@ -37,6 +37,13 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **HEDIS worklist Age filter.** More Filters gains **Age** (Under 2, 2–17,
+  18–44, 45–64, 65–74, 75+), a multi-select FilterChip. Age comes from DOB
+  in whole years, falling back to the row's age text ("22m", "67y 2m").
+  In the CIS Vaccine Calendar drawer, View by Age now shows separate
+  Vaccine and Dose columns (dose number with its date window) in place of
+  Recommended Age.
+
 - **CIS-CMB10 follow-ups from the clinical review call.** Doses given after
   their recommended window but by the 2nd birthday show **Completed late**
   (they still count). The team can track vaccine appointments booked with the

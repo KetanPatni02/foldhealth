@@ -213,8 +213,10 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
               <thead>
                 <tr>
                   <th className={styles.colVaccine}>{byAge ? 'Age' : 'Vaccine'}</th>
-                  <th className={styles.colDose}>{byAge ? 'Vaccine (Dose)' : 'Dose'}</th>
-                  <th className={styles.colRecommended}>Recommended Age</th>
+                  {byAge && <th className={styles.colVaccineName}>Vaccine</th>}
+                  <th className={styles.colDose}>Dose</th>
+                  {/* By age, the group already gives the age; each dose's window sits under its number. */}
+                  {!byAge && <th className={styles.colRecommended}>Recommended Age</th>}
                   <th className={styles.colEarliest}>
                     <span className={styles.thHint}>
                       Earliest Allowed
@@ -259,16 +261,28 @@ export function VaccineCalendarDialog({ member, immunizations, savedNotes, measu
                               )}
                             </td>
                           )}
-                          <td className={`${styles.doseCell} ${ACCENT[row.status] || ''}`}>
-                            {byAge ? <>{antigen.label}<span className={styles.subtle}>Dose {row.number}</span></> : <>Dose {row.number}</>}
+                          {byAge && (
+                            <td className={`${styles.doseCell} ${ACCENT[row.status] || ''}`}>{antigen.label}</td>
+                          )}
+                          <td className={byAge ? undefined : `${styles.doseCell} ${ACCENT[row.status] || ''}`}>
+                            {byAge ? (
+                              <>
+                                <span className={styles.primary}>Dose {row.number}</span>
+                                <span className={styles.subtle}>
+                                  {fmtDate(row.start)}{row.recommendedEnd ? ` – ${fmtDate(row.recommendedEnd)}` : ''}
+                                </span>
+                              </>
+                            ) : <>Dose {row.number}</>}
                             {row.extra && <span className={styles.subtle}>Extra</span>}
                           </td>
-                          <td>
-                            <span className={styles.primary}>{row.recommended}</span>
-                            <span className={styles.subtle}>
-                              {fmtDate(row.start)}{row.recommendedEnd ? ` – ${fmtDate(row.recommendedEnd)}` : ''}
-                            </span>
-                          </td>
+                          {!byAge && (
+                            <td>
+                              <span className={styles.primary}>{row.recommended}</span>
+                              <span className={styles.subtle}>
+                                {fmtDate(row.start)}{row.recommendedEnd ? ` – ${fmtDate(row.recommendedEnd)}` : ''}
+                              </span>
+                            </td>
+                          )}
                           <td><span className={styles.primary}>{fmtDate(row.earliest)}</span></td>
                           <td>
                             <DoseDateField row={row} label={antigen.label} dob={result.dob} onChange={(iso) => changeDate(antigen, row, iso)} />
