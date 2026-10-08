@@ -46,6 +46,18 @@ build requires esbuild ≥ 0.28 on Node 26.
   `fetch`. ICD search, reference lookups, share pages, OG images and the
   Sentry tunnel stay public.
 
+- **Branded CIS PDFs and Astrana report header / footer.** The CIS-CMB10
+  schedule and immunization record PDFs follow the Patient Summary report
+  layout (A4, Inter; logo + page / title / Generated On header, brand band,
+  label : value patient block, titled bordered tables, contact footer). New
+  **Astrana Report Header / Footer** components (maroon band, Astrana wordmark
+  and contact) sit beside the Trailhead ones in the report header / footer
+  options; the immunization record uses Astrana, the schedule keeps
+  Trailhead. Also: CIS gap status advances automatically (Engaged on a
+  recorded dose or booked visit, Engaged Requires Follow-Up when a booked
+  visit passes unrecorded, Completed when met; never past a closed gap);
+  CIS suggested actions restyled; the scheduled-appointment chip is a link.
+
 - **HEDIS worklist Age filter.** More Filters gains **Age** (Under 2, 2–17,
   18–44, 45–64, 65–74, 75+), a multi-select FilterChip. Age comes from DOB
   in whole years, falling back to the row's age text ("22m", "67y 2m").
