@@ -22,11 +22,11 @@ export function DoseDateField({ row, label, dob, onChange }) {
   const [pickerRect, setPickerRect] = useState(null);
   if (isLocked(row)) {
     return (
-      <Tooltip label={`Opens on ${fmtDate(row.nextDue)}`} variant="light">
+      <Tooltip label={`Opens on ${fmtDate(row.earliest)}`} variant="light">
         <span
           className={styles.locked}
           aria-disabled="true"
-          aria-label={`${label} dose ${row.number} given date: opens ${fmtDate(row.nextDue)}`}
+          aria-label={`${label} dose ${row.number} given date: opens ${fmtDate(row.earliest)}`}
         >
           <Badge tone="disabled" size="M" icon="solar:lock-keyhole-minimalistic-linear" label="Select Date" />
         </span>

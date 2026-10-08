@@ -36,6 +36,9 @@ import { useOutreachTab } from '../patient/left-panel/tabs/outreach/OutreachTab/
 import { DocumentUploadForm } from '../../components/DocumentUploadForm/DocumentUploadForm';
 import { useDocumentUploadForm } from '../../components/DocumentUploadForm/useDocumentUploadForm';
 import { DOC_TYPES } from '../hcc/data/chartDocs';
+
+// Document type for the CIS-CMB10 immunization record saved as evidence.
+const CIS_RECORD_DOC_TYPE = 'Immunization Record';
 import { DocumentList } from '../../components/DocumentList/DocumentList';
 import { CommentComposer } from '../../components/CommentComposer/CommentComposer';
 import { CareGapAppointmentsTab } from './CareGapAppointmentsTab';
@@ -47,7 +50,9 @@ import { CareGapReferralsTab } from './CareGapReferralsTab';
 import { useCareGapLabs } from './labs/useCareGapLabs';
 import { CareGapLabsTab } from './labs/CareGapLabsTab';
 import { CisImmunizationsTab } from './cis/CisImmunizationsTab';
-import { CIS_CODE } from './cis/cisRules';
+import { CIS_CODE, evaluateCis } from './cis/cisRules';
+import { CisAppointmentForm } from './cis/CisAppointmentForm';
+import { useCisAppointmentForm } from './cis/useCisAppointmentForm';
 import { LabOrderForm } from './labs/LabOrderForm';
 import { LabOrderDetail } from './labs/LabOrderDetail';
 import { LabResultReview } from './labs/LabResultReview';
@@ -130,6 +135,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const deleteCaregapReminder = useAppStore(s => s.deleteCaregapReminder);
   useEffect(() => { fetchCaregapReminders(); }, [fetchCaregapReminders]);
   const reminderForm = useCareGapReminderForm();
+  const cisApptForm = useCisAppointmentForm();
   const [activitySearchOpen, setActivitySearchOpen] = useState(false);
   const [activitySearch, setActivitySearch] = useState('');
   const [activityChipsOpen, setActivityChipsOpen] = useState(false);
@@ -443,11 +449,40 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const cisDoseNotes = useAppStore(s => s.cisDoseNotes[member?.id]);
   const fetchCisDoseNotes = useAppStore(s => s.fetchCisDoseNotes);
   const saveCisTracker = useAppStore(s => s.saveCisTracker);
+  const cisAppointments = useAppStore(s => s.cisAppointments[member?.id]);
+  const fetchCisAppointments = useAppStore(s => s.fetchCisAppointments);
+  const saveCisAppointment = useAppStore(s => s.saveCisAppointment);
+  const cancelCisAppointment = useAppStore(s => s.cancelCisAppointment);
   useEffect(() => {
     if (!isCis || !member?.id) return;
     fetchPatientImmunizations(member.id);
     fetchCisDoseNotes(member.id);
-  }, [isCis, member?.id, fetchPatientImmunizations, fetchCisDoseNotes]);
+    fetchCisAppointments(member.id);
+  }, [isCis, member?.id, fetchPatientImmunizations, fetchCisDoseNotes, fetchCisAppointments]);
+  // CIS-CMB10 evaluation for the Schedule Vaccine Appointment pane's dose list.
+  const docTypes = isCis ? [...DOC_TYPES, CIS_RECORD_DOC_TYPE] : DOC_TYPES;
+  const cisResult = useMemo(
+    () => (isCis ? evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear: selectedYear }) : null),
+    [isCis, member?.dob, immunizations, selectedYear],
+  );
+  const openCisAppointment = (appt) => {
+    if (appt) cisApptForm.startEdit(appt);
+    else cisApptForm.reset(cisResult);
+    setLeftWorkspace('cis-appointment');
+  };
+  const saveCisAppointmentPane = () => {
+    if (!cisApptForm.canSave || !member?.id) return;
+    const { appt, doseText } = cisApptForm.payload();
+    saveCisAppointment(member.id, appt, { memberName: member.name, doseText });
+    cisApptForm.reset();
+    setLeftWorkspace(null);
+  };
+  const cancelCisAppointmentPane = () => {
+    if (!cisApptForm.editing || !member?.id) return;
+    cancelCisAppointment(member.id, cisApptForm.editing.id);
+    cisApptForm.reset();
+    setLeftWorkspace(null);
+  };
   const [labForm, setLabForm] = useState(null);
   const [labOrderId, setLabOrderId] = useState(null);
   const [labResultId, setLabResultId] = useState(null);
@@ -917,6 +952,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
     if (leftWorkspace === 'document-preview') setPreviewDocId(null);
     if (leftWorkspace === 'appointment-detail') { setOpenAppt(null); fetchAppointments?.(); }
     if (leftWorkspace === 'reminder') reminderForm.reset();
+    if (leftWorkspace === 'cis-appointment') cisApptForm.reset();
     if (leftWorkspace === 'referral') referralForm.reset();
     if (leftWorkspace === 'referral-detail') setOpenReferralId(null);
     if (leftWorkspace === 'lab-order') setLabForm(null);
@@ -1387,6 +1423,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 if (leftWorkspace === 'reminder') {
                   return <span className={styles.paneTitle}>{reminderForm.editingId ? 'Edit Reminder' : 'Set Reminder'}</span>;
                 }
+                if (leftWorkspace === 'cis-appointment') {
+                  return <span className={styles.paneTitle}>{cisApptForm.editing ? 'Edit Vaccine Appointment' : 'Schedule Vaccine Appointment'}</span>;
+                }
                 if (leftWorkspace === 'measure-info') {
                   return <span className={styles.paneTitle}>Measure Tutorial</span>;
                 }
@@ -1602,6 +1641,17 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   <Button variant="primary" size="M" disabled={!reminderForm.canSave} onClick={handleSaveReminder}>
                     Save
                   </Button>
+                ) : leftWorkspace === 'cis-appointment' ? (
+                  <>
+                    {cisApptForm.editing && (
+                      <Button variant="secondary" size="M" onClick={cancelCisAppointmentPane}>
+                        Cancel Appointment
+                      </Button>
+                    )}
+                    <Button variant="primary" size="M" disabled={!cisApptForm.canSave} onClick={saveCisAppointmentPane}>
+                      {cisApptForm.editing ? 'Save' : 'Schedule'}
+                    </Button>
+                  </>
                 ) : leftWorkspace === 'task-detail' ? (
                   // Task detail is a read/edit surface; the task's own
                   // header (status pill, title, etc.) lives in the body so
@@ -1637,6 +1687,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                           ? 'Close Appointment Details'
                           : leftWorkspace === 'reminder'
                           ? 'Close Set Reminder'
+                          : leftWorkspace === 'cis-appointment'
+                          ? 'Close Schedule Vaccine Appointment'
                           : leftWorkspace === 'referral'
                           ? 'Close Send Referral'
                           : leftWorkspace === 'referral-detail'
@@ -1669,7 +1721,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
               {leftWorkspace === 'schedule' ? (
                 <ScheduleDrawerBookingBody {...scheduleDrawer} timezoneLabel="GMT" patientLocked />
               ) : leftWorkspace === 'document' ? (
-                <DocumentUploadForm form={docUpload} docTypes={DOC_TYPES} />
+                <DocumentUploadForm form={docUpload} docTypes={docTypes} />
               ) : leftWorkspace === 'document-preview' ? (
                 previewDoc ? (
                   <FilePreview src={previewDoc.fileUrl} file={previewDoc.file} name={previewDoc.name} ext={previewDoc.ext} />
@@ -1716,7 +1768,7 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                   providers={referralProviders}
                   senderLines={referralSenderLines}
                   patientDocuments={memberDocs.map(d => ({ id: d.id, name: d.name, type: d.type, addedAt: d.createdAt, url: d.fileUrl }))}
-                  docTypes={DOC_TYPES}
+                  docTypes={docTypes}
                   onUploadDocument={createMemberDocument}
                   onGenerateEmail={handleGenerateReferralEmail}
                   generatingEmail={generatingReferralEmail}
@@ -1725,6 +1777,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 />
               ) : leftWorkspace === 'reminder' ? (
                 <CareGapReminderForm form={reminderForm} users={platformUsers} />
+              ) : leftWorkspace === 'cis-appointment' ? (
+                cisResult && <CisAppointmentForm form={cisApptForm} result={cisResult} />
               ) : leftWorkspace === 'appointment-detail' ? (
                 openAppt ? (
                   <ScheduleDrawer
@@ -1865,6 +1919,11 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 measurementYear={selectedYear}
                 lastSaved={cisLastSaved}
                 onSave={(payload) => saveCisTracker(member.id, payload)}
+                appointments={cisAppointments}
+                onOpenSchedule={openCisAppointment}
+                // The immunization record PDF goes to this gap's Documents as
+                // evidence (non-standard note, nothing billed).
+                onSaveEvidence={({ file, caption }) => createMemberDocument({ file, caption, docType: CIS_RECORD_DOC_TYPE })}
               />
             ) : shownTab === 'Orders' ? (
               <CareGapLabsTab

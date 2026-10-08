@@ -1,0 +1,13 @@
+.chip {
+  display: inline-flex;
+  margin-top: var(--space-1);
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.chip:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+}

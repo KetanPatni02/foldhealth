@@ -1,0 +1,81 @@
+/* Same frame as CareGapReminderForm. */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.hint {
+  margin: 0;
+  font-size: var(--font-sm);
+  line-height: 1.4;
+  color: var(--neutral-300);
+}
+
+.doses {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+/* Mirrors the label Input renders, so every field reads as one set. */
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-200);
+}
+.required {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+}
+.doseList {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+}
+.dose {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-100);
+  cursor: pointer;
+}
+.dose:last-child {
+  border-bottom: none;
+}
+.dose:hover {
+  background: var(--neutral-50);
+}
+.doseText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.doseName {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+}
+.doseMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.empty {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}

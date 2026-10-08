@@ -147,6 +147,26 @@ import { mapNotificationRow, mergeNotifications } from './lib/notificationStoreL
 import { persistHccAddedChart, persistProgramDocument, persistProgramDocumentUpdate, persistProgramDocumentDelete } from './lib/documentUploadPersist';
 import { fetchCaregapCommentRows, persistCaregapCommentInsert, persistCaregapCommentUpdate, persistCaregapCommentDelete } from './lib/caregapCommentsPersist';
 import { fetchCaregapReminderRows, persistCaregapReminderInsert, persistCaregapReminderUpdate, persistCaregapReminderDelete } from './lib/caregapRemindersPersist';
+
+// cis_dose_appointments row → app object.
+const cisAppointmentFromRow = (r) => ({
+  id: r.id,
+  memberId: r.hedis_member_id,
+  date: r.appointment_date,
+  time: r.appointment_time || '',
+  provider: r.provider || '',
+  doses: Array.isArray(r.doses) ? r.doses : [],
+  note: r.note || '',
+  status: r.status || 'Scheduled',
+  reminderId: r.reminder_id || null,
+  bookedByName: r.booked_by_name || '',
+  createdAt: r.created_at,
+});
+// Same rows as the migration's demo seed, used until it runs.
+const CIS_APPOINTMENTS_MOCK = [
+  { id: 'cisappt-19304-01', memberId: '19304', date: '2026-10-20', time: '10:30 AM', provider: 'Dr. Maria Lopez, Sunrise Pediatrics', doses: ['ipv:2', 'hepb:3'], note: 'Mom confirmed by phone.', status: 'Scheduled', reminderId: null, bookedByName: 'Care Coordinator', createdAt: '2026-10-07T15:00:00Z' },
+  { id: 'cisappt-19305-01', memberId: '19305', date: '2026-10-01', time: '9:00 AM', provider: 'Dr. Kevin Shah, Valley Kids Clinic', doses: ['hepb:2'], note: '', status: 'Scheduled', reminderId: null, bookedByName: 'Care Coordinator', createdAt: '2026-09-25T15:00:00Z' },
+];
 import { fetchReferralDirectoryRows, fetchCaregapReferralRows, persistCaregapReferralInsert, persistCaregapReferralUpdate, persistCaregapReferralRead } from './lib/caregapReferralsPersist';
 import { REFERRAL_SENDER_LINES_MOCK } from '../features/hedis-worklist/data/referralDirectoryMock';
 import { fetchEfaxNumberRows, persistEfaxNumberInsert, persistEfaxNumberUpdate, persistEfaxNumberDelete } from './lib/efaxNumbersPersist';
@@ -661,6 +681,108 @@ export const useAppStore = create((set, get) => ({
     });
     toast.success('Immunizations saved');
     return true;
+  },
+  // ── CIS-CMB10: vaccine appointments booked with the child's own provider
+  // (cis_dose_appointments). Each save also sets a care gap reminder for the
+  // day after, so the team follows up and records the dose. Until the
+  // migration runs, the demo rows below stand in and edits stay in session.
+  cisAppointments: {},       // { [memberId]: [{ id, date, time, provider, doses, note, status, reminderId, bookedByName, createdAt }] }
+  cisAppointmentsTableMissing: false,
+  fetchCisAppointments: async (memberId) => {
+    if (!memberId) return;
+    const { data, error } = await supabase.from('cis_dose_appointments')
+      .select('*').eq('hedis_member_id', String(memberId)).order('appointment_date');
+    if (error) {
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[fetchCisAppointments] cis_dose_appointments table missing — run supabase/cis_dose_appointments_migration.sql');
+        set(s => ({
+          cisAppointmentsTableMissing: true,
+          cisAppointments: { ...s.cisAppointments, [memberId]: s.cisAppointments[memberId] || CIS_APPOINTMENTS_MOCK.filter(a => a.memberId === String(memberId)) },
+        }));
+      } else console.warn('fetchCisAppointments:', error.message);
+      return;
+    }
+    set(s => ({ cisAppointments: { ...s.cisAppointments, [memberId]: (data || []).map(cisAppointmentFromRow) } }));
+  },
+  // `appt`: { id? (edit), date (YYYY-MM-DD), time, provider, doses: ['ipv:2'], note }.
+  // `doseText` names the doses for the reminder and activity ("IPV dose 2, Hep B dose 3").
+  saveCisAppointment: async (memberId, appt, { memberName, doseText }) => {
+    if (!memberId || !appt?.date) return false;
+    const me = get().currentUserProfile;
+    const actor = get().currentActorName();
+    const prior = (get().cisAppointments[memberId] || []).find(a => a.id === appt.id);
+    const id = prior?.id || `cisappt-${memberId}-${Date.now()}`;
+    const [y, m, d] = appt.date.split('-').map(Number);
+    const followUp = new Date(y, m - 1, d + 1);
+    const followUpIso = `${followUp.getFullYear()}-${String(followUp.getMonth() + 1).padStart(2, '0')}-${String(followUp.getDate()).padStart(2, '0')}`;
+    const when = `${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}/${y}`;
+    const reminderNote = `Vaccine appointment on ${when}${appt.provider ? ` with ${appt.provider}` : ''}: ${doseText}. Record the doses given, or reschedule.`;
+    let reminderId = prior?.reminderId;
+    if (reminderId) {
+      get().updateCaregapReminder(memberId, reminderId, { date: followUpIso, note: reminderNote, status: 'Pending' });
+    } else {
+      reminderId = `cgrem-${Date.now()}`;
+      get().addCaregapReminder({
+        id: reminderId, memberId, memberName, gapCode: 'CIS-CMB10',
+        title: 'Confirm CIS vaccines were given', note: reminderNote,
+        date: followUpIso, assignee: actor, createdBy: actor,
+      });
+    }
+    const next = {
+      id, memberId: String(memberId), date: appt.date, time: appt.time || '', provider: appt.provider || '',
+      doses: appt.doses, note: appt.note || '', status: 'Scheduled', reminderId,
+      bookedByName: prior?.bookedByName || actor, createdAt: prior?.createdAt || new Date().toISOString(),
+    };
+    set(s => ({
+      cisAppointments: {
+        ...s.cisAppointments,
+        [memberId]: [...(s.cisAppointments[memberId] || []).filter(a => a.id !== id), next].sort((a, b) => a.date.localeCompare(b.date)),
+      },
+    }));
+    if (!get().cisAppointmentsTableMissing) {
+      const { error } = await supabase.from('cis_dose_appointments').upsert({
+        id, hedis_member_id: String(memberId), appointment_date: appt.date, appointment_time: appt.time || null,
+        provider: appt.provider || '', doses: appt.doses, note: appt.note || '', status: 'Scheduled',
+        reminder_id: reminderId, booked_by: prior ? undefined : (me?.id || null), booked_by_name: next.bookedByName,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+      if (error) {
+        if (error.code === '42P01' || error.code === 'PGRST205') set({ cisAppointmentsTableMissing: true });
+        else { console.warn('saveCisAppointment:', error.message); get().showToast?.('Could not save the appointment'); }
+      }
+    }
+    get().logCareGapActivity(memberId, {
+      when: new Date().toISOString(),
+      actor,
+      t: 'appointment',
+      title: prior ? 'Vaccine appointment updated' : 'Vaccine appointment scheduled',
+      outcome: `${when}${appt.time ? ` ${appt.time}` : ''}${appt.provider ? `, ${appt.provider}` : ''}: ${doseText}`,
+      gapCodes: ['CIS-CMB10'],
+    });
+    toast.success(prior ? 'Appointment updated' : 'Appointment scheduled, follow-up reminder set');
+    return true;
+  },
+  cancelCisAppointment: async (memberId, id) => {
+    const appt = (get().cisAppointments[memberId] || []).find(a => a.id === id);
+    if (!appt) return;
+    set(s => ({
+      cisAppointments: { ...s.cisAppointments, [memberId]: (s.cisAppointments[memberId] || []).map(a => (a.id === id ? { ...a, status: 'Cancelled' } : a)) },
+    }));
+    if (appt.reminderId) get().deleteCaregapReminder(memberId, appt.reminderId);
+    if (!get().cisAppointmentsTableMissing) {
+      const { error } = await supabase.from('cis_dose_appointments')
+        .update({ status: 'Cancelled', updated_at: new Date().toISOString() }).eq('id', id);
+      if (error && error.code !== '42P01' && error.code !== 'PGRST205') console.warn('cancelCisAppointment:', error.message);
+    }
+    get().logCareGapActivity(memberId, {
+      when: new Date().toISOString(),
+      actor: get().currentActorName(),
+      t: 'appointment',
+      title: 'Vaccine appointment cancelled',
+      outcome: `${appt.date.split('-').slice(1).join('/')}/${appt.date.slice(0, 4)}${appt.provider ? `, ${appt.provider}` : ''}`,
+      gapCodes: ['CIS-CMB10'],
+    });
+    toast.success('Appointment cancelled');
   },
   removePatientImmunization: async (patientId, id) => {
     const { error } = await supabase.from('patient_immunizations').delete().eq('id', id);

@@ -16,11 +16,13 @@ import { CardSkeleton } from '../../../components/CardSkeleton/CardSkeleton';
 import { CIS_ANTIGENS, CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, CIS_EVALUATION, evaluateCis } from './cisRules';
 import { isoToMdy } from './useCisTracker';
 import { CisStatusBadge } from './CisStatus';
-import { ANTIGEN_BADGE, DOSE_BADGE, EVALUATION_BADGE, fmtDate, seriesStartDate } from './cisStatusConfig';
+import { ANTIGEN_BADGE, DOSE_BADGE, EVALUATION_BADGE, fmtDate, isGiven, seriesStartDate } from './cisStatusConfig';
 import { VaccineCalendarDialog } from './VaccineCalendarDialog';
 import { DoseDateField } from './DoseDateField';
 import { CisDoseProgress } from './CisDoseProgress';
-import { downloadCisSchedule } from './downloadCisSchedule';
+import { DoseAppointmentChip } from './DoseAppointmentChip';
+import { appointmentForDose, apptDate } from './cisAppointments';
+import { CisMoreMenu } from './CisMoreMenu';
 import styles from './CisImmunizationsTab.module.css';
 
 // Vaccines grouped by what the care team should do about them (Figma:
@@ -29,9 +31,14 @@ const GROUPS = [
   { key: 'action', label: 'Action Needed', statuses: [CIS_ANTIGEN_STATUS.overdue, CIS_ANTIGEN_STATUS.cannotMeet, CIS_ANTIGEN_STATUS.dueNow] },
   { key: 'soon', label: 'Upcoming', statuses: [CIS_ANTIGEN_STATUS.upcoming] },
   { key: 'later', label: 'Later', statuses: [CIS_ANTIGEN_STATUS.onTrack] },
-  { key: 'done', label: 'Met', statuses: [CIS_ANTIGEN_STATUS.met] },
+  { key: 'done', label: 'Completed', statuses: [CIS_ANTIGEN_STATUS.met] },
 ];
-const NEEDS_ACTION = GROUPS[0].statuses;
+// Every dose of the series has been given, whether or not each one counts:
+// nothing is left to do, so the vaccine sits under Completed as Met / Not Met.
+const allGiven = (a) => a.rows.every(r => r.kind === 'given');
+const groupOf = (a) => (a.status === CIS_ANTIGEN_STATUS.met || allGiven(a)
+  ? 'done'
+  : GROUPS.find(g => g.statuses.includes(a.status))?.key);
 
 // Download the child's full dose schedule as CSV, one row per dose.
 const ageGroupLabel = (m) => (m === 0 ? 'At birth' : `${m} Month${m === 1 ? '' : 's'}`);
@@ -52,7 +59,7 @@ const ageGroupLabel = (m) => (m === 0 ? 'At birth' : `${m} Month${m === 1 ? '' :
  * @param {object}   [props.lastSaved]     – { actor, when }
  * @param {function} props.onSave          – (payload) => Promise<boolean>
  */
-export function CisImmunizationsTab({ member, immunizations, savedNotes, loading, measurementYear, lastSaved, onSave }) {
+export function CisImmunizationsTab({ member, immunizations, savedNotes, loading, measurementYear, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const result = useMemo(
@@ -81,7 +88,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
   }, [focusDose]);
   if (loading) return <CardSkeleton />;
 
-  const isOpen = (a) => toggled[a.key] ?? NEEDS_ACTION.includes(a.status);
+  const isOpen = (a) => toggled[a.key] ?? groupOf(a) === 'action';
   const toggle = (a) => setToggled(t => ({ ...t, [a.key]: !isOpen(a) }));
   const openCalendar = () => setCalendarOpen(true);
   const startedOn = seriesStartDate(result);
@@ -110,7 +117,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
   const query = search.trim().toLowerCase();
   const visible = (a) => !query || `${a.label} ${a.name}`.toLowerCase().includes(query);
   const shownGroups = GROUPS
-    .map(group => ({ group, items: result.antigens.filter(a => group.statuses.includes(a.status) && visible(a)) }))
+    .map(group => ({ group, items: result.antigens.filter(a => groupOf(a) === group.key && visible(a)) }))
     .filter(g => g.items.length);
   // By-age view: every dose of the visible vaccines, bucketed by the age
   // it is routinely given at, youngest first (schedule order within).
@@ -139,9 +146,15 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
       <span className={styles.toolbarDivider} aria-hidden="true" />
       <ActionButton size="S" icon="solar:calendar-linear" tooltip="Vaccine Calendar" onClick={openCalendar} />
       <span className={styles.toolbarDivider} aria-hidden="true" />
-      <ActionButton size="S" icon="solar:download-minimalistic-linear" tooltip="Download schedule (PDF)" tooltipLeft onClick={() => downloadCisSchedule({ member, result, notes: savedNotes, startedOn })} />
-      <span className={styles.toolbarDivider} aria-hidden="true" />
       <Switch checked={allOpen} onChange={setAllOpen} label="Expand all" labelGap={6} />
+      <span className={styles.toolbarDivider} aria-hidden="true" />
+      <CisMoreMenu
+        member={member}
+        result={result}
+        notes={savedNotes}
+        onSchedule={onOpenSchedule ? () => onOpenSchedule() : undefined}
+        onSaveEvidence={onSaveEvidence}
+      />
     </span>
   );
 
@@ -232,9 +245,6 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                     </button>
                     <AgeProgress items={g.items} />
                     <span className={styles.ageStart}>Start date: <b>{fmtDate(g.items[0].r.start)}</b></span>
-                    <span className={styles.ageStatus}>
-                      <CisStatusBadge map={DOSE_BADGE} status={ageStatus(g.items)} />
-                    </span>
                   </div>
                   {!closedAges[g.key] && (
                     <div className={`${styles.doseTable} ${styles.ageTable}`} role="table" aria-label={`Doses due at ${ageGroupLabel(g.key)}`}>
@@ -256,6 +266,8 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                           onNoteSave={saveNote}
                           dob={result.dob}
                           highlight={focusDose?.key === a.key && focusDose.number === r.number}
+                          appointments={appointments}
+                          onOpenAppointment={(appt) => onOpenSchedule?.(appt)}
                         />
                       ))}
                     </div>
@@ -305,6 +317,8 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                     onNoteSave={saveNote}
                     dob={result.dob}
                     focusNumber={focusDose?.key === a.key ? focusDose.number : null}
+                    appointments={appointments}
+                    onOpenAppointment={(appt) => onOpenSchedule?.(appt)}
                   />
                 ))}
                 </div>
@@ -352,6 +366,11 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
           measurementYear={measurementYear}
           lastSaved={lastSaved}
           onSave={onSave}
+          appointments={appointments}
+          onSaveEvidence={onSaveEvidence}
+          // The form opens in the Care Gap drawer's left panel, which this
+          // drawer would cover, so close it first.
+          onOpenSchedule={(appt) => { setCalendarOpen(false); onOpenSchedule?.(appt); }}
           onClose={() => setCalendarOpen(false)}
         />
       )}
@@ -359,21 +378,9 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
   );
 }
 
-// An age group takes the status of its most urgent dose.
-const AGE_STATUS_ORDER = [
-  CIS_DOSE_STATUS.overdue,
-  CIS_DOSE_STATUS.cannotMeet,
-  CIS_DOSE_STATUS.notCounted,
-  CIS_DOSE_STATUS.dueNow,
-  CIS_DOSE_STATUS.pending,
-  CIS_DOSE_STATUS.upcoming,
-  CIS_DOSE_STATUS.onTrack,
-  CIS_DOSE_STATUS.completed,
-];
-
-const ageStatus = (items) => AGE_STATUS_ORDER.find(st => items.some(({ r }) => r.status === st));
 const PIP_CLASS = {
   [CIS_DOSE_STATUS.completed]: 'pipDone',
+  [CIS_DOSE_STATUS.completedLate]: 'pipDone',
   [CIS_DOSE_STATUS.dueNow]: 'pipDue',
   [CIS_DOSE_STATUS.pending]: 'pipDue',
   [CIS_DOSE_STATUS.overdue]: 'pipLate',
@@ -384,7 +391,7 @@ const PIP_CLASS = {
 // Age group header progress, readable while collapsed: given count and
 // one pip per dose, styled like a vaccine's progress in the Vaccine view.
 function AgeProgress({ items }) {
-  const given = items.filter(({ r }) => r.status === CIS_DOSE_STATUS.completed).length;
+  const given = items.filter(({ r }) => isGiven(r.status)).length;
   return (
     <span className={`${styles.progress} ${styles.ageProgress}`} aria-label={`${given} of ${items.length} doses given`}>
       <span className={styles.progressText}>{given}/{items.length}</span>
@@ -440,19 +447,23 @@ function DoseList({ antigen }) {
 // Collapsed: name, dose dots, next step, status. Expanded: one row per
 // dose with its recommended age, earliest allowed date, an editable given
 // date, status and note (Figma: New Care Gap Workflow, Component 109).
-function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, dob, focusNumber }) {
+function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, dob, focusNumber, appointments, onOpenAppointment }) {
   const counted = Math.min(antigen.valid.length, antigen.required);
   const next = antigen.rows.find(r => r.kind === 'planned');
   let when;
   // Met rows sit under a "Completed On" column: just the date the series
   // was completed (the dose that met the requirement).
+  const done = groupOf(antigen) === 'done';
   if (antigen.status === CIS_ANTIGEN_STATUS.met) when = fmtDate(antigen.valid[antigen.required - 1]?.date);
+  // Every dose given but the series still falls short: the last dose date.
+  else if (done) when = fmtDate(antigen.rows[antigen.rows.length - 1]?.record?.date);
   // The Can't Meet badge carries the "too late" message; this column
   // names the next dose, like every other row.
   else if (antigen.status === CIS_ANTIGEN_STATUS.cannotMeet && !next) {
-    // Nothing left to give: the missing dose was given but does not count.
+    // Nothing left to give: the missing dose was given but does not count,
+    // so the dose is still owed; the badge carries "does not count".
     const late = antigen.rows.find(r => r.status === CIS_DOSE_STATUS.notCounted);
-    when = `Dose ${late?.number} does not count`;
+    when = `Dose ${late?.number} was due ${fmtDate(late?.due)}`;
   } else if (antigen.status === CIS_ANTIGEN_STATUS.cannotMeet) {
     when = next?.status === CIS_DOSE_STATUS.overdue
       ? `Dose ${next.number} overdue`
@@ -461,6 +472,13 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
   else if (antigen.status === CIS_ANTIGEN_STATUS.overdue) when = `Dose ${next?.number} was due ${fmtDate(next?.due)}`;
   else if (antigen.status === CIS_ANTIGEN_STATUS.dueNow) when = `Dose ${next?.number} due now`;
   else when = `Dose ${next?.number} from ${fmtDate(next?.nextDue)}`;
+  // A booked appointment for the next dose replaces the due text, so the
+  // row reads right while collapsed.
+  const booked = next && appointmentForDose(appointments, antigen.key, next);
+  if (booked) {
+    const on = fmtDate(apptDate(booked.appt));
+    when = booked.passed ? `Dose ${next.number}: confirm given (${on})` : `Dose ${next.number} scheduled ${on}`;
+  }
   const panelId = `cis-doses-${antigen.key}`;
   return (
     <div className={styles.vaccine}>
@@ -487,7 +505,9 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
         {/* Own cell, so the column padding insets the badge instead of
             padding the badge itself (keeps it under the Status title). */}
         <span className={styles.statusCell}>
-          <CisStatusBadge map={ANTIGEN_BADGE} status={antigen.status} size="M" />
+          {done && antigen.status !== CIS_ANTIGEN_STATUS.met
+            ? <CisStatusBadge map={ANTIGEN_BADGE} status={CIS_ANTIGEN_STATUS.cannotMeet} label="Not Met" />
+            : <CisStatusBadge map={ANTIGEN_BADGE} status={antigen.status} />}
         </span>
       </button>
       {open && (
@@ -509,6 +529,8 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
               onNoteSave={onNoteSave}
               dob={dob}
               highlight={focusNumber === row.number}
+              appointments={appointments}
+              onOpenAppointment={onOpenAppointment}
             />
           ))}
         </div>
@@ -517,7 +539,7 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
   );
 }
 
-function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight, showVaccine = false }) {
+function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight, showVaccine = false, appointments, onOpenAppointment }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [draft, setDraft] = useState(note);
   const range = row.recommendedEnd ? `${fmtDate(row.start)} - ${fmtDate(row.recommendedEnd)}` : fmtDate(row.start);
@@ -539,9 +561,14 @@ function DoseRow({ antigen, row, note, onDateChange, onNoteSave, dob, highlight,
         <span role="cell" className={styles.doseValue}>{fmtDate(row.earliest)}</span>
         <span role="cell" className={styles.dateCell}>
           <DoseDateField row={row} label={antigen.label} dob={dob} onChange={(iso) => onDateChange(antigen, row, iso)} />
+          <DoseAppointmentChip match={appointmentForDose(appointments, antigen.key, row)} onOpen={onOpenAppointment} />
         </span>
         <span role="cell">
-          <CisStatusBadge map={DOSE_BADGE} status={row.status} size="M" hideIcon />
+          {row.status === CIS_DOSE_STATUS.completedLate ? (
+            <Tooltip label={row.reason} variant="light" maxWidth={240}>
+              <CisStatusBadge map={DOSE_BADGE} status={row.status} size="M" hideIcon />
+            </Tooltip>
+          ) : <CisStatusBadge map={DOSE_BADGE} status={row.status} size="M" hideIcon />}
 
         </span>
         <span role="cell" className={styles.noteCol}>

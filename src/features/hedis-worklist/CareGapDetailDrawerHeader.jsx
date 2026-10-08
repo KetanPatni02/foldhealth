@@ -8,6 +8,7 @@ import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { MEASURE_NAMES, STATUSES, daysAgo, initialsOf } from './CareGapDetailDrawer.utils';
 import { computeDsfbDueDateISO } from './dsf/dsfScoring';
+import { CIS_CODE } from './cis/cisRules';
 import styles from './CareGapDetailDrawer.module.css';
 
 // Status → shared Badge tone. Aligns with STATUS_STYLE's colour intent
@@ -58,6 +59,7 @@ export function CareGapDetailDrawerHeader({
 }) {
   const statusBtnRef = useRef(null);
   const measureName = MEASURE_NAMES[gap.code] ?? gap.code;
+  const isCis = gap.code === CIS_CODE;
 
   return (
     <>
@@ -236,7 +238,10 @@ export function CareGapDetailDrawerHeader({
           <Icon name="solar:magic-stick-3-bold" size={14} color="var(--primary-300)" /> Suggested Actions
         </div>
         <div className={styles.suggestActions}>
-          <Button variant="primary" size="L" onClick={() => onScheduleAppointment?.()}>Schedule with Specialist</Button>
+          {/* CIS-CMB10 is outreach and care coordination (we don't give the
+              vaccines), so Add Outreach leads there, as the primary action. */}
+          {isCis && <Button variant="primary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>}
+          <Button variant={isCis ? 'secondary' : 'primary'} size="L" onClick={() => onScheduleAppointment?.()}>Schedule with Specialist</Button>
           {/* Hide Add Note once the note has moved past the "start" state:
               Submitted (pending review), Completed (signed), or any Closed
               status. The Add Note suggested action is for kicking off the
@@ -245,7 +250,7 @@ export function CareGapDetailDrawerHeader({
             <Button variant="tertiary" size="L" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
           )}
           <Button variant="tertiary" size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
-          <Button variant="secondary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>
+          {!isCis && <Button variant="secondary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>}
         </div>
       </div>
     </>

@@ -3,7 +3,7 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { CIS_DOSE_STATUS } from './cisRules';
 import { CisStatusBadge } from './CisStatus';
-import { EVALUATION_BADGE, fmtDate, isLocked } from './cisStatusConfig';
+import { EVALUATION_BADGE, fmtDate, isGiven, isLocked } from './cisStatusConfig';
 import strongBaby from '../../../assets/cis/strong-baby.png';
 import styles from './CisImmunizationsTab.module.css';
 
@@ -44,6 +44,7 @@ export function CisDoseProgress({ result, startedOn, onSelect }) {
 // not open yet carry a lock. Hover a block for its dose.
 const BLOCK_CLASS = {
   [CIS_DOSE_STATUS.completed]: 'blockDone',
+  [CIS_DOSE_STATUS.completedLate]: 'blockDone',
   [CIS_DOSE_STATUS.notCounted]: 'blockLate',
   [CIS_DOSE_STATUS.cannotMeet]: 'blockLate',
   [CIS_DOSE_STATUS.overdue]: 'blockLate',
@@ -62,7 +63,7 @@ function BlockDetail({ a, r }) {
   let when;
   if (r.record) when = `Given ${fmtDate(r.record.date)}`;
   else if (r.status === CIS_DOSE_STATUS.overdue) when = `Was due ${fmtDate(r.due)}`;
-  else if (isLocked(r)) when = `Opens on ${fmtDate(r.nextDue)} • due by ${fmtDate(r.due)}`;
+  else if (isLocked(r)) when = `Opens on ${fmtDate(r.earliest)} • due by ${fmtDate(r.due)}`;
   else when = `Open now • due by ${fmtDate(r.due)}`;
   return (
     <div className={styles.blockCard}>
@@ -80,7 +81,7 @@ function BlockDetail({ a, r }) {
 const blockDate = (r) => r.record?.date ?? r.nextDue ?? r.start;
 
 const blockKey = (a, r) => `${a.key}-${r.number}`;
-const doneKeys = (blocks) => new Set(blocks.filter(({ r }) => r.status === CIS_DOSE_STATUS.completed).map(({ a, r }) => blockKey(a, r)));
+const doneKeys = (blocks) => new Set(blocks.filter(({ r }) => isGiven(r.status)).map(({ a, r }) => blockKey(a, r)));
 
 function DoseBlocks({ result, onSelect }) {
   const blocks = result.antigens
@@ -113,7 +114,7 @@ function DoseBlocks({ result, onSelect }) {
             <span
               role="button"
               tabIndex={0}
-              aria-label={`${a.label} dose ${r.number}: ${isLocked(r) ? `opens ${fmtDate(r.nextDue)}` : r.status}. Go to dose`}
+              aria-label={`${a.label} dose ${r.number}: ${isLocked(r) ? `opens ${fmtDate(r.earliest)}` : r.status}. Go to dose`}
               onClick={() => onSelect(a, r)}
               onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(a, r); } }}
               className={`${styles.block} ${styles[BLOCK_CLASS[r.status]] || ''}`}

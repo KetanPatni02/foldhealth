@@ -30,6 +30,8 @@ export const CIS_ANTIGEN_STATUS = {
 
 export const CIS_DOSE_STATUS = {
   completed: 'Completed',
+  // Counts for HEDIS, but was given after the dose's recommended window.
+  completedLate: 'Completed late',
   notCounted: 'Does Not Count',
   pending: 'Enter date',
   dueNow: 'Due now',
@@ -300,7 +302,16 @@ function evaluateAntigen(antigen, doses, ctx, pending = 0) {
       // the series length and shows why, instead of opening a repeat dose.
       if (validSeen + lateSlots < required) lateSlots += 1;
     } else {
-      rows.push({ kind: 'given', record: dose, counts: true, extra: validSeen >= required, status: CIS_DOSE_STATUS.completed, ...meta });
+      const extra = validSeen >= required;
+      // Given after the routine window but by the 2nd birthday: still
+      // counts (catch-up), flagged so the team sees it was late.
+      const late = !extra && dose.date > meta.due;
+      rows.push({
+        kind: 'given', record: dose, counts: true, extra,
+        status: late ? CIS_DOSE_STATUS.completedLate : CIS_DOSE_STATUS.completed,
+        reason: late ? `Given after the recommended window (ended ${mdy(meta.due)})` : undefined,
+        ...meta,
+      });
       validSeen += 1;
       prevValid = dose.date;
     }
