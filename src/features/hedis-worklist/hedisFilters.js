@@ -22,6 +22,7 @@ export const MORE_FILTER_ITEMS = [
   { k: 'memberStatus',                label: 'Member Status',                primary: true },
   { k: 'phone',                       label: 'Phone Number',                 primary: false },
   { k: 'dob',                         label: 'DOB',                          primary: false },
+  { k: 'age',                         label: 'Age',                          primary: false },
   { k: 'gender',                      label: 'Gender',                       primary: false },
   { k: 'language',                    label: 'Language',                     primary: true },
   { k: 'gapStatus',                   label: 'Gap Status',                   primary: true },
@@ -69,6 +70,17 @@ const LANGUAGE_LABEL = {
   ko: 'Korean',  vi: 'Vietnamese', hi: 'Hindi', bn: 'Bengali', ar: 'Arabic',
 };
 
+// Age groups for the Age filter, in years. Bands follow the HEDIS measure
+// populations (e.g. under 2 for CIS, 45–75 for COL, 66+ for COA).
+const AGE_GROUPS = [
+  { label: 'Under 2', min: 0, max: 1 },
+  { label: '2–17', min: 2, max: 17 },
+  { label: '18–44', min: 18, max: 44 },
+  { label: '45–64', min: 45, max: 64 },
+  { label: '65–74', min: 65, max: 74 },
+  { label: '75+', min: 75, max: Infinity },
+];
+
 export const FILTER_DEFS = [
   { k: 'memberStatus',        label: 'Member Status', type: 'multi',
     opts: ['Active', 'Inactive', 'Suspended'] },
@@ -94,6 +106,8 @@ export const FILTER_DEFS = [
   { k: 'hpCode',              label: 'HP Codes', type: 'multi',
     dynamic: 'hpCode', opts: [] },
   { k: 'dob',                 label: 'DOB', type: 'date', field: 'dob' },
+  { k: 'age',                 label: 'Age', type: 'multi',
+    opts: AGE_GROUPS.map(g => g.label) },
   { k: 'lastOutreachDate',    label: 'Last Outreach Date', type: 'date', field: 'outreachDate' },
   // ── Coverage / plan attributes ─────────────────────────────────────
   { k: 'isOwnedIpa',          label: 'Is Owned IPA', type: 'radio',
@@ -190,6 +204,11 @@ function matchOne(m, k, vals) {
     case 'phone':               return matchesAnyLiteralSubstring(m.phone || '', vals);
     case 'zip':                 return matchesAnyLiteralSubstring(m.zip || '', vals);
     case 'dob':                 return matchDateRange(m.dob, vals);
+    case 'age': {
+      const years = ageInYears(m);
+      if (years == null) return false;
+      return AGE_GROUPS.some(g => vals.includes(g.label) && years >= g.min && years <= g.max);
+    }
     case 'lastOutreachDate':    return matchDateRange(m.outreachDate, vals);
     // Coverage / plan
     case 'isOwnedIpa':          return vals.includes(m.isOwnedIpa ? 'Yes' : 'No');
@@ -225,6 +244,21 @@ function matchOne(m, k, vals) {
     case 'riskIQ':              return matchRange(m.riskIQ, vals);
     default:                    return true;
   }
+}
+
+// Whole years from DOB; falls back to the age text ("22m", "67y 2m", "63y").
+function ageInYears(m) {
+  const dob = parseLocalDate(m.dob);
+  if (dob) {
+    const now = new Date();
+    let years = now.getFullYear() - dob.getFullYear();
+    if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) years -= 1;
+    return years;
+  }
+  const y = /(\d+)\s*y/i.exec(m.age || '');
+  if (y) return Number(y[1]);
+  const mo = /(\d+)\s*m/i.exec(m.age || '');
+  return mo ? Math.floor(Number(mo[1]) / 12) : null;
 }
 
 function matchRange(value, vals) {
