@@ -51,6 +51,17 @@ build requires esbuild ≥ 0.28 on Node 26.
   Met; doses unlock on their earliest allowed date; Add Outreach leads the
   suggested actions on CIS gaps; the Vaccine Calendar opens as a drawer.
 
+- **PR Autopilot.** When Alok, Ketan or Devanshi open or update a PR, a
+  GitHub Action (`.github/workflows/pr-autopilot.yml`) has Claude review it,
+  wait for the required checks, merge it (resolving conflicts on an
+  `autopilot/integrate-pr-N` branch when needed), run its Supabase migrations
+  with the CLI, and comment with what it did. Anon-open RLS policies and
+  missing clinical-note lifecycle bypasses are patched before running, and
+  rows a migration deletes or rewrites are backed up to `demo_bak` first.
+  Anything it isn't sure about gets the `autopilot:needs-human` label; add
+  `autopilot:skip` to opt a PR out. Rules: `.github/claude/pr-autopilot.md`.
+  Inactive until the `CLAUDE_CODE_OAUTH_TOKEN`, `AUTOPILOT_GH_TOKEN` and
+  `SUPABASE_ACCESS_TOKEN` repo secrets are set.
 - **CIS-CMB10 Vaccine Calendar (phase 3).** The first CIS tab is now
   "Vaccine Calendar". It adds View by Vaccine / Age (Age follows a printed
   schedule; each age group shows dose dots, start date and status, so it
