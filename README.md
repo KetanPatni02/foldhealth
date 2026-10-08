@@ -37,6 +37,15 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **API routes now require a signed-in user.** The routes that send email
+  (send-test-email, send-report-email) or call paid APIs (care-plan-summary,
+  referral-email, pop-group-rule-from-nl, pexels-search) return 401 unless
+  the request carries a valid Supabase access token. Server side, call
+  `requireUser(req, res)` from `api/_lib/requireUser.js` at the top of the
+  handler; client side, use `apiFetch` from `src/lib/apiFetch.js` instead of
+  `fetch`. ICD search, reference lookups, share pages, OG images and the
+  Sentry tunnel stay public.
+
 - **HEDIS worklist Age filter.** More Filters gains **Age** (Under 2, 2–17,
   18–44, 45–64, 65–74, 75+), a multi-select FilterChip. Age comes from DOB
   in whole years, falling back to the row's age text ("22m", "67y 2m").
