@@ -31,6 +31,7 @@ import { RadioButton } from '../../../../../../../../components/RadioButton/Radi
 // system across every radio-body dialog in the app.
 import dialogStyles from '../../../../../../../hcc/DiagPanel/RecordsRequestDialog.module.css';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
+import { useSignedCarePlan } from '../../lib/useSignedCarePlans';
 import { INTERVENTION_EDITORS } from '../../../../../../../settings/care-plan-library/interventions';
 import { AddTaskDrawer } from '../../../../../../../tasks/AddTaskDrawer';
 import { buildInterventionRecordFromConfig } from '../../lib/carePlanInterventionMenu';
@@ -381,9 +382,15 @@ function IntvDeleteScopePicker({ name, kindLabel = 'intervention', onCancel, onC
  * Every edit (status, progress, readings, automations, notes, interventions,
  * barriers) writes through the care-plan store into Supabase.
  */
-export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention, onOpenBarrier, consolidated = false, focusSection = null }) {
+export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention, onOpenBarrier, consolidated = false, signedView = false, focusSection = null }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
-  const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
+  // `signedView`: opened from a surface that shows the plan as last signed
+  // (Comprehensive Care Plan, Monitoring). The item is read from that copy
+  // and the plan itself is not editable there; readings and notes are live
+  // documentation, so those stay open.
+  const liveSlice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
+  const signedSlice = useSignedCarePlan(signedView ? key : null);
+  const slice = signedView ? signedSlice : liveSlice;
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
   const lastVisit = useAppStore(s => {
     const p = (s.patients || []).find(x => x.id === patientId)
@@ -392,6 +399,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   });
   const currentUserName = useAppStore(s => s.currentUserProfile?.name);
   const savePatientCarePlanGoal = useAppStore(s => s.savePatientCarePlanGoal);
+  const saveCarePlanLiveField = useAppStore(s => s.saveCarePlanLiveField);
   const deletePatientCarePlanGoal = useAppStore(s => s.deletePatientCarePlanGoal);
   const saveGoalMeasurement = useAppStore(s => s.saveGoalMeasurement);
   const deleteGoalMeasurement = useAppStore(s => s.deleteGoalMeasurement);
@@ -705,7 +713,14 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
 
   if (!live) return null;
 
-  const canEdit = !!(patientId && program);
+  // canDocument: readings, notes and live progress (status, priority, title,
+  // progress), which apply to the signed plan without a signature.
+  // canEdit: details and structure, which are draft edits made in the editor.
+  const canDocument = !!(patientId && program);
+  const canEdit = canDocument && !signedView;
+  const saveLive = (patch) => (signedView
+    ? saveCarePlanLiveField(patientId, program, 'goal', live.id, patch)
+    : savePatientCarePlanGoal(patientId, program, { ...live, ...patch }, live.id));
   // The measure's unit (or an "Others" goal's own); customUnit is stale on
   // other categories. Falls back to what earlier readings were saved with.
   const unit = goalReadingUnit(live) || measurements[0]?.unit || '';
@@ -719,12 +734,12 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   const commitProgress = (v) => {
     const next = v[0];
     if (next === (live.progress ?? 0)) return;
-    savePatientCarePlanGoal(patientId, program, { ...live, progress: next }, live.id);
+    saveLive({ progress: next });
   };
 
   const changeStatus = (status) => {
-    if (!canEdit || status === live.status) return;
-    savePatientCarePlanGoal(patientId, program, { ...live, status }, live.id);
+    if (!canDocument || status === live.status) return;
+    saveLive({ status });
   };
 
 
@@ -756,7 +771,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       value: ASSESSMENT_COMPLETED, unit: '', favorable: true, takenAt,
     });
     if (saved && live.status !== 'Met') {
-      await savePatientCarePlanGoal(patientId, program, { ...live, status: 'Met' }, live.id);
+      await saveLive({ status: 'Met' });
     }
   };
 
@@ -926,7 +941,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             options={GBI_STATUSES.map(s => ({ value: s, label: s }))}
             value={live.status}
             onChange={changeStatus}
-            disabled={!canEdit}
+            disabled={!canDocument}
             portal
             className={styles.statusSelect}
             style={{ width: 'fit-content' }}
@@ -967,8 +982,8 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                   value={live.priority}
                   options={PRIORITY_OPTIONS}
                   onSelect={(v) => {
-                    if (!canEdit || v === live.priority) return;
-                    savePatientCarePlanGoal(patientId, program, { ...live, priority: v }, live.id);
+                    if (!canDocument || v === live.priority) return;
+                    saveLive({ priority: v });
                   }}
                   searchable={false}
                   renderOption={(opt) => (
@@ -986,7 +1001,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 Enter or click away to save; Escape cancels. No input box. */}
             <EditableText
               value={live.title || ''}
-              onCommit={(next) => { if (next && next !== live.title) savePatientCarePlanGoal(patientId, program, { ...live, title: next }, live.id); }}
+              onCommit={(next) => { if (next && next !== live.title) saveLive({ title: next }); }}
               ariaLabel="Goal title"
               className={styles.titleText}
               elementRef={titleRef}
@@ -1070,7 +1085,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 min={0}
                 max={100}
                 step={1}
-                disabled={!canEdit}
+                disabled={!canDocument}
                 onPointerDown={() => setPctDragging(true)}
                 onPointerUp={() => setPctDragging(false)}
                 onPointerCancel={() => setPctDragging(false)}
@@ -1092,7 +1107,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             title={isAssessment ? 'Completion' : 'Last Trends'}
             open={open.trends}
             onToggle={() => toggle('trends')}
-            canEdit={canEdit && !isAssessment}
+            canEdit={canDocument && !isAssessment}
             muted
             addTooltip="Add reading"
             onAdd={() => expandAnd('trends', () => setAddingReading(v => !v))}
@@ -1101,7 +1116,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             <GoalCompletion
               goal={live}
               readings={measurements}
-              canEdit={canEdit}
+              canEdit={canDocument}
               onComplete={completeAssessment}
             />
           )}
@@ -1122,7 +1137,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                         <div key={m.id} className={styles.valueCol}>
                           <span className={`${styles.value} ${m.favorable ? styles.valueGood : styles.valueBad}`}>{m.value}</span>
                           <span className={styles.valueAge}>{relativeLabel(m.takenAt)}</span>
-                          {canEdit && (
+                          {canDocument && (
                             <button type="button" className={styles.valueRemove} onClick={() => deleteGoalMeasurement(patientId, program.id, m.id)} aria-label="Remove reading">
                               <Icon name="solar:close-circle-linear" size={12} color="var(--neutral-300)" />
                             </button>
@@ -1323,7 +1338,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           </section>
         )}
 
-        {canEdit && (
+        {canDocument && (
           <div ref={noteSectionRef} className={barrierStyles.noteEditor}>
             {latestGoalNote && !noteEditing ? (
               <section className={barrierStyles.section}>

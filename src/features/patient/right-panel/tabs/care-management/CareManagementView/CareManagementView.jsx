@@ -11,6 +11,7 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { CareProgramsTab } from '../../care-programs/CareProgramsTab/CareProgramsTab';
 import { CarePlanSummaryView } from '../../care-programs/care-plan/summary/CarePlanSummaryView/CarePlanSummaryView.jsx';
 import { buildCarePlanSnapshot, filterCarePlanSnapshot, downloadCarePlanCsv, CARE_PLAN_DATE_PRESETS } from '../../care-programs/care-plan/summary/carePlanSnapshot';
+import { useSignedCarePlans } from '../../care-programs/care-plan/lib/useSignedCarePlans';
 import { programUrlKey } from '../../care-programs/CareProgramsTab/CareProgramsTab.utils';
 import { stepsFor, flatSteps } from '../../care-programs/program-detail/ProgramDetailView/ProgramDetailView.utils';
 import { CareManagementToolbar } from '../CareManagementToolbar/CareManagementToolbar';
@@ -71,7 +72,8 @@ function AddCareNoteDrawer({ onClose, onSave }) {
  *  search + (program) filter and a Download CTA. */
 function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpenProgramStep, editable = false }) {
   const showToast = useAppStore(s => s.showToast);
-  const patientCarePlans = useAppStore(s => s.patientCarePlans);
+  // The pane shows plans as last signed, the same copy its table renders.
+  const patientCarePlans = useSignedCarePlans();
   const carePlanTemplates = useAppStore(s => s.carePlanTemplates) || [];
   const [addNoteOpen, setAddNoteOpen] = useState(false);
   const [searchMode, setSearchMode] = useState(false);

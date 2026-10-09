@@ -268,3 +268,8 @@
   background: var(--neutral-150);
   flex-shrink: 0;
 }
+
+/* Signed version / draft switch, shown only while there are unsigned changes. */
+.versionToggle {
+  margin-bottom: var(--space-3);
+}
