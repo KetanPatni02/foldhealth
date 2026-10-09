@@ -1,7 +1,7 @@
 import { Badge } from '../../../../../components/Badge/Badge';
-import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
+import { RadioOptionGroup } from '../../../../../components/RadioOptionGroup/RadioOptionGroup';
 import { TEMPLATE_SCOPES, templateScopeOf } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateScope';
-import styles from './TemplateScope.module.css';
+import { RENEWAL_CHOICES, TEMPLATE_RENEWALS } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 
 /** Org / Private / Patient indicator for a template row. */
 export function TemplateScopeBadge({ template, className }) {
@@ -16,22 +16,25 @@ export function TemplateScopeBadge({ template, className }) {
  */
 export function TemplateScopeChoice({ value, onChange, choices, label = 'Who is this template for?' }) {
   return (
-    <div className={styles.field}>
-      <span className={styles.label}>{label}</span>
-      <div className={styles.group} role="radiogroup" aria-label={label}>
-        {choices.map(key => (
-          <div key={key} className={styles.option}>
-            <RadioButton
-              name="template-scope"
-              value={key}
-              label={TEMPLATE_SCOPES[key].label}
-              checked={value === key}
-              onChange={() => onChange(key)}
-            />
-            <p className={styles.hint}>{TEMPLATE_SCOPES[key].hint}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+    <RadioOptionGroup
+      label={label}
+      name="template-scope"
+      value={value}
+      onChange={onChange}
+      options={choices.map(key => ({ value: key, label: TEMPLATE_SCOPES[key].label, hint: TEMPLATE_SCOPES[key].hint }))}
+    />
+  );
+}
+
+/** "When applied again" — what adding this template to a plan that has it does. */
+export function TemplateRenewalChoice({ value, onChange, label = 'When applied again' }) {
+  return (
+    <RadioOptionGroup
+      label={label}
+      name="template-renewal"
+      value={value}
+      onChange={onChange}
+      options={RENEWAL_CHOICES.map(key => ({ value: key, label: TEMPLATE_RENEWALS[key].label, hint: TEMPLATE_RENEWALS[key].hint }))}
+    />
   );
 }

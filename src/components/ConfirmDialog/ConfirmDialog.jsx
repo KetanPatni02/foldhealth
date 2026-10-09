@@ -52,6 +52,9 @@ const VARIANT_DEFAULTS = {
  *   left-aligned: the icon inline with the title, the description under them,
  *   then the checkbox and the buttons (Figma Dialog Box 2, 2810:68907).
  * @param {'S'|'L'|'XL'} [props.buttonSize='L']
+ * @param {React.ReactNode} [props.children] – Extra content (e.g. a choice the
+ *   answer depends on), shown above the checkbox and buttons. Pairs with
+ *   align="start".
  * @param {string}   [props.className] – Extra class on the dialog box.
  */
 export function ConfirmDialog({
@@ -71,6 +74,7 @@ export function ConfirmDialog({
   align = 'center',
   buttonSize = 'L',
   className,
+  children,
 }) {
   const preset = VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.warning;
   const resolvedIcon = icon ?? preset.icon;
@@ -123,6 +127,7 @@ export function ConfirmDialog({
         </div>
         {descriptionEl}
       </div>
+      {children}
       <div className="flex flex-col gap-3">
         {checkboxEl}
         {footerEl}
@@ -135,6 +140,7 @@ export function ConfirmDialog({
         {titleEl}
         {descriptionEl}
       </AlertDialogHeader>
+      {children}
       {checkboxEl}
       {footerEl}
     </>

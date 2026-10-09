@@ -1,1 +1,1 @@
-export { TemplateScopeBadge, TemplateScopeChoice } from './TemplateScope.jsx';
+export { TemplateScopeBadge, TemplateScopeChoice, TemplateRenewalChoice } from './TemplateScope.jsx';
