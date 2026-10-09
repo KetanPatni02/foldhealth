@@ -18,6 +18,8 @@ import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { templateContents as templateContentsOnPlan } from '../../../../../../../../store/lib/carePlanStoreLib';
 import { CarePlanVersionChangesDrawer } from '../CarePlanVersionChangesDrawer/CarePlanVersionChangesDrawer';
 import {
+  TEMPLATE_RENEWAL_ACTIVITY,
+  isTemplateRenewal,
   templateContents,
   templateOwnedTitles,
   withLiveLinks,
@@ -189,6 +191,16 @@ function sectionsFor(group, openAt, links) {
     && r.action !== 'shared');
   const sections = [];
   for (const t of templates) {
+    if (isTemplateRenewal(t)) {
+      sections.push({
+        id: t.id,
+        title: `${t.summary} Template ${TEMPLATE_RENEWAL_ACTIVITY[t.action]}`,
+        caption: t.detail || '',
+        badges: [],
+        onClick: () => openAt?.(t.id),
+      });
+      continue;
+    }
     sections.push({
       id: t.id,
       title: `${t.summary} Template ${t.action === 'created' ? 'Added' : 'Removed'}`,

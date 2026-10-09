@@ -10,6 +10,8 @@ import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { ActivityLog, MetaLine, ViewMoreButton } from '../../../../../../../../components/ActivityLog/ActivityLog';
 import { historyTimelineStyles as htStyles } from '../../../../../../../../components/HistoryTimeline/HistoryTimeline';
 import {
+  TEMPLATE_RENEWAL_ACTIVITY,
+  isTemplateRenewal,
   templateContents,
   templateOwnedTitles,
   withLiveLinks,
@@ -144,7 +146,22 @@ function buildNodes(rawRows, links) {
     && !((r.action === 'created' || r.action === 'deleted')
       && owned.has((r.summary || '').trim().toLowerCase())));
 
-  for (const t of templates) {
+  for (const t of templates.filter(isTemplateRenewal)) {
+    nodes.push({
+      id: t.id,
+      anchor: t.id,
+      icon: TEMPLATE_ICON,
+      heading: `${t.summary} Template ${TEMPLATE_RENEWAL_ACTIVITY[t.action]}`,
+      stamp: stampOf(t),
+      ts: tsOf(t),
+      category: 'updated',
+      entityKind: 'template',
+      activity: TEMPLATE_RENEWAL_ACTIVITY[t.action],
+      actor: t.actor || null,
+      items: t.detail ? [t.detail] : [],
+    });
+  }
+  for (const t of templates.filter(r => !isTemplateRenewal(r))) {
     const c = withLiveLinks(templateContents(t), links);
     // One summary line for the whole template — goals, interventions and
     // barriers together — rather than a heading per block.

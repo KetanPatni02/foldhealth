@@ -244,6 +244,7 @@
   gap: var(--space-1);
 }
 .createdAt {
+  white-space: nowrap;
   color: var(--neutral-400);
 }
 .createdBy {

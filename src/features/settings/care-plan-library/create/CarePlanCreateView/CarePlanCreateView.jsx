@@ -14,8 +14,9 @@ import { INTERVENTION_EDITORS } from '../../interventions';
 import { ApplyTemplatesDrawer } from '../../../../patient/right-panel/tabs/care-programs/care-plan/drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
-import { CarePlanSections, ChronicConditionSelect, TemplateScopeChoice } from '../../shared';
+import { CarePlanSections, ChronicConditionSelect, TemplateRenewalChoice, TemplateScopeChoice } from '../../shared';
 import { LIBRARY_SCOPE_CHOICES } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateScope';
+import { defaultRenewalFor } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { CARE_PLAN_NAME_MAX } from '../../lib/carePlanLimits';
 import {
   goalPayloadFromTemplateEntry,
@@ -43,6 +44,10 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [templateType, setTemplateType] = useState('general');
+  // Follows the template type (conditions extend, events reinstate) until
+  // someone picks one.
+  const [renewalPick, setRenewalPick] = useState(null);
+  const renewal = renewalPick || defaultRenewalFor(templateType === 'chronic' ? ['chronic'] : []);
   const [conditions, setConditions] = useState([]);
   // The same three lists the template editor keeps, so New Care Plan and Edit
   // Care Plan behave identically.
@@ -160,6 +165,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
     interventions,
     barriers,
     scope,
+    renewal,
   });
 
   return (
@@ -216,6 +222,10 @@ export function CarePlanCreateView({ onClose, onSave }) {
 
           <div className={styles.field}>
             <TemplateScopeChoice value={scope} onChange={setScope} choices={LIBRARY_SCOPE_CHOICES} />
+          </div>
+
+          <div className={styles.field}>
+            <TemplateRenewalChoice value={renewal} onChange={setRenewalPick} />
           </div>
 
           {/* A chronic-conditions template needs to say which conditions —

@@ -62,6 +62,8 @@ const conditionSortKey = (t) => {
  *   checked (e.g. one the user just created from this drawer).
  * @param {Array} [props.patientProblems=[]]  The patient's problem list; drives
  *   the "Recommended" group (templates whose conditions match an active problem).
+ * @param {Function} [props.onApplyAgain]  Called with a template already on the
+ *   plan to extend or reinstate it; its rows get an Apply again action.
  */
 export function ApplyTemplatesDrawer({
   onClose,
@@ -76,6 +78,7 @@ export function ApplyTemplatesDrawer({
   // On a patient's plan, that patient's own templates are offered too;
   // elsewhere (the library's New Care Plan) only library templates are.
   patientId = null,
+  onApplyAgain,
 }) {
   const allTemplates = useAppStore(s => s.carePlanTemplates);
   const authUserId = useAppStore(s => s.authUserId);
@@ -263,7 +266,9 @@ export function ApplyTemplatesDrawer({
     // In the Recommended group, spell out which of the patient's problems put
     // this template here, so the basis for the recommendation is explicit.
     const reasons = showReason ? reasonFor(t.id) : null;
-    const reasonText = reasons?.length ? `Recommended for ${reasons.join(', ')}` : null;
+    const reasonText = reasons?.length
+      ? `Recommended for ${reasons.join(', ')}${appliedSet.has(t.id) ? '. Already on this plan' : ''}`
+      : null;
     return (
       <div key={t.id} className={styles.row}>
         <Checkbox
@@ -273,7 +278,14 @@ export function ApplyTemplatesDrawer({
         />
         <span className={styles.rowText}>
           <span className={styles.rowTitleLine}>
-            <span className={styles.rowTitle}>{templateNameOf(t)}</span>
+            <button
+              type="button"
+              className={styles.rowTitle}
+              title="Preview template"
+              onClick={() => setPreviewTemplate(t)}
+            >
+              {templateNameOf(t)}
+            </button>
             <TemplateScopeBadge template={t} />
           </span>
           {reasonText && <span className={styles.rowReason} title={reasonText}>{reasonText}</span>}
@@ -307,6 +319,14 @@ export function ApplyTemplatesDrawer({
           </div>
         )}
         <span className={styles.rowActions}>
+          {onApplyAgain && appliedSet.has(t.id) && (
+            <ActionButton
+              icon="solar:restart-linear"
+              size="S"
+              tooltip="Apply again"
+              onClick={() => onApplyAgain(t)}
+            />
+          )}
           <ActionButton
             size="S"
             active={isFavorite(t.id)}
@@ -319,12 +339,6 @@ export function ApplyTemplatesDrawer({
               color={isFavorite(t.id) ? 'var(--status-warning)' : 'var(--neutral-300)'}
             />
           </ActionButton>
-          <ActionButton
-            icon="solar:eye-linear"
-            size="S"
-            tooltip="Preview template"
-            onClick={() => setPreviewTemplate(t)}
-          />
         </span>
       </div>
     );

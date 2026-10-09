@@ -27,6 +27,7 @@ import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawe
 import { InterventionPreviewDrawer } from '../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
 import { TemplateCreateLayer } from './TemplateCreateLayer';
+import { ApplyAgainDialog } from './ApplyAgainDialog';
 import { interventionActivityEntries } from './carePlanLinkedItems';
 import styles from './CarePlanView.module.css';
 
@@ -46,7 +47,7 @@ export function CarePlanViewDrawers(d) {
     noteDiscardOpen, setNoteDiscardOpen, noteDeleteOpen, setNoteDeleteOpen, doClearCareNote,
     problemOpen, setProblemOpen, doAddProblem, problemText, setProblemText,
     trendsOpen, setTrendsOpen, measurements,
-    templatesDrawerOpen, setTemplatesDrawerOpen, appliedTemplateIds,
+    templatesDrawerOpen, setTemplatesDrawerOpen, appliedTemplateIds, applyAgainTemplate, setApplyAgainTemplate,
     templateCreateOpen, setTemplateCreateOpen, createdTemplateIds, setCreatedTemplateIds, appliedTemplatePriorities, handleApplyTemplates,
     templateOpen, setTemplateOpen, templateName, setTemplateName, templateConditions, setTemplateConditions, saveTemplate,
     templateSourceId, pickTemplateSource, appliedTemplates, templateScope, setTemplateScope,
@@ -355,6 +356,17 @@ export function CarePlanViewDrawers(d) {
           onApply={(ids, priorities) => { setCreatedTemplateIds([]); handleApplyTemplates(ids, priorities); }}
           onCreateNew={() => { setTemplatesDrawerOpen(false); setTemplateCreateOpen(true); }}
           preselectedIds={createdTemplateIds}
+          onApplyAgain={canEdit ? setApplyAgainTemplate : undefined}
+        />
+      )}
+
+      {applyAgainTemplate && (
+        <ApplyAgainDialog
+          template={applyAgainTemplate}
+          patientId={patientId}
+          program={program}
+          onClose={() => setApplyAgainTemplate(null)}
+          onDone={() => setTemplatesDrawerOpen(false)}
         />
       )}
 

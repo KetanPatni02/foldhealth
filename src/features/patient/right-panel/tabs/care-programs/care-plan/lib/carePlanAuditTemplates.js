@@ -5,6 +5,11 @@
 // plain titles, so both shapes are normalised here. Parsing is guarded so a
 // hand-edited or legacy row degrades to an empty template rather than breaking
 // History.
+// Template rows that renew a run already on the plan rather than add or
+// remove one. Their detail is a sentence, not the template's contents.
+export const TEMPLATE_RENEWAL_ACTIVITY = { extended: 'Extended', reinstated: 'Reinstated' };
+export const isTemplateRenewal = row => !!TEMPLATE_RENEWAL_ACTIVITY[row?.action];
+
 export function templateContents(row) {
   let parsed;
   try {

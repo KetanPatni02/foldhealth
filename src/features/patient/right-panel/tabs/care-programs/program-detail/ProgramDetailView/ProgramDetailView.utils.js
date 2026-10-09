@@ -28,7 +28,9 @@ export const stepsFor = (code) => PROGRAM_STEPS[code] || PROGRAM_STEPS.SNP;
 export function withoutCarePlanStep(steps) {
   return steps
     .filter(s => s.name !== 'Care Plan')
-    .map(s => (s.type === 'section' ? { ...s, children: s.children.filter(c => c.name !== 'Care Plan') } : s));
+    .map(s => (s.type === 'section' ? { ...s, children: s.children.filter(c => c.name !== 'Care Plan') } : s))
+    // A section that only held the care plan (SNP's Model of Care) has nothing left to show.
+    .filter(s => s.type !== 'section' || s.children.length > 0);
 }
 export const flatSteps = (list) => list.flatMap(s => (s.type === 'section' ? s.children : [s]));
 
