@@ -24,6 +24,8 @@ import { UploadIcon } from './UploadIcon';
 import { TableIcon } from './TableIcon';
 import { BarrierIcon } from './BarrierIcon';
 import { CarePlanIcon } from './CarePlanIcon';
+import { InProgressRingIcon } from './InProgressRingIcon';
+import { PendingStatusIcon } from './PendingStatusIcon';
 import { SubtaskIcon } from './SubtaskIcon';
 import { MemberConsentIcon } from './MemberConsentIcon';
 import { LinkIcon } from './LinkIcon';
@@ -79,6 +81,8 @@ export function Icon({ name, size = 18, color, style, className }) {
   if (name === 'custom:table') return <TableIcon size={size} color={color} />;
   if (name === 'custom:barrier') return <BarrierIcon size={size} color={color} />;
   if (name === 'custom:care-plan') return <CarePlanIcon size={size} color={color} />;
+  if (name === 'custom:in-progress') return <InProgressRingIcon size={size} color={color} />;
+  if (name === 'custom:pending') return <PendingStatusIcon size={size} color={color} />;
   if (name === 'custom:subtask') return <SubtaskIcon size={size} color={color} />;
   if (name === 'custom:member-consent') return <MemberConsentIcon size={size} color={color} />;
   if (name === 'custom:link') return <LinkIcon size={size} color={color} />;

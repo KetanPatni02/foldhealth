@@ -42,6 +42,7 @@ import sharedRow from '../../tables/carePlanTables.module.css';
 import styles from './CarePlanSummaryView.module.css';
 import { localDateMs } from '../../../../../../../../lib/localDate';
 import { apiFetch } from '../../../../../../../../lib/apiFetch';
+import { useSignedCarePlans } from '../../lib/useSignedCarePlans';
 
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 const PRIORITIES = ['high', 'medium', 'low'];
@@ -441,14 +442,18 @@ function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, programOverlap
           >
             {!isHidden('priority') && (
             <td className={sharedRow.priorityTd} onClick={e => e.stopPropagation()}>
-              <button
-                type="button"
-                className={sharedRow.priorityBtn}
-                aria-label="Change priority"
-                onClick={(e) => onPriorityMenu({ kind: 'goal', item: g, rect: e.currentTarget.getBoundingClientRect() })}
-              >
+              {onPriorityMenu ? (
+                <button
+                  type="button"
+                  className={sharedRow.priorityBtn}
+                  aria-label="Change priority"
+                  onClick={(e) => onPriorityMenu({ kind: 'goal', item: g, rect: e.currentTarget.getBoundingClientRect() })}
+                >
+                  <PriorityIcon priority={g.priority} size={16} />
+                </button>
+              ) : (
                 <PriorityIcon priority={g.priority} size={16} />
-              </button>
+              )}
             </td>
             )}
             <td className={sharedRow.titleTd}>
@@ -483,7 +488,8 @@ function GoalsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, programOverlap
             <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
               <GbiStatusButton
                 value={g.status}
-                onOpen={rect => onStatusMenu({ kind: 'goal', item: g, rect })}
+                disabled={!onStatusMenu}
+                onOpen={rect => onStatusMenu?.({ kind: 'goal', item: g, rect })}
               />
             </td>
             <td className={sharedRow.actionsTd} aria-hidden="true" />
@@ -558,14 +564,18 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
             >
               {!isHidden('priority') && (
               <td className={sharedRow.priorityTd} onClick={e => e.stopPropagation()}>
-                <button
-                  type="button"
-                  className={sharedRow.priorityBtn}
-                  aria-label="Change priority"
-                  onClick={(e) => onPriorityMenu({ kind: 'intv', item: i, rect: e.currentTarget.getBoundingClientRect() })}
-                >
+                {onPriorityMenu ? (
+                  <button
+                    type="button"
+                    className={sharedRow.priorityBtn}
+                    aria-label="Change priority"
+                    onClick={(e) => onPriorityMenu({ kind: 'intv', item: i, rect: e.currentTarget.getBoundingClientRect() })}
+                  >
+                    <PriorityIcon priority={i.priority} size={16} />
+                  </button>
+                ) : (
                   <PriorityIcon priority={i.priority} size={16} />
-                </button>
+                )}
               </td>
               )}
               <td className={sharedRow.titleTd}>
@@ -597,8 +607,8 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
                   users={assigneeUsers}
                   avatarVariant={avatarVariant}
                   pickerTitle="Change assignee"
-                  onSelect={(u) => onAssigneeChange(i, u)}
-                  disabled={isMemberTask}
+                  onSelect={(u) => onAssigneeChange?.(i, u)}
+                  disabled={isMemberTask || !onAssigneeChange}
                 />
               </td>
               )}
@@ -616,7 +626,8 @@ function InterventionsTable({ rows, onOpen, onPriorityMenu, onStatusMenu, onAssi
               <td className={sharedRow.statusTd} onClick={e => e.stopPropagation()}>
                 <GbiStatusButton
                   value={i.status}
-                  onOpen={rect => onStatusMenu({ kind: 'intv', item: i, rect })}
+                  disabled={!onStatusMenu}
+                  onOpen={rect => onStatusMenu?.({ kind: 'intv', item: i, rect })}
                 />
               </td>
               )}
@@ -652,7 +663,8 @@ function BarrierRow({ b, onOpen, onStatusMenu, overlap }) {
       <td className={sharedRow.barrierStatusTd} onClick={e => e.stopPropagation()}>
         <GbiStatusButton
           value={b.status}
-          onOpen={rect => onStatusMenu({ kind: 'barrier', item: b, rect })}
+          disabled={!onStatusMenu}
+          onOpen={rect => onStatusMenu?.({ kind: 'barrier', item: b, rect })}
         />
       </td>
     </tr>
@@ -763,10 +775,18 @@ export function CarePlanSummaryView({
   editable = false,
 }) {
   const [rollupAdd, setRollupAdd] = useState(null); // { kind, rect } | null
+  // The editable roll-up (care plan level "both") is where the drafts are
+  // edited, so it reads them. Read-only, a plan reads as last signed, with
+  // the progress made on it since (status, priority, assignee...); its
+  // unsigned draft stays in the editor, and a never-signed plan is not listed.
   const fetchAllPatientCarePlans = useAppStore(s => s.fetchAllPatientCarePlans);
-  const loading = useAppStore(s => s.patientCarePlanAllLoading[patientId]);
-  const loadedFor = useAppStore(s => s.patientCarePlanAllLoadedFor[patientId]);
-  const patientCarePlans = useAppStore(s => s.patientCarePlans);
+  const fetchSignedCarePlans = useAppStore(s => s.fetchSignedCarePlans);
+  const loading = useAppStore(s => (editable ? s.patientCarePlanAllLoading[patientId] : s.patientSignedCarePlansLoading[patientId]));
+  const loadedFor = useAppStore(s => (editable ? s.patientCarePlanAllLoadedFor[patientId] : s.patientSignedCarePlansLoadedFor[patientId]));
+  const draftCarePlans = useAppStore(s => s.patientCarePlans);
+  const signedCarePlans = useSignedCarePlans();
+  const patientCarePlans = editable ? draftCarePlans : signedCarePlans;
+  const saveCarePlanLiveField = useAppStore(s => s.saveCarePlanLiveField);
   // Resolve THIS patient only — `s.patients` holds the current worklist
   // slice (many patients), so indexing [0] there landed on whoever's at
   // the top of the list (e.g. "Ralph Halvorson") instead of the patient
@@ -791,15 +811,14 @@ export function CarePlanSummaryView({
   }, [currentPatient, patientId]);
   const platformUsers = useAppStore(s => s.platformUsers) || [];
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
-  const savePatientCarePlanGoal = useAppStore(s => s.savePatientCarePlanGoal);
-  const savePatientCarePlanIntervention = useAppStore(s => s.savePatientCarePlanIntervention);
-  const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
 
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
 
   useEffect(() => {
-    if (patientId) fetchAllPatientCarePlans(patientId);
-  }, [patientId, fetchAllPatientCarePlans]);
+    if (!patientId) return;
+    if (editable) fetchAllPatientCarePlans(patientId);
+    else fetchSignedCarePlans(patientId);
+  }, [patientId, editable, fetchAllPatientCarePlans, fetchSignedCarePlans]);
 
   // Flatten every program's plan into goals + interventions + barriers
   // tagged with their program (shared with the Download export).
@@ -1010,54 +1029,39 @@ export function CarePlanSummaryView({
   const [previewIntervention, setPreviewIntervention] = useState(null);
   const [previewBarrier, setPreviewBarrier] = useState(null);
 
-  // Inline priority / status menus — dispatch to the plan the row
-  // belongs to via its own tagged `program` field.
+  // Status, priority and an internal task's assignee are progress on the
+  // signed plan, so they save from here straight onto it.
   const [priorityMenu, setPriorityMenu] = useState(null);
   const [statusMenu, setStatusMenu] = useState(null);
+  const TYPE_OF = { goal: 'goal', intv: 'intervention', barrier: 'barrier' };
 
   const changePriority = (priority) => {
     if (!priorityMenu) return;
     const { kind, item } = priorityMenu;
     setPriorityMenu(null);
-    const program = item.program;
-    if (!program) return;
-    if (kind === 'goal') savePatientCarePlanGoal(patientId, program, { ...item, priority }, item.id);
-    else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, { ...item, priority }, item.id);
-    else savePatientCarePlanIntervention(patientId, program, { ...item, priority }, item.id);
+    if (item.program) saveCarePlanLiveField(patientId, item.program, TYPE_OF[kind], item.id, { priority });
   };
 
   const changeStatus = (status) => {
     if (!statusMenu) return;
     const { kind, item } = statusMenu;
     setStatusMenu(null);
-    const program = item.program;
-    if (!program) return;
-    if (kind === 'goal') savePatientCarePlanGoal(patientId, program, { ...item, status }, item.id);
-    else if (kind === 'barrier') savePatientCarePlanBarrier(patientId, program, { ...item, status }, item.id);
-    else savePatientCarePlanIntervention(patientId, program, { ...item, status }, item.id);
+    if (item.program) saveCarePlanLiveField(patientId, item.program, TYPE_OF[kind], item.id, { status });
   };
 
-  const openGoal = (g) => setPreviewGoal({ goal: g, program: g.program });
-  const openIntervention = (i) => setPreviewIntervention({ intervention: i, program: i.program });
-  const openBarrier = (b) => setPreviewBarrier({ barrier: b, program: b.program });
-
-  // Only Internal Task's assignee is editable — Patient Task and other
-  // intervention kinds keep the member as the assignee. Write via the
-  // shared intervention save so the per-plan tab, activity log, and
-  // this consolidated view all pick up the new owner on the next render.
+  // Only Internal Task's assignee is editable; other kinds stay with the member.
   const handleInterventionAssignee = (intv, user) => {
     if (!intv?.program || intv.kind !== 'internal-task') return;
     const name = user?.name || 'Unassigned';
     const initials = name === 'Unassigned'
       ? ''
       : name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-    savePatientCarePlanIntervention(
-      patientId,
-      intv.program,
-      { ...intv, assignee: { name, initials } },
-      intv.id,
-    );
+    saveCarePlanLiveField(patientId, intv.program, 'intervention', intv.id, { assignee: { name, initials } });
   };
+
+  const openGoal = (g) => setPreviewGoal({ goal: g, program: g.program });
+  const openIntervention = (i) => setPreviewIntervention({ intervention: i, program: i.program });
+  const openBarrier = (b) => setPreviewBarrier({ barrier: b, program: b.program });
 
   return (
     <div className={`${styles.container} ${embedded ? styles.embedded : ''}`}>
@@ -1079,7 +1083,7 @@ export function CarePlanSummaryView({
       {loading && !loadedFor ? (
         <TableSkeleton rows={6} />
       ) : isEmpty ? (
-        <RingEmptyState icon="solar:hand-heart-linear" label="No Care Plans Yet" />
+        <RingEmptyState icon="solar:hand-heart-linear" label="No Signed Care Plans Yet" />
       ) : (
         <div className={styles.body}>
           <div className={styles.section}>
@@ -1241,7 +1245,7 @@ export function CarePlanSummaryView({
           align="left"
           width={160}
           ariaLabel="Change status"
-          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
+          items={GBI_STATUSES.map(st => ({ key: st, label: st }))}
           onSelect={changeStatus}
           onClose={() => setStatusMenu(null)}
         />
@@ -1255,6 +1259,7 @@ export function CarePlanSummaryView({
           onClose={() => setPreviewGoal(null)}
           onOpenBarrier={(b) => setPreviewBarrier({ barrier: b, program: previewGoal.program })}
           consolidated={!editable}
+          signedView={!editable}
         />
       )}
       {previewIntervention && (
@@ -1264,6 +1269,7 @@ export function CarePlanSummaryView({
           program={previewIntervention.program}
           onClose={() => setPreviewIntervention(null)}
           consolidated={!editable}
+          signedView={!editable}
         />
       )}
       {previewBarrier && (
@@ -1273,6 +1279,7 @@ export function CarePlanSummaryView({
           program={previewBarrier.program}
           onClose={() => setPreviewBarrier(null)}
           consolidated={!editable}
+          signedView={!editable}
         />
       )}
       {rollupAdd && (

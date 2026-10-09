@@ -1,18 +1,160 @@
 /* Spacing between the entry headline and its expanded version card. */
 .detailsWrap { padding-top: var(--space-2); }
 
-/* A standalone note's text, under its heading. */
-/* Third line of a version entry: what it changed, at a glance. */
-.summaryBadges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
-  margin-top: var(--space-1);
+/* The note inside its details card keeps its own line breaks. */
+.noteText {
+  white-space: pre-wrap;
 }
 
-.noteBody {
-  margin-top: var(--space-1);
+/* Filters across the top of the drawer, above the timeline. */
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.filterDivider {
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+}
+
+/* Signature marker: a one-line milestone in the Unity colours, from Figma
+   ICD-Import 7121:161868. The pill tints the Unity ramp toward white. */
+.signedMarker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  /* As tall as the pen in the rail, starting where it starts, so the pill
+     and the pen share a centre line. */
+  min-height: 24px;
+  /* The rail's top connector runs a touch past the body's top padding. */
+  padding-top: calc(var(--space-1) / 2);
+  padding-bottom: var(--space-2);
+}
+
+.signedPill {
+  display: inline-flex;
+  align-items: center;
+  padding: calc(var(--space-1) / 2) var(--space-2);
+  border-radius: 8px;
+  background: linear-gradient(
+    175deg,
+    color-mix(in srgb, var(--unity-gradient-from) 18%, var(--neutral-0)) 2%,
+    color-mix(in srgb, var(--unity-gradient-mid) 15%, var(--neutral-0)) 52%,
+    color-mix(in srgb, var(--unity-gradient-to) 17%, var(--neutral-0)) 94%
+  );
+}
+
+.signedPillText {
   font-size: var(--font-base);
-  color: var(--neutral-300);
   line-height: 1.2;
+  white-space: nowrap;
+  background: linear-gradient(
+    175deg,
+    var(--unity-gradient-from) 2%,
+    var(--unity-gradient-mid) 52%,
+    var(--unity-gradient-to) 94%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Same type and colour as an entry's meta line (HistoryTimeline .meta). */
+.signedMeta {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--neutral-200);
+  white-space: nowrap;
+}
+
+/* The marker's rail glyph sits bare, without the usual tile. */
+.signedRailIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* "v3" and its Current badge, centred on each other; the group sits on the
+   meta line's baseline like the rest of the text. */
+.versionTag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The Current badge after the version in an entry's meta line: compact, so
+   the meta line keeps its height. */
+.currentBadge {
+  height: 16px;
+  padding: 0 var(--space-1);
+  font-size: var(--font-xs);
+}
+
+/* The item an entry is about, quieter than the action before it: Figma
+   "Grey/200", exposed in tokens as --placeholder-text. */
+.headlineSubject {
+  color: var(--placeholder-text);
+}
+
+/* "Show N more entries" row: a round chevron chip on the rail and a link. */
+.moreRailIcon {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  box-shadow: var(--shadow-card);
+}
+
+.moreLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--primary-300);
+  cursor: pointer;
+}
+
+.moreLink:hover {
+  text-decoration: underline;
+}
+
+/* The up/down chevron pair sits tight, as one expand glyph. */
+.moreRailIcon > * + * {
+  margin-top: calc(var(--space-1) * -0.75);
+}
+
+/* Versions view: "Version 3" and its Current badge in the group header. */
+.groupLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* The Current badge reuses the signature pill, a size down. */
+.currentPill {
+  padding: calc(var(--space-1) / 4) var(--space-2);
+  font-weight: 400;
+}
+
+.currentPill .signedPillText {
+  font-size: var(--font-sm);
 }

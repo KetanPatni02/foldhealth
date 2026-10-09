@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
 import { Badge } from '../Badge/Badge';
@@ -165,7 +165,9 @@ function markSupersededDrafts(list) {
  * actions); `toolbarAbove` renders above that row (e.g. filter chips). Both
  * stay visible when filtering leaves nothing to show.
  */
-export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote, toolbar, toolbarAbove }) {
+export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.', hideCommentTitle = false, onOpenTask, onOpenNote, toolbar, toolbarAbove, relaxed = false }) {
+  // `relaxed` adds 8px between entries, for feeds whose entries carry more lines.
+  const wrapClass = [htStyles.wrap, relaxed ? htStyles.relaxed : ''].filter(Boolean).join(' ');
   const [collapsed, setCollapsed] = useState(() => new Set());
   const toggleGroup = (label) => setCollapsed(prev => {
     const next = new Set(prev);
@@ -184,7 +186,7 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
   if (!hasItems) {
     if (!toolbar) return emptyState;
     return (
-      <div className={htStyles.wrap}>
+      <div className={wrapClass}>
         {toolbarAbove}
         <div className={[styles.groupRow, styles.groupRowToolbarOnly].join(' ')}>
           <span className={styles.groupToolbar}>{toolbar}</span>
@@ -218,7 +220,7 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
   })();
 
   return (
-    <div className={htStyles.wrap}>
+    <div className={wrapClass}>
       {items.map((it, idx) => {
         if (it.kind === 'item') {
           return (
@@ -241,7 +243,9 @@ export function ActivityLog({ entries, emptyLabel = 'No activity recorded yet.',
             onClick={() => toggleGroup(it.entry.label)}
             aria-expanded={!collapsed.has(it.entry.label)}
           >
-            <span>{it.entry.label}</span>
+            {/* `display` renders in place of the label (a label with a badge,
+                say); `label` stays the plain-text key the collapse state uses. */}
+            <span>{it.entry.display ?? it.entry.label}</span>
             <span className={styles.groupChevron}>
               <DownChevronIcon size={12} color="var(--neutral-400)" />
             </span>
@@ -312,14 +316,24 @@ function Rail({ entry, isFirst, isLast }) {
 }
 
 /* ── Meta line (shared across variants) ──────────────────────────────── */
+// `context` is a trailing tag naming what the entry belongs to (a care plan
+// version, for one), in the slot DOS takes on HCC entries. It may be a node,
+// for a tag with styled parts.
 export function MetaLine({ entry }) {
   const parts = [
     entry.date,
     entry.time,
     entry.by ? `${entry.by}${entry.role ? ` (${entry.role})` : ''}` : null,
     entry.dos ? `DOS (${entry.dos})` : null,
+    entry.context || null,
   ].filter(Boolean);
-  return <div className={htStyles.meta}>{parts.join(' • ')}</div>;
+  return (
+    <div className={htStyles.meta}>
+      {parts.map((part, i) => (
+        <Fragment key={i}>{i > 0 && ' • '}{part}</Fragment>
+      ))}
+    </div>
+  );
 }
 
 /**

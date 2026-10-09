@@ -13,6 +13,8 @@ import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevro
 import { useAppStore } from '../../../../../../../store/useAppStore';
 import { parseLocalDate } from '../../../../../../../lib/localDate';
 import { carePlanSignShareEnabled } from '../lib/carePlanSignState';
+import { useCarePlanDraftState } from '../lib/useCarePlanDraftState';
+import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import styles from '../../program-detail/ProgramDetailView/ProgramDetailView.module.css';
 
 function fmtCarePlanDate(isoOrDisplay) {
@@ -60,6 +62,9 @@ export function CarePlanHeader({ patientId, program }) {
   const requestCarePlanReview = useAppStore(s => s.requestCarePlanReview);
   const carePlanAudit = useAppStore(s => (carePlanKey ? s.patientCarePlanAudit[carePlanKey] : null));
   const showToast = useAppStore(s => s.showToast);
+  const discardCarePlanDraft = useAppStore(s => s.discardCarePlanDraft);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const carePlanDraft = useCarePlanDraftState(patientId, program?.id);
 
   useEffect(() => {
     if (!patientId || !program?.id) return;
@@ -84,7 +89,7 @@ export function CarePlanHeader({ patientId, program }) {
       || (sameDay(firstVersion?.createdAt, plan?.createdDate) ? firstVersion?.createdBy : '')
       || '';
     const createdDate = fmtCarePlanDate(plan?.createdDate || '');
-    const versionNumber = Math.max(1, carePlanVersions?.[0]?.versionNumber ?? 0);
+    const versionNumber = carePlanVersions?.[0]?.versionNumber ?? 0;
     const usingMock = !plan;
     const signedBy = plan?.signedBy || null;
     const signedAt = plan?.signedAt || null;
@@ -104,15 +109,16 @@ export function CarePlanHeader({ patientId, program }) {
         break;
       }
     }
-    // A brand-new sign clears any pending review even if the audit row
-    // is stale for a moment — signedAt wins.
-    if (signedAt) { reviewRequestedTo = null; reviewRequestedAt = null; }
+    // A brand-new sign clears any pending review even if the audit row is
+    // stale for a moment. A review asked for on changes made after the
+    // signature is still pending until those changes are signed.
+    if (signedAt && !carePlanDraft.hasUnsignedChanges) { reviewRequestedTo = null; reviewRequestedAt = null; }
     return { createdBy, createdDate, versionNumber, usingMock, signedBy, signedAt, reviewRequestedTo, reviewRequestedAt };
-  }, [liveCarePlan, carePlanVersions, carePlanAudit]);
+  }, [liveCarePlan, carePlanVersions, carePlanAudit, carePlanDraft.hasUnsignedChanges]);
 
   const signShareEnabled = useMemo(
-    () => carePlanSignShareEnabled(liveCarePlan, { usingMock: carePlanMeta.usingMock }),
-    [liveCarePlan, carePlanMeta.usingMock],
+    () => carePlanSignShareEnabled(liveCarePlan, { usingMock: carePlanMeta.usingMock, draft: carePlanDraft }),
+    [liveCarePlan, carePlanMeta.usingMock, carePlanDraft],
   );
 
   const carePlanMoreItems = useMemo(() => {
@@ -159,7 +165,9 @@ export function CarePlanHeader({ patientId, program }) {
                 onClick={() => requestCarePlanPanel('versions')}
                 aria-label="Open version history"
               >
-                <span className={styles.assessmentTitle}>Care Plan • Ver. {carePlanMeta.versionNumber}</span>
+                <span className={styles.assessmentTitle}>
+                  Care Plan • {carePlanMeta.signedBy && carePlanMeta.versionNumber ? `Ver. ${carePlanMeta.versionNumber}` : 'Draft'}
+                </span>
                 <DownChevronIcon size={16} color="var(--neutral-500)" />
               </button>
               {(() => {
@@ -171,20 +179,30 @@ export function CarePlanHeader({ patientId, program }) {
                 // Status tail (right of the bullet) prefers, in order:
                 //   1. "Sent for review to X on <date>" — warning, when a
                 //      review is pending (unsigned).
-                //   2. "Signed by X on <date>" — green.
-                //   3. "Draft" — neutral grey.
+                //   2. "N unsigned changes since vN": warning, when the
+                //      draft differs from the signed version.
+                //   3. "Signed by X on <date>": green.
+                //   4. "Not signed": neutral grey.
                 // A plan with no recorded author reads "Created on <date>" —
                 // naming nobody beats naming the wrong clinician.
                 const createdText = carePlanMeta.createdBy
                   ? `Created by ${carePlanMeta.createdBy} on ${carePlanMeta.createdDate}`
                   : `Created on ${carePlanMeta.createdDate}`;
                 const fmtShort = (iso) => fmtCarePlanDate(iso);
-                let statusText = 'Draft';
+                let statusText = 'Not signed';
                 let statusColor = 'var(--neutral-300)';
                 let statusWeight = 400;
                 if (carePlanMeta.reviewRequestedTo) {
                   const on = carePlanMeta.reviewRequestedAt ? ` on ${fmtShort(carePlanMeta.reviewRequestedAt)}` : '';
                   statusText = `Sent for review to ${carePlanMeta.reviewRequestedTo}${on}`;
+                  statusColor = 'var(--status-warning)';
+                  statusWeight = 500;
+                } else if (carePlanMeta.signedBy && carePlanDraft.hasUnsignedChanges) {
+                  const n = carePlanDraft.changes.length;
+                  const since = carePlanMeta.versionNumber ? ` since v${carePlanMeta.versionNumber}` : '';
+                  statusText = n
+                    ? `${n} unsigned ${n === 1 ? 'change' : 'changes'}${since}`
+                    : `Unsigned changes${since}`;
                   statusColor = 'var(--status-warning)';
                   statusWeight = 500;
                 } else if (carePlanMeta.signedBy) {
@@ -255,6 +273,19 @@ export function CarePlanHeader({ patientId, program }) {
                 Preview
               </Button>
               <span className={styles.headerDivider} aria-hidden="true" />
+              {carePlanDraft.canDiscard && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="L"
+                    leadingIcon="solar:restart-linear"
+                    onClick={() => setDiscardOpen(true)}
+                  >
+                    Discard
+                  </Button>
+                  <span className={styles.headerDivider} aria-hidden="true" />
+                </>
+              )}
               <Button
                 variant="primary"
                 size="M"
@@ -270,6 +301,16 @@ export function CarePlanHeader({ patientId, program }) {
               >
                 Sign
               </Button>
+              {discardOpen && carePlanDraft.latestVersion && (
+                <ConfirmDialog
+                  variant="destructive"
+                  title={`Discard ${carePlanDraft.changes.length} unsigned ${carePlanDraft.changes.length === 1 ? 'change' : 'changes'}?`}
+                  description={`The care plan goes back to version ${carePlanDraft.latestVersion.versionNumber}${carePlanMeta.signedBy ? `, as signed by ${carePlanMeta.signedBy}` : ''}. Notes and readings are kept. Tasks created for interventions added since then are deleted.`}
+                  confirmLabel="Discard Changes"
+                  onCancel={() => setDiscardOpen(false)}
+                  onConfirm={() => { setDiscardOpen(false); discardCarePlanDraft(patientId, program); }}
+                />
+              )}
               <SelectAssigneeModal
                 open={carePlanReviewOpen}
                 title="Send care plan for review"

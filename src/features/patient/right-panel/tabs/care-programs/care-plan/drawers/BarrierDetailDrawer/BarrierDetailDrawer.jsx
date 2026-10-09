@@ -18,6 +18,7 @@ import { LinkGoalToBarrierDrawer } from './LinkGoalToBarrierDrawer';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
+import { useSignedCarePlan } from '../../lib/useSignedCarePlans';
 import { formatGoalTarget, formatGoalDuration, formatGoalFrequency } from '../../../../../../../settings/care-plan-library/lib';
 import { norm } from '../../CarePlanView/carePlanViewNorm';
 import { TemplatePreviewDrawer } from '../TemplatePreviewDrawer/TemplatePreviewDrawer';
@@ -123,9 +124,15 @@ function mapBarrierAuditEntry(e) {
   }
 }
 
-export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOpenGoal, consolidated = false, focusSection = null }) {
+export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOpenGoal, consolidated = false, signedView = false, focusSection = null }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
-  const slice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
+  // `signedView`: opened from a surface that shows the plan as last signed
+  // (Comprehensive Care Plan, Monitoring). The item is read from that copy
+  // and the plan itself is not editable there; readings and notes are live
+  // documentation, so those stay open.
+  const liveSlice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
+  const signedSlice = useSignedCarePlan(signedView ? key : null);
+  const slice = signedView ? signedSlice : liveSlice;
   const auditAll = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
   const savePatientCarePlanBarrier = useAppStore(s => s.savePatientCarePlanBarrier);
   const deletePatientCarePlanBarrier = useAppStore(s => s.deletePatientCarePlanBarrier);
