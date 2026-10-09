@@ -102,12 +102,6 @@ export async function listMessagesFor(conversationIds) {
   return data || [];
 }
 
-export async function getConversationByToken(token) {
-  if (await commsMode() === 'local') return readLocal().conversations.find(c => c.patient_token === token) || null;
-  const { data } = await supabase.from('patient_conversations').select('*').eq('patient_token', token).maybeSingle();
-  return data || null;
-}
-
 export async function createConversation(fields) {
   const row = { ...CONV_DEFAULTS, id: uid(), created_at: now(), last_message_at: now(), ...fields };
   if (await commsMode() === 'local') {
@@ -256,6 +250,58 @@ export function subscribeComms(onChange, name = 'comms') {
     emitter.removeEventListener('change', local);
     channel?.unsubscribe();
   };
+}
+
+// ── Patient page (/#/p/<token>, signed out) ───────────────────────────────
+// The tables are staff-only, so the patient page never reads them directly:
+// it goes through the comms_patient_* functions, which only touch the chat
+// conversation with that token (supabase/patient_conversations_migration.sql).
+
+/** { conversation, messages } for a patient link, or null if it's not active. */
+export async function getPatientThread(token) {
+  if (await commsMode() === 'local') {
+    const conversation = readLocal().conversations.find(c => c.channel === 'chat' && c.patient_token === token);
+    return conversation ? { conversation, messages: await listMessages(conversation.id) } : null;
+  }
+  const { data, error } = await supabase.rpc('comms_patient_thread', { p_token: token });
+  if (error) throw error;
+  return data || null;
+}
+
+/** The patient answers in their chat. Resolves to the saved message. */
+export async function sendAsPatient(token, body) {
+  if (await commsMode() === 'local') {
+    const conversation = readLocal().conversations.find(c => c.channel === 'chat' && c.patient_token === token);
+    if (!conversation) throw new Error('This link is no longer active.');
+    return addMessage({
+      conversation_id: conversation.id, kind: 'message', direction: 'in',
+      sender_name: conversation.patient_name, body, status: 'delivered',
+    });
+  }
+  const { data, error } = await supabase.rpc('comms_patient_send', { p_token: token, p_body: body });
+  if (error) throw error;
+  return data;
+}
+
+/** The patient has seen what the team sent. */
+export async function markReadAsPatient(token) {
+  if (await commsMode() === 'local') {
+    const thread = await getPatientThread(token);
+    const stamp = now();
+    await Promise.all((thread?.messages || [])
+      .filter(m => m.direction === 'out' && m.kind === 'message' && !m.internal && !m.read_at)
+      .map(m => updateMessage(m.id, { read_at: stamp, status: 'read' })));
+    return;
+  }
+  const { error } = await supabase.rpc('comms_patient_mark_read', { p_token: token });
+  if (error) throw error;
+}
+
+/** Changes made in this browser (own writes, other tabs in local mode). */
+export function subscribeLocalComms(onChange) {
+  const local = (e) => onChange(e.detail);
+  emitter.addEventListener('change', local);
+  return () => emitter.removeEventListener('change', local);
 }
 
 /** Education content for Send Education: the table, else the built-in list. */

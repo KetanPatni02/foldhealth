@@ -9,11 +9,12 @@
 import {
   addMessage, updateMessage, listConversations, createConversation,
 } from './commsRepo';
+import { apiFetch } from '../../../lib/apiFetch';
 
 async function postJson(url, body) {
   let res;
   try {
-    res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    res = await apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   } catch {
     throw new Error('Network connectivity issues prevented sending.');
   }
@@ -107,7 +108,7 @@ const digits = (p) => String(p || '').replace(/\D/g, '').slice(-10);
  */
 export async function pollInboundSms(patients = []) {
   let res;
-  try { res = await fetch('/api/comms-sms'); } catch { return { connected: false }; }
+  try { res = await apiFetch('/api/comms-sms'); } catch { return { connected: false }; }
   if (!res.ok) return { connected: false };
   const { messages = [] } = await res.json().catch(() => ({}));
   if (!messages.length) return { connected: true };

@@ -1,11 +1,10 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
 import { Button } from '../../components/Button/Button';
 import { Avatar } from '../../components/Avatar/Avatar';
 import { ChatBubble } from '../../components/ChatBubble/ChatBubble';
 import { MessageStatus } from '../../components/MessageStatus/MessageStatus';
-import { getConversationByToken, addMessage, updateMessage, subscribeComms } from '../messages/comms/commsRepo';
-import { useCommsMessages } from '../messages/comms/useComms';
+import { getPatientThread, sendAsPatient, markReadAsPatient, subscribeLocalComms } from '../messages/comms/commsRepo';
 import { initialsOf, dayLabel } from '../messages/comms/commsUtils';
 import { usePatientCallee } from './usePatientCallee';
 import styles from './PatientCommsPage.module.css';
@@ -13,32 +12,50 @@ import styles from './PatientCommsPage.module.css';
 const timeOnly = (iso) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+// The page has no session, so Realtime (which applies RLS) sends it nothing:
+// it re-reads the thread on this interval while the tab is visible.
+const POLL_MS = 4000;
+
 /**
  * What the patient sees (Figma Fold Patient Web App 701:5360), at
- * /#/p/<token> with no sign-in: their chat with the care team, live, and
- * calls from the team ring here. Staff open it from the chat header to
- * check what the patient sees.
+ * /#/p/<token> with no sign-in: their chat with the care team, and calls
+ * from the team ring here. Staff open it from the chat header to check what
+ * the patient sees.
  */
 export function PatientCommsPage({ token }) {
-  const [conversation, setConversation] = useState(undefined);
+  const [thread, setThread] = useState(undefined);
+  const reloadRef = useRef(() => {});
+  const reload = useCallback(() => reloadRef.current(), []);
+  const onSent = useCallback((m) => setThread(t => (
+    t && !t.messages.some(x => x.id === m.id) ? { ...t, messages: [...t.messages, m] } : t
+  )), []);
 
   useEffect(() => {
     let alive = true;
-    const load = () => getConversationByToken(token).then(c => { if (alive) setConversation(c); });
+    const load = () => getPatientThread(token)
+      .then(t => { if (alive) setThread(t); })
+      .catch(() => { if (alive) setThread(prev => (prev === undefined ? null : prev)); });
+    reloadRef.current = load;
     load();
-    const off = subscribeComms((ch) => {
-      if (ch.type === 'reload') load();
-      else if (ch.table === 'patient_conversations' && ch.row?.patient_token === token) setConversation(ch.row);
-    }, 'patient-page');
-    return () => { alive = false; off(); };
+    const timer = setInterval(() => { if (!document.hidden) load(); }, POLL_MS);
+    const onVisible = () => { if (!document.hidden) load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    const off = subscribeLocalComms(load);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      off();
+    };
   }, [token]);
 
+  const conversation = thread?.conversation;
   useEffect(() => {
     document.title = conversation ? `Messages · ${conversation.group_name || 'Fold Health'}` : 'Fold Health';
   }, [conversation]);
 
-  if (conversation === undefined) return <div className={styles.loading}>Loading…</div>;
-  if (!conversation) {
+  if (thread === undefined) return <div className={styles.loading}>Loading…</div>;
+  if (!thread) {
     return (
       <div className={styles.loading}>
         <Icon name="solar:link-broken-linear" size={28} color="var(--neutral-300)" />
@@ -46,14 +63,22 @@ export function PatientCommsPage({ token }) {
       </div>
     );
   }
-  return <PatientShell conversation={conversation} />;
+  return (
+    <PatientShell
+      token={token}
+      conversation={thread.conversation}
+      messages={thread.messages}
+      onSent={onSent}
+      reload={reload}
+    />
+  );
 }
 
-function PatientShell({ conversation }) {
-  const { messages } = useCommsMessages(conversation.id);
+function PatientShell({ token, conversation, messages, onSent, reload }) {
   const visible = messages.filter(m => !m.internal && m.status !== 'draft' && m.kind === 'message');
   const call = usePatientCallee(conversation.patient_token);
   const [draft, setDraft] = useState('');
+  const [sendError, setSendError] = useState(null);
   const scrollRef = useRef(null);
   const name = conversation.patient_name;
   const members = [...new Set([...(conversation.members || []).map(m => m.name), ...visible.filter(m => m.direction === 'out').map(m => m.sender_name)].filter(Boolean))];
@@ -62,9 +87,8 @@ function PatientShell({ conversation }) {
   const unreadIds = visible.filter(m => m.direction === 'out' && !m.read_at).map(m => m.id).join(',');
   useEffect(() => {
     if (!unreadIds) return;
-    const stamp = new Date().toISOString();
-    unreadIds.split(',').forEach(id => updateMessage(id, { read_at: stamp, status: 'read' }));
-  }, [unreadIds]);
+    markReadAsPatient(token).then(reload).catch(() => { /* retried on the next poll */ });
+  }, [unreadIds, token, reload]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -75,10 +99,14 @@ function PatientShell({ conversation }) {
     const body = draft.trim();
     if (!body) return;
     setDraft('');
-    await addMessage({
-      conversation_id: conversation.id, kind: 'message', direction: 'in',
-      sender_name: name, body, status: 'delivered',
-    });
+    setSendError(null);
+    try {
+      const saved = await sendAsPatient(token, body);
+      if (saved) onSent(saved);
+    } catch (err) {
+      setDraft(body);
+      setSendError(err?.message || 'Your message wasn\'t sent. Try again.');
+    }
   };
 
   return (
@@ -164,6 +192,7 @@ function PatientShell({ conversation }) {
                   <Icon name="solar:plain-2-linear" size={16} />
                 </button>
               </div>
+              {sendError && <p className={styles.sendError} role="alert">{sendError}</p>}
             </div>
           </section>
         </div>

@@ -229,6 +229,13 @@
   padding: var(--space-1) var(--space-2) var(--space-2) var(--space-3);
 }
 
+.sendError {
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--status-error);
+}
+
 .send {
   display: inline-flex;
   padding: var(--space-1);

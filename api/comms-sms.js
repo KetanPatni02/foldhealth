@@ -10,6 +10,8 @@
 //
 // Env: TEXTBEE_API_KEY, TEXTBEE_DEVICE_ID (both from the textbee dashboard).
 
+import { requireUser } from './_lib/requireUser.js';
+
 const BASE = 'https://api.textbee.dev/api/v1/gateway/devices';
 
 function config() {
@@ -21,6 +23,8 @@ function config() {
 const NOT_CONNECTED = 'SMS gateway is not connected. Add TEXTBEE_API_KEY and TEXTBEE_DEVICE_ID to the environment.';
 
 export default async function handler(req, res) {
+  // Reads every inbound patient text and sends from our line: staff only.
+  if (!(await requireUser(req, res))) return;
   const cfg = config();
   if (!cfg) return res.status(503).json({ error: { message: NOT_CONNECTED } });
   const headers = { 'x-api-key': cfg.key, 'Content-Type': 'application/json' };
