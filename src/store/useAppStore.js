@@ -2979,13 +2979,15 @@ export const useAppStore = create((set, get) => ({
     if (!ok) return false;
 
     // Each newly applied template starts a run; a removed one's run closes.
-    for (const templateId of toAdd) {
-      const template = templates.find(t => t.id === templateId);
-      if (template) await get().startCarePlanTemplateInstance(patientId, program, template);
-    }
-    for (const templateId of prevIds.filter(id => !nextIds.includes(id))) {
-      await get().closeCarePlanTemplateInstance(patientId, program, templateId);
-    }
+    // Runs are independent rows, so they're written together.
+    const templateById = new Map(templates.map(t => [t.id, t]));
+    const nextSet = new Set(nextIds);
+    await Promise.allSettled([
+      ...toAdd.map(id => templateById.get(id)).filter(Boolean)
+        .map(template => get().startCarePlanTemplateInstance(patientId, program, template)),
+      ...prevIds.filter(id => !nextSet.has(id))
+        .map(id => get().closeCarePlanTemplateInstance(patientId, program, id)),
+    ]);
 
     // Surface each applied template's clinical condition(s) on the plan header
     // so they show on the plan and in the share / download preview. Additive

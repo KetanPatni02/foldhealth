@@ -55,14 +55,14 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
   const [editingIntervention, setEditingIntervention] = useState(null);
 
   const authUserId = useAppStore(s => s.authUserId);
-  const [scope, setScope] = useState(templateScopeOf(template));
+  const [scope, setScope] = useState(() => templateScopeOf(template));
   // Only the owner can make a template private (RLS checks owner_user_id), so
   // an org template someone else created, or a legacy one with no owner,
   // can't be pulled out of everyone's library.
   const scopeChoices = (templateScopeOf(template) === 'patient' ? PATIENT_SCOPE_CHOICES : LIBRARY_SCOPE_CHOICES)
     .filter(k => k !== 'user' || (authUserId && template.ownerUserId === authUserId));
 
-  const [renewal, setRenewal] = useState(renewalOf(template));
+  const [renewal, setRenewal] = useState(() => renewalOf(template));
 
   const [name, setName] = useState(template.name || '');
   const [description, setDescription] = useState(template.description || '');

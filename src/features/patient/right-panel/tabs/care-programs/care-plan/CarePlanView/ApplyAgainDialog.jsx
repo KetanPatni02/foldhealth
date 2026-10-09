@@ -16,7 +16,7 @@ export function ApplyAgainDialog({ template, patientId, program, onClose, onDone
   const slice = useAppStore(s => s.patientCarePlans[carePlanKey(patientId, program.id)]);
   const libraryGoals = useAppStore(s => s.carePlanGoals);
   const renewPatientCarePlanTemplate = useAppStore(s => s.renewPatientCarePlanTemplate);
-  const [mode, setMode] = useState(renewalOf(template));
+  const [mode, setMode] = useState(() => renewalOf(template));
   const [busy, setBusy] = useState(false);
 
   const run = (slice?.templateInstances || [])
@@ -36,8 +36,12 @@ export function ApplyAgainDialog({ template, patientId, program, onClose, onDone
 
   const confirm = async () => {
     setBusy(true);
-    const ok = await renewPatientCarePlanTemplate(patientId, program, template.id, mode, endsOn || null);
-    setBusy(false);
+    let ok;
+    try {
+      ok = await renewPatientCarePlanTemplate(patientId, program, template.id, mode, endsOn || null);
+    } finally {
+      setBusy(false);
+    }
     if (ok) onDone?.();
     onClose();
   };

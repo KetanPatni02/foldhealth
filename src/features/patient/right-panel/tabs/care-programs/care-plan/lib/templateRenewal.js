@@ -57,8 +57,9 @@ const isoDay = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '
  */
 export function templateEndsOn(template, libraryGoals = [], from = new Date()) {
   let latest = null;
+  const libraryById = new Map(libraryGoals.map(g => [g.id, g]));
   for (const entry of template?.goals || []) {
-    const lib = libraryGoals.find(g => g.id === entry?.id) || entry;
+    const lib = libraryById.get(entry?.id) || entry;
     const amount = Number(lib?.duration);
     if (!amount || lib?.setTarget === false) continue;
     const end = addDuration(from, amount, lib.durationUnit);
