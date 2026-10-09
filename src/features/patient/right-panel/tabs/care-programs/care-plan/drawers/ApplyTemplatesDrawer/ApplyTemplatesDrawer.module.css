@@ -94,7 +94,9 @@
 /* Trailing actions column (favorite star + preview) — kept as an empty header
    spacer so the row action cluster aligns under a fixed column. */
 .tableHeadActions {
-  width: 60px;
+  /* Apply again (applied rows only), then the star, right-aligned so the
+     stars line up down the list. */
+  width: 56px;
   flex-shrink: 0;
 }
 
@@ -129,11 +131,21 @@
   gap: calc(var(--space-1) / 2);
 }
 .rowTitle {
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
   font-size: var(--font-base);
   color: var(--neutral-400);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.rowTitle:hover {
+  color: var(--primary-300);
+  text-decoration: underline;
 }
 .rowSubtitle {
   font-size: var(--font-sm);
@@ -195,13 +207,13 @@
   flex-shrink: 0;
 }
 
-/* Per-row favorite star + preview, aligned under .tableHeadActions. */
+/* Per-row Apply again + favorite star, aligned under .tableHeadActions. */
 .rowActions {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-1);
-  width: 60px;
+  width: 56px;
   flex-shrink: 0;
 }
 /* Priority button — Figma 2562:60655 / 60665 / 60675.

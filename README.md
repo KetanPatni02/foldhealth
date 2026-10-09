@@ -37,6 +37,23 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Applying a template again: Extend or Reinstate.** Each template on a
+  patient's plan is now a run with a start and an end date
+  (`patient_care_plan_template_instances`). Templates carry a "When
+  applied again" setting (`care_plan_templates.renewal`): condition
+  templates extend, event templates such as TOC reinstate. In Apply
+  Templates, a template already on the plan gets Apply again, which asks
+  Extend (keep the start date, set a new end date) or Reinstate (auto-close
+  the current run as Completed when every goal and intervention is met,
+  Closed otherwise, and start a fresh one). The end date is prefilled from
+  the template's longest goal duration and can be changed. A reinstated
+  run's goals, interventions and barriers are kept as history
+  (`retired_instance_id`) under a collapsed Previous runs section with an
+  Auto-closed tag, and both actions show in History. Also: the template
+  editor can switch a template between Private and Org, template titles
+  open the preview, Save as Template uses the whole plan unless a template
+  is selected, and SNP's empty Model of Care section is hidden in
+  patient-level mode.
 - **Care plan templates for the org, for yourself, or for one patient.**
   `care_plan_templates` gains `scope` (`org`, `user`, `patient`),
   `owner_user_id` and `patient_id`; existing templates are `org`, and RLS

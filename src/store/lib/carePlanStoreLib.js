@@ -6,6 +6,7 @@ import {
   interventionPayloadFromTemplateEntry,
   templateLinkOwners,
 } from '../../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
+import { defaultRenewalFor } from '../../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 
 // public.notifications row → the shape the bell popover already renders.
 // `persisted: true` is what separates a DB-backed notification from a local
@@ -160,7 +161,38 @@ function mapCarePlanTemplateRow(row) {
     scope: row.scope || 'org',
     ownerUserId: row.owner_user_id || null,
     patientId: row.patient_id || null,
+    // What adding it again does; before the renewal column, condition
+    // templates extend and the rest reinstate.
+    renewal: row.renewal || defaultRenewalFor(row.conditions),
   };
+}
+
+// One run of a template on a patient's plan.
+function mapTemplateInstanceRow(row) {
+  return {
+    id: row.id,
+    planId: row.plan_id,
+    templateId: row.template_id,
+    templateName: row.template_name || '',
+    status: row.status || 'active',
+    autoClosed: !!row.auto_closed,
+    startedAt: row.started_at || null,
+    endsOn: row.ends_on || null,
+    extendedAt: row.extended_at || null,
+    endedAt: row.ended_at || null,
+    replacedBy: row.replaced_by || null,
+    doneCount: row.done_count ?? null,
+    totalCount: row.total_count ?? null,
+  };
+}
+
+// Items from a reinstated template's earlier run stay in their tables for
+// history but are not on the plan any more. Splits raw rows into [live, retired].
+function partitionRetired(rows) {
+  const live = [];
+  const retired = [];
+  for (const r of rows || []) (r.retired_instance_id ? retired : live).push(r);
+  return [live, retired];
 }
 
 // Standalone (goal-independent) reusable intervention — the Interventions
@@ -417,7 +449,7 @@ function carePlanKey(patientId, programId) {
 // A template's contents as they sit on the plan. There is no template_id on
 // goal / intervention / barrier rows, so the link back is the title, exactly
 // as the applied-templates strip resolves it.
-function templateContents(template, slice, libraryGoals) {
+function templateItems(template, slice, libraryGoals) {
   const norm = v => (v || '').trim().toLowerCase();
   const titlesOf = (list, isGoal) => new Set((list || []).map(e => {
     if (isGoal && e?.id) {
@@ -439,6 +471,12 @@ function templateContents(template, slice, libraryGoals) {
     .filter(b => barrierTitles.has(norm(b.title))
       || (b.goalIds || []).some(id => goalIds.has(id))
       || goalIds.has(b.goalId));
+  return { goals, interventions, barriers };
+}
+
+function templateContents(template, slice, libraryGoals) {
+  const { goals, interventions, barriers } = templateItems(template, slice, libraryGoals);
+  const goalIds = new Set(goals.map(g => g.id));
   const barrierGoals = b => (b.goalIds?.length ? b.goalIds : [b.goalId]).filter(Boolean);
   // Goals carry what hangs off them, so History can show the linkage rather
   // than three unrelated lists.
@@ -644,6 +682,8 @@ export {
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
+  mapTemplateInstanceRow,
+  partitionRetired,
   mapCarePlanInterventionTemplateRow,
   mapInterventionRow,
   mapPatientCarePlanGoalRow,
@@ -657,6 +697,7 @@ export {
   linkBarrierGoals,
   mapPatientCarePlanRow,
   carePlanKey,
+  templateItems,
   templateContents,
   templatesAtLastSignature,
   auditForSave,

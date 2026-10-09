@@ -116,7 +116,7 @@ const TEMPLATE_COLUMNS = [
   { key: 'conditions', label: 'Chronic Conditions', sortKey: 'conditions', sortType: 'alpha', width: 280 },
   { key: 'createdOn', label: 'Created On', sortKey: 'createdAt', sortType: 'date', width: 200 },
   { key: 'updated', label: 'Last Update', sortKey: 'updatedAt', sortType: 'date', width: 200 },
-  { key: 'actions', label: 'Actions', sticky: 'right', width: 196 },
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 132 },
 ];
 
 // Figma 14181:316571 — checkbox, Goals Title, Type, Linked Items, Target
@@ -170,7 +170,7 @@ function simpleDraftFrom(kind, item) {
 // Kebab "More Action" menu on a template row — Figma only breaks Delete out
 // into this overflow menu; Edit/Duplicate get their own always-visible
 // ActionButtons.
-function TemplateRowMenu({ onDelete }) {
+function TemplateRowMenu({ onDuplicate, onDelete }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -189,6 +189,12 @@ function TemplateRowMenu({ onDelete }) {
       {open && createPortal(
         <div className={styles.overflowScrim} onClick={() => setOpen(false)}>
           <div className={styles.overflowMenu} style={{ top: pos.top, left: pos.left }} onClick={e => e.stopPropagation()}>
+            {onDuplicate && (
+              <button className={styles.overflowItem} onClick={() => { setOpen(false); onDuplicate(); }}>
+                <Icon name="solar:copy-linear" size={15} color="var(--neutral-300)" />
+                Duplicate
+              </button>
+            )}
             <button
               className={`${styles.overflowItem} ${styles.overflowItemDanger}`}
               onClick={() => { setOpen(false); onDelete(); }}
@@ -475,13 +481,14 @@ export function CarePlanLibraryPanel() {
           <div className={styles.vDivider} />
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditTemplate(t)} />
           <div className={styles.vDivider} />
-          <ActionButton icon="solar:copy-linear" size="S" tooltip="Duplicate" onClick={() => setDuplicateTarget({
-            template: t,
-            name: `${t.name} (Copy)`,
-            scope: templateScopeOf(t) === 'user' ? 'user' : 'org',
-          })} />
-          <div className={styles.vDivider} />
-          <TemplateRowMenu onDelete={() => setDeleteTarget({ kind: 'template', id: t.id, name: t.name })} />
+          <TemplateRowMenu
+            onDuplicate={() => setDuplicateTarget({
+              template: t,
+              name: `${t.name} (Copy)`,
+              scope: templateScopeOf(t) === 'user' ? 'user' : 'org',
+            })}
+            onDelete={() => setDeleteTarget({ kind: 'template', id: t.id, name: t.name })}
+          />
         </div>
       </td>
     </tr>

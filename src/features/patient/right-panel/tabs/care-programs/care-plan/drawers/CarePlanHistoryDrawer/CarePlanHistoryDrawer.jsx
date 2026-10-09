@@ -9,6 +9,8 @@ import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import {
+  TEMPLATE_RENEWAL_ACTIVITY,
+  isTemplateRenewal,
   templateContents,
   templateOwnedTitles,
   withLiveLinks,
@@ -196,6 +198,10 @@ function versionBadges(group) {
   if (removedTemplates) {
     badges.push({ label: `${removedTemplates} Template${removedTemplates === 1 ? '' : 's'} Removed`, icon: CARE_PLAN_ICON });
   }
+  const renewedTemplates = templates.filter(isTemplateRenewal).length;
+  if (renewedTemplates) {
+    badges.push({ label: `${renewedTemplates} Template${renewedTemplates === 1 ? '' : 's'} Renewed`, icon: CARE_PLAN_ICON });
+  }
   for (const type of Object.keys(ENTITY_NOUN)) {
     const n = plain.filter(r => r.entityType === type).length;
     if (!n) continue;
@@ -221,6 +227,16 @@ function sectionsFor(group, openAt, links) {
     && r.action !== 'shared');
   const sections = [];
   for (const t of templates) {
+    if (isTemplateRenewal(t)) {
+      sections.push({
+        id: t.id,
+        title: `${t.summary} Template ${TEMPLATE_RENEWAL_ACTIVITY[t.action]}`,
+        caption: t.detail || '',
+        badges: [],
+        onClick: () => openAt?.(t.id),
+      });
+      continue;
+    }
     sections.push({
       id: t.id,
       title: `${t.summary} Template ${t.action === 'created' ? 'Added' : 'Removed'}`,

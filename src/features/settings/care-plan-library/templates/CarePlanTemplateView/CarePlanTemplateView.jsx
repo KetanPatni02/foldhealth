@@ -5,7 +5,7 @@ import { RadioButton } from '../../../../../components/RadioButton/RadioButton';
 import { Button } from '../../../../../components/Button/Button';
 import { CloseButton } from '../../../../../components/CloseButton/CloseButton';
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
-import { CarePlanSections, ChronicConditionSelect } from '../../shared';
+import { CarePlanSections, ChronicConditionSelect, TemplateRenewalChoice, TemplateScopeChoice } from '../../shared';
 import { CARE_PLAN_NAME_MAX } from '../../lib/carePlanLimits';
 import { CreateGoalDrawer } from '../../goals/CreateGoalDrawer/CreateGoalDrawer';
 import { AddGoalsDrawer } from '../../goals/AddGoalsDrawer/AddGoalsDrawer';
@@ -17,6 +17,10 @@ import {
   interventionPayloadFromTemplateEntry,
 } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import { CARE_PLAN_INTERVENTION_ICONS } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanInterventionMenu';
+import {
+  LIBRARY_SCOPE_CHOICES, PATIENT_SCOPE_CHOICES, templateScopeOf,
+} from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateScope';
+import { renewalOf } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { useAppStore } from '../../../../../store/useAppStore';
 import styles from './CarePlanTemplateView.module.css';
 
@@ -49,6 +53,16 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
   // Clicking a goal row edits the library goal the template entry points at.
   const [editingGoal, setEditingGoal] = useState(null);
   const [editingIntervention, setEditingIntervention] = useState(null);
+
+  const authUserId = useAppStore(s => s.authUserId);
+  const [scope, setScope] = useState(templateScopeOf(template));
+  // Only the owner can make a template private (RLS checks owner_user_id), so
+  // an org template someone else created, or a legacy one with no owner,
+  // can't be pulled out of everyone's library.
+  const scopeChoices = (templateScopeOf(template) === 'patient' ? PATIENT_SCOPE_CHOICES : LIBRARY_SCOPE_CHOICES)
+    .filter(k => k !== 'user' || (authUserId && template.ownerUserId === authUserId));
+
+  const [renewal, setRenewal] = useState(renewalOf(template));
 
   const [name, setName] = useState(template.name || '');
   const [description, setDescription] = useState(template.description || '');
@@ -239,6 +253,16 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
             </div>
           </div>
 
+          {scopeChoices.length > 1 && (
+            <div className={styles.field}>
+              <TemplateScopeChoice value={scope} onChange={setScope} choices={scopeChoices} />
+            </div>
+          )}
+
+          <div className={styles.field}>
+            <TemplateRenewalChoice value={renewal} onChange={setRenewal} />
+          </div>
+
           {templateType === 'chronic' && (
             <div className={styles.field}>
               <ChronicConditionSelect
@@ -264,6 +288,8 @@ export function CarePlanTemplateView({ template, onClose, onSave }) {
               goals,
               interventions,
               barriers,
+              renewal,
+              ...(scope !== templateScopeOf(template) && { scope, patientId: template.patientId }),
             })}
           >
             Save
