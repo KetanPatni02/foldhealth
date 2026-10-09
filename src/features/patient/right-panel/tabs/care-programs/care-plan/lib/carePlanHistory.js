@@ -52,7 +52,7 @@ export function liveActivityType(row) {
 }
 
 // Rows that describe the plan itself: what a signature makes official.
-function isStructuralRow(row) {
+export function isStructuralRow(row) {
   if (!row || liveActivityType(row)) return false;
   if (NOTE_ACTIONS.has(row.action) || PLAN_EVENT_ACTIONS.has(row.action)) return false;
   if (row.action === 'signed' || row.action === 'value_changed') return false;
@@ -149,7 +149,7 @@ function withHeadline(entry, action, subject) {
 function activityFromRow(row, type) {
   const noun = NOUN[row.entityType] || 'Plan';
   const title = row.summary || '';
-  const base = { id: `a-${row.id}`, kind: 'activity', type, entityType: row.entityType, title, at: row.createdAt, actor: row.actor || '' };
+  const base = { id: `a-${row.id}`, kind: 'activity', type, entityType: row.entityType, entityId: row.entityId ?? null, title, at: row.createdAt, actor: row.actor || '' };
   if (type === 'title') {
     const was = /^Renamed from "(.*)"$/.exec(row.detail || '')?.[1] || '';
     return withHeadline({ ...base, from: was, to: title }, 'Renamed', `${noun}: ${title}`);
@@ -170,8 +170,9 @@ function activityFromRow(row, type) {
   return withHeadline({ ...base, from, to }, `${what} Changed for`, `${noun}: ${title}`);
 }
 
-/** Notes, readings, plan events and live progress, each its own entry. */
-function activityEntries(audit, measurements, goals) {
+/** Notes, readings, plan events and live progress, each its own entry.
+ *  `audit` is newest first, as fetched. */
+export function activityEntries(audit, measurements, goals) {
   const goalTitle = id => (goals || []).find(g => String(g.id) === String(id))?.title || '';
   const out = [];
   const onPlanNote = e => e.entityType === 'plan' || (e.entityType === 'note' && !e.entityId);
@@ -200,6 +201,7 @@ function activityEntries(audit, measurements, goals) {
       const VERB = { added: 'Added', updated: 'Updated', removed: 'Removed' }[verb];
       out.push({
         id: `a-${e.id}`, kind: 'activity', type: onPlan ? 'care_note' : 'item_note', entityType: onPlan ? 'plan' : e.entityType,
+        entityId: onPlan ? null : (e.entityId ?? null),
         headline: onPlan
           ? `${VERB} ${verb === 'added' ? 'a' : 'the'} Care Plan Note`
           : `${VERB} ${verb === 'added' ? 'a' : 'the'} Note on ${NOUN[e.entityType] || 'Item'}: ${itemTitle}`,
