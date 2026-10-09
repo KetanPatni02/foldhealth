@@ -85,6 +85,16 @@
 }
 .bodyLast {}
 
+/* Relaxed rhythm: 8px more between rows. The top connector and the body's
+   top padding grow together so each icon still lines up with its meta line;
+   the first row keeps its short stub. */
+.relaxed .connectorTop:not(.connectorTopFirst) {
+  height: var(--space-6);
+}
+.relaxed .body:not(.bodyFirst) {
+  padding-top: var(--space-6);
+}
+
 .meta {
   font-size: var(--font-sm);
   font-weight: 500;

@@ -7,6 +7,7 @@ import { RingEmptyState } from '../../../../../../../../components/RingEmptyStat
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { CarePlanVersionChangesDrawer } from '../CarePlanVersionChangesDrawer/CarePlanVersionChangesDrawer';
 import { groupByVersion, versionNumberOf } from '../../lib/carePlanVersions';
+import { isFullSnapshot, uniqueById } from '../../lib/carePlanDraft';
 import styles from './CarePlanVersionsDrawer.module.css';
 
 // The byline names how the version came about, which the removed status badge
@@ -84,7 +85,8 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
               {v.createdBy ? ` · ${BYLINE[v.reason] || BYLINE.manual} ${v.createdBy}` : ''}
             </div>
             <div className={styles.counts}>
-              {(v.snapshot?.goals?.length || 0)} goals · {(v.snapshot?.interventions?.length || 0)} interventions
+              {uniqueById(v.snapshot?.goals).length} goals · {uniqueById(v.snapshot?.interventions).length} interventions
+              {Array.isArray(v.snapshot?.barriers) ? ` · ${uniqueById(v.snapshot.barriers).length} barriers` : ''}
             </div>
             {v.note && <div className={styles.note}>“{v.note}”</div>}
             </div>
@@ -95,13 +97,19 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
                 tooltip="View"
                 onClick={() => openChanges(v)}
               />
-              <span className={styles.vDivider} />
-              <ActionButton
-                icon="solar:restart-linear"
-                size="L"
-                tooltip="Restore"
-                onClick={() => setRestoreTarget(v)}
-              />
+              {/* The newest version is the one the draft is measured against;
+                  going back to it is Discard, in the plan header. */}
+              {i > 0 && (
+                <>
+                  <span className={styles.vDivider} />
+                  <ActionButton
+                    icon="solar:restart-linear"
+                    size="L"
+                    tooltip="Load into draft"
+                    onClick={() => setRestoreTarget(v)}
+                  />
+                </>
+              )}
             </div>
           </div>
         ))}
@@ -120,9 +128,11 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
       {restoreTarget && (
         <ConfirmDialog
           icon="solar:danger-triangle-linear"
-          title={`Restore version ${restoreTarget.versionNumber}?`}
-          description="This replaces the current goals and interventions with those from this version. The current state is not saved automatically, Sign the care plan's current version first if you want to keep it."
-          confirmLabel="Restore"
+          title={`Load version ${restoreTarget.versionNumber} into the draft?`}
+          description={isFullSnapshot(restoreTarget.snapshot)
+            ? 'The draft is replaced with this version\'s goals, interventions, barriers and templates. It becomes current only once the care plan is signed. Notes and readings are kept.'
+            : 'The draft\'s goals and interventions are replaced with this version\'s. This version was signed before barriers and templates were recorded, so those stay as they are. It becomes current only once the care plan is signed.'}
+          confirmLabel="Load into Draft"
           onCancel={() => setRestoreTarget(null)}
           onConfirm={() => { restoreCarePlanVersion(patientId, program, restoreTarget); setRestoreTarget(null); onClose(); }}
         />

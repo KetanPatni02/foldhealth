@@ -71,8 +71,11 @@ import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activity
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
+import { INSTANCE_STATUS, formatInstanceDate, instanceOutcome, templateEndsOn } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { templateContentFromApplied, templateContentFromWholePlan } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateSave';
+import { DEFAULT_CARE_PLAN_MODE, normalizeCarePlanMode } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanMode';
+import { buildCarePlanSnapshot, carePlanUnsignedChanges, isFullSnapshot, withLiveValues } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanDraft';
 import { resolvePatientStoreId } from '../lib/resolvePatientStoreId';
 import { resolvePatientForCall } from '../lib/patientCall';
 
@@ -99,6 +102,8 @@ import {
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
   mapCarePlanTemplateRow,
+  mapTemplateInstanceRow,
+  partitionRetired,
   mapCarePlanInterventionTemplateRow,
   mapInterventionRow,
   mapPatientCarePlanGoalRow,
@@ -112,6 +117,7 @@ import {
   linkBarrierGoals,
   mapPatientCarePlanRow,
   carePlanKey,
+  templateItems,
   templateContents,
   templatesAtLastSignature,
   auditForSave,
@@ -231,10 +237,40 @@ const _cachedWorklistOrder = readCachedWorklistOrder();
 const _savedTab = sessionStorage.getItem('activeTab') || 'toc-worklist';
 const _savedSettingsTab = sessionStorage.getItem('settingsTab');
 
+// A plan's items from earlier runs of reinstated templates, kept for history.
+const EMPTY_RETIRED = { goals: [], interventions: [], barriers: [] };
+function retiredItems(goalRows, intvRows, barrierRows) {
+  const tag = (row, item) => ({ ...item, retiredInstanceId: row.retired_instance_id });
+  return {
+    goals: goalRows.map(r => tag(r, mapPatientCarePlanGoalRow(r))),
+    interventions: intvRows.map(r => tag(r, mapPatientCarePlanInterventionRow(r))),
+    barriers: barrierRows.map(r => tag(r, mapPatientCarePlanBarrierRow(r))),
+  };
+}
+
 // Social History saves run one at a time per patient: a select change saves at
 // once and a text field saves after a pause, so two writes can be in flight,
 // and whichever lands last would otherwise overwrite the other's answers.
 const socialHistorySaveChains = new Map();
+
+// The plan as it is being signed, in slice shape: one row per id, with the
+// plan header as it stands.
+function buildCarePlanSnapshotSlice(slice) {
+  const snap = buildCarePlanSnapshot(slice);
+  return { plan: { ...slice.plan }, goals: snap.goals, interventions: snap.interventions, barriers: snap.barriers, automations: [] };
+}
+
+// A signed plan slice whose goals show what the live readings say.
+function signedSliceWithReadings(slice, measurements) {
+  return {
+    ...slice,
+    measurements,
+    goals: (slice.goals || []).map(g => {
+      const { currentValue, trend } = deriveGoalTableFields(g, measurements);
+      return { ...g, currentValue: currentValue === 'No Data' ? '' : currentValue, trend };
+    }),
+  };
+}
 
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
@@ -1992,9 +2028,10 @@ export const useAppStore = create((set, get) => ({
     if (planErr) console.warn('fetchPatientCarePlan:', planErr.message);
 
     let plan = null, goals = [], interventions = [], barriers = [], measurements = [], automations = [];
+    let retired = EMPTY_RETIRED, templateInstances = [];
     if (planRow) {
       plan = mapPatientCarePlanRow(planRow);
-      const [g, i, b, a] = await Promise.all([
+      const [g, i, b, a, ti] = await Promise.all([
         supabase.from('patient_care_plan_goals').select('*').eq('plan_id', planRow.id)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('patient_care_plan_interventions').select('*').eq('plan_id', planRow.id)
@@ -2003,9 +2040,15 @@ export const useAppStore = create((set, get) => ({
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('patient_care_plan_automations').select('*').eq('plan_id', planRow.id)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('patient_care_plan_template_instances').select('*').eq('plan_id', planRow.id)
+          .order('created_at', { ascending: true }),
       ]);
-      goals = (g.data || []).map(mapPatientCarePlanGoalRow);
-      interventions = (i.data || []).map(mapPatientCarePlanInterventionRow);
+      // Without the template renewal migration the table is missing: no instances.
+      templateInstances = ti.error ? [] : (ti.data || []).map(mapTemplateInstanceRow);
+      const [liveGoals, retiredGoals] = partitionRetired(g.data);
+      const [liveIntv, retiredIntv] = partitionRetired(i.data);
+      goals = liveGoals.map(mapPatientCarePlanGoalRow);
+      interventions = liveIntv.map(mapPatientCarePlanInterventionRow);
       // Hydrate `goalIds` from the barrier<->goal join table when it exists
       // (care_plan_barrier_goals migration). Schema-tolerant: if the join
       // table hasn't shipped yet the mapper falls back to the legacy
@@ -2025,7 +2068,9 @@ export const useAppStore = create((set, get) => ({
           }
         }
       }
-      barriers = barrierRows.map(r => mapPatientCarePlanBarrierRow(r, barrierGoalMap.get(r.id) || null));
+      const [liveBarriers, retiredBarriers] = partitionRetired(barrierRows);
+      barriers = liveBarriers.map(r => mapPatientCarePlanBarrierRow(r, barrierGoalMap.get(r.id) || null));
+      retired = retiredItems(retiredGoals, retiredIntv, retiredBarriers);
       automations = (a.data || []).map(mapCarePlanAutomationRow);
       // If barriers table hasn't been migrated yet, supabase returns error; treat as empty.
       if (b.error && (b.error.code === '42P01' || b.error.code === 'PGRST205')) barriers = [];
@@ -2043,7 +2088,7 @@ export const useAppStore = create((set, get) => ({
     }
 
     set(s => ({
-      patientCarePlans: { ...s.patientCarePlans, [key]: plan ? { plan, goals, interventions, barriers, measurements, automations } : null },
+      patientCarePlans: { ...s.patientCarePlans, [key]: plan ? { plan, goals, interventions, barriers, measurements, automations, retired, templateInstances } : null },
       patientCarePlanLoading: { ...s.patientCarePlanLoading, [key]: false },
       patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: true },
     }));
@@ -2422,7 +2467,9 @@ export const useAppStore = create((set, get) => ({
       const groups = new Map();
       for (const r of (rows || [])) {
         const norm = (r.title || '').trim().toLowerCase();
-        if (!norm) continue;
+        // An earlier run's items (reinstated templates) are history, not
+        // copies of the fresh ones.
+        if (!norm || r.retired_instance_id) continue;
         (groups.get(norm) || groups.set(norm, []).get(norm)).push(r);
       }
       for (const items of groups.values()) {
@@ -2535,12 +2582,17 @@ export const useAppStore = create((set, get) => ({
   // ── Goal Details: measurements (manual "Last N Values") ──────────────────
   // Keep goal.current_value + goal.trend in sync with readings so the care-plan
   // table and Goal Details drawer read the same Supabase row.
-  patchGoalDisplayFromMeasurements: async (patientId, programId, goalId) => {
+  patchGoalDisplayFromMeasurements: async (patientId, programId, goalId, { audit = true } = {}) => {
     const key = carePlanKey(patientId, programId);
     const cur = get().patientCarePlans[key];
-    const goal = (cur?.goals || []).find(g => g.id === goalId);
+    const signed = get().patientSignedCarePlans[key];
+    // Readings can be taken from a signed view with the editor never opened;
+    // the goal's stored value still follows them.
+    const fromLive = (cur?.goals || []).find(g => g.id === goalId);
+    const goal = fromLive || (signed?.goals || []).find(g => g.id === goalId);
     if (!goal) return;
-    const { currentValue, trend } = deriveGoalTableFields(goal, cur?.measurements || []);
+    const readings = fromLive ? (cur?.measurements || []) : (signed?.measurements || []);
+    const { currentValue, trend } = deriveGoalTableFields(goal, readings);
     if (currentValue === (goal.currentValue || 'No Data') && trend === (goal.trend || '-')) return;
     const row = {
       current_value: currentValue === 'No Data' ? '' : currentValue,
@@ -2559,7 +2611,7 @@ export const useAppStore = create((set, get) => ({
     // savePatientCarePlanGoal, so the audit line is written here.
     const before = goal.currentValue || 'No Data';
     const after = patched.currentValue || 'No Data';
-    if (before !== after) {
+    if (audit && before !== after) {
       get().logCarePlanAudit(patientId, { id: programId, code: cur?.plan?.programCode }, {
         entityType: 'goal',
         entityId: goalId,
@@ -2582,7 +2634,7 @@ export const useAppStore = create((set, get) => ({
 
   saveGoalMeasurement: async (patientId, programId, goalId, values) => {
     const key = carePlanKey(patientId, programId);
-    const cur = get().patientCarePlans[key];
+    const cur = get().patientCarePlans[key] || get().patientSignedCarePlans[key];
     const sortOrder = (cur?.measurements || []).filter(m => m.goalId === goalId).length;
     const row = {
       goal_id: goalId,
@@ -2602,11 +2654,16 @@ export const useAppStore = create((set, get) => ({
       summary: (cur?.goals || []).find(g => g.id === goalId)?.title || 'Value',
       detail: prior?.value ? `${prior.value} → ${measurement.value}` : measurement.value,
     });
+    // A reading taken from a signed view can land before the editor has
+    // loaded the plan; that load will bring it, so no partial slice is made.
     set(s => {
-      const c = s.patientCarePlans[key] || { measurements: [] };
+      const c = s.patientCarePlans[key];
+      if (!c) return {};
       return { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, measurements: [...(c.measurements || []), measurement] } } };
     });
-    await get().patchGoalDisplayFromMeasurements(patientId, programId, goalId);
+    get().syncSignedCarePlanReadings(key, list => [...list, measurement]);
+    // The reading's own audit row above already says what changed.
+    await get().patchGoalDisplayFromMeasurements(patientId, programId, goalId, { audit: false });
     return measurement;
   },
 
@@ -2617,6 +2674,7 @@ export const useAppStore = create((set, get) => ({
     set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: { ...prev, measurements: (prev.measurements || []).filter(m => m.id !== id) } } }));
     const { error } = await supabase.from('patient_care_plan_goal_measurements').delete().eq('id', id);
     if (error) { console.warn('deleteGoalMeasurement:', error.message); set(s => ({ patientCarePlans: { ...s.patientCarePlans, [key]: prev } })); get().showToast('Could not delete measurement'); return; }
+    get().syncSignedCarePlanReadings(key, list => list.filter(m => m.id !== id));
     if (removed?.goalId) await get().patchGoalDisplayFromMeasurements(patientId, programId, removed.goalId);
   },
 
@@ -2803,6 +2861,157 @@ export const useAppStore = create((set, get) => ({
   // Load every care plan for a patient across all their programs, in one pass,
   // for the comprehensive read-only view (roadmap E2). Warms the per-program
   // cache so opening a program afterwards is instant.
+  // ── Signed care plans ──
+  // What every surface outside the care plan editor shows: each plan as of its
+  // latest signed version. Same slice shape as patientCarePlans, keyed the
+  // same way; a plan that has never been signed has no entry. Readings are
+  // live, so they and the values they drive stay current. A plan whose latest
+  // version predates full snapshots has no signed copy of its barriers or
+  // templates, so it is read from its live rows until it is signed again.
+  patientSignedCarePlans: {},          // { [key]: slice + { signedVersion, legacy } }
+  patientSignedCarePlansLoadedFor: {}, // { [patientId]: bool }
+  patientSignedCarePlansLoading: {},   // { [patientId]: bool }
+  fetchSignedCarePlans: async (patientId, { force = false } = {}) => {
+    if (!patientId) return;
+    if (!force && get().patientSignedCarePlansLoadedFor[patientId]) return;
+    set(s => ({ patientSignedCarePlansLoading: { ...s.patientSignedCarePlansLoading, [patientId]: true } }));
+    const done = (entries) => set(s => {
+      const next = Object.fromEntries(Object.entries(s.patientSignedCarePlans).filter(([k]) => !k.startsWith(`${patientId}::`)));
+      return {
+        patientSignedCarePlans: { ...next, ...entries },
+        patientSignedCarePlansLoadedFor: { ...s.patientSignedCarePlansLoadedFor, [patientId]: true },
+        patientSignedCarePlansLoading: { ...s.patientSignedCarePlansLoading, [patientId]: false },
+      };
+    });
+    const { data: planRows, error } = await supabase.from('patient_care_plans').select('*').eq('patient_id', patientId);
+    if (error) console.warn('fetchSignedCarePlans:', error.message);
+    const signedRows = (planRows || []).filter(r => r.signed_at);
+    if (!signedRows.length) { done({}); return; }
+
+    const { data: versionRows, error: vErr } = await supabase
+      .from('patient_care_plan_versions').select('plan_id, version_number, snapshot, created_at')
+      .in('plan_id', signedRows.map(r => r.id))
+      .order('version_number', { ascending: false });
+    if (vErr) console.warn('fetchSignedCarePlans (versions):', vErr.message);
+    const latestByPlan = new Map();
+    for (const v of versionRows || []) if (!latestByPlan.has(v.plan_id)) latestByPlan.set(v.plan_id, v);
+
+    // Live rows carry the progress made on the signed plan (status, priority,
+    // title...), and are the whole plan for one signed before full snapshots.
+    const signedIds = signedRows.map(r => r.id);
+    const live = { goals: {}, interventions: {}, barriers: {} };
+    {
+      const [g, i, b] = await Promise.all([
+        supabase.from('patient_care_plan_goals').select('*').in('plan_id', signedIds).order('sort_order', { ascending: true }),
+        supabase.from('patient_care_plan_interventions').select('*').in('plan_id', signedIds).order('sort_order', { ascending: true }),
+        supabase.from('patient_care_plan_barriers').select('*').in('plan_id', signedIds).order('sort_order', { ascending: true }),
+      ]);
+      const barrierRows = b.data || [];
+      const joins = new Map();
+      if (barrierRows.length) {
+        const bg = await supabase.from('patient_care_plan_barrier_goals').select('barrier_id, goal_id').in('barrier_id', barrierRows.map(r => r.id));
+        for (const link of (bg.error ? [] : bg.data || [])) joins.set(link.barrier_id, [...(joins.get(link.barrier_id) || []), link.goal_id]);
+      }
+      for (const row of g.data || []) (live.goals[row.plan_id] ||= []).push(mapPatientCarePlanGoalRow(row));
+      for (const row of i.data || []) (live.interventions[row.plan_id] ||= []).push(mapPatientCarePlanInterventionRow(row));
+      for (const row of barrierRows) (live.barriers[row.plan_id] ||= []).push(mapPatientCarePlanBarrierRow(row, joins.get(row.id) || null));
+    }
+
+    const uniq = list => [...new Map((list || []).map(x => [String(x.id), x])).values()];
+    const slices = signedRows.map(r => {
+      const v = latestByPlan.get(r.id);
+      const snap = v?.snapshot;
+      const full = isFullSnapshot(snap);
+      const plan = mapPatientCarePlanRow(r);
+      if (full) {
+        plan.conditions = (snap.conditions || []).map(label => ({ label }));
+        plan.appliedTemplateIds = snap.appliedTemplateIds || [];
+        plan.appliedTemplatePriorities = snap.appliedTemplatePriorities || {};
+      }
+      const overlay = (type, list, liveList) => {
+        const byId = new Map((liveList || []).map(x => [String(x.id), x]));
+        return uniq(list).map(x => withLiveValues(type, x, byId.get(String(x.id))));
+      };
+      return {
+        key: carePlanKey(patientId, r.program_id),
+        plan,
+        goals: full ? overlay('goal', snap.goals, live.goals[r.id]) : (live.goals[r.id] || []),
+        interventions: full ? overlay('intervention', snap.interventions, live.interventions[r.id]) : (live.interventions[r.id] || []),
+        barriers: full ? overlay('barrier', snap.barriers, live.barriers[r.id]) : (live.barriers[r.id] || []),
+        signedVersion: v?.version_number ?? null,
+        legacy: !full,
+      };
+    });
+    const goalIds = slices.flatMap(x => x.goals.map(g => g.id));
+    let readings = [];
+    if (goalIds.length) {
+      const mm = await supabase.from('patient_care_plan_goal_measurements').select('*').in('goal_id', goalIds).order('taken_at', { ascending: true });
+      if (!mm.error) readings = (mm.data || []).map(mapGoalMeasurementRow);
+    }
+    const entries = {};
+    for (const { key, ...slice } of slices) {
+      const ids = new Set(slice.goals.map(g => g.id));
+      const measurements = readings.filter(m => ids.has(m.goalId));
+      entries[key] = signedSliceWithReadings({ ...slice, automations: [] }, measurements);
+    }
+    done(entries);
+  },
+
+  // Progress on a signed plan (status, priority, title, assignee, scheduling,
+  // adherence) from a surface showing the signed copy. Only `patch` is written,
+  // over the live row, so detail edits waiting in the draft are kept.
+  saveCarePlanLiveField: async (patientId, program, type, id, patch) => {
+    const key = carePlanKey(patientId, program.id);
+    const lists = { goal: 'goals', intervention: 'interventions', barrier: 'barriers' };
+    const loaded = (get().patientCarePlans[key]?.[lists[type]] || []).find(x => x.id === id);
+    let saved;
+    if (loaded) {
+      const next = { ...loaded, ...patch, config: patch.config ? { ...(loaded.config || {}), ...patch.config } : loaded.config };
+      const save = { goal: get().savePatientCarePlanGoal, intervention: get().savePatientCarePlanIntervention, barrier: get().savePatientCarePlanBarrier }[type];
+      saved = await save(patientId, program, next, id);
+    } else {
+      // The editor has not loaded this plan: write the row itself. The save
+      // actions reconcile links against the loaded plan, which is not there.
+      const table = { goal: 'patient_care_plan_goals', intervention: 'patient_care_plan_interventions', barrier: 'patient_care_plan_barriers' }[type];
+      const mapRow = { goal: mapPatientCarePlanGoalRow, intervention: mapPatientCarePlanInterventionRow, barrier: r => mapPatientCarePlanBarrierRow(r) }[type];
+      const toRow = { goal: patientCarePlanGoalToRow, intervention: patientCarePlanInterventionToRow, barrier: patientCarePlanBarrierToRow }[type];
+      const { data: row, error: readErr } = await supabase.from(table).select('*').eq('id', id).maybeSingle();
+      if (readErr || !row) { get().showToast('Could not update the care plan'); return null; }
+      const current = mapRow(row);
+      const next = { ...current, ...patch, config: patch.config ? { ...(current.config || {}), ...patch.config } : current.config };
+      const { plan_id: _p, ...update } = toRow(next, row.plan_id);
+      const { data, error } = await supabase.from(table)
+        // Barriers have no updated_by column.
+        .update({ ...update, ...(type === 'barrier' ? {} : { updated_by: get().currentUserProfile?.name || null }), updated_at: new Date().toISOString() })
+        .eq('id', id).select().single();
+      if (error) { console.warn('saveCarePlanLiveField:', error.message); get().showToast('Could not update the care plan'); return null; }
+      saved = mapRow(data);
+      get().logCarePlanAudit(patientId, program, auditForSave(type, saved, current));
+    }
+    if (saved) {
+      set(s => {
+        const signed = s.patientSignedCarePlans[key];
+        if (!signed) return {};
+        const listKey = lists[type];
+        return {
+          patientSignedCarePlans: {
+            ...s.patientSignedCarePlans,
+            [key]: { ...signed, [listKey]: (signed[listKey] || []).map(x => (x.id === id ? withLiveValues(type, x, saved) : x)) },
+          },
+        };
+      });
+    }
+    return saved;
+  },
+
+  // Readings are live on the signed copy too: keep its list and the values
+  // derived from it in step with an added or removed reading.
+  syncSignedCarePlanReadings: (key, update) => set(s => {
+    const signed = s.patientSignedCarePlans[key];
+    if (!signed) return {};
+    return { patientSignedCarePlans: { ...s.patientSignedCarePlans, [key]: signedSliceWithReadings(signed, update(signed.measurements || [])) } };
+  }),
+
   fetchAllPatientCarePlans: async (patientId) => {
     if (!patientId) return;
     if (get().patientCarePlanAllLoadedFor[patientId]) return;
@@ -2813,20 +3022,30 @@ export const useAppStore = create((set, get) => ({
     if (error) console.warn('fetchAllPatientCarePlans:', error.message);
 
     const rows = planRows || [];
-    let goalsByPlan = {}, intvByPlan = {}, barriersByPlan = {};
+    let goalsByPlan = {}, intvByPlan = {}, barriersByPlan = {}, retiredByPlan = {}, instancesByPlan = {};
     if (rows.length) {
       const planIds = rows.map(r => r.id);
-      const [g, i, b] = await Promise.all([
+      const [g, i, b, ti] = await Promise.all([
         supabase.from('patient_care_plan_goals').select('*').in('plan_id', planIds)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('patient_care_plan_interventions').select('*').in('plan_id', planIds)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
         supabase.from('patient_care_plan_barriers').select('*').in('plan_id', planIds)
           .order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
+        supabase.from('patient_care_plan_template_instances').select('*').in('plan_id', planIds)
+          .order('created_at', { ascending: true }),
       ]);
-      for (const row of (g.data || [])) (goalsByPlan[row.plan_id] ||= []).push(mapPatientCarePlanGoalRow(row));
-      for (const row of (i.data || [])) (intvByPlan[row.plan_id] ||= []).push(mapPatientCarePlanInterventionRow(row));
-      for (const row of (b.data || [])) (barriersByPlan[row.plan_id] ||= []).push(mapPatientCarePlanBarrierRow(row));
+      const [liveGoals, retiredGoals] = partitionRetired(g.data);
+      const [liveIntv, retiredIntv] = partitionRetired(i.data);
+      const [liveBarriers, retiredBarriers] = partitionRetired(b.data);
+      for (const row of liveGoals) (goalsByPlan[row.plan_id] ||= []).push(mapPatientCarePlanGoalRow(row));
+      for (const row of liveIntv) (intvByPlan[row.plan_id] ||= []).push(mapPatientCarePlanInterventionRow(row));
+      for (const row of liveBarriers) (barriersByPlan[row.plan_id] ||= []).push(mapPatientCarePlanBarrierRow(row));
+      for (const planId of planIds) {
+        const own = r => r.plan_id === planId;
+        retiredByPlan[planId] = retiredItems(retiredGoals.filter(own), retiredIntv.filter(own), retiredBarriers.filter(own));
+      }
+      for (const row of (ti.error ? [] : ti.data || [])) (instancesByPlan[row.plan_id] ||= []).push(mapTemplateInstanceRow(row));
       if (b.error && (b.error.code === '42P01' || b.error.code === 'PGRST205')) {
         // barriers table not yet migrated — treat as empty, don't warn
       }
@@ -2835,12 +3054,18 @@ export const useAppStore = create((set, get) => ({
     set(s => {
       const next = { ...s.patientCarePlans };
       const loaded = { ...s.patientCarePlanLoadedFor };
+      // These slices skip readings, automations and the barrier-goal join, so
+      // they never replace a fully loaded plan and never mark one loaded:
+      // the editor still runs its full fetch, and signing snapshots the whole
+      // plan rather than this partial copy.
       for (const r of rows) {
+        const k = carePlanKey(patientId, r.program_id);
+        if (loaded[k]) continue;
         const plan = mapPatientCarePlanRow(r);
-        next[carePlanKey(patientId, r.program_id)] = {
+        next[k] = {
           plan, goals: goalsByPlan[r.id] || [], interventions: intvByPlan[r.id] || [], barriers: barriersByPlan[r.id] || [],
+          retired: retiredByPlan[r.id] || EMPTY_RETIRED, templateInstances: instancesByPlan[r.id] || [],
         };
-        loaded[carePlanKey(patientId, r.program_id)] = true;
       }
       return {
         patientCarePlans: next,
@@ -2853,10 +3078,13 @@ export const useAppStore = create((set, get) => ({
 
   // `sourceTemplateId` saves just that applied template (what's left of it on
   // the plan); without it the whole plan is saved.
-  savePatientCarePlanAsTemplate: async (patientId, program, name, conditionsArg, sourceTemplateId = null) => {
+  savePatientCarePlanAsTemplate: async (patientId, program, name, conditionsArg, sourceTemplateId = null, scope = 'org') => {
     const key = carePlanKey(patientId, program.id);
     const cur = get().patientCarePlans[key];
-    if (!cur) return null;
+    if (!cur) {
+      get().showToast('Add goals to the care plan before saving it as a template');
+      return null;
+    }
     const templates = get().carePlanTemplates;
     const libraryGoals = get().carePlanGoals;
     const source = sourceTemplateId ? templates.find(t => t.id === sourceTemplateId) : null;
@@ -2868,7 +3096,7 @@ export const useAppStore = create((set, get) => ({
     const content = source
       ? templateContentFromApplied(cur, source, libraryGoals)
       : templateContentFromWholePlan(cur, applied, libraryGoals);
-    return get().saveCarePlanTemplate({ name: name.trim(), conditions, ...content });
+    return get().saveCarePlanTemplate({ name: name.trim(), conditions, ...content, scope, patientId });
   },
 
   setPatientCarePlanAppliedTemplates: async (patientId, program, templateIds, priorityUpdates) => {
@@ -2937,6 +3165,17 @@ export const useAppStore = create((set, get) => ({
     const ok = await get().setPatientCarePlanAppliedTemplates(patientId, program, nextIds, priorityUpdates);
     if (!ok) return false;
 
+    // Each newly applied template starts a run; a removed one's run closes.
+    // Runs are independent rows, so they're written together.
+    const templateById = new Map(templates.map(t => [t.id, t]));
+    const nextSet = new Set(nextIds);
+    await Promise.allSettled([
+      ...toAdd.map(id => templateById.get(id)).filter(Boolean)
+        .map(template => get().startCarePlanTemplateInstance(patientId, program, template)),
+      ...prevIds.filter(id => !nextSet.has(id))
+        .map(id => get().closeCarePlanTemplateInstance(patientId, program, id)),
+    ]);
+
     // Surface each applied template's clinical condition(s) on the plan header
     // so they show on the plan and in the share / download preview. Additive
     // union with any manually-added conditions; savePatientCarePlanConditions
@@ -2954,6 +3193,148 @@ export const useAppStore = create((set, get) => ({
     if (added) get().showToast(`Applied ${added} template${added === 1 ? '' : 's'}`);
     else if (removed) get().showToast('Updated applied templates');
     else get().showToast('Templates updated');
+    get().touchCarePlanModified(patientId, program.id);
+    return true;
+  },
+
+  // ── Template runs (care_plan_template_renewal migration) ──
+  // Each template on a plan is a run with a start and an end. Before the
+  // migration the table is missing and these do nothing, so applying works.
+  patchCarePlanTemplateInstances: (key, update) => set(s => {
+    const c = s.patientCarePlans[key];
+    if (!c) return {};
+    return { patientCarePlans: { ...s.patientCarePlans, [key]: { ...c, templateInstances: update(c.templateInstances || []) } } };
+  }),
+
+  startCarePlanTemplateInstance: async (patientId, program, template, startedAt = new Date(), endsOn = undefined) => {
+    const key = carePlanKey(patientId, program.id);
+    const planId = get().patientCarePlans[key]?.plan?.id;
+    if (!planId) return null;
+    const { data, error } = await supabase.from('patient_care_plan_template_instances').insert({
+      plan_id: planId,
+      template_id: template.id,
+      template_name: template.name || '',
+      status: 'active',
+      // A run recorded late (a template applied before runs existed) has no
+      // known start, and gets none rather than a guessed one.
+      started_at: startedAt ? startedAt.toISOString() : null,
+      ends_on: endsOn !== undefined
+        ? endsOn
+        : (startedAt ? templateEndsOn(template, get().carePlanGoals || [], startedAt) : null),
+      created_by: get().currentUserProfile?.name || null,
+    }).select().single();
+    if (error) { console.warn('startCarePlanTemplateInstance:', error.message); return null; }
+    const instance = mapTemplateInstanceRow(data);
+    get().patchCarePlanTemplateInstances(key, list => [...list, instance]);
+    return instance;
+  },
+
+  closeCarePlanTemplateInstance: async (patientId, program, templateId) => {
+    const key = carePlanKey(patientId, program.id);
+    const active = (get().patientCarePlans[key]?.templateInstances || [])
+      .find(i => String(i.templateId) === String(templateId) && i.status === 'active');
+    if (!active) return;
+    const endedAt = new Date().toISOString();
+    const { error } = await supabase.from('patient_care_plan_template_instances')
+      .update({ status: 'closed', ended_at: endedAt }).eq('id', active.id);
+    if (error) { console.warn('closeCarePlanTemplateInstance:', error.message); return; }
+    get().patchCarePlanTemplateInstances(key, list => list.map(i => (i.id === active.id ? { ...i, status: 'closed', endedAt } : i)));
+  },
+
+  // Adding a template that is already on the plan. `mode` is 'extend' (same
+  // run, end date moves out) or 'reinstate' (current run auto-closes as
+  // completed / closed, its items move to history, a fresh run starts).
+  // `endsOn` is the date the user picked (YYYY-MM-DD); null keeps the
+  // suggestion from the template's longest goal duration.
+  renewPatientCarePlanTemplate: async (patientId, program, templateId, mode, endsOn = null) => {
+    const key = carePlanKey(patientId, program.id);
+    const template = (get().carePlanTemplates || []).find(t => String(t.id) === String(templateId));
+    const slice = get().patientCarePlans[key];
+    if (!template || !slice?.plan) return false;
+    const libraryGoals = get().carePlanGoals || [];
+    const now = new Date();
+    const fail = () => { get().showToast(`Could not ${mode} "${template.name}"`); return false; };
+
+    let current = (slice.templateInstances || [])
+      .find(i => String(i.templateId) === String(templateId) && i.status === 'active');
+    if (!current) current = await get().startCarePlanTemplateInstance(patientId, program, template, null);
+    if (!current) return fail();
+    const instances = supabase.from('patient_care_plan_template_instances');
+
+    if (mode === 'extend') {
+      const newEnd = endsOn || templateEndsOn(template, libraryGoals, now);
+      const patch = { ends_on: newEnd, extended_at: now.toISOString() };
+      const { error } = await instances.update(patch).eq('id', current.id);
+      if (error) { console.warn('renewPatientCarePlanTemplate:', error.message); return fail(); }
+      get().patchCarePlanTemplateInstances(key, list => list.map(i => (i.id === current.id ? { ...i, endsOn: newEnd, extendedAt: patch.extended_at } : i)));
+      // Anything of the template's that came off the plan since goes back on.
+      await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
+      get().logCarePlanAudit(patientId, program, {
+        entityType: 'template', entityId: templateId, action: 'extended',
+        summary: template.name, detail: newEnd ? `Now ends ${formatInstanceDate(newEnd)}` : '',
+      });
+      get().showToast(`"${template.name}" extended${newEnd ? ` to ${formatInstanceDate(newEnd)}` : ''}`);
+    } else {
+      const items = templateItems(template, slice, libraryGoals);
+      const outcome = instanceOutcome(items);
+      const retire = (table, list) => (list.length
+        ? supabase.from(table).update({ retired_instance_id: current.id }).in('id', list.map(x => x.id))
+        : Promise.resolve({ error: null }));
+      const results = await Promise.all([
+        retire('patient_care_plan_goals', items.goals),
+        retire('patient_care_plan_interventions', items.interventions),
+        retire('patient_care_plan_barriers', items.barriers),
+      ]);
+      const retireError = results.find(r => r.error)?.error;
+      if (retireError) { console.warn('renewPatientCarePlanTemplate:', retireError.message); return fail(); }
+      const closed = {
+        status: outcome.status, auto_closed: true, ended_at: now.toISOString(),
+        done_count: outcome.done, total_count: outcome.total,
+      };
+      const { error } = await instances.update(closed).eq('id', current.id);
+      if (error) console.warn('renewPatientCarePlanTemplate:', error.message);
+
+      // The old items leave the live lists for the plan's history.
+      const ids = new Set([...items.goals, ...items.interventions, ...items.barriers].map(x => x.id));
+      const tag = x => ({ ...x, retiredInstanceId: current.id });
+      set(s => {
+        const c = s.patientCarePlans[key];
+        if (!c) return {};
+        const r = c.retired || { goals: [], interventions: [], barriers: [] };
+        return {
+          patientCarePlans: {
+            ...s.patientCarePlans,
+            [key]: {
+              ...c,
+              goals: c.goals.filter(x => !ids.has(x.id)),
+              interventions: c.interventions.filter(x => !ids.has(x.id)),
+              barriers: (c.barriers || []).filter(x => !ids.has(x.id)),
+              retired: {
+                goals: [...r.goals, ...items.goals.map(tag)],
+                interventions: [...r.interventions, ...items.interventions.map(tag)],
+                barriers: [...r.barriers, ...items.barriers.map(tag)],
+              },
+            },
+          },
+        };
+      });
+
+      const next = await get().startCarePlanTemplateInstance(patientId, program, template, now, endsOn || undefined);
+      if (next) await instances.update({ replaced_by: next.id }).eq('id', current.id);
+      get().patchCarePlanTemplateInstances(key, list => list.map(i => (i.id === current.id
+        ? { ...i, status: outcome.status, autoClosed: true, endedAt: closed.ended_at, doneCount: outcome.done, totalCount: outcome.total, replacedBy: next?.id || null }
+        : i)));
+      await applyTemplateToPlan(get, patientId, program, template, libraryGoals);
+
+      const label = INSTANCE_STATUS[outcome.status].label;
+      get().logCarePlanAudit(patientId, program, {
+        entityType: 'template', entityId: templateId, action: 'reinstated',
+        summary: template.name,
+        detail: `Previous run auto-closed and marked ${label} (${outcome.done} of ${outcome.total} met)`,
+      });
+      get().showToast(`"${template.name}" reinstated. The previous run is now marked ${label}.`);
+    }
+    get().refreshCarePlanDuplicates?.(patientId, program);
     get().touchCarePlanModified(patientId, program.id);
     return true;
   },
@@ -2987,7 +3368,7 @@ export const useAppStore = create((set, get) => ({
 
   // Record one share of a plan (or a selection of it) to an external party.
   // Returns the saved record, or null on failure.
-  sharePatientCarePlan: async (patientId, program, { target, format = 'standard', note = '', goalIds = [], interventionIds = [] }) => {
+  sharePatientCarePlan: async (patientId, program, { target, format = 'standard', note = '', goalIds = [], interventionIds = [], versionNumber = null }) => {
     const row = {
       patient_id: patientId,
       program_id: program.id,
@@ -3008,7 +3389,7 @@ export const useAppStore = create((set, get) => ({
     const label = { ehr: 'EHR', patient: 'Patient', poa: 'POA' }[target] || target;
     get().logCarePlanAudit(patientId, program, {
       entityType: 'share', entityId: data.id, action: 'shared',
-      summary: `Shared to ${label}`,
+      summary: versionNumber ? `Version ${versionNumber} shared to ${label}` : `Shared to ${label}`,
       detail: `${goalIds.length} goal(s), ${interventionIds.length} intervention(s)`,
     });
     if (program?.code) {
@@ -3017,7 +3398,7 @@ export const useAppStore = create((set, get) => ({
         programCode: program.code,
         title: `Care Plan Shared to ${label}`,
         activityKind: 'document',
-        statusLabel: 'Signed & Shared',
+        statusLabel: 'Shared',
         statusType: 'success',
       });
     }
@@ -3135,11 +3516,7 @@ export const useAppStore = create((set, get) => ({
       .from('patient_care_plan_versions').select('version_number')
       .eq('plan_id', planId).order('version_number', { ascending: false }).limit(1).maybeSingle();
     const versionNumber = (last?.version_number || 0) + 1;
-    const snapshot = {
-      conditions: (cur?.plan?.conditions || []).map(c => c.label),
-      goals: cur?.goals || [],
-      interventions: cur?.interventions || [],
-    };
+    const snapshot = buildCarePlanSnapshot(cur);
     const { data, error } = await supabase.from('patient_care_plan_versions').insert({
       plan_id: planId, patient_id: patientId, program_id: program.id,
       version_number: versionNumber, snapshot, reason, note,
@@ -3157,6 +3534,14 @@ export const useAppStore = create((set, get) => ({
     const cur = get().patientCarePlans[key];
     const planId = cur?.plan?.id;
     if (!planId) { get().showToast('Add a goal before signing.'); return null; }
+    // A signed plan with nothing changed since is already that version, so
+    // signing again (Share does) must not cut an identical one.
+    if (cur.plan.signedAt) {
+      if (get().patientCarePlanVersions[key] === undefined) await get().fetchCarePlanVersions(patientId, program.id);
+      const latest = (get().patientCarePlanVersions[key] || [])[0];
+      if (latest && isFullSnapshot(latest.snapshot)
+        && !carePlanUnsignedChanges(cur, latest).changes.length) return latest.versionNumber;
+    }
     const versionNumber = await get().snapshotCarePlanVersion(patientId, program, { reason: 'signed', note });
     // The signature is what the version records, so a failed snapshot has to
     // stop it: signing anyway leaves a History entry pointing at a version that
@@ -3221,6 +3606,16 @@ export const useAppStore = create((set, get) => ({
     // The plan is signed either way, but History is built from this row, so a
     // failure here would silently lose the version.
     if (!logged) get().showToast('Signed, but the history entry could not be recorded');
+    // Every other surface now shows this version.
+    const signedNow = get().patientCarePlans[key];
+    if (signedNow) {
+      set(s => ({
+        patientSignedCarePlans: {
+          ...s.patientSignedCarePlans,
+          [key]: signedSliceWithReadings({ ...buildCarePlanSnapshotSlice(signedNow), signedVersion: versionNumber, legacy: false }, signedNow.measurements || []),
+        },
+      }));
+    }
     return versionNumber;
   },
 
@@ -3339,41 +3734,153 @@ export const useAppStore = create((set, get) => ({
   },
 
   // Replace the live plan with a version's snapshot (roadmap #25 restore).
-  restoreCarePlanVersion: async (patientId, program, version) => {
+  // Put the draft back to a signed version. Rows keep their ids, so the plan
+  // diffs cleanly against that version afterwards and anything hanging off a
+  // surviving goal (readings, links, barrier joins) stays attached. Readings
+  // and notes are live, so they are not part of the snapshot and are kept.
+  // `mode` is 'discard' (back to the latest signed version) or 'restore'
+  // (an older version loaded into the draft, still to be signed).
+  applyCarePlanVersionToDraft: async (patientId, program, version, { mode = 'restore' } = {}) => {
     const key = carePlanKey(patientId, program.id);
-    const planId = get().patientCarePlans[key]?.plan?.id;
-    if (!planId) return;
-    const snap = version.snapshot || {};
-    // Replace children: delete current, insert from the snapshot (new ids).
-    // Every step is checked: the deletes run before the inserts, so a failure
-    // that went unreported would leave the plan emptied while the toast and
-    // the audit row claimed the restore worked.
+    const cur = get().patientCarePlans[key];
+    const planId = cur?.plan?.id;
+    const snap = version?.snapshot;
+    if (!planId || !snap) return false;
+    const full = isFullSnapshot(snap);
     const failed = (step, error) => {
-      console.warn(`restoreCarePlanVersion (${step}):`, error.message);
-      get().showToast('Could not restore this version — the plan may be incomplete, refresh to see its current state');
-      return undefined;
+      console.warn(`applyCarePlanVersionToDraft (${step}):`, error.message);
+      get().showToast(mode === 'discard'
+        ? 'Could not discard the changes. Refresh to see the plan as it is now.'
+        : 'Could not load this version. Refresh to see the plan as it is now.');
+      return false;
     };
-    const delGoals = await supabase.from('patient_care_plan_goals').delete().eq('plan_id', planId);
-    if (delGoals.error) return failed('clear goals', delGoals.error);
-    const delIntv = await supabase.from('patient_care_plan_interventions').delete().eq('plan_id', planId);
-    if (delIntv.error) return failed('clear interventions', delIntv.error);
+    // A version signed while the store briefly held a row twice holds it twice.
+    const uniq = list => [...new Map((list || []).map(x => [String(x.id), x])).values()];
+    // Progress made since (status, priority, title, scheduling...) is not part
+    // of the draft, so an item still on the plan keeps its live values.
+    const liveOf = (list) => new Map((list || []).map(x => [String(x.id), x]));
+    const liveGoals = liveOf(cur.goals);
+    const liveIntv = liveOf(cur.interventions);
+    const liveBarriers = liveOf(cur.barriers);
+    const snapGoals = uniq(snap.goals).map(g => withLiveValues('goal', g, liveGoals.get(String(g.id))));
+    const snapIntv = uniq(snap.interventions).map(x => withLiveValues('intervention', x, liveIntv.get(String(x.id))));
+    const snapBarriers = full ? uniq(snap.barriers).map(b => withLiveValues('barrier', b, liveBarriers.get(String(b.id)))) : [];
+    const goalIdSet = new Set(snapGoals.map(g => String(g.id)));
 
-    const goalRows = (snap.goals || []).map((g, i) => ({ ...patientCarePlanGoalToRow(g, planId), sort_order: i }));
-    const intvRows = (snap.interventions || []).map((x, i) => ({ ...patientCarePlanInterventionToRow(x, planId), sort_order: i }));
-    if (goalRows.length) {
-      const { error } = await supabase.from('patient_care_plan_goals').insert(goalRows);
-      if (error) return failed('restore goals', error);
+    // Readings are live, so a surviving goal keeps the current value and trend
+    // they produced rather than the ones frozen in the snapshot.
+    if (snapGoals.length) {
+      const rows = snapGoals.map((g, i) => {
+        const { current_value: _cv, trend: _tr, ...row } = patientCarePlanGoalToRow(g, planId);
+        return { id: g.id, ...row, sort_order: g.sortOrder ?? i };
+      });
+      const { error } = await supabase.from('patient_care_plan_goals').upsert(rows, { onConflict: 'id' });
+      if (error) return failed('goals', error);
     }
-    if (intvRows.length) {
-      const { error } = await supabase.from('patient_care_plan_interventions').insert(intvRows);
-      if (error) return failed('restore interventions', error);
+    if (snapIntv.length) {
+      // A paired task deleted since the signature cannot be pointed at again.
+      const taskIds = [...new Set(snapIntv.map(x => x.taskId).filter(Boolean))];
+      let liveTasks = new Set();
+      if (taskIds.length) {
+        const { data } = await supabase.from('tasks').select('id').in('id', taskIds);
+        liveTasks = new Set((data || []).map(t => String(t.id)));
+      }
+      const rows = snapIntv.map((x, i) => ({
+        id: x.id,
+        ...patientCarePlanInterventionToRow({
+          ...x,
+          goalId: x.goalId && goalIdSet.has(String(x.goalId)) ? x.goalId : null,
+          taskId: x.taskId && liveTasks.has(String(x.taskId)) ? x.taskId : null,
+        }, planId),
+        sort_order: x.sortOrder ?? i,
+      }));
+      let { error } = await supabase.from('patient_care_plan_interventions').upsert(rows, { onConflict: 'id' });
+      if (error && /task_id/.test(error.message || '')) {
+        ({ error } = await supabase.from('patient_care_plan_interventions')
+          .upsert(rows.map(r => { const row = { ...r }; delete row.task_id; return row; }), { onConflict: 'id' }));
+      }
+      if (error) return failed('interventions', error);
     }
-    // Reload the plan from the DB and audit the restore.
+    if (snapBarriers.length) {
+      const rows = snapBarriers.map((b, i) => {
+        const goalIds = (b.goalIds || []).filter(id => goalIdSet.has(String(id)));
+        return { id: b.id, ...patientCarePlanBarrierToRow({ ...b, goalId: goalIds[0] || null }, planId), sort_order: b.sortOrder ?? i };
+      });
+      const { error } = await supabase.from('patient_care_plan_barriers').upsert(rows, { onConflict: 'id' });
+      if (error) return failed('barriers', error);
+      const ids = snapBarriers.map(b => b.id);
+      const del = await supabase.from('patient_care_plan_barrier_goals').delete().in('barrier_id', ids);
+      const missingJoin = del.error && (del.error.code === '42P01' || del.error.code === 'PGRST205');
+      if (del.error && !missingJoin) return failed('barrier goals', del.error);
+      const pairs = snapBarriers.flatMap(b => (b.goalIds || [])
+        .filter(id => goalIdSet.has(String(id)))
+        .map(goalId => ({ barrier_id: b.id, goal_id: goalId })));
+      if (!missingJoin && pairs.length) {
+        const ins = await supabase.from('patient_care_plan_barrier_goals').insert(pairs);
+        if (ins.error) return failed('barrier goals', ins.error);
+      }
+    }
+
+    // Drop what the draft added. Interventions first, with the tasks they
+    // created, so no task is left pointing at a plan item that is gone.
+    const keepIntv = new Set(snapIntv.map(x => String(x.id)));
+    const extraIntv = (cur.interventions || []).filter(x => !keepIntv.has(String(x.id)));
+    if (extraIntv.length) {
+      const { error } = await supabase.from('patient_care_plan_interventions').delete().in('id', extraIntv.map(x => x.id));
+      if (error) return failed('remove interventions', error);
+      for (const x of extraIntv) {
+        if (x.taskId) { try { await get().deleteTask?.(x.taskId); } catch (e) { console.warn('applyCarePlanVersionToDraft: task delete failed', e); } }
+      }
+    }
+    if (full) {
+      const keepB = new Set(snapBarriers.map(b => String(b.id)));
+      const extraB = (cur.barriers || []).filter(b => !keepB.has(String(b.id)));
+      if (extraB.length) {
+        const { error } = await supabase.from('patient_care_plan_barriers').delete().in('id', extraB.map(b => b.id));
+        if (error) return failed('remove barriers', error);
+      }
+    }
+    const extraGoals = (cur.goals || []).filter(g => !goalIdSet.has(String(g.id)));
+    if (extraGoals.length) {
+      const { error } = await supabase.from('patient_care_plan_goals').delete().in('id', extraGoals.map(g => g.id));
+      if (error) return failed('remove goals', error);
+    }
+
+    const header = { conditions: snap.conditions || [], condition_total: (snap.conditions || []).length, updated_at: new Date().toISOString() };
+    if (full) {
+      header.applied_template_ids = snap.appliedTemplateIds || [];
+      header.applied_template_priorities = snap.appliedTemplatePriorities || {};
+    }
+    let { error: headErr } = await supabase.from('patient_care_plans').update(header).eq('id', planId);
+    if (headErr && /applied_template_priorities/.test(headErr.message || '')) {
+      const { applied_template_priorities: _p, ...rest } = header;
+      ({ error: headErr } = await supabase.from('patient_care_plans').update(rest).eq('id', planId));
+    }
+    if (headErr) return failed('plan', headErr);
+
     set(s => ({ patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: false } }));
     await get().fetchPatientCarePlan(patientId, program.id);
-    get().touchCarePlanModified(patientId, program.id);
-    get().logCarePlanAudit(patientId, program, { entityType: 'plan', action: 'restored', summary: `Restored v${version.versionNumber}` });
-    get().showToast(`Restored version ${version.versionNumber}`);
+    get().logCarePlanAudit(patientId, program, mode === 'discard'
+      ? { entityType: 'plan', action: 'discarded', summary: 'Discarded unsigned changes', detail: `Back to v${version.versionNumber}` }
+      : { entityType: 'plan', action: 'restored', summary: `Loaded v${version.versionNumber} into the draft`, detail: '' });
+    get().showToast(mode === 'discard'
+      ? `Unsigned changes discarded. The plan is back to version ${version.versionNumber}.`
+      : `Version ${version.versionNumber} loaded. Sign the care plan to make it current.`);
+    return true;
+  },
+
+  restoreCarePlanVersion: (patientId, program, version) =>
+    get().applyCarePlanVersionToDraft(patientId, program, version, { mode: 'restore' }),
+
+  discardCarePlanDraft: async (patientId, program) => {
+    const key = carePlanKey(patientId, program.id);
+    if (get().patientCarePlanVersions[key] === undefined) await get().fetchCarePlanVersions(patientId, program.id);
+    const latest = (get().patientCarePlanVersions[key] || [])[0];
+    if (!latest || !isFullSnapshot(latest.snapshot)) {
+      get().showToast('This plan has no full signed version to go back to yet.');
+      return false;
+    }
+    return get().applyCarePlanVersionToDraft(patientId, program, latest, { mode: 'discard' });
   },
 
   // ── Care Plan links (roadmap #11) ──
@@ -3462,6 +3969,7 @@ export const useAppStore = create((set, get) => ({
   carePlanGoals: [],
   carePlanBarriers: [],
   carePlanInterventionTemplates: [],
+  authUserId: null,
   carePlanLibraryLoading: false,
   carePlanLibraryDidFetch: false,
   // Per-user starred templates (roadmap #3), persisted in
@@ -3518,6 +4026,9 @@ export const useAppStore = create((set, get) => ({
   },
 
   fetchCarePlanLibrary: async () => {
+    // Which templates are "mine" (private ones, the Mine filter) is keyed on
+    // the auth user, so record it alongside the library.
+    supabase.auth.getSession().then(({ data }) => set({ authUserId: data?.session?.user?.id || null }));
     if (get().carePlanLibraryDidFetch) return;
     if (get().carePlanLibraryLoading) return;
     set({ carePlanLibraryLoading: true });
@@ -3684,6 +4195,18 @@ export const useAppStore = create((set, get) => ({
       barriers: values.barriers || [],
       status: values.status === 'draft' ? 'draft' : 'published',
     };
+    // Audience. An edit only changes it when the caller says so; a new
+    // template defaults to the organization library and records its creator.
+    if (values.scope || !id) {
+      row.scope = values.scope || 'org';
+      row.patient_id = row.scope === 'patient' ? (values.patientId != null ? String(values.patientId) : null) : null;
+    }
+    if (values.renewal) row.renewal = values.renewal;
+    if (!id) {
+      // The owner must be the signed-in auth user: RLS checks it against auth.uid().
+      const { data: { session } } = await supabase.auth.getSession();
+      row.owner_user_id = session?.user?.id || null;
+    }
     const run = (writeRow) => (id
       ? supabase.from('care_plan_templates').update({ ...writeRow, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
       : supabase.from('care_plan_templates').insert({ ...writeRow, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null })
@@ -3694,6 +4217,18 @@ export const useAppStore = create((set, get) => ({
     if (error && /column .*status.* does not exist/i.test(error.message || '')) {
       const { status: _dropped, ...rowWithoutStatus } = row;
       ({ data, error } = await run(rowWithoutStatus));
+    }
+    // Same for the audience columns before their migration: save it as a
+    // library template rather than failing.
+    if (error && /column .*(scope|owner_user_id|patient_id).* does not exist/i.test(error.message || '')) {
+      const { scope: _s, owner_user_id: _o, patient_id: _p, ...rowWithoutScope } = row;
+      ({ data, error } = await run(rowWithoutScope));
+    }
+    // And the renewal column: the template saves, re-applying falls back to
+    // the condition-based default.
+    if (error && /renewal/i.test(error.message || '') && 'renewal' in row) {
+      const { renewal: _r, ...rowWithoutRenewal } = row;
+      ({ data, error } = await run(rowWithoutRenewal));
     }
     if (error) {
       console.warn('save care plan template failed:', error.message);
@@ -3923,6 +4458,7 @@ export const useAppStore = create((set, get) => ({
 
   // Org-level feature flags (from org_settings).
   showPatientAppIndicator: false,
+  carePlanMode: DEFAULT_CARE_PLAN_MODE,
   orgFeaturesDidFetch: false,
   fetchOrgFeatures: async () => {
     if (useAppStore.getState().orgFeaturesDidFetch) return;
@@ -3933,17 +4469,29 @@ export const useAppStore = create((set, get) => ({
         set({ orgFeaturesDidFetch: false });
         return;
       }
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('org_settings')
-        .select('show_patient_app_indicator')
+        .select('show_patient_app_indicator, care_plan_mode')
         .eq('user_id', session.user.id)
         .maybeSingle();
+      // Schema-tolerant: before the care_plan_mode migration runs, read the
+      // indicator alone and stay on the program-level default.
+      if (error && /care_plan_mode/.test(error.message || '')) {
+        ({ data, error } = await supabase
+          .from('org_settings')
+          .select('show_patient_app_indicator')
+          .eq('user_id', session.user.id)
+          .maybeSingle());
+      }
       if (error) {
         console.warn('fetchOrgFeatures error:', error.message);
         set({ orgFeaturesDidFetch: false });
         return;
       }
-      set({ showPatientAppIndicator: !!data?.show_patient_app_indicator });
+      set({
+        showPatientAppIndicator: !!data?.show_patient_app_indicator,
+        carePlanMode: normalizeCarePlanMode(data?.care_plan_mode),
+      });
     } catch (err) {
       console.warn('fetchOrgFeatures failed:', err?.message || err);
       set({ orgFeaturesDidFetch: false });

@@ -56,6 +56,9 @@ const VARIANT_DEFAULTS = {
  *   set, the X, Escape and the overlay call it instead of onCancel, so the
  *   cancel button can be a real second choice (e.g. "Save as Draft").
  *   Pass `icon={false}` to leave the icon out.
+ * @param {React.ReactNode} [props.children] – Extra content (e.g. a choice the
+ *   answer depends on), shown above the checkbox and buttons. Pairs with
+ *   align="start".
  * @param {string}   [props.className] – Extra class on the dialog box.
  */
 export function ConfirmDialog({
@@ -76,6 +79,7 @@ export function ConfirmDialog({
   buttonSize = 'L',
   className,
   onClose,
+  children,
 }) {
   const preset = VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.warning;
   const resolvedIcon = icon ?? preset.icon;
@@ -134,6 +138,7 @@ export function ConfirmDialog({
         </div>
         {descriptionEl}
       </div>
+      {children}
       <div className="flex flex-col gap-3">
         {checkboxEl}
         {footerEl}
@@ -146,6 +151,7 @@ export function ConfirmDialog({
         {titleEl}
         {descriptionEl}
       </AlertDialogHeader>
+      {children}
       {checkboxEl}
       {footerEl}
     </>

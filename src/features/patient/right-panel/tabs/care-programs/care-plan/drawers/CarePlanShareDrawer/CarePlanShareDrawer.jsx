@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { SplitDrawerLayout } from '../../../../../../../../components/Drawer/SplitDrawerLayout';
 import { Button } from '../../../../../../../../components/Button/Button';
@@ -8,6 +8,7 @@ import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
 import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
+import { Toggle } from '../../../../../../../../components/Toggle/Toggle';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { buildCarePlanDownloadFilename, downloadCarePlanPdf } from '../../lib/carePlanExport';
 import {
@@ -18,6 +19,7 @@ import {
   isShareFiltersActive,
   matchesShareFilters,
 } from '../../lib/carePlanShareFilters';
+import { useCarePlanDraftState } from '../../lib/useCarePlanDraftState';
 import { CarePlanPdfPreview } from './CarePlanPdfPreview';
 import styles from './CarePlanShareDrawer.module.css';
 
@@ -80,9 +82,30 @@ function SectionToggleHead({ title, collapsed, onToggle, trailing }) {
 
 // Preview the plan, choose which goals/interventions to include, then download
 // a PDF or share it to the EHR / patient / POA (#8, #13, #40).
-export function CarePlanShareDrawer({ patientId, program, data, patientName, canShare = true, onClose }) {
+//
+// What is shared is the plan as last signed: unsigned changes stay out until
+// someone signs them, and a plan that was never signed can be previewed and
+// downloaded as a draft but not shared.
+export function CarePlanShareDrawer({ patientId, program, data: draftData, patientName, canShare: canEdit = true, onClose }) {
   const sharePatientCarePlan = useAppStore(s => s.sharePatientCarePlan);
-  const signCarePlan = useAppStore(s => s.signCarePlan);
+  const key = `${patientId}::${program.id}`;
+  const signedCopy = useAppStore(s => s.patientSignedCarePlans[key]);
+  const fetchSignedCarePlans = useAppStore(s => s.fetchSignedCarePlans);
+  const draft = useCarePlanDraftState(patientId, program.id);
+  useEffect(() => { fetchSignedCarePlans(patientId); }, [patientId, fetchSignedCarePlans]);
+  const signed = draft.signed && !!signedCopy;
+  // With unsigned changes, the draft can still be previewed before signing;
+  // only the signed version can be shared.
+  const [view, setView] = useState('signed');
+  const showDraft = !signed || (draft.hasUnsignedChanges && view === 'draft');
+  const data = useMemo(() => (!showDraft ? {
+    conditions: signedCopy.plan?.conditions || [],
+    goals: signedCopy.goals || [],
+    interventions: signedCopy.interventions || [],
+    barriers: signedCopy.barriers || [],
+  } : draftData), [showDraft, signedCopy, draftData]);
+  const signedVersion = signedCopy?.signedVersion || draft.latestVersion?.versionNumber || null;
+  const canShare = canEdit && signed && !showDraft;
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const showToast = useAppStore(s => s.showToast);
   const lastVisit = useAppStore((s) => {
@@ -195,12 +218,12 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
       note: note.trim(),
       goalIds: selectedGoalIds,
       interventionIds: selectedIntvIds,
+      versionNumber: signedVersion,
     });
-    if (!rec) { setSharing(false); return; }
-    const version = await signCarePlan(patientId, program, note.trim());
     setSharing(false);
-    showToast(version
-      ? `Care plan signed and shared to ${shareTarget}`
+    if (!rec) return;
+    showToast(signedVersion
+      ? `Version ${signedVersion} shared to ${shareTarget}`
       : `Care plan shared to ${shareTarget}`);
     onClose();
   };
@@ -238,6 +261,19 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
 
   const editorPane = (
     <div className={styles.editorScroll}>
+      {signed && draft.hasUnsignedChanges && (
+        <Toggle
+          size="S"
+          fullWidth
+          className={styles.versionToggle}
+          items={[
+            { key: 'signed', label: `Version ${signedVersion} (signed)` },
+            { key: 'draft', label: 'Draft with unsigned changes' },
+          ]}
+          active={view}
+          onChange={setView}
+        />
+      )}
       <div className={styles.filterBar}>
           <FilterChip
             label="Date"
@@ -405,10 +441,18 @@ export function CarePlanShareDrawer({ patientId, program, data, patientName, can
             Select at least one goal, intervention, or barrier to preview or download.
           </div>
         )}
-        {!canShare && (
+        {!draft.signed && (
           <div className={styles.warn}>
             <Icon name="solar:info-circle-linear" size={14} color="var(--status-warning)" />
-            Add a goal to save this plan before sharing. You can still download a preview.
+            This care plan has not been signed. Sign it before sharing. The preview shows the draft, which you can still download.
+          </div>
+        )}
+        {signed && draft.hasUnsignedChanges && (
+          <div className={styles.warn}>
+            <Icon name="solar:info-circle-linear" size={14} color="var(--status-warning)" />
+            {showDraft
+              ? 'Previewing the draft with its unsigned changes. Sign the care plan to share it.'
+              : `Showing version ${signedVersion} as signed. Unsigned changes are not included; sign the care plan to share them.`}
           </div>
         )}
       </div>

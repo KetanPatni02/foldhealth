@@ -18,6 +18,20 @@ export const initialsOf = (name = '') =>
   name.split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '?';
 
 export const stepsFor = (code) => PROGRAM_STEPS[code] || PROGRAM_STEPS.SNP;
+
+/**
+ * The program's steps without its Care Plan step, for orgs that keep one
+ * patient-level care plan instead (care_plan_mode = 'patient'). Dropping it
+ * from the list also drops it from progress, so a hidden mandatory step
+ * never holds a program back.
+ */
+export function withoutCarePlanStep(steps) {
+  return steps
+    .filter(s => s.name !== 'Care Plan')
+    .map(s => (s.type === 'section' ? { ...s, children: s.children.filter(c => c.name !== 'Care Plan') } : s))
+    // A section that only held the care plan (SNP's Model of Care) has nothing left to show.
+    .filter(s => s.type !== 'section' || s.children.length > 0);
+}
 export const flatSteps = (list) => list.flatMap(s => (s.type === 'section' ? s.children : [s]));
 
 export function letterPdfBlob(letter) {

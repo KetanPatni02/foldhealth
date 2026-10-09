@@ -2,6 +2,8 @@ import { ActivityLog } from '@/components/ActivityLog/ActivityLog';
 import { Button } from '@/components/Button/Button';
 import { Input } from '@/components/Input/Input';
 import { Select } from '@/components/Select/Select';
+import { TemplateScopeChoice } from '../../../../../../settings/care-plan-library/shared';
+import { PATIENT_SCOPE_CHOICES } from '../lib/templateScope';
 import { Textarea } from '@/components/Textarea/Textarea';
 import { Drawer } from '@/components/Drawer/Drawer';
 import { SelectAssigneeModal } from '@/components/SelectAssigneeModal/SelectAssigneeModal';
@@ -25,6 +27,7 @@ import { GoalPreviewDrawer } from '../drawers/GoalPreviewDrawer/GoalPreviewDrawe
 import { InterventionPreviewDrawer } from '../drawers/InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { ApplyTemplatesDrawer } from '../drawers/ApplyTemplatesDrawer/ApplyTemplatesDrawer';
 import { TemplateCreateLayer } from './TemplateCreateLayer';
+import { ApplyAgainDialog } from './ApplyAgainDialog';
 import { interventionActivityEntries } from './carePlanLinkedItems';
 import styles from './CarePlanView.module.css';
 
@@ -44,10 +47,10 @@ export function CarePlanViewDrawers(d) {
     noteDiscardOpen, setNoteDiscardOpen, noteDeleteOpen, setNoteDeleteOpen, doClearCareNote,
     problemOpen, setProblemOpen, doAddProblem, problemText, setProblemText,
     trendsOpen, setTrendsOpen, measurements,
-    templatesDrawerOpen, setTemplatesDrawerOpen, appliedTemplateIds,
+    templatesDrawerOpen, setTemplatesDrawerOpen, appliedTemplateIds, applyAgainTemplate, setApplyAgainTemplate,
     templateCreateOpen, setTemplateCreateOpen, createdTemplateIds, setCreatedTemplateIds, appliedTemplatePriorities, handleApplyTemplates,
     templateOpen, setTemplateOpen, templateName, setTemplateName, templateConditions, setTemplateConditions, saveTemplate,
-    templateSourceId, pickTemplateSource, appliedTemplates,
+    templateSourceId, pickTemplateSource, appliedTemplates, templateScope, setTemplateScope,
     deleteTarget, setDeleteTarget, live, removeGoal, confirmDelete,
     bulkAssignOpen, setBulkAssignOpen, bulkAssign, bulkDeleteOpen, setBulkDeleteOpen, bulkDelete, selectedCount,
   } = d;
@@ -345,6 +348,7 @@ export function CarePlanViewDrawers(d) {
 
       {templatesDrawerOpen && (
         <ApplyTemplatesDrawer
+          patientId={patientId}
           appliedTemplateIds={appliedTemplateIds}
           appliedTemplatePriorities={appliedTemplatePriorities}
           patientProblems={patientProblems}
@@ -352,6 +356,17 @@ export function CarePlanViewDrawers(d) {
           onApply={(ids, priorities) => { setCreatedTemplateIds([]); handleApplyTemplates(ids, priorities); }}
           onCreateNew={() => { setTemplatesDrawerOpen(false); setTemplateCreateOpen(true); }}
           preselectedIds={createdTemplateIds}
+          onApplyAgain={canEdit ? setApplyAgainTemplate : undefined}
+        />
+      )}
+
+      {applyAgainTemplate && (
+        <ApplyAgainDialog
+          template={applyAgainTemplate}
+          patientId={patientId}
+          program={program}
+          onClose={() => setApplyAgainTemplate(null)}
+          onDone={() => setTemplatesDrawerOpen(false)}
         />
       )}
 
@@ -374,7 +389,7 @@ export function CarePlanViewDrawers(d) {
             <DialogTitle>Save as Template</DialogTitle>
           </DialogHeader>
           <DialogDescription>
-            Saves the goals, interventions and barriers to the Care Plan Library so they can be reused for similar patients.
+            Saves the goals, interventions and barriers as a template you can apply again.
           </DialogDescription>
           <div className={styles.templateForm}>
             {appliedTemplates.length > 0 && (
@@ -395,6 +410,7 @@ export function CarePlanViewDrawers(d) {
               <Input autoFocus value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g. Type 2 Diabetes — Standard" aria-label="Template name" />
             </div>
             <ChronicConditionSelect value={templateConditions} onChange={setTemplateConditions} label="Conditions" />
+            <TemplateScopeChoice value={templateScope} onChange={setTemplateScope} choices={PATIENT_SCOPE_CHOICES} />
           </div>
           <div className={styles.templateDialogFooter}>
             <Button variant="primary" size="L" onClick={saveTemplate} disabled={!templateName.trim()}>Save</Button>

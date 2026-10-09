@@ -14,6 +14,9 @@ import { BulkSelectToggle } from '../../../../../components/BulkSelect/BulkSelec
 import { WorklistShell } from '../../../../../components/WorklistShell/WorklistShell';
 import { Drawer } from '../../../../../components/Drawer/Drawer';
 import { ConfirmDialog } from '../../../../../components/ConfirmDialog/ConfirmDialog';
+import { FilterChip } from '../../../../../components/FilterChip/FilterChip';
+import { TemplateScopeBadge, TemplateScopeChoice } from '../../shared';
+import { LIBRARY_SCOPE_CHOICES, inLibrary, matchesScopeFilter, scopeFilterOptions, templateScopeOf } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/templateScope';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../../../../components/ShadcnDialog/ShadcnDialog';
 import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
 import { TableSkeleton } from '../../../../../components/TableSkeleton/TableSkeleton';
@@ -113,7 +116,7 @@ const TEMPLATE_COLUMNS = [
   { key: 'conditions', label: 'Chronic Conditions', sortKey: 'conditions', sortType: 'alpha', width: 280 },
   { key: 'createdOn', label: 'Created On', sortKey: 'createdAt', sortType: 'date', width: 200 },
   { key: 'updated', label: 'Last Update', sortKey: 'updatedAt', sortType: 'date', width: 200 },
-  { key: 'actions', label: 'Actions', sticky: 'right', width: 196 },
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 132 },
 ];
 
 // Figma 14181:316571 — checkbox, Goals Title, Type, Linked Items, Target
@@ -167,7 +170,7 @@ function simpleDraftFrom(kind, item) {
 // Kebab "More Action" menu on a template row — Figma only breaks Delete out
 // into this overflow menu; Edit/Duplicate get their own always-visible
 // ActionButtons.
-function TemplateRowMenu({ onDelete }) {
+function TemplateRowMenu({ onDuplicate, onDelete }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -186,6 +189,12 @@ function TemplateRowMenu({ onDelete }) {
       {open && createPortal(
         <div className={styles.overflowScrim} onClick={() => setOpen(false)}>
           <div className={styles.overflowMenu} style={{ top: pos.top, left: pos.left }} onClick={e => e.stopPropagation()}>
+            {onDuplicate && (
+              <button className={styles.overflowItem} onClick={() => { setOpen(false); onDuplicate(); }}>
+                <Icon name="solar:copy-linear" size={15} color="var(--neutral-300)" />
+                Duplicate
+              </button>
+            )}
             <button
               className={`${styles.overflowItem} ${styles.overflowItemDanger}`}
               onClick={() => { setOpen(false); onDelete(); }}
@@ -217,7 +226,16 @@ export function CarePlanLibraryPanel() {
   const handleTabChange = (key) => { setActiveTab(key); setSearchValue(''); exitBulkMode(); };
 
   // All three tabs are served from Supabase (care_plan_* tables).
-  const templates = useAppStore(s => s.carePlanTemplates);
+  const allTemplates = useAppStore(s => s.carePlanTemplates);
+  const authUserId = useAppStore(s => s.authUserId);
+  // The library is the organization's templates plus the signed-in user's
+  // own; patient templates live on their patient's care plan.
+  const templates = useMemo(
+    () => (allTemplates || []).filter(t => inLibrary(t, authUserId)),
+    [allTemplates, authUserId],
+  );
+  const [templateFiltersOpen, setTemplateFiltersOpen] = useState(false);
+  const [scopeFilter, setScopeFilter] = useState([]);
   const goals = useAppStore(s => s.carePlanGoals);
   const barriers = useAppStore(s => s.carePlanBarriers);
   const libraryLoading = useAppStore(s => s.carePlanLibraryLoading);
@@ -269,9 +287,8 @@ export function CarePlanLibraryPanel() {
 
   const sortTemplates = (list) => {
     const q = searchValue.trim().toLowerCase();
-    const base = !q ? list : list.filter(t =>
-      t.name.toLowerCase().includes(q) || t.conditions.some(c => c.toLowerCase().includes(q))
-    );
+    const base = list.filter(t => matchesScopeFilter(t, scopeFilter) && (!q
+      || t.name.toLowerCase().includes(q) || t.conditions.some(c => c.toLowerCase().includes(q))));
     const dir = templateSort.dir === 'asc' ? 1 : -1;
     const valueOf = (t) => (
       templateSort.key === 'conditions' ? (t.conditions[0] || '') :
@@ -290,11 +307,11 @@ export function CarePlanLibraryPanel() {
 
   const filteredTemplates = useMemo(
     () => sortTemplates(publishedTemplates),
-    [publishedTemplates, searchValue, templateSort, favoriteSet],
+    [publishedTemplates, searchValue, templateSort, favoriteSet, scopeFilter],
   );
   const filteredDrafts = useMemo(
     () => sortTemplates(draftTemplates),
-    [draftTemplates, searchValue, templateSort, favoriteSet],
+    [draftTemplates, searchValue, templateSort, favoriteSet, scopeFilter],
   );
 
   const [goalSort, setGoalSort] = useState({ key: 'title', dir: 'asc' });
@@ -392,12 +409,13 @@ export function CarePlanLibraryPanel() {
     for (const td of tr.cells) td.style.setProperty('--cell-x', `${td.offsetLeft}px`);
   };
   const duplicateTemplate = async () => {
-    const { template: t, name } = duplicateTarget;
+    const { template: t, name, scope } = duplicateTarget;
     if (!name.trim()) return;
     setDuplicateTarget(null);
     const saved = await saveCarePlanTemplate({
       name: name.trim(),
       status: t.status,
+      scope,
       conditions: t.conditions,
       goals: t.goals.map(g => ({ ...g })),
       interventions: t.interventions.map(i => ({ ...i })),
@@ -435,7 +453,10 @@ export function CarePlanLibraryPanel() {
         )}
       </td>
       <td className={`${nameTdClass} ${bulkMode ? styles.tdNameOffset : ''}`}>
-        <button type="button" className={styles.nameLink} onClick={() => openEditTemplate(t)}>{t.name}</button>
+        <span className={styles.nameWithScope}>
+          <button type="button" className={styles.nameLink} onClick={() => openEditTemplate(t)}>{t.name}</button>
+          <TemplateScopeBadge template={t} />
+        </span>
       </td>
       <td className={styles.tdConditions}>
         {(t.conditions || []).length
@@ -460,9 +481,14 @@ export function CarePlanLibraryPanel() {
           <div className={styles.vDivider} />
           <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit" onClick={() => openEditTemplate(t)} />
           <div className={styles.vDivider} />
-          <ActionButton icon="solar:copy-linear" size="S" tooltip="Duplicate" onClick={() => setDuplicateTarget({ template: t, name: `${t.name} (Copy)` })} />
-          <div className={styles.vDivider} />
-          <TemplateRowMenu onDelete={() => setDeleteTarget({ kind: 'template', id: t.id, name: t.name })} />
+          <TemplateRowMenu
+            onDuplicate={() => setDuplicateTarget({
+              template: t,
+              name: `${t.name} (Copy)`,
+              scope: templateScopeOf(t) === 'user' ? 'user' : 'org',
+            })}
+            onDelete={() => setDeleteTarget({ kind: 'template', id: t.id, name: t.name })}
+          />
         </div>
       </td>
     </tr>
@@ -575,6 +601,7 @@ export function CarePlanLibraryPanel() {
   );
 
   const meta = TAB_META[activeTab];
+  const isTemplateTab = activeTab === 'template' || activeTab === 'drafts';
   const primaryActionLabel = `New ${meta.entityLabel}`;
 
   return (
@@ -583,7 +610,10 @@ export function CarePlanLibraryPanel() {
         tabs={CARE_PLAN_TABS}
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        actions={['search']}
+        actions={isTemplateTab ? ['search', 'filter'] : ['search']}
+        onFilter={() => setTemplateFiltersOpen(v => !v)}
+        filterActive={templateFiltersOpen}
+        filterBadgeCount={scopeFilter.length}
         searchPlaceholder={`Search ${meta.entityLabel.toLowerCase()}s…`}
         searchValue={searchValue}
         onSearchChange={setSearchValue}
@@ -596,6 +626,17 @@ export function CarePlanLibraryPanel() {
           />
         )}
       />
+
+      {isTemplateTab && templateFiltersOpen && (
+        <div className={styles.filterBar}>
+          <FilterChip
+            label="Visibility"
+            options={scopeFilterOptions(LIBRARY_SCOPE_CHOICES)}
+            selected={scopeFilter}
+            onChange={setScopeFilter}
+          />
+        </div>
+      )}
 
       <div className={`${styles.content} ${bulkMode ? styles.bulkOn : ''}`}>
         {libraryLoading && !libraryDidFetch && <TableSkeleton rows={6} />}
@@ -812,6 +853,11 @@ export function CarePlanLibraryPanel() {
               value={duplicateTarget?.name || ''}
               onChange={e => setDuplicateTarget(d => ({ ...d, name: e.target.value }))}
               aria-label="Template name"
+            />
+            <TemplateScopeChoice
+              value={duplicateTarget?.scope || 'org'}
+              onChange={scope => setDuplicateTarget(d => ({ ...d, scope }))}
+              choices={LIBRARY_SCOPE_CHOICES}
             />
             <div className={styles.duplicateFooter}>
               <Button type="submit" variant="primary" size="L" disabled={!duplicateTarget?.name.trim()}>Duplicate</Button>

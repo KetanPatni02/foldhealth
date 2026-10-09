@@ -39,6 +39,7 @@ import { CarePlanViewDrawers } from './CarePlanViewDrawers';
 import { CarePlanViewOverlays } from './CarePlanViewOverlays';
 import { AppliedTemplateStrip } from './AppliedTemplateStrip';
 import { addGoalsFromPicker, addBarriersFromPicker } from './carePlanPickerHandlers';
+import { PreviousTemplateRuns } from './PreviousTemplateRuns';
 import {
   createUndoGoalCascadeAction,
   createUndoToastAction,
@@ -173,6 +174,8 @@ export function CarePlanView({ patientId, program }) {
     else setPreviewBarrier(item);
   };
   const [templatesDrawerOpen, setTemplatesDrawerOpen] = useState(false);
+  // A template already on the plan, being extended or reinstated.
+  const [applyAgainTemplate, setApplyAgainTemplate] = useState(null);
   // Apply Templates → Create New: the library editor opens over the plan, and
   // a template saved there comes back pre-checked in the reopened drawer.
   const [templateCreateOpen, setTemplateCreateOpen] = useState(false);
@@ -255,6 +258,8 @@ export function CarePlanView({ patientId, program }) {
   const [templateConditions, setTemplateConditions] = useState([]);
   // 'all' = the whole plan; otherwise the id of one applied template.
   const [templateSourceId, setTemplateSourceId] = useState('all');
+  // Saved from a patient's plan, so it defaults to that patient.
+  const [templateScope, setTemplateScope] = useState('patient');
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind, id, name }
   const [historyOpen, setHistoryOpen] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
@@ -491,9 +496,8 @@ export function CarePlanView({ patientId, program }) {
       setTemplateConditions,
       setTemplateOpen,
       pickTemplateSource,
-      defaultTemplateSourceId: appliedTemplateIds.includes(templateFilterId)
-        ? templateFilterId
-        : (appliedTemplates[0]?.id || 'all'),
+      // The template selected on the plan, or the whole plan when none is.
+      defaultTemplateSourceId: appliedTemplateIds.includes(templateFilterId) ? templateFilterId : 'all',
       setTemplatesDrawerOpen,
       setHistoryOpen,
       setFiltersOpen,
@@ -596,6 +600,14 @@ export function CarePlanView({ patientId, program }) {
   function pickTemplateSource(id) {
     setTemplateSourceId(id);
     const source = id === 'all' ? null : appliedTemplates.find(t => t.id === id);
+    // Saving one template's part of the plan is a copy of it, so it starts
+    // named as one; a name someone typed is left alone.
+    const copyName = t => `${t.name} (Copy)`;
+    setTemplateName(prev => {
+      const wasAuto = !prev.trim() || appliedTemplates.some(t => copyName(t) === prev);
+      if (!wasAuto) return prev;
+      return source ? copyName(source) : '';
+    });
     setTemplateConditions(source
       ? (source.conditions || [])
       : (live?.plan?.conditions || []).map(c => c.label));
@@ -606,11 +618,16 @@ export function CarePlanView({ patientId, program }) {
     const saved = await savePatientCarePlanAsTemplate(
       patientId, program, templateName, templateConditions,
       templateSourceId === 'all' ? null : templateSourceId,
+      templateScope,
     );
     setTemplateOpen(false);
     setTemplateName('');
     setTemplateConditions([]);
-    if (saved) showToast(`Saved as template "${saved.name}"`);
+    setTemplateScope('patient');
+    if (saved) {
+      const where = { patient: 'for this patient', user: 'for you only', org: 'to the library' }[templateScope];
+      showToast(`Saved "${saved.name}" ${where}`);
+    }
   };
 
   const rowMenuItems = (kind) => {
@@ -702,10 +719,10 @@ export function CarePlanView({ patientId, program }) {
     noteDiscardOpen, setNoteDiscardOpen, noteDeleteOpen, setNoteDeleteOpen, doClearCareNote,
     problemOpen, setProblemOpen, doAddProblem, problemText, setProblemText,
     trendsOpen, setTrendsOpen, measurements,
-    templatesDrawerOpen, setTemplatesDrawerOpen, appliedTemplateIds,
+    templatesDrawerOpen, setTemplatesDrawerOpen, appliedTemplateIds, applyAgainTemplate, setApplyAgainTemplate,
     templateCreateOpen, setTemplateCreateOpen, createdTemplateIds, setCreatedTemplateIds, appliedTemplatePriorities, handleApplyTemplates,
     templateOpen, setTemplateOpen, templateName, setTemplateName, templateConditions, setTemplateConditions, saveTemplate,
-    templateSourceId, pickTemplateSource, appliedTemplates,
+    templateSourceId, pickTemplateSource, appliedTemplates, templateScope, setTemplateScope,
     deleteTarget, setDeleteTarget, live, removeGoal, confirmDelete,
     bulkAssignOpen, setBulkAssignOpen, bulkAssign, bulkDeleteOpen, setBulkDeleteOpen, bulkDelete, selectedCount,
   };
@@ -1045,6 +1062,8 @@ export function CarePlanView({ patientId, program }) {
           />
         ))}
       </div>
+
+      <PreviousTemplateRuns instances={live?.templateInstances} retired={live?.retired} />
       </div>
       </div>
 

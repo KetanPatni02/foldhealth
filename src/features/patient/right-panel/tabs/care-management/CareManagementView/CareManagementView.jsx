@@ -11,9 +11,13 @@ import { useAppStore } from '../../../../../../store/useAppStore';
 import { CareProgramsTab } from '../../care-programs/CareProgramsTab/CareProgramsTab';
 import { CarePlanSummaryView } from '../../care-programs/care-plan/summary/CarePlanSummaryView/CarePlanSummaryView.jsx';
 import { buildCarePlanSnapshot, filterCarePlanSnapshot, downloadCarePlanCsv, CARE_PLAN_DATE_PRESETS } from '../../care-programs/care-plan/summary/carePlanSnapshot';
+import { useSignedCarePlans } from '../../care-programs/care-plan/lib/useSignedCarePlans';
 import { programUrlKey } from '../../care-programs/CareProgramsTab/CareProgramsTab.utils';
 import { stepsFor, flatSteps } from '../../care-programs/program-detail/ProgramDetailView/ProgramDetailView.utils';
 import { CareManagementToolbar } from '../CareManagementToolbar/CareManagementToolbar';
+import { PatientCarePlanPane } from '../PatientCarePlanPane/PatientCarePlanPane';
+import { RollupSignButton } from '../../care-programs/care-plan/summary/RollupSignButton';
+import { showsPatientCarePlan } from '../../care-programs/care-plan/lib/carePlanMode';
 import { ProgramActivityDay } from '../ProgramActivityCard/ProgramActivityCard.jsx';
 import { groupProgramActivity } from '../programActivity';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
@@ -23,7 +27,10 @@ import { CM_FILTERS } from '../../../../data/programActivityMock';
 import { resolvePatientStoreId } from '../../../../../../lib/resolvePatientStoreId';
 import styles from './CareManagementView.module.css';
 
-const CM_TABS = ['Care Programs', 'Comprehensive Care Plan', 'Program Activity Log'];
+// Program-level orgs get the read-only Comprehensive roll-up; patient-level
+// and both-level orgs get an editable "Care Plan" in its place.
+const CM_TABS_PROGRAM = ['Care Programs', 'Comprehensive Care Plan', 'Program Activity Log'];
+const CM_TABS_PATIENT = ['Care Programs', 'Care Plan', 'Program Activity Log'];
 
 /** Shared "Add Care Note" drawer used by both the Comprehensive
  *  Care Plan and Program Activity Log panes. Composer only for now —
@@ -63,9 +70,10 @@ function AddCareNoteDrawer({ onClose, onSave }) {
 
 /** Comprehensive Care Plan pane — read-only cross-program snapshot with its own
  *  search + (program) filter and a Download CTA. */
-function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpenProgramStep }) {
+function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpenProgramStep, editable = false }) {
   const showToast = useAppStore(s => s.showToast);
-  const patientCarePlans = useAppStore(s => s.patientCarePlans);
+  // The pane shows plans as last signed, the same copy its table renders.
+  const patientCarePlans = useSignedCarePlans();
   const carePlanTemplates = useAppStore(s => s.carePlanTemplates) || [];
   const [addNoteOpen, setAddNoteOpen] = useState(false);
   const [searchMode, setSearchMode] = useState(false);
@@ -171,6 +179,14 @@ function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpe
               tooltipLeft
               onClick={handleDownload}
             />
+            {/* Both-level orgs edit every program's plan here, so they sign
+                here too: one Sign covers each plan with unsigned changes. */}
+            {editable && (
+              <>
+                <span className={styles.ctaDivider} aria-hidden="true" />
+                <RollupSignButton patientId={patientId} programs={programs} />
+              </>
+            )}
           </div>
         )}
         filterBar={(
@@ -193,6 +209,7 @@ function ComprehensiveCarePlanPane({ header, patientId, programs, onClose, onOpe
       <div className={styles.paneBody}>
         <CarePlanSummaryView
           embedded
+          editable={editable}
           patientId={patientId}
           programs={programs}
           searchText={searchText}
@@ -326,7 +343,17 @@ function ProgramActivityLog({ header }) {
  */
 export function CareManagementView() {
   // Sub-tab lives in the store so it rides the URL and survives a refresh.
-  const subTab = useAppStore(s => s.careManagementTab);
+  const storedSubTab = useAppStore(s => s.careManagementTab);
+  const carePlanMode = useAppStore(s => s.carePlanMode);
+  const patientLevel = showsPatientCarePlan(carePlanMode);
+  const cmTabs = patientLevel ? CM_TABS_PATIENT : CM_TABS_PROGRAM;
+  // A link or a mode switch can name the other level's plan tab; show this
+  // org's equivalent rather than an empty pane.
+  const subTab = cmTabs.includes(storedSubTab)
+    ? storedSubTab
+    : (storedSubTab === 'Care Plan' || storedSubTab === 'Comprehensive Care Plan'
+      ? (patientLevel ? 'Care Plan' : 'Comprehensive Care Plan')
+      : 'Care Programs');
   const setSubTab = useAppStore(s => s.setCareManagementTab);
   const patientId = useAppStore(s => s.selectedPatientId);
   const careProgramsByPatient = useAppStore(s => s.careProgramsByPatient);
@@ -355,7 +382,7 @@ export function CareManagementView() {
 
   // The sub-tab switch is a controlled element owned here, handed to each pane
   // so it renders inline in that pane's shared toolbar row.
-  const subTabBar = <SubTabs tabs={CM_TABS} activeKey={subTab} onChange={setSubTab} />;
+  const subTabBar = <SubTabs tabs={cmTabs} activeKey={subTab} onChange={setSubTab} />;
 
   // Keep all three panes mounted and toggle visibility, so switching only
   // shows/hides a pane instead of unmounting + remounting it — no re-fetch,
@@ -365,9 +392,20 @@ export function CareManagementView() {
       <div className={styles.paneSlot} hidden={subTab !== 'Care Programs'}>
         <CareProgramsTab header={subTabBar} />
       </div>
-      <div className={styles.paneSlot} hidden={subTab !== 'Comprehensive Care Plan'}>
+      {carePlanMode === 'patient' && (
+        <div className={styles.paneSlot} hidden={subTab !== 'Care Plan'}>
+          <PatientCarePlanPane header={subTabBar} patientId={patientId} />
+        </div>
+      )}
+      {/* Program-level: the read-only roll-up. Both-level: the same roll-up
+          under "Care Plan" (editing arrives with the roll-up's drawers). */}
+      <div
+        className={styles.paneSlot}
+        hidden={carePlanMode === 'patient' || subTab !== (patientLevel ? 'Care Plan' : 'Comprehensive Care Plan')}
+      >
         <ComprehensiveCarePlanPane
           header={subTabBar}
+          editable={carePlanMode === 'both'}
           patientId={patientId}
           programs={programs}
           onClose={() => setSubTab('Care Programs')}

@@ -4,23 +4,31 @@ import { ActivityLog, MetaLine, ViewMoreButton } from '../../../../../../../../c
 import { historyTimelineStyles as htStyles } from '../../../../../../../../components/HistoryTimeline/HistoryTimeline';
 import { groupByMonth } from '../../../../../../../../components/Timeline/Timeline.utils';
 import { AuditDetailCard } from '../../../../../../../../components/AuditDetailCard/AuditDetailCard';
-import { CarePlanVersionChangesDrawer } from '../CarePlanVersionChangesDrawer/CarePlanVersionChangesDrawer';
 import { Avatar } from '../../../../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
+import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
+import { Toggle } from '../../../../../../../../components/Toggle/Toggle';
+import { RadioListPopover } from '../../../../../../../../components/RadioListPopover/RadioListPopover';
+import { DateRangePopover } from '../../../../../../../../components/DateRangePopover/DateRangePopover';
+import { parseLocalDate } from '../../../../../../../../lib/localDate';
+import { Link } from '../../../../../../../../components/Link/Link';
+import { Icon } from '../../../../../../../../components/Icon/Icon';
+import { UnityPenToolIcon } from '../../../../../../../../components/Icon/UnityPenToolIcon';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
+import { templateContents as templateContentsOnPlan } from '../../../../../../../../store/lib/carePlanStoreLib';
+import { CarePlanVersionChangesDrawer } from '../CarePlanVersionChangesDrawer/CarePlanVersionChangesDrawer';
 import {
+  TEMPLATE_RENEWAL_ACTIVITY,
+  isTemplateRenewal,
   templateContents,
   templateOwnedTitles,
   withLiveLinks,
 } from '../../lib/carePlanAuditTemplates';
-import {
-  NOTE_ACTIONS,
-  groupByVersion,
-  netVersionRows,
-  standaloneEvents,
-  versionLabel,
-} from '../../lib/carePlanVersions';
+import { NOTE_ACTIONS, netVersionRows } from '../../lib/carePlanVersions';
+import { buildCarePlanHistory, filterHistoryEntries, HISTORY_TYPES } from '../../lib/carePlanHistory';
+import { adherenceTone, goalProgressTone } from '../../lib/goalMetrics';
 import styles from './CarePlanHistoryDrawer.module.css';
+
 
 const TYPE_LABEL = { goal: 'Goal', intervention: 'Intervention', barrier: 'Barrier', share: 'Share', plan: 'Plan' };
 const ACTION_LABEL = {
@@ -158,50 +166,12 @@ function templateBadges(row, links, anchorFor) {
   }).filter(Boolean);
 }
 
-// A version can hold several share events; only the most recent one describes
-// where the plan actually stands, so the attribution names that one. `rows` is
-// oldest-first, so the last match is the latest share.
-function latestShare(rows) {
-  const last = [...rows].reverse().find(r => r.action === 'shared');
-  return last?.summary || null;
-}
 
 // A counted section covers several entity types; clicking it lands on the
 // first one the version actually touched.
 function firstEntityType(rows) {
   return Object.keys(ENTITY_NOUN).find(type => rows.some(r => r.entityType === type))
     || 'goal';
-}
-
-// Collapsed gist of a version, as badges: how many templates it brought in and
-// how many changes it made per entity. Built from the same net rows the
-// expanded card uses, so the counts cannot disagree with what opens below.
-function versionBadges(group) {
-  const rows = netVersionRows(group.rows);
-  const templates = rows.filter(r => r.entityType === 'template');
-  const owned = templateOwnedTitles(templates);
-  // A template's own goals and items are reported by its badge, not counted
-  // again as individual changes.
-  const plain = rows.filter(r => r.entityType !== 'template'
-    && r.action !== 'shared'
-    && !((r.action === 'created' || r.action === 'deleted')
-      && owned.has((r.summary || '').trim().toLowerCase())));
-
-  const badges = [];
-  const addedTemplates = templates.filter(t => t.action === 'created').length;
-  const removedTemplates = templates.filter(t => t.action === 'deleted').length;
-  if (addedTemplates) {
-    badges.push({ label: `${addedTemplates} Template${addedTemplates === 1 ? '' : 's'} Added`, icon: CARE_PLAN_ICON });
-  }
-  if (removedTemplates) {
-    badges.push({ label: `${removedTemplates} Template${removedTemplates === 1 ? '' : 's'} Removed`, icon: CARE_PLAN_ICON });
-  }
-  for (const type of Object.keys(ENTITY_NOUN)) {
-    const n = plain.filter(r => r.entityType === type).length;
-    if (!n) continue;
-    badges.push({ label: `${n} ${ENTITY_NOUN[type][0]} Change${n === 1 ? '' : 's'}`, icon: ENTITY_ICON[type] });
-  }
-  return badges;
 }
 
 function sectionsFor(group, openAt, links) {
@@ -221,6 +191,16 @@ function sectionsFor(group, openAt, links) {
     && r.action !== 'shared');
   const sections = [];
   for (const t of templates) {
+    if (isTemplateRenewal(t)) {
+      sections.push({
+        id: t.id,
+        title: `${t.summary} Template ${TEMPLATE_RENEWAL_ACTIVITY[t.action]}`,
+        caption: t.detail || '',
+        badges: [],
+        onClick: () => openAt?.(t.id),
+      });
+      continue;
+    }
     sections.push({
       id: t.id,
       title: `${t.summary} Template ${t.action === 'created' ? 'Added' : 'Removed'}`,
@@ -257,145 +237,510 @@ function sectionsFor(group, openAt, links) {
   return sections;
 }
 
-// Read-only history of everything that happened to this program's care plan —
-// edits, status changes, removals and shares (roadmap #9).
+// Entries a month (or version) shows before folding the rest behind "Show N more".
+const GROUP_PREVIEW = 10;
+
+const LIVE_CHANGE_TYPES = new Set(['status', 'priority', 'progress', 'title', 'assignment']);
+
+// A status change wears the icon of the status it moved to (the rail tile
+// already takes that status's colour), as HCC status entries do. In Progress
+// uses the design system's Pending status glyph.
+const STATUS_ICON = {
+  'Not Started': 'solar:minus-circle-linear',
+  'In Progress': 'custom:pending',
+  'On Hold': 'solar:pause-circle-linear',
+  Met: 'solar:check-circle-linear',
+  'Not Met': 'solar:close-circle-linear',
+};
+// Other progress changes show what changed.
+const CHANGE_ICON = {
+  priority: 'solar:ranking-linear',
+  title: 'solar:pen-linear',
+};
+
+const DATE_PRESETS = ['Today', 'Last 7 days', 'Last 30 days', 'Last 90 days', 'This month'];
+
+const fmtDay = iso => parseLocalDate(iso)?.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) || '';
+
+// Whether an ISO time falls in a Date Range preset, or in `range` (two ISO
+// days, inclusive) for Custom; no preset keeps everything.
+function inDatePreset(preset, range = []) {
+  if (!preset) return () => true;
+  if (preset === 'Custom') {
+    const from = parseLocalDate(range[0]);
+    const to = parseLocalDate(range[1]);
+    if (!from || !to) return () => true;
+    const end = new Date(to.getFullYear(), to.getMonth(), to.getDate() + 1).getTime();
+    return iso => !!iso && new Date(iso).getTime() >= from.getTime() && new Date(iso).getTime() < end;
+  }
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const days = { Today: 0, 'Last 7 days': 7, 'Last 30 days': 30, 'Last 90 days': 90 }[preset];
+  return (iso) => {
+    if (!iso) return false;
+    const d = new Date(iso);
+    if (preset === 'This month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    return day <= today && today - day <= days * 86400000;
+  };
+}
+
+// Date Range picker: the presets, plus Custom, which opens the two-month range
+// calendar the worklists use.
+function DateRangeFilterPopover({ anchorRect, onClose, preset, range, onPick }) {
+  const [custom, setCustom] = useState(false);
+  if (custom) {
+    return (
+      <DateRangePopover
+        anchorRect={anchorRect}
+        label="Custom range"
+        selected={range}
+        onChange={next => onPick(next.length === 2 ? 'Custom' : null, next.length === 2 ? next : [])}
+        onClose={onClose}
+      />
+    );
+  }
+  return (
+    <RadioListPopover
+      anchorRect={anchorRect}
+      label="Date Range"
+      options={[...DATE_PRESETS, 'Custom']}
+      selected={preset ? [preset] : []}
+      onChange={(next) => {
+        if (next[0] === 'Custom') { setCustom(true); return; }
+        onPick(next[0] || null, []);
+        onClose();
+      }}
+      onClose={onClose}
+    />
+  );
+}
+
+// Timeline grouped by the version each entry belongs to: the unsigned draft,
+// then each signed version newest first (its signature and everything done
+// while it was current), then anything before the first signature.
+function groupByVersion(entries) {
+  const groups = new Map();
+  const add = (key, label, e) => {
+    if (!groups.has(key)) groups.set(key, { label, entries: [] });
+    groups.get(key).entries.push(e);
+  };
+  const current = Math.max(0, ...entries.map(e => (e.kind === 'version' ? e.versionNumber : (e.version || 0))));
+  const label = n => `Version ${n}${n === current ? ' · Current' : ''}`;
+  const groupCurrent = {};
+  groupCurrent[`v${current}`] = true;
+  for (const e of entries) {
+    if (e.kind === 'unsigned') add('unsigned', e.neverSigned ? 'Draft · Not Signed Yet' : `Version ${e.nextVersion} · Draft`, e);
+    else if (e.kind === 'version') add(`v${e.versionNumber}`, label(e.versionNumber), e);
+    else if (e.version) add(`v${e.version}`, label(e.version), e);
+    else add('draft', 'Before Version 1', e);
+  }
+  const rank = key => (key === 'unsigned' ? Infinity : key === 'draft' ? -1 : Number(key.slice(1)));
+  return [...groups.entries()]
+    .sort(([a], [b]) => rank(b) - rank(a))
+    .map(([key, g]) => ({
+      ...g,
+      current: !!groupCurrent[key],
+      versionNumber: key.startsWith('v') ? Number(key.slice(1)) : null,
+      draftOf: key === 'unsigned' && !g.entries[0]?.neverSigned ? g.entries[0]?.nextVersion : null,
+    }));
+}
+
+// Care Plan History: one timeline, grouped by month like every activity log.
+// A signature (and the draft waiting for one) is a single glanceable entry:
+// what it changed as badges, the detail card under View more, and the full
+// changes drawer from its open button. Progress on the signed plan, notes,
+// readings and plan events are entries of their own, tagged with the version
+// they happened on.
 export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
-  const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
   const key = `${patientId}::${program.id}`;
-  const entries = useAppStore(s => s.patientCarePlanAudit[key]);
-  const loading = useAppStore(s => s.patientCarePlanAuditLoading[key]);
-  const currentUserName = useAppStore(s => s.currentUserProfile?.name);
+  const fetchCarePlanAudit = useAppStore(s => s.fetchCarePlanAudit);
+  const fetchCarePlanVersions = useAppStore(s => s.fetchCarePlanVersions);
+  const audit = useAppStore(s => s.patientCarePlanAudit[key]);
+  const versions = useAppStore(s => s.patientCarePlanVersions[key]);
   const plan = useAppStore(s => s.patientCarePlans[key]);
+  const templates = useAppStore(s => s.carePlanTemplates);
   const libraryGoals = useAppStore(s => s.carePlanGoals);
+  const currentUserName = useAppStore(s => s.currentUserProfile?.name);
   const links = useMemo(() => ({ plan, libraryGoals }), [plan, libraryGoals]);
   const [expanded, setExpanded] = useState(() => new Set());
   const [openVersion, setOpenVersion] = useState(null);
+  const [allShown, setAllShown] = useState(() => new Set()); // group labels showing every entry
+  const toggleAllShown = label => setAllShown(prev => {
+    const next = new Set(prev);
+    if (next.has(label)) next.delete(label); else next.add(label);
+    return next;
+  });
+  const [typeLabels, setTypeLabels] = useState([]);
+  const [viewBy, setViewBy] = useState('month');
+  const [datePreset, setDatePreset] = useState(null); // preset label, 'Custom', or null
+  const [dateRange, setDateRange] = useState([]);     // [startISO, endISO] for Custom
+  const [actors, setActors] = useState([]);
+  const filtersActive = typeLabels.length > 0 || !!datePreset || actors.length > 0;
+  const clearFilters = () => { setTypeLabels([]); setDatePreset(null); setDateRange([]); setActors([]); };
 
   useEffect(() => {
-    if (entries === undefined) fetchCarePlanAudit(patientId, program.id);
-  }, [entries, patientId, program.id, fetchCarePlanAudit]);
+    if (audit === undefined) fetchCarePlanAudit(patientId, program.id);
+  }, [audit, patientId, program.id, fetchCarePlanAudit]);
+  useEffect(() => {
+    if (versions === undefined) fetchCarePlanVersions(patientId, program.id);
+  }, [versions, patientId, program.id, fetchCarePlanVersions]);
 
-  const isCurrentUser = useCallback(
-    (name) => Boolean(currentUserName && name && name.toLowerCase() === currentUserName.toLowerCase()),
+  const currentVersion = versions?.[0]?.versionNumber ?? null;
+
+  const roleFor = useCallback(
+    name => (currentUserName && name && name.toLowerCase() === currentUserName.toLowerCase() ? 'Current User' : null),
     [currentUserName],
   );
-
-  const toggle = (id) => setExpanded(prev => {
+  const toggle = id => setExpanded(prev => {
     const next = new Set(prev);
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
 
-  // ActivityLog takes a flat list: a `group` row opens each month, then one
-  // entry per signed version rendering its own body.
-  // A note or a restore can happen with no signature in sight, so each is its
-  // own entry rather than part of a version's difference.
-  const renderStandalone = (e) => {
-    const at = e.createdAt ? new Date(e.createdAt) : null;
-    const isNote = NOTE_ACTIONS.has(e.action);
-    const removed = isNote && e.action !== 'note';
-    const heading = isNote
-      ? (removed ? 'Care Plan Note Removed' : 'Care Plan Note Updated')
-      : e.summary;
+  const history = useMemo(() => {
+    if (!audit || !versions) return [];
+    // A template applied in a version is described the way signCarePlan
+    // records one, from the plan as that version holds it.
+    const templateDetail = (id, snapshot) => {
+      const template = (templates || []).find(t => String(t.id) === String(id));
+      return template ? JSON.stringify(templateContentsOnPlan(template, snapshot, libraryGoals)) : '';
+    };
+    return buildCarePlanHistory({ versions, audit, slice: plan, templates, templateDetail });
+  }, [audit, versions, plan, templates, libraryGoals]);
+
+  const selected = useMemo(
+    () => new Set(HISTORY_TYPES.filter(t => typeLabels.includes(t.label)).map(t => t.key)),
+    [typeLabels],
+  );
+
+  // The version tag that ends a meta line: "v3" plus a small grey Current
+  // badge for the version the plan is on now, "v2" for an older one.
+  const versionTag = n => (n === currentVersion
+    ? (
+      <span className={styles.versionTag}>
+        v{n}
+        <Badge size="S" tone="grey" label="Current" className={styles.currentBadge} />
+      </span>
+    )
+    : `v${n}`);
+
+  const metaFor = (at, by, context) => {
+    const d = at ? new Date(at) : null;
+    return (
+      <MetaLine entry={{
+        date: d ? d.toLocaleDateString('en-US', MM_DD_YYYY) : null,
+        time: d ? d.toLocaleTimeString('en-US', HH_MM) : null,
+        by: by || null,
+        role: roleFor(by),
+        context,
+      }} />
+    );
+  };
+
+  // A signature, or the draft waiting for one: headline, at-a-glance badges,
+  // the detail card under View more, and the changes drawer from its corner.
+  const renderVersion = (e) => {
+    const isOpen = expanded.has(e.id);
+    const group = {
+      id: e.id,
+      rows: [...e.rows].sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))),
+      signed: { id: e.id, detail: e.note || '' },
+      createdAt: e.at,
+    };
+    const unsigned = e.kind === 'unsigned';
+    const header = unsigned
+      ? [e.neverSigned ? 'Not signed yet' : 'Unsigned changes', `Becomes v${e.nextVersion} when signed`]
+      : [`Signed by: ${e.actor || 'Unknown'}`, `v${e.versionNumber}`, e.sharedTo].filter(Boolean);
+    const openChanges = anchor => setOpenVersion({ rows: group.rows, createdAt: e.at, anchor });
+    const card = isOpen && (
+      <div className={styles.detailsWrap}>
+        <AuditDetailCard
+          header={header}
+          sections={sectionsFor(group, anchor => openChanges(anchor), links)}
+          onOpen={() => openChanges(null)}
+          openTooltip="View changes"
+        />
+      </div>
+    );
     return (
       <>
-        <MetaLine entry={{
-          date: at ? at.toLocaleDateString('en-US', MM_DD_YYYY) : null,
-          time: at ? at.toLocaleTimeString('en-US', HH_MM) : null,
-          by: e.actor,
-          role: isCurrentUser(e.actor) ? 'Current User' : null,
-        }} />
+        {e.at && metaFor(e.at, e.actor, unsigned ? undefined : versionTag(e.versionNumber))}
         <div className={htStyles.headlineRow}>
-          <span className={htStyles.headline}>{heading}</span>
+          <span className={htStyles.headline}>
+            {unsigned
+              ? (e.neverSigned ? 'Care Plan Drafted' : 'Care Plan Has Unsigned Changes')
+              : 'Changes in Care Plan'}
+          </span>
+          {unsigned && viewBy !== 'version' && <Badge size="S" tone="warning" label={`Draft · v${e.nextVersion}`} />}
+          {group.rows.length > 0 && <ViewMoreButton expanded={isOpen} onToggle={() => toggle(e.id)} />}
         </div>
-        {isNote && !removed && e.detail && (
-          <div className={styles.noteBody}>{e.detail}</div>
-        )}
+        {card}
       </>
     );
   };
 
-  const logEntries = useMemo(() => {
-    const versions = groupByVersion(entries || []);
-    const events = standaloneEvents(entries || []).map(e => ({
-      ...e,
-      standalone: true,
-      // groupByMonth reads createdAt, which both shapes already carry.
-    }));
-    const timeline = [...versions, ...events]
-      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
-    return groupByMonth(timeline).flatMap(month => [
-      { t: 'group', label: month.label },
-      ...month.entries.map(g => {
-        if (g.standalone) {
-          return {
-            t: 'care_plan_event',
-            id: g.id,
-            avatar: (
-              <Avatar
-                type="icon"
-                variant="others"
-                size="S"
-                iconName={NOTE_ACTIONS.has(g.action) ? 'solar:notes-linear' : 'custom:history'}
-              />
-            ),
-            render: () => renderStandalone(g),
-          };
-        }
-        const at = g.createdAt ? new Date(g.createdAt) : null;
-        const isOpen = expanded.has(g.id);
-        const version = versionLabel(g.signed);
-        const badges = versionBadges(g);
-        const header = [
-          `Signed by: ${g.actor || 'Unknown'}`,
-          version,
-          latestShare(g.rows),
-        ].filter(Boolean);
-        return {
-          t: 'care_plan_version',
-          id: g.id,
-          avatar: <Avatar type="icon" variant="others" size="S" iconName={CARE_PLAN_ICON} />,
-          render: () => (
-            <>
-              <MetaLine entry={{
-                date: at ? at.toLocaleDateString('en-US', MM_DD_YYYY) : null,
-                time: at ? at.toLocaleTimeString('en-US', HH_MM) : null,
-                by: g.actor,
-                role: isCurrentUser(g.actor) ? 'Current User' : null,
-              }} />
-              <div className={htStyles.headlineRow}>
-                <span className={htStyles.headline}>Care Plan Updated</span>
-                <ViewMoreButton expanded={isOpen} onToggle={() => toggle(g.id)} />
+  const showMoreRow = (label, hidden, showAll) => ({
+    t: 'care_plan_more',
+    id: `${label}-more`,
+    avatar: (
+      <span className={styles.moreRailIcon} aria-hidden="true">
+        <Icon name="solar:alt-arrow-up-linear" size={10} color="var(--primary-300)" />
+        <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--primary-300)" />
+      </span>
+    ),
+    render: () => (
+      <button type="button" className={styles.moreLink} onClick={() => toggleAllShown(label)}>
+        {showAll ? `Show fewer entries from ${label}` : `Show ${hidden} more ${hidden === 1 ? 'entry' : 'entries'} from ${label}`}
+      </button>
+    ),
+  });
+
+  const signedMarker = (e) => {
+    const d = e.at ? new Date(e.at) : null;
+    return {
+      t: 'care_plan_signed',
+      id: `${e.id}-signed`,
+      avatar: (
+        <span className={styles.signedRailIcon}>
+          <UnityPenToolIcon size={24} />
+        </span>
+      ),
+      render: () => (
+        // Date • Time • what happened • who, the order every entry's meta
+        // line reads in.
+        <div className={styles.signedMarker}>
+          {d && (
+            <span className={styles.signedMeta}>
+              {d.toLocaleDateString('en-US', MM_DD_YYYY)} • {d.toLocaleTimeString('en-US', HH_MM)} •
+            </span>
+          )}
+          <span className={styles.signedPill}>
+            <span className={styles.signedPillText}>Care Plan Signed as Version {e.versionNumber}</span>
+          </span>
+          {e.actor && <span className={styles.signedMeta}>• {e.actor}{roleFor(e.actor) ? ` (${roleFor(e.actor)})` : ''}</span>}
+        </div>
+      ),
+    };
+  };
+
+  // Progress, notes, readings and plan events are ordinary activity-log
+  // entries, so they read exactly like HCC's: a sentence headline, the
+  // from → to pills under it, and the version in the meta line.
+  const activityItem = (e) => {
+    const d = e.at ? new Date(e.at) : null;
+    const base = {
+      id: e.id,
+      date: d ? d.toLocaleDateString('en-US', MM_DD_YYYY) : null,
+      time: d ? d.toLocaleTimeString('en-US', HH_MM) : null,
+      by: e.actor || null,
+      role: roleFor(e.actor),
+      // The version it happened on; the one the plan is on now says so.
+      context: e.version ? versionTag(e.version) : 'Draft',
+      // What happened, then the item it happened to in a quieter tone.
+      title: e.headlineAction
+        ? <>{e.headlineAction} <span className={styles.headlineSubject}>{e.headlineSubject}</span></>
+        : e.headline,
+    };
+    if (e.type === 'progress') {
+      // Progress and adherence read in their band colours ("3% - Low" red,
+      // "70% - Moderate" amber, "85% - High" green), on the pills and on the
+      // half-ring glyph in the rail, as they do on the goal and intervention.
+      const toneOf = e.entityType === 'intervention' ? adherenceTone : goalProgressTone;
+      const toTone = toneOf(e.to);
+      return {
+        ...base,
+        t: 'status_change',
+        avatar: <Avatar type="icon" variant={toTone === 'grey' ? 'others' : toTone} size="S" iconName="custom:in-progress" />,
+        render: () => (
+          <>
+            <MetaLine entry={base} />
+            <div className={htStyles.headlineRow}>
+              <span className={htStyles.headline}>{base.title}</span>
+            </div>
+            <div className={htStyles.transition}>
+              <Badge size="S" tone={toneOf(e.from)} label={e.from || 'None'} />
+              <Icon name="solar:arrow-right-linear" size={12} color="var(--neutral-300)" />
+              <Badge size="S" tone={toTone} label={e.to || 'None'} />
+            </div>
+          </>
+        ),
+      };
+    }
+    if (e.type === 'assignment' && /^Assignee Changed for /.test(e.headline)) {
+      // Who it moved between, as the activity log's avatar chips.
+      const person = name => (!name || name === 'Unassigned' || name === 'None'
+        ? null
+        : { name, initials: name.split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() });
+      return { ...base, t: 'assignee_change', fromAssignee: person(e.from), toAssignee: person(e.to) };
+    }
+    if (LIVE_CHANGE_TYPES.has(e.type)) {
+      const icon = e.type === 'status'
+        ? STATUS_ICON[e.to]
+        : (e.type === 'assignment' ? 'solar:calendar-linear' : CHANGE_ICON[e.type]);
+      return { ...base, t: 'status_change', icon, from: e.from || 'None', to: e.to || 'None' };
+    }
+    if (e.type === 'care_note' || e.type === 'item_note') {
+      // The note's text waits behind "• View Note", the way HCC entries keep
+      // their details one click away.
+      const open = expanded.has(e.id);
+      return {
+        ...base,
+        t: 'comment',
+        render: () => (
+          <>
+            <MetaLine entry={base} />
+            <div className={htStyles.headlineRow}>
+              <span className={htStyles.headline}>{base.title}</span>
+              {(e.body || e.previous) && (
+                <ViewMoreButton expanded={open} onToggle={() => toggle(e.id)} label="View Note" leadingDot />
+              )}
+            </div>
+            {open && (
+              // Laid out like an HCC details card: what the note is on, the
+              // note itself, then what it replaced.
+              <div className={htStyles.detailsCard}>
+                <div className={htStyles.detailRow}>
+                  <div className={htStyles.detailText}>
+                    <div className={htStyles.detailHcc}>
+                      {e.title ? `${{ goal: 'Goal', intervention: 'Intervention', barrier: 'Barrier' }[e.entityType] || 'Item'}: ${e.title}` : 'Care Plan Note'}
+                    </div>
+                    <div className={`${htStyles.detailIcd} ${styles.noteText}`}>{e.body || e.previous}</div>
+                    {e.body && e.previous && (
+                      <div className={htStyles.detailReason}>Previous note: {e.previous}</div>
+                    )}
+                    {!e.body && <div className={htStyles.detailReason}>Note removed</div>}
+                  </div>
+                </div>
               </div>
-              {badges.length > 0 && (
-                <div className={styles.summaryBadges}>
-                  {badges.map(b => (
-                    <Badge key={b.label} tone="grey" size="S" icon={b.icon} label={b.label} />
-                  ))}
-                </div>
-              )}
-              {isOpen && (
-                <div className={styles.detailsWrap}>
-                  <AuditDetailCard
-                    header={header}
-                    sections={sectionsFor(g, anchor => setOpenVersion({ ...g, anchor }), links)}
-                    onOpen={() => setOpenVersion(g)}
-                    openTooltip="View changes"
-                  />
-                </div>
-              )}
-            </>
-          ),
+            )}
+          </>
+        ),
+      };
+    }
+    if (e.type === 'value') {
+      return {
+        ...base,
+        t: 'care_plan_value',
+        icon: 'solar:graph-up-linear',
+        outcome: `${e.value || 'No value'}${e.previous ? ` (previous ${e.previous})` : ''} • ${e.inTarget ? 'In target' : 'Out of target'}`,
+        outcomeColor: e.inTarget ? 'var(--status-success)' : 'var(--status-error)',
+      };
+    }
+    return { ...base, t: 'care_plan_event', icon: 'custom:history', outcome: e.detail || undefined };
+  };
+
+  const actorOptions = useMemo(
+    () => [...new Set(history.map(e => e.actor).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [history],
+  );
+
+  const logEntries = useMemo(() => {
+    const now = new Date().toISOString();
+    const inDateRange = inDatePreset(datePreset, dateRange);
+    // The draft waiting to be signed is pending, not past: it leads the
+    // timeline whatever its last edit's date.
+    const timeline = filterHistoryEntries(history, selected)
+      .filter(e => e.kind === 'unsigned' || inDateRange(e.at))
+      .filter(e => !actors.length || actors.includes(e.actor))
+      .map(e => ({ ...e, createdAt: e.kind === 'unsigned' ? now : (e.at || now) }))
+      .sort((a, b) => (a.kind === 'unsigned' ? -1 : b.kind === 'unsigned' ? 1 : 0));
+    const groups = viewBy === 'version' ? groupByVersion(timeline) : groupByMonth(timeline);
+    return groups.flatMap(month => {
+      const items = month.entries.flatMap(e => {
+        if (e.kind === 'activity') return [activityItem(e)];
+        const entry = {
+          t: 'care_plan_version',
+          id: e.id,
+          avatar: <Avatar type="icon" variant={e.kind === 'unsigned' ? 'warning' : 'others'} size="S" iconName={CARE_PLAN_ICON} />,
+          render: () => renderVersion(e),
         };
-      }),
-    ]);
-  }, [entries, expanded, isCurrentUser]); // eslint-disable-line react-hooks/exhaustive-deps -- renderStandalone is derived from isCurrentUser
+        // A signature is the entry with what the version changed, closed by a
+        // one-line marker (Figma ICD-Import 7121:161868) that divides it from
+        // the activity before it.
+        return e.kind === 'version' ? [entry, signedMarker(e)] : [entry];
+      });
+      // A busy month (or version) shows its first entries and folds the rest
+      // behind one "Show N more" row.
+      const hidden = items.length - GROUP_PREVIEW;
+      const showAll = allShown.has(month.label);
+      return [
+        {
+          t: 'group',
+          label: month.label,
+          // The current version reads "Version 3" plus a Current badge in the
+          // same Unity treatment as the signature marker.
+          display: month.current ? (
+            <span className={styles.groupLabel}>
+              Version {month.versionNumber}
+              <span className={`${styles.signedPill} ${styles.currentPill}`}>
+                <span className={styles.signedPillText}>Current</span>
+              </span>
+            </span>
+          ) : month.draftOf ? (
+            // The draft group carries its Draft badge here, not on the entry.
+            <span className={styles.groupLabel}>
+              Version {month.draftOf}
+              <Badge size="S" tone="grey" label="Draft" />
+            </span>
+          ) : undefined,
+        },
+        ...(hidden > 0 && !showAll ? items.slice(0, GROUP_PREVIEW) : items),
+        ...(hidden > 0 ? [showMoreRow(month.label, hidden, showAll)] : []),
+      ];
+    });
+  }, [history, selected, expanded, roleFor, viewBy, datePreset, dateRange, actors, allShown]); // eslint-disable-line react-hooks/exhaustive-deps -- renderers close over links/state read at render
+
+  const loading = audit === undefined || versions === undefined;
 
   return (
-    <Drawer title="Care Plan History" onClose={onClose}>
+    <Drawer
+      title="Care Plan History"
+      onClose={onClose}
+      banner={(
+        <div className={styles.filterRow}>
+          <Toggle
+            size="S"
+            items={[{ key: 'month', label: 'Month' }, { key: 'version', label: 'Versions' }]}
+            active={viewBy}
+            onChange={setViewBy}
+          />
+          <span className={styles.filterDivider} aria-hidden="true" />
+          <FilterChip
+            label="Activity Type"
+            options={HISTORY_TYPES.map(t => t.label)}
+            selected={typeLabels}
+            onChange={setTypeLabels}
+          />
+          <FilterChip
+            label="Date Range"
+            active={!!datePreset}
+            activeSummary={datePreset === 'Custom' ? `${fmtDay(dateRange[0])} – ${fmtDay(dateRange[1])}` : datePreset || undefined}
+            onClear={() => { setDatePreset(null); setDateRange([]); }}
+            renderPopover={({ anchorRect, onClose: closePopover }) => (
+              <DateRangeFilterPopover
+                anchorRect={anchorRect}
+                onClose={closePopover}
+                preset={datePreset}
+                range={dateRange}
+                onPick={(preset, range) => { setDatePreset(preset); setDateRange(range); }}
+              />
+            )}
+          />
+          <FilterChip
+            label="Activity by"
+            options={actorOptions}
+            selected={actors}
+            onChange={setActors}
+          />
+          <Link disabled={!filtersActive} onClick={clearFilters}>Clear All</Link>
+        </div>
+      )}
+    >
       <ActivityLog
-        entries={logEntries}
-        emptyLabel={loading ? 'Loading history…' : 'No signed care plan versions yet.'}
+        relaxed
+        entries={loading ? [] : logEntries}
+        emptyLabel={loading ? 'Loading history…' : 'Nothing matches these filters.'}
       />
       {openVersion && (
         <CarePlanVersionChangesDrawer
@@ -403,6 +748,7 @@ export function CarePlanHistoryDrawer({ patientId, program, onClose }) {
           signedAt={openVersion.createdAt}
           anchor={openVersion.anchor}
           plan={plan}
+          patientId={patientId}
           onClose={() => setOpenVersion(null)}
         />
       )}

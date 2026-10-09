@@ -37,6 +37,81 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care plan versions: signed plan vs draft, and a versioned History.**
+  Signing snapshots the whole plan (goals, interventions, barriers, goal
+  links, templates, conditions) into `patient_care_plan_versions`. Changes
+  made through Edit, plus adding or removing items, links and templates, stay
+  in the draft until signed; the header shows "N unsigned changes since vN"
+  with Discard (back to the signed version, same row ids). Status, priority,
+  title, assignee, due date and recurrence, progress and adherence, readings
+  and notes apply at once as progress on the signed plan. The Comprehensive
+  Care Plan, Monitoring rail and Share read the signed copy; Share no longer
+  re-signs, and a never-signed plan is hidden outside the editor. Care Plan
+  History is rebuilt on the shared ActivityLog: Month or Versions view,
+  Activity Type, Date Range (with Custom) and Activity by filters, a
+  "Care Plan Signed as Version N" marker per signature, "Changes in Care
+  Plan" with the full changes drawer, and live activity tagged with its
+  version. Restore now loads an older version into the draft instead of
+  rewriting the plan. No migration.
+- **Applying a template again: Extend or Reinstate.** Each template on a
+  patient's plan is now a run with a start and an end date
+  (`patient_care_plan_template_instances`). Templates carry a "When
+  applied again" setting (`care_plan_templates.renewal`): condition
+  templates extend, event templates such as TOC reinstate. In Apply
+  Templates, a template already on the plan gets Apply again, which asks
+  Extend (keep the start date, set a new end date) or Reinstate (auto-close
+  the current run as Completed when every goal and intervention is met,
+  Closed otherwise, and start a fresh one). The end date is prefilled from
+  the template's longest goal duration and can be changed. A reinstated
+  run's goals, interventions and barriers are kept as history
+  (`retired_instance_id`) under a collapsed Previous runs section with an
+  Auto-closed tag, and both actions show in History. Also: the template
+  editor can switch a template between Private and Org, template titles
+  open the preview, Save as Template uses the whole plan unless a template
+  is selected, and SNP's empty Model of Care section is hidden in
+  patient-level mode.
+- **Care plan templates for the org, for yourself, or for one patient.**
+  `care_plan_templates` gains `scope` (`org`, `user`, `patient`),
+  `owner_user_id` and `patient_id`; existing templates are `org`, and RLS
+  keeps `user` templates readable and writable only by their owner. New
+  Care Plan (Settings and Apply Templates > Create New) and Duplicate ask
+  "Who is this template for?" (Organization / Only me). A patient's Save as
+  Template adds This patient, and that template is offered only in that
+  patient's Apply Templates. The Settings library lists org templates plus
+  your own; both lists show an Org / Private / Patient badge and a
+  Visibility filter.
+- **API routes now require a signed-in user.** The routes that send email
+  (send-test-email, send-report-email) or call paid APIs (care-plan-summary,
+  referral-email, pop-group-rule-from-nl, pexels-search) return 401 unless
+  the request carries a valid Supabase access token. Server side, call
+  `requireUser(req, res)` from `api/_lib/requireUser.js` at the top of the
+  handler; client side, use `apiFetch` from `src/lib/apiFetch.js` instead of
+  `fetch`. ICD search, reference lookups, share pages, OG images and the
+  Sentry tunnel stay public.
+
+- **Care plan level: program, patient or both.** Settings > Account > Org has
+  a "Care plan level" choice (`org_settings.care_plan_mode`, default
+  program). Program level works as before. Patient level hides each
+  program's Care Plan step (and drops it from progress) and adds Care
+  Management > Care Plan with the full plan, stored under a per-patient
+  PATIENT program. Both keeps program plans and turns Care Management >
+  Care Plan into an editable roll-up: drawers edit each item's own program,
+  "+" asks which program to add to, and one Sign signs every plan with
+  unsigned changes. A level the org isn't using stays hidden, including in
+  the Monitoring goals rail. The plan header (title, status, toolbar) is now
+  the shared `CarePlanHeader`.
+- **Branded CIS PDFs and Astrana report header / footer.** The CIS-CMB10
+  schedule and immunization record PDFs follow the Patient Summary report
+  layout (A4, Inter; logo + page / title / Generated On header, brand band,
+  label : value patient block, titled bordered tables, contact footer). New
+  **Astrana Report Header / Footer** components (maroon band, Astrana wordmark
+  and contact) sit beside the Trailhead ones in the report header / footer
+  options; the immunization record uses Astrana, the schedule keeps
+  Trailhead. Also: CIS gap status advances automatically (Engaged on a
+  recorded dose or booked visit, Engaged Requires Follow-Up when a booked
+  visit passes unrecorded, Completed when met; never past a closed gap);
+  CIS suggested actions restyled; the scheduled-appointment chip is a link.
+
 - **HEDIS worklist Age filter.** More Filters gains **Age** (Under 2, 2–17,
   18–44, 45–64, 65–74, 75+), a multi-select FilterChip. Age comes from DOB
   in whole years, falling back to the row's age text ("22m", "67y 2m").

@@ -23,9 +23,14 @@ export function carePlanHasChangesSinceSign(carePlan) {
   return Math.max(...stamps, 0) > signedMs;
 }
 
-/** Sign & Share is available when unsigned, or signed with pending edits. */
-export function carePlanSignShareEnabled(carePlan, { usingMock = false } = {}) {
+/**
+ * Sign is available when unsigned, or signed with unsigned changes. Pass the
+ * draft state (useCarePlanDraftState) to decide on the real diff against the
+ * signed version; without it the edit timestamps are used.
+ */
+export function carePlanSignShareEnabled(carePlan, { usingMock = false, draft = null } = {}) {
   if (usingMock || !carePlan?.plan) return false;
   if (!isCarePlanSigned(carePlan.plan)) return true;
+  if (draft?.latestVersion) return draft.hasUnsignedChanges;
   return carePlanHasChangesSinceSign(carePlan);
 }

@@ -3,65 +3,74 @@ import { PriorityIcon } from '../../../../../components/PriorityIcon/PriorityIco
 import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { buildCarePlanSnapshot } from '../care-programs/care-plan/summary/carePlanSnapshot';
+import { carePlanSources } from '../care-programs/care-plan/lib/carePlanMode';
 import { GbiNameCell, GbiStatusButton } from '../care-programs/care-plan/tables/carePlanTableShared';
 import { enrichGoalRows } from '../care-programs/care-plan/tables/carePlanTableSort';
 import { normalizeCategory } from '../../../../settings/care-plan-library/lib';
 import { GoalPreviewDrawer } from '../care-programs/care-plan/drawers/GoalPreviewDrawer/GoalPreviewDrawer';
+import { useSignedCarePlans } from '../care-programs/care-plan/lib/useSignedCarePlans';
 import styles from './MonitoringRailGoals.module.css';
 
 const CLOSED_GOAL_STATUSES = new Set(['Met', 'Not Met']);
 const PRIORITIES = ['high', 'medium', 'low'];
 const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 
+// Goals on signed care plans. Status and priority are progress on the signed
+// plan, so they change from here directly.
 export function MonitoringRailGoals({ patient }) {
   const patientId = patient?.id;
   const careProgramsByPatient = useAppStore((s) => s.careProgramsByPatient);
-  const patientCarePlans = useAppStore((s) => s.patientCarePlans);
+  const signedCarePlans = useSignedCarePlans();
+  const saveCarePlanLiveField = useAppStore((s) => s.saveCarePlanLiveField);
   const fetchCareProgramsForPatient = useAppStore((s) => s.fetchCareProgramsForPatient);
-  const fetchAllPatientCarePlans = useAppStore((s) => s.fetchAllPatientCarePlans);
-  const savePatientCarePlanGoal = useAppStore((s) => s.savePatientCarePlanGoal);
-  const loading = useAppStore((s) => (patientId ? s.patientCarePlanAllLoading[patientId] : false));
-  const loadedFor = useAppStore((s) => (patientId ? s.patientCarePlanAllLoadedFor[patientId] : false));
+  const fetchSignedCarePlans = useAppStore((s) => s.fetchSignedCarePlans);
+  const loading = useAppStore((s) => (patientId ? s.patientSignedCarePlansLoading[patientId] : false));
+  const loadedFor = useAppStore((s) => (patientId ? s.patientSignedCarePlansLoadedFor[patientId] : false));
 
   const [previewGoal, setPreviewGoal] = useState(null);
   const [priorityMenu, setPriorityMenu] = useState(null);
   const [statusMenu, setStatusMenu] = useState(null);
 
+  const carePlanMode = useAppStore((s) => s.carePlanMode);
+  // Goals come from whichever level this org plans at: the patient's own plan,
+  // or its open programs' plans.
   const programs = useMemo(
-    () => (patientId ? (careProgramsByPatient[patientId] || []).filter((p) => p.status !== 'Closed') : []),
-    [careProgramsByPatient, patientId],
+    () => carePlanSources(
+      carePlanMode,
+      patientId ? (careProgramsByPatient[patientId] || []).filter((p) => p.status !== 'Closed') : [],
+      patientId,
+    ),
+    [careProgramsByPatient, patientId, carePlanMode],
   );
 
   useEffect(() => {
     if (!patientId) return;
     fetchCareProgramsForPatient?.(patientId);
-    fetchAllPatientCarePlans?.(patientId);
-  }, [patientId, fetchCareProgramsForPatient, fetchAllPatientCarePlans]);
+    fetchSignedCarePlans?.(patientId);
+  }, [patientId, fetchCareProgramsForPatient, fetchSignedCarePlans]);
 
   const activeGoals = useMemo(() => {
     if (!patientId) return [];
-    const { goals } = buildCarePlanSnapshot(programs, patientCarePlans, patientId);
+    const { goals } = buildCarePlanSnapshot(programs, signedCarePlans, patientId);
     const open = goals.filter((g) => !CLOSED_GOAL_STATUSES.has(g.status));
     return enrichGoalRows(open).sort((a, b) => {
       if (a._sortPriority !== b._sortPriority) return a._sortPriority - b._sortPriority;
       return (a.title || '').localeCompare(b.title || '');
     });
-  }, [programs, patientCarePlans, patientId]);
+  }, [programs, signedCarePlans, patientId]);
 
   const changePriority = (priority) => {
     if (!priorityMenu || !patientId) return;
     const { item } = priorityMenu;
     setPriorityMenu(null);
-    if (!item.program) return;
-    savePatientCarePlanGoal(patientId, item.program, { ...item, priority }, item.id);
+    if (item.program) saveCarePlanLiveField(patientId, item.program, 'goal', item.id, { priority });
   };
 
   const changeStatus = (status) => {
     if (!statusMenu || !patientId) return;
     const { item } = statusMenu;
     setStatusMenu(null);
-    if (!item.program) return;
-    savePatientCarePlanGoal(patientId, item.program, { ...item, status }, item.id);
+    if (item.program) saveCarePlanLiveField(patientId, item.program, 'goal', item.id, { status });
   };
 
   return (
@@ -70,7 +79,7 @@ export function MonitoringRailGoals({ patient }) {
       {loading && !loadedFor ? (
         <div className={styles.empty}>Loading goals…</div>
       ) : activeGoals.length === 0 ? (
-        <div className={styles.empty}>No active goals in the comprehensive care plan.</div>
+        <div className={styles.empty}>No active goals on a signed care plan.</div>
       ) : (
         <div className={styles.table}>
           <div className={styles.colHead}>
@@ -147,6 +156,7 @@ export function MonitoringRailGoals({ patient }) {
           patientId={patientId}
           program={previewGoal.program}
           onClose={() => setPreviewGoal(null)}
+          signedView
         />
       )}
     </div>
