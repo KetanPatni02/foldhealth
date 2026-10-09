@@ -37,6 +37,22 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care plan versions: signed plan vs draft, and a versioned History.**
+  Signing snapshots the whole plan (goals, interventions, barriers, goal
+  links, templates, conditions) into `patient_care_plan_versions`. Changes
+  made through Edit, plus adding or removing items, links and templates, stay
+  in the draft until signed; the header shows "N unsigned changes since vN"
+  with Discard (back to the signed version, same row ids). Status, priority,
+  title, assignee, due date and recurrence, progress and adherence, readings
+  and notes apply at once as progress on the signed plan. The Comprehensive
+  Care Plan, Monitoring rail and Share read the signed copy; Share no longer
+  re-signs, and a never-signed plan is hidden outside the editor. Care Plan
+  History is rebuilt on the shared ActivityLog: Month or Versions view,
+  Activity Type, Date Range (with Custom) and Activity by filters, a
+  "Care Plan Signed as Version N" marker per signature, "Changes in Care
+  Plan" with the full changes drawer, and live activity tagged with its
+  version. Restore now loads an older version into the draft instead of
+  rewriting the plan. No migration.
 - **Care plan templates for the org, for yourself, or for one patient.**
   `care_plan_templates` gains `scope` (`org`, `user`, `patient`),
   `owner_user_id` and `patient_id`; existing templates are `org`, and RLS
