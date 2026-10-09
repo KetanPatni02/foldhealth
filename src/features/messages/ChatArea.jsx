@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { supabase } from '../../lib/supabase';
 import { FormPicker } from '../forms/FormPicker';
 import { formShareLink } from '../forms/formLink';
 import { ChatHeader } from './ChatHeader';
 import { ChatMessagesList } from './ChatMessagesList';
-import { ChatInputArea } from './ChatInputArea';
+import { MessageComposer } from '../../components/MessageComposer/MessageComposer';
+import { Icon } from '../../components/Icon/Icon';
+import { toast } from '../../components/Toast/sonnerToast';
+import { getDisplayName } from './messageUtils';
 import styles from './MessagesView.module.css';
 
 export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
@@ -15,13 +18,12 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const [replyTo, setReplyTo]             = useState(null);
   const [dragOver, setDragOver]           = useState(false);
-  const [uploading, setUploading]         = useState(false);
+  const [pending, setPending]             = useState([]);
   const [formPickerOpen, setFormPickerOpen] = useState(false);
 
   const messagesRef   = useRef(null);
   const channelRef    = useRef(null);
-  const textareaRef   = useRef(null);
-  const fileInputRef  = useRef(null);
+  const fileInputId   = useId();
   const typingTimer   = useRef(null);
   const stopTimer     = useRef(null);
   const onUpdateRef   = useRef(onConversationUpdate);
@@ -119,77 +121,92 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
     channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { userId: currentUser.id, isTyping } });
   }, [currentUser.id]);
 
-  const uploadFile = useCallback(async (file) => {
-    setUploading(true);
+  // Files picked but not sent: they upload right away and wait in the type
+  // box as cards until Send.
+  const attach = useCallback(async (file) => {
+    if (!file) return;
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const previewUrl = URL.createObjectURL(file);
+    setPending(p => [...p, { id, name: file.name, size: file.size, type: file.type, previewUrl, uploading: true }]);
     const ext  = file.name.split('.').pop();
-    const path = `${currentUser.id}/${Date.now()}.${ext}`;
-    let error;
-    try {
-      ({ error } = await supabase.storage.from('chat-media').upload(path, file, { upsert: true }));
-    } finally {
-      setUploading(false);
+    const path = `${currentUser.id}/${Date.now()}-${id}.${ext}`;
+    const { error } = await supabase.storage.from('chat-media').upload(path, file, { upsert: true });
+    if (error) {
+      URL.revokeObjectURL(previewUrl);
+      setPending(p => p.filter(f => f.id !== id));
+      toast.error(`Could not upload ${file.name}: ${error.message}`);
+      return;
     }
-    if (error) return null;
     const { data: { publicUrl } } = supabase.storage.from('chat-media').getPublicUrl(path);
-    return { url: publicUrl, type: file.type.startsWith('image/') ? 'image' : 'file', name: file.name };
+    setPending(p => p.map(f => (f.id === id ? { ...f, url: publicUrl, uploading: false } : f)));
   }, [currentUser.id]);
 
-  const doSend = useCallback(async (mediaInfo = null) => {
+  const removePending = (id) => setPending((p) => {
+    const f = p.find(x => x.id === id);
+    if (f) URL.revokeObjectURL(f.previewUrl);
+    return p.filter(x => x.id !== id);
+  });
+
+  // One message per file (the text goes with the last), or just the text.
+  const insertMessage = useCallback(async ({ content, media, replyId }) => {
+    const optId = `opt-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    setMessages(prev => [...prev, {
+      id: optId, sender_id: currentUser.id, recipient_id: otherUser.id,
+      content, created_at: new Date().toISOString(), read_at: null,
+      reply_to_id: replyId || null,
+      media_url: media?.url || null, media_type: media?.type || null, media_name: media?.name || null,
+    }]);
+    scrollToBottom(false);
+    // direct_messages.content is NOT NULL: an attachment alone sends ''.
+    const payload = { sender_id: currentUser.id, recipient_id: otherUser.id, content: content || '' };
+    if (replyId) payload.reply_to_id = replyId;
+    if (media?.url) { payload.media_url = media.url; payload.media_type = media.type; payload.media_name = media.name; }
+    const { data, error } = await supabase.from('direct_messages').insert(payload).select().single();
+    if (error || !data) {
+      setMessages(prev => prev.filter(m => m.id !== optId));
+      throw new Error(error?.message || 'The message was not saved.');
+    }
+    setMessages(prev => prev.map(m => (m.id === optId ? data : m)));
+    onUpdateRef.current?.();
+  }, [currentUser.id, otherUser.id, scrollToBottom]);
+
+  const doSend = useCallback(async (extraMedia = null) => {
     const content = inputValue.trim();
-    if (!content && !mediaInfo) return;
+    const files = extraMedia ? [extraMedia] : pending.filter(f => f.url).map(f => ({
+      url: f.url, name: f.name, type: f.type.startsWith('image/') ? 'image' : 'file', previewUrl: f.previewUrl,
+    }));
+    if (!content && !files.length) return;
     if (sending) return;
     setSending(true);
     broadcastTyping(false);
     clearTimeout(stopTimer.current);
-
     const savedReply = replyTo;
     setInputValue('');
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
     setReplyTo(null);
-
-    const optId = `opt-${Date.now()}`;
-    setMessages(prev => [...prev, {
-      id: optId, sender_id: currentUser.id, recipient_id: otherUser.id,
-      content: content || null, created_at: new Date().toISOString(), read_at: null,
-      reply_to_id: savedReply?.id || null,
-      media_url: mediaInfo?.url || null, media_type: mediaInfo?.type || null, media_name: mediaInfo?.name || null,
-    }]);
-    scrollToBottom(false);
-
-    const payload = { sender_id: currentUser.id, recipient_id: otherUser.id, content: content || null };
-    if (savedReply?.id)  payload.reply_to_id = savedReply.id;
-    if (mediaInfo?.url) { payload.media_url = mediaInfo.url; payload.media_type = mediaInfo.type; payload.media_name = mediaInfo.name; }
-
+    if (!extraMedia) setPending([]);
     try {
-      const { data } = await supabase.from('direct_messages').insert(payload).select().single();
-      if (data) {
-        setMessages(prev => prev.map(m => m.id === optId ? data : m));
-        onUpdateRef.current?.();
+      const items = files.length ? files : [null];
+      for (let i = 0; i < items.length; i++) {
+        await insertMessage({
+          content: i === items.length - 1 ? content : '',
+          media: items[i],
+          replyId: i === 0 ? savedReply?.id : null,
+        });
       }
+      files.forEach(f => f.previewUrl && URL.revokeObjectURL(f.previewUrl));
+    } catch (err) {
+      setInputValue(content);
+      toast.error(`Could not send: ${err.message}`);
     } finally {
       setSending(false);
     }
-    textareaRef.current?.focus();
-  }, [inputValue, sending, currentUser.id, otherUser.id, replyTo, broadcastTyping, scrollToBottom]);
+  }, [inputValue, pending, sending, replyTo, broadcastTyping, insertMessage]);
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); doSend(); }
-    if (e.key === 'Escape') setReplyTo(null);
-  };
-
-  const handleInput = (e) => {
-    setInputValue(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+  const handleInput = (value) => {
+    setInputValue(value);
     broadcastTyping(true);
     clearTimeout(stopTimer.current);
     stopTimer.current = setTimeout(() => broadcastTyping(false), 2000);
-  };
-
-  const handleFileSelect = async (file) => {
-    if (!file) return;
-    const media = await uploadFile(file);
-    if (media) doSend(media);
   };
 
   return (
@@ -206,28 +223,46 @@ export function ChatArea({ currentUser, otherUser, onConversationUpdate }) {
         onReply={setReplyTo}
       />
 
-      <ChatInputArea
-        currentUser={currentUser}
-        otherUser={otherUser}
-        inputValue={inputValue}
-        replyTo={replyTo}
-        dragOver={dragOver}
-        sending={sending}
-        uploading={uploading}
-        textareaRef={textareaRef}
-        fileInputRef={fileInputRef}
-        onInput={handleInput}
-        onKeyDown={handleKeyDown}
-        onSend={() => doSend()}
-        onClearReply={() => setReplyTo(null)}
+      <div
+        className={dragOver ? styles.dragOver : undefined}
         onDragOver={e => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false); }}
-        onDrop={e => { e.preventDefault(); setDragOver(false); handleFileSelect(e.dataTransfer.files[0]); }}
-        onAttachClick={() => fileInputRef.current?.click()}
-        onImageClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = 'image/*'; fileInputRef.current.click(); } }}
-        onFormPickerOpen={() => setFormPickerOpen(true)}
-        onFileSelect={handleFileSelect}
-      />
+        onDrop={e => { e.preventDefault(); setDragOver(false); [...(e.dataTransfer.files || [])].forEach(attach); }}
+      >
+        <MessageComposer
+          value={inputValue}
+          onChange={handleInput}
+          onSend={() => doSend()}
+          sending={sending}
+          placeholder={dragOver ? 'Drop to attach…' : undefined}
+          attachments={pending}
+          onRemoveAttachment={removePending}
+          tools={[
+            { key: 'attach', icon: 'solar:paperclip-linear', tooltip: 'Attach file', onClick: () => document.getElementById(fileInputId)?.click() },
+            { key: 'form', icon: 'solar:clipboard-text-linear', tooltip: 'Share a form', onClick: () => setFormPickerOpen(true) },
+          ]}
+          above={replyTo && (
+            <div className={styles.replyPreview}>
+              <div className={styles.replyPreviewBar} />
+              <div className={styles.replyPreviewContent}>
+                <div className={styles.replyPreviewName}>{replyTo.sender_id === currentUser.id ? 'You' : getDisplayName(otherUser)}</div>
+                <div className={styles.replyPreviewText}>{replyTo.content || 'Attachment'}</div>
+              </div>
+              <button className={styles.replyPreviewClose} onClick={() => setReplyTo(null)} aria-label="Cancel reply">
+                <Icon name="solar:close-circle-linear" size={16} />
+              </button>
+            </div>
+          )}
+        />
+        <input
+          id={fileInputId}
+          type="file"
+          hidden
+          multiple
+          accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+          onChange={e => { [...(e.target.files || [])].forEach(attach); e.target.value = ''; }}
+        />
+      </div>
 
       {formPickerOpen && (
         <FormPicker

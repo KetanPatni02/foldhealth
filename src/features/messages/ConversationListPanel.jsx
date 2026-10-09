@@ -1,10 +1,17 @@
+import { useState } from 'react';
 import { Icon } from '../../components/Icon/Icon';
-import { Button } from '../../components/Button/Button';
-import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Input } from '../../components/Input/Input';
 import { Toggle } from '../../components/Toggle/Toggle';
 import { getInitials, getDisplayName, formatTime } from './messageUtils';
 import boneStyles from '../../components/TableSkeleton/TableSkeleton.module.css';
+import { CommsListEmpty } from './comms/CommsEmptyState';
+import { CommsListHeader } from './comms/CommsListHeader';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { BulkBar } from '../../components/BulkBar/BulkBar';
+import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import commsStyles from './comms/Comms.module.css';
+
+const ACTIVITY_FILTER = { Today: 1, 'Last 7 days': 7, 'Last 30 days': 30 };
 import styles from './MessagesView.module.css';
 
 /**
@@ -28,6 +35,15 @@ function ConversationSkeleton({ count = 6 }) {
   );
 }
 
+const LIST_TITLES = {
+  internal: 'Internal Chat',
+  efax: 'eFax',
+  assigned: 'Assigned to me',
+  mentions: 'Mentions',
+  others: 'Assigned to Others',
+  unassigned: 'Unassigned',
+};
+
 export function ConversationListPanel({
   activeChannel,
   showConversations,
@@ -39,39 +55,38 @@ export function ConversationListPanel({
   loading,
   profiles,
   selectedUserId,
-  onShowNewChat,
   onToggleSearch,
   onSearchChange,
   onClearSearch,
   onFilterTabChange,
   onSelectConversation,
+  onMarkRead,
+  navCollapsed,
+  onToggleNav,
 }) {
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [activity, setActivity] = useState([]);
+  const [activityCutoff, setActivityCutoff] = useState(0);
+  const [bulk, setBulk] = useState(false);
+  const [picked, setPicked] = useState([]);
+  const shown = activityCutoff
+    ? filteredConversations.filter(c => new Date(c.lastTime).getTime() >= activityCutoff)
+    : filteredConversations;
+
   return (
     <div className={styles.convPanel}>
-      <div className={styles.convHeader}>
-        <div className={styles.convHeaderLeft}>
-          <div className={styles.convHeaderTitle}>
-            {activeChannel === 'all' ? 'All Conversations' : activeChannel === 'internal' ? 'Internal Chats' : 'Chats'}
-          </div>
-          {showConversations && totalUnread > 0 && (
-            <div className={styles.convHeaderSub}>{totalUnread} unread chat{totalUnread !== 1 ? 's' : ''}</div>
-          )}
-        </div>
-        <div className={styles.convHeaderActions}>
-          <ActionButton icon="solar:pen-new-square-linear" size="S" tooltip="New chat" onClick={onShowNewChat} />
-          <div className={styles.convDivider} />
-          <ActionButton
-            icon="solar:magnifer-linear"
-            size="S"
-            tooltip="Search"
-            onClick={onToggleSearch}
-          />
-          <div className={styles.convDivider} />
-          <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-          <div className={styles.convDivider} />
-          <ActionButton icon="solar:menu-dots-bold" size="S" tooltip="More" />
-        </div>
-      </div>
+      <CommsListHeader
+        title={LIST_TITLES[activeChannel] || 'Conversations'}
+        sub={showConversations && totalUnread > 0 ? `${totalUnread} unread chat${totalUnread !== 1 ? 's' : ''}` : ''}
+        navCollapsed={navCollapsed}
+        onToggleNav={onToggleNav}
+        searchActive={showSearch}
+        onSearch={onToggleSearch}
+        bulkActive={bulk}
+        onBulk={showConversations ? () => { setBulk(v => !v); setPicked([]); } : undefined}
+        filterActive={filterOpen || activity.length > 0}
+        onFilter={showConversations ? () => setFilterOpen(v => !v) : undefined}
+      />
 
       <div className={styles.convTabs}>
         <Toggle
@@ -83,9 +98,20 @@ export function ConversationListPanel({
           active={filterTab}
           onChange={onFilterTabChange}
           size="S"
-          fullWidth
         />
       </div>
+
+      {filterOpen && (
+        <div className={commsStyles.filterRow}>
+          <FilterChip
+            label="Last Activity"
+            singleSelect
+            options={Object.keys(ACTIVITY_FILTER)}
+            selected={activity}
+            onChange={(v) => { setActivity(v); setActivityCutoff(v.length ? Date.now() - ACTIVITY_FILTER[v[0]] * 86400000 : 0); }}
+          />
+        </div>
+      )}
 
       {showSearch && (
         <div className={styles.convSearch}>
@@ -111,12 +137,7 @@ export function ConversationListPanel({
 
       <div className={styles.convList}>
         {!showConversations ? (
-          <div className={styles.emptyConv}>
-            <div className={styles.emptyConvIcon}>
-              <Icon name="solar:widget-linear" size={28} />
-            </div>
-            <div className={styles.emptyConvText}>Coming soon</div>
-          </div>
+          <CommsListEmpty viewKey={activeChannel} />
         ) : loading ? (
           /* Loading, not empty. Rendering the "No conversations yet" empty
              state while the first fetch is still in flight told the user
@@ -125,22 +146,10 @@ export function ConversationListPanel({
              took. The skeleton is shaped like `.convItem` so the list does
              not jump when real rows replace it. */
           <ConversationSkeleton />
-        ) : filteredConversations.length === 0 ? (
-          <div className={styles.emptyConv}>
-            <div className={styles.emptyConvIcon}>
-              <Icon name="solar:chat-round-linear" size={28} />
-            </div>
-            <div className={styles.emptyConvText}>
-              {searchQuery ? 'No conversations match your search' : 'No conversations yet'}
-            </div>
-            {!searchQuery && (
-              <Button variant="primary" size="L" leadingIcon="solar:pen-new-square-linear" onClick={onShowNewChat}>
-                Start a chat
-              </Button>
-            )}
-          </div>
+        ) : shown.length === 0 ? (
+          <CommsListEmpty viewKey="internal" label={searchQuery ? 'No conversations match your search' : undefined} />
         ) : (
-          filteredConversations.map(conv => {
+          shown.map(conv => {
             const profile = profiles[conv.userId];
             const isSelected = selectedUserId === conv.userId;
             return (
@@ -149,8 +158,15 @@ export function ConversationListPanel({
                 key={conv.userId}
                 aria-current={isSelected ? 'true' : undefined}
                 className={[styles.convItem, isSelected ? styles.selected : ''].join(' ')}
-                onClick={() => onSelectConversation(conv.userId)}
+                onClick={() => (bulk
+                  ? setPicked(p => (p.includes(conv.userId) ? p.filter(x => x !== conv.userId) : [...p, conv.userId]))
+                  : onSelectConversation(conv.userId))}
               >
+                {bulk && (
+                  <span className={commsStyles.rowCheck}>
+                    <Checkbox checked={picked.includes(conv.userId)} tabIndex={-1} aria-label={`Select ${getDisplayName(profile)}`} />
+                  </span>
+                )}
                 <div className={styles.convAvatar}>{getInitials(profile)}</div>
                 <div className={styles.convInfo}>
                   <div className={styles.convNameRow}>
@@ -169,6 +185,17 @@ export function ConversationListPanel({
           })
         )}
       </div>
+
+      {bulk && (
+        <BulkBar
+          selectedIds={picked}
+          onClear={() => setPicked([])}
+          noun={picked.length === 1 ? 'Chat' : 'Chats'}
+          actions={[
+            { label: 'Mark as Read', icon: 'solar:check-read-linear', variant: 'primary', onClick: (ids) => { onMarkRead?.(ids); setPicked([]); } },
+          ]}
+        />
+      )}
     </div>
   );
 }

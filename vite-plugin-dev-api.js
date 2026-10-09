@@ -60,7 +60,10 @@ export function devApiPlugin() {
 
         // For send-test-email specifically: if there's no local key, fall
         // back to the deployed API which already has RESEND_API_KEY set.
-        if (req.url.startsWith('/api/send-test-email') && !hasResendKey) {
+        // Same for the Comms endpoints whose provider key lives on Vercel.
+        const needsProxy = (req.url.startsWith('/api/send-test-email') && !hasResendKey)
+          || (req.url.startsWith('/api/comms-sms') && !process.env.TEXTBEE_API_KEY);
+        if (needsProxy) {
           // Check the token locally too, so dev rejects what production would.
           const { requireUser } = await server.ssrLoadModule(`${process.cwd()}/api/_lib/requireUser.js`);
           if (!(await requireUser(req, withVercelHelpers(res)))) return;

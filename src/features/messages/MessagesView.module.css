@@ -18,7 +18,7 @@
 
 /* ── Chat list panel (middle 350px) ── */
 .convPanel {
-  width: 350px;
+  width: 300px;
   flex-shrink: 0;
   border-right: 0.5px solid var(--neutral-150);
   background: var(--neutral-0);
@@ -473,126 +473,17 @@
   color: var(--secondary-300);
 }
 
+.bubbleItem {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-1);
+}
+
 .msgDateSep {
   text-align: center;
   font-size: var(--font-xs);
   color: var(--neutral-300);
-  padding: 8px 0 4px;
-}
-
-.msgRow {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  position: relative;
-}
-
-.msgRow.own {
-  flex-direction: row-reverse;
-}
-
-/* Bubble wrapper — stacks quote, bubble, and status in a column */
-.msgBubbleWrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  min-width: 0;
-}
-
-.msgRow:not(.own) .msgBubbleWrap {
-  align-items: flex-start;
-}
-
-/* Read receipts */
-.msgStatus {
-  display: flex;
-  align-items: center;
-  color: var(--neutral-300);
-  line-height: 1;
-  padding-right: 2px;
-}
-
-.msgStatus.msgStatusRead {
-  color: #22c55e;
-}
-
-/* Reply button — shown on row hover via CSS */
-.msgReplyBtn {
-  opacity: 0;
-  background: none;
-  border: none;
-  cursor: pointer;
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  color: var(--neutral-300);
-  transition: opacity 0.15s, background 0.1s, color 0.1s;
-  flex-shrink: 0;
-  align-self: center;
-}
-
-.msgRow:hover .msgReplyBtn {
-  opacity: 1;
-}
-
-.msgReplyBtn:hover {
-  background: var(--neutral-100);
-  color: var(--neutral-500);
-}
-
-/* Reply quote inside a bubble */
-.msgReplyQuote {
-  display: flex;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 8px 8px 0 0;
-  background: var(--neutral-100);
-  border: 0.5px solid var(--neutral-150);
-  max-width: 500px;
-  width: 100%;
-  box-sizing: border-box;
-  margin-bottom: -2px;
-}
-
-.msgReplyQuote.own {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-.msgReplyBar {
-  width: 3px;
-  border-radius: 2px;
-  background: var(--primary-300);
-  flex-shrink: 0;
-  align-self: stretch;
-}
-
-.msgReplyName {
-  font-size: var(--font-xs);
-  font-weight: 600;
-  color: var(--primary-300);
-  margin-bottom: 2px;
-}
-
-.msgReplyQuote.own .msgReplyName {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.msgReplyText {
-  font-size: var(--font-xs);
-  color: var(--neutral-400);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 360px;
-}
-
-.msgReplyQuote.own .msgReplyText {
-  color: rgba(255, 255, 255, 0.7);
+  padding: var(--space-2) 0 var(--space-1);
 }
 
 /* Reply preview in compose area */
@@ -687,118 +578,6 @@
   flex-shrink: 0;
 }
 
-/* ── Message input ── */
-.chatInput {
-  border-top: 0.5px solid var(--neutral-150);
-  padding: 12px 16px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  background: var(--neutral-0);
-}
-
-.chatInputToolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.chatInputSwitch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-}
-
-.switchTrack {
-  width: 32px;
-  height: 18px;
-  background: var(--neutral-150);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  padding: 1px;
-}
-
-.switchThumb {
-  width: 16px;
-  height: 16px;
-  background: var(--neutral-0);
-  border-radius: 3px;
-}
-
-.switchLabel {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-}
-
-.chatInputActions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-}
-
-.chatInputRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.chatInputBox {
-  flex: 1;
-  min-height: 32px;
-  max-height: 120px;
-  padding: 6px 10px;
-  border: 0.5px solid var(--neutral-300);
-  border-radius: 4px;
-  font-size: var(--font-base);
-  color: var(--neutral-500);
-  outline: none;
-  resize: none;
-  line-height: 1.4;
-  background: var(--neutral-0);
-}
-
-.chatInputBox:focus {
-  border-color: var(--primary-300);
-}
-
-.chatInputBox::placeholder {
-  color: var(--neutral-200);
-}
-
-.chatSendBtn {
-  width: 32px;
-  height: 32px;
-  background: var(--primary-300);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: background 0.1s;
-}
-
-.chatSendBtn:hover:not(:disabled) {
-  background: var(--primary-400);
-}
-
-.chatSendBtn:disabled {
-  background: var(--neutral-150);
-  color: var(--neutral-300);
-  cursor: not-allowed;
-}
-
-.chatInputFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
 /* ── No conversation selected placeholder ── */
 .noConvPlaceholder {
   flex: 1;
@@ -840,118 +619,18 @@
   cursor: pointer;
 }
 
-/* ── New chat modal ── */
-.newChatOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.3);
-  z-index: 500;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 80px;
-}
 
-.newChatBox {
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 12px;
-  width: 400px;
-  box-shadow: var(--shadow-popover);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  max-height: 480px;
-}
 
-.newChatHeader {
-  padding: 14px 16px;
-  border-bottom: 0.5px solid var(--neutral-150);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
 
-.newChatTitle {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--neutral-500);
-}
 
-.newChatSearchInput {
-  width: 100%;
-  height: 40px;
-  padding: 0 16px;
-  border: none;
-  border-bottom: 0.5px solid var(--neutral-150);
-  font-size: var(--font-base);
-  color: var(--neutral-500);
-  outline: none;
-  flex-shrink: 0;
-}
 
-.newChatList {
-  overflow-y: auto;
-  flex: 1;
-}
 
-/* Same treatment as .convItem — border-bottom is the row divider, so only the
-   other three sides are cleared. */
-.newChatUser {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  cursor: pointer;
-  background: none;
-  font: inherit;
-  color: inherit;
-  text-align: left;
-  border-top: none;
-  border-right: none;
-  border-left: none;
-  border-bottom: 0.5px solid var(--neutral-100);
-  transition: background 0.1s;
-}
 
-.newChatUser:focus-visible {
-  outline: 2px solid var(--primary-300);
-  outline-offset: -2px;
-}
 
-.newChatUser:hover {
-  background: var(--neutral-50);
-}
 
-.newChatUserInfo {
-  min-width: 0;
-}
 
-.newChatUserName {
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: var(--neutral-500);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.newChatUserEmail {
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.newChatEmpty {
-  padding: 24px;
-  text-align: center;
-  font-size: var(--font-md);
-  color: var(--neutral-300);
-}
 
 /* ── Typing indicator ── */
 .typingRow {
@@ -993,68 +672,6 @@
   color: var(--primary-300);
   font-style: italic;
 }
-
-/* ── Media inside bubbles ── */
-.msgImage {
-  display: block;
-  max-width: 280px;
-  max-height: 200px;
-  border-radius: 8px;
-  object-fit: cover;
-  cursor: pointer;
-  margin-bottom: 2px;
-}
-
-/* The image is wrapped in an <a> so it can be opened from the keyboard, which
-   means the img is now always the only child of that link. The "no bottom
-   margin when this is the bubble's only content" rule therefore has to key off
-   the LINK's position, not the img's — otherwise it would match every time and
-   the gap above message text would disappear. */
-.msgImageLink {
-  display: block;
-}
-
-.msgImageLink:only-child .msgImage {
-  margin-bottom: 0;
-}
-
-.msgFile {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-md);
-  color: inherit;
-  text-decoration: none;
-  padding: 2px 0;
-}
-
-.msgFile:hover {
-  text-decoration: underline;
-}
-
-/* ── Shared form link card ── */
-.msgFormCard {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 220px;
-  margin: 2px 0;
-  padding: 10px;
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 10px;
-  text-decoration: none;
-  cursor: pointer;
-}
-.msgFormCard:hover { border-color: var(--primary-200); background: var(--primary-50); }
-.msgFormIcon {
-  display: flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; flex-shrink: 0;
-  background: var(--primary-50); border: 0.5px solid var(--primary-200); border-radius: 8px;
-}
-.msgFormMain { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1 1 0; }
-.msgFormLabel { font-size: var(--font-xs); font-weight: 600; letter-spacing: .03em; text-transform: uppercase; color: var(--primary-300); }
-.msgFormName { font-size: var(--font-base); color: var(--neutral-500); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Drag-over state on input area ── */
 .dragOver {

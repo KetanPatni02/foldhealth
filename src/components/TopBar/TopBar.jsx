@@ -515,7 +515,7 @@ export function TopBar() {
           ) : isHome ? (
             <span className={styles.breadcrumbCurrent}>Home</span>
           ) : isMessages ? (
-            <span className={styles.breadcrumbCurrent}>Messages</span>
+            <span className={styles.breadcrumbCurrent}>Comms</span>
           ) : isCalls ? (
             <span className={styles.breadcrumbCurrent}>Calls</span>
           ) : isTasks ? (

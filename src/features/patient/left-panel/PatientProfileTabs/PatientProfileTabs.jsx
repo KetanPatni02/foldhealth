@@ -270,7 +270,7 @@ export function PatientProfileTabs({
 
         {activeIdx === 2 && <VitalsLabsTab />}
 
-        {activeIdx === 3 && <CommsTab />}
+        {activeIdx === 3 && <CommsTab patient={patient} />}
 
         {activeIdx === 4 && <OutreachTab memberName={patient?.name} />}
 

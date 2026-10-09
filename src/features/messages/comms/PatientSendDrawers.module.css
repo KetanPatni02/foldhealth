@@ -1,0 +1,95 @@
+.to {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+.to strong {
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Grey field card (Send Content). */
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-25);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 10rem minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.channelBody .row { border-bottom: none; padding: var(--space-2) 0; }
+
+.rowLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 2rem;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+.req {
+  width: 0.25rem;
+  height: 0.25rem;
+  border-radius: 50%;
+  background: var(--status-error);
+}
+
+.rowField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.channel {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.channelBody {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--space-2);
+}
+
+.smsFoot {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.previewHead {
+  display: flex;
+  justify-content: flex-end;
+  padding: var(--space-2) 0;
+}
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  height: 32rem;
+  overflow: hidden;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+}

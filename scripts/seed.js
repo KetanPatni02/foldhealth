@@ -20,6 +20,7 @@ import { ICDS, NOT_LINKED, getIcdsForMember, getNotLinkedForMember } from '../sr
 import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.js';
 import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
 import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
+import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comms/educationLibrary.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
@@ -1063,6 +1064,16 @@ async function main() {
     .from('patient_crm_activities')
     .upsert(crmRows, { onConflict: 'id' });
   if (crmErr) { console.error('  ✗', crmErr.message); } else { console.log(`  ✓ ${crmRows.length} activities`); }
+
+  console.log('Seeding patient_education_content (Send Education)...');
+  const eduRows = EDUCATION_LIBRARY.map(educationToRow);
+  const { error: eduErr } = await supabase
+    .from('patient_education_content')
+    .upsert(eduRows, { onConflict: 'id' });
+  if (eduErr) { console.error('  ✗', eduErr.message); } else { console.log(`  ✓ ${eduRows.length} education items`); }
+
+  // patient_conversations / patient_messages: no seed. Comms shows only
+  // conversations staff and patients actually have.
 
   console.log('Seeding patient_monitoring...');
   const monitoringRows = Object.values(MONITORING_SEED).map(monitoringToRow);

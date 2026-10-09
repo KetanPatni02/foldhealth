@@ -4946,6 +4946,11 @@ export const useAppStore = create((set, get) => ({
   messageTab: 'chat-settings',
   messagesUnreadCount: 0,
   pendingChatUserEmail: null,
+  // Comms create drawers (New Chat / SMS / Email, Voice Call), opened from
+  // Comms or from the top bar's Create New. type: chat | sms | email | call.
+  commsDrawer: null,
+  // A conversation to show once Comms is open: { channel, conversationId }.
+  commsFocus: null,
 
   // Chat Groups (Messages > Chat Settings)
   chatGroupsData: null,
@@ -5533,6 +5538,38 @@ export const useAppStore = create((set, get) => ({
   },
   _unreadMessagesChannel: null,
   setPendingChatUserEmail: (email) => set({ pendingChatUserEmail: email }),
+  openCommsDrawer: (type, props = {}) => set({ commsDrawer: { type, props } }),
+  closeCommsDrawer: () => set({ commsDrawer: null }),
+  setCommsFocus: (focus) => set({ commsFocus: focus }),
+  // Go to Comms (leaving a patient's page if one is open), optionally on a
+  // conversation: { channel, conversationId }.
+  // Worklist row menu → Comms drawers (Send SMS / Send Email / Send
+  // Education / Send Assessment). `row` is the worklist row; it's matched to
+  // its all_patients record so the drawers have the email and phone. Returns
+  // false for actions it doesn't handle.
+  runPatientRowAction: (key, row) => {
+    const types = { 'Send SMS': 'sms', 'Send Email': 'email', 'Send Education': 'content', 'Send Assessment': 'assessment' };
+    const type = types[key];
+    if (!type || !row) return false;
+    (async () => {
+      await get().fetchAllPatients();
+      const list = get().allPatients || [];
+      const id = row.patientId ?? row.id;
+      const patient = list.find(p => String(p.id) === String(id))
+        || (row.memberId && list.find(p => p.memberId === row.memberId))
+        || list.find(p => p.name === row.name)
+        || { id, name: row.name, email: row.email || '', phone: row.phone || '' };
+      if (type === 'sms') get().openCommsDrawer('sms', { initialPatient: patient });
+      else if (type === 'email') get().openCommsDrawer('email', { initial: { patient, to: patient.email ? [patient.email] : [] } });
+      else get().openCommsDrawer(type, { patient });
+    })();
+    return true;
+  },
+  goToComms: (focus = null) => {
+    if (get().selectedPatientId) get().navigateBackToWorklist();
+    if (focus) set({ commsFocus: focus });
+    get().setActivePage('messages');
+  },
   setMessageTab: (tab) => { set({ messageTab: tab }); updateHash(get); },
   setChatGroupDetailId: (id) => {
     if (id) track('chat.group_detail_opened', { groupId: id });

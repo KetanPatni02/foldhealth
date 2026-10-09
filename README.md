@@ -170,6 +170,31 @@ build requires esbuild ≥ 0.28 on Node 26.
   `CisDoseProgress`, `DoseDateField`, `VaccineTimeline`. Date picker and
   FilterChip popovers now take clicks inside modal dialogs.
 
+- **Comms (was Messages).** The sidebar item is now Comms, built to the
+  Figma Communications file. Patient conversations live in two new tables
+  (`patient_conversations`, `patient_messages`) and work on real channels at
+  no cost:
+  - **Chat:** the patient answers on their own page (`#/p/<token>`, no
+    sign-in), opened from the chat header's "Open patient view" icon.
+  - **Email:** Compose Email starts on the Fold Care template. You can edit
+    it in place or swap it for any Content → Emails template. It sends
+    through Resend, and failures show their reason with a Retry. Closing with unsaved changes offers Save as Draft or Discard.
+  - **SMS:** real texts through an Android phone running textbee
+    (`TEXTBEE_API_KEY`, `TEXTBEE_DEVICE_ID`). Replies are pulled into
+    threads.
+  - **Calls:** browser-to-browser voice (WebRTC, signalled over Supabase
+    Realtime) rings the patient's page. "Dial a number" hands off to your
+    phone and logs the call.
+  - Internal Chat keeps the staff-to-staff chat.
+  - Worklist row menus (TOC, All Patients, CCM, SNP): Send SMS and Send
+    Email open the Comms drawers for that patient; Send Education opens Send
+    Content (MedlinePlus education pages by email and/or SMS) and Send
+    Assessment sends form links.
+
+  Only real conversations are shown, with nothing seeded, and each channel has
+  its Figma empty state. Until the migration runs, Comms keeps its data in the
+  browser.
+
 - **CIS-CMB10 immunization tracker (phase 2).** The Immunizations tab (first
   tab on CIS gaps) now records doses inline. A dose-progress card shows one
   block per required dose as a timeline (given, due now, overdue / does not

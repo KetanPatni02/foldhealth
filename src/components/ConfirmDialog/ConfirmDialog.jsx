@@ -52,6 +52,10 @@ const VARIANT_DEFAULTS = {
  *   left-aligned: the icon inline with the title, the description under them,
  *   then the checkbox and the buttons (Figma Dialog Box 2, 2810:68907).
  * @param {'S'|'L'|'XL'} [props.buttonSize='L']
+ * @param {function} [props.onClose] – Adds a close (X) beside the title. When
+ *   set, the X, Escape and the overlay call it instead of onCancel, so the
+ *   cancel button can be a real second choice (e.g. "Save as Draft").
+ *   Pass `icon={false}` to leave the icon out.
  * @param {React.ReactNode} [props.children] – Extra content (e.g. a choice the
  *   answer depends on), shown above the checkbox and buttons. Pairs with
  *   align="start".
@@ -74,6 +78,7 @@ export function ConfirmDialog({
   align = 'center',
   buttonSize = 'L',
   className,
+  onClose,
   children,
 }) {
   const preset = VARIANT_DEFAULTS[variant] ?? VARIANT_DEFAULTS.warning;
@@ -90,7 +95,12 @@ export function ConfirmDialog({
     className,
   ].filter(Boolean).join(' ');
 
-  const iconEl = <Icon name={resolvedIcon} size={24} color={resolvedIconColor} />;
+  const iconEl = resolvedIcon === false ? null : <Icon name={resolvedIcon} size={24} color={resolvedIconColor} />;
+  const closeEl = onClose && (
+    <button type="button" aria-label="Close" onClick={onClose} className="ml-auto flex p-0.5 border-0 bg-transparent cursor-pointer text-[var(--neutral-300)] hover:text-[var(--neutral-400)]">
+      <Icon name="solar:close-linear" size={16} />
+    </button>
+  );
   const titleEl = (
     <Title className="m-0 text-base font-medium text-[var(--neutral-400)] leading-tight">
       {title}
@@ -124,6 +134,7 @@ export function ConfirmDialog({
         <div className="flex items-center gap-1">
           {iconEl}
           {titleEl}
+          {closeEl}
         </div>
         {descriptionEl}
       </div>
@@ -159,7 +170,7 @@ export function ConfirmDialog({
   }
 
   return (
-    <AlertDialog open onOpenChange={(open) => { if (!open) onCancel?.(); }}>
+    <AlertDialog open onOpenChange={(open) => { if (!open) (onClose || onCancel)?.(); }}>
       <AlertDialogContent className={boxClass} overlayClassName={overlayClassName}>
         {content}
       </AlertDialogContent>

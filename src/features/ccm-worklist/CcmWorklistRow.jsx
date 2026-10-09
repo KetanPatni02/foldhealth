@@ -176,7 +176,9 @@ export function CcmWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
     { key: 'Open Care Program', icon: 'solar:folder-open-linear', label: 'Open Care Program' },
   ]);
 
+  const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
   const handleMenuSelect = (key) => {
+    if (runPatientRowAction(key, m)) return;
     if (key === 'Add Task') { requestAddTask?.({ member: m.name }); return; }
     if (key === 'Open Care Program') {
       if (m.patientId) navigateToPatient(m.patientId, { profileTab: 'Care Programs', programCode: 'CCM' });

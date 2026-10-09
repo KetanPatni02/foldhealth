@@ -317,7 +317,9 @@ export function SnpWorklistRow({ member, columns, hiddenSet, isSelected, onSelec
     { key: 'View Program', icon: 'solar:eye-linear', label: 'View Program' },
   ]);
 
+  const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
   const handleMenuSelect = (key) => {
+    if (runPatientRowAction(key, m)) return;
     if (key === 'View Program') { openInCareProgram(); return; }
     if (key === 'Add Task') { requestAddTask?.({ member: m.name }); return; }
     if (key === 'Edit Details') {

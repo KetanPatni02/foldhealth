@@ -1,0 +1,22 @@
+.mark {
+  display: block;
+  flex-shrink: 0;
+  color: var(--neutral-300);
+}
+
+.read { color: var(--status-success-dark); }
+
+.resend {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--status-error);
+  cursor: pointer;
+}
+.resend:hover:not(:disabled) { text-decoration: underline; }
+.resend:disabled { cursor: default; }
