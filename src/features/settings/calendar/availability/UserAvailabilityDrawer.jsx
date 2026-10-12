@@ -180,6 +180,12 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
 
   const errors = blocks.map(validateBlock);
   const invalid = !user || errors.some(e => Object.keys(e).length);
+  // Save waits for something to save and every required field; the tooltip
+  // on the disabled button says which.
+  const saveBlocker = !dirty ? 'No changes to save'
+    : invalid ? 'Fill in all required fields to save'
+      : hasConflicts ? 'Resolve availability conflict before saving'
+        : '';
 
   const save = async () => {
     setTouched(true);
@@ -409,14 +415,14 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
           return false;
         }}
         primaryAction={(
-          <Tooltip label={hasConflicts ? 'Resolve availability conflict before saving' : ''} placement="bottom" align="right">
+          <Tooltip label={saveBlocker} placement="bottom" align="right">
             <Button
               variant="primary"
               size="L"
               onClick={save}
-              disabled={saving || hasConflicts}
+              disabled={saving || !!saveBlocker}
               // A disabled button swallows hover, so let it reach the tooltip's wrapper.
-              style={hasConflicts ? { pointerEvents: 'none' } : undefined}
+              style={saveBlocker ? { pointerEvents: 'none' } : undefined}
             >
               {saving ? 'Saving…' : 'Save'}
             </Button>
