@@ -12,6 +12,7 @@ import { RingEmptyState } from '../../../../components/RingEmptyState/RingEmptyS
 import { Link } from '../../../../components/Link/Link';
 import { Icon } from '../../../../components/Icon/Icon';
 import { InfoBar } from '../../../../components/InfoBar/InfoBar';
+import { Tooltip } from '../../../../components/Tooltip/Tooltip';
 import { AddIconMinimalist } from '../../../../components/Icon/AddIconMinimalist';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog/ConfirmDialog';
 import { toast } from '../../../../components/Toast/sonnerToast';
@@ -190,15 +191,21 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
     <td rowSpan={span} className={`${styles.td} ${styles.actionTd} ${styles.stickyRight}`}>
       <span className={styles.actions}>
         <ActionButton icon="solar:add-linear" size="L" tooltip="Add availability" tooltipLeft onClick={() => setEditing({ user: u, addBlock: true })} />
-        <span className={[styles.actionDivider, u.blocks.length ? '' : styles.actionDividerHidden].join(' ')} aria-hidden="true" />
-        {/* No availability, nothing to edit: an empty slot keeps the ⋯ lined up.
-            The pen's glyph fills its whole box, so it's drawn at 16px to read
-            the same size as the + and ⋯ beside it. */}
+        <span className={styles.actionDivider} aria-hidden="true" />
+        {/* The pen's glyph fills its whole box, so it's drawn at 16px to read
+            the same size as the + and ⋯ beside it. With no availability there's
+            nothing to edit: shown disabled, with the reason on hover. */}
         {u.blocks.length > 0 ? (
           <ActionButton size="L" tooltip="Edit availability" tooltipLeft onClick={() => setEditing({ user: u })}>
             <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" />
           </ActionButton>
-        ) : <span className={styles.actionSlot} aria-hidden="true" />}
+        ) : (
+          <Tooltip label="No availability to edit yet" variant="light" placement="bottom" align="right">
+            <ActionButton size="L" state="disabled" style={{ pointerEvents: 'none' }}>
+              <Icon name="solar:pen-linear" size={16} color="var(--neutral-150)" />
+            </ActionButton>
+          </Tooltip>
+        )}
         <span className={styles.actionDivider} aria-hidden="true" />
         <RowMenu
           hasBlocks={u.blocks.length > 0}
