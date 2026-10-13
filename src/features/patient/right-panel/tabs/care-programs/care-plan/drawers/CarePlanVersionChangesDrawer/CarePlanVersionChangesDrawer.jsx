@@ -210,14 +210,15 @@ function entityDetails(type, item, fallbackTitle, scope, { nested = false } = {}
 // What a template brought, as Goals / Interventions / Barriers sections of
 // item rows. Items are matched by title in the snapshot the template lived
 // in; one the snapshot lacks still lists, linked by the template's own record.
-function templateSections(contents, scope) {
+// `dot` marks every row with the template's own plus or minus.
+function templateSections(contents, scope, dot) {
   const byTitle = (type, title) => (scope?.[`${type}s`] || []).find(x => norm(x.title) === norm(title)) || null;
   const asLinks = titles => titles.map(title => ({ id: title, title }));
   const goals = contents.goals.map(g => {
     const item = byTitle('goal', g.title);
     const details = entityDetails('goal', item, g.title, scope, { nested: true });
     if (!item) details.linked = { interventions: asLinks(g.interventions), barriers: asLinks(g.barriers) };
-    return { key: `goal:${g.title}`, ...details };
+    return { key: `goal:${g.title}`, dot, ...details };
   });
   const childRows = (type, titles) => [...new Set(titles)].map(title => {
     const item = byTitle(type, title);
@@ -226,7 +227,7 @@ function templateSections(contents, scope) {
       const owners = contents.goals.filter(g => g[`${type}s`].includes(title));
       details.linked = { goals: asLinks(owners.map(g => g.title)) };
     }
-    return { key: `${type}:${title}`, ...details };
+    return { key: `${type}:${title}`, dot, ...details };
   });
   return [
     { type: 'goal', rows: goals },
@@ -321,7 +322,7 @@ function buildNodes(rawRows, links) {
       entityKind: 'template',
       activity: t.action === 'created' ? 'Added' : 'Removed',
       actor: t.actor || null,
-      sections: templateSections(c, t.scope || links.plan),
+      sections: templateSections(c, t.scope || links.plan, CATEGORY_RAIL[t.action === 'created' ? 'added' : 'removed'].variant),
     });
   }
 
