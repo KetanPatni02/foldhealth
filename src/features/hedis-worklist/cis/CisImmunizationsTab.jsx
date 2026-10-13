@@ -12,7 +12,7 @@ import { Icon } from '../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../components/Icon/DownChevronIcon';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { InfoBar } from '../../../components/InfoBar/InfoBar';
-import { CardSkeleton } from '../../../components/CardSkeleton/CardSkeleton';
+import { CisTabSkeleton } from './CisTabSkeleton';
 import { CIS_ANTIGENS, CIS_ANTIGEN_STATUS, CIS_DOSE_STATUS, CIS_EVALUATION, evaluateCis } from './cisRules';
 import { isoToMdy } from './useCisTracker';
 import { CisStatusBadge } from './CisStatus';
@@ -86,7 +86,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
     const t = setTimeout(() => setFocusDose(null), 2000);
     return () => clearTimeout(t);
   }, [focusDose]);
-  if (loading) return <CardSkeleton />;
+  if (loading) return <CisTabSkeleton />;
 
   const isOpen = (a) => toggled[a.key] ?? groupOf(a) === 'action';
   const toggle = (a) => setToggled(t => ({ ...t, [a.key]: !isOpen(a) }));
