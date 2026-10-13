@@ -93,6 +93,9 @@ export function Drawer({
   // (e.g. "Discard unsaved changes?") over the still-open drawer.
   beforeClose,
   dismissed = false,
+  // False makes a click on the overlay do nothing (close with ✕ or Escape),
+  // for drawers holding edits a stray click outside shouldn't threaten.
+  closeOnOverlayClick = true,
 }) {
   // Stacking depth for nested drawers. When a second Drawer mounts on top
   // of an already-open one (e.g. TaskDetailDrawer over CareGapDetailDrawer
@@ -145,7 +148,7 @@ export function Drawer({
           assistive tech on purpose — the header CloseButton is the keyboard and
           screen-reader path, so the backdrop must not appear as a second,
           unlabelled control. */}
-      <div className={styles.overlay} data-closing={shut ? 'true' : 'false'} onClick={requestClose} aria-hidden="true" style={overlayStyle} />
+      <div className={styles.overlay} data-closing={shut ? 'true' : 'false'} onClick={closeOnOverlayClick ? requestClose : undefined} aria-hidden="true" style={overlayStyle} />
       <div ref={panelRef} data-drawer-panel className={`${styles.panel}${className ? ` ${className}` : ''}`} data-closing={shut ? 'true' : 'false'} style={Object.keys(panelStyle).length ? panelStyle : undefined}>
         <div className={styles.header} style={headerStyle}>
           <h2 className={styles.headerTitle} style={titleStyle}>{title}</h2>

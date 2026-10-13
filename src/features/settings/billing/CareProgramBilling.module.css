@@ -1,0 +1,390 @@
+/* Settings → Billing: Billable, Billing History and Timer Access tabs. */
+
+.tab {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Filters and the total sit above the table. */
+.top {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.stat {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  align-self: flex-start;
+  min-width: 280px;
+  padding: var(--space-3) var(--space-4);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+
+.statLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+.statValue {
+  font-size: var(--font-xl);
+  font-weight: 600;
+  color: var(--neutral-500);
+  font-variant-numeric: tabular-nums;
+}
+
+.tableWrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.tableWrap table { table-layout: fixed; }
+.tableWrap th:first-child { padding-left: var(--space-5); }
+/* Tables with a pinned Action column: its header carries the cells' left line too. */
+.stickyActions th:last-child { border-left: 0.5px solid var(--neutral-150); }
+
+.row { composes: row from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.td { composes: td from '../../../components/WorklistShell/WorklistRow.module.css'; }
+.stickyRight { composes: stickyRight from '../../../components/WorklistShell/WorklistRow.module.css'; }
+
+/* Rows don't open anything, so they don't tint on hover. */
+.tableWrap .row:hover { background: none; }
+.tableWrap .row:hover .stickyRight { background: var(--neutral-0); }
+
+.tableWrap .row > .td:first-child { padding-left: var(--space-5); }
+/* Long values wrap inside their column instead of running into the next. */
+.tableWrap .td { white-space: normal; }
+
+.cellText {
+  display: block;
+  font-size: var(--font-base);
+  line-height: 1.35;
+  color: var(--neutral-400);
+  overflow-wrap: anywhere;
+}
+
+.cellMuted {
+  display: block;
+  font-size: var(--font-sm);
+  line-height: 1.35;
+  color: var(--neutral-300);
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.memberName {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.memberMeta {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+.actionTd {
+  padding-left: var(--space-1);
+  padding-right: var(--space-1);
+}
+
+.empty { padding: calc(var(--space-10) * 2) var(--space-4) var(--space-6); }
+
+/* ── Timer Access ── */
+
+.program {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+
+.programCode {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.people {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* ── Timer settings drawer ── */
+
+.drawerBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.hint {
+  /* 12px to the option cards below (the drawer body's gap is 16px). */
+  margin: 0 0 calc(var(--space-1) * -1);
+  font-size: var(--font-base);
+  line-height: 1.4;
+  color: var(--neutral-300);
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  /* With the drawer body's 16px gap: 24px under the option cards. Padding
+     (not margin) so it folds away with the Collapse. */
+  padding-top: var(--space-2);
+}
+
+.pickerHeading {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.tabCount {
+  margin-left: var(--space-1);
+  padding: 0 var(--space-1);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-1);
+  font-size: var(--font-xs);
+  color: var(--neutral-300);
+  font-variant-numeric: tabular-nums;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* A row sliding out to the right mustn't scroll the drawer sideways. */
+  overflow-x: hidden;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--space-2);
+  transition: transform 220ms ease-in, opacity 220ms ease-in;
+}
+.option:hover { background: var(--neutral-50); }
+
+/* The trash only shows on the row under the pointer (or with focus in it). */
+.optionRemove { margin-left: auto; flex-shrink: 0; opacity: 0; }
+.option:hover .optionRemove,
+.option:focus-within .optionRemove { opacity: 1; }
+
+/* Removed: slides out to the right before it leaves the list. */
+.optionLeaving { transform: translateX(100%); opacity: 0; pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .option { transition: none; }
+}
+
+/* The search field's dropdown of users / care team roles to add. */
+.search { position: relative; }
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-popover);
+}
+
+.dropdownList {
+  display: flex;
+  flex-direction: column;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.dropdownOption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-1);
+  border-radius: var(--space-1);
+  cursor: pointer;
+}
+.dropdownOption:hover { background: var(--neutral-50); }
+
+.optionText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.optionName {
+  font-size: var(--font-base);
+  color: var(--neutral-500);
+}
+
+.optionMeta {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.listEmpty {
+  padding: var(--space-4) 0;
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+
+/* Sized to its options, not the drawer's width. */
+.pickerToggle { align-self: flex-start; }
+
+/* Timer table: the whole row opens the settings drawer, so it tints on hover
+   (beats the "rows don't tint" rule above). */
+.tableWrap .rowClickable { cursor: pointer; }
+.tableWrap .rowClickable:hover,
+.tableWrap .rowClickable:hover .stickyRight { background: var(--primary-25); }
+.tableWrap .rowClickable:focus-visible { outline: 1px solid var(--primary-300); outline-offset: -1px; }
+
+/* Action cell: edit | history, matching the other settings tables. */
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.actionDivider {
+  width: 0.5px;
+  height: 1rem;
+  background: var(--neutral-150);
+}
+
+
+/* Timer Access History: the first month header sits flush under the drawer header. */
+.historyLog > div > :first-child { padding-top: 0; }
+
+/* Drawer title with a subtitle line under it ("For program: BHI"). */
+.drawerTitle {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+.drawerSubtitle {
+  font-size: var(--font-sm);
+  font-weight: 400;
+  color: var(--neutral-300);
+}
+/* Timer Access history entry (TimerHistoryBody). */
+.historyAccess {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+}
+.historyBadges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+}
+.historyTable {
+  margin-top: var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  overflow: hidden;
+}
+/* The table's own border closes the last row: drop the row line (on the row and its cells). */
+.historyTable .row:last-child,
+.historyTable .row:last-child > .td { border-bottom: none; }
+.historyTable .row:hover { background: none; }
+.historyChangeTd { text-align: center; }
+.historyChangeTd > * { margin: 0 auto; }
+
+/* The last entry's rail stops at its icon (no line hanging below it). */
+.historyLog > div > div:last-child > div:first-child > span:last-child { visibility: hidden; }
+
+/* "• View Details ⌄" after the count badges. */
+.historyDot { margin: 0 calc(var(--space-1) / 2); font-size: var(--font-xs); color: var(--neutral-300); }
+.historyViewLink { display: inline-flex; align-items: center; gap: calc(var(--space-1) / 2); }
+.historyChevron { transition: transform 150ms ease; }
+.historyChevronOpen { transition: transform 150ms ease; transform: rotate(180deg); }
+
+/* Timer Access history: Date Range and Activity By above the log. */
+.historyFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+/* Between the header's actions and the close button. */
+.headerDivider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--neutral-150);
+  margin: 0 var(--space-1);
+}
+
+/* "View Team ›" under the Care Program Team only option. */
+.viewTeamLink { display: inline-flex; align-items: center; gap: calc(var(--space-1) / 2); }
+
+/* No roles/users added yet: the dashed card the PAMI drawers use. */
+.emptyCard {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-4) var(--space-3);
+  border: 0.5px dashed var(--neutral-150);
+  border-radius: var(--space-3);
+  background: var(--neutral-0);
+}
+
+
+/* "Care program team" tag where a removable row would show its trash. */
+.optionTag { margin-left: auto; flex-shrink: 0; }
+/* Care program team rows can't be acted on here, so they don't tint on hover. */
+.optionStatic:hover { background: none; }
+
+/* "• View details" stays hidden until the entry is hovered or focused, and
+   stays once the details are open. */
+.historyReveal { opacity: 0; transition: opacity 120ms ease; }
+.historyEntry:hover .historyReveal,
+.historyEntry:focus-within .historyReveal,
+.historyEntryOpen .historyReveal { opacity: 1; }

@@ -28,6 +28,7 @@
    (8px) — the token system's 4px grid has no 6px stop, so M's horizontal
    padding lands at 8px (closest token) and L uses --space-2 all round.
    box-sizing: border-box so the 0.5px border sits inside the target height. */
+.sizeXS { height: 18px; padding: 0 var(--space-1);          font-size: var(--font-xs);   box-sizing: border-box; gap: calc(var(--space-1) / 2); }
 .sizeS { height: 20px; padding: var(--space-1);                font-size: var(--font-sm);   box-sizing: border-box; }
 .sizeM { height: 24px; padding: var(--space-1) var(--space-2); font-size: var(--font-base); box-sizing: border-box; }
 .sizeL { height: 28px; padding: var(--space-2);                font-size: var(--font-lg);   box-sizing: border-box; border-radius: 6px; }

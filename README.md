@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Settings → Billing: Billable, Billing History and Timer Access.**
+  Billable lists unbilled members with Program Type, CPT Code, Provider,
+  Date of Service and Members filters and a total. Billing History lists
+  monthly reports, each opening its billed members in a drawer. Timer
+  Access sets, per program (BHI and CCM), who sees the billing timer on a
+  patient's profile: the Care Program Team only, the team plus selected
+  additional users and roles, or everyone with patient access. The Care Program Team
+  drawer gains a "This user can log billable time for this program" check
+  per member. Data lives in `supabase/care_program_billing_migration.sql`.
+
 - **Care program report, History and End Program.** The ⋯ menu in a care
   program's header now has History (this program's slice of the Program
   Activity Log), Download Report and End Program (with a confirmation).

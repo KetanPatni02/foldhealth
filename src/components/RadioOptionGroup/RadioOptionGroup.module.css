@@ -17,10 +17,67 @@
   flex-direction: column;
   gap: var(--space-1);
 }
-/* Lines up with the radio label text, past the dot. */
+/* Lines up with the radio label text: past the 20px circle and RadioButton's 8px gap. */
 .hint {
   margin: 0;
-  padding-left: var(--space-6);
+  padding-left: calc(var(--space-5) + var(--space-2));
   font-size: var(--font-sm);
   color: var(--neutral-300);
 }
+/* Disabled radios ignore the pointer; the wrapper still catches the hover for the tooltip. */
+.disabledWrap { display: inline-flex; cursor: not-allowed; }
+.disabledWrap > * { pointer-events: none; }
+
+.optionWrap { display: contents; }
+
+/* ── Card variant ── */
+.card {
+  /* Circle | label over hint, the circle centred on both lines. */
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: var(--space-2);
+  padding: var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+.card:hover { border-color: var(--neutral-200); }
+.cardChecked,
+.cardChecked:hover {
+  border-color: var(--primary-300);
+  background: var(--primary-25);
+  cursor: default;
+}
+.cardDisabled,
+.cardDisabled:hover {
+  border-color: var(--neutral-150);
+  background: var(--neutral-0);
+  cursor: not-allowed;
+}
+
+.cardText {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.cardLabel {
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  user-select: none;
+}
+.cardLabelChecked { color: var(--neutral-400); }
+.cardHint {
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+/* Disabled card: text in neutral-200, the radio filled neutral-100 with its
+   outline kept as light as the faded radio's (no fade on the fill). */
+.cardDisabled .cardLabel,
+.cardDisabled .cardHint { color: var(--neutral-200); }
+.cardDisabled [role="radio"] { opacity: 1; }
+.cardDisabled [role="radio"] > span { background: var(--neutral-100); border-color: var(--neutral-200); }
