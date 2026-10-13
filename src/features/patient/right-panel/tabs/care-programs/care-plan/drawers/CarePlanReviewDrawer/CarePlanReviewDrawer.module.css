@@ -228,6 +228,26 @@
   color: var(--primary-300);
   font-weight: 500;
 }
+.priorityBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  margin: calc(var(--space-1) * -1);
+  border: none;
+  border-radius: var(--space-1);
+  background: none;
+  cursor: pointer;
+}
+.priorityBtn:hover {
+  background: var(--neutral-100);
+}
+/* With a second line (target, assignee), keep the priority on the title line. */
+.itemRow:has(.itemMeta) .priorityBtn {
+  align-self: flex-start;
+  margin-top: calc(var(--space-1) / 2);
+}
 .chevronBtn {
   display: inline-flex;
   align-items: center;

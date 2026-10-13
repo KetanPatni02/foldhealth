@@ -208,6 +208,20 @@
 .nameCellStacked {
   align-items: center;
 }
+/* Rows with a second line (due date, assignee, target): the priority and
+   type icons sit on the title line, not between the two lines. The title
+   cell starts at the top too, so the priority's offset can be fixed. */
+.row:has(.nameCellStacked) .titleTd,
+.row:has(.nameCellStacked) .priorityTd {
+  vertical-align: top;
+}
+.row:has(.nameCellStacked) .priorityTd {
+  /* The 24px button centred on the title's 16px line. */
+  padding-top: var(--space-1);
+}
+.nameCellStacked:has(.nameTextStacked > :nth-child(2)) {
+  align-items: flex-start;
+}
 .nameText {
   display: flex;
   align-items: baseline;

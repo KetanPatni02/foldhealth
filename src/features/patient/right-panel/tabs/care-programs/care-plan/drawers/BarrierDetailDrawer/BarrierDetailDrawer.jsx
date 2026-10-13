@@ -21,6 +21,8 @@ import { useSignedCarePlan } from '../../lib/useSignedCarePlans';
 import { formatGoalTarget, formatGoalDuration, formatGoalFrequency } from '../../../../../../../settings/care-plan-library/lib';
 import { norm } from '../../CarePlanView/carePlanViewNorm';
 import { TemplatePreviewDrawer } from '../TemplatePreviewDrawer/TemplatePreviewDrawer';
+import { DetailDropdown } from '../../../../../../../tasks/TasksViewDropdowns';
+import { PRIORITY_OPTIONS } from '../../../../../../../tasks/TasksView.utils';
 import styles from './BarrierDetailDrawer.module.css';
 
 // Stable fallback so memo deps don't change every render.
@@ -302,6 +304,16 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
       goalIds: Array.from(linkedGoalIdSet),
     }, row.id)));
   };
+  // Priority saves on pick, like the title, on every legacy clone.
+  const savePriority = async (next) => {
+    if (!next || next === (liveBarrier.priority || 'medium')) return;
+    const rows = legacyClones.length ? legacyClones : [liveBarrier];
+    await Promise.all(rows.map(row => savePatientCarePlanBarrier(patientId, program, {
+      ...row,
+      priority: next,
+      goalIds: Array.from(linkedGoalIdSet),
+    }, row.id)));
+  };
   const handleUpdateBarrier = async () => {
     if (!barrierDirty) return;
     await persistBarrier(persistedTitle, status, 'Barrier updated');
@@ -447,6 +459,22 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
               {/* Title edits where it stands and saves on Enter / click away;
                   matching library barrier names show below while typing. */}
               <div className={styles.titleFieldWrap}>
+                <span className={styles.priorityTrigger}>
+                  <DetailDropdown
+                    value={liveBarrier.priority || 'medium'}
+                    options={PRIORITY_OPTIONS}
+                    onSelect={savePriority}
+                    searchable={false}
+                    renderOption={(opt) => (
+                      <>
+                        <PriorityIcon priority={opt} size={16} />
+                        <span style={{ textTransform: 'capitalize' }}>{opt}</span>
+                      </>
+                    )}
+                  >
+                    <PriorityIcon priority={liveBarrier.priority || 'medium'} size={20} />
+                  </DetailDropdown>
+                </span>
                 <EditableText
                   value={liveBarrier.title || ''}
                   onCommit={saveTitle}
