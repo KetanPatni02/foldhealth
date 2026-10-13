@@ -4,7 +4,9 @@
  *   program  each care program's Care Plan step holds the plan (default)
  *   patient  one patient-level plan in Care Management > Care Plan; the
  *            program Care Plan step is hidden
- *   both     program plans, plus an editable patient-level roll-up of them
+ *
+ * 'both' (program plans plus an editable patient-level roll-up) is no longer
+ * offered; a stored 'both' normalizes to program.
  */
 export const CARE_PLAN_MODES = [
   {
@@ -16,11 +18,6 @@ export const CARE_PLAN_MODES = [
     value: 'patient',
     label: 'Patient level',
     hint: 'One care plan per patient, in Care Management > Care Plan. Program Care Plan steps are hidden.',
-  },
-  {
-    value: 'both',
-    label: 'Program and patient level',
-    hint: 'Programs keep their care plans, and Care Management > Care Plan edits all of them in one place.',
   },
 ];
 

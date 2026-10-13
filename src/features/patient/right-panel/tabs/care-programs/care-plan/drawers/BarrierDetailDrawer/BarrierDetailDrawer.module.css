@@ -61,6 +61,19 @@
    position below it without pushing the meta line. */
 .titleFieldWrap {
   position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.titleFieldWrap > :nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+/* Priority beside the title, as on the goal and intervention drawers. */
+.priorityTrigger {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
 }
 .titleSuggestions {
   position: absolute;

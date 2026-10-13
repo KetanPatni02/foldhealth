@@ -9,10 +9,11 @@ import { Textarea } from '../../../../../../../../components/Textarea/Textarea';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { BulkBar } from '../../../../../../../../components/BulkBar/BulkBar';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
+import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
 import { PatientBanner } from '../../../../../../../../components/PatientBanner/PatientBanner';
 import { findPatientRecord } from '../../lib/carePlanPrintSettings';
 import { latestItemNote } from '../../lib/carePlanNotes';
-import { GBI_STATUSES } from '../../CarePlanView/CarePlanViewSections';
+import { GBI_STATUSES, PRIORITIES } from '../../CarePlanView/CarePlanViewSections';
 import { GoalPreviewDrawer } from '../GoalPreviewDrawer/GoalPreviewDrawer';
 import { InterventionPreviewDrawer } from '../InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { BarrierDetailDrawer } from '../BarrierDetailDrawer/BarrierDetailDrawer';
@@ -133,6 +134,7 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
   const [filter, setFilter] = useState('all');
   const [expanded, setExpanded] = useState(null); // `${kind}:${id}` with its note open
   const [statusMenu, setStatusMenu] = useState(null); // { kind, items, rect }
+  const [priorityMenu, setPriorityMenu] = useState(null); // { kind, item, rect }
   // Bulk select: the tab row's Select button shows the row checkboxes.
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState(() => new Set()); // item ids on the current tab
@@ -462,6 +464,7 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
                     }}
                     onOpen={() => openItem(listTab.kind, item)}
                     onStatusMenu={(rect) => setStatusMenu({ kind: listTab.kind, items: [item], rect })}
+                    onPriorityMenu={(rect) => setPriorityMenu({ kind: listTab.kind, item, rect })}
                     onSaveNote={async (text, tags) => {
                       if (text.trim()) {
                         await addCarePlanNote(patientId, program, text.trim(), {
@@ -530,6 +533,24 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
           onResume={resumeReview}
           onComplete={completeReview}
           onClose={() => setCompleteOpen(false)}
+        />
+      )}
+
+      {priorityMenu && (
+        <MenuPopover
+          anchorRect={priorityMenu.rect}
+          align="left"
+          width={160}
+          ariaLabel="Change priority"
+          items={PRIORITIES.map(p => ({ key: p, label: capitalize(p), iconElement: <PriorityIcon priority={p} size={16} /> }))}
+          onSelect={(priority) => {
+            const { kind, item } = priorityMenu;
+            setPriorityMenu(null);
+            if (priority === (item.priority || 'medium').toLowerCase()) return;
+            saveLive(patientId, program, kind, item.id, { priority });
+            markDiscussed(patientId, program, kind, item.id);
+          }}
+          onClose={() => setPriorityMenu(null)}
         />
       )}
 

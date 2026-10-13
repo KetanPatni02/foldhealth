@@ -14,7 +14,8 @@ import styles from './Select.module.css';
  * builders that need a styled dropdown without pulling in shadcn/radix.
  *
  * Props:
- *  - options    [{ value: string, label: string, disabled?: boolean }]
+ *  - options    [{ value: string, label: string, disabled?: boolean, icon?: string }]
+ *                 (`icon`: a Solar icon shown before the option's label)
  *  - value      (string)
  *  - onChange   (value) => void
  *  - placeholder (string)
@@ -400,7 +401,12 @@ export function Select({
                     aria-hidden="true"
                   />
                 )}
-                {opt.label}
+                {opt.icon ? (
+                  <span className={styles.itemLabel}>
+                    <Icon name={opt.icon} size={14} color="var(--neutral-300)" />
+                    {opt.label}
+                  </span>
+                ) : opt.label}
               </li>
             );
           })}

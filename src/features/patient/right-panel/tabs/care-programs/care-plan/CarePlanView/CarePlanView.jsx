@@ -389,6 +389,15 @@ export function CarePlanView({ patientId, program }) {
   const changePriority = (priority) => {
     const { kind, item } = priorityMenu;
     setPriorityMenu(null);
+    // A barrier row stands for every clone with its title (see renameBarrier).
+    if (kind === 'barrier') {
+      const key = norm(item.title);
+      const clones = (data.barriers || []).filter(b => norm(b.title) === key);
+      (clones.length ? clones : [item]).forEach(row => (
+        savePatientCarePlanBarrier(patientId, program, { ...row, priority, goalIds: item.goalIds || row.goalIds }, row.id)
+      ));
+      return;
+    }
     saveGbiPriority({
       kind,
       item,
@@ -1113,6 +1122,7 @@ export function CarePlanView({ patientId, program }) {
             onSelectAll={(checked) => selectAllKind('barrier', filteredBarriers, checked)}
             onToggleSelect={(id) => toggleSelect('barrier', id)}
             onStatusMenu={setStatusMenu}
+            onPriorityMenu={setPriorityMenu}
             onRowMenu={setStatusMenu}
             onOpenBarrier={setPreviewBarrier}
             onOpenNotes={(b) => openNotesFor('barrier', b)}

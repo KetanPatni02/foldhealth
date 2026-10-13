@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
+import { PriorityIcon } from '../../../../../../../components/PriorityIcon/PriorityIcon';
 import { WorklistShell } from '../../../../../../../components/WorklistShell/WorklistShell';
 import { useTableSort } from '../../../../../../../components/HeaderCell/useTableSort';
 import {
@@ -22,6 +23,7 @@ function BarrierRow({
   canEdit,
   onToggleSelect,
   onStatusMenu,
+  onPriorityMenu,
   onRowMenu,
   onOpenBarrier,
   onOpenNotes,
@@ -49,7 +51,26 @@ function BarrierRow({
           disabled={!canEdit}
         />
       )}
-      <td className={styles.priorityTd} aria-hidden="true" />
+      {/* Library barriers carry no priority; a patient's barrier does, set
+          here the same way as a goal's. */}
+      {template ? (
+        <td className={styles.priorityTd} aria-hidden="true" />
+      ) : (
+        <td className={styles.priorityTd} onClick={e => e.stopPropagation()}>
+          {canEdit && onPriorityMenu ? (
+            <button
+              type="button"
+              className={styles.priorityBtn}
+              onClick={(e) => onPriorityMenu({ kind: 'barrier', item: b, rect: e.currentTarget.getBoundingClientRect() })}
+              aria-label="Change priority"
+            >
+              <PriorityIcon priority={b.priority} size={16} />
+            </button>
+          ) : (
+            <PriorityIcon priority={b.priority} size={16} />
+          )}
+        </td>
+      )}
       <td className={styles.titleTd}>
         {/* Library templates keep the description + inline link button; the
             patient plan reads as a single line with links in Actions. */}
@@ -107,6 +128,8 @@ export function CarePlanBarriersTable({
   onSelectAll,
   onToggleSelect,
   onStatusMenu,
+  // ({ kind: 'barrier', item, rect }) => void — opens the priority menu.
+  onPriorityMenu,
   onRowMenu,
   onOpenBarrier,
   // Notes icon → open the barrier drawer at its Note section.
@@ -174,6 +197,7 @@ export function CarePlanBarriersTable({
       canEdit={canEdit}
       onToggleSelect={onToggleSelect}
       onStatusMenu={onStatusMenu}
+      onPriorityMenu={onPriorityMenu}
       onRowMenu={onRowMenu}
       onOpenBarrier={onOpenBarrier}
       onOpenNotes={onOpenNotes}

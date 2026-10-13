@@ -86,7 +86,7 @@ function Facts({ kind, item, onPickDate }) {
  */
 export function ReviewItemRow({
   kind, item, discussed, selecting, selected, expanded, note, latestNote,
-  onToggleSelected, onToggleDiscussed, onToggleExpanded, onOpen, onStatusMenu, onSaveNote, onTargetDate,
+  onToggleSelected, onToggleDiscussed, onToggleExpanded, onOpen, onStatusMenu, onPriorityMenu, onSaveNote, onTargetDate,
 }) {
   const [text, setText] = useState('');
   const [tags, setTags] = useState(() => discussed?.tags || []);
@@ -107,7 +107,14 @@ export function ReviewItemRow({
             aria-label={`Select ${item.title}`}
           />
         )}
-        <PriorityIcon priority={(item.priority || 'medium').toLowerCase()} size={14} />
+        <button
+          type="button"
+          className={styles.priorityBtn}
+          onClick={(e) => onPriorityMenu?.(e.currentTarget.getBoundingClientRect())}
+          aria-label={`Priority: ${item.priority || 'medium'}. Change priority`}
+        >
+          <PriorityIcon priority={(item.priority || 'medium').toLowerCase()} size={14} />
+        </button>
         <button type="button" className={styles.itemMain} onClick={onToggleExpanded} aria-expanded={expanded}>
           <span className={`${styles.itemTitle} ${discussed ? styles.itemTitleDone : ''}`}>{item.title}</span>
           {(discussed || meta.text || meta.badge) && (
