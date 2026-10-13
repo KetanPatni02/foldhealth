@@ -10,11 +10,14 @@ import styles from './OutreachTab.module.css';
 
 export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOpen, showSyncText,
   onToggleExpand, onToggleOutcomeOpen, onAddOutcome, onRemoveOutcome, onNoteChange, onToggleSyncText,
-  outcomeType }) {
+  outcomeType, choiceItems = null }) {
   const outcomeBtnRef = useRef(null);
   // The menu lists only the outcomes that fit the chosen Outreach Outcome,
-  // so it stays disabled until one of those radios is picked.
-  const choices = (OUTCOME_CHOICES_BY_STATUS[outcomeType] || []).filter(o => !outcomes.includes(o));
+  // so it stays disabled until one of those radios is picked. A host can
+  // supply its own items (`choiceItems`, may include section headers).
+  const menuItems = choiceItems
+    ? choiceItems.filter(it => !it.key || !outcomes.includes(it.key))
+    : (OUTCOME_CHOICES_BY_STATUS[outcomeType] || []).filter(o => !outcomes.includes(o)).map(val => ({ key: val, label: val }));
   const outcomeDisabled = !outcomeType;
 
   const badgeClass = outcomeType === 'Successful' ? styles.outcomeBadgeSuccess
@@ -46,13 +49,15 @@ export function NotePanel({ title, expanded, outcomes, note, syncText, outcomeOp
                 {outcomes.length === 0 && <span className={styles.mandatoryDot} aria-hidden="true" />}
               </button>
             </Tooltip>
-            {outcomeOpen && !outcomeDisabled && choices.length > 0 && (
+            {outcomeOpen && !outcomeDisabled && menuItems.some(it => it.key) && (
               <MenuPopover
                 anchorRef={outcomeBtnRef}
-                items={choices.map(val => ({ key: val, label: val }))}
+                items={menuItems}
                 onSelect={onAddOutcome}
                 onClose={onToggleOutcomeOpen}
-                width={260}
+                width={choiceItems ? 380 : 260}
+                searchable={!!choiceItems}
+                searchPlaceholder="Search outcomes or stakeholder…"
                 ariaLabel="Select outcome"
               />
             )}

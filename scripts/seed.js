@@ -22,6 +22,7 @@ import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
 import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
 import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comms/educationLibrary.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
+import { PHARMACY_WORKLIST_MEMBERS } from '../src/features/pharmacy-worklist/data/mock.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
 import { CARE_PLAN_MOCK } from '../src/features/patient/data/carePlanMock.js';
@@ -747,6 +748,40 @@ function snpWorklistToRow(m, foldIdMap) {
   };
 }
 
+// Mirrors rowToMember in src/store/slices/pharmacyWorklistSlice.js.
+function pharmacyWorklistToRow(m) {
+  return {
+    id:                m.id,
+    member_id:         m.memberId ?? null,
+    patient_id:        m.patientId ?? null,
+    name:              m.name,
+    initials:          m.initials ?? null,
+    gender:            m.gender ?? null,
+    age:               m.age ?? null,
+    dob:               m.dob ?? null,
+    language:          m.language || 'en',
+    health_plan:       m.healthPlan ?? null,
+    ipa:               m.ipa ?? null,
+    book_of_business:  m.bookOfBusiness ?? null,
+    status:            m.status || 'Open',
+    status_manual:     !!m.statusManual,
+    assignee_id:       m.assigneeId ?? null,
+    assignee_name:     m.assigneeName ?? null,
+    assignee_initials: m.assigneeInitials ?? null,
+    lead_note:         m.leadNote ?? null,
+    follow_up_due:     m.followUpDue ?? null,
+    barrier:           m.barrier ?? null,
+    days_in_queue:     m.daysInQueue ?? null,
+    prescriber:        m.prescriber ?? null,
+    pharmacy:          m.pharmacy ?? null,
+    phones:            m.phones ?? [],
+    call_history:      m.callHistory ?? [],
+    intervention_log:  m.interventionLog ?? [],
+    activity_log:      m.activityLog ?? [],
+    measures:          m.measures ?? [],
+  };
+}
+
 // Mirrors caregapActivityToRow in useAppStore.js — common columns lifted out,
 // variant-specific fields ride in payload jsonb.
 function caregapActivityToRow(memberId, e) {
@@ -1103,6 +1138,21 @@ async function main() {
     .from('snp_worklist_members')
     .upsert(snpWorklistRows, { onConflict: 'id' });
   if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} new SNP worklist members (${SNP_WORKLIST_MEMBERS.length - snpWorklistRows.length} already present)`); }
+
+  console.log('Seeding pharmacy_worklist_members...');
+  const pharmacyRows = PHARMACY_WORKLIST_MEMBERS.map(pharmacyWorklistToRow);
+  const { error: pwe } = await supabase
+    .from('pharmacy_worklist_members')
+    .upsert(pharmacyRows, { onConflict: 'id' });
+  if (pwe) {
+    if (pwe.code === '42P01' || pwe.code === 'PGRST205') {
+      console.log('  ⚠ pharmacy_worklist_members table missing — run supabase/pharmacy_worklist_members_migration.sql first');
+    } else {
+      console.error('  ✗', pwe.message);
+    }
+  } else {
+    console.log(`  ✓ ${pharmacyRows.length} pharmacy worklist members`);
+  }
 
   console.log('Seeding care_plan_barriers (library)...');
   const barrierLibraryRows = CARE_PLAN_BARRIER_LIBRARY.map(carePlanBarrierLibraryToRow);

@@ -95,6 +95,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
       s.patients, s.allPatients, s.hccMembers,
       s.awvMembers, s.snpMembers, s.snpWorklistMembers,
       s.ccmMembers, s.ccmWorklistMembers, s.hedisMembers, s.jsaMembers,
+      s.pharmacyWorklistMembers,
     ];
     const matches = m => m && (m.id === pid || String(m.memberId) === String(pid));
     for (const list of buckets) {
@@ -261,10 +262,10 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
     isAppointmentStep: /appointment/i.test(stepName),
     isOpenCareGapsStep: stepName === 'Open Care Gaps' || stepName === 'Care Gaps',
     isMedReconStep: stepName === 'Medication Reconciliation' || stepName === 'Medication Review',
-    isProgramTasksStep: stepName === 'Program Related Task',
+    isProgramTasksStep: stepName === 'Program Related Task' || stepName === 'Tasks',
     isProgramFilesStep: stepName === 'Program Related Files' || stepName === 'Program Documents' || stepName === 'Documents',
     isReferralStep: stepName === 'Referral Review',
-    isLettersStep: stepName === 'Letters',
+    isLettersStep: stepName === 'Letters' || stepName === 'Letters/eFax',
     isDiagnosisGapsStep: stepName === 'Open Diagnosis Gaps',
   };
 

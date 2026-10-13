@@ -128,6 +128,8 @@ export function OutreachTabView({
           onAddTask={() => tab.setAddTaskOpen(true)}
           onSchedule={() => tab.setScheduleOpen(true)}
           hideFooter={hideFormFooter}
+          outcomeItems={tab.outcomeItems}
+          callTypeOptions={tab.callTypeOptions}
         />
       )}
 
