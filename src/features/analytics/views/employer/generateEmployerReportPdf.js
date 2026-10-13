@@ -1108,7 +1108,7 @@ function fadingGrid(doc, color, x0, y0, w, h, cx, cy, rx, ry) {
  * @param {{ weight: string, size: number }} [cover.titleStyle] – Title weight and size (pt)
  * @param {{ weight: string, size: number }} [cover.introStyle] – Introduction weight and size (pt)
  */
-function coverPage(doc, {
+export function coverPage(doc, {
   title, range, description, background = DEFAULT_COVER_BACKGROUND, logo, clientLogo,
   logoScale = DEFAULT_LOGO_SCALE, logoAlign = 'middle-center', clientLogoScale = DEFAULT_CLIENT_LOGO_SCALE, clientLogoAlign = 'center',
   titleStyle = COVER_TITLE_STYLE, introStyle = COVER_INTRO_STYLE,

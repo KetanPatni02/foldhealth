@@ -9,22 +9,18 @@ import { Input } from '../../../../components/Input/Input';
 import { Toggle } from '../../../../components/Toggle/Toggle';
 import { TabStrip } from '../../../../components/TabStrip/TabStrip';
 import { EditableText } from '../../../../components/EditableText/EditableText';
-// The form and email builders' colour field: swatch + hex, opening the full picker.
-import { ColorInput } from '../../../email-builder/ColorInput';
 import { useAppStore } from '../../../../store/useAppStore';
 import { ImageTileGallery } from '../../../../components/ImageTileGallery/ImageTileGallery';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { Link } from '../../../../components/Link/Link';
 import { AddIconMinimalist } from '../../../../components/Icon/AddIconMinimalist';
-import { Icon } from '../../../../components/Icon/Icon';
-import { CloseIcon } from '../../../../components/Icon/CloseIcon';
-import { Slider } from '../../../../components/ShadcnSlider/ShadcnSlider';
-import { AlignmentPicker } from '../../../../components/AlignmentPicker/AlignmentPicker';
+import { ReportLogoField, LogoScale, LogoPlacement, CoverSwatches, CoverSwatch, AddSwatch } from '../../../../components/ReportCover/ReportCover';
 import { PdfPreview } from '../../../../components/PdfPreview/PdfPreview';
 import { PreviewLoader } from '../../../../components/PreviewLoader/PreviewLoader';
 import { MenuPopover } from '../../../../components/MenuPopover/MenuPopover';
 import { TypographyPopover } from '../../../../components/TypographyPopover/TypographyPopover';
 import { buildReportPage } from './downloadReportPage';
+import { downloadBlob, printBlob } from '../../../../lib/blobActions';
 import { REPORT_FONTS, loadReportFont, loadFontPreviews } from './reportFonts';
 // import { SendReportEmailDrawer } from './SendReportEmailDrawer'; // Send Report: hidden for now
 import {
@@ -84,8 +80,6 @@ const BACKGROUND_TYPES = [
   { key: 'gradient', label: 'Gradient' },
   { key: 'image', label: 'Image' },
 ];
-const IMAGE_ACCEPT = '.png,.svg';
-const IMAGE_MIME = ['image/png', 'image/svg+xml'];
 const IMAGE_MAX_MB = 5;
 // Cover images people add: photos as well as artwork.
 const COVER_ACCEPT = '.png,.jpg,.jpeg,.svg';
@@ -107,141 +101,17 @@ const ASSET_WAIT_MS = 3000;
 /**
  * The employer's logo as a preview row with a Change action (and Reset once
  * replaced), for the Employer Logo box. The logo comes from the Employer
- * filter; Change swaps in an upload (PNG or SVG, up to IMAGE_MAX_MB).
+ * filter; Change swaps in an upload (PNG or SVG).
  */
 function EmployerLogoField({ logo, custom, onPick, onReset }) {
-  const inputRef = useRef(null);
-  const [error, setError] = useState('');
-  const src = custom?.dataUrl || (logo && employerLogoUrl(logo, DARK_INK));
-  const name = custom?.name || logo?.name || 'No logo';
   return (
-    <>
-      <div className={styles.logoRow}>
-        {src && <span className={styles.logoThumb}><img src={src} alt="" /></span>}
-        <span className={styles.pickedName}>{name}</span>
-        {custom && (
-          <Button variant="tertiary" size="S" onClick={() => { setError(''); onReset(); }}>Reset</Button>
-        )}
-        <Button variant="secondary" size="S" leadingIcon="solar:upload-minimalistic-linear" onClick={() => inputRef.current?.click()}>
-          Change
-        </Button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept={IMAGE_ACCEPT}
-          className={styles.hiddenInput}
-          aria-label="Upload employer logo"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (!file) return;
-            if (!IMAGE_MIME.includes(file.type)) { setError('Only PNG or SVG images can be used.'); return; }
-            if (file.size > IMAGE_MAX_MB * 1024 * 1024) { setError(`That file is over ${IMAGE_MAX_MB} MB. Choose a smaller image.`); return; }
-            setError('');
-            const unreadable = () => setError('That image couldn’t be read. Try another PNG or SVG.');
-            readImage(file)
-              .then((img) => { if (img) onPick({ ...img, name: file.name }); else unreadable(); })
-              .catch(unreadable);
-          }}
-        />
-      </div>
-      {error && <span className={styles.dropError} role="alert">{error}</span>}
-    </>
-  );
-}
-
-/** "Scale: ─●── 50%" for a cover logo's size. */
-function LogoScale({ value, onChange, label }) {
-  return (
-    <div className={styles.scaleRow}>
-      <span className={styles.scaleLabel}>Scale:</span>
-      <Slider
-        variant="neutral"
-        min={10}
-        max={100}
-        step={5}
-        value={[value]}
-        onValueChange={([v]) => onChange(v)}
-        aria-label={`${label} scale`}
-      />
-      <span className={styles.scaleLabel}>{value}%</span>
-    </div>
-  );
-}
-
-/**
- * A cover logo's settings (Figma 1031:21133): the logo box (preview, Scale)
- * on the left, where it sits on the cover on the right.
- */
-function LogoPlacement({ label, align, onAlign, alignRows, children }) {
-  return (
-    <div className={styles.logoPlacement}>
-      <div className={styles.fieldGroup}>
-        <span className={styles.groupTitle}>{label}</span>
-        <div className={styles.logoBox}>{children}</div>
-      </div>
-      <div className={styles.fieldGroup}>
-        <span className={styles.groupTitle}>Alignment</span>
-        <div className={styles.alignSlot}>
-          <AlignmentPicker rows={alignRows} value={align} onChange={onAlign} ariaLabel={`${label} alignment`} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * A cover background swatch (Figma Cover Swatch, 1031:55835), with a remove
- * button at its top right on hover.
- */
-function CoverSwatch({ label, fill, selected, onSelect, onRemove }) {
-  return (
-    <div className={styles.swatchCell}>
-      <button
-        type="button"
-        role="radio"
-        aria-checked={selected}
-        aria-label={label}
-        title={label}
-        className={[styles.swatch, selected ? styles.swatchOn : ''].filter(Boolean).join(' ')}
-        onClick={onSelect}
-      >
-        {/* The swatch shows report content (the PDF's own colours), not UI chrome. */}
-        <span className={styles.swatchFill} style={fill} />
-      </button>
-      {onRemove && (
-        <button type="button" className={styles.swatchRemove} aria-label={`Remove ${label}`} title="Remove" onClick={onRemove}>
-          <CloseIcon size={11} color="var(--neutral-300)" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-/**
- * The last swatch, always there: "+" opens the picker, starting from the
- * cover's current fill. One opening adds one swatch: the first change
- * creates it (selected), later changes in the same opening update it.
- */
-function AddSwatch({ value, gradient, onPick }) {
-  const draft = useRef(null);
-  return (
-    <ColorInput
-      value={value}
-      onChange={(v) => { draft.current = onPick(v, draft.current); }}
-      allowGradient={gradient}
-      gradientOnly={gradient}
-      trigger={(
-        <button
-          type="button"
-          aria-label={gradient ? 'Add gradient' : 'Add colour'}
-          title={gradient ? 'Add gradient' : 'Add colour'}
-          className={[styles.swatch, styles.swatchAdd].join(' ')}
-          onClick={() => { draft.current = null; }}
-        >
-          <Icon name="solar:add-linear" size={20} color="var(--neutral-300)" />
-        </button>
-      )}
+    <ReportLogoField
+      src={logo && employerLogoUrl(logo, DARK_INK)}
+      name={logo?.name}
+      custom={custom}
+      onPick={onPick}
+      onReset={onReset}
+      uploadLabel="Upload employer logo"
     />
   );
 }
@@ -260,71 +130,7 @@ function presetPickerCss(key) {
   return `linear-gradient(${Math.round(g.angle)}deg, ${g.stops.map(([c, p]) => `${toHex(c)} ${Math.round(p * 100)}%`).join(', ')})`;
 }
 
-/**
- * A picked image as what jsPDF needs: a PNG data URL and its pixel size.
- * PNGs pass through; SVGs are drawn to a canvas (jsPDF can't place SVG),
- * at 3x or at least 1200px wide so they stay sharp in print.
- */
-function readImage(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        if (file.type !== 'image/svg+xml' && !/\.svg$/i.test(file.name)) {
-          resolve({ dataUrl: reader.result, format: 'PNG', width: img.naturalWidth, height: img.naturalHeight });
-          return;
-        }
-        // SVGs without width/height report 0 (or 300 × 150); fall back to a sensible size.
-        const w = img.naturalWidth || 300;
-        const h = img.naturalHeight || 150;
-        const scale = Math.max(3, 1200 / w);
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(w * scale);
-        canvas.height = Math.round(h * scale);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve({ dataUrl: canvas.toDataURL('image/png'), format: 'PNG', width: canvas.width, height: canvas.height });
-      };
-      img.onerror = () => resolve(null);
-      img.src = reader.result;
-    };
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
-  });
-}
-
-
 const hasData = (item) => (item.kind === 'savings' ? item.card.hasData : item.model?.hasData);
-
-function downloadBlob(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-// Prints the PDF itself (not the page) from a hidden frame.
-function printBlob(blob) {
-  const url = URL.createObjectURL(blob);
-  const frame = document.createElement('iframe');
-  frame.style.position = 'fixed';
-  frame.style.width = '0';
-  frame.style.height = '0';
-  frame.style.border = '0';
-  frame.src = url;
-  frame.onload = () => {
-    try {
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
-    } catch {
-      window.open(url, '_blank', 'noopener');
-    }
-    setTimeout(() => { frame.remove(); URL.revokeObjectURL(url); }, 60000);
-  };
-  document.body.appendChild(frame);
-}
 
 /**
  * Print the Employer Impact Report: a live PDF preview on the left, and on
@@ -1174,7 +980,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                     <Toggle size="S" items={BACKGROUND_TYPES} active={bgType} onChange={setBgType} />
                   </div>
                   {bgType === 'color' && (
-                    <div className={styles.swatches} role="radiogroup" aria-label="Cover colour">
+                    <CoverSwatches ariaLabel="Cover colour">
                       {colorList.map(c => (
                         <CoverSwatch
                           key={c}
@@ -1186,10 +992,10 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                         />
                       ))}
                       <AddSwatch value={bgColor} onPick={pickColor} />
-                    </div>
+                    </CoverSwatches>
                   )}
                   {bgType === 'gradient' && (
-                    <div className={styles.swatches} role="radiogroup" aria-label="Cover gradient">
+                    <CoverSwatches ariaLabel="Cover gradient">
                       {gradientList.map(g => (
                         <CoverSwatch
                           key={g.id}
@@ -1202,7 +1008,7 @@ export function PrintReportDrawer({ range, employerName, filename, sections, fil
                       ))}
                       {/* Starts from the cover's gradient; the edit is added as a new swatch. */}
                       <AddSwatch gradient value={customGradient?.css || presetPickerCss(bgGradient)} onPick={pickGradient} />
-                    </div>
+                    </CoverSwatches>
                   )}
                   {bgType === 'image' && (
                     <>

@@ -1,0 +1,40 @@
+/* Care program report drawer: live PDF on the left, Program Steps and
+   Personalize on the right. Mirrors the Employer Impact Report's print drawer. */
+
+.headerDivider { width: 1px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+
+.previewPane { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--neutral-0); }
+.editorScroll { flex: 1; min-height: 0; overflow-y: auto; }
+.tabBar { position: sticky; top: 0; z-index: 2; background: var(--neutral-0); }
+.body { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
+
+.fieldGroup { display: flex; flex-direction: column; gap: var(--space-2); }
+.coverHint { font-size: var(--font-sm); line-height: var(--leading-tight); color: var(--neutral-200); }
+
+/* ── Program Steps: a card per step or section, as the Widgets tab's. ── */
+.cards { display: flex; flex-direction: column; gap: var(--space-4); }
+.sectionCard {
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--neutral-0); border: 0.5px solid var(--neutral-150); border-radius: 8px;
+}
+.cardHead { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3); }
+.cardHeadText { display: flex; flex-direction: column; align-items: flex-start; gap: calc(var(--space-1) / 2); flex: 1; min-width: 0; }
+.cardTitle { font-size: var(--font-lg); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-400); }
+.cardSubtitle { font-size: var(--font-base); line-height: var(--leading-tight); color: var(--neutral-300); }
+.cardList { display: flex; flex-direction: column; border-top: 0.5px solid var(--neutral-150); }
+.cardRow {
+  display: flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3); background: var(--neutral-0);
+}
+.cardList .cardRow + .cardRow { border-top: 0.5px solid var(--neutral-150); }
+.rowText { flex: 1; min-width: 0; font-size: var(--font-base); line-height: var(--leading-tight); color: var(--neutral-400); }
+
+/* ── Personalize (Figma 1031:21133): blocks 24px apart, no hairlines. ── */
+.personalize { display: flex; flex-direction: column; gap: var(--space-6); }
+.groupHead { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.groupActions { display: inline-flex; align-items: center; gap: var(--space-2); }
+.groupTitle { margin: 0; font-size: var(--font-base); font-weight: 500; line-height: var(--leading-tight); color: var(--neutral-400); }
+.coverGroup { display: flex; flex-direction: column; gap: var(--space-4); }
+/* Header and footer side by side, 16px apart. */
+.chromeRow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+.chromeGroup { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }

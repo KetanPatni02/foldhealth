@@ -108,6 +108,8 @@ export function ProgramDetailViewContentHeader({
       parent_task_id: null,
       created_by: me,
       created_by_id: currentUserProfile?.id || null,
+      program_code: program?.code || null,
+      patient_id: selectedPatientId != null ? String(selectedPatientId) : null,
     });
     showToast?.(created
       ? `Sign-off task assigned to ${user.name}`

@@ -10,6 +10,7 @@ import { toast } from '../../../../../../../../components/Toast/sonnerToast';
 import { WorklistShell } from '../../../../../../../../components/WorklistShell/WorklistShell';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from './AppointmentStep.module.css';
+import { useProgramActivityLog } from '../../shared/useProgramActivityLog';
 
 // Mirrors the grid this table replaced: 32 / fill / 140 / 140 / 160.
 const APPT_COLUMNS = [
@@ -67,12 +68,13 @@ function ApptTable({ rows }) {
  * Upcoming Appointments & Reminders table; an empty card when the program has
  * no booking yet.
  */
-export function AppointmentStep({ patientId, programCode }) {
+export function AppointmentStep({ patientId, programCode, stepName = 'Appointment' }) {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(true);
 
   const addedForProgram = useAppStore(s => s.programAddedAppointments[programCode]);
   const addProgramAppointment = useAppStore(s => s.addProgramAppointment);
+  const logActivity = useProgramActivityLog(programCode);
   const added = addedForProgram || [];
 
   const all = [...added];
@@ -90,6 +92,12 @@ export function AppointmentStep({ patientId, programCode }) {
       time: row.time_start || '',
       assignee: row.primary_user || 'Unassigned',
       recurring: !!row.recurring,
+    });
+    const when = [row.date, row.time_start].filter(Boolean).join(' ');
+    logActivity(`${stepName} Scheduled: ${row.appointment_type_name || 'Appointment'}`, {
+      activityKind: 'appointment',
+      statusLabel: when || 'Scheduled',
+      statusType: 'neutral',
     });
   };
 

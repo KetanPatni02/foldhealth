@@ -4580,11 +4580,13 @@ export const useAppStore = create((set, get) => ({
     const stamp = `${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')}/${now.getFullYear()}`;
     let updated;
     let prevStatus;
+    let prevAssignee;
     set((state) => {
       const list = state.careProgramsByPatient[patientId] || [];
       const next = list.map((p) => {
         if (p.id !== programId) return p;
         prevStatus = p.status;
+        prevAssignee = p.assignee;
         updated = { ...p, ...patch, lastUpdated: stamp };
         return updated;
       });
@@ -4612,6 +4614,16 @@ export const useAppStore = create((set, get) => ({
     }
     // A status change is a program activity — log it so the Program Activity Log
     // reflects it, grouped under the program.
+    if (updated && patch.assignee && patch.assignee !== prevAssignee) {
+      get().logProgramActivity({
+        patientId,
+        programCode: updated.code,
+        title: `${updated.code} Program Assignee Changed`,
+        activityKind: 'status',
+        statusLabel: patch.assignee,
+        statusType: 'neutral',
+      });
+    }
     if (updated && patch.status && patch.status !== prevStatus) {
       get().logProgramActivity({
         patientId,
@@ -15847,6 +15859,16 @@ export const useAppStore = create((set, get) => ({
       hedisGapCodes: data?.hedis_gap_codes ?? normalizedHedisGapCodes ?? [],
     };
     set(s => ({ tasks: s.tasks.map(t => t.id === tempId ? final : t) }));
+    // A task filed against a care program is that program's activity.
+    if (final.program_code) {
+      get().logProgramActivity({
+        patientId: final.patient_id,
+        programCode: final.program_code,
+        title: `Task Created: ${final.name}`,
+        activityKind: 'task',
+        statusLabel: final.assigned_to ? `Assigned to ${final.assigned_to}` : '',
+      });
+    }
     if (!opts.skipAudit) {
       get().logTaskAudit(final.id, 'created', {
         to: final.name,
@@ -15996,6 +16018,18 @@ export const useAppStore = create((set, get) => ({
     }
 
     set(s => ({ tasks: s.tasks.map(t => t.id === id ? { ...t, ...final } : t) }));
+
+    if (prev?.program_code && 'status' in final && final.status !== prev.status) {
+      const label = { pending: 'Pending', in_progress: 'In Progress', completed: 'Completed', missed: 'Missed' }[final.status] || final.status;
+      get().logProgramActivity({
+        patientId: prev.patient_id,
+        programCode: prev.program_code,
+        title: `Task ${label}: ${merged.name || 'Task'}`,
+        activityKind: 'task',
+        statusLabel: label,
+        statusType: final.status === 'completed' ? 'success' : final.status === 'missed' ? 'error' : 'neutral',
+      });
+    }
 
     // Try DB update; gracefully retry without unknown columns.
     //

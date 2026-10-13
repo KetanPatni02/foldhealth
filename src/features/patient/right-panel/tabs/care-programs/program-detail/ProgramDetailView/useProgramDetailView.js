@@ -19,6 +19,7 @@ import {
 } from './ProgramDetailView.utils';
 import { showsProgramCarePlan } from '../../care-plan/lib/carePlanMode';
 import { deriveStepStatus, programProgressOf, STEP_STATUS } from './stepStatus';
+import { useProgramActivityLog } from '../shared/useProgramActivityLog';
 
 const EMPTY_LIST = [];
 const EMPTY_MAP = {};
@@ -238,11 +239,22 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
   const activeStepObj = flatSteps(stepList).find(s => s.id === activeStep);
   // Reviewed / Skip on steps: saved per patient enrollment.
   const activeStepStatus = activeStepObj?.status || STEP_STATUS.pending;
+  const logActivity = useProgramActivityLog(program.code);
   const markStep = (status) => {
     if (!activeStepObj) return;
+    const { name } = activeStepObj;
+    const activityKind = ASSESSMENT_STEPS[name] ? 'clipboard' : 'status';
     setProgramStepStatus(program.id, activeStepObj, status);
-    if (status === STEP_STATUS.completed) toast.success?.(`${activeStepObj.name} marked as reviewed`);
-    else if (status === STEP_STATUS.skipped) toast.success?.(`${activeStepObj.name} skipped`);
+    if (status === STEP_STATUS.completed) {
+      toast.success?.(`${name} marked as reviewed`);
+      logActivity(`${name} Marked as Reviewed`, { activityKind, statusLabel: 'Reviewed', statusType: 'success' });
+    } else if (status === STEP_STATUS.skipped) {
+      toast.success?.(`${name} skipped`);
+      logActivity(`${name} Skipped`, { activityKind, statusLabel: 'Skipped', statusType: 'neutral' });
+    } else {
+      const undone = activeStepObj.status === STEP_STATUS.skipped ? 'Skip' : 'Review';
+      logActivity(`${name} ${undone} Undone`, { activityKind, statusLabel: 'Not Started', statusType: 'neutral' });
+    }
   };
   const stepName = activeStepObj?.name || '';
   const isMandatoryStep = !!activeStepObj?.mandatory;
@@ -289,6 +301,7 @@ export function useProgramDetailView({ program, onSwitchProgram }) {
     toggleLetter, previewLetter, downloadSelectedLetters, stepName,
     isMandatoryStep, assessmentCfg, goNextStep, toggleSection, stepFlags,
     initialsOf, progressForCode: progressFor, onSwitchProgram,
-    activeStepStatus, activeStepSource: activeStepObj?.source || null, markStep,
+    activeStepStatus, activeStepSource: activeStepObj?.source || null, markStep, logActivity,
+    stepCtx, liveProgram,
   };
 }

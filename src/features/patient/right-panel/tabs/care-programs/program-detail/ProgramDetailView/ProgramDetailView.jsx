@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPopover';
 import { AssigneeChange } from '../../../../../../../components/AssigneeChange/AssigneeChange';
 import { useAppStore } from '../../../../../../../store/useAppStore';
@@ -20,8 +20,11 @@ import { ProgramDiagnosisGapsTable } from '../DiagnosisGapsStep/ProgramDiagnosis
 import { AddLetterDrawer } from '../letters/AddLetterDrawer/AddLetterDrawer.jsx';
 import { LetterHistoryDrawer } from '../letters/LetterHistoryDrawer/LetterHistoryDrawer.jsx';
 import { LetterPreviewDrawer } from '../letters/LetterPreviewDrawer/LetterPreviewDrawer.jsx';
+import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { ProgramHistoryDrawer } from '../ProgramHistoryDrawer/ProgramHistoryDrawer.jsx';
+import { useProgramHistory } from '../ProgramHistoryDrawer/useProgramHistory';
 import { toast } from '../../../../../../../components/Toast/sonnerToast';
-import { PROGRAM_STATUS_OPTIONS } from '../../../../../data/programStatus';
+import { PROGRAM_STATUS_OPTIONS, statusColorFor } from '../../../../../data/programStatus';
 import { useProgramDetailView } from './useProgramDetailView';
 import { StepItem, SectionHeader, StepPlaceholder } from './ProgramDetailViewParts';
 import { ProgramDetailViewHeader } from './ProgramDetailViewHeader';
@@ -29,6 +32,7 @@ import { ProgramDetailViewContentHeader } from './ProgramDetailViewContentHeader
 import { ProgramDetailViewLetters } from './ProgramDetailViewLetters';
 import { downloadLetters } from './ProgramDetailView.utils';
 import { mmddyy } from './ProgramDetailView.utils';
+import { ProgramReportDrawer } from '../report/ProgramReportDrawer';
 import styles from './ProgramDetailView.module.css';
 
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false, onSwitchProgram }) {
@@ -37,6 +41,33 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
+
+  const [programHistoryOpen, setProgramHistoryOpen] = useState(false);
+  const [endConfirmOpen, setEndConfirmOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const reportProgram = useMemo(
+    () => ({ ...program, ...(v.liveProgram || {}), status: v.status, assignee: v.assignee }),
+    [program, v.liveProgram, v.status, v.assignee],
+  );
+  const fetchPatientProgramActivity = useAppStore(s => s.fetchPatientProgramActivity);
+  const programHistory = useProgramHistory(program);
+  useEffect(() => {
+    if (programHistory.patientId) fetchPatientProgramActivity(programHistory.patientId);
+  }, [programHistory.patientId, fetchPatientProgramActivity]);
+
+  const endProgram = () => {
+    const d = new Date();
+    const today = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    v.updateCareProgram(v.patientId, program.id, { status: 'Closed', statusColor: statusColorFor('Closed'), endDate: today });
+    setEndConfirmOpen(false);
+    toast.success(`${program.name} ended`);
+  };
+
+  const onMoreAction = (key) => {
+    if (key === 'history') setProgramHistoryOpen(true);
+    else if (key === 'report') setReportOpen(true);
+    else if (key === 'end') setEndConfirmOpen(true);
+  };
 
   const assigneePicker = (
     <AssigneeChange
@@ -63,9 +94,9 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
     }
     if (stepFlags.isPreVisitStep) return <PreVisitStep programCode={program.code} />;
     if (stepFlags.isCarePlanStep) return <CarePlanView patientId={v.patientId} program={program} />;
-    if (stepFlags.isAppointmentStep) return <AppointmentStep patientId={v.currentPatient?.id} programCode={program.code} />;
+    if (stepFlags.isAppointmentStep) return <AppointmentStep patientId={v.currentPatient?.id} programCode={program.code} stepName={v.stepName} />;
     if (stepFlags.isOpenCareGapsStep) return <OpenCareGaps />;
-    if (stepFlags.isMedReconStep) return <MedicationReconciliation />;
+    if (stepFlags.isMedReconStep) return <MedicationReconciliation programCode={program.code} />;
     if (stepFlags.isProgramTasksStep) {
       return <ProgramRelatedTasks programCode={program.code} patientId={v.patientId} onAddTask={() => v.setAddTaskOpen(true)} filters={v.taskFilters} search={v.taskSearchText} />;
     }
@@ -132,6 +163,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
         isCcm={v.isCcm}
         otherPrograms={v.otherPrograms}
         progressFor={v.progressForCode}
+        onMoreAction={onMoreAction}
         onClose={onClose}
       />
 
@@ -160,11 +192,14 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
         <div className={styles.content}>
           <ProgramDetailViewContentHeader
             program={program}
-            onSignMedRecon={(name, role) => v.updateCareProgram(v.patientId, program.id, {
-              medReconSignedBy: name,
-              medReconSignedRole: role,
-              medReconSignedAt: mmddyy(),
-            })}
+            onSignMedRecon={(name, role) => {
+              v.updateCareProgram(v.patientId, program.id, {
+                medReconSignedBy: name,
+                medReconSignedRole: role,
+                medReconSignedAt: mmddyy(),
+              });
+              v.logActivity('Medication Reconciliation Signed', { activityKind: 'medication', statusLabel: `Signed by ${name}`, statusType: 'success' });
+            }}
             stepFlags={stepFlags}
             assessmentCfg={v.assessmentCfg}
             stepName={v.stepName}
@@ -201,7 +236,10 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           memberName={v.currentPatient?.name}
           memberId={v.currentPatient?.memberId}
           onClose={() => v.setSendTarget(null)}
-          onSent={() => { if (v.sendTarget.clearOnSent) v.setSelectedLetters(new Set()); }}
+          onSent={() => {
+            v.logActivity(`Letter Sent: ${v.sendTarget.letterName}`, { activityKind: 'letter', statusLabel: 'Sent', statusType: 'success' });
+            if (v.sendTarget.clearOnSent) v.setSelectedLetters(new Set());
+          }}
         />
       )}
 
@@ -231,6 +269,7 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           onAdd={(letter) => {
             v.setAddedLetterIds(prev => new Set(prev).add(letter.id));
             toast.success(`${letter.fileName} added`);
+            v.logActivity(`Letter Added: ${letter.fileName}`, { activityKind: 'letter', statusLabel: 'Added', statusType: 'neutral' });
           }}
           onPreview={v.previewLetter}
           onDownload={(letter) => downloadLetters([letter], toast)}
@@ -270,6 +309,31 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
           }))}
           onSelect={(newStatus) => v.changeStatus(newStatus)}
           onClose={() => v.setStatusMenu(null)}
+        />
+      )}
+      {programHistoryOpen && (
+        <ProgramHistoryDrawer program={program} onClose={() => setProgramHistoryOpen(false)} />
+      )}
+      {reportOpen && (
+        <ProgramReportDrawer
+          program={reportProgram}
+          stepList={v.stepList}
+          stepCtx={v.stepCtx}
+          progress={v.programProgress}
+          activity={programHistory.entries}
+          letters={v.letters}
+          onExport={kind => v.logActivity(kind === 'print' ? 'Program Report Printed' : 'Program Report Downloaded', { activityKind: 'document' })}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
+      {endConfirmOpen && (
+        <ConfirmDialog
+          variant="warning"
+          title={`End ${program.name}?`}
+          description="The program will be marked Closed with today as its end date and move to Past Care Programs."
+          confirmLabel="End Program"
+          onConfirm={endProgram}
+          onCancel={() => setEndConfirmOpen(false)}
         />
       )}
     </div>
