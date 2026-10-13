@@ -13,6 +13,7 @@ import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/Pr
 import { GbiProgressCell } from '../../tables/carePlanTableShared';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { CarePlanActivityBlock } from '../CarePlanActivityBlock/CarePlanActivityBlock';
+import { useCarePlanItemActivity } from '../../lib/useCarePlanItemActivity';
 import { LinkGoalToBarrierDrawer } from './LinkGoalToBarrierDrawer';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
@@ -55,64 +56,7 @@ function fmtDate(iso) {
  * drawer surfaces the current linkage set and lets the user delink /
  * link additional plan conditions via the same `+` popover.
  */
-// Split a "prev → next" detail string into its two halves so the
-// ActivityLog can render them as separate pills.
-function splitArrow(detail) {
-  if (!detail || !detail.includes('→')) return [null, null];
-  const [from, to] = detail.split('→').map(s => s.trim());
-  return [from || null, to || null];
-}
 
-// Map a `patient_care_plan_audit` row for this barrier into the
-// ActivityLog entry shape (`t` picks the variant renderer; `date` /
-// `time` / `by` feed the meta line; `title` feeds the headline; the
-// status-change variant expects `from` / `to` for the transition pills).
-function mapBarrierAuditEntry(e) {
-  const [from, to] = splitArrow(e.detail);
-  const created = e.createdAt ? new Date(e.createdAt) : null;
-  const date = created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
-  const time = created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
-  const base = {
-    id: e.id,
-    date,
-    time,
-    by: e.actor || null,
-    createdAt: e.createdAt,
-    action: e.action,
-  };
-  switch (e.action) {
-    case 'note':
-      return { ...base, t: 'comment', title: 'Added a Note', commentBody: e.detail || '' };
-    case 'note_deleted':
-      return { ...base, t: 'comment', title: 'Deleted a Note', commentBody: e.detail || '' };
-    case 'status_changed':
-      return { ...base, t: 'status_change', title: 'Status changed', from, to };
-    case 'created':
-      return {
-        ...base,
-        t: 'status_change',
-        title: e.linkedGoalTitle ? `Linked to ${e.linkedGoalTitle}` : 'Barrier added',
-      };
-    case 'deleted':
-      return {
-        ...base,
-        t: 'status_change',
-        title: e.linkedGoalTitle ? `Unlinked from ${e.linkedGoalTitle}` : 'Barrier removed',
-      };
-    case 'updated':
-      return {
-        ...base,
-        t: 'status_change',
-        title: e.detail && e.detail.startsWith('Renamed') ? e.detail : 'Barrier edited',
-      };
-    case 'template_linked':
-      return { ...base, t: 'status_change', title: `Linked template: ${e.summary || 'Template'}` };
-    case 'template_unlinked':
-      return { ...base, t: 'status_change', title: `Unlinked template: ${e.summary || 'Template'}` };
-    default:
-      return { ...base, t: 'status_change', title: e.summary || 'Barrier updated' };
-  }
-}
 
 export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOpenGoal, consolidated = false, signedView = false, focusSection = null }) {
   const key = patientId && program ? `${patientId}::${program.id}` : null;
@@ -241,29 +185,15 @@ export function BarrierDetailDrawer({ barrier, patientId, program, onClose, onOp
   const noteSectionRef = useRef(null);
   useScrollToSection(noteSectionRef, focusSection === 'notes', barrier?.id);
 
-  // Activity for this barrier — every audit row whose entityType is
-  // 'barrier' and entityId matches any clone of THIS barrier (title
-  // match across goals), plus every 'note' row keyed to the same. The
-  // goal.id → goal.title index turns each clone's goal_id into the
-  // "linked to <goal>" verb so the feed reads naturally.
-  const goalIndex = useMemo(
-    () => Object.fromEntries(goalsInPlan.map(g => [g.id, g.title])),
-    [goalsInPlan],
-  );
-  const activityEntries = useMemo(() => {
-    const rows = auditAll
-      .filter(a => (a.entityType === 'barrier' || a.entityType === 'note')
-        && barrierIdSet.has(String(a.entityId)))
-      .map(a => {
-        // Look up the goal each cloned row belongs to so linked/unlinked
-        // reads as "linked to <goal>" instead of a bare "created".
-        const cloneRow = legacyClones.find(b => String(b.id) === String(a.entityId));
-        const linkedGoalTitle = cloneRow?.goalId ? goalIndex[cloneRow.goalId] : null;
-        return mapBarrierAuditEntry({ ...a, linkedGoalTitle });
-      })
-      .sort((x, y) => new Date(y.createdAt) - new Date(x.createdAt));
-    return rows;
-  }, [auditAll, barrierIdSet, legacyClones, goalIndex]);
+  // Activity for this barrier and every clone of it, drawn as the Care Plan
+  // History draws it.
+  const activityEntries = useCarePlanItemActivity({
+    patientId,
+    program,
+    audit: auditAll,
+    ids: [...barrierIdSet],
+    goals: goalsInPlan,
+  });
 
   // Title + status changes are staged locally and committed via the
   // header "Update" button — auto-save was rolling too many tiny writes

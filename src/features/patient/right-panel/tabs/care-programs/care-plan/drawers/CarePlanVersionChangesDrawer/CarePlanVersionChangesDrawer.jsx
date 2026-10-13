@@ -388,10 +388,25 @@ function buildNodes(rawRows, links) {
   return nodes;
 }
 
-// A row's dot on a template section's line: grey, or green / red for an item
-// added to or removed from a template already on the plan.
+// A row's marker on a template section's line: a grey dot, or for an item
+// added to or removed from a template already on the plan, a green plus or a
+// red minus (the timeline's own added / removed icons, a size down).
+const CHAIN_ICON = {
+  success: { name: 'solar:add-circle-linear', color: 'var(--status-success)' },
+  error: { name: 'solar:minus-circle-linear', color: 'var(--status-error)' },
+};
 function ChainDot({ tone = 'grey' }) {
-  return <span className={`${styles.chainDot} ${styles[`chainDot-${tone}`] || ''}`} aria-hidden />;
+  const icon = CHAIN_ICON[tone];
+  if (icon) {
+    return (
+      <span className={styles.chainDot} aria-hidden>
+        <span className={styles.chainIcon}>
+          <Icon name={icon.name} size={14} color={icon.color} />
+        </span>
+      </span>
+    );
+  }
+  return <span className={`${styles.chainDot} ${styles.chainDotGrey}`} aria-hidden />;
 }
 
 // One goal, intervention or barrier: title over its target or schedule, the
@@ -681,7 +696,10 @@ export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, plan, pat
   return (
     <Drawer title={title} onClose={onClose} banner={controls}>
       <div ref={bodyRef} className={controls ? styles.timeline : undefined}>
-        <ActivityLog entries={logEntries} emptyLabel="No changes match this filter." />
+        {/* `continuous`: the rail runs the full height, so a template's
+            Goals / Interventions / Barriers always have a line to branch
+            off, even when it is the last entry. */}
+        <ActivityLog entries={logEntries} emptyLabel="No changes match this filter." continuous />
       </div>
     </Drawer>
   );

@@ -12,6 +12,7 @@ import { ActionButton } from '../../../../../../../../components/ActionButton/Ac
 import { Slider } from '../../../../../../../../components/ShadcnSlider/ShadcnSlider';
 import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/PriorityIcon';
 import { CarePlanActivityBlock } from '../CarePlanActivityBlock/CarePlanActivityBlock';
+import { useCarePlanItemActivity } from '../../lib/useCarePlanItemActivity';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
@@ -73,85 +74,7 @@ function fmtDate(iso) {
 
 const initialsOf = (name) => (name || '').trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
-function splitArrow(detail) {
-  if (!detail || !detail.includes('→')) return [null, null];
-  const [from, to] = detail.split('→').map(s => s.trim());
-  return [from || null, to || null];
-}
 
-function mapAuditEntry(e) {
-  const [from, to] = splitArrow(e.detail);
-  const created = e.createdAt ? new Date(e.createdAt) : null;
-  const date = created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
-  const time = created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
-  const base = {
-    id: e.id,
-    actor: e.actor || '',
-    at: e.createdAt,
-    createdAt: e.createdAt,
-    action: e.action,
-    date,
-    time,
-    by: e.actor || null,
-  };
-  if (e.action === 'note') {
-    return {
-      ...base,
-      t: 'comment',
-      title: 'Added a Note',
-      commentBody: e.detail || '',
-      comment: e.detail,
-      verb: 'added a',
-      field: 'Note',
-    };
-  }
-  if (e.action === 'note_deleted') {
-    return {
-      ...base,
-      t: 'comment',
-      title: 'Deleted a Note',
-      commentBody: e.detail || '',
-      comment: e.detail,
-      verb: 'deleted a',
-      field: 'Note',
-    };
-  }
-  if (e.action === 'created') {
-    return { ...base, t: 'default', title: 'added an Intervention', verb: 'added an', field: 'Intervention' };
-  }
-  if (e.action === 'deleted') {
-    return { ...base, t: 'default', title: 'removed an Intervention', verb: 'removed an', field: 'Intervention' };
-  }
-  if (e.action === 'goal_linked') {
-    return {
-      ...base,
-      t: 'comment',
-      title: 'Linked Goal',
-      commentBody: e.detail ? `Goal: ${e.detail}` : '',
-      comment: e.detail,
-      verb: 'linked a',
-      field: 'Goal',
-    };
-  }
-  if (e.action === 'goal_unlinked') {
-    return {
-      ...base,
-      t: 'comment',
-      title: 'Unlinked Goal',
-      commentBody: e.detail ? `Goal: ${e.detail}` : '',
-      comment: e.detail,
-      verb: 'unlinked a',
-      field: 'Goal',
-    };
-  }
-  if (e.action === 'status_changed') {
-    return { ...base, t: 'status_change', title: 'Status', from, to, verb: 'changed the', field: 'Status', fromTone: STATUS_TONE[from] || 'grey', toTone: STATUS_TONE[to] || 'grey' };
-  }
-  if (e.action === 'progress_changed') {
-    return { ...base, t: 'status_change', title: 'Adherence', from, to, verb: 'changed the', field: 'Adherence', fromTone: progressTone(from), toTone: progressTone(to) };
-  }
-  return { ...base, t: 'default', title: e.summary || 'updated', verb: 'updated', field: e.summary || 'Intervention' };
-}
 
 function AccordionHead({ title, open, onToggle, onAdd, addTooltip, canEdit }) {
   return (
@@ -300,9 +223,14 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
   }, [live, contentEmails, contentForms]);
   const linkedContentTitle = live?.kind === 'send-form' ? 'Linked Form' : 'Linked Education';
 
-  const activity = useMemo(() => audit
-    .filter(a => String(a.entityId) === String(live?.id))
-    .map(mapAuditEntry), [audit, live]);
+  // Drawn as the Care Plan History draws it.
+  const activity = useCarePlanItemActivity({
+    patientId,
+    program,
+    audit,
+    ids: live?.id ? [live.id] : [],
+    goals: slice?.goals || [],
+  });
   const noteSectionRef = useRef(null);
   useScrollToSection(noteSectionRef, focusSection === 'notes', live?.id);
 

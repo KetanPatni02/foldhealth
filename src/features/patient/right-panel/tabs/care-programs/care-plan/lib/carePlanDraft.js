@@ -160,15 +160,17 @@ function diffList(type, beforeList, afterList, goalTitle) {
 
 /**
  * Changes between two snapshots (or a snapshot and the live draft, passed
- * through buildCarePlanSnapshot). `templateName(id)` resolves template names.
+ * through buildCarePlanSnapshot). `templateName(id)` resolves template names;
+ * `goalTitle(id)` names a goal neither side still holds (a link to a goal
+ * removed earlier), from wherever the caller can find it.
  * Returns { changes, partial } where `partial` means the older side predates
  * full snapshots, so barriers and templates were not compared.
  */
-export function diffCarePlanSnapshots(before, after, { templateName = () => '' } = {}) {
+export function diffCarePlanSnapshots(before, after, { templateName = () => '', goalTitle: knownGoalTitle = () => '' } = {}) {
   const full = isFullSnapshot(before) && isFullSnapshot(after);
   const goalTitles = new Map();
   for (const g of [...(before?.goals || []), ...(after?.goals || [])]) goalTitles.set(String(g.id), g.title || '');
-  const goalTitle = id => goalTitles.get(String(id)) || '';
+  const goalTitle = id => goalTitles.get(String(id)) || knownGoalTitle(id) || '';
 
   const changes = [
     ...diffList('goal', before?.goals, after?.goals, goalTitle),

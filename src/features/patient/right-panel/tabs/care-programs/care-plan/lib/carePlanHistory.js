@@ -102,6 +102,9 @@ function templateOwners(before, after, templateDetail, templateName) {
   return owners;
 }
 
+const GOAL_LINK_KEYS = new Set(['goalId', 'goalIds']);
+const emptyValue = key => (GOAL_LINK_KEYS.has(key) ? 'No linked goal' : 'None');
+
 /** A snapshot diff as audit-shaped rows, oldest first. */
 function changeRows(changes, ctx) {
   const { audit, from, to, fallbackAt, fallbackActor, templateDetail, idPrefix, before, after, owners } = ctx;
@@ -148,7 +151,11 @@ function changeRows(changes, ctx) {
     for (const f of c.fields) {
       push({
         entityType: c.entityType, entityId: c.entityId, action: FIELD_ACTION[f.key] || 'updated', summary: c.title,
-        detail: f.from || f.to ? `${f.label}: ${f.from || 'None'} → ${f.to || 'None'}` : `${f.label} updated`,
+        // A goal link that is empty reads as "No linked goal", not a bare
+        // "None"; a link to a goal no copy can name still says what changed.
+        detail: f.from || f.to
+          ? `${f.label}: ${f.from || emptyValue(f.key)} → ${f.to || emptyValue(f.key)}`
+          : (GOAL_LINK_KEYS.has(f.key) ? 'Linked goal changed' : `${f.label} updated`),
         template: ownerOf(c), ...who(c, null),
       });
     }
@@ -315,6 +322,12 @@ export function buildCarePlanHistory({ versions, audit, slice, templates, templa
   const list = versions || [];
   const now = Date.now() + 1;
   const templateName = id => (templates || []).find(t => String(t.id) === String(id))?.name || '';
+  // Every goal the plan has ever held, by id, so a link to a goal removed in
+  // an earlier version still reads by name.
+  const allGoalTitles = new Map();
+  for (const v of versions || []) for (const g of v.snapshot?.goals || []) allGoalTitles.set(String(g.id), g.title || '');
+  for (const g of slice?.goals || []) allGoalTitles.set(String(g.id), g.title || '');
+  const goalTitle = id => allGoalTitles.get(String(id)) || '';
 
   // signCarePlan writes the version row first and its audit rows (templates,
   // then "Signed (vN)") just after, so a version ends at its signed audit row.
@@ -345,7 +358,7 @@ export function buildCarePlanHistory({ versions, audit, slice, templates, templa
   } else if (draft && latest && slice.plan.signedAt) {
     const from = endOf(latest);
     const rows = isFullSnapshot(latest.snapshot)
-      ? changeRows(diffCarePlanSnapshots(latest.snapshot, draft, { templateName }).changes, {
+      ? changeRows(diffCarePlanSnapshots(latest.snapshot, draft, { templateName, goalTitle }).changes, {
         audit, from, to: now, fallbackAt: null, fallbackActor: '',
         templateDetail: id => templateDetail?.(id, draft), idPrefix: 'u',
         before: latest.snapshot, after: draft,
@@ -366,7 +379,7 @@ export function buildCarePlanHistory({ versions, audit, slice, templates, templa
     const start = prev ? endOf(prev) : 0;
     const end = endOf(v);
     const rows = prev && isFullSnapshot(prev.snapshot) && isFullSnapshot(v.snapshot)
-      ? changeRows(diffCarePlanSnapshots(prev.snapshot, v.snapshot, { templateName }).changes, {
+      ? changeRows(diffCarePlanSnapshots(prev.snapshot, v.snapshot, { templateName, goalTitle }).changes, {
         audit, from: start, to: end, fallbackAt: v.createdAt, fallbackActor: v.createdBy || '',
         templateDetail: id => templateDetail?.(id, v.snapshot), idPrefix: `v${v.versionNumber}`,
         before: prev.snapshot, after: v.snapshot,

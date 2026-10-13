@@ -147,7 +147,7 @@
   flex-shrink: 0;
 }
 
-.chainDot::before {
+.chainDotGrey::before {
   content: '';
   position: relative;
   z-index: 1;
@@ -157,8 +157,14 @@
   background: var(--neutral-300);
 }
 
-.chainDot-success::before { background: var(--status-success); }
-.chainDot-error::before { background: var(--status-error); }
+/* The plus / minus sits over the section's line, masking it. */
+.chainIcon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  border-radius: 50%;
+  background: var(--neutral-0);
+}
 
 .nestedSection > .entity::before,
 .nestedSection > .entity:not(:last-child)::after {
