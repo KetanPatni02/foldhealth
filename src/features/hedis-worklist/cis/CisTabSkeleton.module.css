@@ -1,0 +1,66 @@
+/* Bone sizes for CisTabSkeleton, matched to the tab's real elements. */
+.progressHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.title { width: 168px; height: 18px; }
+.facts {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.fact { width: 120px; height: 12px; }
+.factWide { width: 160px; height: 12px; }
+.badge { width: 72px; height: 20px; }
+.blocks {
+  display: flex;
+  gap: calc(var(--space-1) / 2);
+  height: 24px;
+  align-items: center;
+}
+.block { flex: 1; height: 16px; border-radius: 2px; }
+.legend {
+  display: flex;
+  gap: var(--space-4);
+}
+.legendItem { width: 64px; height: 10px; }
+
+.toggle { width: 124px; height: 30px; }
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.icon { width: 20px; height: 20px; }
+.expand { width: 96px; height: 20px; }
+
+.groupTitle { width: 140px; height: 18px; margin: calc(1.5 * var(--space-1)) var(--space-1); }
+.headCell { width: 72px; height: 10px; margin: var(--space-2) var(--space-3); }
+.headCellWide { width: 104px; height: 10px; margin: var(--space-2) var(--space-3); }
+.row {
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.nameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+.chevron { width: 12px; height: 12px; }
+.name { width: 64px; height: 14px; }
+.progressCell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+}
+.count { width: 24px; height: 14px; }
+.dots { width: 44px; height: 8px; }
+.cell {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+}
+.next { width: 140px; height: 12px; }
