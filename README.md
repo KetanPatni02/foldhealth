@@ -62,7 +62,10 @@ build requires esbuild ≥ 0.28 on Node 26.
   Gap Sub-Status filter); Medication Review groups medications by measure and opens each one
   in a side drawer with SIG, conditions, non-adherence reason,
   prescriber/pharmacy, notes and refill history. Backed by
-  `supabase/pharmacy_worklist_members_migration.sql` (seeded by `bun run seed`).
+  `supabase/pharmacy_worklist_members_migration.sql` (seeded by `bun run seed`),
+  `pharmacy_worklist_care_program_sync_migration.sql` (enrolls each member in
+  the Pharmacy Program) and `pharmacy_care_plan_template_seed.sql` (Medication
+  Adherence care plan template) — run in that order.
 - **Care program report, History and End Program.** The ⋯ menu in a care
   program's header now has History (this program's slice of the Program
   Activity Log), Download Report and End Program (with a confirmation).
