@@ -1,0 +1,149 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.toolbar { display: flex; align-items: center; gap: var(--space-3); }
+.count { font-size: var(--font-sm); color: var(--neutral-300); }
+
+.tableScroll {
+  overflow-x: auto;
+  /* Group headers size to the visible width (see .groupHead). */
+  container-type: inline-size;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+}
+.table { width: 100%; border-collapse: collapse; }
+.table th {
+  text-align: left;
+  padding: 0.375rem 0.625rem;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
+  background: var(--neutral-25);
+  border-bottom: 0.5px solid var(--neutral-150);
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--space-2) 0.625rem;
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  border-bottom: 0.5px solid var(--neutral-100);
+  white-space: nowrap;
+  vertical-align: top;
+}
+.table tbody tr:last-child td { border-bottom: none; }
+
+.medTable { min-width: 900px; }
+.medRow { cursor: pointer; transition: background .1s; }
+.medRow:hover td { background: var(--primary-25); }
+.medRowSelected td { background: var(--primary-50); }
+.medRowSelected:hover td { background: var(--primary-50); }
+.medRowDc td { color: var(--neutral-300); text-decoration: line-through; }
+
+.rxCell { display: flex; flex-direction: column; gap: 0.0625rem; }
+.rxName { font-weight: 500; color: var(--neutral-500); }
+.rxGeneric { font-size: var(--font-sm); color: var(--neutral-300); }
+.openCell { width: 28px; text-align: right; }
+
+/* Measure group header row (collapsible). */
+.groupRow { cursor: pointer; }
+.groupRow td { background: var(--neutral-25); border-bottom: 0.5px solid var(--neutral-150); }
+.groupRow:hover td { background: var(--neutral-50); }
+/* Pinned to the visible width so the measure summary stays readable while
+   the wider table scrolls sideways underneath. */
+.groupHead {
+  position: sticky;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  flex-wrap: wrap;
+  max-width: calc(100cqw - 20px);
+  white-space: normal;
+}
+.groupName { font-weight: 600; color: var(--neutral-500); }
+.groupMeta { color: var(--neutral-300); }
+.groupMeta b { font-weight: 500; color: var(--neutral-400); }
+
+/* Next fill gets the Arine-style box when it's overdue. */
+.nextFill { display: inline-block; padding: 0.0625rem var(--space-1); border: 1px solid transparent; border-radius: var(--space-1); }
+.nextFillOverdue { border-color: var(--status-error); }
+
+.toneError { color: var(--status-error); }
+.toneWarning { color: var(--status-warning-dark); }
+.toneSuccess { color: var(--status-success); }
+
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.detailHead { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-4); }
+.detailMeta { font-size: var(--font-md); color: var(--neutral-400); font-weight: 500; }
+.detailMeta span { color: var(--primary-300); margin-right: var(--space-1); }
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+.field { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.fieldLabel { font-size: var(--font-sm); font-weight: 500; color: var(--primary-300); }
+.radios { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.checks { display: flex; flex-direction: column; gap: 0.375rem; }
+.checkRow { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-md); color: var(--neutral-400); cursor: pointer; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  min-width: 0;
+}
+.cardTitle { font-size: var(--font-sm); font-weight: 500; color: var(--primary-300); display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.cardName { color: var(--neutral-500); font-weight: 600; }
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+}
+.cardGrid div { min-width: 0; }
+.cardGrid dt { font-size: var(--font-xs); color: var(--primary-300); }
+.cardGrid dd { margin: 0; font-size: var(--font-md); color: var(--neutral-400); overflow-wrap: anywhere; }
+.fullRow { grid-column: 1 / -1; }
+
+.subTitle { font-size: var(--font-sm); font-weight: 600; color: var(--primary-300); }
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
+  color: var(--neutral-300);
+  font-size: var(--font-base);
+  text-align: center;
+}
+.empty p { margin: 0; }
+
+/* Barrier & Intervention log entries for the medication's measure. */
+.barrierEntry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.barrierLatest { background: var(--neutral-25); }
+.barrierMeta { font-size: var(--font-sm); color: var(--neutral-300); }
+.barrierChips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.muted { font-size: var(--font-md); color: var(--neutral-300); }

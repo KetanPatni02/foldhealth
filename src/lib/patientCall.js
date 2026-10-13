@@ -5,6 +5,7 @@ const MEMBER_SLICES = [
   'awvMembers',
   'ccmWorklistMembers',
   'snpWorklistMembers',
+  'pharmacyWorklistMembers',
   'hedisMembers',
   'allPatients',
 ];

@@ -164,7 +164,7 @@ export function ProgramDetailViewContentHeader({
         ) : isMedReconStep ? (
           <div className={styles.assessmentHeader}>
             <div className={styles.assessmentHeaderText}>
-              <span className={styles.assessmentTitle}>Medication Reconciliation</span>
+              <span className={styles.assessmentTitle}>{program?.code === 'PHARM' ? 'Medication Review' : 'Medication Reconciliation'}</span>
               <span className={medReconSignature ? styles.assessmentMetaSigned : styles.assessmentMeta}>
                 {medReconSignature || 'Last Reviewed by Robert Fox on 11/10/24'}
               </span>

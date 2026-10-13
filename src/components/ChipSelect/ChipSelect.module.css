@@ -1,0 +1,19 @@
+.group { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.1875rem 0.625rem;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 999px;
+  background: var(--neutral-0);
+  font-size: var(--font-md);
+  color: var(--neutral-400);
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s, color 0.1s;
+}
+.chip:hover { background: var(--neutral-50); }
+.chip:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+.on.primary { background: var(--primary-50); border-color: var(--primary-200); color: var(--primary-400); }
+.on.error { background: var(--status-error-light); border-color: var(--status-error); color: var(--status-error); }
+.on.success { background: var(--status-success-light); border-color: var(--status-success); color: var(--status-success); }

@@ -10,7 +10,7 @@ import { Tooltip } from '../../../../../../components/Tooltip/Tooltip';
 import { FieldDropdown, TypeDropdown } from './OutreachTabDropdowns';
 import { DateTimePicker } from '../../../../../../components/DateTimePicker/DateTimePicker';
 import { NotePanel } from './OutreachTabNotePanel';
-import { LOG_FOR_OPTIONS } from './OutreachTab.utils';
+import { DEFAULT_CALL_TYPES, LOG_FOR_OPTIONS } from './OutreachTab.utils';
 import styles from './OutreachTab.module.css';
 
 export function OutreachTabForm({
@@ -52,7 +52,10 @@ export function OutreachTabForm({
   onAddTask,
   onSchedule,
   hideFooter = false,
+  outcomeItems = null,
+  callTypeOptions = DEFAULT_CALL_TYPES,
 }) {
+  const choiceItemsFor = (progs) => (outcomeItems ? outcomeItems(outcome, progs) : null);
   return (
     <div className={styles.formCard}>
       {!hideLogForRow && !scopedProgram && (
@@ -136,7 +139,7 @@ export function OutreachTabForm({
               </div>
               <div className={styles.callFieldWrap}>
                 <span className={styles.callFieldLabel}>Call Type</span>
-                <FieldDropdown value={callType} onChange={setCallType} placeholder="Select type" options={['Provider', 'Patient', 'Caregiver', 'Family']} />
+                <FieldDropdown value={callType} onChange={setCallType} placeholder="Select type" options={callTypeOptions} />
               </div>
               <div className={styles.callFieldWrap}>
                 <span className={styles.callFieldLabel}>Duration</span>
@@ -212,6 +215,7 @@ export function OutreachTabForm({
                     syncText={ps.syncText}
                     outcomeOpen={ps.outcomeOpen}
                     outcomeType={outcome}
+                    choiceItems={choiceItemsFor([prog])}
                     showSyncText
                     onToggleExpand={() => patchPanel(prog, { expanded: !ps.expanded })}
                     onToggleOutcomeOpen={() => {
@@ -234,6 +238,7 @@ export function OutreachTabForm({
                 syncText={false}
                 outcomeOpen={sharedPanel.outcomeOpen}
                 outcomeType={outcome}
+                choiceItems={choiceItemsFor(selectedProgs)}
                 showSyncText={false}
                 onToggleExpand={() => patchShared({ expanded: !sharedPanel.expanded })}
                 onToggleOutcomeOpen={() => patchShared({ outcomeOpen: !sharedPanel.outcomeOpen })}

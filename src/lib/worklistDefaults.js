@@ -10,6 +10,7 @@ export const DEFAULT_WORKLIST_LABELS = [
   'Annual Visit',
   'TOC IP',
   'HCC',
+  'Pharmacy',
   'HEDIS',
   'CCM',
   'JSA',

@@ -16,6 +16,7 @@ import { HccWorklistTable } from '../features/hcc/HccWorklistTable';
 import { HedisWorklistTable } from '../features/hedis-worklist/HedisWorklistTable';
 import { AwvWorklistTable } from '../features/awv-worklist/AwvWorklistTable';
 import { JsaWorklistTable } from '../features/jsa-worklist/JsaWorklistTable';
+import { PharmacyWorklistTable } from '../features/pharmacy-worklist/PharmacyWorklistTable';
 import { CcmWorklistTable } from '../features/ccm-worklist/CcmWorklistTable';
 import { SnpWorklistTable } from '../features/snp-worklist/SnpWorklistTable';
 import { AllPatientsTable } from '../features/all-patients/AllPatientsTable';
@@ -114,6 +115,7 @@ function PopulationView() {
 
   const isAwv = activeSubnavList === 'Annual Visit';
   const isJsa = activeSubnavList === 'JSA';
+  const isPharmacy = activeSubnavList === 'Pharmacy';
 
   // Dynamic group rule builder — full-page takeover, no subnav
   if (pgRuleBuilder) {
@@ -153,11 +155,11 @@ function PopulationView() {
   const isAllPatients = activeSubnavList === 'All Patients';
   const isPopulationGroup = activeSubnavList.startsWith('pg:');
   const isToc = activeSubnavList === 'TOC IP';
-  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHedis && !isCcm && !isAwv && !isJsa && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
+  const isTcm = activeSubnavList === 'TCM' || (!isHcc && !isHedis && !isCcm && !isAwv && !isJsa && !isPharmacy && !isAllPatients && !isPopulationGroup && !isToc && activeSubnavList !== 'My Patients' && !['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'SNP', 'JSA', 'Pharmacy', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList));
   const isComingSoon = ['Day Optimizer', 'Review HRA', 'IP Visits', 'High Risk', 'High Cost', 'High Utilizers', 'DM', 'My Patients'].includes(activeSubnavList);
   const pgFilter = activeSubnavList === 'pg:Static' ? 'Static' : activeSubnavList === 'pg:Dynamic' ? 'Dynamic' : 'All';
 
-  const chromeless = isHcc || isHedis || isCcm || isSnp || isAwv || isJsa || isComingSoon || isPopulationGroup;
+  const chromeless = isHcc || isHedis || isCcm || isSnp || isAwv || isJsa || isPharmacy || isComingSoon || isPopulationGroup;
 
   return (
     <div className={styles.main}>
@@ -186,6 +188,8 @@ function PopulationView() {
                   ? <AwvWorklistTable />
                 : isJsa
                   ? <JsaWorklistTable />
+                : isPharmacy
+                  ? <PharmacyWorklistTable />
                   : isAllPatients
                     ? <AllPatientsTable />
                     : isPopulationGroup

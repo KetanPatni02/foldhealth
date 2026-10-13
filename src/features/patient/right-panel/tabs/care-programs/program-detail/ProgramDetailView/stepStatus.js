@@ -27,7 +27,7 @@ function fromRecords(step, ctx) {
     if ((cp?.goals || []).length || (cp?.interventions || []).length) return STEP_STATUS.inProgress;
     return null;
   }
-  if (name === 'Program Related Task') {
+  if (name === 'Program Related Task' || name === 'Tasks') {
     if (!ctx.tasks.length) return null;
     return ctx.tasks.every(t => DONE_TASK.test(t.status || '')) ? STEP_STATUS.completed : STEP_STATUS.inProgress;
   }
