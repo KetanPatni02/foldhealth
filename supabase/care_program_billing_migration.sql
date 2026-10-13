@@ -1,5 +1,6 @@
 -- Settings → Billing: billable claims, monthly billing reports and the
--- billing-timer visibility rule per care program.
+-- billing-timer visibility rule per care program. Patient billing data:
+-- signed-in users only; anon gets no access.
 
 CREATE TABLE IF NOT EXISTS care_program_billable (
   id                TEXT PRIMARY KEY,
@@ -50,8 +51,8 @@ ALTER TABLE care_program_billing_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE billing_timer_settings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow all for care_program_billable" ON care_program_billable;
-CREATE POLICY "Allow all for care_program_billable" ON care_program_billable FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for care_program_billable" ON care_program_billable FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all for care_program_billing_reports" ON care_program_billing_reports;
-CREATE POLICY "Allow all for care_program_billing_reports" ON care_program_billing_reports FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for care_program_billing_reports" ON care_program_billing_reports FOR ALL TO authenticated USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "Allow all for billing_timer_settings" ON billing_timer_settings;
-CREATE POLICY "Allow all for billing_timer_settings" ON billing_timer_settings FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all for billing_timer_settings" ON billing_timer_settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
