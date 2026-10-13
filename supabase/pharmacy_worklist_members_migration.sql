@@ -6,6 +6,12 @@
 -- Column names mirror rowToMember in src/store/slices/pharmacyWorklistSlice.js.
 -- Rows are seeded by `bun run seed` (scripts/seed.js → pharmacyWorklistToRow).
 -- RLS follows jsa_members_migration.sql: signed-in reads, Active-staff writes.
+--
+-- Pharmacy rollout — run in this order:
+--   1. pharmacy_worklist_members_migration.sql          (this file: table + RLS)
+--   2. bun run seed                                      (worklist rows)
+--   3. pharmacy_worklist_care_program_sync_migration.sql (patient link + PHARM program per member)
+--   4. pharmacy_care_plan_template_seed.sql              (Medication Adherence care plan template)
 
 CREATE TABLE IF NOT EXISTS public.pharmacy_worklist_members (
   id                 text PRIMARY KEY,
