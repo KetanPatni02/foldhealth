@@ -1,4 +1,8 @@
 export const PROGRAMS = ['SNP', 'AWV', 'CCM', 'TCM', 'ECM', 'CBP', 'MRP'];
+
+// Call Details → Call Type. Hosts can extend it (the Pharmacy program adds
+// Pharmacy and Prescriber).
+export const DEFAULT_CALL_TYPES = ['Provider', 'Patient', 'Caregiver', 'Family'];
 // Detailed outcomes offered by each note panel's Select Outcome menu, keyed
 // by the Outreach Outcome radio (Successful / Unsuccessful / Note).
 export const OUTCOME_CHOICES_BY_STATUS = {

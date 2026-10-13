@@ -14,4 +14,5 @@ export const CARE_PROGRAM_CATALOG = [
   { code: 'WLCP', name: 'Weight Loss Care Program' },
   { code: 'CMP', name: 'Care Management Program' },
   { code: 'APE', name: 'Annual Physical Exam' },
+  { code: 'PHARM', name: 'Pharmacy Program' },
 ];

@@ -25,6 +25,12 @@ import { ProgramHistoryDrawer } from '../ProgramHistoryDrawer/ProgramHistoryDraw
 import { useProgramHistory } from '../ProgramHistoryDrawer/useProgramHistory';
 import { toast } from '../../../../../../../components/Toast/sonnerToast';
 import { PROGRAM_STATUS_OPTIONS, statusColorFor } from '../../../../../data/programStatus';
+import { PharmacyOutreachStep } from '../../../../../../pharmacy-worklist/program/PharmacyOutreachStep';
+import { PharmacyMedicationReview } from '../../../../../../pharmacy-worklist/program/PharmacyMedicationReview';
+import { PharmacyVerificationStep } from '../../../../../../pharmacy-worklist/program/PharmacyVerificationStep';
+import { PharmacyBarrierStep } from '../../../../../../pharmacy-worklist/program/PharmacyBarrierStep';
+import { PharmacyGapClosureStep } from '../../../../../../pharmacy-worklist/program/PharmacyGapClosureStep';
+import { PharmacyActivityLogStep } from '../../../../../../pharmacy-worklist/program/PharmacyActivityLog';
 import { useProgramDetailView } from './useProgramDetailView';
 import { StepItem, SectionHeader, StepPlaceholder } from './ProgramDetailViewParts';
 import { ProgramDetailViewHeader } from './ProgramDetailViewHeader';
@@ -38,6 +44,7 @@ import styles from './ProgramDetailView.module.css';
 export function ProgramDetailView({ program, onClose, startAtFirstStep = false, onSwitchProgram }) {
   const v = useProgramDetailView({ program, onSwitchProgram });
   const { stepFlags } = v;
+  const isPharmacy = program.code === 'PHARM';
   const platformUsers = useAppStore(s => s.platformUsers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
@@ -85,6 +92,16 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
 
   const renderStepBody = () => {
     if (stepFlags.isBillingStep) return <CcmBillingReview program={program} />;
+    // Pharmacy program: outreach is logged per measure (MAD / MAH / MAC) and
+    // Medication Review lists the medications behind those measures.
+    if (isPharmacy && stepFlags.isOutreachStep) {
+      return <div className={styles.outreachWrap}><PharmacyOutreachStep program={program} /></div>;
+    }
+    if (isPharmacy && stepFlags.isMedReconStep) return <PharmacyMedicationReview />;
+    if (isPharmacy && v.stepName === 'Pharmacy Verification') return <PharmacyVerificationStep program={program} />;
+    if (isPharmacy && v.stepName === 'Barrier & Intervention') return <PharmacyBarrierStep />;
+    if (isPharmacy && v.stepName === 'Gap Closure / Outcome') return <PharmacyGapClosureStep />;
+    if (isPharmacy && v.stepName === 'Activity Log') return <PharmacyActivityLogStep />;
     if (stepFlags.isOutreachStep) {
       return (
         <div className={styles.outreachWrap}>

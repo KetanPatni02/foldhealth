@@ -1,0 +1,85 @@
+/* Shares the SNP/CCM worklist shell: sticky checkbox + Members on the left,
+   sticky Actions on the right, WorklistRow base for divider + hover. */
+
+.row {
+  composes: row from '../../components/WorklistShell/WorklistRow.module.css';
+  cursor: pointer;
+}
+
+.stickyLeft {
+  position: sticky;
+  background: var(--neutral-0);
+  z-index: 3;
+}
+.stickyRight {
+  position: sticky;
+  right: 0;
+  background: var(--neutral-0);
+  border-left: 0.5px solid var(--neutral-150);
+  box-shadow: var(--shadow-card);
+  z-index: 3;
+}
+
+.td {
+  padding: var(--space-2) 0.875rem;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  vertical-align: middle;
+}
+.checkTd { padding: var(--space-2) 0.625rem; vertical-align: middle; }
+.membersTd {
+  padding: var(--space-2) var(--space-3);
+  border-right: 0.5px solid var(--neutral-150);
+  vertical-align: middle;
+}
+
+.patientCell { display: flex; align-items: center; gap: var(--space-3); }
+.patientName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-400); white-space: nowrap; }
+.patientNameLink {
+  background: none; border: none; padding: 0; font: inherit; color: inherit;
+  cursor: pointer; font-weight: 500;
+}
+.patientNameLink:hover { color: var(--primary-300); text-decoration: underline; }
+.patientDemo { font-size: var(--font-md); color: var(--neutral-300); }
+.patientMeta { font-size: var(--font-md); color: var(--neutral-200); margin-top: 0.1875rem; white-space: nowrap; }
+.inlineFlex { display: inline-flex; }
+.foldId { cursor: pointer; transition: color .12s; }
+.foldId:hover { color: var(--primary-300); text-decoration: underline; }
+
+.stack { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
+.cellText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
+.subText { font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
+.dateText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
+.mutedDash { color: var(--neutral-200); font-size: var(--font-base); }
+.pdc { font-size: var(--font-base); font-weight: 500; }
+
+.toneError { color: var(--status-error); }
+.toneWarning { color: var(--status-warning-dark); }
+.toneSuccess { color: var(--status-success); }
+
+.chips { display: inline-flex; gap: var(--space-1); flex-wrap: nowrap; }
+
+.relative { position: relative; display: inline-block; }
+.badgeBtn {
+  background: none; border: none; padding: 0; cursor: pointer;
+  display: inline-flex; align-items: center;
+}
+
+.leadNote { display: inline-flex; align-items: center; gap: var(--space-1); max-width: 200px; }
+.truncate {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--font-md); color: var(--neutral-300);
+}
+
+.actionsCell { display: flex; align-items: center; gap: var(--space-2); justify-content: flex-end; }
+.actionDivider { width: 0.5px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
+
+
+.subStatus { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
+.subSuffix { color: var(--neutral-200); }
+.subDot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--neutral-200); }
+.subDot_error { background: var(--status-error); }
+.subDot_warning { background: var(--status-warning); }
+.subDot_info { background: var(--status-info); }
+.subDot_primary { background: var(--primary-300); }
+.subDot_success { background: var(--status-success); }

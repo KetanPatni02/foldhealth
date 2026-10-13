@@ -37,6 +37,32 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pharmacy worklist.** New Population › Worklists › Pharmacy list for the
+  Med Adherence gaps (MAD / MAH / MAC; SUPD out of scope): one row per member
+  with measure chips, the most urgent measure's PDC, fail date and next fill,
+  derived P1–P3 priority, the standard Outreach cell, inline status and
+  coordinator assignment. Claim reconciliation flags confirmed pickups with no
+  claim yet (Awaiting / Overdue), reversed claims and plan-vs-claims PDC
+  mismatches, with a matching filter. Clicking a row (or the eye icon) opens
+  the member's Pharmacy care program: Pharmacy Verification walks the
+  pharmacy call per drug (confirm last fill, refilled?, picked up?, refills
+  remaining?), suggests the next action, locks the call as one outreach and
+  creates reversal / refill follow-up tasks; Outreach is the standard program
+  form with MAD / MAH / MAC as the pills and the Medication Adherence
+  Intervention Schema outcomes; a pickup outcome (or verified pickup) moves
+  the medication's last/next fill, adds a call-confirmed refill row, sets the
+  measure to Completed · Pickup confirmed once every measure is picked up; an Activity Log (program step + worklist row menu) records every
+  action; Barrier & Intervention logs one call with barriers, interventions
+  and result recorded per measure (barrier / intervention / result outcomes
+  logged in Outreach are copied in automatically); Gap Closure / Outcome
+  shows each measure's gap status (Open / In Progress / Completed /
+  Closed-Data, with a sub-status such as Pickup confirmed, Safe or At risk on
+  the second line) with PDC, fill / fail dates and plan signals; measure
+  chips and the worklist Status column use the same two-line status (with a
+  Gap Sub-Status filter); Medication Review groups medications by measure and opens each one
+  in a side drawer with SIG, conditions, non-adherence reason,
+  prescriber/pharmacy, notes and refill history. Backed by
+  `supabase/pharmacy_worklist_members_migration.sql` (seeded by `bun run seed`).
 - **Care program report, History and End Program.** The ⋯ menu in a care
   program's header now has History (this program's slice of the Program
   Activity Log), Download Report and End Program (with a confirmation).

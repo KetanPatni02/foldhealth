@@ -206,6 +206,7 @@ import { buildSeedHccActivityFeed } from '../features/hcc/seed/buildSeedHccActiv
 import { createShellSlice } from './slices/shellSlice';
 import { rowToCrm, sampleCrmActivities } from '../features/patient/data/crmActivity';
 import { createHccWorklistFiltersSlice } from './slices/hccWorklistFiltersSlice';
+import { createPharmacyWorklistSlice } from './slices/pharmacyWorklistSlice';
 
 // Timer handle for the 3-second row-flash on the tasks page.
 let _flashTaskTimer = null;
@@ -311,9 +312,13 @@ const CARE_PLAN_LOG_ACTIONS = [
   'note', 'note_deleted', 'note_cleared', 'review_requested', 'discarded', 'restored',
 ];
 
+// patientId → in-flight patient_care_programs request (see fetchCareProgramsForPatient).
+const careProgramsInFlight = new Map();
+
 export const useAppStore = create((set, get) => ({
   ...createShellSlice(set, get),
   ...createHccWorklistFiltersSlice(set, get),
+  ...createPharmacyWorklistSlice(set, get),
 
   // Patient Monitoring — per-patient snapshot for the P360 Monitoring tab,
   // keyed by member id. Falls back to the bundled MONITORING_SEED until
@@ -1870,11 +1875,17 @@ export const useAppStore = create((set, get) => ({
   fetchCareProgramsForPatient: async (patientId) => {
     if (!patientId) return;
     if (get().careProgramsLoadedFor[patientId]) return;
-    const { data, error } = await supabase
+    // Several mounts ask at once on a cold open. Without sharing one request,
+    // a late duplicate resolved after addCareProgram's optimistic enrollment
+    // and replaced it with the pre-insert rows (the program vanished).
+    if (careProgramsInFlight.has(patientId)) return careProgramsInFlight.get(patientId);
+    const request = Promise.resolve(supabase
       .from('patient_care_programs')
       .select('*')
       .eq('patient_id', patientId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true }));
+    careProgramsInFlight.set(patientId, request);
+    const { data, error } = await request.finally(() => careProgramsInFlight.delete(patientId));
     if (error) console.warn('fetchCareProgramsForPatient:', error.message);
     const rows = (data || []).map(r => ({
       id:           r.id,
@@ -4865,6 +4876,14 @@ export const useAppStore = create((set, get) => ({
     if (get().worklistCountsDidFetch) return;
     set({ worklistCountsDidFetch: true });
 
+    // Pharmacy is one row per member, so a plain count header is enough.
+    // Kept outside worklist_badge_counts so this works before that view
+    // is updated.
+    supabase.from('pharmacy_worklist_members').select('id', { count: 'exact', head: true })
+      .then(({ count, error }) => {
+        if (!error) set(s => ({ worklistCounts: { ...s.worklistCounts, pharmacy: count || 0 } }));
+      });
+
     const fail = (msg) => {
       // Release the guard so the next mount retries. Badges fall back to
       // whatever slices happen to be loaded, which is what they showed before
@@ -4894,8 +4913,9 @@ export const useAppStore = create((set, get) => ({
     const hedisKeys = keysOf(HEDIS_MEMBERS);
 
     const apply = (counts, sqlUnionSize) => {
-      set({
+      set(s => ({
         worklistCounts: {
+          ...s.worklistCounts,
           hccUnique: counts.hccUnique,
           awv: counts.awv,
           ccm: counts.ccm,
@@ -4910,7 +4930,7 @@ export const useAppStore = create((set, get) => ({
           // collect() over HEDIS_MEMBERS).
           allPatients: (sqlUnionSize || 0) + hedisKeys.size,
         },
-      });
+      }));
     };
 
     // Preferred path: one round-trip against worklist_badge_counts (the

@@ -231,7 +231,12 @@ function pickPool(seed, count) {
   const out = [];
   let idx = seed % ICD_POOL.length;
   while (out.length < count && seen.size < ICD_POOL.length) {
-    if (!seen.has(idx)) { seen.add(idx); out.push(ICD_POOL[idx]); }
+    // A stride sharing a factor with the pool size (4 or 6 vs 16) cycles
+    // through only part of the pool; when it closes, shift one slot to reach
+    // unvisited entries instead of spinning forever.
+    if (seen.has(idx)) { idx = (idx + 1) % ICD_POOL.length; continue; }
+    seen.add(idx);
+    out.push(ICD_POOL[idx]);
     idx = (idx + step) % ICD_POOL.length;
   }
   return out;

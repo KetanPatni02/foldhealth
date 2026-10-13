@@ -1,0 +1,62 @@
+.wrap { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.cardHead { display: flex; flex-direction: column; gap: 0.125rem; }
+.cardTitle { font-size: var(--font-base); font-weight: 600; color: var(--neutral-500); }
+
+.measure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.measureHead { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.measureName { font-size: var(--font-md); font-weight: 500; color: var(--neutral-500); }
+
+.measureDirty { border-color: var(--primary-200); background: var(--primary-25); }
+.asOf { font-size: var(--font-sm); color: var(--neutral-300); margin-top: calc(-1 * var(--space-2)); }
+.measureDirty .asOf { color: var(--primary-300); }
+
+.fields { display: flex; flex-direction: column; gap: var(--space-3); }
+.field { display: flex; flex-direction: column; gap: 0.375rem; }
+.fieldLabel { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-400); }
+.foot { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+.sectionTitle { font-size: var(--font-base); font-weight: 600; color: var(--neutral-500); }
+.logEntry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--neutral-25);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.logHead { display: flex; align-items: baseline; gap: var(--space-2); }
+.logDate { font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
+.logRow { display: flex; align-items: flex-start; gap: var(--space-2); }
+.logChips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.logNote { font-size: var(--font-md); color: var(--neutral-400); }
+
+.muted { font-size: var(--font-md); color: var(--neutral-300); }
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-12) var(--space-6);
+  color: var(--neutral-300);
+  font-size: var(--font-base);
+  text-align: center;
+}
+.empty p { margin: 0; }

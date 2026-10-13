@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon/Icon';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
@@ -29,10 +29,35 @@ import styles from './MenuPopover.module.css';
  * @param {function} props.onClose
  * @param {string}   [props.ariaLabel='Menu']
  * @param {number}   [props.width=200]    – Pixel width of the menu
+ * @param {boolean} [props.searchable=false] – Sticky search box at the top for long
+ *                                          lists. Filters items by label / hint; a
+ *                                          section whose title matches keeps all its items.
+ * @param {string}   [props.searchPlaceholder='Search…']
  * @param {'left'|'right'} [props.align='right']
  *                                          'right' = right edge of menu aligns with right edge of anchor;
  *                                          'left'  = left edge aligns with left edge of anchor.
  */
+// Keep items whose label / hint matches; a section header survives when
+// any of its items do (or when the header itself matches — then the whole
+// section shows). Dividers drop out while filtering.
+function filterItems(items, q) {
+  const out = [];
+  let section = null;
+  let sectionMatch = false;
+  let pending = [];
+  const flush = () => {
+    if (pending.length) out.push(...(section ? [section] : []), ...pending);
+    pending = [];
+  };
+  for (const it of items) {
+    if (it.section) { flush(); section = it; sectionMatch = it.section.toLowerCase().includes(q); continue; }
+    if (it.divider) continue;
+    if (sectionMatch || `${it.label || ''} ${it.hint || ''}`.toLowerCase().includes(q)) pending.push(it);
+  }
+  flush();
+  return out;
+}
+
 export function MenuPopover({
   anchorRect,
   anchorRef,
@@ -42,8 +67,13 @@ export function MenuPopover({
   ariaLabel = 'Menu',
   width = 200,
   align = 'right',
+  searchable = false,
+  searchPlaceholder = 'Search…',
 }) {
   const popRef = useRef(null);
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const shownItems = searchable && q ? filterItems(items, q) : items;
 
   // Close on Escape + click outside.
   useEffect(() => {
@@ -75,8 +105,10 @@ export function MenuPopover({
   const style = { width };
   if (openAbove) {
     style.bottom = Math.max(8, window.innerHeight - rect.top + 4);
+    style.maxHeight = window.innerHeight - style.bottom - 8;
   } else {
     style.top = Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - estHeight - 8));
+    style.maxHeight = window.innerHeight - style.top - 8;
   }
   if (align === 'right') {
     style.right = Math.max(8, window.innerWidth - rect.right);
@@ -106,7 +138,24 @@ export function MenuPopover({
         role="menu"
         aria-label={ariaLabel}
       >
-        {items.map((item, idx) => {
+        {searchable && (
+          <div className={styles.searchRow}>
+            <Icon name="solar:magnifer-linear" size={13} color="var(--neutral-300)" />
+            <input
+              autoFocus
+              type="text"
+              className={styles.searchInput}
+              placeholder={searchPlaceholder}
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              aria-label={searchPlaceholder}
+            />
+          </div>
+        )}
+        {searchable && q && !shownItems.some(it => it.key || it.label) && (
+          <div className={styles.empty}>No matches</div>
+        )}
+        {shownItems.map((item, idx) => {
           if (item.section) {
             return <div key={`section-${item.section}`} className={styles.section}>{item.section}</div>;
           }

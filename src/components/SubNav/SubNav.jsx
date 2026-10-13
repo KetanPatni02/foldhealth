@@ -10,6 +10,7 @@ const WORKLISTS = [
   { label: 'Annual Visit', filter: null },
   { label: 'TOC IP', filter: null, view: 'toc' },
   { label: 'HCC', filter: null, view: 'hcc' },
+  { label: 'Pharmacy', filter: null, view: 'pharmacy' },
   { label: 'HEDIS', filter: null, view: 'hedis' },
   { label: 'CCM', filter: null, view: 'ccm' },
   { label: 'JSA', filter: null, view: 'jsa' },
@@ -30,6 +31,7 @@ export function SubNav({ collapsed }) {
   const ccmWorklistMembers = useAppStore(s => s.ccmWorklistMembers || []);
   const snpWorklistMembers = useAppStore(s => s.snpWorklistMembers || []);
   const jsaMembers = useAppStore(s => s.jsaMembers || []);
+  const pharmacyMembers = useAppStore(s => s.pharmacyWorklistMembers);
   const worklistCounts = useAppStore(s => s.worklistCounts);
   const fetchWorklistCounts = useAppStore(s => s.fetchWorklistCounts);
   const fetchWorklistOrder = useAppStore(s => s.fetchWorklistOrder);
@@ -106,6 +108,7 @@ export function SubNav({ collapsed }) {
       else if (list.view === 'ccm') counts[list.label] = pick(ccmWorklistMembers, wc?.ccm);
       else if (list.view === 'snp') counts[list.label] = pick(snpWorklistMembers, wc?.snp);
       else if (list.view === 'jsa') counts[list.label] = pick(jsaMembers, wc?.jsa);
+      else if (list.view === 'pharmacy') counts[list.label] = pick(pharmacyMembers, wc?.pharmacy);
       else if (list.label === 'Annual Visit') counts[list.label] = pick(awvMembers, wc?.awv);
       else if (list.label === 'TCM') counts[list.label] = pick(patients, wc?.tcm);
       else if (list.label === 'TOC IP') {
@@ -115,7 +118,7 @@ export function SubNav({ collapsed }) {
       } else counts[list.label] = 0;
     }
     return counts;
-  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, worklistCounts]);
+  }, [patients, hccUniquePatientCount, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, pharmacyMembers, worklistCounts]);
 
   // Unique patient count across every worklist. Different worklists use
   // different id spaces (p1, hcc-42, ccmw-001), so we key the union on a
@@ -141,8 +144,9 @@ export function SubNav({ collapsed }) {
     collect(ccmWorklistMembers);
     collect(snpWorklistMembers);
     collect(jsaMembers);
+    collect(pharmacyMembers);
     return Math.max(seen.size, worklistCounts?.allPatients ?? 0);
-  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, worklistCounts]);
+  }, [patients, hccMembers, awvMembers, ccmWorklistMembers, snpWorklistMembers, jsaMembers, pharmacyMembers, worklistCounts]);
 
   const sections = useMemo(() => [
     {
