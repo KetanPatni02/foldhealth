@@ -210,7 +210,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
       ? (
         <Link style={{ fontSize: 'var(--font-sm)' }} onClick={(e) => { e.stopPropagation(); setViewTeam(programTeams[0]); }}>
           <span className={styles.viewTeamLink}>
-            View Team
+            Edit Team
             <Icon name="solar:alt-arrow-right-linear" size={14} color="currentColor" />
           </span>
         </Link>
