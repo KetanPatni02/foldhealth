@@ -15,6 +15,8 @@ import {
   withLiveLinks,
 } from '../../lib/carePlanAuditTemplates';
 import { NOTE_ACTIONS, netVersionRows } from '../../lib/carePlanVersions';
+import { activityEntries, liveActivityType } from '../../lib/carePlanHistory';
+import { carePlanLogItem } from '../../lib/carePlanLogItem';
 import { computeDueDate, isMemberAssignee } from '../../tables/CarePlanInterventionsTable';
 import { GbiLinkButton } from '../../tables/CarePlanLinkedPreview';
 import { linkedForChild, linkedForGoal } from '../../CarePlanView/carePlanLinkedItems';
@@ -123,8 +125,24 @@ const ENTITY_ICON = {
   plan: 'custom:care-plan',
 };
 const TEMPLATE_ICON = 'custom:care-plan';
-const NOTE_ICON = 'solar:notes-linear';
 const CHANGE_ICON = 'solar:refresh-linear';
+
+// One audit row as a Care Plan History entry (see carePlanLogItem).
+function historyEntryFor(r, change) {
+  const live = liveActivityType(r);
+  if (live) return activityEntries([r], [], [])[0];
+  const subject = r.entityType === 'plan' ? (r.summary || 'Care Plan') : `${TYPE_LABEL[r.entityType] || 'Item'}: ${r.summary || ''}`;
+  const base = { id: `a-${r.id}`, kind: 'activity', entityType: r.entityType, entityId: r.entityId ?? null, at: r.createdAt, actor: r.actor || '', headlineSubject: subject };
+  if (r.action === 'value_changed') {
+    const action = 'Value Entered on';
+    return { ...base, type: 'value_text', headline: `${action} ${subject}`, headlineAction: action, value: change?.to || r.detail || '' };
+  }
+  if (change) {
+    const action = `${normActivity(change.label) || 'Details'} Changed for`;
+    return { ...base, type: 'title', headline: `${action} ${subject}`, headlineAction: action, from: change.from, to: change.to };
+  }
+  return { ...base, type: 'edit', headline: `Updated ${subject}`, headlineAction: 'Updated', detail: r.detail || ACTION_LABEL[r.action] || '' };
+}
 
 // "Label: from → to" in an audit row's detail, with the tones its badges take.
 function changeOf(r, links) {
@@ -331,58 +349,29 @@ function buildNodes(rawRows, links) {
     });
   }
 
+  // Every other change reads as the Care Plan History reads it: notes as a
+  // running note, live progress and Edit-drawer changes as "X Changed for
+  // Goal: Y" with from → to pills.
+  const noteEntries = new Map(
+    activityEntries([...rows].filter(r => NOTE_ACTIONS.has(r.action)).sort((a, b) => tsOf(b) - tsOf(a)), [], [])
+      .map(e => [e.id, e]),
+  );
   for (const r of rows) {
     if (r.action === 'created' || r.action === 'deleted') continue;
-    if (NOTE_ACTIONS.has(r.action)) {
-      const removed = r.action !== 'note';
-      nodes.push({
-        id: r.id,
-        anchor: r.id,
-        icon: NOTE_ICON,
-        stamp: stampOf(r),
-        ts: tsOf(r),
-        category: 'note',
-        entityKind: 'note',
-        activity: 'Note',
-        actor: r.actor || null,
-        heading: removed ? 'Care Plan Note Removed' : 'Care Plan Note Updated',
-        items: removed || !r.detail ? [] : [r.detail],
-      });
-      continue;
-    }
-    const type = TYPE_LABEL[r.entityType] || r.entityType;
-    const heading = r.entityType === 'plan'
-      ? `${r.summary} Updated`
-      : `${type} - ${r.summary} Updated`;
-    const change = changeOf(r, links);
-    if (change) {
-      nodes.push({
-        id: r.id,
-        anchor: r.id,
-        icon: CHANGE_ICON,
-        stamp: stampOf(r),
-        ts: tsOf(r),
-        category: 'updated',
-        entityKind: r.entityType,
-        activity: normActivity(change.label) || ACTIVITY_FROM_ACTION[r.action] || 'Edited',
-        actor: r.actor || null,
-        heading,
-        change,
-      });
-      continue;
-    }
+    const note = NOTE_ACTIONS.has(r.action);
+    const change = note ? null : changeOf(r, links);
     nodes.push({
       id: r.id,
       anchor: r.id,
-      icon: ENTITY_ICON[r.entityType] || CHANGE_ICON,
       stamp: stampOf(r),
       ts: tsOf(r),
-      category: 'updated',
-      entityKind: r.entityType,
-      activity: ACTIVITY_FROM_ACTION[r.action] || normActivity(ACTION_LABEL[r.action]) || 'Edited',
+      category: note ? 'note' : 'updated',
+      entityKind: note ? 'note' : r.entityType,
+      activity: note
+        ? 'Note'
+        : (change ? normActivity(change.label) : null) || ACTIVITY_FROM_ACTION[r.action] || normActivity(ACTION_LABEL[r.action]) || 'Edited',
       actor: r.actor || null,
-      heading,
-      items: r.detail ? [r.detail] : [ACTION_LABEL[r.action] || r.action],
+      history: note ? noteEntries.get(`a-${r.id}`) : historyEntryFor(r, change),
     });
   }
   return nodes;
@@ -531,6 +520,7 @@ export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, plan, pat
   // Templates are the exception: they start folded, since each can bring
   // dozens of items.
   const [collapsed, setCollapsed] = useState(() => new Set());
+  const [openNotes, setOpenNotes] = useState(() => new Set());
   // A count badge that points into a template opens that template.
   const [openTemplates, setOpenTemplates] = useState(() => new Set(
     anchor ? nodes.filter(n => n.entityKind === 'template' && (anchor === n.id || anchor.startsWith(`${n.id}-`))).map(n => n.id) : [],
@@ -595,7 +585,32 @@ export function CarePlanVersionChangesDrawer({ rows, signedAt, anchor, plan, pat
   const known = new Set(SECTIONS.map(([kind]) => kind));
   const rest = displayNodes.filter(n => !known.has(n.entityKind || 'plan'));
 
-  const logEntries = [...sectioned, ...rest].map(node => (node.t === 'group' ? node : {
+  // A change drawn by the Care Plan History's builder; the meta line keeps
+  // this drawer's date • time • who.
+  const historyItem = (node) => {
+    const e = node.history;
+    const item = carePlanLogItem(e, {
+      meta: node.stamp || {},
+      noteOpen: openNotes.has(node.id),
+      onToggleNote: () => setOpenNotes(prev => {
+        const next = new Set(prev);
+        if (next.has(node.id)) next.delete(node.id); else next.add(node.id);
+        return next;
+      }),
+    });
+    if (e.type === 'value_text') {
+      item.t = 'care_plan_value';
+      item.icon = 'solar:graph-up-linear';
+      item.outcome = e.value || undefined;
+      item.outcomeColor = undefined;
+    }
+    if (e.type === 'edit') item.icon = 'solar:pen-linear';
+    return item;
+  };
+  const logEntries = [...sectioned, ...rest].map(node => (node.t === 'group' ? node : node.history ? {
+    ...historyItem(node),
+    id: node.id,
+  } : {
     t: 'care_plan_change',
     id: node.id,
     avatar: (
