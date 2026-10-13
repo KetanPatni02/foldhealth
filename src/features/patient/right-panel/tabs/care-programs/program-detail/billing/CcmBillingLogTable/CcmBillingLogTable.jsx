@@ -10,6 +10,7 @@ import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChe
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { CCM_ACTIVITY_TYPES, secondsToTime, timeToSeconds } from '../../../../../../data/ccmBillingMock';
 import styles from './CcmBillingLogTable.module.css';
+import { useProgramActivityLog } from '../../shared/useProgramActivityLog';
 
 const CATEGORY_OPTIONS = CCM_ACTIVITY_TYPES.map(t => ({ value: t, label: t }));
 
@@ -193,6 +194,7 @@ const EMPTY_ACTIVITIES = [];
 
 export function CcmBillingLogTable({ patientId, periodId, activities = EMPTY_ACTIVITIES }) {
   const addCcmBillableActivity = useAppStore(s => s.addCcmBillableActivity);
+  const logActivity = useProgramActivityLog('CCM');
 
   const [unloggedRows, setUnloggedRows] = useState(DEFAULT_UNLOGGED_ROWS);
   const [billableOverrides, setBillableOverrides] = useState({});
@@ -263,6 +265,7 @@ export function CcmBillingLogTable({ patientId, periodId, activities = EMPTY_ACT
         occurredAt: new Date().toISOString(),
         isUnlogged: true,
       });
+      logActivity(`Billable Time Logged: ${row.activityType}`, { activityKind: 'document', statusLabel: row.durationInput || '', statusType: 'neutral' });
       setUnloggedRows(prev => prev.filter(r => r.id !== row.id));
     }
     setExpandedNoteId(null);

@@ -37,6 +37,17 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care program report, History and End Program.** The ⋯ menu in a care
+  program's header now has History (this program's slice of the Program
+  Activity Log), Download Report and End Program (with a confirmation).
+  Download Report opens a split drawer like the Employer Impact export: a
+  live PDF on the left; on the right, a Program Steps tab (date range plus a
+  switch per step) and a Personalize tab (logo, title, cover page, header
+  and footer, using the shared `src/components/ReportCover` controls). The
+  PDF follows Figma CCM-Story 11211:479858. Every step action (review, skip,
+  letters, appointments, tasks, medications, sign-offs, billable time) now
+  writes to the program's activity log.
+
 - **Review care plan drawer from the SNP worklist.** Clicking a Signed or
   Draft Care Plan Status opens the plan in a side drawer for reviewing it
   with the patient on a call: goals grouped by category and interventions

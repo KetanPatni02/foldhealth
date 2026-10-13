@@ -1,6 +1,8 @@
+import { useRef, useState } from 'react';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
+import { MenuPopover } from '../../../../../../../components/MenuPopover/MenuPopover';
 import { CloseButton } from '../../../../../../../components/CloseButton/CloseButton';
 import { BannerExpandIcon } from '../../../../../../../components/Icon/BannerExpandIcon';
 import { ProgressRing } from '../../../../../../hcc/DiagPanel/ReviewProgressPopover';
@@ -9,6 +11,8 @@ import { ProgramBadges } from '../shared/ProgramBadges/ProgramBadges.jsx';
 import { statusColorFor } from '../../../../../data/programStatus';
 import { ProgramDetailExpandPanel } from './ProgramDetailViewParts';
 import styles from './ProgramDetailView.module.css';
+
+const ENDED = new Set(['Closed', 'Completed']);
 
 export function ProgramDetailViewHeader({
   program,
@@ -26,8 +30,17 @@ export function ProgramDetailViewHeader({
   isCcm,
   otherPrograms,
   progressFor,
+  onMoreAction,
   onClose,
 }) {
+  const [moreRect, setMoreRect] = useState(null);
+  const moreRef = useRef(null);
+  const moreItems = [
+    { key: 'history', icon: 'solar:history-linear', label: 'History' },
+    { key: 'report', icon: 'solar:download-minimalistic-linear', label: 'Download Report' },
+    { divider: true },
+    { key: 'end', icon: 'solar:close-circle-linear', label: 'End Program', danger: true, disabled: ENDED.has(status) },
+  ];
   return (
     <>
       <div className={styles.header}>
@@ -79,7 +92,24 @@ export function ProgramDetailViewHeader({
               <span className={styles.headerDivider} />
             </>
           )}
-          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+          <ActionButton
+            ref={moreRef}
+            icon="solar:menu-dots-linear"
+            size="S"
+            tooltip="More"
+            active={!!moreRect}
+            onClick={e => setMoreRect(moreRect ? null : e.currentTarget.getBoundingClientRect())}
+          />
+          {moreRect && (
+            <MenuPopover
+              anchorRect={moreRect}
+              anchorRef={moreRef}
+              ariaLabel="Program actions"
+              items={moreItems}
+              onSelect={key => { setMoreRect(null); onMoreAction?.(key); }}
+              onClose={() => setMoreRect(null)}
+            />
+          )}
           <span className={styles.headerDivider} />
           <CloseButton onClick={onClose} size={16} />
         </div>

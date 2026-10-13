@@ -18,6 +18,9 @@ export const ACTIVITY_ICON = {
   status:    { icon: 'solar:user-id-linear',        bg: 'var(--accent-light-light-green)',  color: 'var(--accent-light-green)' },
   careplan:  { icon: 'custom:care-plan',            bg: 'var(--neutral-50)',                color: 'var(--neutral-300)' },
   note:      { icon: 'solar:notes-linear',          bg: 'var(--neutral-50)',                color: 'var(--neutral-300)' },
+  task:        { icon: 'solar:checklist-minimalistic-linear', bg: 'var(--accent-light-purple)', color: 'var(--accent-purple)' },
+  appointment: { icon: 'solar:calendar-linear',       bg: 'var(--accent-light-magenta)',      color: 'var(--accent-magenta)' },
+  medication:  { icon: 'solar:pill-linear',           bg: 'var(--accent-light-green)',        color: 'var(--accent-green)' },
 };
 
 /** What each activity kind is called in the Activity Type filter. */
@@ -35,6 +38,9 @@ export const ACTIVITY_TYPE_LABEL = {
   status: 'Status Change',
   careplan: 'Care Plan',
   note: 'Note',
+  task: 'Task',
+  appointment: 'Appointment',
+  medication: 'Medication',
 };
 export const activityTypeLabel = (kind) => ACTIVITY_TYPE_LABEL[kind] || 'Document';
 

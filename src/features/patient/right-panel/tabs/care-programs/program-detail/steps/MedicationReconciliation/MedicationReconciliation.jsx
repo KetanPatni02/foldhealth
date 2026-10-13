@@ -31,6 +31,7 @@ import { MED_RECON_MOCK } from '../../../../../../data/medReconMock';
 const EMPTY_CHECKS = {};
 const EMPTY_VIEWED = [];
 import styles from './MedicationReconciliation.module.css';
+import { useProgramActivityLog } from '../../shared/useProgramActivityLog';
 
 const STATUS_OPTIONS = [
   { value: 'Active', label: 'Active' },
@@ -349,8 +350,10 @@ function MedRowMenu({ onEdit, onDelete }) {
   );
 }
 
-export function MedicationReconciliation() {
+export function MedicationReconciliation({ programCode } = {}) {
   const patientId          = useAppStore(s => s.selectedPatientId);
+  const logActivity = useProgramActivityLog(programCode);
+  const logMed = (title, statusLabel = '') => logActivity(title, { activityKind: 'medication', statusLabel, statusType: 'neutral' });
   const storedMeds         = useAppStore(s => (patientId ? s.patientMedications[patientId] : null));
   const fetchPatientMedications = useAppStore(s => s.fetchPatientMedications);
   const addPatientMedication    = useAppStore(s => s.addPatientMedication);
@@ -560,6 +563,7 @@ export function MedicationReconciliation() {
           status: draft.status,
           note: draft.note.trim(),
         });
+        logMed(`Medication Updated: ${draft.name.trim()}`, draft.status);
       } finally {
         setSaving(false);
       }
@@ -585,7 +589,10 @@ export function MedicationReconciliation() {
     } finally {
       setSaving(false);
     }
-    if (id) discard();
+    if (id) {
+      logMed(`Medication Added: ${draft.name.trim()}`, draft.status);
+      discard();
+    }
   };
 
   const extractMeds = async (file) => {
@@ -645,7 +652,10 @@ export function MedicationReconciliation() {
       source: m.openfdaMeta ? 'openfda' : 'discharge_import',
       openfdaMeta: m.openfdaMeta || null,
     });
-    if (id) dismissExtracted(m.id);
+    if (id) {
+      logMed(`Medication Imported: ${m.name}`, m.status || 'Active');
+      dismissExtracted(m.id);
+    }
   };
 
   // Stop/Continue toggle — commented out for now, kept for reference.
@@ -794,6 +804,8 @@ export function MedicationReconciliation() {
     const [key] = Object.keys(patch);
     if (patientId && (m[key] || '') !== (patch[key] || '')) {
       updatePatientMedication(patientId, m.id, patch);
+      if (key === 'status') logMed(`Medication Status Changed: ${m.name}`, patch.status);
+      else logMed(`Medication Updated: ${m.name}`);
     }
     cancelCellEdit();
   };
@@ -864,7 +876,9 @@ export function MedicationReconciliation() {
   };
 
   const finishMedExit = async (id) => {
+    const name = medications.find(x => x.id === id)?.name;
     const ok = await deletePatientMedication(patientId, id);
+    if (ok) logMed(`Medication Removed: ${name || 'Medication'}`);
     setExitingMedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
     const p = pendingDeletes.current;
     if (!p.remaining.has(id)) return;
@@ -883,6 +897,7 @@ export function MedicationReconciliation() {
     try {
       await Promise.all(ids.map(id => updatePatientMedication(patientId, id, { status: 'Stopped', stop: today })));
       showToast(`${ids.length} medication${ids.length === 1 ? '' : 's'} stopped`);
+      logMed(`${ids.length} Medication${ids.length === 1 ? '' : 's'} Stopped`, 'Stopped');
       clearMedSelection();
     } finally {
       setBulkBusy(false);
