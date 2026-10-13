@@ -37,6 +37,8 @@ import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/
 import { sampleOnCallSchedules, onCallToRow } from '../src/features/ooo/onCallSeed.js';
 import { sampleHolidays, holidayToRow } from '../src/features/holidays/holidaySeed.js';
 import { sampleAvailability, blockToRow } from '../src/features/settings/calendar/availability/availabilityUtils.js';
+import { careTeamJsToDb } from '../src/store/lib/careTeamMappers.js';
+import { SAMPLE_BILLABLE, SAMPLE_BILLING_REPORTS, SAMPLE_TIMER_SETTINGS, SAMPLE_CARE_PROGRAM_TEAMS, billableToRow, reportToRow, timerToRow } from '../src/features/settings/billing/careProgramBillingData.js';
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -1072,6 +1074,17 @@ async function main() {
     .from('user_availability')
     .upsert(availRows, { onConflict: 'id' });
   if (availErr) { console.error('  ✗', availErr.message); } else { console.log(`  ✓ ${availRows.length} availability blocks`); }
+
+  console.log('Seeding care program billing (Settings → Billing)...');
+  for (const [table, rows] of [
+    ['care_program_billable', SAMPLE_BILLABLE.map(billableToRow)],
+    ['care_program_billing_reports', SAMPLE_BILLING_REPORTS.map(reportToRow)],
+    ['billing_timer_settings', SAMPLE_TIMER_SETTINGS.map(timerToRow)],
+    ['care_teams', SAMPLE_CARE_PROGRAM_TEAMS.map(careTeamJsToDb)],
+  ]) {
+    const { error: billErr } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
+    if (billErr) { console.error(`  ✗ ${table}:`, billErr.message); } else { console.log(`  ✓ ${rows.length} ${table}`); }
+  }
 
   console.log('Seeding patient_education_content (Send Education)...');
   const eduRows = EDUCATION_LIBRARY.map(educationToRow);

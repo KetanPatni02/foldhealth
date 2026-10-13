@@ -190,6 +190,7 @@ import {
 } from './lib/worklistListFilters';
 import { readSessionJson } from './lib/sessionJson';
 import { careTeamRowToJs, careTeamJsToDb } from './lib/careTeamMappers';
+import { SAMPLE_CARE_PROGRAM_TEAMS } from '../features/settings/billing/careProgramBillingData';
 import {
   contentEmailsCache,
   CONTENT_EMAILS_TTL_MS,
@@ -11566,6 +11567,7 @@ export const useAppStore = create((set, get) => ({
         { userId: 'fallback-5', name: 'Bobby Brown',    initials: 'BB', roles: 'Front Desk Staff/Receptionist', capacityPct: 30, assignTo: [] },
       ],
     },
+    ...SAMPLE_CARE_PROGRAM_TEAMS,
   ],
   // Load teams from Supabase. Keeps the seeded fallback when the table is
   // empty or errors (same SWR-style pattern the rest of the store uses).
@@ -11580,11 +11582,15 @@ export const useAppStore = create((set, get) => ({
   },
   // Mutations update local state optimistically, then persist to Supabase.
   addHccCareTeam: (team) => {
+    const before = get().hccCareTeams;
     set(s => ({ hccCareTeams: [team, ...s.hccCareTeams] }));
+    get().syncTimerAccessToTeams(before);
     supabase.from('care_teams').insert(careTeamJsToDb(team))
       .then(({ error }) => { if (error) console.error('addHccCareTeam:', error); });
   },
   updateHccCareTeam: (id, patch) => {
+    const before = get().hccCareTeams;
+    get().syncTimerAccessToTeams(before, { id, patch });
     set(s => ({
       hccCareTeams: s.hccCareTeams.map(t => t.id === id ? { ...t, ...patch } : t),
     }));
@@ -11594,7 +11600,66 @@ export const useAppStore = create((set, get) => ({
         .then(({ error }) => { if (error) console.error('updateHccCareTeam:', error); });
     }
   },
+  // Keeps Timer Access in step with care program teams (BHI / CCM):
+  //  • A program's timer starts at "All users" while it has no care program
+  //    team (with members). When its first such team appears, access switches
+  //    to "Care Program Team only" on its own, logged as a System change.
+  //  • Otherwise, members gaining or losing the timer through the team (ticked
+  //    / unticked "can log billable time", added, removed) are logged in that
+  //    program's timer history, as an add / remove entry.
+  // `pending` is a change not applied yet ({ id, patch } or { deleteId }).
+  syncTimerAccessToTeams: async (before, pending) => {
+    const after = pending?.deleteId
+      ? before.filter(t => t.id !== pending.deleteId)
+      : pending
+        ? before.map(t => (t.id === pending.id ? { ...t, ...pending.patch } : t))
+        : get().hccCareTeams;
+    const teamsFor = (teams, code) => teams.filter(t => t.kind === 'care-program' && t.teamType === code && (t.members || []).length > 0);
+    const timerNames = (teams, code) => new Set(teamsFor(teams, code).flatMap(t => t.members || []).filter(m => m.canLogTime !== false).map(m => m.name));
+    const { TIMER_PROGRAM_CODES } = await import('../features/settings/billing/careProgramBillingData');
+    const changes = TIMER_PROGRAM_CODES.map((code) => {
+      const gained = !teamsFor(before, code).length && teamsFor(after, code).length > 0;
+      const was = timerNames(before, code);
+      const now = timerNames(after, code);
+      return { code, gained, added: [...now].filter(n => !was.has(n)), removed: [...was].filter(n => !now.has(n)) };
+    }).filter(c => c.gained || c.added.length || c.removed.length);
+    if (!changes.length) return;
+    await get().fetchCareProgramBilling();
+    const at = new Date().toISOString();
+    const today = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    const actor = get().currentUserProfile?.name || 'You';
+    for (const c of changes) {
+      const setting = get().billingTimerSettings.find(t => t.program === c.code);
+      if (!setting) continue;
+      if (c.gained) {
+        if (setting.access === 'team') continue;
+        get().saveBillingTimerSetting({
+          ...setting,
+          access: 'team',
+          userNames: [],
+          roles: [],
+          lastModifiedAt: today,
+          lastModifiedBy: 'System',
+          history: [{ at, actor: 'System', kind: 'updated', from: setting.access, to: 'team' }, ...(setting.history || [])],
+        });
+        continue;
+      }
+      // With "All users" the team doesn't decide who has the timer.
+      if (setting.access === 'all') continue;
+      get().saveBillingTimerSetting({
+        ...setting,
+        lastModifiedAt: today,
+        lastModifiedBy: actor,
+        history: [{
+          at, actor, kind: 'team',
+          ...(c.added.length ? { added: { users: c.added, roles: [] } } : {}),
+          ...(c.removed.length ? { removed: { users: c.removed, roles: [] } } : {}),
+        }, ...(setting.history || [])],
+      });
+    }
+  },
   deleteHccCareTeam: (id) => {
+    get().syncTimerAccessToTeams(get().hccCareTeams, { deleteId: id });
     set(s => ({ hccCareTeams: s.hccCareTeams.filter(t => t.id !== id) }));
     supabase.from('care_teams').delete().eq('id', id)
       .then(({ error }) => { if (error) console.error('deleteHccCareTeam:', error); });
@@ -13586,6 +13651,47 @@ export const useAppStore = create((set, get) => ({
     }
     set(s => ({ holidayConfigs: s.holidayConfigs.filter(h => h.id !== id) }));
     return true;
+  },
+
+  // ── Care program billing (Settings → Billing) ──
+  // Billable claims, monthly reports and the billing-timer rule per program.
+  // Falls back to the samples (session only) until the tables exist.
+  billableClaims: [],
+  billingReports: [],
+  billingTimerSettings: [],
+  careProgramBillingLoading: false,
+  careProgramBillingFetched: false,
+  fetchCareProgramBilling: async () => {
+    if (get().careProgramBillingLoading || get().careProgramBillingFetched) return;
+    set({ careProgramBillingLoading: true });
+    const d = await import('../features/settings/billing/careProgramBillingData');
+    const [bill, reps, timers] = await Promise.all([
+      supabase.from('care_program_billable').select('*').order('date_of_service', { ascending: false }),
+      supabase.from('care_program_billing_reports').select('*').order('month', { ascending: false }),
+      supabase.from('billing_timer_settings').select('*').order('program', { ascending: true }),
+    ]);
+    const pick = (res, map, sample, name) => {
+      if (!res.error && res.data?.length) return res.data.map(map);
+      if (res.error) console.warn(`fetchCareProgramBilling (${name}) — falling back to samples:`, res.error.message);
+      return sample;
+    };
+    set({
+      billableClaims: pick(bill, d.rowToBillable, d.SAMPLE_BILLABLE, 'billable'),
+      billingReports: pick(reps, d.rowToReport, d.SAMPLE_BILLING_REPORTS, 'reports'),
+      billingTimerSettings: pick(timers, d.rowToTimer, d.SAMPLE_TIMER_SETTINGS, 'timer'),
+      careProgramBillingLoading: false,
+      careProgramBillingFetched: true,
+    });
+  },
+  saveBillingTimerSetting: async (setting) => {
+    const { timerToRow } = await import('../features/settings/billing/careProgramBillingData');
+    set(s => ({
+      billingTimerSettings: s.billingTimerSettings.some(t => t.id === setting.id)
+        ? s.billingTimerSettings.map(t => (t.id === setting.id ? setting : t))
+        : [...s.billingTimerSettings, setting],
+    }));
+    const { error } = await supabase.from('billing_timer_settings').upsert(timerToRow(setting), { onConflict: 'id' });
+    if (error) console.error('saveBillingTimerSetting:', error.message);
   },
 
   // ── User availability (Settings → Calendar → User availability) ──
