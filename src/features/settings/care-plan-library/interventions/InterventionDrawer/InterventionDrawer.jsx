@@ -23,6 +23,7 @@ import { AssigneeChange } from '../../../../../components/AssigneeChange/Assigne
 const initialsOf = (name) => (name || '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 import { LinkGoalToBarrierDrawer } from '../../../../patient/right-panel/tabs/care-programs/care-plan/drawers/BarrierDetailDrawer/LinkGoalToBarrierDrawer';
 import { formatGoalTarget, formatGoalDuration } from '../../lib';
+import { useEducationArticles, articleValues, ARTICLE_ICON } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/useEducationArticles';
 import styles from '../shared/InterventionDrawer.module.css';
 // Reuse the tasks-view title styles so the Task Title in this drawer
 // matches the care-plan Add Task drawer exactly (big 2xl label + input,
@@ -153,7 +154,8 @@ export function InterventionDrawer({
     }
   }, [memberName, kind]); // eslint-disable-line react-hooks/exhaustive-deps
   const [form, setForm] = useState(intervention?.form ?? '');
-  const [content, setContent] = useState(intervention?.content ?? '');
+  // Patient Education: the articles to share, as `article:<id>` values.
+  const [content, setContent] = useState(() => articleValues(intervention?.content));
   const [vital, setVital] = useState(intervention?.vital ?? '');
   const [note, setNote] = useState(intervention?.note ?? '');
   const [description, setDescription] = useState(intervention?.description ?? '');
@@ -208,47 +210,39 @@ export function InterventionDrawer({
       avatarVariant: 'patient',
     })),
   ]), [platformUsers, patients]);
-  // Forms and education content both come from Settings → Content. Search is
-  // remote so a picker isn't limited to the first page.
+  // Forms come from Settings → Content (searched remotely so a picker isn't
+  // limited to the first page); education articles from useEducationArticles.
   const contentForms = useAppStore(s => s.contentForms);
-  const contentEmails = useAppStore(s => s.contentEmails);
   const contentFormsLoading = useAppStore(s => s.contentFormsLoading);
-  const contentEmailsLoading = useAppStore(s => s.contentEmailsLoading);
   const fetchContentForms = useAppStore(s => s.fetchContentForms);
-  const fetchContentEmails = useAppStore(s => s.fetchContentEmails);
   const [contentQuery, setContentQuery] = useState('');
 
   const needsForms = kind === 'send-form';
   const needsContent = kind === 'patient-education';
 
   useEffect(() => {
-    if (!needsForms && !needsContent) return undefined;
+    if (!needsForms) return undefined;
     const term = contentQuery.trim();
-    const timer = setTimeout(() => {
-      if (needsForms || needsContent) fetchContentForms?.({ page: 1, perPage: 50, search: term });
-      if (needsContent) fetchContentEmails?.({ page: 1, perPage: 50, search: term });
-    }, 300);
+    const timer = setTimeout(() => fetchContentForms?.({ page: 1, perPage: 50, search: term }), 300);
     return () => clearTimeout(timer);
-  }, [needsForms, needsContent, contentQuery, fetchContentForms, fetchContentEmails]);
+  }, [needsForms, contentQuery, fetchContentForms]);
+  const articles = useEducationArticles(needsContent);
 
   const formOptions = useMemo(
     () => (contentForms || []).map(f => ({ value: f.id, label: f.name })),
     [contentForms],
   );
 
-  // Education material is anything authored in Content: emails and forms in
-  // one picker, prefixed because the two id spaces overlap.
+  // Patient Education shares articles only; search filters the list here.
   const contentOptions = useMemo(() => {
-    const emails = (contentEmails || []).map(e => ({ value: `email:${e.id}`, label: e.name }));
-    const forms = (contentForms || []).map(f => ({ value: `form:${f.id}`, label: f.name }));
-    return [
-      ...(emails.length ? [{ type: 'header', value: 'header:emails', label: 'Emails' }, ...emails] : []),
-      ...(forms.length ? [{ type: 'header', value: 'header:forms', label: 'Forms' }, ...forms] : []),
-    ];
-  }, [contentEmails, contentForms]);
+    const term = contentQuery.trim().toLowerCase();
+    return articles
+      .filter(a => !term || a.title.toLowerCase().includes(term) || (a.category || '').toLowerCase().includes(term))
+      .map(a => ({ value: `article:${a.id}`, label: a.title, icon: ARTICLE_ICON }));
+  }, [articles, contentQuery]);
 
   const entityFilled = needsForms ? String(form ?? '').length > 0
-    : needsContent ? String(content ?? '').length > 0
+    : needsContent ? content.length > 0
       : kind === 'measure-vital' ? String(vital ?? '').length > 0
         : true;
   const canSave = title.trim().length > 0 && entityFilled;
@@ -418,16 +412,18 @@ export function InterventionDrawer({
             <Select
               label="Member Education"
               required
+              multiple
+              checkboxes
+              badges
               options={contentOptions}
               value={content}
               onChange={setContent}
-              placeholder="Search Content"
+              placeholder="Select articles"
               searchable
-              searchPlaceholder="Search Content"
+              searchPlaceholder="Search articles"
               query={contentQuery}
               onQueryChange={setContentQuery}
-              searchLoading={contentEmailsLoading || contentFormsLoading}
-              emptyText={contentEmailsLoading || contentFormsLoading ? 'Loading content…' : 'No content found'}
+              emptyText="No articles found"
             />
           </div>
         )}

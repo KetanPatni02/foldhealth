@@ -29,6 +29,7 @@ import { KIND_LABELS } from '../../../../../../../settings/care-plan-library/int
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { useSignedCarePlan } from '../../lib/useSignedCarePlans';
 import { adherenceBand, adherenceTone } from '../../lib/goalMetrics';
+import { useEducationArticles, ARTICLE_ICON } from '../../lib/useEducationArticles';
 import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 import { parseLocalDate } from '../../../../../../../../lib/localDate';
@@ -269,35 +270,45 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
     }
   }, [live?.kind, fetchContentEmails, fetchContentForms]);
 
-  // Resolve the linked content chip: shape `{ kind: 'Email'|'Form', label, id, missing? }`
+  const articles = useEducationArticles(live?.kind === 'patient-education');
+
+  // Resolve the linked content chips: shape `{ kind: 'Article'|'Email'|'Form', label, id, missing? }`
   // for the row renderer. `missing: true` marks a saved id that no longer
   // exists in the library (or hasn't been loaded yet) so the row can still
   // surface the raw handle.
   const linkedContent = useMemo(() => {
-    if (!live) return null;
+    if (!live) return [];
     if (live.kind === 'patient-education') {
       const raw = live.config?.content || '';
-      if (!raw) return null;
+      // Current shape: a list of `article:<id>` picks.
+      if (Array.isArray(raw)) {
+        return raw.filter(v => String(v).startsWith('article:')).map((v) => {
+          const id = String(v).slice('article:'.length);
+          const hit = articles.find(a => String(a.id) === id);
+          return { kind: 'Article', label: hit?.title || id, id, missing: !hit };
+        });
+      }
+      if (!raw) return [];
       if (raw.startsWith('email:')) {
         const id = raw.slice('email:'.length);
         const hit = (contentEmails || []).find(e => String(e.id) === String(id));
-        return { kind: 'Email', label: hit?.name || `Email #${id}`, id, missing: !hit };
+        return [{ kind: 'Email', label: hit?.name || `Email #${id}`, id, missing: !hit }];
       }
       if (raw.startsWith('form:')) {
         const id = raw.slice('form:'.length);
         const hit = (contentForms || []).find(f => String(f.id) === String(id));
-        return { kind: 'Form', label: hit?.name || `Form #${id}`, id, missing: !hit };
+        return [{ kind: 'Form', label: hit?.name || `Form #${id}`, id, missing: !hit }];
       }
-      return { kind: 'Content', label: raw, id: raw, missing: true };
+      return [{ kind: 'Content', label: raw, id: raw, missing: true }];
     }
     if (live.kind === 'send-form') {
       const raw = live.config?.form || '';
-      if (!raw) return null;
+      if (!raw) return [];
       const hit = (contentForms || []).find(f => String(f.id) === String(raw));
-      return { kind: 'Form', label: hit?.name || `Form #${raw}`, id: raw, missing: !hit };
+      return [{ kind: 'Form', label: hit?.name || `Form #${raw}`, id: raw, missing: !hit }];
     }
-    return null;
-  }, [live, contentEmails, contentForms]);
+    return [];
+  }, [live, contentEmails, contentForms, articles]);
   const linkedContentTitle = live?.kind === 'send-form' ? 'Linked Form' : 'Linked Education';
 
   const activity = useMemo(() => audit
@@ -444,25 +455,26 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
           </div>
           {metaParts.length > 0 && <span className={styles.meta}>{metaParts.join(' • ')}</span>}
           {lastUpdateLabel && <span className={styles.meta}>{lastUpdateLabel}</span>}
-          {(linkedContent || live.duration) && (
+          {(linkedContent.length > 0 || live.duration) && (
             <div className={styles.heroBadgeRow}>
-              {linkedContent && (
+              {linkedContent.map(c => (
                 <button
+                  key={`${c.kind}:${c.id}`}
                   type="button"
                   className={styles.linkedContentBadge}
                   onClick={() => { if (canEdit) onEdit?.(live); }}
                   disabled={!canEdit}
-                  aria-label={`Open ${linkedContentTitle.toLowerCase()}`}
+                  aria-label={`Open ${linkedContentTitle.toLowerCase()}: ${c.label}`}
                 >
                   <Icon
-                    name={linkedContent.kind === 'Form' ? 'solar:document-text-linear' : 'solar:letter-linear'}
+                    name={{ Form: 'solar:document-text-linear', Article: ARTICLE_ICON }[c.kind] || 'solar:letter-linear'}
                     size={14}
                     color="var(--neutral-400)"
                   />
-                  <span>{linkedContent.label}</span>
+                  <span>{c.label}</span>
                   <Icon name="solar:arrow-right-up-linear" size={12} color="var(--neutral-400)" />
                 </button>
-              )}
+              ))}
               {live.duration && (
                 <Badge
                   tone="grey"
