@@ -24,6 +24,22 @@ const CHANGE_ICON = {
 const NOTE_ON = { goal: 'Goal', intervention: 'Intervention', barrier: 'Barrier' };
 
 /**
+ * The plan version an entry happened on, for its meta line, as the Care Plan
+ * History tags it: "v3" plus a compact Current badge on the version the plan
+ * is on now, or "Draft" before the first signature.
+ */
+export function versionContext(versionNumber, current) {
+  if (versionNumber == null) return 'Draft';
+  if (!current) return `v${versionNumber}`;
+  return (
+    <span className={styles.versionTag}>
+      v{versionNumber}
+      <Badge size="S" tone="grey" label="Current" className={styles.currentBadge} />
+    </span>
+  );
+}
+
+/**
  * One care plan activity (from buildCarePlanHistory / activityEntries) as an
  * ActivityLog entry, the way the Care Plan History shows it: status and
  * progress transitions as pills, assignee changes as avatar chips, notes

@@ -106,3 +106,17 @@ describe('change values', () => {
     expect(entry).toMatchObject({ from: 'None', to: '10/11/2026', headline: 'Due Date Changed for Intervention: BP review' });
   });
 });
+
+describe('links to a removed goal', () => {
+  it('names the goal from an earlier version when neither side holds it', () => {
+    const g1 = goal({ id: 'g9', title: 'Maintain glucose within target range' });
+    const iv = { id: 'i1', title: 'Glucose monitoring support', goalId: 'g9', status: 'Not Started', priority: 'medium', kind: 'task' };
+    const vA = version(1, '2026-10-01T10:00:00Z', slice({ goals: [g1], interventions: [iv] }));
+    // v2 drops the goal but the intervention still points at it.
+    const vB = version(2, '2026-10-05T10:00:00Z', slice({ goals: [], interventions: [iv] }));
+    const draft = slice({ goals: [], interventions: [{ ...iv, goalId: null }] });
+    const [first] = buildCarePlanHistory({ versions: [vB, vA], audit: [], slice: draft, templates });
+    expect(first.kind).toBe('unsigned');
+    expect(first.rows[0].detail).toBe('Goal: Maintain glucose within target range → No linked goal');
+  });
+});

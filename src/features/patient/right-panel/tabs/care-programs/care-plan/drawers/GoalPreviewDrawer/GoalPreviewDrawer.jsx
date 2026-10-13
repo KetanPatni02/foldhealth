@@ -16,6 +16,7 @@ import { DetailDropdown } from '../../../../../../../tasks/TasksViewDropdowns';
 import { PRIORITY_OPTIONS } from '../../../../../../../tasks/TasksView.utils';
 import { TabStrip } from '../../../../../../../../components/TabStrip/TabStrip';
 import { ActivityLog } from '../../../../../../../../components/ActivityLog/ActivityLog';
+import { useCarePlanItemActivity } from '../../lib/useCarePlanItemActivity';
 import { CarePlanItemNote } from '../CarePlanItemNote/CarePlanItemNote';
 import { MenuPopover } from '../../../../../../../../components/MenuPopover/MenuPopover';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
@@ -154,48 +155,6 @@ function buildGoalSubtitle(g) {
   // Frequency stays its own part (see the plan table's meta line).
   const freq = target ? formatGoalFrequency(g) : '';
   return [left, freq, dur].filter(Boolean).join(' • ');
-}
-
-function splitArrow(detail) {
-  if (!detail || !detail.includes('→')) return [null, null];
-  const [from, to] = detail.split('→').map(s => s.trim());
-  return [from || null, to || null];
-}
-
-function mapAuditEntry(e) {
-  const [from, to] = splitArrow(e.detail);
-  const created = e.createdAt ? new Date(e.createdAt) : null;
-  const date = created ? created.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
-  const time = created ? created.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : null;
-  const base = {
-    id: e.id,
-    actor: e.actor || '',
-    at: e.createdAt,
-    createdAt: e.createdAt,
-    action: e.action,
-    date,
-    time,
-    by: e.actor || null,
-  };
-  if (e.action === 'note') {
-    return { ...base, t: 'comment', title: 'Added a Note', commentBody: e.detail || '', comment: e.detail, verb: 'added a', field: 'Note' };
-  }
-  if (e.action === 'note_deleted') {
-    return { ...base, t: 'comment', title: 'Deleted a Note', commentBody: e.detail || '', comment: e.detail, verb: 'deleted a', field: 'Note' };
-  }
-  if (e.action === 'created') return { ...base, t: 'default', title: 'added a Goal', verb: 'added a', field: 'Goal' };
-  if (e.action === 'deleted') return { ...base, t: 'default', title: 'removed a Goal', verb: 'removed a', field: 'Goal' };
-  if (e.action === 'status_changed') {
-    return { ...base, t: 'status_change', title: 'Status', from, to, verb: 'changed the', field: 'Status', fromTone: STATUS_TONE[from] || 'grey', toTone: STATUS_TONE[to] || 'grey' };
-  }
-  if (e.action === 'progress_changed') {
-    return { ...base, t: 'status_change', title: 'Progress', from, to, verb: 'changed the', field: 'Progress', fromTone: progressTone(from), toTone: progressTone(to) };
-  }
-  if (e.action === 'value_changed') {
-    if (from && to) return { ...base, t: 'status_change', title: 'Value', from, to, verb: 'changed the', field: 'Value', fromTone: 'grey', toTone: 'grey' };
-    return { ...base, t: 'comment', title: 'Added a Value', commentBody: e.detail || '', comment: e.detail, verb: 'added a', field: 'Value' };
-  }
-  return { ...base, t: 'default', title: e.summary || 'updated', verb: 'updated', field: e.summary || 'Goal' };
 }
 
 function sparkNum(v) {
@@ -615,22 +574,18 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
 
   useEffect(() => { fetchPlatformUsers?.(); }, [fetchPlatformUsers]);
 
+  // Goal activity folds in every linked intervention and barrier too, drawn
+  // as the Care Plan History draws it.
+  const itemActivity = useCarePlanItemActivity({
+    patientId,
+    program,
+    audit,
+    ids: [live?.id, ...interventions.map(i => i.id), ...barriers.map(b => b.id)].filter(Boolean),
+    goals: slice?.goals || [],
+    measurements,
+  });
   const activity = useMemo(() => {
-    // Goal activity now folds in the audit trail for every intervention
-    // and barrier currently linked to this goal. Any status / progress /
-    // due-date / recurrence / assignee / link change on those items
-    // shows up in the goal's history too so the reviewer doesn't have
-    // to open each child drawer to see what moved.
-    const linkedIntvIds = new Set(interventions.map(i => String(i.id)));
-    const linkedBarrierIds = new Set(barriers.map(b => String(b.id)));
-    const rows = audit
-      .filter(a => {
-        if (String(a.entityId) === String(live?.id)) return true;
-        if (a.entityType === 'intervention') return linkedIntvIds.has(String(a.entityId));
-        if (a.entityType === 'barrier') return linkedBarrierIds.has(String(a.entityId));
-        return false;
-      })
-      .map(mapAuditEntry);
+    const rows = itemActivity;
     const sinceCutoff = (() => {
       if (lastVisit) {
         const t = localDateMs(lastVisit);
@@ -664,7 +619,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       out.push(entry);
     }
     return out;
-  }, [audit, live, interventions, barriers, activityTab, activityFilter, lastVisit]);
+  }, [itemActivity, activityTab, activityFilter, lastVisit]);
   const noteSectionRef = useRef(null);
   useScrollToSection(noteSectionRef, focusSection === 'notes', live?.id);
 
