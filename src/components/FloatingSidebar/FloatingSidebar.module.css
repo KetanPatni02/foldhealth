@@ -172,46 +172,15 @@
 }
 
 /* ── Omni-style default logo (Figma 1256:45238) ──────────────────────── */
-/* Three nested rounded containers framing the Fold mark. Each layer stays
-   the SAME base color family as the rail (`--primary-500`) so the chip
-   reads as a quiet, glassy frame around the brand mark instead of a
-   coloured button — the earlier `--primary-400` fill made it read as a
-   selected nav tile. Depth is carried by very thin, muted hairlines plus
-   a subtle outer shadow. */
-.omni {
+/* One inline SVG: nested rounded glass panels over a soft green
+   gradient, framing the Fold mark. The SVG carries its own gradient,
+   backdrop blurs, hairline strokes, and inner shadows — nothing to
+   paint at this layer, just a 44x44 display box. */
+.omniSvg {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
-  border: 0.5px solid var(--sidebar-fg-muted);
-  background: var(--primary-500);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-popover);
-  box-sizing: border-box;
-}
-
-.omniRing {
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  border: 0.5px solid var(--sidebar-fg-muted);
-  background: var(--primary-500);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-}
-
-.omniPedestal {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  border: 0.5px solid var(--sidebar-fg-muted);
-  background: var(--primary-500);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: block;
+  flex-shrink: 0;
 }
 
 /* ── Right sub-panel (white) ─────────────────────────────────────────── */
