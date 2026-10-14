@@ -67,6 +67,9 @@ const TYPE_DEFAULTS = {
  *     - chevron        `true`/"down"/"up" adds a small trailing chevron.
  *     - trailingAction Boolean or Solar icon name for a small right-aligned
  *                      icon-only action button; wire via `onTrailingAction`.
+ *     - onStepUp / onStepDown  Either one adds an up/down stepper that
+ *                      shows on hover; the hovered arrow grows into the
+ *                      other's space.
  *     - trailingButton String label or `{ label, onClick }` for the small
  *                      purple pill button on the right.
  *     - characterLimit Number cap; shows "N/limit", turning error-dark at
@@ -117,6 +120,8 @@ export const Input = forwardRef(function Input(
     trailingAction = false,
     trailingActionLabel = 'Voice input',
     onTrailingAction,
+    onStepUp,
+    onStepDown,
     trailingButton = false,   // boolean toggle — mirrors Figma "Trailing Button" flag
     trailingButtonText = 'Button Text',
     onTrailingButtonClick,
@@ -262,12 +267,13 @@ export const Input = forwardRef(function Input(
   const hasLeading = Boolean(leadingIcon) || showPriority;
   const chevronDir = chevron === 'up' ? 'up' : (chevron ? 'down' : null);
   const trailingActionActive = Boolean(trailingAction);
+  const showStepper = Boolean(onStepUp || onStepDown);
   const showTrailingButton = Boolean(trailingButton);
   // Search fields clear through our own close glyph; the native WebKit cross
   // is hidden in CSS because it ignores the design system entirely.
   const showSearchClear = type === 'search' && !props.disabled && !props.readOnly
     && String(value ?? '').length > 0;
-  const hasTrailing = Boolean(trailingText) || chevronDir || trailingActionActive
+  const hasTrailing = Boolean(trailingText) || chevronDir || trailingActionActive || showStepper
     || showTrailingButton || characterLimit != null
     || (type === 'password' && showPasswordToggle)
     || showSearchClear
@@ -445,6 +451,16 @@ export const Input = forwardRef(function Input(
             />
           )}
         </button>
+      )}
+      {showStepper && (
+        <span className={styles.stepper}>
+          <button type="button" className={styles.stepBtn} onClick={onStepUp} aria-label="Increase" tabIndex={-1}>
+            <Icon name="solar:alt-arrow-up-linear" size={10} />
+          </button>
+          <button type="button" className={styles.stepBtn} onClick={onStepDown} aria-label="Decrease" tabIndex={-1}>
+            <Icon name="solar:alt-arrow-down-linear" size={10} />
+          </button>
+        </span>
       )}
       {trailingActionActive && (
         <button
