@@ -45,6 +45,7 @@
 .inlineFlex { display: inline-flex; }
 .foldId { cursor: pointer; transition: color .12s; }
 .foldId:hover { color: var(--primary-300); text-decoration: underline; }
+.langBadge { composes: langBadge from '../../components/WorklistShell/WorklistRow.module.css'; }
 
 .stack { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
 .cellText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }

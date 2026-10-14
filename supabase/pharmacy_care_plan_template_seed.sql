@@ -1,18 +1,21 @@
--- Care Plan Library template for the Pharmacy (Med Adherence) program —
+-- Care Plan Library template for the Pharmacy (Med Adherence) program:
 -- MAD (diabetes), MAH (RAS antagonists) and MAC (statins). Applied from the
--- Apply Templates picker like the other library templates.
+-- Apply Templates picker like the other library templates. It sits next to
+-- the generic "Medication Adherence" template and adds what the three
+-- Star measures need (lipid goal, side effects, pharmacy access, escalation).
 --
 -- Every goal / intervention / barrier is an existing Care Plan Library row
 -- (same ids and text as src/features/settings/care-plan-library/data/
--- carePlanTemplateLibrarySeed.js) — nothing clinical is invented here.
--- Run after care_plan_library_migration.sql. Idempotent (upsert on id).
+-- carePlanTemplateLibrarySeed.js), so nothing clinical is invented here.
+-- Run after care_plan_library_migration.sql. Insert-only: a template someone
+-- already edited in the library is never reset by a re-run.
 
 INSERT INTO public.care_plan_templates
   (id, name, conditions, goals, interventions, barriers, created_by, updated_by)
 VALUES (
   '6f1d2a8e-4b7c-5e93-a0d1-3c8b9e2f7a41',
-  'Medication Adherence (MAD / MAH / MAC) Care Plan',
-  ARRAY['Diabetes', 'Hypertension', 'Hyperlipidemia', 'Medication adherence'],
+  'Medication Adherence: MAD / MAH / MAC',
+  ARRAY['Diabetes', 'Hypertension', 'Hyperlipidemia', 'Medication management'],
   '[
   {
     "id": "2c7eda0c-baad-45d1-8a75-e2a466057e4f",
@@ -144,17 +147,10 @@ VALUES (
     "priority": "medium"
   }
 ]'::jsonb,
-  'Alok Kumar',
-  'Alok Kumar'
+  NULL,
+  NULL
 )
-ON CONFLICT (id) DO UPDATE SET
-  name          = EXCLUDED.name,
-  conditions    = EXCLUDED.conditions,
-  goals         = EXCLUDED.goals,
-  interventions = EXCLUDED.interventions,
-  barriers      = EXCLUDED.barriers,
-  updated_by    = EXCLUDED.updated_by,
-  updated_at    = now();
+ON CONFLICT (id) DO NOTHING;
 
 -- ── Rollback ────────────────────────────────────────────────────────────────
 --   DELETE FROM public.care_plan_templates WHERE id = '6f1d2a8e-4b7c-5e93-a0d1-3c8b9e2f7a41';
