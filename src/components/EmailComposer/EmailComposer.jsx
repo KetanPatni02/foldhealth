@@ -2,7 +2,7 @@ import { Fragment } from 'react';
 import { Input } from '../Input/Input';
 import { Icon } from '../Icon/Icon';
 import { ActionButton } from '../ActionButton/ActionButton';
-import { UnityIcon } from '../UnityIcon/UnityIcon';
+import { UnityAIBar } from '../UnityAIBar/UnityAIBar';
 import { Avatar } from '../Avatar/Avatar';
 import { AttachmentCard } from '../AttachmentCard/AttachmentCard';
 import styles from './EmailComposer.module.css';
@@ -80,16 +80,7 @@ export function EmailComposer({
         placeholder="Enter subject"
       />
 
-      {onGenerate && (
-        <div className={styles.aiBar}>
-          <UnityIcon size={16} color="var(--primary-300)" />
-          <span className={styles.aiLabel}>Compose email with UnityAI</span>
-          <button type="button" className={styles.aiAction} onClick={onGenerate} disabled={generating}>
-            <Icon name={generating ? 'solar:refresh-linear' : 'solar:add-square-linear'} size={16} color="currentColor" className={generating ? styles.spin : undefined} />
-            {generating ? 'Generating…' : 'Generate Email'}
-          </button>
-        </div>
-      )}
+      {onGenerate && <UnityAIBar onGenerate={onGenerate} generating={generating} />}
 
       <div className={styles.field}>
         <span className={styles.label}>

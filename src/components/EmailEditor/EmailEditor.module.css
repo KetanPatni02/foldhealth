@@ -1,0 +1,73 @@
+/* EmailEditor (Figma 2906:39503): notice, formatting bar, message, insert bar. */
+.root {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-1);
+  background: var(--neutral-0);
+  overflow: hidden;
+}
+.root:focus-within { border-color: var(--primary-300); }
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--status-warning-light);
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.fontButton { min-width: 96px; justify-content: space-between; }
+
+.divider {
+  width: 0.5px;
+  height: 16px;
+  margin: 0 var(--space-1);
+  background: var(--neutral-150);
+  flex-shrink: 0;
+}
+
+.editor {
+  min-height: 220px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: var(--space-2);
+  font-size: var(--font-base);
+  line-height: 1.45;
+  color: var(--neutral-500);
+  outline: none;
+  word-break: break-word;
+}
+.editor[data-empty='true']::before {
+  content: attr(data-placeholder);
+  color: var(--neutral-200);
+  pointer-events: none;
+}
+.editor a { color: var(--status-info); text-decoration: underline; }
+.editor img { max-width: 100%; }
+.editor p { margin: 0 0 var(--space-2); }
+
+.actions {
+  display: flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  border-top: 0.5px solid var(--neutral-150);
+}
+.actionItem { display: inline-flex; align-items: center; }
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

@@ -13668,6 +13668,19 @@ export const useAppStore = create((set, get) => ({
     return true;
   },
 
+  // ── Patient contacts (Send To in the patient send drawers) ──
+  // { [patientId]: contact[] }. Falls back to sample contacts (session only)
+  // until patient_contacts exists or has none for the patient.
+  patientContacts: {},
+  fetchPatientContacts: async (patientId) => {
+    if (!patientId || get().patientContacts[patientId]) return;
+    const { rowToContact, sampleContactsFor } = await import('../features/messages/comms/sendTo');
+    const { data, error } = await supabase.from('patient_contacts').select('*').eq('patient_id', String(patientId));
+    if (error) console.warn('fetchPatientContacts — falling back to samples:', error.message);
+    const list = !error && data?.length ? data.map(rowToContact) : sampleContactsFor(String(patientId));
+    set(s => ({ patientContacts: { ...s.patientContacts, [patientId]: list } }));
+  },
+
   // ── Care program billing (Settings → Billing) ──
   // Billable claims, monthly reports and the billing-timer rule per program.
   // Falls back to the samples (session only) until the tables exist.

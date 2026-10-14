@@ -249,6 +249,7 @@
 .optionText {
   display: flex;
   flex-direction: column;
+  gap: calc(var(--space-1) / 2);
   min-width: 0;
 }
 
@@ -388,3 +389,7 @@
 .historyEntry:hover .historyReveal,
 .historyEntry:focus-within .historyReveal,
 .historyEntryOpen .historyReveal { opacity: 1; }
+/* The read-only team list has no hover fill, so its avatars line up with the heading. */
+.optionFlush { padding-left: 0; padding-right: 0; }
+/* 4px on top of the picker's 12px gap: 16px under the heading. */
+.optionFlush:first-child { padding-top: var(--space-1); }

@@ -1,0 +1,74 @@
+/* Send To + authentication (SendToSection). */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Matches the label Input / Select render, with room for links on the right. */
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+.required {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+
+/* The resolved contact: name, then the method(s) the drawer sends to. */
+.contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+.contactName,
+.contactMethod {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.contactName { color: var(--neutral-400); }
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  line-height: 1.35;
+  color: var(--status-error);
+}
+.error > svg { flex-shrink: 0; margin-top: calc(var(--space-1) / 2); }
+
+
+.protection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
