@@ -404,6 +404,8 @@ export function SnpWorklistTable() {
       <Pagination
         currentPage={page}
         totalItems={filtered.length}
+        totalCount={enriched.length}
+        filtered={!!searchQuery.trim() || Object.values(filters).some(v => v?.length)}
         perPage={perPage}
         onPageChange={setPage}
         onPerPageChange={(n) => { setPerPage(n); setPage(1); }}

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../Icon/Icon';
+import { Badge } from '../Badge/Badge';
 import { Button } from '../Button/Button';
 import { Input } from '../Input/Input';
 import { MenuPopover } from '../MenuPopover/MenuPopover';
@@ -22,8 +23,12 @@ import styles from './Pagination.module.css';
  *    Used by APCM Billing (and any future feature that paginates from
  *    local state).
  *
- * `summary` (optional) renders at the far left of the bar, e.g. a result
- * count once filters narrow the list.
+ * Record count: once a filter or search narrows the table, a badge at the
+ * far left reads "x of y records found". Pass `totalCount` (rows before
+ * filtering) and `filtered` (a filter or search is active). `filtered`
+ * defaults to the count differing from `totalCount`; `filteredCount`
+ * overrides x when `totalItems` also counts rows that aren't records.
+ * Store-driven mode works both out from the store.
  */
 export function Pagination({
   totalItems: totalItemsProp,
@@ -31,7 +36,9 @@ export function Pagination({
   perPage: perPageProp,
   onPageChange,
   onPerPageChange,
-  summary,
+  totalCount: totalCountProp,
+  filtered: filteredProp,
+  filteredCount,
 } = {}) {
   // True when the caller drives state. In this mode all the worklist-specific
   // derivations (queue early-return, viewBy short-circuit, etc.) are skipped.
@@ -112,6 +119,16 @@ export function Pagination({
   }, [isHcc, isAllPatients, allPatients, hccMembers, patients, searchQuery, activeTab, activeFilters]);
 
   const totalItems = totalItemsProp != null ? totalItemsProp : totalItemsComputed;
+
+  let totalCount = totalCountProp;
+  if (totalCount == null && !controlled && activeTab !== 'toc-queue') {
+    if (isAllPatients) totalCount = (allPatients.length > 0 ? allPatients : [...patients, ...hccMembers]).length;
+    else totalCount = isHcc ? hccMembers.length : patients.length;
+  }
+  const storeFiltered = !!searchQuery.trim() || Object.values(activeFilters).some(Boolean);
+  const matched = filteredCount ?? totalItems;
+  const isFiltered = filteredProp ?? (controlled ? matched !== totalCount : storeFiltered);
+  const showCount = isFiltered && totalCount != null;
   const [goToInput, setGoToInput] = useState('');
   const perPageBtnRef = useRef(null);
   const [perPageMenuRect, setPerPageMenuRect] = useState(null);
@@ -211,7 +228,11 @@ export function Pagination({
 
   return (
     <div className={styles.pagination} ref={barRef}>
-      {summary != null && <span className={styles.summary}>{summary}</span>}
+      {showCount && (
+        <span className={styles.summary}>
+          <Badge tone="grey" size="S" label={`${matched} of ${totalCount} records found`} />
+        </span>
+      )}
 
       {/* Figma SNP-Story 2653:877579: one grey group holding the page
           toggles, page size and go-to field. */}
