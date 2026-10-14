@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
+import { Button } from '../../components/Button/Button';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
@@ -51,6 +52,13 @@ const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, prim
 const PRIMARY_FILTER_KEYS = FILTER_KEYS.filter(f => f.primary).map(f => f.key);
 const KEY_ORDER = Object.fromEntries(FILTER_KEYS.map((f, i) => [f.key, i]));
 
+// Default order is triage order: priority, then the soonest fail date.
+// A header sort overrides it; clearing the sort returns here.
+const PRIORITY_RANK = { P1: 0, P2: 1, P3: 2 };
+const byTriage = (a, b) =>
+  (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3)
+  || (a.failDateSort ?? Infinity) - (b.failDateSort ?? Infinity);
+
 const thStyle = {
   padding: '8px 14px',
   fontSize: 'var(--font-sm)',
@@ -69,6 +77,7 @@ const thStyle = {
 export function PharmacyWorklistTable() {
   const members = useAppStore(s => s.pharmacyWorklistMembers);
   const loading = useAppStore(s => s.pharmacyWorklistLoading);
+  const loadError = useAppStore(s => s.pharmacyWorklistError);
   const fetchMembers = useAppStore(s => s.fetchPharmacyWorklistMembers);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   const showToast = useAppStore(s => s.showToast);
@@ -86,7 +95,7 @@ export function PharmacyWorklistTable() {
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
 
-  const enriched = useMemo(() => members.map(enrichPharmacyMember), [members]);
+  const enriched = useMemo(() => members.map(enrichPharmacyMember).toSorted(byTriage), [members]);
 
   const filterOptions = useMemo(() => {
     const opts = {};
@@ -199,7 +208,7 @@ export function PharmacyWorklistTable() {
             <thead>
               <tr>
                 <th style={{ ...thStyle, width: 36, padding: '8px 10px', left: 0, zIndex: 4 }}>
-                  <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} />
+                  <Checkbox checked={someSelected ? 'indeterminate' : allSelected} onCheckedChange={handleSelectAll} aria-label="Select all members on this page" />
                 </th>
                 <HeaderCell
                   label="Members"
@@ -250,11 +259,27 @@ export function PharmacyWorklistTable() {
             </tbody>
           </table>
         )}
-        {!loading && filtered.length === 0 && (
+        {!loading && loadError && members.length === 0 && (
+          <div className={styles.emptySearch} role="alert">
+            <Icon name="solar:danger-circle-linear" size={40} color="var(--neutral-200)" />
+            <p className={styles.emptyTitle}>Couldn't load the pharmacy worklist</p>
+            <p className={styles.emptyText}>The member list didn't load. Check your connection and try again.</p>
+            <Button variant="secondary" size="L" leadingIcon="solar:refresh-linear" onClick={() => fetchMembers()}>Retry</Button>
+          </div>
+        )}
+        {!loading && !loadError && members.length === 0 && (
+          <div className={styles.emptySearch}>
+            <Icon name="solar:pill-linear" size={40} color="var(--neutral-200)" />
+            <p className={styles.emptyTitle}>No members on this worklist yet</p>
+            <p className={styles.emptyText}>Members with open MAD, MAH or MAC gaps appear here once the plan file is loaded.</p>
+          </div>
+        )}
+        {!loading && members.length > 0 && filtered.length === 0 && (
           <div className={styles.emptySearch}>
             <Icon name="solar:magnifer-linear" size={40} color="var(--neutral-200)" />
             <p className={styles.emptyTitle}>No results found</p>
-            <p className={styles.emptyText}>No pharmacy members match your current filters. Try adjusting them or clearing all filters.</p>
+            <p className={styles.emptyText}>No pharmacy members match your search or filters.</p>
+            <Button variant="secondary" size="L" onClick={() => { clearFilters(); setSearchQuery(''); setPage(1); }}>Clear search and filters</Button>
           </div>
         )}
       </div>

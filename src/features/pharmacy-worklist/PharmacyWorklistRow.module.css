@@ -50,13 +50,12 @@
 .stack { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
 .cellText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .subText { font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
+.subText.toneError, .subStatus.toneError { color: var(--status-error); }
 .dateText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .mutedDash { color: var(--neutral-200); font-size: var(--font-base); }
 .pdc { font-size: var(--font-base); font-weight: 500; }
 
 .toneError { color: var(--status-error); }
-.toneWarning { color: var(--status-warning-dark); }
-.toneSuccess { color: var(--status-success); }
 
 .chips { display: inline-flex; gap: var(--space-1); flex-wrap: nowrap; }
 
@@ -76,11 +75,5 @@
 .actionDivider { width: 0.5px; height: 16px; background: var(--neutral-150); flex-shrink: 0; }
 
 
-.subStatus { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
+.subStatus { font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
 .subSuffix { color: var(--neutral-200); }
-.subDot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--neutral-200); }
-.subDot_error { background: var(--status-error); }
-.subDot_warning { background: var(--status-warning); }
-.subDot_info { background: var(--status-info); }
-.subDot_primary { background: var(--primary-300); }
-.subDot_success { background: var(--status-success); }

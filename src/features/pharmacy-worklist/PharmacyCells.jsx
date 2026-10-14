@@ -1,28 +1,28 @@
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_STATUS_TONE, RECON_TONE, daysFromToday, pdcTone } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, pdcTone } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
-
-const TONE_CLASS = { error: styles.toneError, warning: styles.toneWarning, success: styles.toneSuccess };
 
 export function Dash() {
   return <span className={styles.mutedDash}>—</span>;
 }
 
-export function DateWithDays({ date, tone }) {
+// The date itself stays neutral; only the countdown turns red, and only
+// when the caller says it needs action.
+export function DateWithDays({ date, alert = false }) {
   if (!date) return <Dash />;
   const days = daysFromToday(date);
   const rel = days == null ? '' : days < 0 ? `${-days}d overdue` : days === 0 ? 'Today' : `${days}d left`;
   return (
     <span className={styles.stack}>
-      <span className={`${styles.dateText} ${TONE_CLASS[tone] || ''}`}>{date}</span>
-      <span className={`${styles.subText} ${TONE_CLASS[tone] || ''}`}>{rel}</span>
+      <span className={styles.dateText}>{date}</span>
+      <span className={`${styles.subText} ${alert ? styles.toneError : ''}`}>{rel}</span>
     </span>
   );
 }
 
-// One chip per open measure, colored by that measure's own gap status
-// (closure is per measure, so MAD can be Safe while MAC is At risk).
+// One neutral chip per measure; each measure's own status (closure is per
+// measure) is in the tooltip and in the Program view.
 export function MeasureChips({ codes, statuses }) {
   if (!codes?.length) return <Dash />;
   return (
@@ -30,8 +30,8 @@ export function MeasureChips({ codes, statuses }) {
       {codes.map(c => {
         const st = statuses?.[c];
         return (
-          <Tooltip key={c} label={st ? `${MEASURE_NAMES[c]} · ${st.gap} — ${st.label}: ${st.detail}` : MEASURE_NAMES[c]} placement="bottom">
-            <Badge size="S" tone={st ? GAP_STATUS_TONE[st.gap] : 'primary'} dot={!!st} label={c} />
+          <Tooltip key={c} label={st ? `${MEASURE_NAMES[c]}: ${st.gap}, ${st.label}. ${st.detail}` : MEASURE_NAMES[c]} placement="bottom">
+            <Badge size="S" tone="white" label={c} />
           </Tooltip>
         );
       })}
@@ -39,9 +39,21 @@ export function MeasureChips({ codes, statuses }) {
   );
 }
 
-export function PdcValue({ pdc }) {
+// PDC of the row's focus measure, named so it is never ambiguous. Below the
+// 80% threshold on an open gap is said in words, not only in color.
+export function PdcValue({ pdc, code, open }) {
   if (pdc == null) return <span className={styles.subText}>Not sent</span>;
-  return <span className={`${styles.pdc} ${TONE_CLASS[pdcTone(pdc)] || ''}`}>{pdc}%</span>;
+  const below = open && pdcTone(pdc) === 'error';
+  return (
+    <span className={styles.stack}>
+      <span className={styles.pdc}>{pdc}%</span>
+      {(code || below) && (
+        <span className={styles.subText}>
+          {code}{code && below ? ' · ' : ''}{below && <span className={styles.toneError}>Below 80%</span>}
+        </span>
+      )}
+    </span>
+  );
 }
 
 export function ClaimReconCell({ recon, showCode }) {
@@ -57,8 +69,7 @@ export function ClaimReconCell({ recon, showCode }) {
 export function SubStatus({ label, suffix }) {
   if (!label) return null;
   return (
-    <span className={styles.subStatus}>
-      <span className={`${styles.subDot} ${styles[`subDot_${MEASURE_STATUS_TONE[label] || 'grey'}`]}`} />
+    <span className={`${styles.subStatus} ${URGENT_SUB_STATUSES.has(label) ? styles.toneError : ''}`}>
       {label}{suffix ? <span className={styles.subSuffix}> · {suffix}</span> : null}
     </span>
   );

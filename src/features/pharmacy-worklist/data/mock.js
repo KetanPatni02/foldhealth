@@ -1,6 +1,6 @@
 // Pharmacy (Med Adherence) gap worklist. One row per member; each member
-// carries every open measure in `measures`. The row shows the most urgent
-// measure (see pharmacyWorklist.utils.js) and the expanded row lists them all.
+// carries every open measure in `measures`. The row shows its focus measure
+// (see mostUrgentMeasure in pharmacyWorklist.utils.js); the Program view lists them all.
 // In scope: MAD, MAH, MAC. SUPD is out of scope for now.
 //
 // measures[]: { code: 'MAD' | 'MAH' | 'MAC', pdc (plan-reported, null when

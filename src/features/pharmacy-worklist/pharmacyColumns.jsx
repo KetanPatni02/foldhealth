@@ -4,18 +4,26 @@ import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUSES, GAP_STATUS_TONE, daysFromToday, fillDueTone, measureDrugs } from './pharmacyWorklist.utils';
+import { GAP_STATUSES, GAP_STATUS_TONE, daysFromToday, measureDrugs } from './pharmacyWorklist.utils';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
 import { ClaimReconCell, Dash, DateWithDays, MeasureChips, PdcValue, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
-const STATUS_ITEMS = GAP_STATUSES.map(s => ({ key: s, label: s }));
+const AUTO_STATUS = '__auto';
+const statusItems = (m) => [
+  ...GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === m.status })),
+  ...(m.statusManual ? [{ key: AUTO_STATUS, label: 'Use measure roll-up' }] : []),
+];
 
-const PRIORITY_TONE = { P1: 'error', P2: 'warning', P3: 'grey' };
+// Only P1 carries color; P2 / P3 stay neutral so red keeps meaning "act now".
+const PRIORITY_TONE = { P1: 'error', P2: 'grey', P3: 'white' };
+
+const isOverdue = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
 
 /**
- * Middle-column defs (order = CSV spec). `optional: true` columns start
- * hidden and can be switched on from the Actions header column picker.
+ * Middle-column defs, in triage order: what to act on first (priority,
+ * status, the focus measure's PDC and dates) sits next to Members.
+ * `optional: true` columns start hidden; the Actions header picker shows them.
  */
 export const PHARMACY_MIDDLE_COLUMNS = [
   {
@@ -23,48 +31,9 @@ export const PHARMACY_MIDDLE_COLUMNS = [
     renderCell: (m) => <Badge size="S" tone={PRIORITY_TONE[m.priority]} label={m.priority} />,
   },
   {
-    key: 'healthPlan', label: 'Health Plan / IPA', sortKey: 'healthPlan', sortType: 'alpha',
-    renderCell: (m) => (
-      <span className={styles.stack}>
-        <span className={styles.cellText}>{m.healthPlan || '—'}</span>
-        <span className={styles.subText}>{m.ipa || ''}</span>
-      </span>
-    ),
-  },
-  { key: 'measures', label: 'Measures', renderCell: (m) => <MeasureChips codes={m.measureCodes} statuses={m.measureStatuses} /> },
-  { key: 'pdc', label: 'PDC %', sortKey: 'pdc', sortType: 'number', renderCell: (m) => <PdcValue pdc={m.pdc} /> },
-  {
-    key: 'failDate', label: 'Fail Date', sortKey: 'failDateSort', sortType: 'date',
-    renderCell: (m) => {
-      const d = daysFromToday(m.failDate);
-      return <DateWithDays date={m.failDate} tone={d != null && d <= 14 ? 'error' : null} />;
-    },
-  },
-  {
-    key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date',
-    renderCell: (m) => <DateWithDays date={m.nextFillDue} tone={fillDueTone(m.nextFillDue)} />,
-  },
-  {
-    key: 'daysLeft', label: 'Days Left', sortKey: 'daysLeft', sortType: 'number',
-    renderCell: (m) => (m.daysLeft == null ? <Dash /> : <span className={styles.cellText}>{m.daysLeft}</span>),
-  },
-  {
-    key: 'drugs', label: 'Drug(s)',
-    renderCell: (m) => (
-      <span className={styles.stack}>
-        {(m.measures || []).map(x => (
-          <span key={x.code} className={styles.cellText}><span className={styles.subText}>{x.code}</span> {measureDrugs(x)}</span>
-        ))}
-      </span>
-    ),
-  },
-  {
-    key: 'priorYear', label: 'Prior-Year Non-Compliant',
-    renderCell: (m) => <span className={m.priorYearNonCompliant ? styles.toneError : styles.cellText}>{m.priorYearNonCompliant ? 'Yes' : 'No'}</span>,
-  },
-  {
     key: 'status', label: 'Status', sortKey: 'status', sortType: 'alpha', stopRowClickPropagation: true,
-    // Gap status (editable) with the most urgent measure's sub-status below.
+    // Gap status (editable) with the focus measure's sub-status below. A
+    // hand-set status is marked, and the menu can hand it back to the roll-up.
     renderCell: (m, ctx) => (
       <span className={styles.stack}>
         <span className={styles.relative}>
@@ -81,17 +50,40 @@ export const PHARMACY_MIDDLE_COLUMNS = [
           {ctx.showStatusMenu && (
             <MenuPopover
               anchorRef={ctx.statusBtnRef}
-              items={STATUS_ITEMS}
-              onSelect={(key) => { ctx.setPharmacyStatus(m.id, key); ctx.setShowStatusMenu(false); }}
+              items={statusItems(m)}
+              onSelect={(key) => {
+                if (key === AUTO_STATUS) ctx.clearPharmacyStatusOverride(m.id);
+                else ctx.setPharmacyStatus(m.id, key);
+                ctx.setShowStatusMenu(false);
+              }}
               onClose={() => ctx.setShowStatusMenu(false)}
               width={240}
               ariaLabel="Change status"
             />
           )}
         </span>
-        <SubStatus label={m.subStatus?.label} suffix={m.measureCodes.length > 1 ? m.subStatus?.code : null} />
+        <SubStatus
+          label={m.subStatus?.label}
+          suffix={[m.measureCodes.length > 1 ? m.subStatus?.code : null, m.statusManual ? 'Set manually' : null].filter(Boolean).join(' · ') || null}
+        />
       </span>
     ),
+  },
+  { key: 'measures', label: 'Measures', renderCell: (m) => <MeasureChips codes={m.measureCodes} statuses={m.measureStatuses} /> },
+  {
+    key: 'pdc', label: 'PDC', sortKey: 'pdc', sortType: 'number',
+    renderCell: (m) => <PdcValue pdc={m.pdc} code={m.measureCodes.length > 1 ? m.urgent?.code : null} open={m.urgentOpen} />,
+  },
+  {
+    key: 'failDate', label: 'Fail Date', sortKey: 'failDateSort', sortType: 'date',
+    renderCell: (m) => {
+      const d = daysFromToday(m.failDate);
+      return <DateWithDays date={m.failDate} alert={m.urgentOpen && d != null && d <= 14} />;
+    },
+  },
+  {
+    key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date',
+    renderCell: (m) => <DateWithDays date={m.nextFillDue} alert={m.urgentOpen && isOverdue(m.nextFillDue)} />,
   },
   {
     key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number',
@@ -108,7 +100,7 @@ export const PHARMACY_MIDDLE_COLUMNS = [
   },
   {
     key: 'followUpDue', label: 'Follow-up Due', sortKey: 'followUpDueSort', sortType: 'date',
-    renderCell: (m) => <DateWithDays date={m.followUpDue} tone={fillDueTone(m.followUpDue)} />,
+    renderCell: (m) => <DateWithDays date={m.followUpDue} alert={isOverdue(m.followUpDue)} />,
   },
   {
     key: 'assignee', label: 'Assigned To', sortKey: 'assigneeName', sortType: 'alpha', stopRowClickPropagation: true,
@@ -144,7 +136,30 @@ export const PHARMACY_MIDDLE_COLUMNS = [
       </Tooltip>
     ) : <Dash />),
   },
-  // Optional — hidden by default.
+  {
+    key: 'drugs', label: 'Drug(s)',
+    renderCell: (m) => (
+      <span className={styles.stack}>
+        {(m.measures || []).map(x => (
+          <span key={x.code} className={styles.cellText}><span className={styles.subText}>{x.code}</span> {measureDrugs(x)}</span>
+        ))}
+      </span>
+    ),
+  },
+  {
+    key: 'priorYear', label: 'Prior-Year Non-Compliant',
+    renderCell: (m) => <span className={styles.cellText}>{m.priorYearNonCompliant ? 'Yes' : 'No'}</span>,
+  },
+  // Optional, hidden by default.
+  {
+    key: 'healthPlan', label: 'Health Plan / IPA', optional: true, sortKey: 'healthPlan', sortType: 'alpha',
+    renderCell: (m) => (
+      <span className={styles.stack}>
+        <span className={styles.cellText}>{m.healthPlan || '—'}</span>
+        <span className={styles.subText}>{m.ipa || ''}</span>
+      </span>
+    ),
+  },
   { key: 'language', label: 'Language', optional: true, renderCell: (m) => <span className={styles.cellText}>{(m.language || 'en').toUpperCase()}</span> },
   { key: 'bookOfBusiness', label: 'Book of Business', optional: true, sortKey: 'bookOfBusiness', sortType: 'alpha', renderCell: (m) => <span className={styles.cellText}>{m.bookOfBusiness || '—'}</span> },
   { key: 'barrier', label: 'Barrier', optional: true, renderCell: (m) => (m.barrier ? <span className={styles.cellText}>{m.barrier}</span> : <Dash />) },
