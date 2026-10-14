@@ -4,9 +4,9 @@ const DAY_MS = 86_400_000;
 export const MEASURE_ORDER = ['MAD', 'MAH', 'MAC'];
 
 export const MEASURE_NAMES = {
-  MAD: 'Medication Adherence — Diabetes',
-  MAH: 'Medication Adherence — Hypertension (RAS antagonists)',
-  MAC: 'Medication Adherence — Cholesterol (Statins)',
+  MAD: 'Medication Adherence for Diabetes',
+  MAH: 'Medication Adherence for Hypertension (RAS antagonists)',
+  MAC: 'Medication Adherence for Cholesterol (Statins)',
 };
 
 export const medLabel = (d) => `${d.name} ${d.strength} ${d.unit}`;
@@ -35,12 +35,17 @@ export function daysFromToday(mdy) {
   return t == null ? null : Math.round((t - todayUtc()) / DAY_MS);
 }
 
-// Earliest fail date wins; lower PDC breaks ties. Excluded measures only
-// count when nothing else is open.
-export function mostUrgentMeasure(measures) {
+// Gaps still being worked. Only these may drive a row's headline numbers:
+// a Completed MAD must not paint the row red while MAH is the real gap.
+export const OPEN_GAPS = new Set(['Open', 'In Progress']);
+
+// Earliest fail date wins; lower PDC breaks ties. Open gaps compete first,
+// then non-excluded measures, then everything.
+export function mostUrgentMeasure(measures, statuses) {
   const list = measures || [];
-  const open = list.filter(m => !m.excluded);
-  const pool = open.length ? open : list;
+  const open = statuses ? list.filter(x => OPEN_GAPS.has(statuses[x.code]?.gap)) : [];
+  const live = list.filter(x => !x.excluded);
+  const pool = open.length ? open : live.length ? live : list;
   return pool.toSorted((a, b) => {
     const fa = parseMdy(a.failDate) ?? Infinity;
     const fb = parseMdy(b.failDate) ?? Infinity;
@@ -65,20 +70,15 @@ export function derivePriority(measure) {
   return 'P3';
 }
 
-// Measure threshold is 80%; under 90% is close enough to watch.
+// Color is reserved for "act now": PDC under the 80% measure threshold and
+// fills already overdue. Everything else stays neutral.
 export function pdcTone(pdc) {
-  if (pdc == null) return null;
-  if (pdc >= 90) return 'success';
-  if (pdc >= 80) return 'warning';
-  return 'error';
+  return pdc != null && pdc < 80 ? 'error' : null;
 }
 
 export function fillDueTone(mdy) {
   const days = daysFromToday(mdy);
-  if (days == null) return null;
-  if (days < 0) return 'error';
-  if (days <= 7) return 'warning';
-  return null;
+  return days != null && days < 0 ? 'error' : null;
 }
 
 // ── Claim reconciliation ──
@@ -94,9 +94,9 @@ export const RECON_STATUSES = ['Claim reversed', 'Claim overdue', 'Awaiting clai
 export const RECON_TONE = {
   'Claim reversed': 'error',
   'Claim overdue': 'error',
-  'Awaiting claim': 'warning',
-  'PDC mismatch': 'warning',
-  'Matched': 'success',
+  'Awaiting claim': 'grey',
+  'PDC mismatch': 'grey',
+  'Matched': 'grey',
 };
 
 function reconcileMeasure(x) {
@@ -140,8 +140,8 @@ export const REVERSAL_WINDOW_DAYS = 14;
 // Gap status (first line) — the four statuses every program's gaps use.
 export const GAP_STATUSES = ['Open', 'In Progress', 'Completed', 'Closed-Data'];
 export const GAP_STATUS_TONE = {
-  'Open': 'primary',
-  'In Progress': 'warning',
+  'Open': 'white',
+  'In Progress': 'primary',
   'Completed': 'success',
   'Closed-Data': 'grey',
 };
@@ -151,17 +151,8 @@ export const MEASURE_STATUSES = [
   'Reopened', 'At risk', 'Pending pickup', 'Needs monitoring', 'Pickup confirmed', 'Safe',
   'Already adherent', '1 fill to invincible', 'Excluded',
 ];
-export const MEASURE_STATUS_TONE = {
-  'Reopened': 'error',
-  'At risk': 'error',
-  'Pending pickup': 'warning',
-  'Needs monitoring': 'info',
-  'Pickup confirmed': 'primary',
-  'Safe': 'success',
-  'Already adherent': 'success',
-  '1 fill to invincible': 'success',
-  'Excluded': 'grey',
-};
+// The only sub-statuses that call for action; the rest read as plain text.
+export const URGENT_SUB_STATUSES = new Set(['Reopened', 'At risk']);
 
 // Latest pharmacy-verification answers for one measure, if any.
 export function latestVerification(callHistory, code) {
@@ -176,7 +167,7 @@ function measureSubStatus(x, callHistory) {
   const reopensOn = pickup != null && supply ? addDaysMdy(x.pickupConfirmed, supply) : null;
   const claimAt = parseMdy(x.claim?.date);
   if (x.claim?.status === 'Reversed' && (pickup == null || claimAt >= pickup)) {
-    return { label: 'Reopened', detail: `Claim reversed ${x.claim.date} — back on the plan gap report` };
+    return { label: 'Reopened', detail: `Claim reversed ${x.claim.date}, back on the plan gap report` };
   }
   // A confirmed pickup holds until that fill's supply runs out.
   if (pickup != null && (reopensOn == null || daysFromToday(reopensOn) > 0)) {
@@ -234,15 +225,6 @@ export function rollupGapStatus(statuses) {
   return 'Open';
 }
 
-// The member's headline sub-status: the most urgent measure's.
-export function worstSubStatus(statuses) {
-  let worst = null;
-  for (const [code, st] of Object.entries(statuses)) {
-    if (!worst || MEASURE_STATUSES.indexOf(st.label) < MEASURE_STATUSES.indexOf(worst.label)) worst = { ...st, code };
-  }
-  return worst;
-}
-
 // ── Outreach ── same shape the other worklists render: last attempt's
 // result + date, and one dot per attempt (latest three, oldest first).
 export function outreachSummary(callHistory) {
@@ -263,22 +245,25 @@ export function outreachSummary(callHistory) {
 }
 
 export function enrichPharmacyMember(m) {
-  const urgent = mostUrgentMeasure(m.measures);
+  const statuses = Object.fromEntries((m.measures || []).map(x => [x.code, measureStatus(x, m)]));
+  // One focus measure drives priority, PDC, dates and the sub-status, so the
+  // row never mixes numbers from different measures.
+  const urgent = mostUrgentMeasure(m.measures, statuses);
+  const urgentOpen = OPEN_GAPS.has(statuses[urgent?.code]?.gap);
   const recon = worstRecon(m.measures);
   const outreach = outreachSummary(m.callHistory);
-  const statuses = Object.fromEntries((m.measures || []).map(x => [x.code, measureStatus(x, m)]));
   const measureCodes = MEASURE_ORDER.filter(c => (m.measures || []).some(x => x.code === c));
   return {
     ...m,
     urgent,
+    urgentOpen,
     measureCodes,
-    priority: derivePriority(urgent),
+    priority: urgentOpen ? derivePriority(urgent) : 'P3',
     pdc: urgent?.pdc ?? null,
     failDate: urgent?.failDate ?? null,
     failDateSort: parseMdy(urgent?.failDate),
     nextFillDue: urgent?.nextFillDue ?? null,
     nextFillDueSort: parseMdy(urgent?.nextFillDue),
-    daysLeft: urgent?.daysLeft ?? null,
     priorYearNonCompliant: (m.measures || []).some(x => x.priorYearNonCompliant),
     recon,
     reconStatuses: [...new Set((m.measures || []).map(x => reconcileMeasure(x)?.status).filter(Boolean))],
@@ -288,7 +273,7 @@ export function enrichPharmacyMember(m) {
     measureStatuses: statuses,
     // Rolled up from the measures unless someone set it by hand.
     status: m.statusManual ? m.status : rollupGapStatus(statuses),
-    subStatus: worstSubStatus(statuses),
+    subStatus: urgent ? { ...statuses[urgent.code], code: urgent.code } : null,
     followUpDueSort: parseMdy(m.followUpDue),
   };
 }

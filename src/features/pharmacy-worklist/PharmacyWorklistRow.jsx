@@ -23,6 +23,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   const requestAddTask = useAppStore(s => s.requestAddTask);
   const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
   const setPharmacyStatus = useAppStore(s => s.setPharmacyStatus);
+  const clearPharmacyStatusOverride = useAppStore(s => s.clearPharmacyStatusOverride);
   const setPharmacyAssignee = useAppStore(s => s.setPharmacyAssignee);
   const platformUsers = useAppStore(s => s.platformUsers);
   const showToast = useAppStore(s => s.showToast);
@@ -45,7 +46,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
     eligibleUsers.push({ id: u.id, name: u.name, initials: u.initials, role: clinicalRolesPickerLabel(u) });
   }
 
-  const cellCtx = { showStatusMenu, setShowStatusMenu, statusBtnRef, setPharmacyStatus, setPharmacyAssignee, eligibleUsers };
+  const cellCtx = { showStatusMenu, setShowStatusMenu, statusBtnRef, setPharmacyStatus, clearPharmacyStatusOverride, setPharmacyAssignee, eligibleUsers };
 
   const openInCareProgram = (e) => {
     e?.stopPropagation?.();

@@ -85,30 +85,33 @@ export function createPharmacyWorklistSlice(set, get) {
   return {
     pharmacyWorklistMembers: [],
     pharmacyWorklistLoading: false,
+    pharmacyWorklistError: null,
     pharmacyWorklistDidFetch: false,
     fetchPharmacyWorklistMembers: async () => {
       if (get().pharmacyWorklistDidFetch) return;
-      set({ pharmacyWorklistDidFetch: true, pharmacyWorklistLoading: true });
+      set({ pharmacyWorklistDidFetch: true, pharmacyWorklistLoading: true, pharmacyWorklistError: null });
 
       const { data, error } = await supabase
         .from('pharmacy_worklist_members')
         .select('*')
         .order('id', { ascending: true });
 
-      if (error || !data?.length) {
-        // A retry after a failed fetch must not reseed the mock over rows the
-        // user has already edited this session (status, assignee, outreach).
-        if (get().pharmacyWorklistMembers.length) {
-          set({ pharmacyWorklistLoading: false, ...(error ? { pharmacyWorklistDidFetch: false } : {}) });
+      // A failed fetch is shown as an error with Retry, never papered over
+      // with mock patients: staff must not act on rows that are not real.
+      // Rows already loaded this session are kept as they are.
+      if (error) {
+        console.warn('fetchPharmacyWorklistMembers failed:', error.message);
+        set({ pharmacyWorklistLoading: false, pharmacyWorklistDidFetch: false, pharmacyWorklistError: error.message });
+        return;
+      }
+      // The local mock only stands in for an empty table during development.
+      if (!data?.length) {
+        if (import.meta.env.DEV && !get().pharmacyWorklistMembers.length) {
+          const { PHARMACY_WORKLIST_MEMBERS } = await import('../../features/pharmacy-worklist/data/mock');
+          set({ pharmacyWorklistMembers: PHARMACY_WORKLIST_MEMBERS, pharmacyWorklistLoading: false });
           return;
         }
-        console.warn('fetchPharmacyWorklistMembers error or empty — falling back to local mock:', error?.message);
-        const { PHARMACY_WORKLIST_MEMBERS } = await import('../../features/pharmacy-worklist/data/mock');
-        set({
-          pharmacyWorklistMembers: PHARMACY_WORKLIST_MEMBERS,
-          pharmacyWorklistLoading: false,
-          ...(error ? { pharmacyWorklistDidFetch: false } : {}),
-        });
+        set({ pharmacyWorklistLoading: false });
         return;
       }
       set({ pharmacyWorklistMembers: data.map(rowToMember), pharmacyWorklistLoading: false });
@@ -120,6 +123,15 @@ export function createPharmacyWorklistSlice(set, get) {
       if (prev === status) return;
       // A hand-picked status overrides the roll-up from the measures.
       update(id, m => ({ ...m, status, statusManual: true }), ['status', 'status_manual'], { t: 'status_change', title: 'Status changed', from: prev, to: status });
+    },
+
+    // Hand the status back to the measure roll-up.
+    clearPharmacyStatusOverride: (id) => {
+      const row = get().pharmacyWorklistMembers.find(m => m.id === id);
+      if (!row?.statusManual) return;
+      const prev = enrichPharmacyMember(row).status;
+      const to = enrichPharmacyMember({ ...row, statusManual: false }).status;
+      update(id, m => ({ ...m, statusManual: false }), ['status_manual'], { t: 'status_change', title: 'Status set from measures', from: prev, to });
     },
 
     // Accepts AssigneeChange's { id, name, initials } shape; null unassigns.
