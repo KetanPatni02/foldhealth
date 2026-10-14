@@ -54,6 +54,9 @@ const EMPTY_SELECTED_IDS = [];
  *                          omitted BulkBar uses its default set.
  *  - page / perPage / totalItems / onPageChange / onPageSizeChange
  *                          Pagination state. Omit `totalItems` to hide.
+ *  - totalCount / filtered Optional: rows before filtering and whether a
+ *                          filter is active, for the "x of y records
+ *                          found" badge.
  *  - minTableWidth        Minimum table width in px so wide column sets
  *                          get a horizontal scroll instead of squishing.
  *  - embedded             Auto-height mode for tables stacked in a parent
@@ -123,6 +126,8 @@ export function WorklistShell({
   page,
   perPage,
   totalItems,
+  totalCount,
+  filtered,
   onPageChange,
   onPageSizeChange,
   minTableWidth = 900,
@@ -506,6 +511,8 @@ export function WorklistShell({
         <Pagination
           currentPage={page}
           totalItems={totalItems}
+          totalCount={totalCount}
+          filtered={filtered}
           perPage={perPage}
           onPageChange={onPageChange}
           onPerPageChange={onPageSizeChange}

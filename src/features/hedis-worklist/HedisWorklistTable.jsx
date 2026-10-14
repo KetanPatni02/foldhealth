@@ -342,7 +342,8 @@ export function HedisWorklistTable() {
           perPage={perPage}
           onPageChange={setCurrentPage}
           onPerPageChange={setPerPage}
-          summary={isFiltered ? <Badge tone="grey" size="S" label={`${filtered.length} of ${(hedisMembers || []).length} records found`} /> : undefined}
+          totalCount={(hedisMembers || []).length}
+          filtered={isFiltered}
         />
       </div>
     </div>

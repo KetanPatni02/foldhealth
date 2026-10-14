@@ -448,6 +448,8 @@ export function CcmWorklistTable() {
       <Pagination
         currentPage={page}
         totalItems={filtered.length}
+        totalCount={members.length}
+        filtered={!!searchQuery.trim() || Object.values(filters).some(v => v?.length) || filtered.length !== members.length}
         perPage={perPage}
         onPageChange={setPage}
         onPerPageChange={(n) => { setPerPage(n); setPage(1); }}

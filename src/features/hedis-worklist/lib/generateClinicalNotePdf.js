@@ -143,6 +143,7 @@ export function generateClinicalNotePdf({
     BPD: 'Blood Pressure Documentation',
     CCS: 'Cervical Cancer Screening',
     LSC: 'Lead Screening in Children',
+    WCV: 'Child and Adolescent Well-Care Visits',
   };
 
   gapCodes.forEach((code, i) => {

@@ -350,6 +350,7 @@ export function useHccWorklistTable() {
   const activeFilterCount = countActiveFilters(hccFilters);
 
   return {
+    totalRecordCount: enriched.length,
     hccMembersLoading,
     perPage,
     activeSubnavList,
