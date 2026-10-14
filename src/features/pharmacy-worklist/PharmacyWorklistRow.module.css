@@ -48,6 +48,8 @@
 .langBadge { composes: langBadge from '../../components/WorklistShell/WorklistRow.module.css'; }
 
 .stack { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
+/* Badge centers itself (align-self) by default; in a two-line cell both lines start at the column edge. */
+.stack > * { align-self: flex-start; }
 .cellText { font-size: var(--font-base); color: var(--neutral-400); white-space: nowrap; }
 .subText { font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
 .subText.toneError, .subStatus.toneError { color: var(--status-error); }
