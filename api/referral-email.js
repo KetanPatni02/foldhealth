@@ -8,6 +8,10 @@
  *
  * Body: { patientName, patientAge?, patientSex?, gap?, providerName,
  *         providerSpecialty?, reason, note?, attachments?: string[], senderName? }
+ *
+ * With `mode: 'patient'` it drafts the Compose Email message to a patient
+ * instead (same endpoint, so the deploy keeps one AI function):
+ * Body: { mode: 'patient', patientName?, subject?, notes?, senderName? }
  */
 
 import { requireUser } from './_lib/requireUser.js';
@@ -21,6 +25,23 @@ const RESPONSE_SCHEMA = {
   properties: { subject: { type: 'string' }, body: { type: 'string' } },
   required: ['subject', 'body'],
 };
+
+function buildPatientPrompt(d) {
+  return [
+    'You are a care coordinator writing a short email from a care team to a patient.',
+    '',
+    'Rules:',
+    '- Warm, plain language a patient understands; no medical jargon.',
+    '- Use only the facts provided. Never invent diagnoses, results, dates or history.',
+    '- Keep the subject under 70 characters.',
+    '- Body: a greeting by first name if given, 1 to 2 short paragraphs, then',
+    '  "Warm regards," on its own line.',
+    '- Plain text only. No markdown, no placeholders in brackets, no signature block.',
+    '',
+    'Email details (JSON; "notes" is what the sender wants to say, if any):',
+    JSON.stringify(d),
+  ].join('\n');
+}
 
 function buildPrompt(d) {
   return [
@@ -51,12 +72,13 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: { message: 'GOOGLE_AI_API_KEY is not set.' } });
   }
   const d = req.body && typeof req.body === 'object' ? req.body : null;
-  if (!d?.providerName) {
+  const patientMode = d?.mode === 'patient';
+  if (!d || (!patientMode && !d.providerName)) {
     return res.status(400).json({ error: { message: 'Missing referral details' } });
   }
 
   const requestBody = JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: buildPrompt(d) }] }],
+    contents: [{ role: 'user', parts: [{ text: patientMode ? buildPatientPrompt(d) : buildPrompt(d) }] }],
     generationConfig: { temperature: 0.4, responseMimeType: 'application/json', responseSchema: RESPONSE_SCHEMA },
   });
 

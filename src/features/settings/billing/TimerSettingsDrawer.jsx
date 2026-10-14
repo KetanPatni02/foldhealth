@@ -44,7 +44,7 @@ function lostAccess(before, after) {
 /**
  * Timer Access (Figma 2883:24403, "Billing Timer Settings"): who sees the billing timer for
  * one program. With "Care Program Team + Additional Roles/Users", the search
- * field opens a Users / Care Team Roles dropdown to add from, and the list
+ * field opens a Users / Roles dropdown to add from, and the list
  * below holds what's been added (each removable).
  *
  * @param {object}   props.program – { code, name }
@@ -226,7 +226,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
         : <Avatar type="icon" variant="others" iconName="solar:user-linear" size="M" />}
       <span className={styles.optionText}>
         <span className={styles.optionName}>{o.name}</span>
-        <span className={styles.optionMeta}>{o.kind === 'role' ? 'Care team role' : o.role}</span>
+        {o.kind !== 'role' && <span className={styles.optionMeta}>{o.role}</span>}
       </span>
     </>
   );
@@ -254,7 +254,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
                 fullWidth
                 active={pickerTab}
                 onChange={setPickerTab}
-                items={[{ key: 'users', label: 'Users' }, { key: 'roles', label: 'Care Team Roles' }]}
+                items={[{ key: 'users', label: 'Users' }, { key: 'roles', label: 'Roles' }]}
               />
               <div className={styles.dropdownList}>
                 {pickerOptions.length === 0 && <span className={styles.listEmpty}>No {pickerTab === 'users' ? 'users' : 'roles'} match “{query}”</span>}
@@ -304,9 +304,10 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
           {added.map(o => (
             <div key={o.key} className={[styles.option, o.kind === 'team' ? styles.optionStatic : '', removing.includes(o.key) ? styles.optionLeaving : ''].filter(Boolean).join(' ')}>
               {who(o)}
-              {/* Team members come from the care program team; they're managed there. */}
+              {/* Team members come from the care program team; they're managed there.
+                  The tag only tells them apart in the mixed All tab. */}
               {o.kind === 'team'
-                ? <Badge tone="grey" size="XS" label="Care program team" className={styles.optionTag} />
+                ? tab === 'all' && <Badge tone="grey" size="XS" label="Care program team" className={styles.optionTag} />
                 : (
                   <ActionButton
                     icon="solar:trash-bin-trash-linear"
@@ -367,7 +368,7 @@ export function TimerSettingsDrawer({ program, setting, onClose }) {
               <span className={styles.pickerHeading}>Care program team</span>
               <div className={styles.list}>
                 {teamMembers.map(o => (
-                  <div key={o.key} className={`${styles.option} ${styles.optionStatic}`}>{who(o)}</div>
+                  <div key={o.key} className={`${styles.option} ${styles.optionStatic} ${styles.optionFlush}`}>{who(o)}</div>
                 ))}
               </div>
             </div>

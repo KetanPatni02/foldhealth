@@ -38,6 +38,7 @@ import { sampleOnCallSchedules, onCallToRow } from '../src/features/ooo/onCallSe
 import { sampleHolidays, holidayToRow } from '../src/features/holidays/holidaySeed.js';
 import { sampleAvailability, blockToRow } from '../src/features/settings/calendar/availability/availabilityUtils.js';
 import { careTeamJsToDb } from '../src/store/lib/careTeamMappers.js';
+import { sampleContactsFor, contactToRow } from '../src/features/messages/comms/sendTo.js';
 import { SAMPLE_BILLABLE, SAMPLE_BILLING_REPORTS, SAMPLE_TIMER_SETTINGS, SAMPLE_CARE_PROGRAM_TEAMS, billableToRow, reportToRow, timerToRow } from '../src/features/settings/billing/careProgramBillingData.js';
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
@@ -1085,6 +1086,11 @@ async function main() {
     const { error: billErr } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
     if (billErr) { console.error(`  ✗ ${table}:`, billErr.message); } else { console.log(`  ✓ ${rows.length} ${table}`); }
   }
+
+  console.log('Seeding patient_contacts (Send To)...');
+  const contactRows = sampleContactsFor(PAMI_DEMO_PATIENT).map(contactToRow);
+  const { error: contactErr } = await supabase.from('patient_contacts').upsert(contactRows, { onConflict: 'id' });
+  if (contactErr) { console.error('  ✗', contactErr.message); } else { console.log(`  ✓ ${contactRows.length} patient contacts`); }
 
   console.log('Seeding patient_education_content (Send Education)...');
   const eduRows = EDUCATION_LIBRARY.map(educationToRow);
