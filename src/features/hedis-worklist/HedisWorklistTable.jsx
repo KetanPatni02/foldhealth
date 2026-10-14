@@ -5,6 +5,7 @@ import { CareGapDetailDrawer } from './CareGapDetailDrawer';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../components/Icon/Icon';
+import { Badge } from '../../components/Badge/Badge';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
@@ -104,6 +105,7 @@ export function HedisWorklistTable() {
     }
     return result.filter(m => hedisMemberMatchesFilters(m, hedisFilters));
   }, [searchQuery, hedisFilters, hedisMembers]);
+  const isFiltered = !!searchQuery.trim() || Object.values(hedisFilters || {}).some(v => v?.length);
 
   // Data-derived option pools passed to the FilterChipBar so `dynamic` chips
   // (Assignee, State, City, IPA, HP Code) enumerate only what the loaded
@@ -340,6 +342,7 @@ export function HedisWorklistTable() {
           perPage={perPage}
           onPageChange={setCurrentPage}
           onPerPageChange={setPerPage}
+          summary={isFiltered ? <Badge tone="grey" size="S" label={`${filtered.length} of ${(hedisMembers || []).length} records found`} /> : undefined}
         />
       </div>
     </div>

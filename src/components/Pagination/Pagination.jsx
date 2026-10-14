@@ -1,7 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import { Icon } from '../Icon/Icon';
-import { Select } from '../Select/Select';
+import { Button } from '../Button/Button';
+import { Input } from '../Input/Input';
+import { MenuPopover } from '../MenuPopover/MenuPopover';
+import { EnterIcon } from '../Icon/EnterIcon';
 import { useAutoPageSize } from './useAutoPageSize';
 import styles from './Pagination.module.css';
 
@@ -18,6 +21,9 @@ import styles from './Pagination.module.css';
  *    onPerPageChange. The store reads are skipped and the caller owns state.
  *    Used by APCM Billing (and any future feature that paginates from
  *    local state).
+ *
+ * `summary` (optional) renders at the far left of the bar, e.g. a result
+ * count once filters narrow the list.
  */
 export function Pagination({
   totalItems: totalItemsProp,
@@ -25,6 +31,7 @@ export function Pagination({
   perPage: perPageProp,
   onPageChange,
   onPerPageChange,
+  summary,
 } = {}) {
   // True when the caller drives state. In this mode all the worklist-specific
   // derivations (queue early-return, viewBy short-circuit, etc.) are skipped.
@@ -106,6 +113,8 @@ export function Pagination({
 
   const totalItems = totalItemsProp != null ? totalItemsProp : totalItemsComputed;
   const [goToInput, setGoToInput] = useState('');
+  const perPageBtnRef = useRef(null);
+  const [perPageMenuRect, setPerPageMenuRect] = useState(null);
 
   // Page size follows the viewport until the user picks an explicit size,
   // so a tall screen fills with rows instead of white space. The choice is
@@ -192,69 +201,99 @@ export function Pagination({
   // Don't show pagination for outreach status grouped view (uses collapsible sections).
   if (!controlled && activeTab === 'toc-worklist' && viewBy === 'status') return null;
 
+  const perPageOptions = [
+    { key: 'auto', label: autoPageSize ? `Auto (${perPage})` : 'Auto' },
+    { key: '10', label: '10 / Page' },
+    { key: '25', label: '25 / Page' },
+    { key: '50', label: '50 / Page' },
+  ];
+  const perPageValue = autoPageSize ? 'auto' : String(perPage);
+
   return (
     <div className={styles.pagination} ref={barRef}>
-      <button
-        className={styles.btn}
-        onClick={() => goTo(currentPage - 1)}
-        disabled={currentPage === 1}
-        aria-label="Previous page"
-      >
-        <Icon name="solar:alt-arrow-left-linear" size={18} />
-      </button>
+      {summary != null && <span className={styles.summary}>{summary}</span>}
 
-      {getPageNumbers().map((p, i) =>
-        p === '...' ? (
-          <span key={`ellipsis-${i}`} className={styles.ellipsis}>…</span>
-        ) : (
-          <button
-            key={p}
-            className={`${styles.btn} ${p === currentPage ? styles.active : ''}`}
-            onClick={() => goTo(p)}
-            aria-label={`Page ${p}`}
-            aria-current={p === currentPage ? 'page' : undefined}
-          >
-            {p}
-          </button>
-        )
-      )}
-
-      <button
-        className={styles.btn}
-        onClick={() => goTo(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        aria-label="Next page"
-      >
-        <Icon name="solar:alt-arrow-right-linear" size={18} />
-      </button>
-
-      <Select
-        className={styles.perPage}
-        options={[
-          { value: 'auto', label: autoPageSize ? `Auto (${perPage})` : 'Auto' },
-          { value: '10', label: '10 / Page' },
-          { value: '25', label: '25 / Page' },
-          { value: '50', label: '50 / Page' },
-        ]}
-        value={autoPageSize ? 'auto' : String(perPage)}
-        onChange={handlePerPageChange}
-      />
-
-      <div className={styles.goToWrapper}>
-        <input
-          className={styles.goToInput}
-          type="number"
-          min={1}
-          max={totalPages}
-          placeholder="#"
-          aria-label="Go to page number"
-          value={goToInput}
-          onChange={(e) => setGoToInput(e.target.value)}
-          onKeyDown={handleGoToKeyDown}
-        />
-        <button className={styles.goBtn} onClick={handleGoToPage}>
-          Go to Page
+      {/* Figma SNP-Story 2653:877579: one grey group holding the page
+          toggles, page size and go-to field. */}
+      <div className={styles.group}>
+        <button
+          type="button"
+          className={styles.toggle}
+          onClick={() => goTo(currentPage - 1)}
+          disabled={currentPage === 1}
+          aria-label="Previous page"
+        >
+          <Icon name="solar:arrow-left-linear" size={16} />
         </button>
+
+        {getPageNumbers().map((p, i) =>
+          p === '...' ? (
+            <span key={`ellipsis-${i}`} className={styles.toggle} aria-hidden="true">...</span>
+          ) : (
+            <button
+              type="button"
+              key={p}
+              className={`${styles.toggle} ${p === currentPage ? styles.active : ''}`}
+              onClick={() => goTo(p)}
+              aria-label={`Page ${p}`}
+              aria-current={p === currentPage ? 'page' : undefined}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        <button
+          type="button"
+          className={styles.toggle}
+          onClick={() => goTo(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          aria-label="Next page"
+        >
+          <Icon name="solar:arrow-right-linear" size={16} />
+        </button>
+
+        <Button
+          ref={perPageBtnRef}
+          variant="secondary"
+          size="S"
+          trailingIcon="solar:alt-arrow-down-linear"
+          aria-haspopup="menu"
+          aria-expanded={!!perPageMenuRect}
+          onClick={() => setPerPageMenuRect(perPageMenuRect ? null : perPageBtnRef.current?.getBoundingClientRect() ?? null)}
+        >
+          {perPageOptions.find(o => o.key === perPageValue)?.label ?? `${perPage} / Page`}
+        </Button>
+        {perPageMenuRect && (
+          <MenuPopover
+            anchorRect={perPageMenuRect}
+            anchorRef={perPageBtnRef}
+            items={perPageOptions.map(o => ({ ...o, selected: o.key === perPageValue }))}
+            onSelect={(key) => { handlePerPageChange(key); setPerPageMenuRect(null); }}
+            onClose={() => setPerPageMenuRect(null)}
+            ariaLabel="Rows per page"
+            width={140}
+            align="left"
+          />
+        )}
+
+        <Input
+          inputMode="numeric"
+          placeholder="Go to Page"
+          aria-label="Go to page number"
+          wrapperClassName={styles.goTo}
+          value={goToInput}
+          onChange={(e) => setGoToInput(e.target.value.replace(/\D/g, ''))}
+          onKeyDown={handleGoToKeyDown}
+          onStepUp={() => setGoToInput(String(Math.min(totalPages, (parseInt(goToInput, 10) || currentPage) + 1)))}
+          onStepDown={() => setGoToInput(String(Math.max(1, (parseInt(goToInput, 10) || currentPage) - 1)))}
+          trailingTextSegment
+          trailingText={(
+            <button type="button" className={styles.enterBtn} onClick={handleGoToPage} aria-label="Go to page">
+              <EnterIcon size={16} />
+            </button>
+          )}
+        />
       </div>
     </div>
   );
