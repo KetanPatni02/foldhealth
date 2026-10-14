@@ -3,6 +3,7 @@ import { Icon } from '../../../components/Icon/Icon';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import { CIS_ANTIGENS, CIS_DOSE_STATUS, scheduleEndMonth } from './cisRules';
 import { DOSE_BADGE, fmtDate } from './cisStatusConfig';
+import { appointmentForDose, apptDate } from './cisAppointments';
 import styles from './VaccineTimeline.module.css';
 
 // One column per age a routine range starts or ends at, birth to 23 months.
@@ -50,7 +51,7 @@ const windowText = (r) => (r.recommendedEnd ? `${fmtDate(r.start)} – ${fmtDate
  * @param {string[]} props.antigenOrder   – vaccine keys, top to bottom
  * @param {string[]} [props.statusFilter] – statuses to keep at full strength
  */
-export function VaccineTimeline({ result, antigenOrder, statusFilter = [] }) {
+export function VaccineTimeline({ result, antigenOrder, statusFilter = [], appointments = [] }) {
   const dob = result.dob;
   const today = new Date();
   const colDates = MONTHS.map(m => addMonths(dob, m));
@@ -99,6 +100,8 @@ export function VaccineTimeline({ result, antigenOrder, statusFilter = [] }) {
                       const to = MONTHS.indexOf(r.ageEndMonths);
                       const badge = DOSE_BADGE[r.status] || {};
                       const dimmed = statusFilter.length > 0 && !statusFilter.includes(r.status);
+                      // A vaccine reminder booked for this dose: a bell in the corner.
+                      const booked = appointmentForDose(appointments, a.key, r);
                       return (
                         <div key={r.number} className={styles.doseSlot} style={{ gridRow: top + li, gridColumn: `${from + 2} / ${to + 3}` }}>
                         <Tooltip
@@ -107,14 +110,19 @@ export function VaccineTimeline({ result, antigenOrder, statusFilter = [] }) {
                           maxWidth={280}
                           align={from > MONTHS.length / 2 ? 'right' : 'left'}
                           className={styles.doseTip}
-                          label={<DoseDetail a={a} r={r} />}
+                          label={<DoseDetail a={a} r={r} booked={booked} />}
                         >
                           <div
                             className={`${styles.dose} ${TONE[badge.tone] || ''} ${dimmed ? styles.dimmed : ''}`}
                             role="cell"
                             tabIndex={0}
-                            aria-label={`${a.label} dose ${r.number}, ${r.status}, ${r.record ? `given ${fmtDate(r.record.date)}` : `due ${windowText(r)}`}`}
+                            aria-label={`${a.label} dose ${r.number}, ${r.status}, ${r.record ? `given ${fmtDate(r.record.date)}` : `due ${windowText(r)}`}${booked ? `, reminder for ${fmtDate(apptDate(booked.appt))}` : ''}`}
                           >
+                            {booked && (
+                              <span className={`${styles.bell} ${booked.passed ? styles.bellLate : ''}`} aria-hidden="true">
+                                <Icon name="solar:bell-bold" size={12} color="currentColor" />
+                              </span>
+                            )}
                             <span className={styles.doseTitle}>
                               {badge.icon && <Icon name={badge.icon} size={12} />}
                               Dose {r.number}
@@ -142,12 +150,16 @@ export function VaccineTimeline({ result, antigenOrder, statusFilter = [] }) {
           <span className={`${styles.swatch} ${styles.swatchToday}`} />
           Today
         </span>
+        <span className={styles.legendItem}>
+          <Icon name="solar:bell-bold" size={12} color="var(--neutral-300)" />
+          Reminder set
+        </span>
       </div>
     </div>
   );
 }
 
-function DoseDetail({ a, r }) {
+function DoseDetail({ a, r, booked }) {
   return (
     <span className={styles.detail}>
       <span className={styles.detailTitle}>{a.label} · Dose {r.number}</span>
@@ -158,6 +170,14 @@ function DoseDetail({ a, r }) {
         ? <span>Date administered: <b>{fmtDate(r.record.date)}</b></span>
         : <span>Due by: <b>{fmtDate(r.due)}</b></span>}
       {r.reason && <span className={styles.detailReason}>{r.reason}</span>}
+      {booked && (
+        <span className={booked.passed ? styles.detailReminderLate : styles.detailReminder}>
+          {booked.passed ? 'Reminder: visit was on ' : 'Reminder: visit on '}
+          <b>{fmtDate(apptDate(booked.appt))}{booked.appt.time ? ` at ${booked.appt.time}` : ''}</b>
+          {booked.appt.provider ? ` with ${booked.appt.provider}` : ''}
+          {booked.passed ? '. Confirm it was given.' : ''}
+        </span>
+      )}
     </span>
   );
 }

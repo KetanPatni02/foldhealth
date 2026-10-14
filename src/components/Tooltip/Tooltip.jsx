@@ -68,6 +68,9 @@ export function Tooltip({ label, children, placement = 'top', className, maxWidt
       ? { top: rect.bottom + 6, left: anchorX }
       : { top: rect.top - 6,     left: anchorX }
     : null;
+  // Edge-aligned bubbles: the arrow points at the trigger's centre, not the
+  // bubble's (the CSS keeps it inside the bubble).
+  if (style && (side === 'left' || side === 'right')) style['--tt-arrow'] = `${Math.round(rect.width / 2)}px`;
   if (style && maxWidth) {
     style.maxWidth = maxWidth;
     // Its own width, not what's left of the viewport past its left edge.

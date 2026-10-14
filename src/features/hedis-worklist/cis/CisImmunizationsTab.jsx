@@ -23,6 +23,7 @@ import { CisDoseProgress } from './CisDoseProgress';
 import { DoseAppointmentChip } from './DoseAppointmentChip';
 import { appointmentForDose, apptDate } from './cisAppointments';
 import { CisMoreMenu } from './CisMoreMenu';
+import { CisSaveRecordButton } from './CisSaveRecordButton';
 import styles from './CisImmunizationsTab.module.css';
 
 // Vaccines grouped by what the care team should do about them (Figma:
@@ -132,6 +133,8 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
   // Right side of the list bar: search, calendar, download, expand/collapse.
   const listToolbar = (
     <span className={styles.listToolbar}>
+      <CisSaveRecordButton member={member} result={result} notes={savedNotes} onSaveEvidence={onSaveEvidence} />
+      <span className={styles.toolbarDivider} aria-hidden="true" />
       {searchOpen ? (
         <SearchBar
           className={styles.listSearch}
@@ -152,8 +155,6 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
         member={member}
         result={result}
         notes={savedNotes}
-        onSchedule={onOpenSchedule ? () => onOpenSchedule() : undefined}
-        onSaveEvidence={onSaveEvidence}
       />
     </span>
   );
@@ -243,7 +244,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                       {ageGroupLabel(g.key)} ({g.items.length})
                       <DownChevronIcon size={16} color="var(--neutral-400)" className={closedAges[g.key] ? styles.chevronClosed : undefined} />
                     </button>
-                    <AgeProgress items={g.items} />
+                    <AgeProgress items={g.items} title={ageGroupLabel(g.key)} collapsed={!!closedAges[g.key]} />
                     <span className={styles.ageStart}>Start date: <b>{fmtDate(g.items[0].r.start)}</b></span>
                   </div>
                   {!closedAges[g.key] && (
@@ -390,10 +391,11 @@ const PIP_CLASS = {
 
 // Age group header progress, readable while collapsed: given count and
 // one pip per dose, styled like a vaccine's progress in the Vaccine view.
-function AgeProgress({ items }) {
+// Collapsed, hovering it lists the group's doses (expanded, the rows show).
+function AgeProgress({ items, title, collapsed }) {
   const given = items.filter(({ r }) => isGiven(r.status)).length;
-  return (
-    <span className={`${styles.progress} ${styles.ageProgress}`} aria-label={`${given} of ${items.length} doses given`}>
+  const progress = (
+    <span className={styles.progress} aria-label={`${given} of ${items.length} doses given`}>
       <span className={styles.progressText}>{given}/{items.length}</span>
       <span className={styles.pips} aria-hidden="true">
         {items.map(({ a, r }) => (
@@ -401,6 +403,30 @@ function AgeProgress({ items }) {
         ))}
       </span>
     </span>
+  );
+  if (!collapsed) return <span className={styles.ageProgress}>{progress}</span>;
+  return (
+    <Tooltip variant="light" placement="bottom" align="start" maxWidth={320} className={styles.ageProgress} label={<AgeDoseList title={title} items={items} />}>
+      {progress}
+    </Tooltip>
+  );
+}
+
+// Hover card on a collapsed age group: every dose in it with its date and status.
+function AgeDoseList({ title, items }) {
+  return (
+    <div className={styles.doseList}>
+      <span className={styles.doseListTitle}>{title} · {items.length} dose{items.length === 1 ? '' : 's'}</span>
+      {items.map(({ a, r }) => (
+        <div key={`${a.key}-${r.number}`} className={styles.doseListRow}>
+          <span className={`${styles.doseListDose} ${styles.ageDoseName}`}>{a.label} · Dose {r.number}</span>
+          <span className={styles.doseListDate}>
+            {r.record ? fmtDate(r.record.date) : r.kind === 'planned' ? `From ${fmtDate(r.nextDue)}` : 'Not given'}
+          </span>
+          <CisStatusBadge map={DOSE_BADGE} status={r.status} />
+        </div>
+      ))}
+    </div>
   );
 }
 

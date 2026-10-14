@@ -467,3 +467,21 @@ export function evaluateCis({ dob, immunizations = [], measurementYear, today = 
   }
   return { ...base, evaluation: CIS_EVALUATION.onTrack, reason: `${metCount} of ${antigens.length} vaccines complete. Remaining doses fit before the 2nd birthday.` };
 }
+
+/**
+ * Worklist countdown for a CIS-CMB10 gap: "Overdue by Nd" from the most
+ * overdue dose, else "Due in Nd" to the nearest deadline of a dose that is
+ * due now or opens within UPCOMING_DAYS. Null when nothing is pending.
+ */
+export function cisDueIndicator(result, today = new Date()) {
+  const rows = (result?.antigens || []).flatMap(a => a.rows).filter(r => r.kind === 'planned');
+  const overdue = rows.filter(r => r.status === CIS_DOSE_STATUS.overdue);
+  if (overdue.length) {
+    const days = Math.max(...overdue.map(r => daysBetween(today, r.due)));
+    return { label: `Overdue by ${days}d`, tone: 'error' };
+  }
+  const due = rows.filter(r => r.status === CIS_DOSE_STATUS.dueNow || r.status === CIS_DOSE_STATUS.upcoming);
+  if (!due.length) return null;
+  const days = Math.min(...due.map(r => daysBetween(r.due, today)));
+  return { label: days > 0 ? `Due in ${days}d` : 'Due today', tone: 'warning' };
+}

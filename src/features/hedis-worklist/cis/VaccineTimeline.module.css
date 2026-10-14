@@ -112,24 +112,62 @@
   min-width: 0;
 }
 .dose {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   gap: calc(var(--space-1) / 2);
   min-width: 0;
-  padding: var(--space-1) calc(var(--space-1) / 2);
-  border: 0.5px solid transparent;
-  border-radius: 6px;
-  text-align: center;
+  padding: var(--space-1) calc(var(--space-1) / 2) var(--space-1) var(--space-1);
+  /* Flat bar: only the left stroke, coloured by the tone class. */
+  border: 0 solid transparent;
+  border-left-width: 3px;
+  border-radius: 0;
+  text-align: left;
   cursor: default;
-  transition: box-shadow 120ms ease-out, opacity 120ms ease-out;
+  transition: box-shadow 160ms ease-out, transform 160ms ease-out, background-color 160ms ease-out, color 160ms ease-out, opacity 120ms ease-out;
 }
+/* Hover / focus: the bar pops out of the grid. */
 .dose:hover,
 .dose:focus-visible {
-  box-shadow: var(--shadow-card);
+  z-index: 1;
+  box-shadow: var(--shadow-card), var(--shadow-popover);
+  transform: translateY(-2px) scale(1.03);
   outline: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dose:hover,
+  .dose:focus-visible { transform: none; }
+}
+/* Popped out: the whole bar in its solid status colour, white text. */
+.dose.toneSuccess:hover, .dose.toneSuccess:focus-visible { background: var(--status-success); }
+.dose.toneWarning:hover, .dose.toneWarning:focus-visible { background: var(--status-warning); }
+.dose.toneError:hover, .dose.toneError:focus-visible { background: var(--status-error); }
+.dose.toneGrey:hover, .dose.toneGrey:focus-visible { background: var(--neutral-300); }
+.dose.toneWhite:hover, .dose.toneWhite:focus-visible { background: var(--neutral-200); }
+.dose:hover, .dose:focus-visible,
+.dose:hover .bell, .dose:focus-visible .bell { color: var(--neutral-0); }
+/* The warning yellow takes dark text, not white (tokens.css). */
+.dose.toneWarning:hover, .dose.toneWarning:focus-visible,
+.dose.toneWarning:hover .bell, .dose.toneWarning:focus-visible .bell { color: var(--neutral-500); }
+/* Vaccine reminder booked for the dose; amber once the visit has passed. */
+.bell {
+  position: absolute;
+  top: calc(var(--space-1) / 2);
+  right: calc(var(--space-1) / 2);
+  display: inline-flex;
+  color: var(--neutral-300);
+}
+.bell.bellLate {
+  color: var(--status-warning-dark);
+}
+.detailReminder {
+  color: var(--primary-300);
+}
+.detailReminderLate {
+  color: var(--status-warning-dark);
 }
 .doseTitle {
   display: inline-flex;
@@ -150,11 +188,20 @@
   opacity: 0.35;
 }
 
-.toneSuccess { background: var(--status-success-light); border-color: var(--status-success); color: var(--status-success-dark); }
-.toneWarning { background: var(--status-warning-light); border-color: var(--status-warning); color: var(--status-warning-dark); }
-.toneError { background: var(--status-error-light); border-color: var(--status-error); color: var(--status-error-dark); }
+.toneSuccess { background: var(--status-success-light); border-color: var(--status-success); color: var(--status-success); }
+.toneWarning { background: var(--status-warning-light); border-color: var(--status-warning); color: var(--status-warning); }
+.toneError { background: var(--status-error-light); border-color: var(--status-error); color: var(--status-error); }
 .toneGrey { background: var(--neutral-75); border-color: var(--neutral-150); color: var(--neutral-400); }
 .toneWhite { background: var(--neutral-0); border-color: var(--neutral-150); color: var(--neutral-400); }
+/* Neutral blocks: a darker stroke so it reads against the light fill. */
+.dose.toneGrey { border-left-color: var(--neutral-300); }
+.dose.toneWhite { border-left-color: var(--neutral-200); }
+/* On track sits on white, so it keeps a 0.5px outline on the other sides. */
+.dose.toneWhite {
+  border-top-width: 0.5px;
+  border-right-width: 0.5px;
+  border-bottom-width: 0.5px;
+}
 
 .legend {
   display: flex;
@@ -178,6 +225,8 @@
 }
 /* Legend only: solid swatches so each status reads at 10px. The blocks
    above keep their light fills. */
+/* Legend swatches keep an even border. */
+.swatch[class] { border-left-width: 1px; }
 .swatch.toneSuccess { background: var(--status-success); border-color: var(--status-success); }
 .swatch.toneWarning { background: var(--status-warning); border-color: var(--status-warning); }
 .swatch.toneError { background: var(--status-error); border-color: var(--status-error); }

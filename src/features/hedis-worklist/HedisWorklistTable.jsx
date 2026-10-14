@@ -35,6 +35,7 @@ import {
   memberMatchesFilters as hedisMemberMatchesFilters,
   countActiveFilters as countActiveHedisFilters,
 } from './hedisFilters';
+import { CIS_CODE } from './cis/cisRules';
 import styles from './HedisWorklistTable.module.css';
 import rowStyles from './HedisWorklistRow.module.css';
 
@@ -162,6 +163,16 @@ export function HedisWorklistTable() {
   const paginated = sorted.slice(startIdx, startIdx + perPage);
 
   const allIds = paginated.map(m => m.id);
+
+  // CIS-CMB10 rows show a dose countdown under Start Date, evaluated from
+  // the child's immunizations.
+  const fetchImmunizationsForPatients = useAppStore(s => s.fetchImmunizationsForPatients);
+  const cisPageIds = paginated
+    .filter(m => (m.gaps || []).some(g => g.code === CIS_CODE))
+    .map(m => m.id).join(',');
+  useEffect(() => {
+    if (cisPageIds) fetchImmunizationsForPatients(cisPageIds.split(','));
+  }, [cisPageIds, fetchImmunizationsForPatients]);
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const allSelected = allIds.length > 0 && allIds.every(id => selectedSet.has(id));
   const someSelected = selectedIds.length > 0 && !allSelected;
