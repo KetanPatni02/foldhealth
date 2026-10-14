@@ -60,6 +60,14 @@
 .dose:hover {
   background: var(--neutral-50);
 }
+/* Booked on another appointment: shown, not selectable. */
+.dose.doseBooked {
+  cursor: not-allowed;
+  background: var(--neutral-50);
+}
+.doseBooked .doseName {
+  color: var(--neutral-300);
+}
 .doseText {
   flex: 1;
   display: flex;

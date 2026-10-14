@@ -69,3 +69,13 @@
   border: var(--space-1) solid transparent;
   border-bottom-color: var(--neutral-0);
 }
+/* Edge-aligned: the arrow sits over the trigger's centre (--tt-arrow from
+   the bubble's anchored edge), kept a little inside the bubble. */
+.bubbleLight.bubbleAlignLeft::after {
+  left: clamp(var(--space-3), var(--tt-arrow, var(--space-3)), calc(100% - var(--space-3)));
+}
+.bubbleLight.bubbleAlignRight::after {
+  left: auto;
+  right: clamp(var(--space-3), var(--tt-arrow, var(--space-3)), calc(100% - var(--space-3)));
+  transform: translateX(50%);
+}

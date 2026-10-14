@@ -369,8 +369,13 @@
 .doseListDose {
   color: var(--neutral-400);
 }
+/* Age group hover card: vaccine names vary, so dates line up. */
+.ageDoseName {
+  min-width: 112px;
+}
 .doseListDate {
   color: var(--neutral-500);
+  white-space: nowrap;
 }
 .progress {
   display: inline-flex;

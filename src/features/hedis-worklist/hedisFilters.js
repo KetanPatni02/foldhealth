@@ -22,7 +22,7 @@ export const MORE_FILTER_ITEMS = [
   { k: 'memberStatus',                label: 'Member Status',                primary: true },
   { k: 'phone',                       label: 'Phone Number',                 primary: false },
   { k: 'dob',                         label: 'DOB',                          primary: false },
-  { k: 'age',                         label: 'Age',                          primary: false },
+  { k: 'age',                         label: 'Age Range',                    primary: false },
   { k: 'gender',                      label: 'Gender',                       primary: false },
   { k: 'language',                    label: 'Language',                     primary: true },
   { k: 'gapStatus',                   label: 'Gap Status',                   primary: true },
@@ -70,15 +70,22 @@ const LANGUAGE_LABEL = {
   ko: 'Korean',  vi: 'Vietnamese', hi: 'Hindi', bn: 'Bengali', ar: 'Arabic',
 };
 
-// Age groups for the Age filter, in years. Bands follow the HEDIS measure
-// populations (e.g. under 2 for CIS, 45–75 for COL, 66+ for COA).
+// Age Range filter bands, in whole months: [min, max) so they don't
+// overlap within a set. The month bands follow the CIS childhood schedule
+// (birth, 2, 6 and 18 months); the year bands the HEDIS measure
+// populations (e.g. 45–75 for COL, 66+ for COA). Under 2 spans the month
+// bands for a quick CIS-wide pick.
 const AGE_GROUPS = [
-  { label: 'Under 2', min: 0, max: 1 },
-  { label: '2–17', min: 2, max: 17 },
-  { label: '18–44', min: 18, max: 44 },
-  { label: '45–64', min: 45, max: 64 },
-  { label: '65–74', min: 65, max: 74 },
-  { label: '75+', min: 75, max: Infinity },
+  { label: '0–2 months', min: 0, max: 2 },
+  { label: '2–6 months', min: 2, max: 6 },
+  { label: '6–18 months', min: 6, max: 18 },
+  { label: '18–24 months', min: 18, max: 24 },
+  { label: 'Under 2', min: 0, max: 24 },
+  { label: '2–17', min: 24, max: 18 * 12 },
+  { label: '18–44', min: 18 * 12, max: 45 * 12 },
+  { label: '45–64', min: 45 * 12, max: 65 * 12 },
+  { label: '65–74', min: 65 * 12, max: 75 * 12 },
+  { label: '75+', min: 75 * 12, max: Infinity },
 ];
 
 export const FILTER_DEFS = [
@@ -106,7 +113,7 @@ export const FILTER_DEFS = [
   { k: 'hpCode',              label: 'HP Codes', type: 'multi',
     dynamic: 'hpCode', opts: [] },
   { k: 'dob',                 label: 'DOB', type: 'date', field: 'dob' },
-  { k: 'age',                 label: 'Age', type: 'multi',
+  { k: 'age',                 label: 'Age Range', type: 'multi',
     opts: AGE_GROUPS.map(g => g.label) },
   { k: 'lastOutreachDate',    label: 'Last Outreach Date', type: 'date', field: 'outreachDate' },
   // ── Coverage / plan attributes ─────────────────────────────────────
@@ -205,9 +212,9 @@ function matchOne(m, k, vals) {
     case 'zip':                 return matchesAnyLiteralSubstring(m.zip || '', vals);
     case 'dob':                 return matchDateRange(m.dob, vals);
     case 'age': {
-      const years = ageInYears(m);
-      if (years == null) return false;
-      return AGE_GROUPS.some(g => vals.includes(g.label) && years >= g.min && years <= g.max);
+      const months = ageInMonths(m);
+      if (months == null) return false;
+      return AGE_GROUPS.some(g => vals.includes(g.label) && months >= g.min && months < g.max);
     }
     case 'lastOutreachDate':    return matchDateRange(m.outreachDate, vals);
     // Coverage / plan
@@ -246,19 +253,20 @@ function matchOne(m, k, vals) {
   }
 }
 
-// Whole years from DOB; falls back to the age text ("22m", "67y 2m", "63y").
-function ageInYears(m) {
+// Whole months from DOB (a month counts once its day is reached); falls
+// back to the age text ("22m", "67y 2m", "63y").
+function ageInMonths(m) {
   const dob = parseLocalDate(m.dob);
   if (dob) {
     const now = new Date();
-    let years = now.getFullYear() - dob.getFullYear();
-    if (now.getMonth() < dob.getMonth() || (now.getMonth() === dob.getMonth() && now.getDate() < dob.getDate())) years -= 1;
-    return years;
+    let months = (now.getFullYear() - dob.getFullYear()) * 12 + now.getMonth() - dob.getMonth();
+    if (now.getDate() < dob.getDate()) months -= 1;
+    return months;
   }
   const y = /(\d+)\s*y/i.exec(m.age || '');
-  if (y) return Number(y[1]);
-  const mo = /(\d+)\s*m/i.exec(m.age || '');
-  return mo ? Math.floor(Number(mo[1]) / 12) : null;
+  const mo = /(\d+)\s*m(?!o)/i.exec((m.age || '').replace(/\d+\s*y/i, ''));
+  if (!y && !mo) return null;
+  return (y ? Number(y[1]) * 12 : 0) + (mo ? Number(mo[1]) : 0);
 }
 
 function matchRange(value, vals) {

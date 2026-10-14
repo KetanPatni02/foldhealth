@@ -47,6 +47,8 @@ export function CareGapDetailDrawerHeader({
   onOpenClinicalNote,
   onScheduleAppointment,
   onAddOutreach,
+  onScheduleVaccine,
+  cisCompletedBlocked = false,
   onOpenMeasureInfo,
   moreBtnRef,
   moreMenuRect,
@@ -149,6 +151,9 @@ export function CareGapDetailDrawerHeader({
                     key: s,
                     label: s,
                     selected: s === status,
+                    // CIS-CMB10: Completed only once every Combo 10 dose is met.
+                    disabled: s === 'Completed' && cisCompletedBlocked,
+                    hint: s === 'Completed' && cisCompletedBlocked ? 'All Combo 10 doses must be met first' : undefined,
                     iconElement: (
                       <span
                         aria-hidden="true"
@@ -238,19 +243,29 @@ export function CareGapDetailDrawerHeader({
           <Icon name="solar:magic-stick-3-bold" size={14} color="var(--primary-300)" /> Suggested Actions
         </div>
         <div className={styles.suggestActions}>
-          {/* CIS-CMB10 is outreach and care coordination (we don't give the
-              vaccines), so Add Outreach leads there, as the primary action. */}
-          {isCis && <Button variant="primary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>}
-          <Button variant={isCis ? 'tertiary' : 'primary'} size="L" onClick={() => onScheduleAppointment?.()}>Schedule with Specialist</Button>
-          {/* Hide Add Note once the note has moved past the "start" state:
-              Submitted (pending review), Completed (signed), or any Closed
-              status. The Add Note suggested action is for kicking off the
-              flow; after review it would just create a duplicate. */}
-          {!(status === 'Submitted' || status === 'Completed' || (status || '').startsWith('Closed')) && (
-            <Button variant={isCis ? 'secondary' : 'tertiary'} size="L" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
+          {isCis ? (
+            // CIS-CMB10 is outreach and care coordination (we don't give the
+            // vaccines): reach the family, then book the vaccine visit, which
+            // also sets the follow-up reminder. Nothing to book once every
+            // dose is given.
+            <>
+              <Button variant="primary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>
+              <Button variant="tertiary" size="L" disabled={!onScheduleVaccine} onClick={() => onScheduleVaccine?.()}>Schedule Vaccine Reminder</Button>
+            </>
+          ) : (
+            <>
+              <Button variant="primary" size="L" onClick={() => onScheduleAppointment?.()}>Schedule with Specialist</Button>
+              {/* Hide Add Note once the note has moved past the "start" state:
+                  Submitted (pending review), Completed (signed), or any Closed
+                  status. The Add Note suggested action is for kicking off the
+                  flow; after review it would just create a duplicate. */}
+              {!(status === 'Submitted' || status === 'Completed' || (status || '').startsWith('Closed')) && (
+                <Button variant="tertiary" size="L" onClick={() => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true))}>Add Note</Button>
+              )}
+              <Button variant="tertiary" size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
+              <Button variant="secondary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>
+            </>
           )}
-          <Button variant={isCis ? 'secondary' : 'tertiary'} size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
-          {!isCis && <Button variant="secondary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>}
         </div>
       </div>
     </>

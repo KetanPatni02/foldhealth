@@ -620,6 +620,21 @@ export const useAppStore = create((set, get) => ({
       patientImmunizationsLoadedFor: { ...s.patientImmunizationsLoadedFor, [patientId]: true },
     }));
   },
+  // Worklist: one query for every patient on the page that isn't loaded yet.
+  fetchImmunizationsForPatients: async (patientIds) => {
+    const loaded = get().patientImmunizationsLoadedFor;
+    const ids = [...new Set((patientIds || []).map(String))].filter(id => !loaded[id]);
+    if (!ids.length) return;
+    const { data, error } = await supabase.from('patient_immunizations')
+      .select('*').in('patient_id', ids).order('sort_order');
+    if (error) { console.warn('fetchImmunizationsForPatients:', error.message); return; }
+    const byPatient = Object.fromEntries(ids.map(id => [id, []]));
+    for (const row of data || []) byPatient[row.patient_id]?.push(mapPatientImmunizationRow(row));
+    set(s => ({
+      patientImmunizations: { ...s.patientImmunizations, ...byPatient },
+      patientImmunizationsLoadedFor: { ...s.patientImmunizationsLoadedFor, ...Object.fromEntries(ids.map(id => [id, true])) },
+    }));
+  },
   addPatientImmunization: async (patientId, values) => {
     if (!patientId || !values?.title?.trim()) return false;
     const row = {

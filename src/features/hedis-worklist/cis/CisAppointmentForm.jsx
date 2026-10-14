@@ -7,17 +7,20 @@ import { TIME_SLOTS } from '../../../components/ScheduleDrawer/scheduleDrawerCon
 import { todayIso } from '../useCareGapReminderForm';
 import { CisStatusBadge } from './CisStatus';
 import { DOSE_BADGE, fmtDate } from './cisStatusConfig';
-import { doseKey } from './cisAppointments';
+import { appointmentForDose, apptDate, doseKey } from './cisAppointments';
 import styles from './CisAppointmentForm.module.css';
 
 /**
- * Care Gap drawer — "Schedule Vaccine Appointment" pane body (CIS-CMB10):
+ * Care Gap drawer — "Schedule Vaccine Reminder" pane body (CIS-CMB10):
  * a visit booked with the child's own provider. Pass the object returned by
- * `useCisAppointmentForm()` as `form` and evaluateCis() output as `result`.
+ * `useCisAppointmentForm()` as `form`, evaluateCis() output as `result`,
+ * and the member's appointments so doses already booked can't be picked
+ * again (the appointment being edited keeps its own).
  */
-export function CisAppointmentForm({ form, result }) {
+export function CisAppointmentForm({ form, result, appointments = [] }) {
   const uid = useId();
   const { values, set, toggleDose, editing } = form;
+  const others = appointments.filter(a => a.id !== editing?.id);
   // Doses still to give, earliest first; on edit its doses stay listed even
   // if one has since been recorded.
   const doses = result.antigens
@@ -62,18 +65,29 @@ export function CisAppointmentForm({ form, result }) {
         </legend>
         {doses.length === 0 ? <p className={styles.empty}>Every dose has been given.</p> : (
           <div className={styles.doseList}>
-            {doses.map(({ a, r, key }) => (
-              <label key={key} htmlFor={`${uid}-${key}`} className={styles.dose}>
-                <Checkbox id={`${uid}-${key}`} checked={values.doses.includes(key)} onCheckedChange={(on) => toggleDose(key, on === true)} />
-                <span className={styles.doseText}>
-                  <span className={styles.doseName}>{a.label} dose {r.number}</span>
-                  <span className={styles.doseMeta}>
-                    {r.kind === 'given' ? `Given ${fmtDate(r.record.date)}` : `${r.recommendedShort} · from ${fmtDate(r.nextDue ?? r.start)}`}
+            {doses.map(({ a, r, key }) => {
+              // Already on another scheduled appointment: one booking per dose.
+              const booked = appointmentForDose(others, a.key, r);
+              return (
+                <label key={key} htmlFor={`${uid}-${key}`} className={`${styles.dose} ${booked ? styles.doseBooked : ''}`}>
+                  <Checkbox
+                    id={`${uid}-${key}`}
+                    checked={!booked && values.doses.includes(key)}
+                    disabled={!!booked}
+                    onCheckedChange={(on) => toggleDose(key, on === true)}
+                  />
+                  <span className={styles.doseText}>
+                    <span className={styles.doseName}>{a.label} dose {r.number}</span>
+                    <span className={styles.doseMeta}>
+                      {booked
+                        ? `Already scheduled for ${fmtDate(apptDate(booked.appt))}`
+                        : r.kind === 'given' ? `Given ${fmtDate(r.record.date)}` : `${r.recommendedShort} · from ${fmtDate(r.nextDue ?? r.start)}`}
+                    </span>
                   </span>
-                </span>
-                <CisStatusBadge map={DOSE_BADGE} status={r.status} hideIcon />
-              </label>
-            ))}
+                  <CisStatusBadge map={DOSE_BADGE} status={r.status} hideIcon />
+                </label>
+              );
+            })}
           </div>
         )}
       </fieldset>
