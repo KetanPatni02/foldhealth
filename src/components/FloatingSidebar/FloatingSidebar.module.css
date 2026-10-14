@@ -62,6 +62,9 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  /* Breathing room before the Home tile — the rail's 4 px gap was too
+     tight and made the logo read as another nav tile. */
+  margin-bottom: var(--space-3);
 }
 
 .railItems {
@@ -169,15 +172,18 @@
 }
 
 /* ── Omni-style default logo (Figma 1256:45238) ──────────────────────── */
-/* Three nested rounded containers framing the Fold mark. Hairlines use
-   the existing sidebar-fg / sidebar-fg-muted tokens so the chip reads
-   as glass against the dark rail without introducing new alpha tokens. */
+/* Three nested rounded containers framing the Fold mark. Each layer stays
+   the SAME base color family as the rail (`--primary-500`) so the chip
+   reads as a quiet, glassy frame around the brand mark instead of a
+   coloured button — the earlier `--primary-400` fill made it read as a
+   selected nav tile. Depth is carried by very thin, muted hairlines plus
+   a subtle outer shadow. */
 .omni {
   width: 44px;
   height: 44px;
   border-radius: 14px;
   border: 0.5px solid var(--sidebar-fg-muted);
-  background: var(--primary-400);
+  background: var(--primary-500);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -201,7 +207,8 @@
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  background: var(--sidebar-hover-bg);
+  border: 0.5px solid var(--sidebar-fg-muted);
+  background: var(--primary-500);
   display: flex;
   align-items: center;
   justify-content: center;
