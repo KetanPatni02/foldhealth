@@ -4,8 +4,16 @@
 -- derives priority, the "most urgent measure" numbers, claim reconciliation
 -- and the outreach summary client-side (pharmacyWorklist.utils.js).
 -- Column names mirror rowToMember in src/store/slices/pharmacyWorklistSlice.js.
--- Rows are seeded by `bun run seed` (scripts/seed.js → pharmacyWorklistToRow).
+-- Rows are seeded by pharmacy_worklist_members_seed.sql (also by
+-- scripts/seed.js → pharmacyWorklistToRow, insert-only per person).
+-- Identity follows the source-table rule: id = member_id = patient_id.
 -- RLS follows jsa_members_migration.sql: signed-in reads, Active-staff writes.
+--
+-- Pharmacy rollout, run in this order:
+--   1. pharmacy_worklist_members_migration.sql          (this file: table + RLS)
+--   2. pharmacy_worklist_members_seed.sql               (worklist rows)
+--   3. pharmacy_worklist_care_program_sync_migration.sql (PHARM program per member)
+--   4. pharmacy_care_plan_template_seed.sql              (MAD / MAH / MAC care plan template)
 
 CREATE TABLE IF NOT EXISTS public.pharmacy_worklist_members (
   id                 text PRIMARY KEY,

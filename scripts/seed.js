@@ -1140,18 +1140,14 @@ async function main() {
   if (swe) { console.error('  ✗', swe.message); } else { console.log(`  ✓ ${snpWorklistRows.length} new SNP worklist members (${SNP_WORKLIST_MEMBERS.length - snpWorklistRows.length} already present)`); }
 
   console.log('Seeding pharmacy_worklist_members...');
-  const pharmacyRows = PHARMACY_WORKLIST_MEMBERS.map(pharmacyWorklistToRow);
-  const { error: pwe } = await supabase
-    .from('pharmacy_worklist_members')
-    .upsert(pharmacyRows, { onConflict: 'id' });
-  if (pwe) {
-    if (pwe.code === '42P01' || pwe.code === 'PGRST205') {
-      console.log('  ⚠ pharmacy_worklist_members table missing — run supabase/pharmacy_worklist_members_migration.sql first');
-    } else {
-      console.error('  ✗', pwe.message);
-    }
-  } else {
-    console.log(`  ✓ ${pharmacyRows.length} pharmacy worklist members`);
+  try {
+    const pharmacyRows = await withoutExistingPeople(supabase, 'pharmacy_worklist_members', PHARMACY_WORKLIST_MEMBERS.map(pharmacyWorklistToRow));
+    const { error: pwe } = await supabase
+      .from('pharmacy_worklist_members')
+      .upsert(pharmacyRows, { onConflict: 'id' });
+    if (pwe) { console.error('  ✗', pwe.message); } else { console.log(`  ✓ ${pharmacyRows.length} new pharmacy worklist members (${PHARMACY_WORKLIST_MEMBERS.length - pharmacyRows.length} already present)`); }
+  } catch (err) {
+    console.log(`  ⚠ ${err.message} (run supabase/pharmacy_worklist_members_migration.sql first)`);
   }
 
   console.log('Seeding care_plan_barriers (library)...');

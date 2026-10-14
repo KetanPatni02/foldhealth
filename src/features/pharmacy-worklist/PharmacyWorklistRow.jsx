@@ -5,6 +5,8 @@ import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { buildPatientRowMenuItems } from '../../components/MenuPopover/patientRowMenuItems';
 import { FoldIdTag } from '../../components/FoldIdTag/FoldIdTag';
+import { Tooltip } from '../../components/Tooltip/Tooltip';
+import { formatDobDisplay, deriveDob } from '../../lib/patientDob';
 import { useAppStore } from '../../store/useAppStore';
 import { worklistMemberCallId } from '../../lib/patientCall';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
@@ -12,6 +14,7 @@ import { PharmacyActivityDrawer } from './program/PharmacyActivityLog';
 import styles from './PharmacyWorklistRow.module.css';
 
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
+const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
 export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, onSelect }) {
   const openQuickView = useAppStore(s => s.openQuickView);
@@ -24,6 +27,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   const platformUsers = useAppStore(s => s.platformUsers);
   const showToast = useAppStore(s => s.showToast);
   const m = member;
+  const dobLabel = formatDobDisplay(m.dob) || deriveDob(m.age, m.name);
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -80,13 +84,19 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
           <div>
             <div className={styles.patientName}>
               <button type="button" className={styles.patientNameLink} onClick={handleNameClick}>{m.name}</button>{' '}
-              <span className={styles.patientDemo}>({m.gender}•{m.age})</span>
+              <Tooltip label={dobLabel ? `DOB: ${dobLabel}` : ''} placement="bottom">
+                <span className={styles.patientDemo}>({m.gender}•{m.age})</span>
+              </Tooltip>
             </div>
             <div className={styles.patientMeta}>
               <span onClick={e => e.stopPropagation()} className={styles.inlineFlex}>
                 <FoldIdTag id={m.memberId} className={styles.foldId} showToast={showToast} />
-              </span>
-              {m.dob ? <> • DOB {m.dob}</> : null}
+              </span>{' '}•{' '}
+              <Tooltip label={`Preferred Language: ${LANG_MAP[m.language] || 'English'}`} variant="light">
+                <button type="button" className={styles.langBadge} onClick={e => e.stopPropagation()}>
+                  {(m.language || 'en').toUpperCase()}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

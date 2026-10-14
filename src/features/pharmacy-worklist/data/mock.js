@@ -113,8 +113,8 @@ const WAG_2219 = { name: 'Walgreens #2219', phone: '(626) 555-0175', address1: '
 
 export const PHARMACY_WORKLIST_MEMBERS = [
   member({
-    id: 'phw-001', initials: 'MG', name: 'Maria Gonzalez', gender: 'F', age: '71y 4m', dob: '06/02/1955',
-    memberId: '2468029991001', language: 'es', healthPlan: 'Humana Gold Plus', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
+    id: '19401', initials: 'MG', name: 'Maria Gonzalez', gender: 'F', age: '71y 4m', dob: '06/02/1955',
+    memberId: '19401', language: 'es', healthPlan: 'Humana Gold Plus', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
     status: 'In Progress', assigneeName: null, assigneeInitials: null,
     leadNote: 'Call pharmacy first; member asked for Spanish-speaking staff.',
     followUpDue: '10/15/2026', barrier: 'Cost Issue', daysInQueue: 9,
@@ -130,7 +130,7 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: true, excluded: false, projectedStatus: 'Unlikely by year end', drugInteraction: false,
       pickupConfirmed: '10/09/2026', claim: { status: 'Paid', date: '07/06/2026', rxNumber: 'RX-4471902' },
     }, [{
-      id: 'phw-001-mad-1', name: 'Metformin ER', generic: 'metformin', strength: '500', sig: 'Take 1 tablet by mouth daily with evening meal',
+      id: '19401-mad-1', name: 'Metformin ER', generic: 'metformin', strength: '500', sig: 'Take 1 tablet by mouth daily with evening meal',
       condition: 'Type 2 diabetes', mpr: 76, pdc: 78, qty: 90, daysSupply: 90, lastFill: '07/06/2026', gaps: [6, 12, 9],
       nonAdherenceReason: 'Cost Issue', notesToMd: 'Member reports $47 copay; generic alternatives?',
     }], b),
@@ -139,13 +139,13 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: null, claim: { status: 'Paid', date: '07/20/2026', rxNumber: 'RX-4471955' },
     }, [{
-      id: 'phw-001-mah-1', name: 'Lisinopril', generic: 'lisinopril', strength: '10', sig: 'Take 1 tablet by mouth once daily',
+      id: '19401-mah-1', name: 'Lisinopril', generic: 'lisinopril', strength: '10', sig: 'Take 1 tablet by mouth once daily',
       condition: 'Hypertension', mpr: 87, pdc: 88, qty: 90, daysSupply: 90, lastFill: '07/20/2026', gaps: [4, 6],
     }], b),
   ]),
   member({
-    id: 'phw-002', initials: 'RT', name: 'Robert Tanaka', gender: 'M', age: '68y 9m', dob: '01/11/1958',
-    memberId: '2468029991002', language: 'en', healthPlan: 'SCAN Classic', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
+    id: '19402', initials: 'RT', name: 'Robert Tanaka', gender: 'M', age: '68y 9m', dob: '01/11/1958',
+    memberId: '19402', language: 'en', healthPlan: 'SCAN Classic', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
     status: 'In Progress', assigneeName: 'Priya Natarajan', assigneeInitials: 'PN',
     leadNote: 'Pickup confirmed 3 weeks ago but plan still shows the gap — check with plan.',
     followUpDue: '10/14/2026', barrier: 'Forgetfulness', daysInQueue: 15,
@@ -162,14 +162,14 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: '09/22/2026', claim: { status: 'Paid', date: '08/10/2026', rxNumber: 'RX-5520318' },
     }, [{
-      id: 'phw-002-mac-1', name: 'Atorvastatin', generic: 'atorvastatin', strength: '40', sig: 'Take 1 tablet by mouth at bedtime',
+      id: '19402-mac-1', name: 'Atorvastatin', generic: 'atorvastatin', strength: '40', sig: 'Take 1 tablet by mouth at bedtime',
       condition: 'Hyperlipidemia', mpr: 83, pdc: 82, qty: 30, daysSupply: 30, lastFill: '08/10/2026', gaps: [3, 2, 8],
       nonAdherenceReason: 'Forgetfulness',
     }], b),
   ]),
   member({
-    id: 'phw-003', initials: 'LW', name: 'Linda Washington', gender: 'F', age: '74y 2m', dob: '08/19/1952',
-    memberId: '2468029991003', language: 'en', healthPlan: 'Blue Shield Medicare', ipa: 'Prospect Medical Group', bookOfBusiness: 'Prospect',
+    id: '19403', initials: 'LW', name: 'Linda Washington', gender: 'F', age: '74y 2m', dob: '08/19/1952',
+    memberId: '19403', language: 'en', healthPlan: 'Blue Shield Medicare', ipa: 'Prospect Medical Group', bookOfBusiness: 'Prospect',
     status: 'In Progress', assigneeName: 'Marcus Reyes', assigneeInitials: 'MR',
     leadNote: 'Needs pharmacist review — plan PDC lower than our fills.',
     followUpDue: '10/13/2026', barrier: 'Side Effects', daysInQueue: 22,
@@ -196,11 +196,11 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       pickupConfirmed: null, claim: { status: 'Paid', date: '09/20/2026', rxNumber: 'RX-6610274' },
     }, [
       {
-        id: 'phw-003-mad-1', name: 'Glipizide', generic: 'glipizide', strength: '5', sig: 'Take 1 tablet by mouth before breakfast',
+        id: '19403-mad-1', name: 'Glipizide', generic: 'glipizide', strength: '5', sig: 'Take 1 tablet by mouth before breakfast',
         condition: 'Type 2 diabetes', mpr: 84, pdc: 80, qty: 30, daysSupply: 30, lastFill: '09/20/2026', gaps: [9, 3, 4],
       },
       {
-        id: 'phw-003-mad-2', name: 'Metformin', generic: 'metformin', strength: '1000', sig: 'Take 1 tablet by mouth twice daily with meals',
+        id: '19403-mad-2', name: 'Metformin', generic: 'metformin', strength: '1000', sig: 'Take 1 tablet by mouth twice daily with meals',
         condition: 'Type 2 diabetes', mpr: 86, pdc: 85, qty: 180, daysSupply: 90, lastFill: '08/12/2026', gaps: [7],
       },
     ], b),
@@ -210,14 +210,14 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       oneFillToInvincible: true,
       pickupConfirmed: null, claim: { status: 'Paid', date: '09/28/2026', rxNumber: 'RX-6610281' },
     }, [{
-      id: 'phw-003-mac-1', name: 'Atorvastatin', generic: 'atorvastatin', strength: '20', sig: 'Take 1 tablet by mouth at bedtime',
+      id: '19403-mac-1', name: 'Atorvastatin', generic: 'atorvastatin', strength: '20', sig: 'Take 1 tablet by mouth at bedtime',
       condition: 'Hyperlipidemia', mpr: 90, pdc: 91, qty: 30, daysSupply: 30, lastFill: '09/28/2026', gaps: [1, 2],
       nonAdherenceReason: 'Side Effects', notesToMd: 'Muscle aches — consider switching statin.',
     }], b),
   ]),
   member({
-    id: 'phw-004', initials: 'DN', name: 'David Nguyen', gender: 'M', age: '66y 1m', dob: '09/05/1960',
-    memberId: '2468029991004', language: 'vi', healthPlan: 'Humana Gold Plus', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
+    id: '19404', initials: 'DN', name: 'David Nguyen', gender: 'M', age: '66y 1m', dob: '09/05/1960',
+    memberId: '19404', language: 'vi', healthPlan: 'Humana Gold Plus', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
     status: 'Open', assigneeName: 'Priya Natarajan', assigneeInitials: 'PN',
     leadNote: null,
     followUpDue: '10/16/2026', barrier: null, daysInQueue: 3,
@@ -230,13 +230,13 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: null, claim: { status: 'Paid', date: '07/17/2026', rxNumber: 'RX-7038825' },
     }, [{
-      id: 'phw-004-mah-1', name: 'Losartan', generic: 'losartan', strength: '50', sig: 'Take 1 tablet by mouth once daily',
+      id: '19404-mah-1', name: 'Losartan', generic: 'losartan', strength: '50', sig: 'Take 1 tablet by mouth once daily',
       condition: 'Hypertension', mpr: 86, pdc: 86, qty: 90, daysSupply: 90, lastFill: '07/17/2026', gaps: [8],
     }], b),
   ]),
   member({
-    id: 'phw-005', initials: 'BK', name: 'Barbara Klein', gender: 'F', age: '79y 6m', dob: '04/14/1947',
-    memberId: '2468029991005', language: 'en', healthPlan: 'Aetna Medicare Advantage', ipa: 'Prospect Medical Group', bookOfBusiness: 'Prospect',
+    id: '19405', initials: 'BK', name: 'Barbara Klein', gender: 'F', age: '79y 6m', dob: '04/14/1947',
+    memberId: '19405', language: 'en', healthPlan: 'Aetna Medicare Advantage', ipa: 'Prospect Medical Group', bookOfBusiness: 'Prospect',
     status: 'In Progress', assigneeName: 'Marcus Reyes', assigneeInitials: 'MR',
     leadNote: 'Daughter manages meds — call her line.',
     followUpDue: '10/12/2026', barrier: 'Transportation', daysInQueue: 31,
@@ -253,7 +253,7 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: true, excluded: false, projectedStatus: 'Unlikely by year end', drugInteraction: false,
       pickupConfirmed: null, claim: { status: 'Reversed', date: '09/28/2026', rxNumber: 'RX-8124407' },
     }, [{
-      id: 'phw-005-mah-1', name: 'Olmesartan', generic: 'olmesartan', strength: '20', sig: 'Take 1 tablet by mouth once daily',
+      id: '19405-mah-1', name: 'Olmesartan', generic: 'olmesartan', strength: '20', sig: 'Take 1 tablet by mouth once daily',
       condition: 'Hypertension', mpr: 72, pdc: 74, qty: 60, daysSupply: 60, lastFill: '08/01/2026', gaps: [14, 10],
       nonAdherenceReason: 'Transportation', internalNotes: 'Daughter can pick up Saturdays only.',
     }], b),
@@ -262,13 +262,13 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: null, claim: { status: 'Paid', date: '07/24/2026', rxNumber: 'RX-8124412' },
     }, [{
-      id: 'phw-005-mac-1', name: 'Simvastatin', generic: 'simvastatin', strength: '20', sig: 'Take 1 tablet by mouth in the evening',
+      id: '19405-mac-1', name: 'Simvastatin', generic: 'simvastatin', strength: '20', sig: 'Take 1 tablet by mouth in the evening',
       condition: 'Hyperlipidemia', mpr: 88, pdc: 89, qty: 90, daysSupply: 90, lastFill: '07/24/2026', gaps: [5],
     }], b),
   ]),
   member({
-    id: 'phw-006', initials: 'JO', name: 'James O’Connor', gender: 'M', age: '70y 0m', dob: '10/10/1956',
-    memberId: '2468029991006', language: 'en', healthPlan: 'SCAN Classic', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
+    id: '19406', initials: 'JO', name: 'James O’Connor', gender: 'M', age: '70y 0m', dob: '10/10/1956',
+    memberId: '19406', language: 'en', healthPlan: 'SCAN Classic', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
     status: 'Completed', assigneeName: 'Priya Natarajan', assigneeInitials: 'PN',
     leadNote: null,
     followUpDue: null, barrier: null, daysInQueue: 40,
@@ -284,13 +284,13 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: true, projectedStatus: 'Already adherent', drugInteraction: false,
       pickupConfirmed: '09/30/2026', claim: { status: 'Paid', date: '09/30/2026', rxNumber: 'RX-9017736' },
     }, [{
-      id: 'phw-006-mad-1', name: 'Metformin', generic: 'metformin', strength: '1000', sig: 'Take 1 tablet by mouth twice daily with meals',
+      id: '19406-mad-1', name: 'Metformin', generic: 'metformin', strength: '1000', sig: 'Take 1 tablet by mouth twice daily with meals',
       condition: 'Type 2 diabetes', mpr: 92, pdc: 92, qty: 180, daysSupply: 90, lastFill: '09/30/2026', gaps: [2],
     }], b),
   ]),
   member({
-    id: 'phw-007', initials: 'SP', name: 'Sunita Patel', gender: 'F', age: '67y 8m', dob: '02/03/1959',
-    memberId: '2468029991007', language: 'hi', healthPlan: 'Blue Shield Medicare', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
+    id: '19407', initials: 'SP', name: 'Sunita Patel', gender: 'F', age: '67y 8m', dob: '02/03/1959',
+    memberId: '19407', language: 'hi', healthPlan: 'Blue Shield Medicare', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
     status: 'Open', assigneeName: null, assigneeInitials: null,
     leadNote: 'Assign to Hindi-speaking coordinator if available.',
     followUpDue: null, barrier: null, daysInQueue: 2,
@@ -303,13 +303,13 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: null, claim: { status: 'Paid', date: '09/26/2026', rxNumber: 'RX-9150043' },
     }, [{
-      id: 'phw-007-mad-1', name: 'Metformin', generic: 'metformin', strength: '500', sig: 'Take 1 tablet by mouth twice daily with meals',
+      id: '19407-mad-1', name: 'Metformin', generic: 'metformin', strength: '500', sig: 'Take 1 tablet by mouth twice daily with meals',
       condition: 'Type 2 diabetes', mpr: 85, pdc: null, qty: 60, daysSupply: 30, lastFill: '09/26/2026', gaps: [4, 6],
     }], b),
   ]),
   member({
-    id: 'phw-008', initials: 'TB', name: 'Thomas Brooks', gender: 'M', age: '72y 3m', dob: '07/09/1954',
-    memberId: '2468029991008', language: 'en', healthPlan: 'Aetna Medicare Advantage', ipa: 'Prospect Medical Group', bookOfBusiness: 'Prospect',
+    id: '19408', initials: 'TB', name: 'Thomas Brooks', gender: 'M', age: '72y 3m', dob: '07/09/1954',
+    memberId: '19408', language: 'en', healthPlan: 'Aetna Medicare Advantage', ipa: 'Prospect Medical Group', bookOfBusiness: 'Prospect',
     status: 'In Progress', assigneeName: 'Marcus Reyes', assigneeInitials: 'MR',
     leadNote: null,
     followUpDue: '10/17/2026', barrier: 'Cost Issue', daysInQueue: 12,
@@ -334,7 +334,7 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: true, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: '10/01/2026', claim: { status: 'Paid', date: '09/01/2026', rxNumber: 'RX-1029584' },
     }, [{
-      id: 'phw-008-mad-1', name: 'Januvia', generic: 'sitagliptin', strength: '100', sig: 'Take 1 tablet by mouth once daily',
+      id: '19408-mad-1', name: 'Januvia', generic: 'sitagliptin', strength: '100', sig: 'Take 1 tablet by mouth once daily',
       condition: 'Type 2 diabetes', mpr: 80, pdc: 81, qty: 30, daysSupply: 30, lastFill: '09/01/2026', gaps: [6, 4, 7],
       nonAdherenceReason: 'Cost Issue', notesToMd: 'Brand copay too high — request generic or formulary alternative.',
     }], b),
@@ -344,7 +344,7 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       oneFillToInvincible: true,
       pickupConfirmed: null, claim: { status: 'Paid', date: '08/07/2026', rxNumber: 'RX-1029590' },
     }, [{
-      id: 'phw-008-mah-1', name: 'Losartan-HCTZ', generic: 'losartan / hydrochlorothiazide', strength: '50-12.5', sig: 'Take 1 tablet by mouth once daily',
+      id: '19408-mah-1', name: 'Losartan-HCTZ', generic: 'losartan / hydrochlorothiazide', strength: '50-12.5', sig: 'Take 1 tablet by mouth once daily',
       condition: 'Hypertension', mpr: 93, pdc: 93, qty: 90, daysSupply: 90, lastFill: '08/07/2026', gaps: [1],
     }], b),
     measure({
@@ -352,13 +352,13 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: null, claim: { status: 'Paid', date: '07/21/2026', rxNumber: 'RX-1029602' },
     }, [{
-      id: 'phw-008-mac-1', name: 'Pravastatin', generic: 'pravastatin', strength: '40', sig: 'Take 1 tablet by mouth at bedtime',
+      id: '19408-mac-1', name: 'Pravastatin', generic: 'pravastatin', strength: '40', sig: 'Take 1 tablet by mouth at bedtime',
       condition: 'Hyperlipidemia', mpr: 85, pdc: 80, qty: 90, daysSupply: 90, lastFill: '07/21/2026', gaps: [11],
     }], b),
   ]),
   member({
-    id: 'phw-009', initials: 'AH', name: 'Angela Hughes', gender: 'F', age: '69y 11m', dob: '11/02/1956',
-    memberId: '2468029991009', language: 'en', healthPlan: 'Humana Gold Plus', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
+    id: '19409', initials: 'AH', name: 'Angela Hughes', gender: 'F', age: '69y 11m', dob: '11/02/1956',
+    memberId: '19409', language: 'en', healthPlan: 'Humana Gold Plus', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
     status: 'Open', assigneeName: 'Priya Natarajan', assigneeInitials: 'PN',
     leadNote: null,
     followUpDue: '10/20/2026', barrier: null, daysInQueue: 5,
@@ -371,13 +371,13 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: null, claim: { status: 'Paid', date: '09/24/2026', rxNumber: 'RX-2204718' },
     }, [{
-      id: 'phw-009-mac-1', name: 'Rosuvastatin', generic: 'rosuvastatin', strength: '20', sig: 'Take 1 tablet by mouth once daily',
+      id: '19409-mac-1', name: 'Rosuvastatin', generic: 'rosuvastatin', strength: '20', sig: 'Take 1 tablet by mouth once daily',
       condition: 'Hyperlipidemia', mpr: 88, pdc: 90, qty: 30, daysSupply: 30, lastFill: '09/24/2026', gaps: [2, 3],
     }], b),
   ]),
   member({
-    id: 'phw-010', initials: 'CR', name: 'Carlos Ramirez', gender: 'M', age: '75y 5m', dob: '05/21/1951',
-    memberId: '2468029991010', language: 'es', healthPlan: 'SCAN Classic', ipa: 'Prospect Medical Group', bookOfBusiness: 'Prospect',
+    id: '19410', initials: 'CR', name: 'Carlos Ramirez', gender: 'M', age: '75y 5m', dob: '05/21/1951',
+    memberId: '19410', language: 'es', healthPlan: 'SCAN Classic', ipa: 'Prospect Medical Group', bookOfBusiness: 'Prospect',
     status: 'In Progress', assigneeName: 'Marcus Reyes', assigneeInitials: 'MR',
     leadNote: null,
     followUpDue: '10/14/2026', barrier: null, daysInQueue: 18,
@@ -393,7 +393,7 @@ export const PHARMACY_WORKLIST_MEMBERS = [
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
       pickupConfirmed: null, claim: { status: 'Paid', date: '08/13/2026', rxNumber: 'RX-3381960' },
     }, [{
-      id: 'phw-010-mah-1', name: 'Valsartan', generic: 'valsartan', strength: '80', sig: 'Take 1 tablet by mouth once daily',
+      id: '19410-mah-1', name: 'Valsartan', generic: 'valsartan', strength: '80', sig: 'Take 1 tablet by mouth once daily',
       condition: 'Hypertension', mpr: 82, pdc: 83, qty: 60, daysSupply: 60, lastFill: '08/13/2026', gaps: [5, 8],
     }], b),
   ]),
