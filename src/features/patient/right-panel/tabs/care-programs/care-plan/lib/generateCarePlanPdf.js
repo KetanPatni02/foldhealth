@@ -73,7 +73,7 @@ export function conditionGroups(selection) {
 
 /**
  * Build the care plan PDF from the selected elements.
- * @param {{patientName?:string, programName?:string, sharedBy?:string, date?:string, note?:string}} meta
+ * @param {{patientName?:string, programName?:string, sharedBy?:string, date?:string, note?:string, versionLabel?:string}} meta
  * @param {{conditions:string[], goals:Array, interventions:Array, barriers?:Array}} selection
  * @param {object} [options] Personalize settings: format, groupBy, carePlanNote,
  *   demographics ([{ label, value }]), header / footer (drawn components;
@@ -98,7 +98,7 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     logo = null,
     fonts = null,
   } = options;
-  const { patientName = 'Patient', programName = '', sharedBy = '', date = '', note = '' } = meta;
+  const { patientName = 'Patient', programName = '', sharedBy = '', date = '', note = '', versionLabel = '' } = meta;
 
   const doc = new jsPDF({ unit: 'pt', format: [PAGE.w, PAGE.h] });
   let REG = ['helvetica', 'normal'];
@@ -152,7 +152,7 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     }
     font('medium', 18, C.ink);
     doc.text('Care Plan', M, y + 14);
-    const metaItems = [['Date', date], ['Prepared by', sharedBy]].filter(([, v]) => v);
+    const metaItems = [['Version', versionLabel], ['Date', date], ['Prepared by', sharedBy]].filter(([, v]) => v);
     metaItems.forEach(([label, value], i) => {
       const x = PAGE.w - M - (metaItems.length - 1 - i) * 120;
       font('regular', 7.5, C.faint);
@@ -169,9 +169,21 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     y += 12;
   } else {
     font('regular', 9, C.muted);
-    doc.text([programName, sharedBy && `Prepared by ${sharedBy}`, date].filter(Boolean).join('  •  '), M, y);
+    doc.text([programName, versionLabel, sharedBy && `Prepared by ${sharedBy}`, date].filter(Boolean).join('  •  '), M, y);
     y += 14;
   }
+
+  // Two versions print back to back: a band at the start of each part says
+  // which version follows.
+  const versionBand = () => {
+    if (!meta.versionBanner) return;
+    doc.setFillColor(243, 238, 252);
+    doc.roundedRect(M, y, CONTENT_W, 24, 4, 4, 'F');
+    font('medium', 9, C.ink);
+    doc.text(meta.versionBanner, M + 10, y + 15.5);
+    y += 34;
+  };
+  versionBand();
 
   // ── Patient card: name, conditions as chips, picked demographics ──
   {
@@ -412,7 +424,7 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
       doc.setLineWidth(0.5);
       doc.line(M, PAGE.h - 30, PAGE.w - M, PAGE.h - 30);
       font('regular', 7, C.faint);
-      doc.text([patientName, 'Care Plan'].filter(Boolean).join('  •  '), M, PAGE.h - 18);
+      doc.text([patientName, 'Care Plan', versionLabel].filter(Boolean).join('  •  '), M, PAGE.h - 18);
       doc.text(`Page ${p} of ${total}`, PAGE.w - M, PAGE.h - 18, { align: 'right' });
     }
   }

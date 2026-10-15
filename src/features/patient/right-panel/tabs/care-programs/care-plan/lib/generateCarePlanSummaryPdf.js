@@ -246,6 +246,17 @@ export function generateCarePlanSummaryPdf(meta, selection, options = {}) {
   font('regular', 9, C.ink);
   doc.text(meta.patientName || '', M, y);
   y += 18;
+  // Two versions print back to back: a band at the start of each part says
+  // which version follows.
+  const versionBand = () => {
+    if (!meta.versionBanner) return;
+    doc.setFillColor(243, 238, 252);
+    doc.roundedRect(M, y, CONTENT_W, 24, 4, 4, 'F');
+    font('medium', 9, C.ink);
+    doc.text(meta.versionBanner, M + 10, y + 15.5);
+    y += 34;
+  };
+  versionBand();
 
   doc.setDrawColor(...C.rule);
   doc.setLineWidth(0.5);
@@ -261,7 +272,7 @@ export function generateCarePlanSummaryPdf(meta, selection, options = {}) {
   sectionTitle('Care Plan Details');
   fieldGrid(
     [['Start Date', fmtDate(plan.createdAt)], ['Created by', plan.createdBy], ['Plan Progress', plan.progress != null ? `${plan.progress}% Completed` : '']],
-    [['Signed & Shared By', plan.signedBy ? `${plan.signedBy}${plan.signedAt ? ` on ${fmtDate(plan.signedAt)}` : ''}` : '']],
+    [['Signed & Shared By', plan.signedBy ? `${plan.signedBy}${plan.signedAt ? ` on ${fmtDate(plan.signedAt)}` : ''}` : ''], ...(meta.versionLabel ? [['Version', meta.versionLabel]] : [])],
   );
 
   if ((selection.conditions || []).length) {
@@ -385,7 +396,7 @@ export function generateCarePlanSummaryPdf(meta, selection, options = {}) {
       if (src) doc.addImage(src, 'PNG', 0, PAGE.h - footerH, PAGE.w, footerH);
     } else if (footerImage !== null) {
       font('regular', 7, C.faint);
-      doc.text('Generated from Fold Health', M, PAGE.h - 14);
+      doc.text(['Generated from Fold Health', meta.versionLabel].filter(Boolean).join('  •  '), M, PAGE.h - 14);
       doc.text(`Page ${p} of ${total}`, PAGE.w - M, PAGE.h - 14, { align: 'right' });
     }
   }

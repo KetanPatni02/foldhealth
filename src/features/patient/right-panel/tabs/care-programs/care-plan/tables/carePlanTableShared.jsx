@@ -193,7 +193,8 @@ export function GbiRowActions({ linked, note, onNotes, onMenu, menuDisabled = fa
         tooltipLeft
         count={hasNote ? String(note.count) : undefined}
         countTone={note?.isNew ? 'new' : undefined}
-        iconColor={hasNote ? 'var(--neutral-400)' : undefined}
+        iconColor={hasNote && !menuDisabled ? 'var(--neutral-400)' : undefined}
+        disabled={menuDisabled}
         onClick={onNotes}
       />
       <span className={styles.actionDivider} aria-hidden="true" />

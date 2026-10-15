@@ -3670,6 +3670,12 @@ export const useAppStore = create((set, get) => ({
 
   // Cross-header panel requests (versions, template, history, filter, note, sign).
   carePlanPanelRequest: null,
+  // A past version shown read-only in place of the live plan, per
+  // `${patientId}::${programId}`: { versionNumber, reason, createdAt, createdBy, snapshot }.
+  viewedCarePlanVersion: {},
+  setViewedCarePlanVersion: (key, version) => set(s => ({
+    viewedCarePlanVersion: { ...s.viewedCarePlanVersion, [key]: version || null },
+  })),
   requestCarePlanPanel: (panel) => set({ carePlanPanelRequest: panel }),
   clearCarePlanPanelRequest: () => set({ carePlanPanelRequest: null }),
 
