@@ -171,10 +171,9 @@
   line-height: 1.4;
 }
 
-/* ── Omni-style default logo (Figma 1256:45238) ──────────────────────── */
 /* One inline SVG: nested rounded glass panels over a soft green
    gradient, framing the Fold mark. The SVG carries its own gradient,
-   backdrop blurs, hairline strokes, and inner shadows — nothing to
+   backdrop blurs, hairline strokes, and inner shadows, nothing to
    paint at this layer, just a 44x44 display box. */
 .omniSvg {
   width: 44px;
