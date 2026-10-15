@@ -304,6 +304,17 @@
 .chevronClosed {
   transform: rotate(-90deg);
 }
+.seriesPicker {
+  display: inline-flex;
+  cursor: pointer;
+  border-radius: 4px;
+}
+/* 8px from the name here; the calendar's name cell already gaps 8px. */
+.vaccineLabel + .seriesPicker { margin-left: var(--space-1); }
+.seriesPicker:focus-visible {
+  outline: 2px solid var(--primary-300);
+  outline-offset: 1px;
+}
 .vaccineLabel {
   font-size: var(--font-base);
   font-weight: 400;

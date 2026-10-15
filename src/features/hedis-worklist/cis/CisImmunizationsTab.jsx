@@ -24,6 +24,7 @@ import { DoseAppointmentChip } from './DoseAppointmentChip';
 import { appointmentForDose, apptDate } from './cisAppointments';
 import { CisMoreMenu } from './CisMoreMenu';
 import { CisSaveRecordButton } from './CisSaveRecordButton';
+import { SeriesDosesPicker } from './SeriesDosesPicker';
 import styles from './CisImmunizationsTab.module.css';
 
 // Vaccines grouped by what the care team should do about them (Figma:
@@ -60,12 +61,12 @@ const ageGroupLabel = (m) => (m === 0 ? 'At birth' : `${m} Month${m === 1 ? '' :
  * @param {object}   [props.lastSaved]     – { actor, when }
  * @param {function} props.onSave          – (payload) => Promise<boolean>
  */
-export function CisImmunizationsTab({ member, immunizations, savedNotes, loading, measurementYear, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence }) {
+export function CisImmunizationsTab({ member, immunizations, savedNotes, loading, measurementYear, lastSaved, onSave, appointments, onOpenSchedule, onSaveEvidence, seriesDoses, onSeriesDosesChange }) {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [confirm, setConfirm] = useState(null);
   const result = useMemo(
-    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear }),
-    [member?.dob, immunizations, measurementYear],
+    () => evaluateCis({ dob: member?.dob, immunizations: immunizations || [], measurementYear, seriesDoses }),
+    [member?.dob, immunizations, measurementYear, seriesDoses],
   );
   // Vaccines that need action are open unless the user closed them; a
   // toggle is remembered per vaccine. (Not seeded at mount: immunizations
@@ -320,6 +321,7 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
                     focusNumber={focusDose?.key === a.key ? focusDose.number : null}
                     appointments={appointments}
                     onOpenAppointment={(appt) => onOpenSchedule?.(appt)}
+                    onSeriesDosesChange={onSeriesDosesChange}
                   />
                 ))}
                 </div>
@@ -365,6 +367,8 @@ export function CisImmunizationsTab({ member, immunizations, savedNotes, loading
           immunizations={immunizations}
           savedNotes={savedNotes}
           measurementYear={measurementYear}
+          seriesDoses={seriesDoses}
+          onSeriesDosesChange={onSeriesDosesChange}
           lastSaved={lastSaved}
           onSave={onSave}
           appointments={appointments}
@@ -473,7 +477,7 @@ function DoseList({ antigen }) {
 // Collapsed: name, dose dots, next step, status. Expanded: one row per
 // dose with its recommended age, earliest allowed date, an editable given
 // date, status and note (Figma: New Care Gap Workflow, Component 109).
-function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, dob, focusNumber, appointments, onOpenAppointment }) {
+function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, dob, focusNumber, appointments, onOpenAppointment, onSeriesDosesChange }) {
   const counted = Math.min(antigen.valid.length, antigen.required);
   const next = antigen.rows.find(r => r.kind === 'planned');
   let when;
@@ -518,6 +522,11 @@ function VaccineRow({ antigen, open, onToggle, notes, onDateChange, onNoteSave, 
         <span className={styles.vaccineName}>
           <DownChevronIcon size={16} color="var(--neutral-400)" className={open ? undefined : styles.chevronClosed} />
           <span className={styles.vaccineLabel}>{antigen.label}</span>
+          {/* Rotavirus series length (2 Rotarix / 3 RotaTeq), editable
+              while the row is expanded and the series isn't met yet. */}
+          {open && antigen.seriesChoice && antigen.status !== CIS_ANTIGEN_STATUS.met && onSeriesDosesChange && (
+            <SeriesDosesPicker choice={antigen.seriesChoice} onChange={(n) => onSeriesDosesChange(antigen.key, n)} />
+          )}
         </span>
         <span className={styles.progressCell}>
           <Tooltip variant="light" placement="bottom" align="start" maxWidth={300} label={<DoseList antigen={antigen} />}>
