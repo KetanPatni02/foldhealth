@@ -66,6 +66,7 @@ import { ScheduleDrawer } from '../../components/ScheduleDrawer/ScheduleDrawer';
 import { FilePreview } from '../../components/FilePreview/FilePreview';
 import { useAppStore } from '../../store/useAppStore';
 import { TABS, MORE_ACTIONS, MEASURE_NAMES, toActivityLogEntries, initialsOf } from './CareGapDetailDrawer.utils';
+import { NOTELESS_GAP_CODES, noteOpenGaps } from './ClinicalNotePanel.utils';
 import { CareGapDetailDrawerHeader } from './CareGapDetailDrawerHeader';
 import styles from './CareGapDetailDrawer.module.css';
 
@@ -456,18 +457,22 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   const fetchCisAppointments = useAppStore(s => s.fetchCisAppointments);
   const saveCisAppointment = useAppStore(s => s.saveCisAppointment);
   const cancelCisAppointment = useAppStore(s => s.cancelCisAppointment);
+  const cisSeriesDoses = useAppStore(s => s.cisSeriesDoses[member?.id]);
+  const fetchCisSeriesDoses = useAppStore(s => s.fetchCisSeriesDoses);
+  const setCisSeriesDoses = useAppStore(s => s.setCisSeriesDoses);
   useEffect(() => {
     if (!isCis || !member?.id) return;
     fetchPatientImmunizations(member.id);
     fetchCisDoseNotes(member.id);
     fetchCisAppointments(member.id);
-  }, [isCis, member?.id, fetchPatientImmunizations, fetchCisDoseNotes, fetchCisAppointments]);
+    fetchCisSeriesDoses(member.id);
+  }, [isCis, member?.id, fetchPatientImmunizations, fetchCisDoseNotes, fetchCisAppointments, fetchCisSeriesDoses]);
   // CIS-CMB10 evaluation for the Schedule Vaccine Reminder pane's dose list.
   const docTypes = isCis ? [...DOC_TYPES, CIS_RECORD_DOC_TYPE] : DOC_TYPES;
   const memberDob = member?.dob;
   const cisResult = useMemo(
-    () => (isCis ? evaluateCis({ dob: memberDob, immunizations: immunizations || [], measurementYear: selectedYear }) : null),
-    [isCis, memberDob, immunizations, selectedYear],
+    () => (isCis ? evaluateCis({ dob: memberDob, immunizations: immunizations || [], measurementYear: selectedYear, seriesDoses: cisSeriesDoses }) : null),
+    [isCis, memberDob, immunizations, selectedYear, cisSeriesDoses],
   );
   const openCisAppointment = (appt) => {
     if (appt) cisApptForm.startEdit(appt);
@@ -527,6 +532,20 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       title: 'Immunization Record Synced to EHR',
       outcome: `${caption} saved to Documents and synced to the patient's EHR. Non-billable.`,
       docId: doc.id,
+      gapCodes: [CIS_CODE],
+    });
+  };
+  const changeCisSeriesDoses = async (antigenKey, doses) => {
+    if (!member?.id) return;
+    const ok = await setCisSeriesDoses(member.id, antigenKey, doses);
+    if (!ok) return;
+    const label = cisResult?.antigens.find(a => a.key === antigenKey)?.label ?? antigenKey;
+    logCareGapActivity(member.id, {
+      when: new Date().toISOString(),
+      actor: currentActorName(),
+      t: 'immunization',
+      title: 'Vaccine Series Updated',
+      outcome: `${label} set to a ${doses}-dose series.`,
       gapCodes: [CIS_CODE],
     });
   };
@@ -719,10 +738,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
   };
 
   // Open-gap count drives the "Add Note" routing rule (see openClinicalNoteFlow).
-  // Mirrors the hook's own filter so both counts agree.
-  const openGapCount = (member?.gaps ?? [])
-    .filter(g => g.status !== 'Completed' && !String(g.status).startsWith('Closed'))
-    .length;
+  // Same filter as the hook (noteOpenGaps) so both counts agree.
+  const openGapCount = noteOpenGaps(member?.gaps).length;
 
   // Both workspace hooks are called unconditionally (React rules) and
   // their outputs only wire into the UI when their key is active.
@@ -1994,6 +2011,8 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
                 // The immunization record PDF goes to this gap's Documents as
                 // evidence (non-standard note, nothing billed).
                 onSaveEvidence={saveCisRecord}
+                seriesDoses={cisSeriesDoses}
+                onSeriesDosesChange={changeCisSeriesDoses}
               />
             ) : shownTab === 'Orders' ? (
               <CareGapLabsTab
@@ -2074,7 +2093,9 @@ function CareGapDetailDrawerContent({ member, gapCode, year, onClose }) {
       {moreMenuRect && (
         <MenuPopover
           anchorRect={moreMenuRect}
-          items={MORE_ACTIONS.map(a => ({ key: a.key, label: a.label, icon: a.icon }))}
+          items={MORE_ACTIONS
+            .filter(a => !(a.openClinicalNote && NOTELESS_GAP_CODES.has(currentCode)))
+            .map(a => ({ key: a.key, label: a.label, icon: a.icon }))}
           onSelect={(key) => {
             const action = MORE_ACTIONS.find(x => x.key === key);
             if (action) runMoreAction(action);

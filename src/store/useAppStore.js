@@ -673,6 +673,44 @@ export const useAppStore = create((set, get) => ({
     await get().fetchPatientImmunizations(patientId);
     return true;
   },
+  // ── CIS-CMB10 tracker: series length picked per vaccine (cis_series_doses) ──
+  cisSeriesDoses: {},        // { [memberId]: { rv: 2 | 3 } }
+  fetchCisSeriesDoses: async (memberId) => {
+    if (!memberId) return;
+    const { data, error } = await supabase.from('cis_series_doses')
+      .select('antigen_key, required_doses').eq('hedis_member_id', String(memberId));
+    if (error) { console.warn('fetchCisSeriesDoses:', error.message); return; }
+    const byKey = Object.fromEntries((data || []).map(r => [r.antigen_key, r.required_doses]));
+    set(s => ({ cisSeriesDoses: { ...s.cisSeriesDoses, [memberId]: byKey } }));
+  },
+  setCisSeriesDoses: async (memberId, antigenKey, requiredDoses) => {
+    if (!memberId || !antigenKey) return false;
+    const prev = get().cisSeriesDoses[memberId] || {};
+    // Optimistic: the calendar re-plans right away; rolled back on error.
+    set(s => ({ cisSeriesDoses: { ...s.cisSeriesDoses, [memberId]: { ...prev, [antigenKey]: requiredDoses } } }));
+    const me = get().currentUserProfile;
+    const { error } = await supabase.from('cis_series_doses').upsert({
+      id: `${memberId}:${antigenKey}`,
+      hedis_member_id: String(memberId),
+      antigen_key: antigenKey,
+      required_doses: requiredDoses,
+      updated_by: me?.id || null,
+      updated_by_name: get().currentActorName(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+    if (error) {
+      // Table not created yet: keep the pick for this session.
+      if (error.code === '42P01' || error.code === 'PGRST205') {
+        console.warn('[setCisSeriesDoses] cis_series_doses table missing — run supabase/cis_series_doses_migration.sql');
+        return true;
+      }
+      console.warn('setCisSeriesDoses:', error.message);
+      set(s => ({ cisSeriesDoses: { ...s.cisSeriesDoses, [memberId]: prev } }));
+      get().showToast?.('Could not save the dose count');
+      return false;
+    }
+    return true;
+  },
   // ── CIS-CMB10 tracker: per-dose notes (cis_dose_notes) + batch save ──
   cisDoseNotes: {},          // { [memberId]: { 'dtap:1': { note, updatedByName, updatedAt } } }
   cisDoseNotesTableMissing: false,
