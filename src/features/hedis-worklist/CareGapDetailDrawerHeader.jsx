@@ -240,7 +240,7 @@ export function CareGapDetailDrawerHeader({
 
       <div className={styles.suggestSection}>
         <div className={styles.suggestRow}>
-          <Icon name="solar:magic-stick-3-bold" size={14} color="var(--primary-300)" /> Suggested Actions
+          <Icon name="custom:ai" size={14} color="var(--primary-300)" /> Suggested Actions
         </div>
         <div className={styles.suggestActions}>
           {isCis ? (

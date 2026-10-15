@@ -13725,6 +13725,43 @@ export const useAppStore = create((set, get) => ({
     set(s => ({ patientContacts: { ...s.patientContacts, [patientId]: list } }));
   },
 
+  // ── Inbound eFax (Comms → E-fax) ──
+  // Each fax keeps who it was read as being about and who it's linked to.
+  // Falls back to sample faxes (session only) until efax_inbound exists;
+  // `efaxLive` says whether writes reach the table.
+  efaxes: [],
+  efaxesLoading: false,
+  efaxesDidFetch: false,
+  efaxLive: false,
+  fetchEfaxes: async () => {
+    if (get().efaxesDidFetch) return;
+    set({ efaxesDidFetch: true, efaxesLoading: true });
+    const { rowToFax, sampleFaxes } = await import('../features/messages/efax/efaxData');
+    const { data, error } = await supabase.from('efax_inbound').select('*').order('received_at', { ascending: false });
+    if (error) console.warn('fetchEfaxes: falling back to samples:', error.message);
+    if (!error && data?.length) {
+      set({ efaxes: data.map(rowToFax), efaxesLoading: false, efaxLive: true });
+      return;
+    }
+    await get().fetchAllPatients();
+    set({ efaxes: sampleFaxes(get().allPatients || []), efaxesLoading: false, efaxLive: !error });
+  },
+  addEfax: async (fax) => {
+    set(s => ({ efaxes: [fax, ...s.efaxes] }));
+    if (!get().efaxLive) return;
+    const { faxToRow } = await import('../features/messages/efax/efaxData');
+    const { error } = await supabase.from('efax_inbound').insert(faxToRow(fax));
+    if (error) console.warn('addEfax: kept for this session only:', error.message);
+  },
+  updateEfax: async (id, patch) => {
+    set(s => ({ efaxes: s.efaxes.map(f => (f.id === id ? { ...f, ...patch } : f)) }));
+    if (!get().efaxLive) return;
+    const { faxToRow } = await import('../features/messages/efax/efaxData');
+    const fax = get().efaxes.find(f => f.id === id);
+    const { error } = await supabase.from('efax_inbound').update(faxToRow(fax)).eq('id', id);
+    if (error) console.warn('updateEfax: kept for this session only:', error.message);
+  },
+
   // ── Care program billing (Settings → Billing) ──
   // Billable claims, monthly reports and the billing-timer rule per program.
   // Falls back to the samples (session only) until the tables exist.

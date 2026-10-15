@@ -57,3 +57,13 @@
 .sizeS .emptyIcon::before { width: 80px; height: 80px; }
 .sizeS .emptyIcon::after { width: 68px; height: 68px; }
 .sizeS .iconInner { width: 56px; height: 56px; }
+
+/* Extra small: a 48px medallion beside text in a row (Figma 2955:4919). */
+.sizeXS { flex: 0 0 auto; }
+.sizeXS .emptyIcon,
+.sizeXS .emptyIcon::before { width: 48px; height: 48px; }
+.sizeXS .emptyIcon::after { width: 41px; height: 41px; }
+.sizeXS .iconInner { width: 34px; height: 34px; }
+/* Thinner rings at this size, or the dashes crowd the medallion. */
+.sizeXS .emptyIcon::before,
+.sizeXS .emptyIcon::after { border-width: 0.5px; }

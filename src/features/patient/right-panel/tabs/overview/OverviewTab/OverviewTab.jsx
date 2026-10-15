@@ -35,7 +35,7 @@ function PatientSynopsis() {
   return (
     <div className={styles.card}>
       <div className={styles.synopsisHeader}>
-        <Icon name="solar:stars-minimalistic-linear" size={16} color="var(--primary-300)" />
+        <Icon name="custom:ai" size={16} color="var(--primary-300)" />
         <span className={styles.synopsisLabel}>Patient Synopsis</span>
       </div>
       <div className={styles.synopsisBody}>

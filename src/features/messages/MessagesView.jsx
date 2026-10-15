@@ -11,6 +11,7 @@ import { useAppStore } from '../../store/useAppStore';
 import { ChatArea } from './ChatArea';
 import { ConversationListPanel } from './ConversationListPanel';
 import { EmailWorkspace } from './email/EmailWorkspace';
+import { EfaxWorkspace } from './efax/EfaxWorkspace';
 import { useReferralEmails } from './email/useReferralEmails';
 import { getDisplayName } from './messageUtils';
 import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
@@ -345,6 +346,8 @@ export function MessagesView() {
             navCollapsed={navCollapsed}
             onToggleNav={toggleNav}
           />
+        ) : activeChannel === 'efax' ? (
+          <EfaxWorkspace navCollapsed={navCollapsed} onToggleNav={toggleNav} />
         ) : COMMS_VIEWS.has(activeChannel) ? (
           <CommsWorkspace
             view={activeChannel}

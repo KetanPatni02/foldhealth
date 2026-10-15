@@ -23,7 +23,7 @@ export const PAGES = [
   { section: 'OPERATIONS', items: [
     { id: 'tools', label: 'Tool Usage', icon: 'solar:widget-2-linear' },
     { id: 'platformops', label: 'Platform Ops', icon: 'solar:server-2-linear' },
-    { id: 'aianalytics', label: 'AI Analytics', icon: 'solar:magic-stick-3-linear' },
+    { id: 'aianalytics', label: 'AI Analytics', icon: 'custom:ai' },
     { id: 'sdoh', label: 'SDoH & Equity', icon: 'solar:heart-pulse-2-linear' },
     { id: 'actionrules', label: 'Action Rules', icon: 'solar:bolt-circle-linear' },
   ]},

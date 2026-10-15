@@ -229,7 +229,7 @@ export function AnalyticsLayout() {
             <div className={s.slicerDivider} />
 
             <div className={s.askFoldSlicer} onClick={e => e.currentTarget.querySelector('input')?.focus()}>
-              <Icon name="solar:magic-stick-3-linear" size={14} color="var(--primary-300)" />
+              <Icon name="custom:ai" size={14} color="var(--primary-300)" />
               <input aria-label="Ask Fold a question"
                 className={s.askFoldInput}
                 type="text"

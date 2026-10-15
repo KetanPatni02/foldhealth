@@ -23,8 +23,10 @@ import styles from './Tooltip.module.css';
  *             centring on the trigger; 'right' pins the bubble's right edge to
  *             the trigger's, for triggers near the right edge of a panel where
  *             a centred bubble would be clipped.
- *  - variant ('dark' | 'light')  Visual treatment. Defaults to 'dark'; 'light'
- *             matches ActionButton tooltips (white bubble, border, shadow).
+ *  - variant ('dark' | 'light' | 'card')  Visual treatment. Defaults to 'dark';
+ *             'light' matches ActionButton tooltips (white bubble, border,
+ *             shadow); 'card' is light without the border and with room for
+ *             a heading and notes (pair with maxWidth).
  *  - followCursor (boolean)  Anchor to the pointer instead of the trigger, and
  *             track it while hovering. For wide triggers (a whole form field)
  *             where a bubble centred on the element lands far from the cursor.
@@ -102,7 +104,8 @@ export function Tooltip({ label, children, placement = 'top', className, maxWidt
           role="tooltip"
           className={[
             styles.bubble,
-            variant === 'light' ? styles.bubbleLight : '',
+            variant === 'light' || variant === 'card' ? styles.bubbleLight : '',
+            variant === 'card' ? styles.bubbleCard : '',
             placement === 'bottom' ? styles.bubbleBottom
               : placement === 'left' ? styles.bubbleLeft
                 : placement === 'right' ? styles.bubbleRight

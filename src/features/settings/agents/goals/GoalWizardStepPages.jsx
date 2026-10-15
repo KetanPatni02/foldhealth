@@ -56,7 +56,7 @@ export function GoalWizardDescribeStep({ active, isEdit, nlInput, setNlInput, ai
         />
         <div className={s.nlBoxFooter}>
           <span className={s.nlHint}>AI will generate steps, scoring, and success criteria</span>
-          <Button variant="primary" size="S" leadingIcon="solar:magic-stick-3-linear"
+          <Button variant="primary" size="S" leadingIcon="custom:ai-mono"
             onClick={generateFromNL} disabled={aiGenerating}>
             {aiGenerating ? 'Generating...' : 'Generate'}
           </Button>

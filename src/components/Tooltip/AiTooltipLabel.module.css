@@ -1,0 +1,30 @@
+/* AiTooltipLabel: ✦ gradient title, then the explanation. */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) * 1.5);
+  /* Sized to its text so a one-sentence explanation stays on one line;
+     longer ones wrap past 18rem. */
+  width: max-content;
+  max-width: 18rem;
+  text-align: left;
+  white-space: normal;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+}
+.title {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  background: var(--ai-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.body {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-300);
+}

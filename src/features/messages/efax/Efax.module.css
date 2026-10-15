@@ -1,0 +1,117 @@
+/* Comms → E-fax. */
+.faxAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--space-2);
+  border: 0.5px solid var(--primary-200);
+  background: var(--primary-50);
+  color: var(--primary-300);
+}
+.faxAvatarL { width: 2.5rem; height: 2.5rem; }
+
+.previewOpen { color: var(--status-warning); }
+
+/* "Create Test eFax" pinned under the list. */
+.listFooter {
+  padding: var(--space-3);
+  border-top: 0.5px solid var(--neutral-150);
+  background: var(--neutral-25);
+}
+
+.listSearch { padding: 0 var(--space-3) var(--space-2); }
+
+/* Inside the fax message (Figma 2932:39952): note, file and patient, then
+   the AI's suggestions attached below, edge to edge. */
+.faxBubble {
+  display: flex;
+  flex-direction: column;
+  width: 23.5rem;
+  max-width: 100%;
+}
+.faxBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+.faxBodyRuled { border-bottom: 0.5px solid var(--neutral-150); }
+.faxNote {
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-400);
+  white-space: pre-wrap;
+}
+/* The AI mark beside a patient the OCR suggested. */
+.ocrTag {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Suggested Members inside the Select Patient dropdown. The group
+   headings are title case here, not the dropdown's default caps. */
+.groupLabel { text-transform: none; letter-spacing: normal; }
+.groupAi {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-weight: 500;
+}
+.aiText {
+  background: var(--ai-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.optionTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.optionMeta { font-size: var(--font-sm); color: var(--neutral-300); }
+
+/* Who added a suggested patient, on its own line in the tooltip. */
+.addedLine { display: block; margin-top: var(--space-1); }
+
+/* Select Patient showing a patient the OCR suggested. */
+.pickedOcr {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-base);
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+
+/* Patient Context for eFax (Figma 2916:41416). */
+.contextBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.headerDivider {
+  width: 1px;
+  height: var(--space-4);
+  background: var(--neutral-150);
+}
