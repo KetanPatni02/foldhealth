@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../../../../../../../store/useAppStore';
+import { uniqueById } from '../lib/carePlanDraft';
 import { Icon } from '@/components/Icon/Icon';
 import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
 import { ActionButton } from '@/components/ActionButton/ActionButton';
@@ -228,7 +229,24 @@ export function CarePlanView({ patientId, program }) {
       },
     };
   }, [templateFilterId, live?.templateInstances, live?.retired, data, runsByTemplate]);
-  const viewData = viewedRun ? viewedRun.data : data;
+  // A past version picked in Version History: its snapshot, read only.
+  const carePlanKey = patientId && program?.id ? `${patientId}::${program.id}` : null;
+  const viewedVersion = useAppStore(s => (carePlanKey ? s.viewedCarePlanVersion[carePlanKey] : null));
+  const setViewedCarePlanVersion = useAppStore(s => s.setViewedCarePlanVersion);
+  // Leaving the plan returns it to the live version.
+  useEffect(() => () => { if (carePlanKey) setViewedCarePlanVersion(carePlanKey, null); }, [carePlanKey, setViewedCarePlanVersion]);
+  const versionData = useMemo(() => {
+    if (!viewedVersion) return null;
+    const s = viewedVersion.snapshot || {};
+    return {
+      conditions: (s.conditions || []).map(c => (typeof c === 'string' ? { label: c } : c)),
+      conditionTotal: (s.conditions || []).length,
+      goals: uniqueById(s.goals).map(g => ({ ...g, ...deriveGoalTableFields(g, []) })),
+      interventions: uniqueById(s.interventions),
+      barriers: uniqueById(s.barriers),
+    };
+  }, [viewedVersion]);
+  const viewData = versionData || (viewedRun ? viewedRun.data : data);
   const {
     noteOpen,
     noteText,
@@ -255,14 +273,14 @@ export function CarePlanView({ patientId, program }) {
     planStats,
   } = useCarePlanViewFilters({
     data: viewData,
-    templateFilterId: viewedRun ? null : templateFilterId,
+    templateFilterId: viewedRun || versionData ? null : templateFilterId,
     carePlanTemplates,
     libraryGoals,
     patientName,
   });
 
   // An earlier run is history: shown, not edited.
-  const canEdit = !!(patientId && program) && !viewedRun;
+  const canEdit = !!(patientId && program) && !viewedRun && !versionData;
   const {
     selected,
     bulkMenu,
@@ -311,8 +329,9 @@ export function CarePlanView({ patientId, program }) {
   const [signOpen, setSignOpen] = useState(false);
   const [signNote, setSignNote] = useState('');
 
-  const appliedTemplateIds = live?.plan?.appliedTemplateIds || [];
-  const appliedTemplatePriorities = live?.plan?.appliedTemplatePriorities || {};
+  // A past version shows the templates it had.
+  const appliedTemplateIds = (viewedVersion ? viewedVersion.snapshot?.appliedTemplateIds : live?.plan?.appliedTemplateIds) || [];
+  const appliedTemplatePriorities = (viewedVersion ? viewedVersion.snapshot?.appliedTemplatePriorities : live?.plan?.appliedTemplatePriorities) || {};
   const appliedTemplates = useMemo(() => {
     const rank = { high: 0, medium: 1, low: 2 };
     return appliedTemplateIds
@@ -583,7 +602,7 @@ export function CarePlanView({ patientId, program }) {
   const renderDuplicateBadge = (kind) => {
     const flags = flagsForKind(kind);
     // An earlier run is history; duplicates are about the live plan.
-    if (!flags.length || viewedRun) return null;
+    if (!flags.length || viewedRun || versionData) return null;
     const expanded = duplicatesOpen?.kind === kind;
     return (
       <button
@@ -765,6 +784,8 @@ export function CarePlanView({ patientId, program }) {
   const drawerProps = {
     addGoalsDrawerOpen, setAddGoalsDrawerOpen, handleAddGoalsFromPicker, data, patientProblems,
     previewGoal, setPreviewGoal, patientId, program, previewBarrier, setPreviewBarrier,
+    // Past version / earlier template run: item drawers open read-only on that copy.
+    itemSnapshot: versionData || viewedRun ? viewData : null,
     previewIntervention, setPreviewIntervention, intvDrawer, setIntvDrawer, handleAddIntervention,
     notesFocus, setNotesFocus,
     intvSpecialDrawer, setIntvSpecialDrawer, auditAll, saveInterventionFromConfig,
@@ -795,7 +816,8 @@ export function CarePlanView({ patientId, program }) {
           canRemove={canEdit && !live?.plan?.signedAt}
           onSelect={(id) => setTemplateFilterId(prev => (prev === id ? null : id))}
           onRemove={handleRemoveTemplate}
-          runsByTemplate={runsByTemplate}
+          runsByTemplate={viewedVersion ? {} : runsByTemplate}
+          readOnly={!!viewedVersion}
           trailing={(
             <span className={styles.stripActions}>
               <span className={styles.stripDivider} aria-hidden="true" />
@@ -832,7 +854,21 @@ export function CarePlanView({ patientId, program }) {
 
       <div className={styles.scrollArea}>
       <div className={styles.contentBody}>
-      {viewedRun && (
+      {viewedVersion && (
+        <div className={styles.runBanner} role="status">
+          <Icon name="solar:history-linear" size={16} color="var(--neutral-300)" />
+          <span className={styles.runBannerText}>
+            <strong>Version {viewedVersion.versionNumber}</strong>
+            {viewedVersion.createdBy ? ` · ${viewedVersion.reason === 'restore' ? 'Restored' : viewedVersion.reason === 'signed' ? 'Signed' : 'Saved'} by ${viewedVersion.createdBy}` : ''}
+            {viewedVersion.createdAt ? ` ${new Date(viewedVersion.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+            {' · Read only'}
+          </span>
+          <button type="button" className={styles.runBannerBack} onClick={() => setViewedCarePlanVersion(carePlanKey, null)}>
+            Back to current plan
+          </button>
+        </div>
+      )}
+      {viewedRun && !viewedVersion && (
         <div className={styles.runBanner} role="status">
           <Icon name="solar:check-circle-linear" size={16} color="var(--status-success)" />
           <span className={styles.runBannerText}>

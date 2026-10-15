@@ -3,6 +3,7 @@ import { Drawer } from '../../../../../../../../components/Drawer/Drawer';
 import { ActionButton } from '../../../../../../../../components/ActionButton/ActionButton';
 import { ConfirmDialog } from '../../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
+import { Input } from '../../../../../../../../components/Input/Input';
 import { RingEmptyState } from '../../../../../../../../components/RingEmptyState/RingEmptyState';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { CarePlanVersionChangesDrawer } from '../CarePlanVersionChangesDrawer/CarePlanVersionChangesDrawer';
@@ -33,6 +34,13 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
   const auditKey = `${patientId}::${program.id}`;
   const auditEntries = useAppStore(s => s.patientCarePlanAudit[auditKey]);
   const plan = useAppStore(s => s.patientCarePlans[auditKey]);
+  const setViewedCarePlanVersion = useAppStore(s => s.setViewedCarePlanVersion);
+  // Clicking a card shows that version on the care plan, read only; the
+  // current one goes back to the live plan.
+  const showVersion = (v, isCurrent) => {
+    setViewedCarePlanVersion(key, isCurrent ? null : v);
+    onClose();
+  };
 
   useEffect(() => {
     if (auditEntries === undefined) fetchCarePlanAudit(patientId, program.id);
@@ -58,61 +66,85 @@ export function CarePlanVersionsDrawer({ patientId, program, onClose }) {
   }, [versions, patientId, program.id, fetchCarePlanVersions]);
 
   const list = versions || [];
+  // Search matches the version number, signer, date and the signing note.
+  const [query, setQuery] = useState('');
+  const q = query.trim().toLowerCase();
+  const shown = q
+    ? list.filter(v => [`version ${v.versionNumber}`, `v${v.versionNumber}`, v.createdBy, fmt(v.createdAt), v.note]
+      .some(s => String(s || '').toLowerCase().includes(q)))
+    : list;
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
   return (
     <Drawer title="Version History" onClose={onClose}>
       <div className={styles.body}>
+        <Input
+          leadingIcon="solar:magnifer-linear"
+          placeholder="Search"
+          aria-label="Search versions"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
         {list.length === 0 ? (
           <RingEmptyState icon="solar:layers-minimalistic-linear" label={loading ? 'Loading versions…' : 'No saved versions yet'} />
-        ) : list.map((v, i) => (
-          <div
-            key={v.id}
-            className={styles.card}
-            role="button"
-            tabIndex={0}
-            onClick={() => openChanges(v)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openChanges(v); } }}
-          >
-            <div className={styles.cardMain}>
-            <div className={styles.cardHead}>
-              <span className={styles.version}>Version {v.versionNumber}</span>
-              {/* Versions come back newest first, so the head of the list is
-                  the one the plan is on now. */}
-              {i === 0 && <Badge tone="success" size="S" label="Current" />}
+        ) : shown.length === 0 ? (
+          <RingEmptyState icon="solar:magnifer-linear" label="No versions match your search" />
+        ) : shown.map((v) => {
+          // Versions come back newest first, so the head of the full list is
+          // the one the plan is on now.
+          const isCurrent = v.id === list[0]?.id;
+          const s = v.snapshot || {};
+          const counts = [
+            plural(new Set(s.appliedTemplateIds || []).size, 'Template'),
+            plural(uniqueById(s.goals).length, 'Goal'),
+            plural(uniqueById(s.interventions).length, 'Intervention'),
+            ...(Array.isArray(s.barriers) ? [plural(uniqueById(s.barriers).length, 'Barrier')] : []),
+          ].join(' • ');
+          return (
+            <div
+              key={v.id}
+              className={styles.card}
+              role="button"
+              tabIndex={0}
+              title={v.note ? `\u201c${v.note}\u201d` : undefined}
+              onClick={() => showVersion(v, isCurrent)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showVersion(v, isCurrent); } }}
+            >
+              <div className={styles.cardMain}>
+                <div className={styles.meta}>
+                  {fmt(v.createdAt)}
+                  {v.createdBy ? ` · ${BYLINE[v.reason] || BYLINE.manual} ${v.createdBy}` : ''}
+                </div>
+                <div className={styles.cardHead}>
+                  <span className={styles.version}>Version {v.versionNumber}</span>
+                  {isCurrent && <Badge tone="unity" size="S" label="Current" />}
+                </div>
+                <div className={styles.counts}>{counts}</div>
+              </div>
+              <div className={styles.actionCell} onClick={e => e.stopPropagation()}>
+                <ActionButton
+                  icon="solar:eye-linear"
+                  size="L"
+                  tooltip="View changes"
+                  onClick={() => openChanges(v)}
+                />
+                {/* The newest version is the one the draft is measured against;
+                    going back to it is Discard, in the plan header. */}
+                {!isCurrent && (
+                  <>
+                    <span className={styles.vDivider} />
+                    <ActionButton
+                      icon="solar:restart-linear"
+                      size="L"
+                      tooltip="Load into draft"
+                      onClick={() => setRestoreTarget(v)}
+                    />
+                  </>
+                )}
+              </div>
             </div>
-            <div className={styles.meta}>
-              {fmt(v.createdAt)}
-              {v.createdBy ? ` · ${BYLINE[v.reason] || BYLINE.manual} ${v.createdBy}` : ''}
-            </div>
-            <div className={styles.counts}>
-              {uniqueById(v.snapshot?.goals).length} goals · {uniqueById(v.snapshot?.interventions).length} interventions
-              {Array.isArray(v.snapshot?.barriers) ? ` · ${uniqueById(v.snapshot.barriers).length} barriers` : ''}
-            </div>
-            {v.note && <div className={styles.note}>“{v.note}”</div>}
-            </div>
-            <div className={styles.actionCell} onClick={e => e.stopPropagation()}>
-              <ActionButton
-                icon="solar:eye-linear"
-                size="L"
-                tooltip="View"
-                onClick={() => openChanges(v)}
-              />
-              {/* The newest version is the one the draft is measured against;
-                  going back to it is Discard, in the plan header. */}
-              {i > 0 && (
-                <>
-                  <span className={styles.vDivider} />
-                  <ActionButton
-                    icon="solar:restart-linear"
-                    size="L"
-                    tooltip="Load into draft"
-                    onClick={() => setRestoreTarget(v)}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {openVersion && (

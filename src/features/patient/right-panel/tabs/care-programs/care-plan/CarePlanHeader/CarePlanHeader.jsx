@@ -65,6 +65,7 @@ export function CarePlanHeader({ patientId, program }) {
   const discardCarePlanDraft = useAppStore(s => s.discardCarePlanDraft);
   const [discardOpen, setDiscardOpen] = useState(false);
   const carePlanDraft = useCarePlanDraftState(patientId, program?.id);
+  const viewedVersion = useAppStore(s => (carePlanKey ? s.viewedCarePlanVersion[carePlanKey] : null));
 
   useEffect(() => {
     if (!patientId || !program?.id) return;
@@ -166,7 +167,9 @@ export function CarePlanHeader({ patientId, program }) {
                 aria-label="Open version history"
               >
                 <span className={styles.assessmentTitle}>
-                  Care Plan • {carePlanMeta.signedBy && carePlanMeta.versionNumber ? `Ver. ${carePlanMeta.versionNumber}` : 'Draft'}
+                  Care Plan • {viewedVersion
+                    ? `Ver. ${viewedVersion.versionNumber} (read only)`
+                    : carePlanMeta.signedBy && carePlanMeta.versionNumber ? `Ver. ${carePlanMeta.versionNumber}` : 'Draft'}
                 </span>
                 <DownChevronIcon size={16} color="var(--neutral-500)" />
               </button>
@@ -192,7 +195,13 @@ export function CarePlanHeader({ patientId, program }) {
                 let statusText = 'Not signed';
                 let statusColor = 'var(--neutral-300)';
                 let statusWeight = 400;
-                if (carePlanMeta.reviewRequestedTo) {
+                if (viewedVersion) {
+                  // A past version reads as itself, not the live draft.
+                  const verb = viewedVersion.reason === 'restore' ? 'Restored' : viewedVersion.reason === 'signed' ? 'Signed' : 'Saved';
+                  statusText = `${verb}${viewedVersion.createdBy ? ` by ${viewedVersion.createdBy}` : ''}${viewedVersion.createdAt ? ` on ${fmtShort(viewedVersion.createdAt)}` : ''}`;
+                  statusColor = 'var(--status-success)';
+                  statusWeight = 500;
+                } else if (carePlanMeta.reviewRequestedTo) {
                   const on = carePlanMeta.reviewRequestedAt ? ` on ${fmtShort(carePlanMeta.reviewRequestedAt)}` : '';
                   statusText = `Sent for review to ${carePlanMeta.reviewRequestedTo}${on}`;
                   statusColor = 'var(--status-warning)';
@@ -279,6 +288,7 @@ export function CarePlanHeader({ patientId, program }) {
                     variant="secondary"
                     size="L"
                     leadingIcon="solar:restart-linear"
+                    disabled={!!viewedVersion}
                     onClick={() => setDiscardOpen(true)}
                   >
                     Discard
@@ -290,7 +300,7 @@ export function CarePlanHeader({ patientId, program }) {
                 variant="primary"
                 size="M"
                 leadingIcon="solar:pen-2-linear"
-                disabled={!signShareEnabled}
+                disabled={!signShareEnabled || !!viewedVersion}
                 onClick={signCarePlanDirect}
                 menuItems={CARE_PLAN_SIGN_MENU_ITEMS}
                 menuWidth={200}

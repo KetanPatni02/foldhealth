@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Icon } from '../../../../../../../../components/Icon/Icon';
-import { generateCarePlanPdf } from '../../lib/carePlanExport';
+import { buildCarePlanVersionsPdf } from '../../lib/carePlanVersionsPdf';
 import styles from './CarePlanShareDrawer.module.css';
 
 const CROSSFADE_MS = 220;
@@ -14,7 +14,7 @@ function emptySlot() {
  * Live PDF preview with debounced regeneration and crossfade between
  * versions so toggling goals does not flash the iframe black.
  */
-export function CarePlanPdfPreview({ docMeta, selection, options, nothingSelected, onPageCount }) {
+export function CarePlanPdfPreview({ parts, options, nothingSelected, onPageCount }) {
   const [slotA, setSlotA] = useState(emptySlot);
   const [slotB, setSlotB] = useState(emptySlot);
   const [front, setFront] = useState('A');
@@ -62,8 +62,12 @@ export function CarePlanPdfPreview({ docMeta, selection, options, nothingSelecte
       return undefined;
     }
 
-    const timer = window.setTimeout(() => {
-      const blob = generateCarePlanPdf(docMeta, selection, options);
+    // Two picked versions are merged asynchronously; a newer render cancels
+    // the one still in flight.
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      const blob = await buildCarePlanVersionsPdf(parts, options);
+      if (cancelled) return;
       onPageCount?.(blob.pageCount);
       const url = URL.createObjectURL(blob);
 
@@ -85,8 +89,8 @@ export function CarePlanPdfPreview({ docMeta, selection, options, nothingSelecte
       setSlot(back, { url, ready: false });
     }, DEBOUNCE_MS);
 
-    return () => window.clearTimeout(timer);
-  }, [docMeta, selection, options, nothingSelected]);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [parts, options, nothingSelected]);
 
   useEffect(() => () => {
     if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current);

@@ -35,7 +35,7 @@ import styles from './CarePlanView.module.css';
 export function CarePlanViewDrawers(d) {
   const {
     addGoalsDrawerOpen, setAddGoalsDrawerOpen, handleAddGoalsFromPicker, data, patientProblems,
-    previewGoal, setPreviewGoal, patientId, program, previewBarrier, setPreviewBarrier,
+    previewGoal, setPreviewGoal, patientId, program, previewBarrier, setPreviewBarrier, itemSnapshot,
     previewIntervention, setPreviewIntervention, intvDrawer, setIntvDrawer, handleAddIntervention,
     notesFocus, setNotesFocus,
     intvSpecialDrawer, setIntvSpecialDrawer, auditAll, saveInterventionFromConfig,
@@ -78,6 +78,8 @@ export function CarePlanViewDrawers(d) {
           patientId={patientId}
           program={program}
           focusSection={notesFor('goal', previewGoal)}
+          readOnly={!!itemSnapshot}
+          snapshot={itemSnapshot}
           onClose={closeWith(setPreviewGoal)}
           onOpenIntervention={setPreviewIntervention}
           onOpenBarrier={setPreviewBarrier}
@@ -90,6 +92,8 @@ export function CarePlanViewDrawers(d) {
           patientId={patientId}
           program={program}
           focusSection={notesFor('barrier', previewBarrier)}
+          readOnly={!!itemSnapshot}
+          snapshot={itemSnapshot}
           onClose={closeWith(setPreviewBarrier)}
           onOpenGoal={(g) => { setPreviewBarrier(null); setPreviewGoal(g); }}
         />
@@ -101,6 +105,8 @@ export function CarePlanViewDrawers(d) {
           patientId={patientId}
           program={program}
           focusSection={notesFor('intervention', previewIntervention)}
+          readOnly={!!itemSnapshot}
+          snapshot={itemSnapshot}
           onClose={closeWith(setPreviewIntervention)}
           onEdit={(intv) => {
             // Open the full intervention edit drawer for this kind so the

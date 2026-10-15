@@ -210,9 +210,11 @@
 }
 .careNoteCard:hover { background: var(--primary-100); }
 .careNoteCard:disabled { cursor: default; }
+/* Bottom-right, centred on the author • timestamp line (24px button over
+   a ~14px line sitting on the card's 12px padding). */
 .careNoteDelete {
   position: absolute;
-  top: var(--space-2);
+  bottom: var(--space-2);
   right: var(--space-2);
   opacity: 0;
   transition: opacity 0.12s;
@@ -324,6 +326,7 @@
 .chipDefault .chipCount {
   background: var(--neutral-0);
 }
+.appliedTemplateBadge:disabled { cursor: default; }
 .appliedTemplateBadge {
   display: inline-flex;
   align-items: center;

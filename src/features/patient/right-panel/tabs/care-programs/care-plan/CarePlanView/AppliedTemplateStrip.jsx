@@ -14,10 +14,12 @@ function TemplateBadge({
   canRemove,
   onSelect,
   onRemove,
+  disabled = false,
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       className={`${styles.appliedTemplateBadge} ${isActive ? styles.appliedTemplateBadgeActive : ''}`}
       aria-pressed={isActive}
       onClick={() => onSelect(template.id)}
@@ -58,11 +60,12 @@ function TemplateBadge({
  * An earlier run of a reinstated template: done (check mark), its version,
  * and selecting it shows that run's goals, interventions and barriers.
  */
-function RunBadge({ template, run, isActive, onSelect }) {
+function RunBadge({ template, run, isActive, onSelect, disabled = false }) {
   const outcome = run.status === 'completed' ? 'completed' : 'closed';
   return (
     <button
       type="button"
+      disabled={disabled}
       className={`${styles.appliedTemplateBadge} ${isActive ? styles.appliedTemplateBadgeActive : ''}`}
       aria-pressed={isActive}
       onClick={() => onSelect(`run:${run.id}`)}
@@ -106,6 +109,8 @@ export function AppliedTemplateStrip({
   onRemove,
   trailing = null,
   runsByTemplate = {},
+  // Past-version view: chips show, nothing filters or removes.
+  readOnly = false,
 }) {
   const chipsRef = useRef(null);
   const measureRef = useRef(null);
@@ -207,7 +212,8 @@ export function AppliedTemplateStrip({
       template={e.template}
       run={e.run}
       isActive={live && templateFilterId === e.key}
-      onSelect={live ? onSelect : () => {}}
+      onSelect={live && !readOnly ? onSelect : () => {}}
+      disabled={readOnly}
     />
   ) : (
     <TemplateBadge
@@ -217,8 +223,9 @@ export function AppliedTemplateStrip({
       version={runsByTemplate[e.template.id]?.version}
       isActive={live && templateFilterId === e.key}
       canRemove={canRemove}
-      onSelect={live ? onSelect : () => {}}
-      onRemove={live ? onRemove : () => {}}
+      onSelect={live && !readOnly ? onSelect : () => {}}
+      onRemove={live && !readOnly ? onRemove : () => {}}
+      disabled={readOnly}
     />
   ));
 
