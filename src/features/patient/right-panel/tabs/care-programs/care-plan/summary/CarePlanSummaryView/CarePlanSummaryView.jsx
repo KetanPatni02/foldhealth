@@ -1121,7 +1121,7 @@ export function CarePlanSummaryView({
                   : 'Summarize active programs'
                 }
               >
-                <Icon name="solar:magic-stick-3-linear" size={14} color="var(--primary-300)" />
+                <Icon name="custom:ai" size={14} color="var(--primary-300)" />
                 <span>
                   {summaryState === 'loading' ? 'AI is writing…'
                   : summaryState === 'ready' ? 'Generated Summary'

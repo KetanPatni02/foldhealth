@@ -252,7 +252,7 @@ export function ExtractedRecords({ records, activeBucket, setActiveBucket, onRev
           title="Degraded Documents"
           iconName="solar:info-circle-linear"
           iconColor="var(--status-warning)"
-          rightAction={{ label: `Review All (${degraded.length})`, icon: 'solar:magic-stick-3-linear', onClick: () => onReview(degraded[0]) }}
+          rightAction={{ label: `Review All (${degraded.length})`, icon: 'custom:ai', onClick: () => onReview(degraded[0]) }}
           rows={degraded}
           onReview={onReview}
           onDelete={onDelete}
@@ -429,7 +429,7 @@ export function ExtractedRow({ rec, onReview, onDelete, onOpenPatient }) {
       </div>
       {isDegraded && (
         <button type="button" className={styles.exReviewBtn} onClick={() => onReview(rec)}>
-          <Icon name="solar:magic-stick-3-linear" size={14} color="var(--neutral-0)" />
+          <Icon name="custom:ai-mono" size={14} color="var(--neutral-0)" />
           Review
         </button>
       )}

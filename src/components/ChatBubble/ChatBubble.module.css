@@ -83,6 +83,8 @@
 }
 
 .bubbleCall { padding: var(--space-2) var(--space-3); }
+/* Flush: the content draws its own sections edge to edge. */
+.bubbleFlush { padding: 0; gap: 0; overflow: hidden; }
 
 .text { white-space: pre-wrap; }
 

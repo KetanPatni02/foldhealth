@@ -50,6 +50,17 @@
   to   { opacity: 1; }
 }
 
+/* Card variant: a light tooltip holding a small card of content (a heading
+   and notes), e.g. the AI confidence explainer (Figma 2941:74217). */
+.bubbleLight.bubbleCard {
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--space-1);
+  font-weight: 400;
+  white-space: normal;
+  box-shadow: var(--shadow-tooltip);
+}
+
 /* Light variant — matches ActionButton tooltips. */
 .bubbleLight {
   background: var(--neutral-0);

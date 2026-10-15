@@ -255,7 +255,7 @@ export function MonitoringTab({ patient }) {
               <div className={styles.section}>
                 <div className={styles.timeline}>
                   <div className={styles.timelineHead}>
-                    <Icon name="solar:magic-stick-3-linear" size={13} />
+                    <Icon name="custom:ai" size={13} />
                     Since You Last Spoke · last touch 12 days ago
                   </div>
                   {data.timeline.map((t, i) => (

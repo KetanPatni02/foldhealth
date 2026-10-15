@@ -106,7 +106,7 @@ function PulseCard({ card, count, active, onClick }) {
     >
       <span className={[styles.pulseNum, styles[`num_${card.accent}`]].join(' ')}>{count}</span>
       <span className={styles.pulseTitleRow}>
-        {card.key === 'escalated' && <Icon name="solar:magic-stick-3-linear" size={13} />}
+        {card.key === 'escalated' && <Icon name="custom:ai" size={13} />}
         <span className={styles.pulseTitle}>{card.title}</span>
       </span>
       <span className={styles.pulseCaption}>{PANEL_TODAY.pulse[card.key].caption}</span>

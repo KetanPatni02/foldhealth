@@ -37,6 +37,15 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Comms → E-fax: received faxes matched to a patient.** Each fax shows
+  the file (View File / Download) and an "Add Patient Context" row, with the
+  AI's picks attached under the message as "Suggested Members" (confidence
+  badge, hover for what it rests on, + to add). "View N More" and + open
+  Patient Context for eFax: search any patient or add an OCR match. Once
+  added, the patient shows with View Profile / Change Patient and an AI mark
+  when the OCR suggested them. "Create Test eFax" receives a fax about any
+  patient read as a strong match, needs review, or no match. Stored in
+  `efax_inbound` (`supabase/efax_inbound_migration.sql`).
 - **Settings → Billing: Billable, Billing History and Timer Access.**
   Billable lists unbilled members with Program Type, CPT Code, Provider,
   Date of Service and Members filters and a total. Billing History lists

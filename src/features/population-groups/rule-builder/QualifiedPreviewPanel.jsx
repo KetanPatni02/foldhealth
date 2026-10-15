@@ -129,7 +129,7 @@ export function QualifiedPreviewPanel({
   if (!open) {
     return (
       <button type="button" className={styles.previewCollapsed} onClick={onToggle} title="Show rule assistant">
-        <Icon name="solar:magic-stick-3-linear" size={16} color="var(--neutral-400)" />
+        <Icon name="custom:ai" size={16} color="var(--neutral-400)" />
         <span className={styles.previewCollapsedCount}>
           {loading ? '…' : (error ? '!' : (count ?? '—'))}
         </span>
@@ -158,7 +158,7 @@ export function QualifiedPreviewPanel({
           size="S"
           fullWidth={false}
           items={[
-            { key: 'ai', label: 'Build with AI', icon: 'solar:magic-stick-3-linear' },
+            { key: 'ai', label: 'Build with AI', icon: 'custom:ai' },
             {
               key: 'members',
               label: 'Matching patients',

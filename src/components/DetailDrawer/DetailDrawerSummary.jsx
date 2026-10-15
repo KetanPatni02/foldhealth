@@ -82,7 +82,7 @@ export function DetailDrawerSummary({
       <button type="button" className={styles.sectionHeader} onClick={onToggle} aria-expanded={open}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span className={styles.sparkle}>
-            <Icon name="solar:magic-stick-3-bold" size={14} />
+            <Icon name="custom:ai" size={14} />
           </span>
           <span className={styles.aiGradientText} style={{ fontSize: 'var(--font-md)', fontWeight: 600 }}>
             Unity-Generated Call Summary

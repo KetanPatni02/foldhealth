@@ -21,6 +21,7 @@ import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.j
 import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
 import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
 import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comms/educationLibrary.js';
+import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
 import { CCM_BILLING_PERIODS, CCM_BILLABLE_ACTIVITIES, CCM_BILLING_REPORTS } from '../src/features/patient/data/ccmBillingMock.js';
@@ -1091,6 +1092,12 @@ async function main() {
   const contactRows = sampleContactsFor(PAMI_DEMO_PATIENT).map(contactToRow);
   const { error: contactErr } = await supabase.from('patient_contacts').upsert(contactRows, { onConflict: 'id' });
   if (contactErr) { console.error('  ✗', contactErr.message); } else { console.log(`  ✓ ${contactRows.length} patient contacts`); }
+
+  console.log('Seeding efax_inbound (Comms → E-fax)...');
+  const { data: faxPatients } = await supabase.from('all_patients').select('id, name, dob, member_id, gender, age, phone').order('name').limit(2);
+  const faxRows = sampleFaxes((faxPatients || []).map(r => ({ ...r, memberId: r.member_id }))).map(faxToRow);
+  const { error: faxErr } = await supabase.from('efax_inbound').upsert(faxRows, { onConflict: 'id' });
+  if (faxErr) { console.error('  ✗', faxErr.message); } else { console.log(`  ✓ ${faxRows.length} inbound faxes`); }
 
   console.log('Seeding patient_education_content (Send Education)...');
   const eduRows = EDUCATION_LIBRARY.map(educationToRow);
