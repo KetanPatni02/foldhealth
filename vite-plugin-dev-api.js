@@ -5,8 +5,9 @@
  *
  * Hot-reloads the handler module each request so edits land without
  * restarting the dev server. Production keeps using Vercel's own runtime
- * via `api/send-test-email.js`.
+ * (`api/email.js` serves /api/send-test-email via a vercel.json rewrite).
  */
+import { readFileSync } from 'node:fs';
 import { loadEnv } from 'vite';
 
 // Vercel's res.status/json/send helpers on a plain Node response.
@@ -45,6 +46,12 @@ export function devApiPlugin() {
       // the live API without copying production secrets onto your laptop.
       const proxyBase = process.env.VITE_DEV_API_PROXY || 'https://foldagent.vercel.app';
       const hasResendKey = !!process.env.RESEND_API_KEY;
+      // vercel.json's fixed /api rewrites, as path → function path.
+      const apiRewrites = new Map(
+        (JSON.parse(readFileSync(`${process.cwd()}/vercel.json`, 'utf8')).rewrites || [])
+          .filter(r => r.source.startsWith('/api/') && !r.source.includes(':'))
+          .map(r => [r.source, r.destination.split('?')[0]]),
+      );
 
       server.middlewares.use(async (req, res, next) => {
         if (!req.url || !req.url.startsWith('/api/')) return next();
@@ -91,8 +98,11 @@ export function devApiPlugin() {
         }
 
         // Otherwise run the handler in-process from the local api/ folder.
+        // Paths vercel.json rewrites to a shared function load that function
+        // (it routes on the original path; see api/_lib/dispatch.js).
         const pathPart = req.url.split('?')[0].replace(/\/+$/, '');
-        const handlerPath = `${process.cwd()}${pathPart}.js`;
+        const target = apiRewrites.get(pathPart) || pathPart;
+        const handlerPath = `${process.cwd()}${target}.js`;
         try {
           const mod = await server.ssrLoadModule(handlerPath);
           const handler = mod.default;
