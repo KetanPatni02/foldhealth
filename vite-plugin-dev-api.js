@@ -46,10 +46,19 @@ export function devApiPlugin() {
       // the live API without copying production secrets onto your laptop.
       const proxyBase = process.env.VITE_DEV_API_PROXY || 'https://foldagent.vercel.app';
       const hasResendKey = !!process.env.RESEND_API_KEY;
-      // vercel.json's fixed /api rewrites, as path → function path.
+      // vercel.json's fixed /api rewrites, as path → function path. An
+      // unreadable vercel.json just means no rewrites (paths map to files).
+      let rewrites = [];
+      try {
+        const parsed = JSON.parse(readFileSync(`${process.cwd()}/vercel.json`, 'utf8'));
+        if (Array.isArray(parsed?.rewrites)) rewrites = parsed.rewrites;
+      } catch (err) {
+        console.warn('[dev-api] could not read vercel.json rewrites:', err?.message || err);
+      }
       const apiRewrites = new Map(
-        (JSON.parse(readFileSync(`${process.cwd()}/vercel.json`, 'utf8')).rewrites || [])
-          .filter(r => r.source.startsWith('/api/') && !r.source.includes(':'))
+        rewrites
+          .filter(r => typeof r?.source === 'string' && typeof r?.destination === 'string'
+            && r.source.startsWith('/api/') && !r.source.includes(':'))
           .map(r => [r.source, r.destination.split('?')[0]]),
       );
 
