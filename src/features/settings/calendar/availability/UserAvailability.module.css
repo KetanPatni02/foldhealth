@@ -45,7 +45,10 @@
 .tableWrap .row { animation-fill-mode: backwards; }
 .td { composes: td from '../../../../components/WorklistShell/WorklistRow.module.css'; }
 /* Every cell reads from the top, so a user's name lines up with their first block. */
-.tableWrap .td { vertical-align: top; }
+/* Long text (locations, types) wraps to the next line instead of running
+   into the next column; the dates stay on one line. */
+.tableWrap .td { vertical-align: top; white-space: normal; overflow-wrap: break-word; }
+.tableWrap .datesTd { white-space: nowrap; }
 .stickyLeft { composes: stickyLeft from '../../../../components/WorklistShell/WorklistRow.module.css'; }
 .stickyRight { composes: stickyRight from '../../../../components/WorklistShell/WorklistRow.module.css'; }
 
@@ -181,6 +184,36 @@
 }
 
 
+/* Filters, under the notice, from the icon beside search. */
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+
+/* Repeats: the pattern, then its days in grey. */
+.repeats {
+  display: flex;
+  flex-direction: column;
+}
+.repeatDays {
+  font-size: var(--font-base);
+  line-height: 1.35;
+  color: var(--neutral-300);
+}
+
+/* Details: each time range in its own box (Figma 2981:11052). */
+/* Like the old view's Hours column: time over type, ranges 8px apart. */
+.ranges {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
 /* Between Search and Add new in the tab bar (as in Member/Leads). */
 .toolDivider {
   width: 0.5px;
@@ -199,8 +232,9 @@
 .moreRow td { border-bottom: 0.5px solid var(--neutral-150); }
 
 .moreTd {
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) var(--space-2) var(--space-2);
   font-size: var(--font-sm);
+  border-top: 0.5px solid var(--neutral-150);
 }
 
 .moreLink {
@@ -486,13 +520,6 @@
 .cloneDays {
   font-size: var(--font-base);
   color: var(--neutral-200);
-}
-
-.cloneBlockName {
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: var(--neutral-400);
-  white-space: nowrap;
 }
 
 .cloneStack {
@@ -782,3 +809,70 @@
   gap: var(--space-1);
   font-size: var(--font-sm);
 }
+
+.weekActions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+/* Fixed / Rolling side by side. */
+.spanRadios [role="radiogroup"] { flex-direction: row; gap: var(--space-6); }
+
+/* Skips holidays, for the whole availability (Figma Electronic ID 2116:89554). */
+.skipBox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  cursor: pointer;
+}
+.skipText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.skipLabel {
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+.skipHint {
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-300);
+}
+
+/* Overlap alert under the hours: several lines, the icon stays with the first. */
+.conflictNoteNew.conflictNoteNew { align-items: flex-start; }
+.conflictNoteNew :global(svg) { margin-top: 0.0625rem; }
+
+
+/* Clone-from dropdown option (as in Configure Team's user picker). */
+.cloneOption {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+}
+.cloneOptionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 4);
+}
+.cloneOptionName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-md);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.cloneOptionRole { font-size: var(--font-sm); color: var(--neutral-300); }

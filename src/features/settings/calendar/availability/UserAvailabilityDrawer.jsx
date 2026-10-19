@@ -17,6 +17,8 @@ import { Link } from '../../../../components/Link/Link';
 import { TimePicker } from '../../../../components/TimePicker/TimePicker';
 import { Tooltip } from '../../../../components/Tooltip/Tooltip';
 import { InfoBar } from '../../../../components/InfoBar/InfoBar';
+import { RadioOptionGroup } from '../../../../components/RadioOptionGroup/RadioOptionGroup';
+import { recordsFor, oooStatus, formatDate as oooDate } from '../../../ooo/oooUtils';
 import { AddIconMinimalist } from '../../../../components/Icon/AddIconMinimalist';
 import { toast } from '../../../../components/Toast/sonnerToast';
 import { CloneFromUserDrawer } from './CloneFromUserDrawer';
@@ -25,7 +27,7 @@ import { useAppStore } from '../../../../store/useAppStore';
 import { FALLBACK_APPOINTMENT_TYPES } from '../../../../components/ScheduleDrawer/scheduleDrawerConstants';
 import {
   RECURRENCES, WEEK_ORDINALS, sortOrdinals, cadenceSentence, TIMEZONES, ALL_TYPES, newBlock, newSlot, ruleSummary, validateBlock, blockStatus, STATUS_LOOK,
-  findConflicts, conflictText, isBlankBlock,
+  findConflicts, conflictText, isBlankBlock, timezoneLabel,
 } from './availabilityUtils';
 import styles from './UserAvailability.module.css';
 
@@ -51,8 +53,14 @@ const unitOptions = (n) => RECURRENCES.map(r => {
  *   user's existing ones, scrolled into view
  * @param {object}      [props.cloneFrom] – a user whose blocks are copied to
  *   the user picked here (added after any the target already has)
+ * @param {'old'|'new'} [props.variant='old'] – 'new' calls blocks slots and
+ *   adds: an optional end date, a "Skips holidays" switch (on by default),
+ *   overlaps allowed with an explicit tick, an OOO warning, and "Also apply
+ *   to" more users
  */
-export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = false, cloneFrom = null, onClose }) {
+export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = false, cloneFrom = null, variant = 'old', onClose }) {
+  const isNew = variant === 'new';
+  const oooRecords = useAppStore(s => s.oooRecords);
   const locations = useAppStore(s => s.practiceLocations);
   const fetchPracticeLocations = useAppStore(s => s.fetchPracticeLocations);
   const appointmentTypes = useAppStore(s => s.appointmentTypes);
@@ -71,6 +79,9 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
     if (!addBlock) return existing;
     return [...existing, newBlock()];
   });
+  // New view: Skips holidays is set once for the user's whole availability
+  // and stamped on every slot when it saves.
+  const [skipHolidays, setSkipHolidays] = useState(() => blocks.every(b => b.skipHolidays !== false));
   // The block that's just been added (from either +):
   // scrolled to and eased in.
   const [freshIndex, setFreshIndex] = useState(() => (addBlock ? (initialUser?.blocks?.length || 0) : -1));
@@ -109,6 +120,7 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
       setTargetCount(theirs.length);
     } else if (theirs.length) {
       setBlocks(theirs);
+      setSkipHolidays(theirs.every(b => b.skipHolidays !== false));
     }
   };
 
@@ -124,7 +136,7 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
   const tzOptions = useMemo(() => {
     const set = new Set(TIMEZONES);
     blocks.forEach(b => b.timezone && set.add(b.timezone));
-    return [...set].map(z => ({ value: z, label: z.replace(/_/g, ' ') }));
+    return [...set].map(z => ({ value: z, label: timezoneLabel(z) }));
   }, [blocks]);
 
   // Folding a card is view state, not an edit: it doesn't mark the form dirty.
@@ -154,10 +166,11 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
   // the untouched starter block, if that's all there is) and ease in one
   // after another (the slide-in marks them as new); the first is scrolled to.
   const [importing, setImporting] = useState(false);
-  const importBlocks = (source, list) => {
+  const importBlocks = (list) => {
     const keep = blocks.length === 1 && isBlankBlock(blocks[0]) ? [] : blocks;
-    // importedFromId remembers the source block, so it can't be imported twice.
-    const copies = copyBlocks(list).map((b, n) => ({ ...b, collapsed: false, arrive: n + 1, importedFrom: source?.name, importedFromId: list[n].id }));
+    // importedFromId remembers the source block, so it can't be imported twice;
+    // importedFrom (whose it was) comes with each one, as they may be from several users.
+    const copies = copyBlocks(list).map((b, n) => ({ ...b, collapsed: false, arrive: n + 1, importedFrom: list[n].importedFrom, importedFromId: list[n].id }));
     setImporting(false);
     setDirty(true);
     // The user's own blocks fold away so the imported ones are what's in view.
@@ -168,17 +181,32 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
 
   // Overlaps are flagged only on newly imported blocks: the user's existing
   // blocks are what they are, and the import is what's being checked.
-  const conflicts = findConflicts(blocks).map((c, i) => (blocks[i].arrive ? c : []));
-  // An imported block that double-books the user can't be saved.
-  const hasConflicts = conflicts.some(c => c.length);
+  // New view: every block is checked, and an overlap can be allowed (it may
+  // double-book) instead of blocking the save.
+  const conflicts = findConflicts(blocks).map((c, i) => (isNew || blocks[i].arrive ? c : []));
+  // New view: overlapping slots are allowed (the slot says where it may
+  // double-book); only the old view blocks saving on them.
+  const userOoo = useMemo(
+    () => (user ? recordsFor(oooRecords, { id: user.id, name: user.name }).filter(r => oooStatus(r) !== 'Past') : []),
+    [oooRecords, user],
+  );
+  const slotOoo = (b) => (!b.startDate ? [] : userOoo.filter(r => String(r.endAt).slice(0, 10) >= b.startDate
+    && (!b.endDate || String(r.startAt).slice(0, 10) <= b.endDate)));
+  const hasConflicts = !isNew && conflicts.some(c => c.length);
   // How a clash names the other block: the target's own blocks by location
   // (they're listed, not numbered, in Clone); everything else by number.
   const blockNumber = (k) => (cloneFrom ? k - targetCount + 1 : k + 1);
+  const unit = isNew ? 'Slot' : 'Block';
   const blockLabel = (k) => (cloneFrom && k < targetCount
-    ? `${user?.name}'s ${blocks[k].location || 'block'}`
-    : `Block ${blockNumber(k)}`);
+    ? `${user?.name}'s ${blocks[k].location || unit.toLowerCase()}`
+    : `${unit} ${blockNumber(k)}`);
 
-  const errors = blocks.map(validateBlock);
+  const errors = blocks.map((b) => {
+    const e = validateBlock(b);
+    // New view: a rolling slot has no end date; it repeats until stopped.
+    if (isNew && b.rolling) delete e.endDate;
+    return e;
+  });
   const invalid = !user || errors.some(e => Object.keys(e).length);
   // Save waits for something to save and every required field; the tooltip
   // on the disabled button says which.
@@ -197,7 +225,11 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
       return;
     }
     setSaving(true);
-    const ok = await saveUserAvailability(user, blocks.map(b => ({ ...b, collapsed: undefined, arrive: undefined, importedFrom: undefined, importedFromId: undefined, checked: undefined })));
+    const clean = blocks.map(b => ({
+      ...b, collapsed: undefined, arrive: undefined, importedFrom: undefined, importedFromId: undefined, checked: undefined,
+      ...(isNew ? { skipHolidays } : {}),
+    }));
+    const ok = await saveUserAvailability(user, clean);
     setSaving(false);
     if (ok) {
       toast.success(`Availability saved for ${user.name}`);
@@ -243,7 +275,7 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
                     <DownChevronIcon size={16} color="var(--neutral-300)" className={[styles.blockChevron, b.collapsed ? styles.blockChevronShut : ''].join(' ')} />
                     <span className={styles.blockTitleText}>
                       <span className={styles.blockTitle}>
-                        Block {blockNumber(i)}
+                        {unit} {blockNumber(i)}
                         {status && <Badge tone={status.tone} size="S" label={status.label} />}
                       </span>
                       {b.collapsed && ruleSummary(b) && <span className={styles.blockSub}>{ruleSummary(b)}</span>}
@@ -265,7 +297,7 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
                   </span>
                 </header>
 
-                {conflicts[i].length > 0 && (
+                {!isNew && conflicts[i].length > 0 && (
                   <InfoBar variant="inline" tone="warning" icon="solar:danger-triangle-linear" className={styles.conflictNote}>
                     {conflicts[i].map(c => (
                       <span key={c.index} className={styles.conflictLine}>
@@ -277,6 +309,22 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
 
                 <Collapse open={!b.collapsed}>
                 <div className={styles.blockBody}>
+                {/* New view: overlaps are allowed; the alert at the top of the slot says where. */}
+                {isNew && conflicts[i].length > 0 && (
+                  <InfoBar variant="inline" tone="warning" className={styles.conflictNoteNew}>
+                    {conflicts[i].map(c => `Overlaps ${blockLabel(c.index)}: ${conflictText(c)}`).join('; ')}. Double-booking may occur in these overlapping times.
+                  </InfoBar>
+                )}
+                {isNew && (
+                  <RadioOptionGroup
+                    name={`slot-span-${i}`}
+                    className={styles.spanRadios}
+                    options={[{ value: 'fixed', label: 'Fixed Slot' }, { value: 'rolling', label: 'Rolling Slot' }]}
+                    value={b.rolling ? 'rolling' : 'fixed'}
+                    // Rolling drops the end date; Fixed asks for one again.
+                    onChange={(v) => update(i, v === 'rolling' ? { rolling: true, endDate: '' } : { rolling: false })}
+                  />
+                )}
                 <div className={styles.pair}>
                   <Select
                     label="Location"
@@ -296,7 +344,17 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
 
                 <div className={styles.pair}>
                   <DatePicker label="Start date" required value={b.startDate} onSelect={(v) => update(i, { startDate: v })} hasError={!!e.startDate} helperText={e.startDate} />
-                  <DatePicker label="End date" required value={b.endDate} min={b.startDate} onSelect={(v) => update(i, { endDate: v })} hasError={!!e.endDate} helperText={e.endDate} />
+                  {!(isNew && b.rolling) && (
+                    <DatePicker
+                      label="End date"
+                      required
+                      value={b.endDate}
+                      min={b.startDate}
+                      onSelect={(v) => update(i, { endDate: v })}
+                      hasError={!!e.endDate}
+                      helperText={e.endDate}
+                    />
+                  )}
                 </div>
 
                 <Switch checked={!!b.advanced} onChange={(v) => setAdvanced(i, !!v)} label="Advanced cadence" className={styles.cadenceSwitch} />
@@ -355,7 +413,7 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
                 )}
 
                 <div className={styles.field}>
-                  <span className={styles.label}>Hours</span>
+                  <span className={styles.label}>Time ranges</span>
                   <div className={styles.slotList}>
                     {b.slots.map((s, j) => (
                       <div key={j} className={styles.slotRowWrap}>
@@ -393,6 +451,18 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
                   </span>
                 </div>
 
+                {/* Out-of-office days in this slot: at the end of the card, just above its summary. */}
+                {isNew && (() => {
+                  // Out of office on any of this slot's dates. A rolling slot
+                  // has no end, so every OOO from its start on counts.
+                  const out = slotOoo(b);
+                  if (!out.length) return null;
+                  return (
+                    <InfoBar variant="inline" tone="info">
+                      This slot includes the user&apos;s out-of-office days ({out.map(r => `${oooDate(r.startAt)} – ${oooDate(r.endAt)}`).join(', ')}). Availability does not apply to those days.
+                    </InfoBar>
+                  );
+                })()}
                 {ruleSummary(b) && (
                   <div className={styles.summary}><BlockMeta block={b} /></div>
                 )}
@@ -449,8 +519,18 @@ export function UserAvailabilityDrawer({ user: initialUser, users, addBlock = fa
               placeholder="Select user"
               errorText={touched && !user ? 'Choose a user.' : undefined}
             />
+            {/* Figma Electronic ID 2116:89554: one boxed switch for every slot. */}
+            {isNew && (
+              <label className={styles.skipBox}>
+                <Switch checked={skipHolidays} onChange={(v) => { setSkipHolidays(!!v); setDirty(true); }} ariaLabel="Skip holidays" />
+                <span className={styles.skipText}>
+                  <span className={styles.skipLabel}>Skip holidays</span>
+                  <span className={styles.skipHint}>No appointments can be booked on practice holidays, across all slots.</span>
+                </span>
+              </label>
+            )}
             <div className={styles.blocksHead}>
-              <span className={styles.blocksTitle}>Availability blocks</span>
+              <span className={styles.blocksTitle}>{isNew ? 'Availability slots' : 'Availability blocks'}</span>
               <span className={styles.blockActions}>
                 <Button
                   variant="tertiary"

@@ -13848,13 +13848,41 @@ export const useAppStore = create((set, get) => ({
     }));
     const removed = before.filter(b => !next.some(n => n.id === b.id)).map(b => b.id);
     if (!get().userAvailabilityLocal) {
-      if (next.length) {
-        const { error } = await supabase.from('user_availability').upsert(next.map(blockToRow), { onConflict: 'id' });
-        if (error) { console.warn('saveUserAvailability:', error.message); get().showToast?.('Could not save availability. Try again.'); return false; }
+      // All or nothing: the save_user_availability function writes and removes
+      // in one transaction (user_availability_new_view_migration.sql).
+      const { error: rpcError } = await supabase.rpc('save_user_availability', {
+        p_rows: next.map(b => ({ ...blockToRow(b), allow_overlap: !!b.allowOverlap })),
+        p_remove: removed,
+      });
+      const noRpc = rpcError && (rpcError.code === 'PGRST202' || /could not find the function/i.test(rpcError.message || ''));
+      if (rpcError && !noRpc) {
+        console.warn('saveUserAvailability:', rpcError.message);
+        get().showToast?.('Could not save availability. Nothing was changed. Try again.');
+        return false;
       }
-      if (removed.length) {
-        const { error } = await supabase.from('user_availability').delete().in('id', removed);
-        if (error) { console.warn('saveUserAvailability (remove):', error.message); get().showToast?.('Could not remove a block. Try again.'); return false; }
+      if (noRpc) {
+        // Until that function exists: write, then remove, and if removing
+        // fails, put back what was there so a save never half-lands.
+        if (next.length) {
+          const { error } = await supabase.from('user_availability').upsert(next.map(blockToRow), { onConflict: 'id' });
+          if (error) { console.warn('saveUserAvailability:', error.message); get().showToast?.('Could not save availability. Nothing was changed. Try again.'); return false; }
+        }
+        if (removed.length) {
+          const { error } = await supabase.from('user_availability').delete().in('id', removed);
+          if (error) {
+            console.warn('saveUserAvailability (remove):', error.message);
+            const added = next.filter(n => !before.some(b => b.id === n.id)).map(n => n.id);
+            const undoAdd = added.length ? await supabase.from('user_availability').delete().in('id', added) : { error: null };
+            const undoEdit = before.length ? await supabase.from('user_availability').upsert(before.map(blockToRow), { onConflict: 'id' }) : { error: null };
+            if (undoAdd.error || undoEdit.error) {
+              get().showToast?.('Availability may be partly saved. Showing what was saved; check and try again.');
+              get().fetchUserAvailability?.({ force: true });
+            } else {
+              get().showToast?.('Could not save availability. Nothing was changed. Try again.');
+            }
+            return false;
+          }
+        }
       }
     }
     set(s => ({ userAvailability: [...s.userAvailability.filter(b => !same(b)), ...next] }));

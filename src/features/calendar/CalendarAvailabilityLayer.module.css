@@ -1,0 +1,9 @@
+/* Time the user in view isn't available: shaded and not bookable. */
+.unavailable {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  background: var(--neutral-50);
+  cursor: not-allowed;
+}

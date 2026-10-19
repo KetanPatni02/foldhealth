@@ -12,7 +12,8 @@ import { RingEmptyState } from '../../../../components/RingEmptyState/RingEmptyS
 import { Link } from '../../../../components/Link/Link';
 import { Icon } from '../../../../components/Icon/Icon';
 import { InfoBar } from '../../../../components/InfoBar/InfoBar';
-import { Tooltip } from '../../../../components/Tooltip/Tooltip';
+// Used by the old view's action cell (commented out below).
+// import { Tooltip } from '../../../../components/Tooltip/Tooltip';
 import { AddIconMinimalist } from '../../../../components/Icon/AddIconMinimalist';
 import { ConfirmDialog } from '../../../../components/ConfirmDialog/ConfirmDialog';
 import { toast } from '../../../../components/Toast/sonnerToast';
@@ -20,8 +21,14 @@ import { useAppStore } from '../../../../store/useAppStore';
 import { OooUserRecordsDrawer } from '../../../ooo/OooRecordsDrawers';
 import { OOO_ICON } from '../../../ooo/oooUtils';
 import { UserAvailabilityDrawer } from './UserAvailabilityDrawer';
+// The list, or This Week (providers by day, from the redesign view).
+import { UserAvailabilityNewView } from './UserAvailabilityNewView';
+import { DateRangePopover } from '../../../../components/DateRangePopover/DateRangePopover';
+import { fmtDay } from '../../../../components/DateRangeFilter/dateRangePresets';
+import { Toggle } from '../../../../components/Toggle/Toggle';
+import { FilterChip } from '../../../../components/FilterChip/FilterChip';
 import {
-  blockStatus, STATUS_LOOK, cadenceText, formatRange, slotText, ALL_TYPES,
+  blockStatus, STATUS_LOOK, cadenceText, formatDate, slotText, slotTextTz, ALL_TYPES,
 } from './availabilityUtils';
 import styles from './UserAvailability.module.css';
 
@@ -32,19 +39,34 @@ const noticeDismissed = () => { try { return localStorage.getItem(NOTICE_KEY) ==
 const COLLAPSE_MS = 180;
 const STATUS_ORDER = { active: 0, upcoming: 1, expired: 2 };
 
-// Every column has room for its content; below the table's minimum width
-// it scrolls sideways (User and Actions stay pinned).
+// // Every column has room for its content; below the table's minimum width
+// // it scrolls sideways (User and Actions stay pinned).
+// const COLUMNS = [
+//   { key: 'user', label: 'User', sticky: 'left', left: 0, width: 240 },
+//   { key: 'status', label: 'Status', width: 112 },
+//   { key: 'location', label: 'Location', width: 180 },
+//   { key: 'repeats', label: 'Cadence', width: 240 },
+//   { key: 'dates', label: 'Dates', width: 210 },
+//   { key: 'hours', label: 'Hours', width: 240 },
+//   { key: 'actions', label: 'Actions', sticky: 'right', width: 152 },
+// ];
+
+// Figma 2981:10929: status leads, then location, start & end date, how it
+// repeats, and each time range with its appointment types.
 const COLUMNS = [
-  { key: 'user', label: 'User', sticky: 'left', left: 0, width: 240 },
-  { key: 'status', label: 'Status', width: 112 },
-  { key: 'location', label: 'Location', width: 180 },
-  { key: 'repeats', label: 'Cadence', width: 240 },
-  { key: 'dates', label: 'Dates', width: 210 },
-  { key: 'hours', label: 'Hours', width: 240 },
-  { key: 'actions', label: 'Actions', sticky: 'right', width: 152 },
+  { key: 'user', label: 'User', sticky: 'left', left: 0, width: 240, sortKey: 'name', sortType: 'alpha' },
+  { key: 'status', label: 'Status', width: 120 },
+  { key: 'location', label: 'Location', width: 170 },
+  { key: 'dates', label: 'Start & End Date', width: 200, sortKey: 'startDate', sortType: 'date' },
+  // No width: Repeats and Details split what the fixed columns leave.
+  { key: 'repeats', label: 'Repeats' },
+  { key: 'details', label: 'Details' },
+  { key: 'actions', label: 'Actions', sticky: 'right', width: 105 },
 ];
+const STATUS_FILTER = { Active: 'active', Upcoming: 'upcoming', Past: 'expired' };
 
 const ROW_MENU = [
+  { key: 'add', icon: 'solar:add-linear', label: 'Add availability' },
   // Parked: Clone availability from the row menu (source first, then pick
   // who it's for). The drawer still supports it via `cloneFrom`; uncomment
   // to bring it back. Cloning lives in the drawer's "Clone from another user".
@@ -56,9 +78,13 @@ const ROW_MENU = [
 
 // Clone and Delete (and the Edit button) only make sense for someone with availability of
 // their own; everyone else just gets View OOO records (+ adds).
-const OWN_ONLY = ['clone', 'delete'];
+const OWN_ONLY = ['add', 'clone', 'delete'];
 
-function RowMenu({ onSelect, hasBlocks }) {
+// This Week puts every action in the ⋯ menu, Edit first.
+const WEEK_MENU = [{ key: 'edit', icon: 'solar:pen-linear', label: 'Edit availability' }, ...ROW_MENU];
+const weekMenuFor = (hasBlocks) => (hasBlocks ? WEEK_MENU : WEEK_MENU.filter(m => ['add', 'ooo'].includes(m.key)));
+
+function RowMenu({ onSelect, hasBlocks, items }) {
   const ref = useRef(null);
   const [open, setOpen] = useState(false);
   return (
@@ -68,7 +94,7 @@ function RowMenu({ onSelect, hasBlocks }) {
         <MenuPopover
           anchorRef={ref}
           ariaLabel="User availability actions"
-          items={hasBlocks ? ROW_MENU : ROW_MENU.filter(m => !m.divider && !OWN_ONLY.includes(m.key))}
+          items={items || (hasBlocks ? ROW_MENU : ROW_MENU.filter(m => !m.divider && !OWN_ONLY.includes(m.key)))}
           width={200}
           onSelect={(key) => { setOpen(false); onSelect(key); }}
           onClose={() => setOpen(false)}
@@ -79,10 +105,11 @@ function RowMenu({ onSelect, hasBlocks }) {
 }
 
 /**
- * Settings → Calendar → User availability: each user's availability blocks
- * (location, repeat pattern, dates, hours per appointment type, status).
- * Active blocks lead; the rest fold under "Show more". Users without their
- * own availability take their locations' practice hours.
+ * Settings → Calendar → User availability (Figma 2981:10929): each user's
+ * availability blocks (status, location, start & end date, how it repeats,
+ * time ranges with their appointment types). Active blocks lead; the rest
+ * fold under "Show N More". Filters open from the icon beside search. Users
+ * without their own availability take their locations' practice hours.
  */
 export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
   const platformUsers = useAppStore(s => s.platformUsers);
@@ -95,6 +122,16 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
   useEffect(() => { fetchPlatformUsers?.(); fetchUserAvailability(); }, [fetchPlatformUsers, fetchUserAvailability]);
 
   const [query, setQuery] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [layout, setLayout] = useState('list');
+  const [fLocations, setFLocations] = useState([]);
+  const [fStatuses, setFStatuses] = useState([]);
+  const [fTypes, setFTypes] = useState([]);
+  // [fromISO, toISO]: keeps slots that run on any day in it.
+  const [fRange, setFRange] = useState([]);
+  // { key: 'name' | 'startDate', dir: 'asc' | 'desc' } or null for the default order.
+  const [sort, setSort] = useState(null);
+  const sortDir = sort?.key === 'startDate' ? sort.dir : null;
   const [showNotice, setShowNotice] = useState(() => !noticeDismissed());
   const dismissNotice = () => {
     setShowNotice(false);
@@ -120,6 +157,12 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
   };
 
   const users = useMemo(() => {
+    // The filters are List-only; This Week shows a fixed week of everyone's availability.
+    const listView = layout === 'list';
+    const locs = listView ? fLocations : [];
+    const stats = listView ? fStatuses : [];
+    const types = listView ? fTypes : [];
+    const range = listView ? fRange : [];
     const emails = Object.fromEntries((taskProfiles || []).map(p => [p.name, p.email]));
     const byName = new Map();
     (blocks || []).forEach(b => { const k = b.userName?.toLowerCase(); if (k) byName.set(k, [...(byName.get(k) || []), b]); });
@@ -131,12 +174,35 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
         role: u.clinicalRoles?.[0] || 'Staff',
         blocks: (byName.get(u.name.toLowerCase()) || [])
           .map(b => ({ ...b, status: blockStatus(b) }))
-          .sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.startDate.localeCompare(b.startDate)),
+          .sort((a, b) => sortDir
+            ? (sortDir === 'asc' ? 1 : -1) * a.startDate.localeCompare(b.startDate)
+            : STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.startDate.localeCompare(b.startDate)),
       }))
       .filter(u => !q || u.name.toLowerCase().includes(q) || String(u.email || '').toLowerCase().includes(q))
+      // Filters narrow each user's blocks; with any on, users left with none drop out.
+      .map(u => ({
+        ...u,
+        blocks: u.blocks.filter(b => (!locs.length || locs.includes(b.location))
+          // Past slots stay hidden unless the Status filter asks for them, or a
+          // date range reaches back to them.
+          // This Week shows past slots too (a past week shows what was available then).
+          && (stats.length ? stats.some(k => STATUS_FILTER[k] === b.status) : (!listView || range.length === 2 || b.status !== 'expired'))
+          && (!types.length || (b.slots || []).some(sl => types.includes(sl.appointmentType || ALL_TYPES)))
+          && (range.length !== 2 || (b.startDate <= range[1] && (b.endDate || '9999-12-31') >= range[0]))),
+      }))
+      .filter(u => !(locs.length || stats.length || types.length || range.length) || u.blocks.length)
       // People with their own availability first, then by name.
-      .sort((a, b) => (b.blocks.length > 0) - (a.blocks.length > 0) || a.name.localeCompare(b.name));
-  }, [platformUsers, taskProfiles, blocks, query]);
+      // Sorted by date, a user ranks by their first slot (now leading their rows).
+      // Sorted by name, it's purely alphabetical.
+      .sort((a, b) => (sort?.key === 'name'
+        ? (sort.dir === 'asc' ? 1 : -1) * a.name.localeCompare(b.name)
+        : (b.blocks.length > 0) - (a.blocks.length > 0)
+          || (sortDir && a.blocks.length && (sortDir === 'asc' ? 1 : -1) * a.blocks[0].startDate.localeCompare(b.blocks[0].startDate))
+          || a.name.localeCompare(b.name)));
+  }, [platformUsers, taskProfiles, blocks, query, layout, fLocations, fStatuses, fTypes, fRange, sort, sortDir]);
+  const allLocations = useMemo(() => [...new Set((blocks || []).map(b => b.location).filter(Boolean))].sort(), [blocks]);
+  const allTypes = useMemo(() => [...new Set((blocks || []).flatMap(b => (b.slots || []).map(sl => sl.appointmentType || ALL_TYPES)))].sort(), [blocks]);
+  const filtersOn = fLocations.length || fStatuses.length || fTypes.length || fRange.length;
 
   const lastPage = Math.max(1, Math.ceil(users.length / perPage));
   const pageNow = Math.min(page, lastPage);
@@ -159,6 +225,8 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
 
   const tools = (
     <>
+      <Toggle size="S" items={[{ key: 'list', label: 'List' }, { key: 'week', label: 'This Week' }]} active={layout} onChange={setLayout} />
+      <span className={styles.toolDivider} aria-hidden="true" />
       {searchOpen ? (
         <SearchBar
           placeholder="Search users"
@@ -169,6 +237,9 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
       ) : (
         <SearchIconButton tooltipBelow onClick={() => setSearchOpen(true)} />
       )}
+      {/* Search | Filter: only in List, where the filter icon is. */}
+      {layout === 'list' && <span className={styles.toolDivider} aria-hidden="true" />}
+      {layout === 'list' && <ActionButton icon="custom:filter" size="L" tooltip={filtersOpen ? 'Hide filters' : 'Filters'} tooltipBelow active={filtersOpen || !!filtersOn} onClick={() => setFiltersOpen(o => !o)} />}
       <span className={styles.toolDivider} aria-hidden="true" />
       <Button variant="secondary" size="L" leadingIconElement={<AddIconMinimalist size={16} color="currentColor" />} onClick={() => setEditing({})}>Add new</Button>
     </>
@@ -185,41 +256,161 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
       </span>
     </td>
   );
-  // + adds an availability block: the drawer opens on a fresh one, after
-  // any the user already has. The pen opens the drawer on what they have.
-  const actionCell = (u, span) => (
-    <td rowSpan={span} className={`${styles.td} ${styles.actionTd} ${styles.stickyRight}`}>
-      <span className={styles.actions}>
-        <ActionButton icon="solar:add-linear" size="L" tooltip="Add availability" tooltipLeft onClick={() => setEditing({ user: u, addBlock: true })} />
-        <span className={styles.actionDivider} aria-hidden="true" />
-        {/* The pen's glyph fills its whole box, so it's drawn at 16px to read
-            the same size as the + and ⋯ beside it. With no availability there's
-            nothing to edit: shown disabled, with the reason on hover. */}
+  // Edit opens the drawer on what they have; ⋯ holds Add, OOO records and
+  // Delete. With no availability yet, + replaces Edit.
+  const onRowAction = (u, key) => {
+    if (key === 'edit') setEditing({ user: u });
+    else if (key === 'add') setEditing({ user: u, addBlock: true });
+    else if (key === 'ooo') setOooUser(u);
+    else if (key === 'delete') setDeleting(u);
+  };
+  // Edit (or +) and the ⋯ menu.
+  const rowActions = (u) => (
+    <>
         {u.blocks.length > 0 ? (
           <ActionButton size="L" tooltip="Edit availability" tooltipLeft onClick={() => setEditing({ user: u })}>
             <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" />
           </ActionButton>
         ) : (
-          <Tooltip label="No availability to edit yet" variant="light" placement="bottom" align="right">
-            <ActionButton size="L" state="disabled" style={{ pointerEvents: 'none' }}>
-              <Icon name="solar:pen-linear" size={16} color="var(--neutral-150)" />
-            </ActionButton>
-          </Tooltip>
+          <ActionButton icon="solar:add-linear" size="L" tooltip="Add availability" tooltipLeft onClick={() => setEditing({ user: u, addBlock: true })} />
         )}
         <span className={styles.actionDivider} aria-hidden="true" />
         <RowMenu
           hasBlocks={u.blocks.length > 0}
-          onSelect={(key) => {
-            if (key === 'ooo') setOooUser(u);
-            else if (key === 'delete') setDeleting(u);
-            // Parked with the menu item above.
-            // else if (key === 'clone') setEditing({ cloneFrom: u });
-          }}
+          onSelect={(key) => onRowAction(u, key)}
         />
-      </span>
+    </>
+  );
+  const actionCell = (u, span) => (
+    <td rowSpan={span} className={`${styles.td} ${styles.actionTd} ${styles.stickyRight}`}>
+      <span className={styles.actions}>{rowActions(u)}</span>
     </td>
   );
 
+  // Old view's action cell (+ | edit | ⋯), kept for reference.
+//   // + adds an availability block: the drawer opens on a fresh one, after
+//   // any the user already has. The pen opens the drawer on what they have.
+//   const actionCell = (u, span) => (
+//     <td rowSpan={span} className={`${styles.td} ${styles.actionTd} ${styles.stickyRight}`}>
+//       <span className={styles.actions}>
+//         <ActionButton icon="solar:add-linear" size="L" tooltip="Add availability" tooltipLeft onClick={() => setEditing({ user: u, addBlock: true })} />
+//         <span className={styles.actionDivider} aria-hidden="true" />
+//         {/* The pen's glyph fills its whole box, so it's drawn at 16px to read
+//             the same size as the + and ⋯ beside it. With no availability there's
+//             nothing to edit: shown disabled, with the reason on hover. */}
+//         {u.blocks.length > 0 ? (
+//           <ActionButton size="L" tooltip="Edit availability" tooltipLeft onClick={() => setEditing({ user: u })}>
+//             <Icon name="solar:pen-linear" size={16} color="var(--neutral-300)" />
+//           </ActionButton>
+//         ) : (
+//           <Tooltip label="No availability to edit yet" variant="light" placement="bottom" align="right">
+//             <ActionButton size="L" state="disabled" style={{ pointerEvents: 'none' }}>
+//               <Icon name="solar:pen-linear" size={16} color="var(--neutral-150)" />
+//             </ActionButton>
+//           </Tooltip>
+//         )}
+//         <span className={styles.actionDivider} aria-hidden="true" />
+//         <RowMenu
+//           hasBlocks={u.blocks.length > 0}
+//           onSelect={(key) => {
+//             if (key === 'ooo') setOooUser(u);
+//             else if (key === 'delete') setDeleting(u);
+//             // Parked with the menu item above.
+//             // else if (key === 'clone') setEditing({ cloneFrom: u });
+//           }}
+//         />
+//       </span>
+//     </td>
+//   );
+//
+  // Old view's rows (one row per time range), kept for reference.
+//   const renderRow = (u) => {
+//     if (!u.blocks.length) {
+//       return (
+//         <tr key={u.id || u.name} className={[styles.row, styles.rowEmpty].join(' ')}>
+//           {userCell(u, 1)}
+//           <td colSpan={5} className={`${styles.td} ${styles.inheritedTd}`}>
+//             <span className={styles.inherited}>
+//               <Icon name="solar:clock-circle-linear" size={16} color="var(--neutral-200)" />
+//               No User Availability is configured for this provider. They currently follows availability schedule for their assigned practice.
+//             </span>
+//           </td>
+//           {actionCell(u, 1)}
+//         </tr>
+//       );
+//     }
+//     const open = expanded.has(u.id || u.name);
+//     const isClosing = closing.has(u.id || u.name);
+//     const shown = open ? u.blocks : u.blocks.slice(0, SHOWN_BLOCKS);
+//     const more = u.blocks.length - SHOWN_BLOCKS;
+//     // Each time range is its own table row: the block's location, cadence,
+//     // dates and status span them; only spacing separates a block's ranges.
+//     const slotsOf = (blk) => (blk.slots.length ? blk.slots : [null]);
+//     const span = shown.reduce((n, blk) => n + slotsOf(blk).length, 0) + (more > 0 ? 1 : 0);
+//     return (
+//       <Fragment key={u.id || u.name}>
+//         {shown.map((b, i) => {
+//           const look = STATUS_LOOK[b.status];
+//           const slots = slotsOf(b);
+//           const lastBlock = i === shown.length - 1 && !(more > 0);
+//           return slots.map((s, k) => {
+//             const firstOfBlock = k === 0;
+//             const lastOfBlock = k === slots.length - 1;
+//             return (
+//               <tr
+//                 key={`${b.id}-${k}`}
+//                 className={[
+//                   styles.row,
+//                   b.status === 'expired' ? styles.rowExpired : '',
+//                   lastOfBlock ? (lastBlock ? '' : styles.rowInGroup) : styles.rowSlot,
+//                   !firstOfBlock ? styles.rowSlotNext : '',
+//                   i >= SHOWN_BLOCKS ? (isClosing ? styles.rowHide : styles.rowReveal) : '',
+//                 ].filter(Boolean).join(' ')}
+//               >
+//                 {i === 0 && firstOfBlock && userCell(u, span)}
+//                 {firstOfBlock && (
+//                   <>
+//                     <td rowSpan={slots.length} className={styles.td}><Badge tone={look.tone} size="S" label={look.label} /></td>
+//                     <td rowSpan={slots.length} className={styles.td}><span className={styles.cellText}>{b.location}</span></td>
+//                     <td rowSpan={slots.length} className={styles.td}><span className={styles.cellText}>{cadenceText(b)}</span></td>
+//                     <td rowSpan={slots.length} className={styles.td}><span className={styles.cellText}>{formatRange(b.startDate, b.endDate)}</span></td>
+//                   </>
+//                 )}
+//                 <td className={styles.td}>
+//                   {s && (
+//                     <span className={styles.slot}>
+//                       <span className={styles.slotTime}>{slotText(s)}</span>
+//                       <span className={styles.slotType}>{s.appointmentType || ALL_TYPES}</span>
+//                     </span>
+//                   )}
+//                 </td>
+//                 {i === 0 && firstOfBlock && actionCell(u, span)}
+//               </tr>
+//             );
+//           });
+//         })}
+//         {more > 0 && (
+//           <tr className={styles.moreRow}>
+//             <td colSpan={5} className={styles.moreTd}>
+//               <Link variant="secondary" onClick={() => toggle(u.id || u.name)}>
+//                 <span className={styles.moreLink}>
+//                   {open && !isClosing ? 'Show less' : `Show ${more} more`}
+//                   <span className={[styles.moreChevron, open && !isClosing ? styles.moreChevronOpen : ''].join(' ')}>
+//                     <Icon name="solar:alt-arrow-down-linear" size={14} />
+//                   </span>
+//                 </span>
+//               </Link>
+//             </td>
+//           </tr>
+//         )}
+//       </Fragment>
+//     );
+//   };
+
+  // Figma 2981:10929: one row per block. Status, location, start & end date,
+  // how it repeats (pattern, then the days in grey), and its time ranges as
+  // boxes (time, then appointment type). The first two blocks show; the rest
+  // fold under "Show N More".
   const renderRow = (u) => {
     if (!u.blocks.length) {
       return (
@@ -227,72 +418,69 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
           {userCell(u, 1)}
           <td colSpan={5} className={`${styles.td} ${styles.inheritedTd}`}>
             <span className={styles.inherited}>
-              <Icon name="solar:clock-circle-linear" size={16} color="var(--neutral-200)" />
-              No User Availability is configured for this provider. They currently follows availability schedule for their assigned practice.
+              No User Availability configured. They follow the availability schedule for their assigned practice.
             </span>
           </td>
           {actionCell(u, 1)}
         </tr>
       );
     }
-    const open = expanded.has(u.id || u.name);
-    const isClosing = closing.has(u.id || u.name);
+    const id = u.id || u.name;
+    const open = expanded.has(id);
+    const isClosing = closing.has(id);
     const shown = open ? u.blocks : u.blocks.slice(0, SHOWN_BLOCKS);
     const more = u.blocks.length - SHOWN_BLOCKS;
-    // Each time range is its own table row: the block's location, cadence,
-    // dates and status span them; only spacing separates a block's ranges.
-    const slotsOf = (blk) => (blk.slots.length ? blk.slots : [null]);
-    const span = shown.reduce((n, blk) => n + slotsOf(blk).length, 0) + (more > 0 ? 1 : 0);
+    const span = shown.length + (more > 0 ? 1 : 0);
     return (
-      <Fragment key={u.id || u.name}>
+      <Fragment key={id}>
         {shown.map((b, i) => {
           const look = STATUS_LOOK[b.status];
-          const slots = slotsOf(b);
+          const [pattern, days] = cadenceText(b).split(' • ');
           const lastBlock = i === shown.length - 1 && !(more > 0);
-          return slots.map((s, k) => {
-            const firstOfBlock = k === 0;
-            const lastOfBlock = k === slots.length - 1;
-            return (
-              <tr
-                key={`${b.id}-${k}`}
-                className={[
-                  styles.row,
-                  b.status === 'expired' ? styles.rowExpired : '',
-                  lastOfBlock ? (lastBlock ? '' : styles.rowInGroup) : styles.rowSlot,
-                  !firstOfBlock ? styles.rowSlotNext : '',
-                  i >= SHOWN_BLOCKS ? (isClosing ? styles.rowHide : styles.rowReveal) : '',
-                ].filter(Boolean).join(' ')}
-              >
-                {i === 0 && firstOfBlock && userCell(u, span)}
-                {firstOfBlock && (
-                  <>
-                    <td rowSpan={slots.length} className={styles.td}><Badge tone={look.tone} size="S" label={look.label} /></td>
-                    <td rowSpan={slots.length} className={styles.td}><span className={styles.cellText}>{b.location}</span></td>
-                    <td rowSpan={slots.length} className={styles.td}><span className={styles.cellText}>{cadenceText(b)}</span></td>
-                    <td rowSpan={slots.length} className={styles.td}><span className={styles.cellText}>{formatRange(b.startDate, b.endDate)}</span></td>
-                  </>
-                )}
-                <td className={styles.td}>
-                  {s && (
-                    <span className={styles.slot}>
-                      <span className={styles.slotTime}>{slotText(s)}</span>
-                      <span className={styles.slotType}>{s.appointmentType || ALL_TYPES}</span>
+          return (
+            <tr
+              key={b.id}
+              className={[
+                styles.row,
+                b.status === 'expired' ? styles.rowExpired : '',
+                lastBlock ? '' : styles.rowInGroup,
+                i >= SHOWN_BLOCKS ? (isClosing ? styles.rowHide : styles.rowReveal) : '',
+              ].filter(Boolean).join(' ')}
+            >
+              {i === 0 && userCell(u, span)}
+              <td className={styles.td}><Badge tone={look.tone} size="S" label={look.label} /></td>
+              <td className={styles.td}><span className={styles.cellText}>{b.location}</span></td>
+              <td className={`${styles.td} ${styles.datesTd}`}>
+                <span className={styles.cellText}>{formatDate(b.startDate)} – {b.endDate ? formatDate(b.endDate) : 'Ongoing'}</span>
+              </td>
+              <td className={styles.td}>
+                <span className={styles.repeats}>
+                  <span className={styles.cellText}>{pattern}</span>
+                  {days && <span className={styles.repeatDays}>{days}</span>}
+                </span>
+              </td>
+              <td className={`${styles.td} ${styles.detailsTd}`}>
+                <span className={styles.ranges}>
+                  {(b.slots || []).map((sl, k) => (
+                    <span key={k} className={styles.slot}>
+                      <span className={styles.slotTime}>{slotTextTz(sl, b.timezone)}</span>
+                      <span className={styles.slotType}>{sl.appointmentType || ALL_TYPES}</span>
                     </span>
-                  )}
-                </td>
-                {i === 0 && firstOfBlock && actionCell(u, span)}
-              </tr>
-            );
-          });
+                  ))}
+                </span>
+              </td>
+              {i === 0 && actionCell(u, span)}
+            </tr>
+          );
         })}
         {more > 0 && (
           <tr className={styles.moreRow}>
             <td colSpan={5} className={styles.moreTd}>
-              <Link variant="secondary" onClick={() => toggle(u.id || u.name)}>
+              <Link variant="secondary" onClick={() => toggle(id)}>
                 <span className={styles.moreLink}>
-                  {open && !isClosing ? 'Show less' : `Show ${more} more`}
+                  {open && !isClosing ? 'Show Less' : `Show ${more} More`}
                   <span className={[styles.moreChevron, open && !isClosing ? styles.moreChevronOpen : ''].join(' ')}>
-                    <Icon name="solar:alt-arrow-down-linear" size={14} />
+                    <Icon name="solar:alt-arrow-down-linear" size={12} />
                   </span>
                 </span>
               </Link>
@@ -315,21 +503,66 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
           </InfoBar>
         </div>
       )}
+      {filtersOpen && layout === 'list' && (
+        <div className={styles.filterBar}>
+          <FilterChip label="Location" searchable options={allLocations} selected={fLocations} onChange={(v) => { setFLocations(v); setPage(1); }} />
+          <FilterChip label="Status" options={Object.keys(STATUS_FILTER)} selected={fStatuses} onChange={(v) => { setFStatuses(v); setPage(1); }} />
+          <FilterChip label="Appointment Type" searchable options={allTypes} selected={fTypes} onChange={(v) => { setFTypes(v); setPage(1); }} />
+          {/* Availability looks ahead, so just a custom range (no "Last 7 days" presets). */}
+          <FilterChip
+            label="Date Range"
+            active={fRange.length === 2}
+            activeSummary={fRange.length === 2 ? `${fmtDay(fRange[0])} – ${fmtDay(fRange[1])}` : undefined}
+            onClear={() => { setFRange([]); setPage(1); }}
+            renderPopover={({ anchorRect, onClose }) => (
+              <DateRangePopover
+                anchorRect={anchorRect}
+                label="Date Range"
+                selected={fRange}
+                onChange={(next) => { if (next.length === 2) { setFRange(next); setPage(1); onClose(); } }}
+                onClose={onClose}
+              />
+            )}
+          />
+          {filtersOn ? <Link variant="secondary" onClick={() => { setFLocations([]); setFStatuses([]); setFTypes([]); setFRange([]); }}>Clear all</Link> : null}
+        </div>
+      )}
+      {layout === 'week' ? (
+        <UserAvailabilityNewView
+          view="week"
+          users={users}
+          loading={!usersFetched || !blocksFetched}
+          onEdit={(u) => setEditing({ user: u })}
+          onAdd={(u) => setEditing({ user: u, addBlock: true })}
+          renderActions={(u) => (
+            <span className={styles.weekActions}>
+              <RowMenu items={weekMenuFor(u.blocks.length > 0)} onSelect={(key) => onRowAction(u, key)} />
+            </span>
+          )}
+        />
+      ) : (
       <div className={styles.tableWrap}>
         <WorklistShell
           header={null}
           columns={COLUMNS}
+          sortKey={sort?.key || null}
+          sortDir={sort?.dir || null}
+          // asc, then desc, then back to the default order.
+          onSort={(key) => {
+            setSort(cur => (cur?.key !== key ? { key, dir: 'asc' } : cur.dir === 'asc' ? { key, dir: 'desc' } : null));
+            setPage(1);
+          }}
           rows={rows}
           renderRow={renderRow}
           loading={loading}
           emptyState={(
             <div className={styles.empty}>
-              <RingEmptyState icon="solar:calendar-linear" label={query ? 'No users match this search' : 'No users yet'} />
+              <RingEmptyState icon="solar:calendar-linear" label={query ? 'No users match this search' : filtersOn ? 'No availability matches these filters' : 'No users yet'} />
             </div>
           )}
-          // Wide enough that no column squeezes its text into the next; on
-          // smaller screens the table scrolls sideways instead.
-          minTableWidth={1380}
+          // Sized to fit a 1440px screen; narrower ones scroll sideways.
+          minTableWidth={1188}
+          fixedLayout
           page={pageNow}
           perPage={perPage}
           totalItems={users.length}
@@ -337,6 +570,7 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
           onPageSizeChange={(n) => { setPerPage(n); setPage(1); }}
         />
       </div>
+      )}
 
       {editing && (
         <UserAvailabilityDrawer
@@ -344,21 +578,30 @@ export function UserAvailabilityTab({ tabs, activeTab, onTabChange }) {
           addBlock={!!editing.addBlock}
           cloneFrom={editing.cloneFrom || null}
           users={users}
+          variant="new"
           onClose={() => setEditing(null)}
         />
       )}
-      {deleting && (
+      {deleting && (() => {
+        // Every slot goes, past ones (hidden in the list) and filtered-out ones too.
+        const total = (blocks || []).filter(b => b.userName?.toLowerCase() === deleting.name.toLowerCase()).length;
+        return (
         <ConfirmDialog
           variant="destructive"
           title="Delete availability?"
-          description={`${deleting.blocks.length} availability block${deleting.blocks.length === 1 ? '' : 's'} for ${deleting.name} will be deleted and they will follow the availability schedule of their assigned practice.`}
+          description={`${total} availability slot${total === 1 ? '' : 's'} for ${deleting.name} will be deleted and they will follow the availability schedule of their assigned practice.`}
           confirmLabel="Delete"
           cancelLabel="Cancel"
           loading={deleteBusy}
           onCancel={() => setDeleting(null)}
           onConfirm={deleteAvailability}
-        />
-      )}
+        >
+          <InfoBar variant="inline" tone="warning" icon="solar:danger-triangle-linear">
+            All slots under this availability will be deleted.
+          </InfoBar>
+        </ConfirmDialog>
+        );
+      })()}
       {oooUser && (
         <OooUserRecordsDrawer
           user={{ id: oooUser.id, name: oooUser.name, email: oooUser.email, role: oooUser.role }}
