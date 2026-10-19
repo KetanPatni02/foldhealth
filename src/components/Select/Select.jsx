@@ -16,6 +16,8 @@ import styles from './Select.module.css';
  * Props:
  *  - options    [{ value: string, label: string, disabled?: boolean, icon?: string }]
  *                 (`icon`: a Solar icon shown before the option's label)
+ *  - emptyText  (string | (query) => string) — shown when nothing matches; a
+ *                 function gets what was typed, for "No users match "x" …"
  *  - value      (string)
  *  - onChange   (value) => void
  *  - placeholder (string)
@@ -232,7 +234,9 @@ export function Select({
     // cascades renders.
     const raf = requestAnimationFrame(recompute);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, [multiple, badges, selectedKey]);
+    // `open` too: a searchable field swaps the badge row for its input while
+    // open, so picks made then are measured when it closes and the row returns.
+  }, [multiple, badges, selectedKey, open]);
 
   const hiddenBadges = selectedMulti.slice(visibleBadgeCount);
 
@@ -410,7 +414,7 @@ export function Select({
         >
           {shownOptions.length === 0 && (
             <li className={styles.emptyOption} aria-disabled>
-              {searchLoading ? 'Searching…' : (emptyText || 'No matches')}
+              {searchLoading ? 'Searching…' : ((typeof emptyText === 'function' ? emptyText(query) : emptyText) || 'No matches')}
             </li>
           )}
           {shownOptions.map((opt, i) => {

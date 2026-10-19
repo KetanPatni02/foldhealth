@@ -29,6 +29,51 @@ export const TIMEZONES = [
   'America/Los_Angeles', 'America/Anchorage', 'Pacific/Honolulu', 'Asia/Kolkata',
 ];
 
+/**
+ * A slot's timezone, as everywhere in User Availability: its short name on a
+ * given day, so DST is right ("America/New_York" → "EDT" in summer, "EST" in
+ * winter). Zones without a US abbreviation read "GMT+5:30".
+ */
+export function timezoneAbbr(tz, on = new Date()) {
+  try {
+    return new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'short' })
+      .formatToParts(on).find(p => p.type === 'timeZoneName')?.value || tz;
+  } catch {
+    return String(tz || '').replace(/_/g, ' ');
+  }
+}
+
+/** For pickers: "America/Los Angeles (PDT)". */
+export const timezoneLabel = (tz) => `${String(tz || '').replace(/_/g, ' ')} (${timezoneAbbr(tz)})`;
+
+// Minutes a zone is ahead of UTC at the instant `ms`.
+function zoneOffsetMin(tz, ms) {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(new Date(ms)).map(p => [p.type, p.value]));
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return Math.round((asUtc - ms) / 60000);
+}
+
+/**
+ * The instant a slot's wall-clock time happens: `hhmm` on the ISO day
+ * `isoDate`, in the slot's timezone. Falls back to the viewer's zone when the
+ * slot has none.
+ */
+export function zonedInstant(isoDate, hhmm, tz) {
+  const [y, m, d] = String(isoDate).split('-').map(Number);
+  const [h, min] = String(hhmm || '0:0').split(':').map(Number);
+  if (!tz) return new Date(y, m - 1, d, h, min || 0).getTime();
+  const guess = Date.UTC(y, m - 1, d, h, min || 0);
+  try {
+    // Twice, so a guess on the other side of a DST change settles.
+    const first = guess - zoneOffsetMin(tz, guess) * 60000;
+    return guess - zoneOffsetMin(tz, first) * 60000;
+  } catch {
+    return new Date(y, m - 1, d, h, min || 0).getTime();
+  }
+}
+
 const pad = (n) => String(n).padStart(2, '0');
 export const isoDay = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parseDay = (iso) => {
@@ -65,8 +110,8 @@ export function blockStatus(block, today = isoDay(new Date())) {
 }
 
 export const STATUS_LOOK = {
-  active: { label: 'Active', tone: 'success' },
-  upcoming: { label: 'Upcoming', tone: 'info' },
+  active: { label: 'Active', tone: 'primary' },
+  upcoming: { label: 'Upcoming', tone: 'success' },
   expired: { label: 'Past', tone: 'grey' },
 };
 
@@ -144,6 +189,9 @@ export function shortDay(iso) {
 
 export const slotText = (s) => `${formatTime(s.start)} – ${formatTime(s.end)}`;
 
+/** A time range with its slot's timezone: "9 AM – 11 AM (PDT)". */
+export const slotTextTz = (s, tz, on) => `${slotText(s)}${tz ? ` (${timezoneAbbr(tz, on)})` : ''}`;
+
 /** One sentence describing a block, for the drawer's summary line. */
 export function ruleSummary(block) {
   // Nothing to describe until the block says where or when.
@@ -153,7 +201,7 @@ export function ruleSummary(block) {
   if (block.repeat === 'daily') parts.push(cadenceText(block));
   else if (block.days?.length) parts.push(cadenceText(block).replace(' • ', ' on '));
   const hours = (block.slots || []).filter(s => s.start && s.end)
-    .map(s => `${slotText(s)} (${s.appointmentType || ALL_TYPES})`);
+    .map(s => `${slotTextTz(s, block.timezone)} (${s.appointmentType || ALL_TYPES})`);
   if (hours.length) parts.push(hours.join(', '));
   if (block.startDate && block.endDate) parts.push(formatRange(block.startDate, block.endDate));
   if (block.skipHolidays) parts.push('skips holidays');
@@ -270,9 +318,14 @@ export const blockToRow = (b) => ({
   days: b.days || [],
   weeks: b.weeks || [],
   start_date: b.startDate,
-  end_date: b.endDate,
+  // No end date: the segment repeats until stopped (New view).
+  end_date: b.endDate || null,
   slots: b.slots || [],
   skip_holidays: !!b.skipHolidays,
+  // Only sent when used: the column comes with
+  // user_availability_new_view_migration.sql, and a save that names a column
+  // the table doesn't have yet is rejected outright.
+  ...(b.allowOverlap ? { allow_overlap: true } : {}),
   updated_at: b.updatedAt || new Date().toISOString(),
 });
 
@@ -291,9 +344,12 @@ export const rowToBlock = (r) => ({
   days: r.days || [],
   weeks: r.weeks || [],
   startDate: r.start_date,
-  endDate: r.end_date,
+  endDate: r.end_date || '',
+  // No end date: the slot repeats until stopped.
+  rolling: !r.end_date,
   slots: Array.isArray(r.slots) ? r.slots : [],
   skipHolidays: r.skip_holidays !== false,
+  allowOverlap: !!r.allow_overlap,
   updatedAt: r.updated_at,
 });
 

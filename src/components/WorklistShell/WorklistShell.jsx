@@ -59,6 +59,8 @@ const EMPTY_SELECTED_IDS = [];
  *                          found" badge.
  *  - minTableWidth        Minimum table width in px so wide column sets
  *                          get a horizontal scroll instead of squishing.
+ *  - fixedLayout          Column widths are exact; columns without a
+ *                          width split the remaining space equally.
  *  - embedded             Auto-height mode for tables stacked in a parent
  *                          scroller (see prop default above).
  *  - embeddedNoScroll     With `embedded`, skip the per-table horizontal
@@ -131,6 +133,7 @@ export function WorklistShell({
   onPageChange,
   onPageSizeChange,
   minTableWidth = 900,
+  fixedLayout = false,
   // When true, suppress the floating BulkBar even if rows are selected.
   // Care Plan uses a parent-level bulk bar across goals/interventions/barriers.
   hideBulkBar = false,
@@ -389,7 +392,7 @@ export function WorklistShell({
               rows.length === 0 && emptyState && styles.tableEmpty,
               embedded && embeddedNoScroll && styles.tableFlush,
             ].filter(Boolean).join(' ')}
-            style={{ minWidth: minTableWidth }}
+            style={{ minWidth: minTableWidth, ...(fixedLayout ? { tableLayout: 'fixed' } : null) }}
           >
             <colgroup>
               {columnsToRender.map((col, idx) => (

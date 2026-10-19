@@ -9,6 +9,7 @@ import { holidaysAt, holidaysForUser } from '../holidays/holidayUtils';
 import { useCalendarView } from './useCalendarView';
 import { useAppStore } from '../../store/useAppStore';
 import { CalendarOooLayer } from '../ooo/CalendarOooLayer';
+import { CalendarAvailabilityLayer } from './CalendarAvailabilityLayer';
 import { OooAllRecordsDrawer } from '../ooo/OooRecordsDrawers';
 import { apptPerson, personKey, recordPerson, recordsOnDate, samePerson } from '../ooo/oooUtils';
 import { useOooRecordActions } from '../ooo/useOooRecordActions';
@@ -45,6 +46,11 @@ export function CalendarView() {
   const platformUsers = useAppStore(s => (s.platformPeople?.length ? s.platformPeople : s.platformUsers));
   useEffect(() => { fetchHolidayConfigs(); }, [fetchHolidayConfigs]);
   const [showHolidays, setShowHolidays] = useState(false);
+  // "Show available slots": shade what the user in view can't be booked for.
+  const [showAvailable, setShowAvailable] = useState(false);
+  const segments = useAppStore(s => s.userAvailability);
+  const fetchUserAvailability = useAppStore(s => s.fetchUserAvailability);
+  useEffect(() => { if (showAvailable) fetchUserAvailability?.(); }, [showAvailable, fetchUserAvailability]);
   const scopedHolidays = useMemo(() => {
     if (focusUser) return holidaysForUser(holidayConfigs, platformUsers, focusUser, calendar.filterLocation);
     if (calendar.filterLocation.length) return holidaysAt(holidayConfigs, calendar.filterLocation);
@@ -94,6 +100,8 @@ export function CalendarView() {
         onTimezoneChange={calendar.setTimezone}
         onOpenOoo={() => setOooAll({})}
         onOpenHolidays={() => setShowHolidays(true)}
+        showAvailable={showAvailable}
+        onShowAvailableChange={setShowAvailable}
         onScheduleSelect={(key) => {
           if (key === 'appointment') {
             setDayProvider(null);
@@ -169,6 +177,14 @@ export function CalendarView() {
           eventsPluginRef={calendar.eventsPluginRef}
           dbAppointments={calendar.filteredAppointments}
         />
+        {calendar.currentView === 'week' && showAvailable && (
+          <CalendarAvailabilityLayer
+            focusUser={focusUser}
+            segments={segments}
+            holidays={scopedHolidays}
+            renderTick={`${calendar.renderTick}-${calendar.filteredAppointments.length}`}
+          />
+        )}
         {calendar.currentView === 'week' && (
           <CalendarOooLayer
             focusUser={focusUser}

@@ -1,7 +1,7 @@
 import { Badge } from '../../../../components/Badge/Badge';
 import { Icon } from '../../../../components/Icon/Icon';
 import { CalendarIcon } from '../../../../components/Icon/CalendarIcon';
-import { ALL_TYPES, STATUS_LOOK, blockStatus, cadenceText, formatRange, slotText } from './availabilityUtils';
+import { ALL_TYPES, STATUS_LOOK, blockStatus, cadenceText, formatRange, slotTextTz } from './availabilityUtils';
 import styles from './UserAvailability.module.css';
 
 /** "Weekly on Tue, Thu", "Every 2 weeks on Wed", "Daily". */
@@ -40,7 +40,7 @@ export function BlockSummary({ block, title, children }) {
  * @param {object} props.block
  */
 export function BlockMeta({ block }) {
-  const hours = (block.slots || []).filter(s => s.start && s.end).map(s => `${slotText(s)} (${s.appointmentType || ALL_TYPES})`);
+  const hours = (block.slots || []).filter(s => s.start && s.end).map(s => `${slotTextTz(s, block.timezone)} (${s.appointmentType || ALL_TYPES})`);
   const range = block.startDate && block.endDate ? formatRange(block.startDate, block.endDate) : '';
   const hasCadence = block.repeat === 'daily' || (block.days?.length || 0) > 0;
   const dot = <span className={styles.summaryDot} aria-hidden="true">•</span>;
