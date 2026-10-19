@@ -11,6 +11,7 @@ import { GbiLinkButton } from './CarePlanLinkedPreview';
 import { EditableText } from '../../../../../../../components/EditableText/EditableText';
 import { fmtCarePlanDate, isPastDue } from './carePlanTableModel';
 import { GBI_STATUS_META, gbiStatusMeta, gbiStatusColor, gbiStatusesFor } from '../lib/gbiStatus';
+import { useCarePlanPaused } from '../lib/carePlanPausedContext';
 import styles from './carePlanTables.module.css';
 
 export function EditableInlineTitle({ title, editable, onCommit }) {
@@ -164,7 +165,9 @@ export function GbiMetaLine({ segments }) {
  */
 export function GbiMetaDate({ label, noun, value, emptyLabel, status, editable, onEdit, trailing = null }) {
   const formatted = fmtCarePlanDate(value);
-  const overdue = isPastDue(value, status);
+  // A paused plan has no overdue flags.
+  const paused = useCarePlanPaused();
+  const overdue = !paused && isPastDue(value, status);
   const text = formatted ? [label, formatted].filter(Boolean).join(' ') : emptyLabel;
   const cls = [
     styles.metaDate,

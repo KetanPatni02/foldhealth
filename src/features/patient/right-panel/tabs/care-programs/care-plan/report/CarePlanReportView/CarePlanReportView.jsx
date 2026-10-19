@@ -12,6 +12,7 @@ const TARGET_LABEL = { ehr: 'EHR', patient: 'Patient', poa: 'POA' };
 const ACTION_LABEL = {
   created: 'Created', updated: 'Edited', status_changed: 'Status changed',
   deleted: 'Removed', shared: 'Shared', signed: 'Signed', note: 'Notes', restored: 'Restored',
+  paused: 'Paused', resumed: 'Resumed',
 };
 
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);

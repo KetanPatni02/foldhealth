@@ -74,6 +74,8 @@ export function barrierPayloadFromTemplateEntry(entry, goalIds = []) {
     priority: entry?.priority || 'medium',
     status: 'Not Started',
     goalIds,
+    // An SDOH need on the template stays one on the plan.
+    ...(entry?.sdohDomain ? { sdohDomain: entry.sdohDomain, sdohNeed: entry.sdohNeed || null, zCode: entry.zCode || '' } : {}),
   };
 }
 

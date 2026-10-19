@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Input } from '../../../../../components/Input/Input';
 import { Textarea } from '../../../../../components/Textarea/Textarea';
 import { Button } from '../../../../../components/Button/Button';
@@ -23,7 +23,22 @@ import {
   interventionPayloadFromTemplateEntry,
 } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import { CARE_PLAN_INTERVENTION_ICONS } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanInterventionMenu';
+import { useTemplateSdoh } from '../../lib/useTemplateSdoh';
+import { isSdohBarrier } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/sdohTaxonomy';
+import { UnityPromptField } from '../../../../../components/UnityPromptField/UnityPromptField';
+import { UnityIcon } from '../../../../../components/UnityIcon/UnityIcon';
+import { TableSkeleton } from '../../../../../components/TableSkeleton/TableSkeleton';
+import { buildTemplateCatalog, TEMPLATE_DESCRIPTION_MAX } from '../../lib/aiTemplateDraft';
+import {
+  requestTemplateDraft,
+  templateDraftToEditor,
+  draftProvenance,
+  materializeNewGoals,
+  withoutDraftMarks,
+} from '../../lib/templateDraftToEditor';
 import styles from './CarePlanCreateView.module.css';
+
+const DRAFT_EXAMPLE = 'A care plan for newly diagnosed Type 2 diabetes with focus on medication adherence and dietary counseling.';
 
 
 const TEMPLATE_TYPES = [
@@ -64,12 +79,29 @@ export function CarePlanCreateView({ onClose, onSave }) {
   const libraryGoals = useAppStore(s => s.carePlanGoals);
   const interventionLibrary = useAppStore(s => s.carePlanInterventionTemplates);
   const saveCarePlanGoal = useAppStore(s => s.saveCarePlanGoal);
+  const barrierLibrary = useAppStore(s => s.carePlanBarriers);
+
+  // UnityAI drafting: a plain-English description becomes goals,
+  // interventions and barriers (library items where possible) that land in
+  // the editor for review. `draftIdsRef` holds what the last draft added, so a
+  // fresh draft replaces it without touching anything added by hand.
+  const [draftText, setDraftText] = useState('');
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState('');
+  const [draftReview, setDraftReview] = useState(null);
+  // Only read inside handlers, so refs rather than state.
+  const draftIdsRef = useRef(new Set());
+  const draftConditionsRef = useRef(new Set());
+  const [saving, setSaving] = useState(false);
 
   const goalRows = useMemo(() => goals.map(g => ({
     ...goalPayloadFromTemplateEntry({ id: g.id }, goals),
     id: g.id,
     title: g.title,
-    subtitle: g.description || g.detail || '',
+    // A goal UnityAI suggested that isn't in the library yet says so.
+    subtitle: g.aiNew
+      ? ['New to library', g.description].filter(Boolean).join(' · ')
+      : g.description || g.detail || '',
     priority: g.priority || 'medium',
     icon: 'solar:flag-linear',
     status: 'Not Started',
@@ -84,11 +116,13 @@ export function CarePlanCreateView({ onClose, onSave }) {
     icon: CARE_PLAN_INTERVENTION_ICONS[entry.kind] || 'solar:clipboard-list-linear',
   })), [interventions]);
 
-  const barrierRows = useMemo(() => barriers.map((entry, i) => ({
+  // SDOH needs go to their own section (lib/useTemplateSdoh).
+  const { plainBarriers, sdoh } = useTemplateSdoh({ barriers, setBarriers, interventions, setInterventions });
+  const barrierRows = useMemo(() => plainBarriers.map((entry, i) => ({
     id: entry.id || `barrier-${i}`,
     title: entry.title,
     status: 'Not Started',
-  })), [barriers]);
+  })), [plainBarriers]);
 
   const norm = (v) => (v || '').trim().toLowerCase();
   const linksOf = (goal) => goal?.interventions || [];
@@ -154,19 +188,80 @@ export function CarePlanCreateView({ onClose, onSave }) {
     setTemplatesOpen(false);
   };
 
-  const canSave = name.trim().length > 0;
+  const dropDraft = (list) => list.filter(x => !draftIdsRef.current.has(x.id));
+  const mergeDraft = (list, incoming) => {
+    const kept = dropDraft(list);
+    const titles = new Set(kept.map(x => norm(x.title)));
+    return [...kept, ...incoming.filter(x => !titles.has(norm(x.title)))];
+  };
 
-  const payload = () => ({
+  const draftWithAi = async (text) => {
+    setDrafting(true);
+    setDraftError('');
+    try {
+      const catalog = buildTemplateCatalog({ goals: libraryGoals, interventions: interventionLibrary, barriers: barrierLibrary });
+      const draft = await requestTemplateDraft(text, catalog);
+      const lists = templateDraftToEditor(draft, { libraryGoals, interventionLibrary, barrierLibrary });
+      setGoals(prev => mergeDraft(prev, lists.goals));
+      setInterventions(prev => mergeDraft(prev, lists.interventions));
+      setBarriers(prev => mergeDraft(prev, lists.barriers));
+      draftIdsRef.current = new Set([...lists.goals, ...lists.interventions, ...lists.barriers].map(x => x.id));
+      if (!name.trim() && draft.name) setName(draft.name);
+      if (!description.trim() && draft.summary) setDescription(draft.summary);
+      // Conditions the last draft added are replaced too; ones picked by hand stay.
+      const kept = conditions.filter(c => !draftConditionsRef.current.has(c));
+      const keptSet = new Set(kept);
+      const added = draft.conditions.filter(c => !keptSet.has(c));
+      setConditions([...kept, ...added]);
+      draftConditionsRef.current = new Set(added);
+      if (draft.templateType === 'chronic') setTemplateType('chronic');
+      setDraftReview(draftProvenance(lists));
+    } catch (err) {
+      setDraftError(err.message);
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  const discardDraft = () => {
+    setGoals(prev => dropDraft(prev));
+    setInterventions(prev => dropDraft(prev));
+    setBarriers(prev => dropDraft(prev));
+    draftIdsRef.current = new Set();
+    const dropped = draftConditionsRef.current;
+    setConditions(prev => prev.filter(c => !dropped.has(c)));
+    draftConditionsRef.current = new Set();
+    setDraftReview(null);
+  };
+
+  const canSave = name.trim().length > 0 && !saving && !drafting;
+
+  const payload = (savedGoals) => ({
     name: name.trim(),
     description: description.trim(),
     templateType,
     conditions,
-    goals,
-    interventions,
-    barriers,
+    goals: savedGoals,
+    interventions: withoutDraftMarks(interventions),
+    barriers: withoutDraftMarks(barriers),
     scope,
     renewal,
   });
+
+  // Goals UnityAI suggested that the library doesn't have are created there
+  // first, so the template references real goals (and a retry won't create
+  // them twice).
+  const save = async (status) => {
+    setSaving(true);
+    try {
+      const savedGoals = await materializeNewGoals(goals, saveCarePlanGoal);
+      if (!savedGoals) return;
+      setGoals(savedGoals);
+      await onSave?.({ ...payload(savedGoals), status });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className={styles.view}>
@@ -176,6 +271,21 @@ export function CarePlanCreateView({ onClose, onSave }) {
         </div>
 
         <div className={styles.formBody}>
+          <UnityPromptField
+            label="Describe this template in plain English"
+            value={draftText}
+            onChange={setDraftText}
+            onSubmit={draftWithAi}
+            placeholder="Who it's for and what it should focus on"
+            example={DRAFT_EXAMPLE}
+            actionLabel={draftReview ? 'Redraft' : 'Draft Template'}
+            generatingLabel="Drafting…"
+            generating={drafting}
+            error={draftError}
+            hint="UnityAI drafts goals, interventions and barriers, using your library first. Review and edit before saving."
+            maxLength={TEMPLATE_DESCRIPTION_MAX}
+          />
+
           <div className={styles.field}>
             <div className={styles.fieldLabelRow}>
               <span className={styles.fieldLabel}>
@@ -244,7 +354,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
             variant="tertiary"
             size="L"
             disabled={!canSave}
-            onClick={() => onSave?.({ ...payload(), status: 'draft' })}
+            onClick={() => save('draft')}
           >
             Save as Draft
           </Button>
@@ -252,7 +362,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
             variant="secondary"
             size="L"
             disabled={!canSave}
-            onClick={() => onSave?.({ ...payload(), status: 'published' })}
+            onClick={() => save('published')}
           >
             Save as Template
           </Button>
@@ -261,7 +371,15 @@ export function CarePlanCreateView({ onClose, onSave }) {
         </div>
 
         <div className={styles.goalsBody}>
-          {goals.length === 0 ? (
+          {drafting ? (
+            <div className={styles.draftingCard} role="status" aria-live="polite">
+              <span className={styles.draftingTitle}>
+                <UnityIcon size={16} color="var(--primary-300)" />
+                Drafting goals, interventions and barriers…
+              </span>
+              <TableSkeleton rows={6} />
+            </div>
+          ) : goals.length === 0 ? (
             <div className={styles.goalsEmpty}>
               <RingEmptyState icon="solar:flag-linear" label="No Goals Added" iconSize={31} />
               <div className={styles.goalsEmptyActions}>
@@ -279,11 +397,32 @@ export function CarePlanCreateView({ onClose, onSave }) {
               </div>
             </div>
           ) : (
+            <>
+            {draftReview && (
+              <div className={styles.draftBanner} role="status">
+                <UnityIcon size={16} color="var(--primary-300)" />
+                <div className={styles.draftBannerText}>
+                  <span className={styles.draftBannerTitle}>
+                    Drafted {draftReview.goals} {draftReview.goals === 1 ? 'goal' : 'goals'},{' '}
+                    {draftReview.interventions} {draftReview.interventions === 1 ? 'intervention' : 'interventions'} and{' '}
+                    {draftReview.barriers} {draftReview.barriers === 1 ? 'barrier' : 'barriers'}
+                  </span>
+                  <span className={styles.draftBannerMeta}>
+                    {draftReview.fromLibrary} from your library
+                    {draftReview.fresh > 0 && `, ${draftReview.fresh} new (new goals are added to the library when you save)`}.
+                    {' '}Review, edit or remove anything, then Save as Template to publish.
+                  </span>
+                </div>
+                <Button variant="tertiary" size="S" onClick={discardDraft}>Discard Draft</Button>
+              </div>
+            )}
             <CarePlanSections
               goalRows={goalRows}
               interventionRows={interventionRows}
               barrierRows={barrierRows}
-              onOpenGoal={(row) => setEditingGoal(libraryGoals.find(g => g.id === row.id) || row)}
+              sdoh={sdoh}
+              onOpenGoal={(row) => setEditingGoal(goals.find(g => g.id === row.id && g.aiNew)
+                || libraryGoals.find(g => g.id === row.id) || row)}
               onOpenIntervention={(row) => setEditingIntervention(
                 interventions.find(i => i.id === row.id) || row,
               )}
@@ -294,6 +433,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
               onRowMenuIntervention={(m) => setRowMenu({ list: 'interventions', item: m.item, rect: m.rect })}
               onRowMenuBarrier={(m) => setRowMenu({ list: 'barriers', item: m.item, rect: m.rect })}
             />
+            </>
           )}
         </div>
       </div>
@@ -317,7 +457,10 @@ export function CarePlanCreateView({ onClose, onSave }) {
               return;
             }
             // Edit opens the same editor a row click does; barriers have none.
-            if (list === 'goals') setEditingGoal(libraryGoals.find(g => g.id === item.id) || item);
+            if (list === 'goals') {
+              setEditingGoal(goals.find(g => g.id === item.id && g.aiNew)
+                || libraryGoals.find(g => g.id === item.id) || item);
+            }
             else if (list === 'interventions') {
               setEditingIntervention(interventions.find(i => i.id === item.id) || item);
             }
@@ -344,10 +487,11 @@ export function CarePlanCreateView({ onClose, onSave }) {
       {picker === 'barriers' && (
         <AddBarriersDrawer
           primaryLabel="Add to Care Plan"
-          existingBarriers={barriers}
+          existingBarriers={plainBarriers}
           onClose={() => setPicker(null)}
           onAdd={(picked) => {
-            setBarriers((picked || []).map(b => ({ id: b.id, title: b.title })));
+            // The picker manages plain barriers; SDOH needs stay as they are.
+            setBarriers(prev => [...prev.filter(isSdohBarrier), ...(picked || []).map(b => ({ id: b.id, title: b.title }))]);
             setPicker(null);
           }}
         />
@@ -358,7 +502,13 @@ export function CarePlanCreateView({ onClose, onSave }) {
           goal={editingGoal}
           onClose={() => setEditingGoal(null)}
           onSave={async (values) => {
-            await saveCarePlanGoal(values, editingGoal.id);
+            // A suggested goal isn't in the library until the template saves,
+            // so its edits stay here until then.
+            if (editingGoal.aiNew) {
+              setGoals(prev => prev.map(g => (g.id === editingGoal.id ? { ...g, ...values, id: g.id, aiNew: true } : g)));
+            } else {
+              await saveCarePlanGoal(values, editingGoal.id);
+            }
             setEditingGoal(null);
           }}
         />

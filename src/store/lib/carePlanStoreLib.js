@@ -130,11 +130,24 @@ function carePlanGoalToRow(g) {
   };
 }
 
+// SDOH fields (care_plan_sdoh migration); null on ordinary barriers.
+const sdohFromRow = (row) => ({
+  sdohDomain: row.sdoh_domain || null,
+  sdohNeed: row.sdoh_need || null,
+  zCode: row.z_code || '',
+});
+// Only an SDOH barrier writes the columns, so ordinary saves keep working
+// before the migration has run.
+const sdohToRow = (b) => (b?.sdohDomain
+  ? { sdoh_domain: b.sdohDomain, sdoh_need: b.sdohNeed || null, z_code: b.zCode || null }
+  : {});
+
 function mapCarePlanBarrierRow(row) {
   return {
     id: row.id,
     title: row.title,
     description: row.description || '',
+    ...sdohFromRow(row),
     createdBy: row.created_by || '',
     updatedBy: row.updated_by || '',
     createdAt: row.created_at,
@@ -376,6 +389,7 @@ function mapPatientCarePlanBarrierRow(row, goalIdsFromJoin = null) {
     status: row.status || 'Not Started',
     priority: row.priority || 'medium',
     sortOrder: row.sort_order ?? 0,
+    ...sdohFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -390,6 +404,7 @@ function patientCarePlanBarrierToRow(b, planId) {
     status: b.status || 'Not Started',
     priority: b.priority || 'medium',
     sort_order: b.sortOrder ?? 0,
+    ...sdohToRow(b),
   };
 }
 
@@ -429,6 +444,17 @@ function mapPatientCarePlanRow(row) {
     updatedAt: row.updated_at || null,
     signedBy: row.signed_by || null,
     signedAt: row.signed_at || null,
+    // Pause (care_plan_pause migration). Rows from before it are active.
+    status: row.status === 'paused' ? 'paused' : 'active',
+    pause: row.status === 'paused' ? {
+      reason: row.pause_reason || 'other',
+      note: row.pause_note || '',
+      pausedOn: row.paused_on || null,
+      resumeOn: row.resume_on || null,
+      autoResume: !!row.auto_resume,
+      pausedBy: row.paused_by || '',
+    } : null,
+    nextTouchpoint: row.next_touchpoint || null,
   };
 }
 
@@ -681,6 +707,7 @@ export {
   mapPatientSocialHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
+  sdohToRow,
   mapCarePlanTemplateRow,
   mapTemplateInstanceRow,
   partitionRetired,

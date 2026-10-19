@@ -4,6 +4,7 @@ import { AddIconMinimalist } from '../../../../../components/Icon/AddIconMinimal
 import { CarePlanGoalsTable } from '../../../../patient/right-panel/tabs/care-programs/care-plan/tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../../../../patient/right-panel/tabs/care-programs/care-plan/tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../../../../patient/right-panel/tabs/care-programs/care-plan/tables/CarePlanBarriersTable';
+import { SdohSection } from '../../../../patient/right-panel/tabs/care-programs/care-plan/sdoh/SdohSection';
 import styles from './CarePlanSections.module.css';
 
 /**
@@ -17,6 +18,7 @@ export function CarePlanSections({
   linkedForGoal, linkedForChild,
   onAddGoal, onAddIntervention, onAddBarrier,
   onRowMenuGoal, onRowMenuIntervention, onRowMenuBarrier,
+  sdoh,
 }) {
   // The "+" only appears where the caller can act on it, so a read-only
   // rendering of the same sections stays read-only.
@@ -66,6 +68,10 @@ export function CarePlanSections({
           template
           onRowMenu={onRowMenuBarrier}
         />, onAddBarrier)}
+      {/* Social Needs (SDOH): needs by domain and suggested referrals
+          (lib/useTemplateSdoh). Each domain card adds its own needs. */}
+      {sdoh && section('Social Needs (SDOH)', sdoh.barriers.length,
+        <SdohSection mode="template" {...sdoh} />)}
       {footer}
     </div>
   );
