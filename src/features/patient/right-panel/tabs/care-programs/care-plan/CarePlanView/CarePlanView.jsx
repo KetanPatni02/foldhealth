@@ -5,6 +5,11 @@ import { Icon } from '@/components/Icon/Icon';
 import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
 import { ActionButton } from '@/components/ActionButton/ActionButton';
 import { Button } from '@/components/Button/Button';
+import { Alert } from '@/components/Alert/Alert';
+import { PauseCarePlanDialog } from '../drawers/PauseCarePlanDialog/PauseCarePlanDialog';
+import { CarePlanPausedContext } from '../lib/carePlanPausedContext';
+import { fmtCarePlanDate } from '../tables/carePlanTableModel';
+import { isCarePlanPaused, pauseSummary } from '../lib/carePlanPause';
 import { MenuPopover } from '@/components/MenuPopover/MenuPopover';
 import { goalCascade, barrierGoalIdsOf } from '../lib/carePlanGoalCascade';
 import { Select } from '@/components/Select/Select';
@@ -355,6 +360,18 @@ export function CarePlanView({ patientId, program }) {
     referral.id,
   );
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Pause (lib/carePlanPause): the live plan only, never an older version.
+  const [pauseOpen, setPauseOpen] = useState(false);
+  const pauseCarePlan = useAppStore(s => s.pauseCarePlan);
+  const resumeCarePlan = useAppStore(s => s.resumeCarePlan);
+  const planPaused = !viewedVersion && isCarePlanPaused(live?.plan);
+  const submitPause = async (form) => {
+    setPauseOpen(false);
+    if (await pauseCarePlan(patientId, program, form)) showToast('Care plan paused');
+  };
+  const resumePlan = async () => {
+    if (await resumeCarePlan(patientId, program)) showToast('Care plan resumed');
+  };
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   const [signNote, setSignNote] = useState('');
@@ -608,6 +625,8 @@ export function CarePlanView({ patientId, program }) {
       setSignNote,
       setSignOpen,
       scanForDuplicates,
+      setPauseOpen,
+      resumePlan,
     };
   });
   useCarePlanViewPanelRequest(carePlanPanelRequest, clearCarePlanPanelRequest, panelActionsRef);
@@ -836,6 +855,7 @@ export function CarePlanView({ patientId, program }) {
   };
 
   return (
+    <CarePlanPausedContext.Provider value={planPaused}>
     <div className={styles.container}>
       <div className={styles.stickyTop}>
         {/* pinned templates + problems bar */}
@@ -913,6 +933,20 @@ export function CarePlanView({ patientId, program }) {
           </button>
         </div>
       )}
+      {planPaused && (
+        <div className={styles.pausedBanner}>
+          <Alert
+            tone="info"
+            icon="solar:pause-circle-linear"
+            message={<><strong>Care plan paused</strong> · {pauseSummary(live.plan.pause)}. No cadence, overdue flags or automated outreach until it resumes.</>}
+          />
+          {canEdit && (
+            <Button variant="secondary" size="S" leadingIcon="solar:play-circle-linear" onClick={resumePlan}>
+              Resume Now
+            </Button>
+          )}
+        </div>
+      )}
       {!carePlanLoading && (viewData.goals.length + viewData.interventions.length + (viewData.barriers || []).length) > 0 && (
         <div className={styles.summaryStrip}>
           <span className={styles.summaryMetric}><strong>{planStats.goals}</strong> goals</span>
@@ -922,6 +956,12 @@ export function CarePlanView({ patientId, program }) {
           <span className={styles.summaryMetric}><strong>{planStats.br}</strong> barriers</span>
           <span className={styles.summaryDot} aria-hidden="true" />
           <span className={styles.summaryMetric}><strong>{planStats.avgProgress}%</strong> avg progress</span>
+          {!planPaused && live?.plan?.nextTouchpoint && (
+            <>
+              <span className={styles.summaryDot} aria-hidden="true" />
+              <span className={styles.summaryMetric}>Next touchpoint <strong>{fmtCarePlanDate(live.plan.nextTouchpoint)}</strong></span>
+            </>
+          )}
           {planStats.statuses.length > 0 && (
             <span className={styles.summaryStatuses}>
               {planStats.statuses.map(({ status, count, tone }) => (
@@ -1243,6 +1283,8 @@ export function CarePlanView({ patientId, program }) {
           onSubmit={saveReferral}
         />
       )}
+      {pauseOpen && <PauseCarePlanDialog onCancel={() => setPauseOpen(false)} onSubmit={submitPause} />}
     </div>
+    </CarePlanPausedContext.Provider>
   );
 }

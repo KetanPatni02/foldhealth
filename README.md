@@ -50,6 +50,31 @@ build requires esbuild ≥ 0.28 on Node 26.
   (patients, needs, referred, closed loop and resolved by domain). Needs
   `supabase/care_plan_sdoh_migration.sql`.
 
+- **Pause a care plan.** The care plan ⋯ menu gets Pause Care Plan: reason
+  (Hospitalized, Traveling, Patient request, Other with a note), pause start
+  date, planned resume date and an auto-resume toggle. While paused the plan
+  shows a banner with Resume Now, no overdue flags, no next touchpoint, and
+  its automations read as paused; `isCarePlanPaused`
+  (`care-plan/lib/carePlanPause.js`) is the gate any cadence or outreach job
+  must check. Resume (by hand, or automatically the first time the plan is
+  opened on or after the resume date) returns it to Active and recomputes the
+  next touchpoint (earliest open intervention due date, else the soonest goal
+  cadence), shown in the plan summary. Every pause and resume writes a
+  History entry. Needs `supabase/care_plan_pause_migration.sql`.
+
+- **Draft a care plan template from plain English.** Settings → Care Plan
+  library → New Template opens with "Describe this template in plain
+  English" (`src/components/UnityPromptField`). UnityAI
+  (`/api/care-plan-template-draft`, Gemini) drafts the name, summary,
+  template type and conditions, plus goals with their cadence, interventions
+  and barriers, picking from the library first: every library reference is
+  checked against the catalog the client sent (`lib/aiTemplateDraft.js`).
+  The draft lands in the editor for review with a banner saying what came
+  from the library and what's new; Redraft replaces it and Discard Draft
+  removes it, leaving anything added by hand. New goals are created in the
+  library when the template saves (with no invented target values), then
+  Save as Template publishes. The three AI endpoints now share one function
+  (`api/ai.js`), so the deployment uses 9 of Hobby's 12.
 - **Care plan GBI statuses: Discontinued, Not Applicable, Resolved.** Goals,
   interventions and barriers can now be Discontinued (patient refusal) or Not
   Applicable, and barriers can be Resolved, alongside Not Started / In

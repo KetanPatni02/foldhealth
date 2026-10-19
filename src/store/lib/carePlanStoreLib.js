@@ -444,6 +444,17 @@ function mapPatientCarePlanRow(row) {
     updatedAt: row.updated_at || null,
     signedBy: row.signed_by || null,
     signedAt: row.signed_at || null,
+    // Pause (care_plan_pause migration). Rows from before it are active.
+    status: row.status === 'paused' ? 'paused' : 'active',
+    pause: row.status === 'paused' ? {
+      reason: row.pause_reason || 'other',
+      note: row.pause_note || '',
+      pausedOn: row.paused_on || null,
+      resumeOn: row.resume_on || null,
+      autoResume: !!row.auto_resume,
+      pausedBy: row.paused_by || '',
+    } : null,
+    nextTouchpoint: row.next_touchpoint || null,
   };
 }
 
