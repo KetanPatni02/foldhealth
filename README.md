@@ -37,6 +37,19 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Automation Rules: auto-apply care plan templates on enrollment.**
+  Settings > Automation Rules (was the Automations placeholder) holds
+  account-level rules: the programs a rule watches, conditions over the
+  patient's chronic conditions (problem list, diagnosis events), labs (for
+  example HbA1c > 9 within 365 days), recent encounters (ED, inpatient) and
+  assessment answers, matched all or any, plus the templates to attach and
+  who reviews. When a patient enrolls, matching rules attach their templates
+  to the care plan unsigned (a draft), one review task goes to the care
+  manager with the reasons, the plan's History records it, and every
+  evaluation is logged with why it did or didn't match (Recent evaluations).
+  Engine: `features/settings/automation-rules/lib/automationRules.js`. Needs
+  `supabase/automation_rules_migration.sql`, which also seeds the
+  "Diabetes + HbA1c > 9" example rule, off by default.
 - **SDOH barriers, community referrals and UDS social risk.** Care plans and
   care plan templates get a Social Needs (SDOH) section with the six
   domains: housing, food, transportation, finance, social and safety. Each
