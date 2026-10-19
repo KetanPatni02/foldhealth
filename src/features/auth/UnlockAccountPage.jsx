@@ -42,21 +42,27 @@ export function UnlockAccountPage({ token, onDone }) {
     if (password.length < 8) { setError('Use at least 8 characters for your new password.'); return; }
     if (password !== confirm) { setError('The passwords don\'t match.'); return; }
     setSaving(true);
-    const r = await completeUnlockLink({ token, password });
-    if (!r.ok) {
+    try {
+      const r = await completeUnlockLink({ token, password });
+      if (!r.ok) {
+        if (r.code === 'expired') setLinkError(r.message);
+        else setError(r.message);
+        return;
+      }
+      track('auth.unlock_link_completed');
+      const who = r.email || email;
+      clearFailedSignIns(who);
+      // The password is already set; if signing in fails (or the request
+      // throws), send them to the sign-in screen with a notice instead.
+      let signedIn = false;
+      try {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email: who, password });
+        signedIn = !signInError;
+      } catch { /* fall through to the notice */ }
+      onDone?.(signedIn ? { enterApp: true } : { notice: 'Your new password is set. Sign in with it.' });
+    } finally {
       setSaving(false);
-      if (r.code === 'expired') setLinkError(r.message);
-      else setError(r.message);
-      return;
     }
-    track('auth.unlock_link_completed');
-    const who = r.email || email;
-    clearFailedSignIns(who);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: who, password });
-    setSaving(false);
-    onDone?.(signInError
-      ? { notice: 'Your new password is set. Sign in with it.' }
-      : { enterApp: true });
   };
 
   return (
