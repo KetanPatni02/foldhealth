@@ -20,10 +20,13 @@ export function SignInPaused({ reason = 'paused', email, onBack }) {
   const ask = async () => {
     setSending(true);
     setError('');
-    const r = await requestAccountUnlock(email);
-    setSending(false);
-    if (r.ok) setSent(true);
-    else setError(r.message);
+    try {
+      const r = await requestAccountUnlock(email);
+      if (r.ok) setSent(true);
+      else setError(r.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
