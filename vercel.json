@@ -47,6 +47,10 @@
       "destination": "/api/account?route=security-email-dispatch"
     },
     {
+      "source": "/api/auth-activity",
+      "destination": "/api/account?route=auth-activity"
+    },
+    {
       "source": "/s/:section",
       "destination": "/api/share?s=:section"
     },

@@ -5,9 +5,104 @@ import { Drawer } from '../../../components/Drawer/Drawer';
 import { TimelineEntry } from '../../../components/Timeline/Timeline';
 import { groupByMonth } from '../../../components/Timeline/Timeline.utils';
 import { useAppStore } from '../../../store/useAppStore';
+import { StatTile } from '../../../components/StatTile/StatTile';
 import { supabase } from '../../../lib/supabase';
+import styles from './AuditLogDrawer.module.css';
 
 const AUDIT_LOG_FILTERS = ['all', 'created', 'updated', 'enabled', 'disabled', 'deleted'];
+
+// Account security entries (sign-in, lockout, unlock, password) read as Login
+// Activity: their own icon and tone, a bold event title over the reason, the
+// method in the header and "Device • Location" underneath.
+const TONE = {
+  error:   { iconBg: 'var(--status-error-light)',   iconBorder: 'color-mix(in srgb, var(--status-error) 25%, transparent)',   iconColor: 'var(--status-error)' },
+  warning: { iconBg: 'var(--status-warning-light)', iconBorder: 'color-mix(in srgb, var(--status-warning) 30%, transparent)', iconColor: 'var(--status-warning-dark)' },
+  success: { iconBg: 'var(--status-success-light)', iconBorder: 'color-mix(in srgb, var(--status-success) 25%, transparent)', iconColor: 'var(--status-success)' },
+  info:    { iconBg: 'var(--status-info-light)',    iconBorder: 'color-mix(in srgb, var(--status-info) 25%, transparent)',    iconColor: 'var(--status-info)' },
+};
+const SECURITY_ENTRY = {
+  'Signed in':              { icon: 'solar:login-3-linear', ...TONE.success },
+  'Failed sign-in attempt': { icon: 'solar:shield-warning-linear', ...TONE.error, title: 'Sign-in failed' },
+  'Account locked':         { icon: 'solar:lock-keyhole-minimalistic-linear', ...TONE.error },
+  'Unlock requested':       { icon: 'solar:hand-stars-linear', ...TONE.warning },
+  'Account unlocked':       { icon: 'solar:lock-keyhole-unlocked-linear', ...TONE.success },
+  'Unlock link emailed':    { icon: 'solar:letter-linear', ...TONE.info },
+  'Unlock link used':       { icon: 'solar:link-round-linear', ...TONE.success },
+  'Password changed':       { icon: 'solar:key-linear', ...TONE.success },
+};
+// Rows written before the context migration have no method; these are
+// what they always were.
+const LEGACY_METHOD = {
+  'Failed sign-in attempt': 'Password',
+  'Account locked': 'Password',
+  'Unlock requested': 'Sign-in screen',
+  'Account unlocked': 'Admin console',
+  'Unlock link emailed': 'Email',
+  'Unlock link used': 'Email link',
+};
+// ...and longer, sentence-style reasons.
+function shortReason(text = '') {
+  const attempt = /attempt (\d+) of (\d+) \((\w+)\)/i.exec(text);
+  if (attempt) return `Attempt ${attempt[1]} of ${attempt[2]} · ${attempt[3]}`;
+  const locked = /locked by the system after (\d+) failed/i.exec(text);
+  if (locked) return `${locked[1]} failed attempts · locked by the system`;
+  const whileLocked = /while the account is locked \(attempt (\d+), (\w+)\)/i.exec(text);
+  if (whileLocked) return `Wrong password while locked · attempt ${whileLocked[1]} · ${whileLocked[2]}`;
+  const unlocked = /^Reason: (.+?)\. Identity checked/.exec(text);
+  if (unlocked) return `${unlocked[1]} · identity checked · new password required`;
+  return text;
+}
+function withSecurityIcon(entry) {
+  const cfg = SECURITY_ENTRY[entry.action];
+  if (!cfg) return entry;
+  return {
+    ...entry,
+    ...cfg,
+    title: cfg.title || entry.action,
+    details: shortReason(entry.details),
+    method: entry.method || LEGACY_METHOD[entry.action] || '',
+    footnote: [entry.device, entry.location].filter(Boolean).join(' • '),
+    category: null,
+  };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const when = (iso) => {
+  const d = new Date(iso);
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+};
+
+/** The two Login Activity cards above a user profile's timeline. */
+function LoginActivitySummary({ entries }) {
+  const [since] = useState(() => Date.now() - 30 * DAY_MS);
+  const lastSignIn = entries.find(e => e.action === 'Signed in');
+  const recent = entries.filter(e => new Date(e.createdAt).getTime() >= since);
+  const failures = recent.filter(e => e.action === 'Failed sign-in attempt');
+  const lock = recent.find(e => e.action === 'Account locked');
+  const failCaption = lock
+    ? `Account locked ${when(lock.createdAt)}`
+    : failures.length ? `Last on ${when(failures[0].createdAt)}` : 'None in the last 30 days';
+  return (
+    <div className={styles.stats}>
+      <StatTile
+        icon="solar:login-3-linear"
+        tone={lastSignIn ? 'success' : 'neutral'}
+        label="Last successful sign-in"
+        value={lastSignIn ? when(lastSignIn.createdAt) : 'Not recorded yet'}
+        caption={lastSignIn
+          ? [lastSignIn.method, [lastSignIn.device, lastSignIn.location].filter(Boolean).join(' • ')].filter(Boolean).join(' · ')
+          : 'Shows from the next sign-in'}
+      />
+      <StatTile
+        icon="solar:shield-warning-linear"
+        tone={failures.length ? 'error' : 'success'}
+        label="Failed attempts · 30 days"
+        value={failures.length}
+        caption={failCaption}
+      />
+    </div>
+  );
+}
 const AUDIT_LOG_FILTERS_EXTENDED = [...AUDIT_LOG_FILTERS, 'previewed'];
 
 // TimelineEntry's `details` falls back from the explicit field to a
@@ -53,7 +148,9 @@ export function AuditLogContent({ entityType, entityId }) {
   const monthGroups = useMemo(() => groupByMonth(filteredEntries), [filteredEntries]);
 
   return (
-    <div style={{ padding: '12px 0' }}>
+    <div style={{ padding: '0 0 12px' }}>
+      {entityType === 'UserProfile' && !loading && <LoginActivitySummary entries={entries} />}
+
       {/* Filter pills */}
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
         <Icon name="custom:filter" size={16} color="var(--neutral-300)" />
@@ -95,7 +192,8 @@ export function AuditLogContent({ entityType, entityId }) {
               {group.entries.map((entry, ei) => (
                 <TimelineEntry
                   key={entry.id}
-                  entry={{ ...entry, details: entry.details || `${entry.action} ${entry.entityName}` }}
+                  compact
+                  entry={withSecurityIcon({ ...entry, details: entry.details || `${entry.action} ${entry.entityName}` })}
                   isFirst={gi === 0 && ei === 0}
                   isLast={gi === monthGroups.length - 1 && ei === group.entries.length - 1}
                   currentUserName={currentUserName}
