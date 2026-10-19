@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { Badge } from '../../../../../../../components/Badge/Badge';
 import { ActionButton } from '../../../../../../../components/ActionButton/ActionButton';
+import { useCarePlanPaused } from '../lib/carePlanPausedContext';
 import styles from './CarePlanLinkedPreview.module.css';
 
 /** Total linked items across the three link kinds (care program is context). */
@@ -48,6 +49,7 @@ function Row({ icon, iconColor = 'var(--neutral-400)', label, rowId, onNavigate 
 
 /** Portal-rendered hover card previewing a goal's linked items (Figma SNP-Story 2632:112808). */
 function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave, onNavigate }) {
+  const paused = useCarePlanPaused();
   const total = linkedTotal(data);
   const width = 320;
   // Right-aligned to the trigger and clamped to the viewport. A trigger in the
@@ -105,7 +107,7 @@ function LinkedItemsPopover({ anchorRect, data, onMouseEnter, onMouseLeave, onNa
       )}
       {data.automations?.length > 0 && (
         <div className={styles.section}>
-          <span className={styles.sectionLabel}>Automation</span>
+          <span className={styles.sectionLabel}>{paused ? 'Automation · Paused with the plan' : 'Automation'}</span>
           {/* Automations don't render as GBI rows, so no jump-to target. */}
           {data.automations.map(a => (
             <Row key={a.id} icon="solar:bolt-linear" iconColor="var(--neutral-300)" label={a.title} />

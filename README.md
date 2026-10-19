@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pause a care plan.** The care plan ⋯ menu gets Pause Care Plan: reason
+  (Hospitalized, Traveling, Patient request, Other with a note), pause start
+  date, planned resume date and an auto-resume toggle. While paused the plan
+  shows a banner with Resume Now, no overdue flags, no next touchpoint, and
+  its automations read as paused; `isCarePlanPaused`
+  (`care-plan/lib/carePlanPause.js`) is the gate any cadence or outreach job
+  must check. Resume (by hand, or automatically the first time the plan is
+  opened on or after the resume date) returns it to Active and recomputes the
+  next touchpoint (earliest open intervention due date, else the soonest goal
+  cadence), shown in the plan summary. Every pause and resume writes a
+  History entry. Needs `supabase/care_plan_pause_migration.sql`.
+
 - **Care plan GBI statuses: Discontinued, Not Applicable, Resolved.** Goals,
   interventions and barriers can now be Discontinued (patient refusal) or Not
   Applicable, and barriers can be Resolved, alongside Not Started / In

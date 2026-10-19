@@ -48,6 +48,7 @@ const ACTION_LABEL = {
   frequency_changed: 'Frequency Updated', conditions_changed: 'Conditions Updated',
   type_changed: 'Type Updated', assignee_changed: 'Assignee Updated',
   goal_link_changed: 'Linked Goal Updated', description_changed: 'Description Updated',
+  paused: 'Care Plan Paused', resumed: 'Care Plan Resumed',
 };
 // Only status and progress carry health; a priority of "High" is not a good
 // outcome, so every other change renders its pills in grey.

@@ -31,6 +31,12 @@ export function runCarePlanPanelRequest(request, actions) {
     case 'scan-duplicates':
       actions.scanForDuplicates();
       break;
+    case 'pause':
+      actions.setPauseOpen(true);
+      break;
+    case 'resume':
+      actions.resumePlan();
+      break;
     default:
       break;
   }
