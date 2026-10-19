@@ -100,7 +100,7 @@ export function CarePlanGoalsTable({
       || (showActions && c.key === 'actions'))
     : COMPACT_GOAL_COLUMNS;
 
-  // Met goals collapse into "Completed Goals"; templates have no status.
+  // Closed goals (see isCompletedStatus) collapse into "Closed Goals"; templates have no status.
   const { activeRows, completedRows } = useMemo(() => {
     if (template) return { activeRows: sorted, completedRows: [] };
     const active = [];
@@ -307,7 +307,7 @@ export function CarePlanGoalsTable({
         renderRow={renderRow}
         renderTbodyFooter={template ? undefined : (ctx) => (
           <CompletedRowsGroup
-            label="Completed Goals"
+            label="Closed Goals"
             rows={completedRows}
             open={completedOpen}
             onToggle={() => setCompletedOpen(v => !v)}

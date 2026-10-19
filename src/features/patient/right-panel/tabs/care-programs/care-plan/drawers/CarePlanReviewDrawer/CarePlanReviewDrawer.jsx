@@ -13,7 +13,9 @@ import { PriorityIcon } from '../../../../../../../../components/PriorityIcon/Pr
 import { PatientBanner } from '../../../../../../../../components/PatientBanner/PatientBanner';
 import { findPatientRecord } from '../../lib/carePlanPrintSettings';
 import { latestItemNote } from '../../lib/carePlanNotes';
-import { GBI_STATUSES, PRIORITIES } from '../../CarePlanView/CarePlanViewSections';
+import { PRIORITIES } from '../../CarePlanView/CarePlanViewSections';
+import { gbiStatusMenuItems } from '../../tables/carePlanTableShared';
+import { isCompletedStatus } from '../../tables/carePlanTableModel';
 import { GoalPreviewDrawer } from '../GoalPreviewDrawer/GoalPreviewDrawer';
 import { InterventionPreviewDrawer } from '../InterventionPreviewDrawer/InterventionPreviewDrawer';
 import { BarrierDetailDrawer } from '../BarrierDetailDrawer/BarrierDetailDrawer';
@@ -40,7 +42,6 @@ const KINDS = {
 
 const KIND_META = Object.fromEntries(CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => [i.key, i]));
 const KIND_ORDER = CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => i.key);
-const DONE = new Set(['Met', 'Completed', 'Resolved']);
 const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 // The call note is rich text: an emptied editor can still hold <br> or <p></p>.
@@ -62,8 +63,8 @@ function groupsFor(tab, items) {
       const meta = KIND_META[item.kind];
       add(meta?.label || 'Other', meta?.icon || 'solar:checklist-minimalistic-linear', meta ? KIND_ORDER.indexOf(item.kind) : 99, item);
     } else {
-      const resolved = DONE.has(item.status);
-      add(resolved ? 'Resolved' : 'Open', resolved ? 'solar:check-circle-linear' : 'solar:signpost-2-linear', resolved ? 1 : 0, item);
+      const closed = isCompletedStatus(item.status);
+      add(closed ? 'Closed' : 'Open', closed ? 'solar:check-circle-linear' : 'solar:signpost-2-linear', closed ? 1 : 0, item);
     }
   }
   return [...groups.values()].sort((a, b) => (a.rank < 0 ? 98 : a.rank) - (b.rank < 0 ? 98 : b.rank));
@@ -558,9 +559,9 @@ export function CarePlanReviewDrawer({ patientId, patientName, patient, program,
         <MenuPopover
           anchorRect={statusMenu.rect}
           align={statusMenu.bulk ? 'left' : 'right'}
-          width={160}
+          width={180}
           ariaLabel="Change status"
-          items={GBI_STATUSES.map(st => ({ key: st, label: st }))}
+          items={gbiStatusMenuItems(statusMenu.kind, statusMenu.items.length === 1 ? statusMenu.items[0].status : undefined)}
           onSelect={async (status) => {
             const changed = statusMenu.items.filter(i => i.status !== status);
             await Promise.all(changed.map(i => saveLive(patientId, program, statusMenu.kind, i.id, { status })));

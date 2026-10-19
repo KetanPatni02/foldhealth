@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppStore } from '../../../../../../../store/useAppStore';
 import { GBI_STATUS_TONE } from '../tables/carePlanTableShared';
+import { isExcludedStatus } from '../lib/gbiStatus';
 import { norm } from './carePlanViewNorm';
 import { interventionOwner } from '../tables/carePlanTableModel';
 
@@ -112,8 +113,11 @@ export function useCarePlanViewFilters({
     const iv = filteredInterventions;
     const br = filteredBarriers;
     const all = [...goals, ...iv, ...br];
-    const avgProgress = goals.length
-      ? Math.round(goals.reduce((sum, g) => sum + (Number(g.progress) || 0), 0) / goals.length)
+    // Discontinued / Not Applicable goals aren't judged, so they don't pull
+    // the average down.
+    const counted = goals.filter(g => !isExcludedStatus(g.status));
+    const avgProgress = counted.length
+      ? Math.round(counted.reduce((sum, g) => sum + (Number(g.progress) || 0), 0) / counted.length)
       : 0;
     const counts = new Map();
     for (const item of all) {
