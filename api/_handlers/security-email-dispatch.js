@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { serviceClient } from '../_lib/serviceClient.js';
-import { emailConfigured, flushSecurityOutbox } from '../_lib/securityEmails.js';
+import { emailConfigured, flushSecurityOutbox, appOrigin } from '../_lib/securityEmails.js';
 
 /**
  * Sends queued security emails (public.security_email_outbox): account
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   const fromDatabase = !!(secret && typeof given === 'string' && given.length === secret.length
     && crypto.timingSafeEqual(Buffer.from(given), Buffer.from(secret)));
   try {
-    const result = await flushSecurityOutbox(serviceClient, fromDatabase ? 100 : 50);
+    const result = await flushSecurityOutbox(serviceClient, fromDatabase ? 100 : 50, { origin: appOrigin(req) });
     return res.status(200).json(result);
   } catch (err) {
     console.error('[security-email-dispatch]', err);

@@ -6,6 +6,10 @@ import { TimelineEntry } from '../../../components/Timeline/Timeline';
 import { groupByMonth } from '../../../components/Timeline/Timeline.utils';
 import { useAppStore } from '../../../store/useAppStore';
 import { StatTile } from '../../../components/StatTile/StatTile';
+import { FilterChip } from '../../../components/FilterChip/FilterChip';
+import { DateRangeFilter } from '../../../components/DateRangeFilter/DateRangeFilter';
+import { inDatePreset } from '../../../components/DateRangeFilter/dateRangePresets';
+import { Avatar } from '../../../components/Avatar/Avatar';
 import { supabase } from '../../../lib/supabase';
 import styles from './AuditLogDrawer.module.css';
 
@@ -29,6 +33,7 @@ const SECURITY_ENTRY = {
   'Unlock link emailed':    { icon: 'solar:letter-linear', ...TONE.info },
   'Unlock link used':       { icon: 'solar:link-round-linear', ...TONE.success },
   'Password changed':       { icon: 'solar:key-linear', ...TONE.success },
+  'Sign-up approved':       { icon: 'solar:user-check-rounded-linear', ...TONE.success },
 };
 // Rows written before the context migration have no method; these are
 // what they always were.
@@ -39,6 +44,7 @@ const LEGACY_METHOD = {
   'Account unlocked': 'Admin console',
   'Unlock link emailed': 'Email',
   'Unlock link used': 'Email link',
+  'Sign-up approved': 'Admin console',
 };
 // ...and longer, sentence-style reasons.
 function shortReason(text = '') {
@@ -65,6 +71,15 @@ function withSecurityIcon(entry) {
     category: null,
   };
 }
+
+// The name an entry goes by in the Activity Type filter: the event title for
+// security entries ("Sign-in failed"), else the action ("Updated").
+const activityType = (e) => SECURITY_ENTRY[e.action]?.title || (SECURITY_ENTRY[e.action] ? e.action
+  : (e.action || '').charAt(0).toUpperCase() + (e.action || '').slice(1));
+// Column names in an entry's text read as words: "full_name" → "Full Name".
+const humanizeFields = (text = '') => text.replace(/\b[a-z]+(?:_[a-z]+)+\b/g,
+  m => m.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' '));
+const initialsOf = (name = '') => name.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const when = (iso) => {
@@ -117,7 +132,10 @@ const AUDIT_LOG_FILTERS_EXTENDED = [...AUDIT_LOG_FILTERS, 'previewed'];
  */
 export function AuditLogContent({ entityType, entityId }) {
   const fetchAuditLogs = useAppStore(s => s.fetchAuditLogs);
-  const [filter, setFilter] = useState('all');
+  const [types, setTypes] = useState([]);
+  const [actors, setActors] = useState([]);
+  const [datePreset, setDatePreset] = useState(null);
+  const [dateRange, setDateRange] = useState([]);
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUserName, setCurrentUserName] = useState('');
@@ -140,10 +158,16 @@ export function AuditLogContent({ entityType, entityId }) {
     });
   }, [entityType, entityId, fetchAuditLogs]);
 
+  const typeOptions = useMemo(() => [...new Set(entries.map(activityType).filter(Boolean))].sort(), [entries]);
+  const actorOptions = useMemo(() => [...new Set(entries.map(e => e.user).filter(Boolean))].sort(), [entries]);
+  const filtered = types.length > 0 || actors.length > 0 || !!datePreset;
+
   const filteredEntries = useMemo(() => {
-    if (filter === 'all') return entries;
-    return entries.filter(e => e.action === filter);
-  }, [entries, filter]);
+    const inRange = inDatePreset(datePreset, dateRange);
+    return entries.filter(e => (!types.length || types.includes(activityType(e)))
+      && (!actors.length || actors.includes(e.user))
+      && inRange(e.createdAt));
+  }, [entries, types, actors, datePreset, dateRange]);
 
   const monthGroups = useMemo(() => groupByMonth(filteredEntries), [filteredEntries]);
 
@@ -151,28 +175,24 @@ export function AuditLogContent({ entityType, entityId }) {
     <div style={{ padding: '0 0 12px' }}>
       {entityType === 'UserProfile' && !loading && <LoginActivitySummary entries={entries} />}
 
-      {/* Filter pills */}
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-        <Icon name="custom:filter" size={16} color="var(--neutral-300)" />
-        {AUDIT_LOG_FILTERS.map(f => {
-          const active = filter === f;
-          return (
-            <button key={f} onClick={() => setFilter(f)} style={{
-              padding: '4px 8px', borderRadius: 4, fontSize: 'var(--font-sm)',
-              border: `0.5px solid ${active ? 'var(--primary-300)' : 'var(--neutral-150)'}`,
-              background: active ? 'var(--primary-50)' : 'var(--neutral-0)',
-              color: active ? 'var(--primary-300)' : 'var(--neutral-300)',
-              cursor: 'pointer', fontFamily: "'Inter', sans-serif", fontWeight: active ? 500 : 400,
-              textTransform: 'capitalize', whiteSpace: 'nowrap',
-            }}>{f === 'all' ? 'All' : f}</button>
-          );
-        })}
-        {filter !== 'all' && (
-          <button onClick={() => setFilter('all')} style={{
-            fontSize: 'var(--font-sm)', color: 'var(--primary-300)', background: 'none', border: 'none',
-            cursor: 'pointer', fontFamily: "'Inter', sans-serif", padding: '4px 0',
-          }}>Clear All</button>
-        )}
+      <div className={styles.filters}>
+        <FilterChip label="Activity Type" searchable options={typeOptions} selected={types} onChange={setTypes} />
+        <FilterChip
+          label="Activity By"
+          searchable
+          options={actorOptions}
+          selected={actors}
+          onChange={setActors}
+          renderOptionLeading={(name) => (name === 'System'
+            ? <Avatar type="icon" variant="others" iconName="solar:settings-linear" size="S" />
+            : <Avatar variant="staff" size="S" initials={initialsOf(name)} userName={name} />)}
+        />
+        <DateRangeFilter
+          label="Date"
+          preset={datePreset}
+          range={dateRange}
+          onChange={(preset, range) => { setDatePreset(preset); setDateRange(range); }}
+        />
       </div>
 
       {loading && (
@@ -193,7 +213,8 @@ export function AuditLogContent({ entityType, entityId }) {
                 <TimelineEntry
                   key={entry.id}
                   compact
-                  entry={withSecurityIcon({ ...entry, details: entry.details || `${entry.action} ${entry.entityName}` })}
+                  collapseChanges
+                  entry={withSecurityIcon({ ...entry, category: null, details: humanizeFields(entry.details || `${entry.action} ${entry.entityName}`) })}
                   isFirst={gi === 0 && ei === 0}
                   isLast={gi === monthGroups.length - 1 && ei === group.entries.length - 1}
                   currentUserName={currentUserName}
@@ -207,7 +228,7 @@ export function AuditLogContent({ entityType, entityId }) {
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-300)' }}>No entries found</div>
                 <div style={{ fontSize: 'var(--font-md)', marginTop: 4 }}>
-                  {filter !== 'all' ? 'Try adjusting your filter.' : 'Activity will appear here as actions are taken.'}
+                  {filtered ? 'Try adjusting your filters.' : 'Activity will appear here as actions are taken.'}
                 </div>
               </div>
             </div>

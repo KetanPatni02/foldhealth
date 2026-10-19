@@ -6,6 +6,7 @@ import { getInitials } from '../AccountPanel.constants';
 import { ROLE_FIELDS } from './UsersTab.utils';
 import { apiFetch } from '../../../../lib/apiFetch';
 import { accountStatus } from './accountLock';
+import { flushSecurityEmails } from '../../../auth/accountSecurity';
 
 // Map a raw `profiles` row to the user shape the table renders. Shared by the
 // list fetch and the single-row save so a save can update just its own row
@@ -205,6 +206,8 @@ export function useUsersTab() {
 
     if (!error && data && data.length > 0) {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      // Approval queues the "Sign-up Approved" email (account_email_templates_migration.sql).
+      if (approve) flushSecurityEmails();
       showToast(`${user.name} ${approve ? 'approved' : 'rejected'}`);
     } else {
       showToast(error?.message || 'Failed to update sign-up request (Check permissions)');

@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { Badge } from '../Badge/Badge';
+import { ViewMoreButton } from '../ActivityLog/ActivityLog';
+import styles from './Timeline.module.css';
 import { groupByMonth } from './Timeline.utils';
 
 /**
@@ -125,8 +127,13 @@ export function ChangeDisplay({ change }) {
  *   - changes     (array)   — structured field diffs (Domain Registry)
  *
  * `compact` tightens the spacing between entries (e.g. a profile's Audit Log).
+ * `collapseChanges` hides the field diffs behind the ActivityLog's "View
+ * Details" toggle, which shows while the entry is hovered.
  */
-export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderExtra, compact = false }) {
+export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderExtra, compact = false, collapseChanges = false }) {
+  const [changesOpen, setChangesOpen] = useState(false);
+  const hasChanges = entry.changes?.length > 0;
+  const toggleable = collapseChanges && hasChanges;
   const cfg = ACTION_CONFIG[entry.action] || DEFAULT_CONFIG;
   const icon = entry.icon || cfg.icon;
   const iconBg = entry.iconBg || cfg.bg;
@@ -135,7 +142,7 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
   const isCurrentUser = currentUserName && entry.user && entry.user.toLowerCase() === currentUserName.toLowerCase();
 
   return (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div className={styles.row}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
         <div style={{ width: 0.5, flex: `0 0 ${compact ? 4 : 14}px`, background: isFirst ? 'transparent' : 'var(--neutral-150)' }} />
         {entry.avatar || (
@@ -164,11 +171,11 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
             fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 4,
           }}>
             {entry.date && <span>{entry.date}</span>}
-            {entry.date && entry.time && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
+            {entry.date && entry.time && <span style={{ color: 'var(--neutral-300)' }}>•</span>}
             {entry.time && <span>{entry.time}</span>}
-            {entry.method && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
+            {entry.method && <span style={{ color: 'var(--neutral-300)' }}>•</span>}
             {entry.method && <span>{entry.method}</span>}
-            {entry.user && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
+            {entry.user && <span style={{ color: 'var(--neutral-300)' }}>•</span>}
             {entry.user && (
               <span>
                 {entry.user}
@@ -190,15 +197,21 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
               lineHeight: 1.2, marginBottom: 4,
             }}>
               {entry.details}
+              {toggleable && (
+                <ViewMoreButton leadingDot label="View Details" expanded={changesOpen} onToggle={() => setChangesOpen(o => !o)} />
+              )}
             </div>
           )}
 
-          {entry.changes && entry.changes.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, marginBottom: 4 }}>
+          {hasChanges && (!collapseChanges || changesOpen) && (
+            <div
+              className={collapseChanges ? styles.changesCard : undefined}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, marginBottom: 4 }}
+            >
               {entry.changes.map((c, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {c.field && (
-                    <span style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-200)', textTransform: 'capitalize' }}>{c.field}</span>
+                    <span style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-200)', textTransform: 'capitalize' }}>{c.field.replace(/_/g, ' ')}</span>
                   )}
                   <ChangeDisplay change={c} />
                 </div>

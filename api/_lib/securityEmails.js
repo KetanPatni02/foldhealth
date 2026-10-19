@@ -1,10 +1,16 @@
 import { Resend } from 'resend';
+import { serviceClient } from './serviceClient.js';
 
 /**
  * Security emails (account lockout, password reset). Every one states the
  * time and what happened and says "If this wasn't you, contact your clinic
  * or administrator". None contains a password. The only link is the
  * one-time "set a new password" link an administrator's unlock sends.
+ *
+ * The account emails below (TEMPLATE_KINDS) are designed in the email
+ * builder (src/features/email-builder/accountEmailTemplates.js): the
+ * campaigns row with that `system_key` supplies the subject and the HTML,
+ * and its tokens are filled here. Without one, the built-in email is sent.
  */
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = process.env.RESEND_FROM || 'Fold Health <noreply@foldhealth.org>';
@@ -30,6 +36,60 @@ function layout(heading, paragraphs) {
 ${body}
 <p style="margin:16px 0 0;font-size:13px;line-height:1.5;color:#6F7A90">If this wasn't you, contact your clinic or administrator.</p>
 </td></tr></table></body></html>`;
+}
+
+const TEMPLATE_KINDS = new Set(['unlock_link', 'password_changed', 'account_activated', 'signup_approved']);
+
+/** The app's address for "Sign in" links: APP_URL, else the request's origin. */
+export function appOrigin(req) {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/+$/, '');
+  const origin = req?.headers?.origin;
+  if (origin) return origin.replace(/\/+$/, '');
+  const host = req?.headers?.host;
+  return host ? `https://${host}` : '';
+}
+
+// The Account tokens (plus the name ones) an account email template uses.
+function tokenValues(payload, origin) {
+  const name = payload.name || '';
+  return {
+    full_name: name || 'there',
+    first_name: (name.includes('@') ? '' : name.split(/\s+/)[0]) || 'there',
+    email: payload.email || '',
+    user_id: payload.email || '',
+    set_password_link: payload.link || '',
+    sign_in_link: origin ? `${origin}/#/login` : '',
+    event_time: when(payload.at),
+    current_year: String(new Date().getFullYear()),
+    clinic_name: 'Fold Health',
+  };
+}
+
+const fill = (html, values) => html.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,
+  (m, key) => (Object.hasOwn(values, key.toLowerCase()) ? esc(values[key.toLowerCase()]) : m));
+
+/** A template row ({ subject_line, email_html }) filled for one send. */
+export function fillTemplate(row, kind, payload, origin) {
+  const values = tokenValues(payload, origin);
+  const subject = (row.subject_line || '').replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (m, key) => values[key.toLowerCase()] ?? m);
+  return { subject: subject || renderSecurityEmail(kind, payload)?.subject, html: fill(row.email_html, values) };
+}
+
+/**
+ * The email builder's template for `kind`, filled for this send, or null
+ * (no template, no stored HTML, migration not run) so the caller falls back.
+ */
+async function templateEmail(kind, payload, origin) {
+  if (!serviceClient || !TEMPLATE_KINDS.has(kind)) return null;
+  try {
+    const { data, error } = await serviceClient.from('campaigns')
+      .select('subject_line, email_html').eq('system_key', kind).maybeSingle();
+    if (error || !data?.email_html) return null;
+    return fillTemplate(data, kind, payload, origin);
+  } catch (err) {
+    console.warn('[securityEmails] template lookup failed, using the built-in email', kind, err?.message);
+    return null;
+  }
 }
 
 /** Subject + HTML for one outbox row (or the reset code). */
@@ -85,6 +145,22 @@ export function renderSecurityEmail(kind, payload = {}) {
           `<a href="${esc(payload.link)}" style="display:inline-block;padding:10px 16px;border-radius:6px;background:#8C5AE2;color:#FFFFFF;text-decoration:none;font-weight:500">Set a new password</a>`,
         ]),
       };
+    case 'account_activated':
+      return {
+        subject: 'Your Fold Health account is active again',
+        html: layout('Account activated successfully', [
+          `Hi ${name}, you set a new password at ${at}, and your Fold Health account is active again.`,
+          `Sign in with your User ID (${esc(payload.email)}) and your new password.`,
+        ]),
+      };
+    case 'signup_approved':
+      return {
+        subject: 'Your Fold Health access was approved',
+        html: layout('Your access was approved', [
+          `Hi ${name}, your request to join Fold Health was approved at ${at}.`,
+          `Sign in with your User ID (${esc(payload.email)}) and the password you chose when you signed up.`,
+        ]),
+      };
     case 'unlock_requested':
       return {
         subject: 'A user asked to unlock their account',
@@ -106,9 +182,10 @@ export function renderSecurityEmail(kind, payload = {}) {
   }
 }
 
-export async function sendSecurityEmail(to, kind, payload) {
+/** `origin` is the app's address, for the template's {{sign_in_link}}. */
+export async function sendSecurityEmail(to, kind, payload, { origin = appOrigin() } = {}) {
   if (!resend) throw new Error('RESEND_API_KEY is not set');
-  const msg = renderSecurityEmail(kind, payload);
+  const msg = (await templateEmail(kind, payload || {}, origin)) || renderSecurityEmail(kind, payload);
   if (!msg) throw new Error(`Unknown security email: ${kind}`);
   const { error } = await resend.emails.send({ from: FROM, to, subject: msg.subject, html: msg.html });
   if (error) throw new Error(error.message || 'Email failed');
@@ -120,14 +197,14 @@ export async function sendSecurityEmail(to, kind, payload) {
  * claim_security_emails hands each row to only one of them, so nobody gets
  * the same email twice.
  */
-export async function flushSecurityOutbox(admin, limit = 50) {
+export async function flushSecurityOutbox(admin, limit = 50, { origin } = {}) {
   const { data: rows, error } = await admin.rpc('claim_security_emails', { max_rows: limit });
   if (error) throw error;
   let sent = 0;
   let failed = 0;
   for (const row of rows || []) {
     try {
-      await sendSecurityEmail(row.to_email, row.kind, row.payload);
+      await sendSecurityEmail(row.to_email, row.kind, row.payload, origin ? { origin } : undefined);
       await admin.from('security_email_outbox').update({ status: 'sent', sent_at: new Date().toISOString(), attempts: row.attempts + 1 }).eq('id', row.id);
       sent += 1;
     } catch (err) {

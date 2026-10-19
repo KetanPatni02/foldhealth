@@ -49,6 +49,7 @@ export function campaignRowToJs(row) {
     updatedAt: row.updated_at || null,
     updatedBy: row.updated_by || null,
     updatedByName: row.updated_by_profile?.full_name || null,
+    systemKey: row.system_key || null,
   };
 }
 

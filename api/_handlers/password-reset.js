@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { serviceClient, isPracticeAdmin } from '../_lib/serviceClient.js';
 import { requireUser } from '../_lib/requireUser.js';
-import { emailConfigured, sendSecurityEmail, flushSecurityOutbox } from '../_lib/securityEmails.js';
+import { emailConfigured, sendSecurityEmail, flushSecurityOutbox, appOrigin } from '../_lib/securityEmails.js';
 
 /**
  * Password reset by emailed 6-digit code (account lockout, HITRUST).
@@ -137,7 +137,7 @@ async function handleVerify(req, res, admin) {
   await admin.from('password_reset_codes').update({ used_at: new Date().toISOString() }).eq('id', row.id);
 
   // The password-change trigger queued the emails; send them now.
-  try { await flushSecurityOutbox(admin); } catch (err) { console.warn('[password-reset] outbox flush failed', err?.message); }
+  try { await flushSecurityOutbox(admin, 50, { origin: appOrigin(req) }); } catch (err) { console.warn('[password-reset] outbox flush failed', err?.message); }
   return res.status(200).json({ ok: true });
 }
 

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { serviceClient, isPracticeAdmin } from '../_lib/serviceClient.js';
 import { requireUser } from '../_lib/requireUser.js';
-import { emailConfigured, sendSecurityEmail, flushSecurityOutbox } from '../_lib/securityEmails.js';
+import { emailConfigured, sendSecurityEmail, flushSecurityOutbox, appOrigin } from '../_lib/securityEmails.js';
 import { requestContext } from '../_lib/requestContext.js';
 
 /**
@@ -26,14 +26,6 @@ const anonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_
 
 const sha = (v) => crypto.createHash('sha256').update(String(v)).digest('hex');
 const fail = (res, status, message, code) => res.status(status).json({ error: { message, ...(code ? { code } : {}) } });
-
-function appOrigin(req) {
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/+$/, '');
-  const origin = req.headers?.origin;
-  if (origin) return origin.replace(/\/+$/, '');
-  const host = req.headers?.host;
-  return host ? `https://${host}` : '';
-}
 
 // `ctx` is the method, device and location shown in the user's Login Activity.
 async function audit(admin, userId, name, action, details, actor, ctx) {
@@ -65,7 +57,7 @@ async function sendLink(req, admin, target, actorName, createdBy) {
   const link = `${appOrigin(req)}/#/unlock-account?token=${token}`;
   await sendSecurityEmail(target.email, 'unlock_link', {
     name: target.full_name || target.email, email: target.email, link, at: new Date().toISOString(),
-  });
+  }, { origin: appOrigin(req) });
   await audit(admin, target.id, target.full_name || target.email, 'Unlock link emailed',
     `Emailed the User ID and a one-time link to set a new password to ${target.email} (expires in 24 hours).`, actorName,
     requestContext(req, 'Email'));
@@ -161,7 +153,7 @@ async function handleComplete(req, res, admin) {
   const { data: u } = await admin.from('profiles').select('email, full_name').eq('id', row.user_id).maybeSingle();
   await audit(admin, row.user_id, u?.full_name || u?.email, 'Unlock link used',
     'Set a new password from the administrator\'s unlock link.', u?.full_name || u?.email, requestContext(req, 'Email link'));
-  try { await flushSecurityOutbox(admin); } catch (err) { console.warn('[account-unlock] outbox flush failed', err?.message); }
+  try { await flushSecurityOutbox(admin, 50, { origin: appOrigin(req) }); } catch (err) { console.warn('[account-unlock] outbox flush failed', err?.message); }
   return res.status(200).json({ email: u?.email || '' });
 }
 
