@@ -29,6 +29,11 @@
   color: var(--neutral-400);
 }
 .locked .title { color: var(--status-error); }
+.activated {
+  border-color: color-mix(in srgb, var(--status-success) 25%, transparent);
+  background: var(--status-success-light);
+}
+.activated .title { color: var(--status-success); }
 .note {
   font-size: var(--font-sm);
   color: var(--neutral-300);
@@ -42,4 +47,14 @@
   font-size: var(--font-base);
   color: var(--neutral-400);
   cursor: pointer;
+}
+
+/* Resend Link while the email is being sent. */
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+/* Local: CSS Modules renames `spin` here, so the global keyframes don't apply. */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }

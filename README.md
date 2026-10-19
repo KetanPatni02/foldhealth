@@ -37,6 +37,15 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Account emails from the email builder.** Unlock Account (User ID +
+  set-password link), Password Set, Account Activated and Sign-up Approved are
+  email builder templates (Settings → Content → Emails, category "Account
+  Security") with new Account tokens: `{{user_id}}`, `{{set_password_link}}`,
+  `{{sign_in_link}}`, `{{event_time}}`. The server sends whichever template
+  has that `system_key`, filling the tokens, and falls back to the built-in
+  email when there is none. A new password after an unlock now sends Account
+  Activated; approving a Pending sign-up sends Sign-up Approved. Run
+  `supabase/account_email_templates_migration.sql`, then `bun run seed`.
 - **Login Activity in a user's Audit Log.** Two cards sit above the
   timeline: "Last successful sign-in" and "Failed attempts · 30 days". Each
   sign-in and lockout entry shows date • time • method • user, then the

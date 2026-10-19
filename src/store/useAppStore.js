@@ -62,6 +62,7 @@ import { extractEncountersSync } from '../features/hcc/upload/mockOcr';
 import { getChartDocs } from '../features/hcc/data/chartDocs';
 import { applyManualDecision as applyHccManualComplianceDecision } from '../features/hcc/compliance';
 import { makeInitialDocument } from '../features/email-builder/initialDocument';
+import { accountEmailHtml } from '../features/email-builder/accountEmailTemplates';
 import * as hccLifecycle from '../features/hcc/assignment/lifecycle';
 import { hydrateFromMember, dosKey as hccDosKey } from '../features/hcc/assignment/dosState';
 import { DEFAULT_SAMPLING_RATES } from '../features/hcc/assignment/sampling';
@@ -14732,7 +14733,8 @@ export const useAppStore = create((set, get) => ({
       return null;
     }
     // eslint-disable-next-line no-unused-vars
-    const { id: _id, created_at: _c, updated_at: _u, ...rest } = original;
+    // An account email's key stays with the original; the copy is a plain email.
+    const { id: _id, created_at: _c, updated_at: _u, system_key: _k, email_html: _h, ...rest } = original;
     const { data: copy, error: insertErr } = await supabase
       .from('campaigns')
       .insert({
@@ -15216,6 +15218,11 @@ export const useAppStore = create((set, get) => ({
       s.colorVariables,
     );
     if (!dbPatch) return true;
+    // Account emails are sent by the server, which can't run the builder's
+    // renderer: keep the rendered HTML next to the design.
+    if (s.editingCampaignSystemKey && dbPatch.email_template != null) {
+      dbPatch.email_html = accountEmailHtml(s.emailDocument);
+    }
     track('email.template_saved', { templateId: s.editingCampaignId });
     const { error } = await supabase
       .from('campaigns')
@@ -15244,6 +15251,7 @@ export const useAppStore = create((set, get) => ({
   // editable Reader-compatible document; selectedBlockId is what the right panel inspects.
   editingCampaignId: null,
   editingCampaignName: null,
+  editingCampaignSystemKey: null,
   setEditingCampaignName: (name) => set({ editingCampaignName: name }),
 
   // Org-level CAN-SPAM footer settings (physical address + unsubscribe URL).
@@ -15420,6 +15428,7 @@ export const useAppStore = create((set, get) => ({
     set({
       editingCampaignId: campaign.id,
       editingCampaignName: campaign.name,
+      editingCampaignSystemKey: campaign.systemKey || null,
       emailDocument: doc,
       colorVariables: campaign.colorVariables || defaultVars,
       selectedBlockId: 'root',
@@ -15436,7 +15445,7 @@ export const useAppStore = create((set, get) => ({
   },
   closeEmailBuilder: () => {
     track('email.template_closed');
-    set({ editingCampaignId: null, editingComponent: null, editingCampaignName: null, emailDocument: null, selectedBlockId: 'root', selectedColumnIdx: null, bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
+    set({ editingCampaignId: null, editingComponent: null, editingCampaignName: null, editingCampaignSystemKey: null, emailDocument: null, selectedBlockId: 'root', selectedColumnIdx: null, bulkSelectedIds: [], htmlPreviewOverride: null, emailHistory: [], emailFuture: [], _lastEmailHistoryTime: 0 });
     updateHash(get);
   },
 

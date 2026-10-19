@@ -357,7 +357,7 @@ export function ViewUserDrawer({ user, onClose, onEdit, canEdit = true, lock, ca
         activeKey={viewTab}
         onChange={setViewTab}
         fullWidth={false}
-        trailing={canEdit ? <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} /> : undefined}
+        trailing={canEdit && viewTab !== 'Audit Log' ? <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} /> : undefined}
       />
 
       {viewTab === 'Audit Log' ? (

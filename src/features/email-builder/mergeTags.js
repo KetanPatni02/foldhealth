@@ -36,12 +36,18 @@ export const MERGE_TOKENS = [
   { key: 'employer_logo',  label: 'Employer logo',  group: 'Report',    sample: '/brand/employer-logo-sample.svg', resolve: c => c.employerLogo },
   { key: 'page_number',    label: 'Page number',    group: 'Report',    sample: '2',                        resolve: c => c.pageNumber },
   { key: 'page_count',     label: 'Page count',     group: 'Report',    sample: '6',                        resolve: c => c.pageCount },
+  // Account: filled by the server when it sends an account email (see
+  // accountEmailTemplates.js and api/_lib/securityEmails.js).
+  { key: 'user_id',           label: 'User ID',              group: 'Account', sample: 'sarah.johnson@example.com', resolve: c => c.userId },
+  { key: 'set_password_link', label: 'Set password link',    group: 'Account', sample: '#',                          resolve: c => c.setPasswordLink },
+  { key: 'sign_in_link',      label: 'Sign-in link',         group: 'Account', sample: '#',                          resolve: c => c.signInLink },
+  { key: 'event_time',        label: 'Time of the change',   group: 'Account', sample: 'Oct 19, 2026, 3:13 PM PDT',  resolve: c => c.eventTime },
 ];
 
 const TOKEN_BY_KEY = Object.fromEntries(MERGE_TOKENS.map(t => [t.key, t]));
 
 // Group order + membership for the picker UI.
-export const TOKEN_GROUPS = ['Patient', 'Care team', 'System', 'Report'].map(group => ({
+export const TOKEN_GROUPS = ['Patient', 'Care team', 'System', 'Report', 'Account'].map(group => ({
   group,
   tokens: MERGE_TOKENS.filter(t => t.group === group),
 }));
@@ -125,6 +131,10 @@ export const SAMPLE_CONTEXT = {
   employerLogo: '/brand/employer-logo-sample.svg',
   pageNumber: '2',
   pageCount: '6',
+  userId: 'sarah.johnson@example.com',
+  setPasswordLink: '#',
+  signInLink: '#',
+  eventTime: 'Oct 19, 2026, 3:13 PM PDT',
 };
 
 /**
