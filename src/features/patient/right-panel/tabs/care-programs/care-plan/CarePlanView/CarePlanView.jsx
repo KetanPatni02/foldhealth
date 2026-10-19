@@ -37,6 +37,9 @@ import { deriveGoalTableFields } from '../lib/goalMetrics';
 import { CarePlanGoalsTable } from '../tables/CarePlanGoalsTable';
 import { CarePlanInterventionsTable } from '../tables/CarePlanInterventionsTable';
 import { CarePlanBarriersTable } from '../tables/CarePlanBarriersTable';
+import { SdohSection } from '../sdoh/SdohSection';
+import { SdohReferralDialog } from '../sdoh/SdohReferralDialog';
+import { isSdohBarrier, referralInterventionFields, sdohBarrierFields } from '../lib/sdohTaxonomy';
 import { RingEmptyState } from '@/components/RingEmptyState/RingEmptyState';
 import { SimpleTableSkeleton } from '@/components/SimpleTableSkeleton/SimpleTableSkeleton';
 import { BulkBar } from '@/components/BulkBar/BulkBar';
@@ -283,6 +286,9 @@ export function CarePlanView({ patientId, program }) {
     libraryGoals,
     patientName,
   });
+  // SDOH needs get their own section; the Barriers table lists the rest.
+  const sdohBarriers = useMemo(() => filteredBarriers.filter(isSdohBarrier), [filteredBarriers]);
+  const plainBarriers = useMemo(() => filteredBarriers.filter(b => !isSdohBarrier(b)), [filteredBarriers]);
 
   // An earlier run is history: shown, not edited.
   const canEdit = !!(patientId && program) && !viewedRun && !versionData;
@@ -329,6 +335,30 @@ export function CarePlanView({ patientId, program }) {
   // Saved from a patient's plan, so it defaults to that patient.
   const [templateScope, setTemplateScope] = useState('patient');
   const [deleteTarget, setDeleteTarget] = useState(null); // { kind, id, name }
+  // SDOH (lib/sdohTaxonomy): needs are barriers with a domain, shown in their
+  // own section; a referral is an 'sdoh-referral' intervention on the need.
+  const [referralFor, setReferralFor] = useState(null); // { barrier, partner }
+  const savePatientCarePlanBarrierSdoh = useAppStore(s => s.savePatientCarePlanBarrier);
+  const savePatientCarePlanInterventionSdoh = useAppStore(s => s.savePatientCarePlanIntervention);
+  const addSdohNeed = async (needKey) => {
+    const fields = sdohBarrierFields(needKey);
+    if (!fields) return;
+    const saved = await savePatientCarePlanBarrierSdoh(patientId, program, { ...fields, status: 'Not Started', priority: 'medium', goalIds: [] });
+    if (saved) showToast(`Added "${fields.title}"`);
+  };
+  const saveReferral = async ({ partner, program: programName, note, status }) => {
+    const { barrier } = referralFor;
+    setReferralFor(null);
+    const saved = await savePatientCarePlanInterventionSdoh(patientId, program, referralInterventionFields({ partner, barrier, program: programName, note, status }));
+    if (saved) showToast('Referral recorded');
+  };
+  const setReferralStatus = (referral, referralStatus) => savePatientCarePlanInterventionSdoh(
+    patientId, program,
+    // A completed or declined referral closes the intervention; the need's own
+    // status is the care manager's call.
+    { config: { referralStatus }, status: referralStatus === 'Completed' ? 'Met' : referralStatus === 'Declined' ? 'Not Met' : 'In Progress' },
+    referral.id,
+  );
   const [historyOpen, setHistoryOpen] = useState(false);
   // Pause (lib/carePlanPause): the live plan only, never an older version.
   const [pauseOpen, setPauseOpen] = useState(false);
@@ -1173,7 +1203,7 @@ export function CarePlanView({ patientId, program }) {
       <div className={styles.section}>
         <GbiSectionHead
           title="Barriers"
-          count={filteredBarriers.length}
+          count={plainBarriers.length}
           open={openSections.barriers}
           onToggle={() => toggleSection('barriers')}
           rightAccessory={renderDuplicateBadge('barrier')}
@@ -1185,7 +1215,7 @@ export function CarePlanView({ patientId, program }) {
         />
         {openSections.barriers && (carePlanLoading ? (
           <SimpleTableSkeleton rows={3} cols={3} />
-        ) : filteredBarriers.length === 0 && (viewData.barriers || []).length === 0 ? (
+        ) : plainBarriers.length === 0 && (viewData.barriers || []).filter(b => !isSdohBarrier(b)).length === 0 ? (
           <SectionEmptyState
             icon="solar:signpost-2-linear"
             label="No Barriers Created for Selected Problem"
@@ -1193,11 +1223,11 @@ export function CarePlanView({ patientId, program }) {
           />
         ) : (
           <CarePlanBarriersTable
-            rows={filteredBarriers}
+            rows={plainBarriers}
             canEdit={canEdit}
             bulkMode={bulkMode}
             selectedIds={[...selected.barrier]}
-            onSelectAll={(checked) => selectAllKind('barrier', filteredBarriers, checked)}
+            onSelectAll={(checked) => selectAllKind('barrier', plainBarriers, checked)}
             onToggleSelect={(id) => toggleSelect('barrier', id)}
             onStatusMenu={setStatusMenu}
             onPriorityMenu={setPriorityMenu}
@@ -1207,7 +1237,32 @@ export function CarePlanView({ patientId, program }) {
             onTitleChange={renameBarrier}
             hasNote={(b) => noteLookup('barrier', b.id)}
             linked={linkedForChildRow}
-            emptyState={filteredBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the search or filters.</div> : null}
+            emptyState={plainBarriers.length === 0 ? <div className={styles.emptyRow}>No barriers match the search or filters.</div> : null}
+          />
+        ))}
+      </div>
+
+      {/* Social Needs (SDOH): barriers with a domain, and their referrals */}
+      <div className={styles.section}>
+        <GbiSectionHead
+          title="Social Needs (SDOH)"
+          count={sdohBarriers.length}
+          open={openSections.sdoh}
+          onToggle={() => toggleSection('sdoh')}
+        />
+        {openSections.sdoh && (carePlanLoading ? (
+          <SimpleTableSkeleton rows={3} cols={3} />
+        ) : (
+          <SdohSection
+            mode="plan"
+            barriers={sdohBarriers}
+            interventions={viewData.interventions || []}
+            onAddNeed={canEdit ? addSdohNeed : undefined}
+            onRemoveNeed={canEdit ? (b) => setDeleteTarget({ kind: 'barrier', id: b.id, name: b.title, item: b }) : undefined}
+            onStatusMenu={canEdit ? setStatusMenu : undefined}
+            onRefer={canEdit ? (barrier, partner) => setReferralFor({ barrier, partner }) : undefined}
+            onReferralStatus={canEdit ? setReferralStatus : undefined}
+            onRemoveReferral={canEdit ? (r) => setDeleteTarget({ kind: 'intv', id: r.id, name: r.title, item: r }) : undefined}
           />
         ))}
       </div>
@@ -1220,6 +1275,14 @@ export function CarePlanView({ patientId, program }) {
 
       <CarePlanViewDrawers {...drawerProps} />
 
+      {referralFor && (
+        <SdohReferralDialog
+          partner={referralFor.partner}
+          barrier={referralFor.barrier}
+          onCancel={() => setReferralFor(null)}
+          onSubmit={saveReferral}
+        />
+      )}
       {pauseOpen && <PauseCarePlanDialog onCancel={() => setPauseOpen(false)} onSubmit={submitPause} />}
     </div>
     </CarePlanPausedContext.Provider>
