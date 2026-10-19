@@ -37,6 +37,19 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Draft a care plan template from plain English.** Settings → Care Plan
+  library → New Template opens with "Describe this template in plain
+  English" (`src/components/UnityPromptField`). UnityAI
+  (`/api/care-plan-template-draft`, Gemini) drafts the name, summary,
+  template type and conditions, plus goals with their cadence, interventions
+  and barriers, picking from the library first: every library reference is
+  checked against the catalog the client sent (`lib/aiTemplateDraft.js`).
+  The draft lands in the editor for review with a banner saying what came
+  from the library and what's new; Redraft replaces it and Discard Draft
+  removes it, leaving anything added by hand. New goals are created in the
+  library when the template saves (with no invented target values), then
+  Save as Template publishes. The three AI endpoints now share one function
+  (`api/ai.js`), so the deployment uses 9 of Hobby's 12.
 - **Care plan GBI statuses: Discontinued, Not Applicable, Resolved.** Goals,
   interventions and barriers can now be Discontinued (patient refusal) or Not
   Applicable, and barriers can be Resolved, alongside Not Started / In
