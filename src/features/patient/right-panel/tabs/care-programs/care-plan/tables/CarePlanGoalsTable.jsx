@@ -29,6 +29,7 @@ import {
   formatGoalFrequency,
   goalTargetUnitMissing,
 } from '../../../../../../settings/care-plan-library/lib';
+import { AiSuggestionBadge } from '../ai/AiSuggestionBadge';
 import styles from './carePlanTables.module.css';
 
 // "Goal < 7 %" exactly as the goal editor formats it. Assessments are skipped:
@@ -151,6 +152,7 @@ export function CarePlanGoalsTable({
           icon={goalCategoryIcon(g.category)}
           iconTitle={g.category ? normalizeCategory(g.category) : 'Goal'}
           title={g.title}
+          badge={<AiSuggestionBadge kind="goal" item={g} />}
           meta={g.subtitle || null}
           layout="stacked"
           linked={linked(g)}
@@ -236,6 +238,7 @@ export function CarePlanGoalsTable({
             icon={goalCategoryIcon(g.category)}
             iconTitle={g.category ? normalizeCategory(g.category) : 'Goal'}
             title={g.title}
+            badge={<AiSuggestionBadge kind="goal" item={g} />}
             meta={meta}
             layout="stacked"
             showLink={false}

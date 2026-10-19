@@ -135,6 +135,7 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
   const carePlanMoreItems = useMemo(() => {
     const items = [
       ...rightPanelItems,
+      { key: 'ai-plan', iconElement: <Icon name="custom:ai" size={16} />, label: 'Draft Individualized Plan' },
       ...(canPause ? [planPaused
         ? { key: 'resume', icon: 'solar:play-circle-linear', label: 'Resume Care Plan' }
         : { key: 'pause', icon: 'solar:pause-circle-linear', label: 'Pause Care Plan' }] : []),

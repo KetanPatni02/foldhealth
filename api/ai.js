@@ -1,20 +1,23 @@
 // AI drafting and summaries, one function (see _lib/dispatch.js):
 // /api/pop-group-rule-from-nl, /api/care-plan-summary,
-// /api/care-plan-template-draft.
+// /api/care-plan-template-draft, /api/care-plan-individualized.
 import { dispatch } from './_lib/dispatch.js';
 import popGroupRuleFromNl from './_handlers/pop-group-rule-from-nl.js';
 import carePlanSummary from './_handlers/care-plan-summary.js';
 import carePlanTemplateDraft from './_handlers/care-plan-template-draft.js';
+import carePlanIndividualized from './_handlers/care-plan-individualized.js';
 
 export default dispatch(
   {
     'pop-group-rule-from-nl': popGroupRuleFromNl,
     'care-plan-summary': carePlanSummary,
     'care-plan-template-draft': carePlanTemplateDraft,
+    'care-plan-individualized': carePlanIndividualized,
   },
   {
     '/api/pop-group-rule-from-nl': 'pop-group-rule-from-nl',
     '/api/care-plan-summary': 'care-plan-summary',
     '/api/care-plan-template-draft': 'care-plan-template-draft',
+    '/api/care-plan-individualized': 'care-plan-individualized',
   },
 );
