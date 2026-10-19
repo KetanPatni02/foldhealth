@@ -35,14 +35,7 @@ import styles from '../GoalPreviewDrawer/GoalPreviewDrawer.module.css';
 import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css';
 import { parseLocalDate } from '../../../../../../../../lib/localDate';
 
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
-const STATUS_TONE = {
-  'Not Started': 'grey',
-  'In Progress': 'warning',
-  'On Hold': 'grey',
-  Met: 'success',
-  'Not Met': 'error',
-};
+import { GBI_STATUSES, gbiStatusMeta } from '../../lib/gbiStatus';
 
 function adherenceNum(value) {
   const n = Number(value);
@@ -317,7 +310,7 @@ export function InterventionPreviewDrawer({ intervention, patientId, program, on
       <div className={styles.body}>
         <div className={styles.statusBar}>
           <Select
-            options={GBI_STATUSES.map(s => ({ value: s, label: s }))}
+            options={GBI_STATUSES.map(s => ({ value: s, label: s, icon: gbiStatusMeta(s).icon }))}
             value={live.status}
             onChange={changeStatus}
             disabled={!canDocument}

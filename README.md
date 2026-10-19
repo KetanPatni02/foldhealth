@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Care plan GBI statuses: Discontinued, Not Applicable, Resolved.** Goals,
+  interventions and barriers can now be Discontinued (patient refusal) or Not
+  Applicable, and barriers can be Resolved, alongside Not Started / In
+  Progress / On Hold / Met / Not Met. Every status has an icon and a color,
+  and On Hold is now blue rather than grey. The vocabulary lives in one place
+  (`care-plan/lib/gbiStatus.js`) that every badge, picker, filter and rollup
+  reads. Reporting: Met and Resolved are achieved, Not Met is the only
+  failure, and Discontinued / Not Applicable count as neither, so they leave
+  completion rates, average progress and template-run outcomes, and never
+  show red. Closed items collapse into "Closed Goals / Interventions /
+  Barriers". No migration: status columns are plain text.
+
 - **Account emails from the email builder.** Unlock Account (User ID +
   set-password link), Password Set, Account Activated and Sign-up Approved are
   email builder templates (Settings → Content → Emails, category "Account
