@@ -8,16 +8,15 @@ const BY_LABEL = Object.fromEntries(UNLOCK_REASONS.map(r => [r.label, r.code]));
 
 /**
  * Unlock asks for a reason and a confirmation that the user's identity was
- * checked. Optionally it requires a new password; a suspected attack always
- * does (the database enforces it).
+ * checked. The user then gets an email with their User ID and a one-time
+ * link to set a new password; their old password no longer works.
  */
 export function UnlockAccountDialog({ user, onCancel, onConfirm }) {
   const [identityChecked, setIdentityChecked] = useState(false);
-  const [requireReset, setRequireReset] = useState(false);
   return (
     <ReasonDialog
       title={`Unlock ${user.name}?`}
-      description="They can sign in again right away. The reason, your name and the time are recorded on their profile."
+      description="We'll email them their User ID and a one-time link (valid 24 hours) to set a new password. The reason, your name and the time are recorded on their profile."
       decision="pass"
       standardReasons={UNLOCK_REASONS.map(r => r.label)}
       confirmLabel="Unlock Account"
@@ -30,16 +29,11 @@ export function UnlockAccountDialog({ user, onCancel, onConfirm }) {
         reason: code ? BY_LABEL[code] : 'other',
         note: freeText,
         identityConfirmed: identityChecked,
-        requireReset,
       })}
     >
       <label className={styles.check}>
         <Checkbox checked={identityChecked} onCheckedChange={v => setIdentityChecked(v === true)} />
         <span>I checked this user's identity</span>
-      </label>
-      <label className={styles.check}>
-        <Checkbox checked={requireReset} onCheckedChange={v => setRequireReset(v === true)} />
-        <span>Require a new password at the next sign-in (always on for a suspected attack)</span>
       </label>
     </ReasonDialog>
   );

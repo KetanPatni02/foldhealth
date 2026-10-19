@@ -1,47 +1,65 @@
 import { useState } from 'react';
 import { Button } from '../../components/Button/Button';
 import { Icon } from '../../components/Icon/Icon';
+import { requestAccountUnlock } from './accountSecurity';
 import styles from './LoginPage.module.css';
 
 /**
- * Shown on the 5th failed sign-in (or when an admin requires a new
- * password). It never says "locked", so it tells an attacker nothing; the
- * account owner gets the detail by email.
+ * Shown on the 5th failed sign-in, and while an unlocked account waits for
+ * its new password. Only an administrator can unlock: the user asks from
+ * here, the admin checks who they are and unlocks, and the user gets an
+ * email with a link to set a new password. The screen never says "locked";
+ * the account owner gets the detail by email.
  */
-export function SignInPaused({ reason = 'paused', onReset, onBack }) {
-  const [showContact, setShowContact] = useState(false);
-  const resetRequired = reason === 'resetRequired';
+export function SignInPaused({ reason = 'paused', email, onBack }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
+  const waiting = reason === 'resetRequired';
+
+  const ask = async () => {
+    setSending(true);
+    setError('');
+    const r = await requestAccountUnlock(email);
+    setSending(false);
+    if (r.ok) setSent(true);
+    else setError(r.message);
+  };
+
   return (
     <>
       <div className={styles.welcome}>
         <h1 className={styles.welcomeTitle}>
           <span className={styles.welcomePurple}>Sign-in </span>
-          <span className={styles.welcomeDark}>{resetRequired ? 'Needs a New Password' : 'Paused'}</span>
+          <span className={styles.welcomeDark}>{waiting ? 'Needs a New Password' : 'Paused'}</span>
         </h1>
         <p className={styles.welcomeSub}>
-          {resetRequired
-            ? 'Your administrator asked you to set a new password before you sign in.'
+          {waiting
+            ? 'Your administrator unlocked your account. Use the link in the email we sent you to set a new password.'
             : 'For your security, we paused sign-in for this account. We sent the details to the email on file.'}
         </p>
       </div>
 
       <div className={styles.form}>
-        <Button variant="primary" size="L" fullWidth leadingIcon="solar:key-linear" onClick={onReset}>
-          Reset Your Password
-        </Button>
-        {!resetRequired && (
-          <Button variant="secondary" size="L" fullWidth leadingIcon="solar:user-speak-linear" onClick={() => setShowContact(v => !v)}>
-            Contact Your Administrator
+        {!sent && (
+          <Button variant="primary" size="L" fullWidth leadingIcon="solar:user-speak-linear" onClick={ask} disabled={sending}>
+            {sending ? 'Sending request...' : waiting ? 'Ask for a New Link' : 'Request Unlock from Administrator'}
           </Button>
         )}
-        {showContact && (
-          <div className={styles.unverifiedNotice}>
-            <Icon name="solar:info-circle-linear" size={14} color="var(--status-info)" />
-            <div className={styles.unverifiedBody}>
-              Ask your practice administrator to unlock your account. They can do it from Settings in Fold Health after checking it's you.
-            </div>
+        {error && (
+          <div className={styles.error}>
+            <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
+            {error}
           </div>
         )}
+        <div className={[styles.unverifiedNotice, styles.noticeInfo].join(' ')}>
+          <Icon name={sent ? 'solar:check-circle-linear' : 'solar:info-circle-linear'} size={14} color="var(--status-info)" />
+          <div className={styles.unverifiedBody}>
+            {sent
+              ? 'We asked your practice administrator to unlock your account. Once they confirm it\'s you, you\'ll get an email with a link to set a new password.'
+              : 'Only your practice administrator can unlock your account. They\'ll check it\'s you, then you\'ll get an email with a link to set a new password.'}
+          </div>
+        </div>
       </div>
 
       <div className={styles.toggleAuth}>

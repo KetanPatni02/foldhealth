@@ -282,6 +282,11 @@
   border: 0.5px solid color-mix(in srgb, var(--status-warning) 25%, transparent);
   border-radius: 6px;
 }
+/* Same box in the info palette (Sign-in Paused → Contact your administrator). */
+.noticeInfo {
+  background: var(--status-info-light);
+  border-color: color-mix(in srgb, var(--status-info) 25%, transparent);
+}
 .unverifiedBody {
   flex: 1;
   font-size: var(--font-md);

@@ -123,6 +123,7 @@ export function UsersTab({ tabsForBar, activeTab, setActiveTab }) {
           lock={tab.lockouts[tab.viewingUser.id]}
           canUnlock={tab.isCurrentUserAdmin}
           onUnlock={() => setUnlockUser(tab.viewingUser)}
+          onResendLink={() => tab.resendUnlockLink(tab.viewingUser)}
           onClose={() => tab.setViewingUser(null)}
           canEdit={tab.isCurrentUserAdmin}
           onEdit={() => { tab.setEditingUser(tab.viewingUser); tab.setViewingUser(null); }}

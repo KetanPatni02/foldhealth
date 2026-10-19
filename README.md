@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Account lockout: administrator-only unlock with an emailed link.** A
+  locked account stays locked even with the right password (the existing
+  access-token hook refuses password sign-in, and the sign-in page reports
+  failures, so it works without the paid Password Verification Hook). The
+  user requests an unlock from the sign-in screen; an admin unlocks it from
+  their profile, which emails the User ID and a one-time link (24 hours) to
+  set a new password and sign in. Every step (failed attempts, lock,
+  request, unlock and reason, link sent, password set) is recorded in the
+  user's Audit Log. Needs `supabase/account_unlock_link_migration.sql`.
+
 - **HCC Diagnosis Gaps and the Care Plan in the side panel (floating
   sidebar).** The Diagnosis Gaps Details drawer has "Open in Side Panel"
   beside its close button: the drawer morphs into the patient split (a view

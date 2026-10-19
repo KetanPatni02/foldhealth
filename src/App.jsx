@@ -7,6 +7,7 @@ import { UpdateAvailableBanner } from './components/UpdateAvailableBanner/Update
 import { LoginPage } from './features/auth/LoginPage';
 import { isPendingApprovalSession, PENDING_APPROVAL_NOTICE } from './features/auth/pendingApproval';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
+import { UnlockAccountPage } from './features/auth/UnlockAccountPage';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
@@ -184,6 +185,21 @@ function App() {
           } else {
             window.location.hash = '#/login';
           }
+        }}
+      />
+    );
+  }
+
+  // The link an administrator's unlock emails (account lockout): set a new
+  // password, then sign in. Works whether or not someone is signed in here.
+  const unlockMatch = hash.match(/^#\/unlock-account\?token=([^&#]+)/);
+  if (unlockMatch) {
+    return (
+      <UnlockAccountPage
+        token={decodeURIComponent(unlockMatch[1])}
+        onDone={(opts) => {
+          if (opts?.notice) setLoginNotice(opts.notice);
+          window.location.hash = opts?.enterApp ? '#/home' : '#/login';
         }}
       />
     );

@@ -5,7 +5,6 @@ import { FALLBACK_USERS } from '../../fallbackUsers';
 import { getInitials } from '../AccountPanel.constants';
 import { ROLE_FIELDS } from './UsersTab.utils';
 import { apiFetch } from '../../../../lib/apiFetch';
-import { flushSecurityEmails } from '../../../auth/accountSecurity';
 import { isLocked } from './accountLock';
 
 // Map a raw `profiles` row to the user shape the table renders. Shared by the
@@ -138,26 +137,36 @@ export function useUsersTab() {
     [users, lockouts],
   );
 
-  const unlockAccount = async (user, { reason, note, identityConfirmed, requireReset }) => {
+  // Unlock (api/account-unlock.js): records the reason, then emails the user
+  // their User ID and a one-time link to set a new password.
+  const postUnlock = async (body) => {
+    const res = await apiFetch('/api/account-unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json().catch(() => ({}));
+    return res.ok ? { ok: true, ...json } : { ok: false, message: json?.error?.message };
+  };
+
+  const unlockAccount = async (user, { reason, note, identityConfirmed }) => {
     if (!isCurrentUserAdmin) {
       showToast('Only practice admins can unlock accounts');
       return false;
     }
-    const { data, error } = await supabase.rpc('admin_unlock_account', {
-      target: user.id,
-      reason,
-      note: note || null,
-      identity_confirmed: !!identityConfirmed,
-      require_reset: !!requireReset,
-    });
-    if (error) {
-      showToast(error.message || 'Could not unlock the account');
+    const r = await postUnlock({ action: 'unlock', userId: user.id, reason, note, identityConfirmed });
+    if (!r.ok) {
+      showToast(r.message || 'Could not unlock the account');
       return false;
     }
-    if (data) setLockouts(prev => ({ ...prev, [user.id]: data }));
-    flushSecurityEmails();
-    showToast(`${user.name} unlocked`);
+    if (r.lock) setLockouts(prev => ({ ...prev, [user.id]: r.lock }));
+    showToast(`${user.name} unlocked. We emailed them a link to set a new password.`);
     return true;
+  };
+
+  const resendUnlockLink = async (user) => {
+    const r = await postUnlock({ action: 'resend', userId: user.id });
+    showToast(r.ok ? `New link sent to ${user.email}` : (r.message || 'Could not send the link'));
   };
 
   const toggleUserStatus = async (user) => {
@@ -388,6 +397,7 @@ export function useUsersTab() {
     deleteUsersBulk,
     resetPassword,
     unlockAccount,
+    resendUnlockLink,
     lockouts,
     saveUserProfile,
     filteredUsers,
