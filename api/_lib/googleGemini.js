@@ -25,7 +25,13 @@ export function geminiModelChain() {
 }
 
 /**
- * @param {{ apiKey: string, requestBody: object | string, models?: string[], logTag?: string }} opts
+ * `timeoutMs` (optional) caps each attempt: a request that hasn't answered by
+ * then is abandoned and retried / failed over like a 503, instead of hanging
+ * while the model is overloaded. When every attempt times out the result is
+ * a synthetic 504. `deadlineMs` (optional) is the budget for the whole
+ * chain: no new attempt starts once it has passed.
+ *
+ * @param {{ apiKey: string, requestBody: object | string, models?: string[], logTag?: string, timeoutMs?: number, deadlineMs?: number }} opts
  * @returns {Promise<{ response: Response, model: string }>}
  */
 export async function geminiGenerateContent({
@@ -33,7 +39,11 @@ export async function geminiGenerateContent({
   requestBody,
   models = geminiModelChain(),
   logTag = 'googleGemini',
+  timeoutMs,
+  deadlineMs,
 }) {
+  const startedAt = Date.now();
+  const outOfTime = () => deadlineMs && Date.now() - startedAt >= deadlineMs;
   const bodyStr = typeof requestBody === 'string' ? requestBody : JSON.stringify(requestBody);
   let lastResponse = null;
   let lastModel = models[0] || 'unknown';
@@ -44,11 +54,20 @@ export async function geminiGenerateContent({
 
     const maxAttempts = models.indexOf(model) === 0 ? 3 : 2;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: bodyStr,
-      });
+      if (outOfTime() && lastResponse) return { response: lastResponse, model: lastModel };
+      let response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: bodyStr,
+          signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
+        });
+      } catch (err) {
+        if (err?.name !== 'TimeoutError') throw err;
+        console.warn(`[${logTag}] ${model} no answer in ${timeoutMs}ms`);
+        response = new Response(JSON.stringify({ error: { message: 'Timed out' } }), { status: 504 });
+      }
       lastResponse = response;
 
       if (response.ok) {

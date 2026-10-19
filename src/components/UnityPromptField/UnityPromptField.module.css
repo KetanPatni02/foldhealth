@@ -1,0 +1,45 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* The example (while empty) on the left, the action on the right. */
+.actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.actions > button:last-child { flex-shrink: 0; }
+
+/* The example reads as a suggestion the user can take with one click. */
+.example {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--font-sm);
+  line-height: 1.4;
+  color: var(--neutral-300);
+  text-align: left;
+  cursor: pointer;
+}
+.example:hover { color: var(--primary-300); }
+.example:focus-visible {
+  outline: 2px solid var(--primary-200);
+  outline-offset: 2px;
+  border-radius: var(--space-1);
+}
+.exampleLabel {
+  font-weight: 500;
+  color: var(--neutral-400);
+}
