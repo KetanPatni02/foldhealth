@@ -226,6 +226,28 @@ function mapInterventionRow(row) {
    the library goal shape (so a template instantiates cleanly) plus the fields
    the patient view shows and edits: currentValue, trend, status. Kept beside
    the library mappers so a shared column rename can't drift. */
+// Individualized Plan AI fields (care_plan_ai_suggestions migration): the
+// flag, why, the patient inputs it cites, and who cleared it.
+const aiFromRow = (row) => ({
+  aiSuggested: !!row.ai_suggested,
+  aiRationale: row.ai_rationale || '',
+  aiCitations: Array.isArray(row.ai_citations) ? row.ai_citations : [],
+  aiReviewedBy: row.ai_reviewed_by || null,
+  aiReviewedAt: row.ai_reviewed_at || null,
+});
+// Only AI items (and their review) write the columns, so every other save
+// keeps working before the migration has run.
+const aiToRow = (x) => {
+  if (!x?.aiSuggested) return {};
+  return {
+    ai_suggested: true,
+    ai_rationale: x.aiRationale || null,
+    ai_citations: x.aiCitations || [],
+    ai_reviewed_by: x.aiReviewedBy || null,
+    ai_reviewed_at: x.aiReviewedAt || null,
+  };
+};
+
 function mapPatientCarePlanGoalRow(row) {
   return {
     id: row.id,
@@ -252,6 +274,7 @@ function mapPatientCarePlanGoalRow(row) {
     updatedBy: row.updated_by || '',
     links: 0,
     sortOrder: row.sort_order ?? 0,
+    ...aiFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -282,6 +305,7 @@ function patientCarePlanGoalToRow(g, planId) {
     progress: Number.isFinite(g.progress) ? g.progress : 0,
     updated_by: g.updatedBy || null,
     sort_order: g.sortOrder ?? 0,
+    ...aiToRow(g),
   };
 }
 
@@ -333,6 +357,7 @@ function mapPatientCarePlanInterventionRow(row) {
     links: 0,
     sortOrder: row.sort_order ?? 0,
     updatedBy: row.updated_by || '',
+    ...aiFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -355,6 +380,7 @@ function patientCarePlanInterventionToRow(i, planId) {
     adherence: i.adherence || '-',
     updated_by: i.updatedBy || null,
     sort_order: i.sortOrder ?? 0,
+    ...aiToRow(i),
   };
 }
 
@@ -376,6 +402,7 @@ function mapPatientCarePlanBarrierRow(row, goalIdsFromJoin = null) {
     status: row.status || 'Not Started',
     priority: row.priority || 'medium',
     sortOrder: row.sort_order ?? 0,
+    ...aiFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -390,6 +417,7 @@ function patientCarePlanBarrierToRow(b, planId) {
     status: b.status || 'Not Started',
     priority: b.priority || 'medium',
     sort_order: b.sortOrder ?? 0,
+    ...aiToRow(b),
   };
 }
 

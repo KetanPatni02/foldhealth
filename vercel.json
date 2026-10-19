@@ -63,6 +63,10 @@
       "destination": "/api/ai?route=care-plan-template-draft"
     },
     {
+      "source": "/api/care-plan-individualized",
+      "destination": "/api/ai?route=care-plan-individualized"
+    },
+    {
       "source": "/s/:section",
       "destination": "/api/share?s=:section"
     },

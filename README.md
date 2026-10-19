@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Individualized Plan AI.** An empty care plan offers Draft Individualized
+  Plan (also in the care plan ⋯ menu). UnityAI reads the patient's chronic
+  conditions, latest assessments, open barriers, recent events and lab trends
+  as numbered facts (`care-plan/lib/individualizedPlan.js`), picks the
+  best-fitting templates and drafts a tailored set of goals, interventions
+  and barriers (`/api/care-plan-individualized`). It's written onto the plan
+  unsigned (a draft), and every item is flagged "AI · Review" with its
+  rationale and the inputs it cites, as they read when drafted. Anything that
+  cites nothing real is dropped on the server. Reviewers clear items one by
+  one or all at once, or discard the AI items; History records the draft.
+  Needs `supabase/care_plan_ai_suggestions_migration.sql`.
+
 - **Draft a care plan template from plain English.** Settings → Care Plan
   library → New Template opens with "Describe this template in plain
   English" (`src/components/UnityPromptField`). UnityAI

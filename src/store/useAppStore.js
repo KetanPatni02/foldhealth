@@ -72,6 +72,9 @@ import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activity
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
+import { buildPatientFacts, buildTemplateChoices, draftCounts } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/individualizedPlan';
+import { buildTemplateCatalog } from '../features/settings/care-plan-library/lib/aiTemplateDraft';
+import { apiFetch } from '../lib/apiFetch';
 import { INSTANCE_STATUS, formatInstanceDate, instanceOutcome, templateEndsOn } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { templateContentFromApplied, templateContentFromWholePlan } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateSave';
@@ -2230,6 +2233,115 @@ export const useAppStore = create((set, get) => ({
       patientCarePlanLoading: { ...s.patientCarePlanLoading, [key]: false },
       patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: true },
     }));
+  },
+
+  // ── Individualized Plan AI (care_plan_ai_suggestions migration) ──
+  // Reads the patient's conditions, labs, recent encounters, assessments and
+  // open barriers as numbered facts, asks /api/care-plan-individualized for the
+  // best templates and a tailored GBI set, and writes it onto this program's
+  // plan unsigned (a draft): every item flagged for review with its rationale
+  // and the facts it cites. Pipeline: care-plan/lib/individualizedPlan.js.
+  // Returns { counts, templates } or throws with a message for the caller.
+  draftIndividualizedPlan: async (patientId, program) => {
+    // Without the AI columns the drafted items can't carry their flag or
+    // evidence, so say so before calling the model or touching the plan.
+    const probe = await supabase.from('patient_care_plan_goals').select('ai_suggested').limit(1);
+    if (probe.error && /ai_suggested/i.test(probe.error.message || '')) {
+      throw new Error('Individualized plans need the care plan AI migration (care_plan_ai_suggestions_migration.sql).');
+    }
+    if (!get().carePlanTemplates.length || !get().carePlanGoals.length) await get().fetchCarePlanLibrary();
+    const s0 = get();
+    const pid = String(patientId);
+    const [problems, events, responses, forms, otherBarriers] = await Promise.all([
+      supabase.from('patient_problems').select('title, status').eq('patient_id', pid),
+      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit, reference_low, reference_high').eq('patient_id', pid),
+      supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', pid)
+        .order('created_at', { ascending: false }).limit(50),
+      supabase.from('forms').select('id, name').limit(300),
+      supabase.from('patient_care_plans').select('program_code, patient_care_plan_barriers(title, status)').eq('patient_id', pid),
+    ]);
+    const openBarriers = (otherBarriers.data || []).flatMap(p => (p.patient_care_plan_barriers || [])
+      .filter(b => !['Met', 'Resolved', 'Not Met', 'Discontinued', 'Not Applicable'].includes(b.status))
+      .map(b => ({ title: b.title, program: p.program_code })));
+    const facts = buildPatientFacts({
+      problems: problems.data || [],
+      clinicalEvents: events.data || [],
+      // patient_id on form_responses arrives with the automation rules migration.
+      responses: responses.error ? [] : (responses.data || []),
+      formNames: new Map((forms.data || []).map(f => [String(f.id), f.name])),
+      barriers: openBarriers,
+    });
+    if (!facts.length) throw new Error('There’s nothing on this patient’s record to plan from yet: no conditions, labs, events, assessments or barriers.');
+
+    const templates = buildTemplateChoices(s0.carePlanTemplates, s0.carePlanGoals);
+    const catalog = buildTemplateCatalog({ goals: s0.carePlanGoals, interventions: s0.carePlanInterventionTemplates, barriers: s0.carePlanBarriers });
+    const res = await apiFetch('/api/care-plan-individualized', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ facts, templates, catalog, programName: program.name || program.code }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.draft) throw new Error(json?.error?.message || 'Could not draft the plan. Please try again.');
+    const draft = json.draft;
+
+    // Write it: goals first (interventions and barriers link to them).
+    const libGoals = new Map(s0.carePlanGoals.map(g => [String(g.id), g]));
+    const libIntv = new Map((s0.carePlanInterventionTemplates || []).map(i => [String(i.id), i]));
+    const libBarrier = new Map((s0.carePlanBarriers || []).map(b => [String(b.id), b]));
+    const ai = (x) => ({ aiSuggested: true, aiRationale: x.rationale, aiCitations: x.citations, aiReviewedBy: null, aiReviewedAt: null });
+    // The plan row first, so the parallel saves below all hang off one plan.
+    if (!(await get().ensurePatientCarePlan(patientId, program))) throw new Error('Could not start the care plan.');
+    const savedGoals = await Promise.all(draft.goals.map((g) => {
+      const base = g.libraryId && libGoals.has(g.libraryId)
+        ? goalPayloadFromTemplateEntry({ id: g.libraryId }, s0.carePlanGoals)
+        : { title: g.title, priority: g.priority, icon: 'solar:flag-linear', status: 'Not Started', frequency: g.frequency || '' };
+      return get().savePatientCarePlanGoal(patientId, program, { ...base, priority: g.priority || base.priority, ...ai(g) });
+    }));
+    if (savedGoals.some(x => !x)) throw new Error('Could not save every drafted goal. Check the plan and try again.');
+    const goalIdByTitle = new Map(draft.goals.map((g, k) => [g.title, savedGoals[k].id]));
+    await Promise.all([
+      ...draft.interventions.map((i) => {
+        const lib = i.libraryId ? libIntv.get(i.libraryId) : null;
+        const base = lib ? interventionPayloadFromTemplateEntry({ kind: lib.kind, title: lib.title, config: lib.config }) : interventionPayloadFromTemplateEntry({ kind: i.kind, title: i.title });
+        return get().savePatientCarePlanIntervention(patientId, program, { ...base, goalId: i.goalTitle ? goalIdByTitle.get(i.goalTitle) || null : null, ...ai(i) });
+      }),
+      ...draft.barriers.map((b) => {
+        const lib = b.libraryId ? libBarrier.get(b.libraryId) : null;
+        return get().savePatientCarePlanBarrier(patientId, program, {
+          ...barrierPayloadFromTemplateEntry({ title: lib?.title || b.title, description: lib?.description || '' }, b.goalTitles.map(t => goalIdByTitle.get(t)).filter(Boolean)),
+          ...ai(b),
+        });
+      }),
+    ]);
+
+    const counts = draftCounts(draft);
+    await get().logCarePlanAudit(patientId, program, {
+      entityType: 'plan',
+      action: 'ai_drafted',
+      summary: `UnityAI drafted ${counts} for review`,
+      detail: [
+        draft.summary,
+        draft.templates.length ? `Based on: ${draft.templates.map(t => t.name).join(', ')}` : 'No template fit; tailored from the record',
+        `${facts.length} patient inputs read`,
+      ].filter(Boolean).join(' · '),
+    });
+    return { counts, summary: draft.summary, templates: draft.templates };
+  },
+
+  // Clear the AI flag on items once a care manager has reviewed them.
+  // `items` is [{ kind: 'goal' | 'intervention' | 'barrier', item }].
+  reviewAiSuggestions: async (patientId, program, items) => {
+    const by = get().currentUserProfile?.name || null;
+    const at = new Date().toISOString();
+    const save = {
+      goal: (x) => get().savePatientCarePlanGoal(patientId, program, x, x.id),
+      intervention: (x) => get().savePatientCarePlanIntervention(patientId, program, x, x.id),
+      barrier: (x) => get().savePatientCarePlanBarrier(patientId, program, x, x.id),
+    };
+    const results = await Promise.all(items
+      .filter(({ item }) => item?.aiSuggested && !item.aiReviewedAt)
+      .map(({ kind, item }) => save[kind]?.({ ...item, aiReviewedBy: by, aiReviewedAt: at })));
+    return results.filter(Boolean).length;
   },
 
   // Lazily create the plan header row so the first goal/intervention has a

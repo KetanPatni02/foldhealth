@@ -131,6 +131,7 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
   const carePlanMoreItems = useMemo(() => {
     const items = [
       ...rightPanelItems,
+      { key: 'ai-plan', iconElement: <Icon name="custom:ai" size={16} />, label: 'Draft Individualized Plan' },
       { key: 'template', icon: 'solar:bookmark-linear', label: 'Save as Template' },
       { key: 'note', icon: 'solar:notes-linear', label: 'Add Note' },
       { key: 'history', iconElement: <Icon name="custom:history" size={16} color="var(--neutral-400)" />, label: 'History' },

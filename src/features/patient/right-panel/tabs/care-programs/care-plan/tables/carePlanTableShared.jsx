@@ -284,6 +284,8 @@ export function GbiNameCell({
   // on the row still open the drawer.
   onTitleCommit,
   titleLabel = 'Title',
+  // A marker after the title, e.g. the AI · Review badge.
+  badge = null,
 }) {
   const stacked = layout === 'stacked';
 
@@ -322,6 +324,7 @@ export function GbiNameCell({
         ) : null}
         {meta && stacked ? <span className={styles.nameSecondary}>{meta}</span> : null}
       </span>
+      {badge}
       {recurring && (
         <Tooltip label={recurringLabel}>
           <span className={styles.recurringIcon} aria-label={recurringLabel}>
