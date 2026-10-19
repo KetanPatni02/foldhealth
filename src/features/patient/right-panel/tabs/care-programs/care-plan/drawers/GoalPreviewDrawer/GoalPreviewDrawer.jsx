@@ -56,6 +56,7 @@ import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChe
 import { localDateMs } from '../../../../../../../../lib/localDate';
 
 import { GBI_STATUSES, gbiStatusMeta } from '../../lib/gbiStatus';
+import { isCarePlanPaused } from '../../lib/carePlanPause';
 import { gbiStatusMenuItems } from '../../tables/carePlanTableShared';
 
 /** Session-persisted accordion open state for Goal Details sections. */
@@ -807,7 +808,9 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   // date-only value, so it's formatted without a UTC shift.
   const targetDateLabel = fmtDate(live.targetDate);
   const targetDateEditable = canEdit && !ro;
-  const targetOverdue = isPastDue(live.targetDate, live.status);
+  // A paused plan has no overdue flags (lib/carePlanPause).
+  const planPaused = isCarePlanPaused(liveSlice?.plan);
+  const targetOverdue = !planPaused && isPastDue(live.targetDate, live.status);
   // Structured target, same formatter as the plan table: "≤ 130 / 80 mmHg •
   // Daily • 3 Months". Assessments are done on a date, which the Completion
   // section and Target Date already show.

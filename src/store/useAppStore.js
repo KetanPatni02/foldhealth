@@ -72,6 +72,7 @@ import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activity
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
+import { isDueToAutoResume, nextTouchpoint as computeNextTouchpoint, pauseAuditEntry, pauseFields, resumeAuditEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanPause';
 import { INSTANCE_STATUS, formatInstanceDate, instanceOutcome, templateEndsOn } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { templateContentFromApplied, templateContentFromWholePlan } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateSave';
@@ -2230,6 +2231,89 @@ export const useAppStore = create((set, get) => ({
       patientCarePlanLoading: { ...s.patientCarePlanLoading, [key]: false },
       patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: true },
     }));
+    // Auto-resume runs when the plan is next opened on or after its resume date.
+    if (plan && isDueToAutoResume(plan)) {
+      await get().resumeCarePlan(patientId, { id: programId, code: plan.programCode }, { auto: true });
+    }
+  },
+
+  // ── Pause / resume (care_plan_pause migration) ──
+  // A paused plan has no cadence, overdue flags, next touchpoint or automated
+  // outreach (lib/carePlanPause isCarePlanPaused is the gate). Both write a
+  // care_plan_audit row; resume recomputes the next touchpoint.
+  pauseCarePlan: async (patientId, program, form) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    if (!cur?.plan?.id) return false;
+    const pause = pauseFields(form);
+    const pausedBy = get().currentUserProfile?.name || null;
+    const { error } = await supabase.from('patient_care_plans').update({
+      status: 'paused',
+      pause_reason: pause.reason,
+      pause_note: pause.note,
+      paused_on: pause.pausedOn,
+      resume_on: pause.resumeOn,
+      auto_resume: pause.autoResume,
+      paused_by: pausedBy,
+      next_touchpoint: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', cur.plan.id);
+    if (error) {
+      console.warn('pauseCarePlan:', error.message);
+      get().showToast(/status|pause|resume|touchpoint/i.test(error.message || '')
+        ? 'Pausing needs the care plan pause migration'
+        : 'Could not pause the care plan');
+      return false;
+    }
+    set(s => {
+      const c = s.patientCarePlans[key];
+      if (!c?.plan) return {};
+      return { patientCarePlans: { ...s.patientCarePlans, [key]: {
+        ...c, plan: { ...c.plan, status: 'paused', pause: { ...pause, pausedBy: pausedBy || '' }, nextTouchpoint: null },
+      } } };
+    });
+    await get().logCarePlanAudit(patientId, program, pauseAuditEntry(cur.plan.id, pause));
+    return true;
+  },
+
+  resumeCarePlan: async (patientId, program, { auto = false } = {}) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    if (!cur?.plan?.id || cur.plan.status !== 'paused') return false;
+    const tasksById = new Map((get().tasks || []).map(t => [String(t.id), t]));
+    const next = computeNextTouchpoint(
+      { plan: { ...cur.plan, status: 'active' }, goals: cur.goals, interventions: cur.interventions },
+      // Due date as the table resolves it: override, paired task, legacy config.
+      { dueDateOf: (i) => {
+        const task = tasksById.get(String(i.taskId));
+        return i.config?.dueDateOverride || task?.dueDate || task?.due_date || i.config?.dueDate;
+      } },
+    );
+    const { error } = await supabase.from('patient_care_plans').update({
+      status: 'active',
+      pause_reason: null,
+      pause_note: null,
+      paused_on: null,
+      resume_on: null,
+      auto_resume: false,
+      paused_by: null,
+      next_touchpoint: next,
+      updated_at: new Date().toISOString(),
+    }).eq('id', cur.plan.id);
+    if (error) {
+      console.warn('resumeCarePlan:', error.message);
+      if (!auto) get().showToast('Could not resume the care plan');
+      return false;
+    }
+    set(s => {
+      const c = s.patientCarePlans[key];
+      if (!c?.plan) return {};
+      return { patientCarePlans: { ...s.patientCarePlans, [key]: {
+        ...c, plan: { ...c.plan, status: 'active', pause: null, nextTouchpoint: next },
+      } } };
+    });
+    await get().logCarePlanAudit(patientId, program, resumeAuditEntry(cur.plan.id, { auto, nextTouchpoint: next }));
+    return true;
   },
 
   // Lazily create the plan header row so the first goal/intervention has a
