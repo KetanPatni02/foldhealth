@@ -8,7 +8,8 @@ import { PasswordResetFlow } from './PasswordResetFlow';
 import { SignInPaused } from './SignInPaused';
 import { FoldHealthLogo } from '../../components/FoldHealthLogo/FoldHealthLogo';
 import {
-  MAX_FAILED_ATTEMPTS, classifySignInError, noteFailedSignIn, clearFailedSignIns, flushSecurityEmails,
+  MAX_FAILED_ATTEMPTS, classifySignInError, noteFailedSignIn, clearFailedSignIns, failedSignIns,
+  reportFailedSignIn, reportSignInSuccess, flushSecurityEmails,
 } from './accountSecurity';
 import styles from './LoginPage.module.css';
 
@@ -54,6 +55,13 @@ export function LoginPage({ onBypass, notice = '' }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) { setError('Please enter email and password'); return; }
+    // Already paused in this browser: stay paused, even with the right
+    // password. Only an administrator's unlock brings the account back.
+    if (failedSignIns(email) >= MAX_FAILED_ATTEMPTS) {
+      setPassword('');
+      setPaused('paused');
+      return;
+    }
     setLoading(true);
     setError('');
     setUnverifiedEmail('');
@@ -72,6 +80,7 @@ export function LoginPage({ onBypass, notice = '' }) {
           setPaused(kind);
         } else if (kind === 'invalid') {
           // Attempts 1 to 4: the usual message, no countdown.
+          reportFailedSignIn(email, password);
           if (noteFailedSignIn(email) >= MAX_FAILED_ATTEMPTS) {
             setPassword('');
             setPaused('paused');
@@ -83,6 +92,7 @@ export function LoginPage({ onBypass, notice = '' }) {
         }
       } else {
         clearFailedSignIns(email);
+        reportSignInSuccess();
         track('auth.login_succeeded', { method: 'password' });
       }
     } finally {
@@ -205,7 +215,6 @@ export function LoginPage({ onBypass, notice = '' }) {
               {logo}
               <PasswordResetFlow
                 initialEmail={email}
-                intro={paused === 'resetRequired' ? 'Enter your email and we\'ll send you a 6-digit code to set a new password.' : undefined}
                 onDone={(msg) => { clearFailedSignIns(email); setPassword(''); exitForgotMode(msg); }}
                 onBack={() => exitForgotMode()}
               />
@@ -213,7 +222,7 @@ export function LoginPage({ onBypass, notice = '' }) {
           ) : paused ? (
             <>
               {logo}
-              <SignInPaused reason={paused} onReset={enterForgotMode} onBack={() => exitForgotMode()} />
+              <SignInPaused reason={paused} email={email} onBack={() => exitForgotMode()} />
             </>
           ) : (
           <LoginForm

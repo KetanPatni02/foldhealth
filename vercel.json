@@ -35,6 +35,18 @@
       "destination": "/api/email?route=referral-email"
     },
     {
+      "source": "/api/password-reset",
+      "destination": "/api/account?route=password-reset"
+    },
+    {
+      "source": "/api/account-unlock",
+      "destination": "/api/account?route=account-unlock"
+    },
+    {
+      "source": "/api/security-email-dispatch",
+      "destination": "/api/account?route=security-email-dispatch"
+    },
+    {
       "source": "/s/:section",
       "destination": "/api/share?s=:section"
     },

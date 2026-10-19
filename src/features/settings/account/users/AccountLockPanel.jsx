@@ -17,7 +17,7 @@ function Row({ label, value }) {
  * apps, last IP and who locked it, with the Unlock action. After an unlock it
  * shows who did it, when and why.
  */
-export function AccountLockPanel({ lock, canUnlock, onUnlock }) {
+export function AccountLockPanel({ lock, canUnlock, onUnlock, onResendLink }) {
   if (!lock) return null;
   if (isLocked(lock)) {
     return (
@@ -38,9 +38,11 @@ export function AccountLockPanel({ lock, canUnlock, onUnlock }) {
           <Row label="Last IP" value={lock.last_ip} />
           <Row label="Locked by" value={lock.locked_by === 'system' ? 'The system' : lock.locked_by} />
         </div>
-        {!canUnlock && (
-          <p className={styles.note}>The user can reset their password with an emailed code, or an admin can unlock the account.</p>
-        )}
+        <p className={styles.note}>
+          {canUnlock
+            ? 'Check the user\'s identity before unlocking. They\'ll get an email with a link to set a new password.'
+            : 'Only a practice admin can unlock this account.'}
+        </p>
       </section>
     );
   }
@@ -51,10 +53,17 @@ export function AccountLockPanel({ lock, canUnlock, onUnlock }) {
       <div className={styles.head}>
         <Icon name="solar:lock-keyhole-unlocked-linear" size={16} color="var(--neutral-300)" />
         <span className={styles.title}>Unlocked by {by}, {formatLockTime(lock.unlocked_at)}</span>
+        {lock.require_reset && canUnlock && onResendLink && (
+          <Button variant="secondary" size="S" leadingIcon="solar:letter-linear" onClick={onResendLink}>
+            Resend Link
+          </Button>
+        )}
       </div>
       <p className={styles.note}>
-        Reason: {reasonLabel(lock.unlock_reason)}{lock.unlock_note ? ` (${lock.unlock_note})` : ''}
-        {lock.require_reset ? '. A new password is required at the next sign-in.' : ''}
+        Reason: {reasonLabel(lock.unlock_reason)}{lock.unlock_note ? ` (${lock.unlock_note})` : ''}.
+        {lock.require_reset
+          ? ' Waiting for them to set a new password from the emailed link.'
+          : ' They set a new password.'}
       </p>
     </section>
   );

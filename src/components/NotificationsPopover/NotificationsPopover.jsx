@@ -238,6 +238,7 @@ function iconForType(type) {
   if (type === 'profile.name_incomplete') return 'solar:user-id-linear';
   if (type === 'user.signup_requested') return 'solar:user-check-linear';
   if (type === 'user.locked') return 'solar:lock-keyhole-minimalistic-linear';
+  if (type === 'user.unlock_requested') return 'solar:lock-keyhole-unlocked-linear';
   return 'solar:bell-linear';
 }
 

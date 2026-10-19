@@ -2,8 +2,9 @@ import { Resend } from 'resend';
 
 /**
  * Security emails (account lockout, password reset). Every one states the
- * time and what happened, says "If this wasn't you, contact your clinic or
- * administrator", and never contains a password or a sign-in link.
+ * time and what happened and says "If this wasn't you, contact your clinic
+ * or administrator". None contains a password. The only link is the
+ * one-time "set a new password" link an administrator's unlock sends.
  */
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM = process.env.RESEND_FROM || 'Fold Health <noreply@designedbyalok.com>';
@@ -50,8 +51,8 @@ export function renderSecurityEmail(kind, payload = {}) {
         subject: 'Your Fold Health account is locked',
         html: layout('Your account is locked', [
           `Hi ${name}, at ${at} we locked your Fold Health account after ${esc(payload.attempts || 5)} failed sign-in attempts in a row.`,
-          'It stays locked until you reset your password or an administrator unlocks it. Waiting does not unlock it.',
-          'To get back in, choose <strong>Forgot password</strong> on the sign-in screen and enter the code we email you, or ask your practice administrator to unlock your account.',
+          'It stays locked until an administrator unlocks it. Waiting does not unlock it.',
+          'To get back in, ask your practice administrator to unlock your account (you can send the request from the sign-in screen). You will then get an email with a link to set a new password.',
         ]),
       };
     case 'account_unlocked':
@@ -74,12 +75,30 @@ export function renderSecurityEmail(kind, payload = {}) {
           'You have been signed out everywhere. Sign in again with your new password.',
         ]),
       };
+    case 'unlock_link':
+      return {
+        subject: 'Your Fold Health account was unlocked',
+        html: layout('Set a new password to sign in', [
+          `Hi ${name}, your administrator unlocked your Fold Health account at ${at}.`,
+          `Your User ID: <strong>${esc(payload.email)}</strong>`,
+          'Your old password no longer works. Set a new one with this link. It works once and expires in 24 hours.',
+          `<a href="${esc(payload.link)}" style="display:inline-block;padding:10px 16px;border-radius:6px;background:#8C5AE2;color:#FFFFFF;text-decoration:none;font-weight:500">Set a new password</a>`,
+        ]),
+      };
+    case 'unlock_requested':
+      return {
+        subject: 'A user asked to unlock their account',
+        html: layout('Unlock requested', [
+          `${esc(payload.name)} (${esc(payload.email)}) asked to unlock their Fold Health account at ${at}.`,
+          'Check their identity first, then unlock it in Fold Health under Settings, Account, Users. They will get an email with a link to set a new password.',
+        ]),
+      };
     case 'staff_account_locked':
       return {
         subject: 'A staff account is locked',
         html: layout('A staff account is locked', [
           `${esc(payload.name)} (${esc(payload.email)}) was locked at ${at} after ${esc(payload.attempts || 5)} failed sign-in attempts in a row.`,
-          'They can reset their password with an emailed code, or you can unlock the account in Fold Health under Settings, Account, Users, after checking their identity.',
+          'Only an administrator can unlock it. After checking their identity, unlock it in Fold Health under Settings, Account, Users. They will get an email with a link to set a new password.',
         ]),
       };
     default:

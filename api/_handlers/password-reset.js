@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
-import { serviceClient, isPracticeAdmin } from './_lib/serviceClient.js';
-import { requireUser } from './_lib/requireUser.js';
-import { emailConfigured, sendSecurityEmail, flushSecurityOutbox } from './_lib/securityEmails.js';
+import { serviceClient, isPracticeAdmin } from '../_lib/serviceClient.js';
+import { requireUser } from '../_lib/requireUser.js';
+import { emailConfigured, sendSecurityEmail, flushSecurityOutbox } from '../_lib/securityEmails.js';
 
 /**
  * Password reset by emailed 6-digit code (account lockout, HITRUST).
@@ -34,6 +34,22 @@ async function profileByEmail(admin, email) {
   const { data } = await admin.from('profiles')
     .select('id, email, full_name, status').ilike('email', escaped).limit(1).maybeSingle();
   return data || null;
+}
+
+// A locked account (or one waiting for its unlock link) comes back only
+// through an administrator, so self-service codes aren't issued for it.
+async function lockedOrWaiting(admin, userId) {
+  const { data } = await admin.from('account_lockouts').select('locked_at, require_reset').eq('user_id', userId).maybeSingle();
+  return !!(data?.locked_at || data?.require_reset);
+}
+
+// Except for practice admins: they're the ones who unlock everyone else, so
+// if every admin were locked out nobody could recover. A locked admin can
+// still reset by emailed code, which needs their mailbox.
+async function selfResetBlocked(admin, userId) {
+  if (!(await lockedOrWaiting(admin, userId))) return false;
+  const { data: me } = await admin.from('profiles').select('status, admin_role, clinical_roles').eq('id', userId).maybeSingle();
+  return !isPracticeAdmin(me);
 }
 
 async function issueCode(admin, profile, requestedBy) {
@@ -70,6 +86,7 @@ async function handleRequest(req, res, admin) {
     if (!isPracticeAdmin(me)) return fail(res, 403, 'Only practice admins can send a reset code.');
     const { data: target } = await admin.from('profiles').select('id, email, full_name, status').eq('id', userId).maybeSingle();
     if (!target?.email) return fail(res, 404, 'This user has no email address on file.');
+    if (await lockedOrWaiting(admin, target.id)) return fail(res, 400, 'This account is locked. Use Unlock on their profile instead.');
     const result = await issueCode(admin, target, caller.id);
     if (result === 'rate_limited') return fail(res, 429, 'Three codes were already sent in the last hour. Try again later.');
     return res.status(200).json({ ok: true });
@@ -77,7 +94,7 @@ async function handleRequest(req, res, admin) {
 
   const profile = await profileByEmail(admin, email);
   // Same answer whether or not the account exists, or is rate limited.
-  if (profile && !['Pending', 'Rejected'].includes(profile.status)) {
+  if (profile && !['Pending', 'Rejected'].includes(profile.status) && !(await selfResetBlocked(admin, profile.id))) {
     await issueCode(admin, profile, null);
   }
   return res.status(200).json({ ok: true });
@@ -93,7 +110,7 @@ async function handleVerify(req, res, admin) {
 
   const profile = await profileByEmail(admin, email);
   const expired = () => fail(res, 400, 'That code has expired or was already used. Request a new code.', 'expired');
-  if (!profile) return expired();
+  if (!profile || await selfResetBlocked(admin, profile.id)) return expired();
 
   const { data: row } = await admin.from('password_reset_codes')
     .select('id, code_hash, expires_at, attempts')

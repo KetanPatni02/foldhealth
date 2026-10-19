@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import { serviceClient } from './_lib/serviceClient.js';
-import { emailConfigured, flushSecurityOutbox } from './_lib/securityEmails.js';
+import { serviceClient } from '../_lib/serviceClient.js';
+import { emailConfigured, flushSecurityOutbox } from '../_lib/securityEmails.js';
 
 /**
  * Sends queued security emails (public.security_email_outbox): account

@@ -37,6 +37,23 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Account lockout: administrator-only unlock with an emailed link.** A
+  locked account stays locked even with the right password. It all runs on
+  the Supabase free plan: the existing access-token hook refuses password
+  sign-in while locked, and the sign-in page reports each failure to
+  `record_sign_in_failure`, which counts it only after checking the password
+  really is wrong, so nobody can lock an account they didn't guess at. (The
+  paid Password Verification Hook is optional; it also counts guesses sent
+  straight to the Auth API.) The user requests an unlock from the sign-in
+  screen; an admin unlocks it from their profile, which emails the User ID
+  and a one-time link (24 hours) to set a new password and sign in. A locked
+  practice admin can still reset by emailed code, so locking every admin
+  can't leave nobody to unlock. Every step (failed attempts, lock, request,
+  unlock and reason, link sent, password set) is recorded in the user's
+  Audit Log. Password reset, unlock and security email now share one
+  function (`api/account.js`) to stay under Vercel Hobby's 12-function
+  limit. Needs `supabase/account_unlock_link_migration.sql`.
+
 - **HCC Diagnosis Gaps and the Care Plan in the side panel (floating
   sidebar).** The Diagnosis Gaps Details drawer has "Open in Side Panel"
   beside its close button: the drawer morphs into the patient split (a view
