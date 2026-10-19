@@ -199,8 +199,6 @@
   border-bottom: 0;
   padding: var(--space-3) var(--space-4);
   font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
   color: var(--neutral-200);
 }
 .weekShell th + th { border-left: 0.5px solid var(--neutral-150); }
@@ -209,11 +207,7 @@
   flex-direction: column;
   gap: calc(var(--space-1) / 2);
 }
-.dayHeadDate {
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-}
+.dayHeadDate { font-weight: 400; }
 
 .wRow { composes: row from '../../../../components/WorklistShell/WorklistRow.module.css'; }
 /* Rows don't open anything, so no hover tint. */
@@ -226,16 +220,19 @@
   vertical-align: top;
   white-space: normal;
   border-left: 0.5px solid var(--neutral-150);
-  /* The row's own line is hidden under tinted (today / OOO / holiday) and
-     positioned cells, so each cell draws it too. */
-  border-bottom: 0.5px solid var(--neutral-150);
+  /* The collapsed row line disappears under tinted (today / OOO) and pinned
+     (user) cells, so every cell draws its own line inside instead. */
+  border-bottom: 0;
+  box-shadow: inset 0 -0.5px 0 var(--neutral-150);
 }
+/* …and the row draws none, so there's only ever the one 0.5px line. */
+.weekShell .wRow { border-bottom: 0; }
 .wUserTd { composes: stickyLeft from '../../../../components/WorklistShell/WorklistRow.module.css'; }
 .weekShell .wUserTd { border-left: 0; padding: var(--space-3); }
 .gridUserTop {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-2);
   min-width: 0;
 }
 .gridUserInfo {
@@ -252,7 +249,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.gridUserName { font-size: var(--font-base); color: var(--neutral-400); }
+.gridUserName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
 .gridUserRole { font-size: var(--font-sm); color: var(--neutral-300); }
 .weekShell .dayCell { cursor: pointer; }
 .weekShell .dayCell:hover { background: var(--neutral-25); }
@@ -260,13 +257,6 @@
 /* Today's column, as on the calendar. */
 .weekShell .todayCell,
 .weekShell .todayCell:hover { background: var(--primary-25); }
-/* A tinted cell's fill hides the collapsed row line, so tinted cells (today,
-   out all day) draw it inside themselves. */
-.weekShell .todayCell,
-.weekShell .oooAllDay {
-  border-bottom-color: transparent;
-  box-shadow: inset 0 -0.5px 0 var(--neutral-150);
-}
 /* A holiday reads as on the calendar: a light green day with its badge and name. */
 .weekShell .holidayCell,
 .weekShell .holidayCell:hover { background: var(--accent-light-green-tint); box-shadow: inset 0 0 0 0.5px var(--accent-green); }
@@ -338,7 +328,7 @@
 .dayRule { height: 0.5px; background: var(--neutral-300); }
 /* Long locations wrap onto the next line rather than truncating. */
 .dayLoc { color: var(--neutral-300); overflow-wrap: break-word; }
-.dayType { margin-top: calc(var(--space-1) * -1); color: var(--neutral-200); overflow-wrap: break-word; }
+.dayType { margin-top: calc(var(--space-1) * -1); color: var(--placeholder-text); overflow-wrap: break-word; }
 
 .dayEmpty {
   display: flex;

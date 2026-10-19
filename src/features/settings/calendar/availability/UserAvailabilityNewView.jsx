@@ -348,10 +348,11 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
     <tr key={u.id || u.name} className={styles.wRow}>
       <td className={`${styles.wTd} ${styles.wUserTd}`} style={{ left: 0 }}>
         <span className={styles.gridUserTop}>
-          <Avatar variant="staff" size="S" initials={u.initials} userName={u.name} userId={u.id} />
+          {/* As in the List view: avatar, name over email. */}
+          <Avatar variant="staff" size="M" initials={u.initials} userName={u.name} userId={u.id} />
           <span className={styles.gridUserInfo}>
             <span className={styles.gridUserName}>{u.name}</span>
-            <span className={styles.gridUserRole}>{u.role}</span>
+            {u.email && <span className={styles.gridUserRole}>{u.email}</span>}
           </span>
           {renderActions?.(u)}
         </span>
