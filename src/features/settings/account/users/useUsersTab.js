@@ -5,7 +5,7 @@ import { FALLBACK_USERS } from '../../fallbackUsers';
 import { getInitials } from '../AccountPanel.constants';
 import { ROLE_FIELDS } from './UsersTab.utils';
 import { apiFetch } from '../../../../lib/apiFetch';
-import { isLocked } from './accountLock';
+import { accountStatus } from './accountLock';
 
 // Map a raw `profiles` row to the user shape the table renders. Shared by the
 // list fetch and the single-row save so a save can update just its own row
@@ -337,7 +337,7 @@ export function useUsersTab() {
     let list = usersWithLock;
     if (userFilters.status.length) {
       const statusSet = new Set(userFilters.status);
-      list = list.filter(u => statusSet.has(u.status) || (statusSet.has('Locked') && isLocked(u.lock)));
+      list = list.filter(u => statusSet.has(accountStatus(u)));
     }
     if (userFilters.roles.length) {
       const rolesSet = new Set(userFilters.roles);
@@ -364,7 +364,7 @@ export function useUsersTab() {
       if (u.location) locations.add(u.location);
     }
     return {
-      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected', 'Locked'],
+      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected', 'Locked', 'Unlocked'],
       roles: [...roles].sort(),
       location: [...locations].sort(),
     };

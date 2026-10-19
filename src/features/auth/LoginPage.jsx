@@ -9,7 +9,7 @@ import { SignInPaused } from './SignInPaused';
 import { FoldHealthLogo } from '../../components/FoldHealthLogo/FoldHealthLogo';
 import {
   MAX_FAILED_ATTEMPTS, classifySignInError, noteFailedSignIn, clearFailedSignIns, failedSignIns,
-  reportFailedSignIn, reportSignInSuccess, flushSecurityEmails,
+  reportFailedSignIn, reportSignInSuccess, flushSecurityEmails, noteOAuthSignIn, takeOAuthSignIn,
 } from './accountSecurity';
 import styles from './LoginPage.module.css';
 
@@ -65,6 +65,8 @@ export function LoginPage({ onBypass, notice = '' }) {
     setLoading(true);
     setError('');
     setUnverifiedEmail('');
+    // Drop a Google attempt that never came back, so this sign-in isn't logged as Google.
+    takeOAuthSignIn();
     try {
       const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError) {
@@ -79,20 +81,23 @@ export function LoginPage({ onBypass, notice = '' }) {
           setPassword('');
           setPaused(kind);
         } else if (kind === 'invalid') {
-          // Attempts 1 to 4: the usual message, no countdown.
+          // Attempts 1 to 4: the usual message plus how many are left, so
+          // the user can stop and reset before sign-in pauses.
           reportFailedSignIn(email, password);
-          if (noteFailedSignIn(email) >= MAX_FAILED_ATTEMPTS) {
+          const failures = noteFailedSignIn(email);
+          if (failures >= MAX_FAILED_ATTEMPTS) {
             setPassword('');
             setPaused('paused');
           } else {
-            setError('Invalid email or password');
+            const left = MAX_FAILED_ATTEMPTS - failures;
+            setError(`Invalid email or password. ${left} ${left === 1 ? 'attempt' : 'attempts'} left.`);
           }
         } else {
           setError(authError.message);
         }
       } else {
         clearFailedSignIns(email);
-        reportSignInSuccess();
+        reportSignInSuccess('password');
         track('auth.login_succeeded', { method: 'password' });
       }
     } finally {
@@ -173,6 +178,7 @@ export function LoginPage({ onBypass, notice = '' }) {
     setLoading(true);
     setError('');
     track('auth.oauth_initiated', { provider });
+    noteOAuthSignIn(provider);
     try {
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider,
@@ -182,6 +188,7 @@ export function LoginPage({ onBypass, notice = '' }) {
       });
       if (authError) {
         track('auth.login_failed', { method: provider, reason: authError.message || 'unknown' });
+        takeOAuthSignIn();
         setError(authError.message);
       }
     } finally {

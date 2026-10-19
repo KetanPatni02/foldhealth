@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { serviceClient, isPracticeAdmin } from '../_lib/serviceClient.js';
 import { requireUser } from '../_lib/requireUser.js';
 import { emailConfigured, sendSecurityEmail, flushSecurityOutbox } from '../_lib/securityEmails.js';
+import { requestContext } from '../_lib/requestContext.js';
 
 /**
  * Administrator unlock with an emailed one-time link (account lockout).
@@ -34,10 +35,11 @@ function appOrigin(req) {
   return host ? `https://${host}` : '';
 }
 
-async function audit(admin, userId, name, action, details, actor) {
+// `ctx` is the method, device and location shown in the user's Login Activity.
+async function audit(admin, userId, name, action, details, actor, ctx) {
   await admin.from('audit_logs').insert({
     entity_type: 'UserProfile', entity_id: userId, entity_name: name, action,
-    user_name: actor || 'System', details, category: 'Security',
+    user_name: actor || 'System', details: ctx ? JSON.stringify({ text: details, ...ctx }) : details, category: 'Security',
   });
 }
 
@@ -65,7 +67,8 @@ async function sendLink(req, admin, target, actorName, createdBy) {
     name: target.full_name || target.email, email: target.email, link, at: new Date().toISOString(),
   });
   await audit(admin, target.id, target.full_name || target.email, 'Unlock link emailed',
-    `Emailed the User ID and a one-time link to set a new password to ${target.email} (expires in 24 hours).`, actorName);
+    `Emailed the User ID and a one-time link to set a new password to ${target.email} (expires in 24 hours).`, actorName,
+    requestContext(req, 'Email'));
 }
 
 async function tokenRow(admin, token) {
@@ -89,9 +92,12 @@ async function handleUnlock(req, res, admin) {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     global: { headers: { Authorization: `Bearer ${token}` } },
   });
-  const { data: lock, error } = await asAdmin.rpc('admin_unlock_account', {
-    target: target.id, reason, note: note || null, identity_confirmed: !!identityConfirmed, require_reset: true,
-  });
+  const args = { target: target.id, reason, note: note || null, identity_confirmed: !!identityConfirmed, require_reset: true };
+  let { data: lock, error } = await asAdmin.rpc('admin_unlock_account_ctx', { ...args, ctx: requestContext(req, 'Admin console') });
+  // Before account_activity_context_migration.sql runs, unlock without the context.
+  if (error && /admin_unlock_account_ctx/.test(error.message || '')) {
+    ({ data: lock, error } = await asAdmin.rpc('admin_unlock_account', args));
+  }
   if (error) return fail(res, 400, error.message || 'Could not unlock the account.');
 
   await sendLink(req, admin, target, me.full_name || me.email, me.id);
@@ -139,7 +145,7 @@ async function handleComplete(req, res, admin) {
   }
   const { data: u } = await admin.from('profiles').select('email, full_name').eq('id', row.user_id).maybeSingle();
   await audit(admin, row.user_id, u?.full_name || u?.email, 'Unlock link used',
-    'Set a new password from the administrator\'s unlock link.', u?.full_name || u?.email);
+    'Set a new password from the administrator\'s unlock link.', u?.full_name || u?.email, requestContext(req, 'Email link'));
   try { await flushSecurityOutbox(admin); } catch (err) { console.warn('[account-unlock] outbox flush failed', err?.message); }
   return res.status(200).json({ email: u?.email || '' });
 }

@@ -37,6 +37,16 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Login Activity in a user's Audit Log.** Two cards sit above the
+  timeline: "Last successful sign-in" and "Failed attempts · 30 days". Each
+  sign-in and lockout entry shows date • time • method • user, then the
+  event (for example "Account locked"), its reason ("5 failed attempts ·
+  locked by the system") and "Device • Location". The server reads the
+  device, location and a masked IP from the request headers through
+  `/api/auth-activity`, which is routed inside `api/account.js` so no new
+  Vercel function is added. Run
+  `supabase/account_activity_context_migration.sql` after
+  `account_unlock_link_migration.sql`.
 - **Account lockout: administrator-only unlock with an emailed link.** A
   locked account stays locked even with the right password. It all runs on
   the Supabase free plan: the existing access-token hook refuses password

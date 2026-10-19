@@ -59,6 +59,14 @@ export function LoginForm({
       </div>
 
       <form className={styles.form} onSubmit={onSubmit}>
+        {/* Errors sit above the fields, where they're seen first. */}
+        {error && (
+          <div className={styles.error}>
+            <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
+            {error}
+          </div>
+        )}
+
         {isSignUp && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className={styles.field}>
@@ -156,13 +164,6 @@ export function LoginForm({
                 {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend verification email'}
               </button>
             </div>
-          </div>
-        )}
-
-        {error && (
-          <div className={styles.error}>
-            <Icon name="solar:danger-triangle-linear" size={14} color="var(--status-error)" />
-            {error}
           </div>
         )}
 

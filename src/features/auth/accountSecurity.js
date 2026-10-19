@@ -63,23 +63,67 @@ export const requestResetCode = (email) => post('/api/password-reset', { action:
 export const verifyResetCode = ({ email, code, password }) =>
   post('/api/password-reset', { action: 'verify', email: String(email || '').trim(), code, password });
 
-// Database bookkeeping for the sign-in page. They answer the same whether or
-// not the email has an account, and a missing function (migration not run)
-// is ignored. The failure report carries the password because the database
+// Database bookkeeping for the sign-in page, sent through /api/auth-activity
+// so each row in the user's Login Activity records the method, device and
+// location (read on the server). If that endpoint can't log it (migration not
+// run, or no server in this environment) the plain RPC runs instead, so
+// nothing goes uncounted. They answer the same whether or not the email has
+// an account. The failure report carries the password because the database
 // only counts it after checking it really is wrong, so nobody can lock an
 // account by reporting failures they didn't make. Then any "account locked"
 // email that report queued goes out.
-export function reportFailedSignIn(email, password) {
-  supabase.rpc('record_sign_in_failure', { p_email: String(email || '').trim(), p_password: password || '' })
-    .then(() => flushSecurityEmails(), () => {});
+async function logActivity(body, token) {
+  try {
+    const res = await fetch('/api/auth-activity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
-export function reportSignInSuccess() {
+
+export async function reportFailedSignIn(email, password) {
+  const p_email = String(email || '').trim();
+  const logged = await logActivity({ event: 'failed', email: p_email, password: password || '' });
+  if (!logged) await supabase.rpc('record_sign_in_failure', { p_email, p_password: password || '' }).then(() => {}, () => {});
+  flushSecurityEmails();
+}
+
+/** `method` is 'password' or 'google'. */
+export async function reportSignInSuccess(method = 'password') {
   supabase.rpc('record_sign_in_success').then(() => {}, () => {});
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  if (token) await logActivity({ event: 'signed_in', method }, token);
+}
+
+// Set just before the Google redirect, so the SIGNED_IN that follows the
+// return is logged as a Google sign-in (and a restored session isn't).
+const OAUTH_KEY = 'fold.oauthSignIn';
+export function noteOAuthSignIn(provider) {
+  try { sessionStorage.setItem(OAUTH_KEY, provider); } catch { /* storage blocked */ }
+}
+export function takeOAuthSignIn() {
+  try {
+    const provider = sessionStorage.getItem(OAUTH_KEY);
+    sessionStorage.removeItem(OAUTH_KEY);
+    return provider;
+  } catch {
+    return null;
+  }
 }
 
 /** Asks the practice administrators to unlock this account (in-app + email). */
 export async function requestAccountUnlock(email) {
-  const { error } = await supabase.rpc('request_account_unlock', { p_email: String(email || '').trim() });
+  const p_email = String(email || '').trim();
+  if (await logActivity({ event: 'unlock_requested', email: p_email })) {
+    flushSecurityEmails();
+    return { ok: true };
+  }
+  const { error } = await supabase.rpc('request_account_unlock', { p_email });
   flushSecurityEmails();
   return !error || /function|schema cache|does not exist/i.test(error.message || '')
     ? { ok: true }

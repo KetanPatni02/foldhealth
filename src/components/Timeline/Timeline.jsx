@@ -112,16 +112,21 @@ export function ChangeDisplay({ change }) {
  *   - createdAt   (string)  — ISO timestamp (drives month grouping)
  *   - date        (string)  — display date, pre-formatted
  *   - time        (string)  — display time, pre-formatted
+ *   - method      (string)  — how it happened (e.g. "Password"), after the time
  *   - user        (string)  — actor name
  *   - action      (string)  — key into ACTION_CONFIG (created/updated/etc.).
  *   - icon, iconBg, iconBorder, iconColor   — per-entry overrides
  *   - avatar      (node)    — rail node rendered in place of the icon tile
  *   - railBelow   (bool)    — keep the rail running below a last entry
+ *   - title       (string)  — bold event line above the details
  *   - details     (string)  — primary description line
+ *   - footnote    (string)  — muted subtitle line, shown in place of category
  *   - category    (string)  — muted subtitle line
  *   - changes     (array)   — structured field diffs (Domain Registry)
+ *
+ * `compact` tightens the spacing between entries (e.g. a profile's Audit Log).
  */
-export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderExtra }) {
+export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderExtra, compact = false }) {
   const cfg = ACTION_CONFIG[entry.action] || DEFAULT_CONFIG;
   const icon = entry.icon || cfg.icon;
   const iconBg = entry.iconBg || cfg.bg;
@@ -132,7 +137,7 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
   return (
     <div style={{ display: 'flex', gap: 4 }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
-        <div style={{ width: 0.5, flex: '0 0 14px', background: isFirst ? 'transparent' : 'var(--neutral-150)' }} />
+        <div style={{ width: 0.5, flex: `0 0 ${compact ? 4 : 14}px`, background: isFirst ? 'transparent' : 'var(--neutral-150)' }} />
         {entry.avatar || (
           <div style={{
             width: 24, height: 24, borderRadius: 6, flexShrink: 0,
@@ -152,8 +157,8 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
         }} />
       </div>
 
-      <div style={{ flex: 1, background: 'var(--neutral-0)', borderRadius: 8, padding: '6px 4px 12px 4px' }}>
-        <div style={{ padding: 8 }}>
+      <div style={{ flex: 1, background: 'var(--neutral-0)', borderRadius: 8, padding: compact ? '0 4px 8px' : '6px 4px 12px 4px' }}>
+        <div style={{ padding: compact ? '4px 8px' : 8 }}>
           <div style={{
             display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap',
             fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 4,
@@ -161,6 +166,8 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
             {entry.date && <span>{entry.date}</span>}
             {entry.date && entry.time && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
             {entry.time && <span>{entry.time}</span>}
+            {entry.method && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
+            {entry.method && <span>{entry.method}</span>}
             {entry.user && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
             {entry.user && (
               <span>
@@ -170,8 +177,18 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
             )}
           </div>
 
+          {entry.title && (
+            <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)', lineHeight: 1.2, marginBottom: 4 }}>
+              {entry.title}
+            </div>
+          )}
+
           {entry.details && (
-            <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-400)', lineHeight: 1.2, marginBottom: 4 }}>
+            <div style={{
+              fontSize: entry.title ? 'var(--font-md)' : 'var(--font-base)',
+              color: entry.title ? 'var(--neutral-300)' : 'var(--neutral-400)',
+              lineHeight: 1.2, marginBottom: 4,
+            }}>
               {entry.details}
             </div>
           )}
@@ -189,8 +206,8 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
             </div>
           )}
 
-          {entry.category && (
-            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{entry.category}</span>
+          {(entry.footnote || entry.category) && (
+            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{entry.footnote || entry.category}</span>
           )}
 
           {renderExtra && renderExtra(entry)}

@@ -8,6 +8,7 @@ import { LoginPage } from './features/auth/LoginPage';
 import { isPendingApprovalSession, PENDING_APPROVAL_NOTICE } from './features/auth/pendingApproval';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
 import { UnlockAccountPage } from './features/auth/UnlockAccountPage';
+import { reportSignInSuccess, takeOAuthSignIn } from './features/auth/accountSecurity';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
@@ -120,6 +121,10 @@ function App() {
         useAppStore.getState().resetCarePlanFavorites();
       } else if (event === 'SIGNED_IN') {
         track('auth.session_established');
+        // Back from Google: log it in Login Activity. Deferred, because
+        // awaiting supabase inside this callback can deadlock supabase-js.
+        const provider = takeOAuthSignIn();
+        if (provider) setTimeout(() => reportSignInSuccess(provider), 0);
         applyDefaults(s?.user);
         useAppStore.setState({ carePlanFavoritesLoaded: false, carePlanFavoritesUserId: null });
         void useAppStore.getState().fetchCarePlanFavorites({ force: true });
