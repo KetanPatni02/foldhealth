@@ -6,7 +6,8 @@ import { supabase } from '../../lib/supabase';
 
 export const MAX_FAILED_ATTEMPTS = 5;
 
-// Codes the Password Verification Hook returns when it refuses a sign-in.
+// Codes returned when a sign-in is refused: by the access-token hook (free
+// plan), or the optional Password Verification Hook (paid plan).
 export const AUTH_REFUSAL = {
   paused: 'ACCOUNT_PAUSED',
   resetRequired: 'PASSWORD_RESET_REQUIRED',
@@ -64,9 +65,13 @@ export const verifyResetCode = ({ email, code, password }) =>
 
 // Database bookkeeping for the sign-in page. They answer the same whether or
 // not the email has an account, and a missing function (migration not run)
-// is ignored.
-export function reportFailedSignIn(email) {
-  supabase.rpc('record_sign_in_failure', { p_email: String(email || '').trim() }).then(() => {}, () => {});
+// is ignored. The failure report carries the password because the database
+// only counts it after checking it really is wrong, so nobody can lock an
+// account by reporting failures they didn't make. Then any "account locked"
+// email that report queued goes out.
+export function reportFailedSignIn(email, password) {
+  supabase.rpc('record_sign_in_failure', { p_email: String(email || '').trim(), p_password: password || '' })
+    .then(() => flushSecurityEmails(), () => {});
 }
 export function reportSignInSuccess() {
   supabase.rpc('record_sign_in_success').then(() => {}, () => {});

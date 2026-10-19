@@ -137,7 +137,7 @@ export function useUsersTab() {
     [users, lockouts],
   );
 
-  // Unlock (api/account-unlock.js): records the reason, then emails the user
+  // Unlock (api/_handlers/account-unlock.js): records the reason, then emails the user
   // their User ID and a one-time link to set a new password.
   const postUnlock = async (body) => {
     const res = await apiFetch('/api/account-unlock', {
@@ -285,7 +285,7 @@ export function useUsersTab() {
       return;
     }
     if (!user.email) { showToast('No email address for this user'); return; }
-    // A 6-digit code to the email on file (api/password-reset.js). Admins
+    // A 6-digit code to the email on file (api/_handlers/password-reset.js). Admins
     // never see or set the password.
     try {
       const res = await apiFetch('/api/password-reset', {

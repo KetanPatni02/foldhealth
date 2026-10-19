@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { serviceClient, isPracticeAdmin } from './_lib/serviceClient.js';
-import { requireUser } from './_lib/requireUser.js';
-import { emailConfigured, sendSecurityEmail, flushSecurityOutbox } from './_lib/securityEmails.js';
+import { serviceClient, isPracticeAdmin } from '../_lib/serviceClient.js';
+import { requireUser } from '../_lib/requireUser.js';
+import { emailConfigured, sendSecurityEmail, flushSecurityOutbox } from '../_lib/securityEmails.js';
 
 /**
  * Administrator unlock with an emailed one-time link (account lockout).

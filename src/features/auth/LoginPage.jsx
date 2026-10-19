@@ -80,7 +80,7 @@ export function LoginPage({ onBypass, notice = '' }) {
           setPaused(kind);
         } else if (kind === 'invalid') {
           // Attempts 1 to 4: the usual message, no countdown.
-          reportFailedSignIn(email);
+          reportFailedSignIn(email, password);
           if (noteFailedSignIn(email) >= MAX_FAILED_ATTEMPTS) {
             setPassword('');
             setPaused('paused');

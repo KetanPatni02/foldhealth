@@ -1,6 +1,6 @@
 -- Account lockout (HITRUST): five consecutive failed password attempts lock
 -- the account until a person acts. No timer unlocks it. Two ways back in:
---   1. Forgot password: a 6-digit emailed code (api/password-reset.js), then
+--   1. Forgot password: a 6-digit emailed code (api/_handlers/password-reset.js), then
 --      a new password. Changing the password clears the lock.
 --   2. An admin unlocks it from Settings → Users, with a recorded reason
 --      (admin_unlock_account below).
@@ -13,18 +13,22 @@
 --   • password_reset_codes        hashed 6-digit codes (service role only)
 --   • password_history            previous password hashes (service role only)
 --   • security_email_outbox       security emails waiting to be sent by
---                                 api/security-email-dispatch.js (service role only)
+--                                 api/_handlers/security-email-dispatch.js (service role only)
 --   • hook_password_verification_attempt   Supabase Password Verification Hook
 --   • on_auth_password_changed    trigger on auth.users: clears the lock,
 --                                 keeps history, ends sessions, queues email
 --   • admin_unlock_account        admin-only unlock RPC
 --
--- AFTER RUNNING THIS MIGRATION (Supabase Dashboard):
---   Authentication → Hooks → "Password Verification Attempt" → Postgres →
---   public.hook_password_verification_attempt. (Team/Enterprise plan.)
+-- NOTHING TO ENABLE ON THE FREE PLAN. account_unlock_link_migration.sql
+--   enforces the lock through the access-token hook and counts failures from
+--   the sign-in page. Optional, only on the paid Team plan: Authentication →
+--   Hooks → "Password Verification Attempt" → Postgres →
+--   public.hook_password_verification_attempt also counts guesses sent
+--   straight to the Auth API.
 --   Optional instant email: insert the dispatch URL and secret, e.g.
 --     insert into public.security_settings (key, value) values
 --       ('email_dispatch_url', 'https://<app>/api/security-email-dispatch'),
+--       (the path is rewritten to the shared /api/account function)
 --       ('email_dispatch_secret', '<same as SECURITY_DISPATCH_SECRET>');
 --   (needs the pg_net extension). Without it the app flushes the outbox
 --   itself after a lock, unlock or reset.
@@ -137,7 +141,7 @@ create policy "Admins read account lock events" on public.account_lock_events
 -- security_settings have no policies: only the service role reaches them.
 
 -- ── Helpers ─────────────────────────────────────────────────────────────────
--- Asks api/security-email-dispatch.js to send queued emails now, when the
+-- Asks api/_handlers/security-email-dispatch.js to send queued emails now, when the
 -- URL is configured and pg_net is installed. Never fails the caller.
 create or replace function public.security_email_kick()
 returns void
@@ -256,7 +260,7 @@ begin
      set failed_count    = failed_count + 1,
          first_failed_at = coalesce(first_failed_at, now()),
          last_failed_at  = now(),
-         failed_apps     = case when 'Web' = any(failed_apps) then failed_apps else failed_apps || 'Web' end,
+         failed_apps     = case when 'Web' = any(failed_apps) then failed_apps else array_append(failed_apps, 'Web') end,
          updated_at      = now()
    where user_id = uid
   returning * into rec;
