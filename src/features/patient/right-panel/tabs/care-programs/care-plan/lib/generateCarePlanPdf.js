@@ -28,19 +28,28 @@ const C = {
   white: [255, 255, 255],
 };
 
+// The app's GBI status colors (lib/gbiStatus tones) as RGB, since the PDF
+// can't read CSS tokens: In Progress amber, On Hold blue, Discontinued
+// orange and Not Applicable faded, neither of them failure red.
 const STATUS_STYLE = {
   'Not Started': { bg: [241, 243, 246], text: [95, 106, 126] },
-  'In Progress': { bg: [233, 242, 255], text: [32, 96, 199] },
-  'On Hold': { bg: [255, 244, 229], text: [176, 104, 0] },
+  'In Progress': { bg: [255, 244, 229], text: [176, 104, 0] },
+  'On Hold': { bg: [233, 242, 255], text: [32, 96, 199] },
   Met: { bg: [230, 246, 236], text: [22, 128, 61] },
   Completed: { bg: [230, 246, 236], text: [22, 128, 61] },
   Resolved: { bg: [230, 246, 236], text: [22, 128, 61] },
   'Not Met': { bg: [254, 236, 236], text: [196, 43, 28] },
   Overdue: { bg: [254, 236, 236], text: [196, 43, 28] },
+  Discontinued: { bg: [255, 240, 230], text: [194, 87, 18] },
+  'Not Applicable': { bg: [246, 247, 249], text: [150, 158, 172] },
 };
 const statusStyle = s => STATUS_STYLE[s] || STATUS_STYLE['Not Started'];
 
-const STATUS_RANK = { 'In Progress': 0, 'On Hold': 1, 'Not Met': 2, Overdue: 2, 'Not Started': 3, Met: 4, Completed: 4, Resolved: 4 };
+// Open work first, then outcomes; items closed without one sort last.
+const STATUS_RANK = {
+  'In Progress': 0, 'On Hold': 1, 'Not Met': 2, Overdue: 2, 'Not Started': 3,
+  Met: 4, Completed: 4, Resolved: 4, Discontinued: 5, 'Not Applicable': 5,
+};
 const byStatus = (a, b) => ((STATUS_RANK[a.status] ?? 3) - (STATUS_RANK[b.status] ?? 3))
   || (a.title || '').localeCompare(b.title || '');
 

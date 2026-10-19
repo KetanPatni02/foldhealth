@@ -1,3 +1,5 @@
+import { isClosedStatus } from './gbiStatus';
+
 /**
  * Goal progress band (5-band, Figma 2632:81504) — used by the Goal Details
  * drawer readout and the care-plan audit log so the "changed the Progress"
@@ -49,8 +51,8 @@ export function adherenceTone(label) {
  *   • Average `adherence` (as a number) across every intervention whose
  *     `goalId === goal.id` — non-numeric adherence values ("-", null,
  *     undefined) are excluded from the average, not counted as 0.
- *   • Any open barrier (status !== 'Met' / 'Resolved' / 'Not Met' — i.e.
- *     an active blocker) linked to the goal caps the progress at 80% of
+ *   • Any open barrier (no final status, see gbiStatus isClosedStatus,
+ *     i.e. an active blocker) linked to the goal caps the progress at 80% of
  *     the raw average, so an active barrier is visible on the goal's
  *     progress ring without wiping progress the patient already made.
  *   • Returns `null` when there are no linked interventions to derive
@@ -69,11 +71,9 @@ export function computeGoalProgress(goal, interventions = [], barriers = []) {
   if (numericAdherence.length === 0) return null;
   const rawAvg = numericAdherence.reduce((a, b) => a + b, 0) / numericAdherence.length;
 
-  const blocks = new Set(['Met', 'Resolved', 'Not Met']);
   const hasActiveBarrier = (barriers || []).some(b => {
     if (!b) return false;
-    const status = b.status || 'Open';
-    if (blocks.has(status)) return false;
+    if (isClosedStatus(b.status)) return false;
     const goalIds = Array.isArray(b.goalIds) && b.goalIds.length > 0
       ? b.goalIds
       : (b.goalId ? [b.goalId] : []);

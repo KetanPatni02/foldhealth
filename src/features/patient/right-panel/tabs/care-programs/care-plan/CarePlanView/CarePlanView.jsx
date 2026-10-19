@@ -9,8 +9,8 @@ import { MenuPopover } from '@/components/MenuPopover/MenuPopover';
 import { goalCascade, barrierGoalIdsOf } from '../lib/carePlanGoalCascade';
 import { Select } from '@/components/Select/Select';
 import { FilterChip } from '@/components/FilterChip/FilterChip';
+import { ALL_GBI_STATUSES } from '../lib/gbiStatus';
 import {
-  GBI_STATUSES,
   PRIORITY_LABELS,
   GbiSectionHead,
   SectionEmptyState,
@@ -840,7 +840,7 @@ export function CarePlanView({ patientId, program }) {
             while the plan scrolls. */}
         {filtersOpen && (
           <div className={styles.filterBar}>
-            <FilterChip label="Status" options={GBI_STATUSES} selected={filters.status} onChange={v => setFilter('status', v)} />
+            <FilterChip label="Status" options={ALL_GBI_STATUSES} selected={filters.status} onChange={v => setFilter('status', v)} />
             <FilterChip label="Priority" options={PRIORITY_LABELS} selected={filters.priority} onChange={v => setFilter('priority', v)} />
             {filtersActive ? (
               <button type="button" className={styles.clearAll} onClick={clearFilters}>
@@ -962,7 +962,9 @@ export function CarePlanView({ patientId, program }) {
             // the viewport bottom).
             onClick: () => {
               const el = document.querySelector('.js-careplan-bulkbar');
-              setBulkMenu({ rect: el ? el.getBoundingClientRect() : null, type: 'status' });
+              // Resolved is barrier-only, so it's offered when only barriers are selected.
+              const barriersOnly = selected.barrier.size > 0 && !selected.goal.size && !selected.intv.size;
+              setBulkMenu({ rect: el ? el.getBoundingClientRect() : null, type: 'status', barriersOnly });
             },
           }, {
             label: 'Set priority',

@@ -4,19 +4,16 @@ import { Avatar } from '../../../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../../../components/Badge/Badge';
 import { Icon } from '../../../../../../../components/Icon/Icon';
 import { adherenceTone, goalProgressTone } from './goalMetrics';
+import { GBI_STATUS_META } from './gbiStatus';
 import styles from './carePlanLogItem.module.css';
 
 const LIVE_CHANGE_TYPES = new Set(['status', 'priority', 'progress', 'title', 'assignment']);
 
 // A status change wears the icon of the status it moved to (the rail tile
 // already takes that status's colour), as HCC status entries do.
-const STATUS_ICON = {
-  'Not Started': 'solar:minus-circle-linear',
-  'In Progress': 'custom:pending',
-  'On Hold': 'solar:pause-circle-linear',
-  Met: 'solar:check-circle-linear',
-  'Not Met': 'solar:close-circle-linear',
-};
+const STATUS_ICON = Object.fromEntries(
+  Object.entries(GBI_STATUS_META).map(([status, meta]) => [status, meta.icon]),
+);
 const CHANGE_ICON = {
   priority: 'solar:ranking-linear',
   title: 'solar:pen-linear',

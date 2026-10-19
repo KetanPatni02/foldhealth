@@ -55,7 +55,8 @@ import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { localDateMs } from '../../../../../../../../lib/localDate';
 
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+import { GBI_STATUSES, gbiStatusMeta } from '../../lib/gbiStatus';
+import { gbiStatusMenuItems } from '../../tables/carePlanTableShared';
 
 /** Session-persisted accordion open state for Goal Details sections. */
 const GOAL_PREVIEW_SECTIONS_KEY = 'fold.carePlan.goalPreview.sections';
@@ -96,13 +97,6 @@ const ACTIVITY_FILTERS = [
   { key: 'value_changed', label: 'Values' },
 ];
 const PRIORITIES = ['high', 'medium', 'low'];
-const STATUS_TONE = {
-  'Not Started': 'grey',
-  'In Progress': 'warning',
-  'On Hold': 'grey',
-  Met: 'success',
-  'Not Met': 'error',
-};
 
 // `progressBand` / `progressTone` moved to `../../lib/goalMetrics.js` as
 // `goalProgressBand` / `goalProgressTone` so the audit-log detail and the
@@ -850,7 +844,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       <div className={styles.body}>
         <div className={styles.statusBar}>
           <Select
-            options={GBI_STATUSES.map(s => ({ value: s, label: s }))}
+            options={GBI_STATUSES.map(s => ({ value: s, label: s, icon: gbiStatusMeta(s).icon }))}
             value={live.status}
             onChange={changeStatus}
             disabled={!canDocument}
@@ -1411,9 +1405,9 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         <MenuPopover
           anchorRect={linkedStatusMenu.rect}
           align="left"
-          width={160}
+          width={180}
           ariaLabel="Change status"
-          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
+          items={gbiStatusMenuItems(linkedStatusMenu.kind, linkedStatusMenu.item?.status)}
           onSelect={changeLinkedItemStatus}
           onClose={() => setLinkedStatusMenu(null)}
         />

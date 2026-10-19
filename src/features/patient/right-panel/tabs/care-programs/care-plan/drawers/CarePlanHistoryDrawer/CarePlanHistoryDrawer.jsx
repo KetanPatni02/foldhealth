@@ -31,6 +31,7 @@ import { NOTE_ACTIONS, netVersionRows } from '../../lib/carePlanVersions';
 import { buildCarePlanHistory, filterHistoryEntries, HISTORY_TYPES } from '../../lib/carePlanHistory';
 import { adherenceTone, goalProgressTone } from '../../lib/goalMetrics';
 import { sanitizeRichText } from '../../../../../../../../lib/sanitizeHtml';
+import { GBI_STATUS_META } from '../../lib/gbiStatus';
 import styles from './CarePlanHistoryDrawer.module.css';
 
 
@@ -251,13 +252,9 @@ const LIVE_CHANGE_TYPES = new Set(['status', 'priority', 'progress', 'title', 'a
 // A status change wears the icon of the status it moved to (the rail tile
 // already takes that status's colour), as HCC status entries do. In Progress
 // uses the design system's Pending status glyph.
-const STATUS_ICON = {
-  'Not Started': 'solar:minus-circle-linear',
-  'In Progress': 'custom:pending',
-  'On Hold': 'solar:pause-circle-linear',
-  Met: 'solar:check-circle-linear',
-  'Not Met': 'solar:close-circle-linear',
-};
+const STATUS_ICON = Object.fromEntries(
+  Object.entries(GBI_STATUS_META).map(([status, meta]) => [status, meta.icon]),
+);
 // Other progress changes show what changed.
 const CHANGE_ICON = {
   priority: 'solar:ranking-linear',
