@@ -1,6 +1,7 @@
 import { MenuPopover } from '@/components/MenuPopover/MenuPopover';
 import { PriorityIcon } from '@/components/PriorityIcon/PriorityIcon';
-import { GBI_STATUSES, PRIORITIES } from './CarePlanViewSections';
+import { PRIORITIES } from './CarePlanViewSections';
+import { gbiStatusMenuItems } from '../tables/carePlanTableShared';
 import { CARE_PLAN_INTERVENTION_MENU } from '../lib/carePlanInterventionMenu';
 import { CarePlanLinkDrawer } from '../drawers/CarePlanLinkDrawer/CarePlanLinkDrawer';
 import { LinkExistingItemsPopover } from '../drawers/GoalPreviewDrawer/LinkExistingItemsPopover';
@@ -24,9 +25,9 @@ export function CarePlanViewOverlays(o) {
         <MenuPopover
           anchorRect={statusMenu.rect}
           align="left"
-          width={160}
+          width={180}
           ariaLabel="Change status"
-          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
+          items={gbiStatusMenuItems(statusMenu.kind, statusMenu.item?.status)}
           onSelect={changeStatus}
           onClose={() => setStatusMenu(null)}
         />
@@ -40,7 +41,7 @@ export function CarePlanViewOverlays(o) {
           ariaLabel={bulkMenu.type === 'priority' ? 'Set priority for selected' : 'Set status for selected'}
           items={bulkMenu.type === 'priority'
             ? PRIORITIES.map(p => ({ key: p, label: p.charAt(0).toUpperCase() + p.slice(1), iconElement: <PriorityIcon priority={p} size={16} /> }))
-            : GBI_STATUSES.map(s => ({ key: s, label: s }))}
+            : gbiStatusMenuItems(bulkMenu.barriersOnly ? 'barrier' : 'goal')}
           onSelect={bulkMenu.type === 'priority' ? bulkSetPriority : bulkSetStatus}
           onClose={() => setBulkMenu(null)}
         />

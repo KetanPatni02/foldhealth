@@ -75,6 +75,9 @@ import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interven
 import { buildPatientFacts, buildTemplateChoices, draftCounts } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/individualizedPlan';
 import { buildTemplateCatalog } from '../features/settings/care-plan-library/lib/aiTemplateDraft';
 import { apiFetch } from '../lib/apiFetch';
+import { buildRuleInputs, evaluateRule, mapAutomationRuleRow, rulesForProgram } from '../features/settings/automation-rules/lib/automationRules';
+import { sdohSocialRisk } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/sdohReport';
+import { isDueToAutoResume, nextTouchpoint as computeNextTouchpoint, pauseAuditEntry, pauseFields, resumeAuditEntry } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanPause';
 import { INSTANCE_STATUS, formatInstanceDate, instanceOutcome, templateEndsOn } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { templateContentFromApplied, templateContentFromWholePlan } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateSave';
@@ -105,6 +108,7 @@ import {
   mapPatientSocialHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
+  sdohToRow,
   mapCarePlanTemplateRow,
   mapTemplateInstanceRow,
   partitionRetired,
@@ -2046,6 +2050,8 @@ export const useAppStore = create((set, get) => ({
           statusLabel: 'New',
           statusType: 'success',
         });
+        // Auto-apply rules run on a real enrollment only (Settings > Automation Rules).
+        get().runAutoApplyRules(patientId, program).catch(err => console.warn('runAutoApplyRules:', err?.message || err));
       });
     }
   },
@@ -2233,6 +2239,89 @@ export const useAppStore = create((set, get) => ({
       patientCarePlanLoading: { ...s.patientCarePlanLoading, [key]: false },
       patientCarePlanLoadedFor: { ...s.patientCarePlanLoadedFor, [key]: true },
     }));
+    // Auto-resume runs when the plan is next opened on or after its resume date.
+    if (plan && isDueToAutoResume(plan)) {
+      await get().resumeCarePlan(patientId, { id: programId, code: plan.programCode }, { auto: true });
+    }
+  },
+
+  // ── Pause / resume (care_plan_pause migration) ──
+  // A paused plan has no cadence, overdue flags, next touchpoint or automated
+  // outreach (lib/carePlanPause isCarePlanPaused is the gate). Both write a
+  // care_plan_audit row; resume recomputes the next touchpoint.
+  pauseCarePlan: async (patientId, program, form) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    if (!cur?.plan?.id) return false;
+    const pause = pauseFields(form);
+    const pausedBy = get().currentUserProfile?.name || null;
+    const { error } = await supabase.from('patient_care_plans').update({
+      status: 'paused',
+      pause_reason: pause.reason,
+      pause_note: pause.note,
+      paused_on: pause.pausedOn,
+      resume_on: pause.resumeOn,
+      auto_resume: pause.autoResume,
+      paused_by: pausedBy,
+      next_touchpoint: null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', cur.plan.id);
+    if (error) {
+      console.warn('pauseCarePlan:', error.message);
+      get().showToast(/status|pause|resume|touchpoint/i.test(error.message || '')
+        ? 'Pausing needs the care plan pause migration'
+        : 'Could not pause the care plan');
+      return false;
+    }
+    set(s => {
+      const c = s.patientCarePlans[key];
+      if (!c?.plan) return {};
+      return { patientCarePlans: { ...s.patientCarePlans, [key]: {
+        ...c, plan: { ...c.plan, status: 'paused', pause: { ...pause, pausedBy: pausedBy || '' }, nextTouchpoint: null },
+      } } };
+    });
+    await get().logCarePlanAudit(patientId, program, pauseAuditEntry(cur.plan.id, pause));
+    return true;
+  },
+
+  resumeCarePlan: async (patientId, program, { auto = false } = {}) => {
+    const key = carePlanKey(patientId, program.id);
+    const cur = get().patientCarePlans[key];
+    if (!cur?.plan?.id || cur.plan.status !== 'paused') return false;
+    const tasksById = new Map((get().tasks || []).map(t => [String(t.id), t]));
+    const next = computeNextTouchpoint(
+      { plan: { ...cur.plan, status: 'active' }, goals: cur.goals, interventions: cur.interventions },
+      // Due date as the table resolves it: override, paired task, legacy config.
+      { dueDateOf: (i) => {
+        const task = tasksById.get(String(i.taskId));
+        return i.config?.dueDateOverride || task?.dueDate || task?.due_date || i.config?.dueDate;
+      } },
+    );
+    const { error } = await supabase.from('patient_care_plans').update({
+      status: 'active',
+      pause_reason: null,
+      pause_note: null,
+      paused_on: null,
+      resume_on: null,
+      auto_resume: false,
+      paused_by: null,
+      next_touchpoint: next,
+      updated_at: new Date().toISOString(),
+    }).eq('id', cur.plan.id);
+    if (error) {
+      console.warn('resumeCarePlan:', error.message);
+      if (!auto) get().showToast('Could not resume the care plan');
+      return false;
+    }
+    set(s => {
+      const c = s.patientCarePlans[key];
+      if (!c?.plan) return {};
+      return { patientCarePlans: { ...s.patientCarePlans, [key]: {
+        ...c, plan: { ...c.plan, status: 'active', pause: null, nextTouchpoint: next },
+      } } };
+    });
+    await get().logCarePlanAudit(patientId, program, resumeAuditEntry(cur.plan.id, { auto, nextTouchpoint: next }));
+    return true;
   },
 
   // ── Individualized Plan AI (care_plan_ai_suggestions migration) ──
@@ -2394,7 +2483,11 @@ export const useAppStore = create((set, get) => ({
       ? supabase.from('patient_care_plan_barriers').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
       : supabase.from('patient_care_plan_barriers').insert(row);
     const { data, error } = await q.select().single();
-    if (error) { console.warn('savePatientCarePlanBarrier:', error.message); get().showToast('Could not save barrier'); return null; }
+    if (error) {
+      console.warn('savePatientCarePlanBarrier:', error.message);
+      get().showToast(/sdoh_|z_code/i.test(error.message || '') ? 'Social needs need the care plan SDOH migration' : 'Could not save barrier');
+      return null;
+    }
 
     // Diff-based join sync. Bulk status/priority changes loop over every
     // barrier without touching its goals, so most saves land here with
@@ -4505,6 +4598,189 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  // ── Automation Rules (Settings > Automation Rules; automation_rules migration) ──
+  // Account-level auto-apply rules evaluated at care program enrollment
+  // (runAutoApplyRules, from addCareProgram). The engine is pure:
+  // features/settings/automation-rules/lib/automationRules.js.
+  automationRules: [],
+  automationRulesStatus: 'idle', // 'idle' | 'loading' | 'ready' | 'missing'
+  automationRuleRuns: [],
+  fetchAutomationRules: async () => {
+    set({ automationRulesStatus: 'loading' });
+    const { data, error } = await supabase.from('automation_rules').select('*')
+      .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+    if (error) {
+      const missing = error.code === '42P01' || error.code === 'PGRST205';
+      if (!missing) console.warn('fetchAutomationRules:', error.message);
+      set({ automationRules: [], automationRulesStatus: missing ? 'missing' : 'ready' });
+      return [];
+    }
+    const rules = (data || []).map(mapAutomationRuleRow);
+    set({ automationRules: rules, automationRulesStatus: 'ready' });
+    return rules;
+  },
+  fetchAutomationRuleRuns: async () => {
+    const { data, error } = await supabase.from('automation_rule_runs').select('*')
+      .order('created_at', { ascending: false }).limit(100);
+    if (error) { set({ automationRuleRuns: [] }); return; }
+    set({ automationRuleRuns: (data || []).map(r => ({
+      id: r.id, ruleId: r.rule_id, patientId: r.patient_id, programCode: r.program_code,
+      matched: !!r.matched, reasons: Array.isArray(r.reasons) ? r.reasons : [],
+      templateIds: r.template_ids || [], taskId: r.task_id || null, createdAt: r.created_at,
+    })) });
+  },
+  saveAutomationRule: async (values, id = null) => {
+    const actor = get().currentUserProfile?.name || null;
+    const row = {
+      name: values.name.trim(),
+      description: (values.description || '').trim(),
+      enabled: values.enabled !== false,
+      program_codes: values.programCodes || [],
+      match: values.match === 'any' ? 'any' : 'all',
+      conditions: values.conditions || [],
+      template_ids: values.templateIds || [],
+      reviewer: values.reviewer?.name ? { id: values.reviewer.id || null, name: values.reviewer.name } : null,
+      updated_by: actor,
+      updated_at: new Date().toISOString(),
+    };
+    const q = id
+      ? supabase.from('automation_rules').update(row).eq('id', id)
+      : supabase.from('automation_rules').insert({ ...row, created_by: actor, sort_order: get().automationRules.length });
+    const { data, error } = await q.select().single();
+    if (error) {
+      console.warn('saveAutomationRule:', error.message);
+      get().showToast(/automation_rules/.test(error.message || '') && /exist/.test(error.message || '')
+        ? 'Automation rules need the automation rules migration'
+        : 'Could not save the rule');
+      return null;
+    }
+    const rule = mapAutomationRuleRow(data);
+    set(s => ({ automationRules: id ? s.automationRules.map(r => (r.id === id ? rule : r)) : [...s.automationRules, rule] }));
+    return rule;
+  },
+  // Forms an assessment condition can point at (id + name only).
+  fetchAssessmentFormOptions: async () => {
+    const { data, error } = await supabase.from('forms').select('id, name').order('name').limit(300);
+    if (error) { console.warn('fetchAssessmentFormOptions:', error.message); return []; }
+    return (data || []).map(f => ({ id: String(f.id), name: f.name || `Form ${f.id}` }));
+  },
+  deleteAutomationRule: async (id) => {
+    const prev = get().automationRules;
+    set({ automationRules: prev.filter(r => r.id !== id) });
+    const { error } = await supabase.from('automation_rules').delete().eq('id', id);
+    if (error) {
+      console.warn('deleteAutomationRule:', error.message);
+      set({ automationRules: prev });
+      get().showToast('Could not delete the rule');
+      return false;
+    }
+    return true;
+  },
+
+  // Evaluate the enabled rules that watch this program against the patient's
+  // conditions, labs, recent encounters and assessment answers. Each match
+  // attaches its templates to the program's care plan unsigned (a draft), and
+  // one review task goes to the care manager listing why. Every evaluation is
+  // logged in automation_rule_runs. Returns { matched: rule[], taskId }.
+  runAutoApplyRules: async (patientId, program) => {
+    if (!patientId || !program?.id) return { matched: [], taskId: null };
+    const rules = get().automationRulesStatus === 'ready' ? get().automationRules : await get().fetchAutomationRules();
+    const applicable = rulesForProgram(rules, program.code);
+    if (!applicable.length) return { matched: [], taskId: null };
+
+    const [problems, events, responses] = await Promise.all([
+      supabase.from('patient_problems').select('title, status').eq('patient_id', String(patientId)),
+      supabase.from('patient_clinical_events').select('event_type, code, display, effective_date, status, numeric_value, unit').eq('patient_id', String(patientId)),
+      // patient_id on form_responses comes with the automation rules migration.
+      supabase.from('form_responses').select('form_id, answers, status, completed_at, created_at').eq('patient_id', String(patientId))
+        .order('created_at', { ascending: false }).limit(50),
+    ]);
+    const inputs = buildRuleInputs({
+      problems: problems.data || [],
+      clinicalEvents: events.data || [],
+      responses: responses.error ? [] : (responses.data || []),
+    });
+    const results = applicable.map(rule => ({ rule, ...evaluateRule(rule, inputs) }));
+    const matched = results.filter(r => r.matched);
+
+    let taskId = null;
+    let attached = [];
+    if (matched.length) {
+      if (!get().carePlanTemplates.length) await get().fetchCarePlanLibrary();
+      const templates = get().carePlanTemplates;
+      await get().fetchPatientCarePlan(patientId, program.id);
+      const key = carePlanKey(patientId, program.id);
+      const prev = get().patientCarePlans[key]?.plan?.appliedTemplateIds || [];
+      const known = new Set(templates.map(t => t.id));
+      const already = new Set(prev);
+      attached = [...new Set(matched.flatMap(r => r.rule.templateIds || []))]
+        .filter(id => known.has(id) && !already.has(id));
+      if (attached.length) await get().applyPatientCarePlanTemplates(patientId, program, [...prev, ...attached]);
+
+      const memberName = get().patients.find(p => String(p.id) === String(patientId))?.name || '';
+      const users = get().platformUsers || [];
+      const named = matched.map(r => r.rule.reviewer).find(rv => rv?.name)
+        || (program.assignee && program.assignee !== 'Unassigned' ? users.find(u => u.name === program.assignee) : null);
+      const reviewer = named ? { id: named.id || null, name: named.name } : null;
+      const templateNames = attached.map(id => templates.find(t => t.id === id)?.name).filter(Boolean);
+      const lines = matched.map(r => `• ${r.rule.name}: ${r.reasons.filter(x => x.ok).map(x => x.text).join('; ')}`);
+      const due = new Date(); due.setDate(due.getDate() + 2);
+      const task = await get().createTask({
+        name: `Review auto-applied care plan for ${memberName || 'patient'}`,
+        status: 'pending',
+        priority: 'medium',
+        due_date: `${String(due.getMonth() + 1).padStart(2, '0')}/${String(due.getDate()).padStart(2, '0')}/${due.getFullYear()}`,
+        assigned_to: reviewer?.name || null,
+        assigned_to_id: reviewer?.id || null,
+        member: memberName,
+        labels: ['Care Plan Review', 'Automation'],
+        meta: program.name || program.code || '',
+        description: [
+          `On enrollment in ${program.name || program.code}, automation rules matched and ${templateNames.length ? `attached ${templateNames.join(', ')} in draft` : 'found the templates already on the plan'}. Review, edit and sign the plan.`,
+          ...lines,
+        ].join('\n'),
+        pool: null,
+        mentions: reviewer ? [reviewer.name] : [],
+        attachments: 0,
+        comments: 0,
+        is_subtask: false,
+        parent_task: null,
+        parent_task_id: null,
+      }, { auditUserName: 'Automation Rules' });
+      taskId = task?.id != null ? String(task.id) : null;
+      if (task && program.code) get().addProgramTask?.(program.code, task);
+      get().logCarePlanAudit(patientId, program, {
+        entityType: 'plan',
+        action: 'auto_applied',
+        summary: matched.map(r => r.rule.name).join(', '),
+        detail: templateNames.length ? `Attached in draft: ${templateNames.join(', ')}` : 'Templates were already on the plan',
+      });
+      if (reviewer?.id) {
+        get().addNotification?.({
+          type: 'care_plan.review_requested',
+          title: 'Auto-applied care plan to review',
+          body: `Automation rules attached ${templateNames.join(', ') || 'templates'} for ${memberName}.`,
+          action: 'openCarePlan',
+          recipientId: reviewer.id,
+        });
+      }
+    }
+
+    // The run log: every rule evaluated, matched or not, with its reasons.
+    const runs = results.map(r => ({
+      rule_id: r.rule.id,
+      patient_id: String(patientId),
+      program_code: program.code || null,
+      matched: r.matched,
+      reasons: r.reasons.map(x => `${x.ok ? '✓' : '✗'} ${x.text}`),
+      template_ids: r.matched ? attached.filter(id => new Set(r.rule.templateIds || []).has(id)) : [],
+      task_id: r.matched ? taskId : null,
+    }));
+    const { error: runErr } = await supabase.from('automation_rule_runs').insert(runs);
+    if (runErr) console.warn('automation_rule_runs insert:', runErr.message);
+    return { matched: matched.map(r => r.rule), taskId };
+  },
+
   fetchCarePlanLibrary: async () => {
     // Which templates are "mine" (private ones, the Mine filter) is keyed on
     // the auth user, so record it alongside the library.
@@ -4636,7 +4912,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   saveCarePlanBarrier: async (values, id = null) => {
-    const row = { title: values.title, description: values.description || '' };
+    const row = { title: values.title, description: values.description || '', ...sdohToRow(values) };
     const q = id
       ? supabase.from('care_plan_barriers').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
       : supabase.from('care_plan_barriers').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
@@ -14223,6 +14499,29 @@ export const useAppStore = create((set, get) => ({
       }));
       return null;
     }
+  },
+
+  // UDS social-risk KPIs from care plan SDOH needs and referrals
+  // (care_plan_sdoh migration; lib/sdohReport). `missing` until it has run.
+  sdohSocialRisk: { status: 'idle', data: null },
+  fetchSdohSocialRisk: async () => {
+    set({ sdohSocialRisk: { ...get().sdohSocialRisk, status: 'loading' } });
+    const [b, r] = await Promise.all([
+      supabase.from('patient_care_plan_barriers').select('id, plan_id, title, sdoh_domain, status').not('sdoh_domain', 'is', null),
+      supabase.from('patient_care_plan_interventions').select('id, plan_id, config').eq('kind', 'sdoh-referral'),
+    ]);
+    if (b.error) {
+      const missing = /sdoh_domain/i.test(b.error.message || '');
+      if (!missing) console.warn('fetchSdohSocialRisk:', b.error.message);
+      set({ sdohSocialRisk: { status: missing ? 'missing' : 'error', data: null } });
+      return;
+    }
+    const planIds = [...new Set((b.data || []).map(x => x.plan_id))];
+    const plans = planIds.length
+      ? await supabase.from('patient_care_plans').select('id, patient_id').in('id', planIds)
+      : { data: [] };
+    const planPatient = new Map((plans.data || []).map(p => [p.id, String(p.patient_id)]));
+    set({ sdohSocialRisk: { status: 'ready', data: sdohSocialRisk({ barriers: b.data || [], referrals: r.data || [], planPatient }) } });
   },
 
   fetchViewKpis: async (viewId) => {

@@ -231,7 +231,7 @@ export function CarePlanBarriersTable({
         renderRow={renderRow}
         renderTbodyFooter={template ? undefined : (ctx) => (
           <CompletedRowsGroup
-            label="Resolved Barriers"
+            label="Closed Barriers"
             rows={resolvedRows}
             open={resolvedOpen}
             onToggle={() => setResolvedOpen(v => !v)}

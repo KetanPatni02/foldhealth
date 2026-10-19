@@ -544,7 +544,7 @@ export function CarePlanInterventionsTable({
         renderRow={renderRow}
         renderTbodyFooter={template ? undefined : (ctx) => (
           <CompletedRowsGroup
-            label="Completed Interventions"
+            label="Closed Interventions"
             rows={completedRows}
             open={completedOpen}
             onToggle={() => setCompletedOpen(v => !v)}

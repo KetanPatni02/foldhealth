@@ -1,5 +1,5 @@
 import { localDateMs } from '../../../../../../../lib/localDate';
-export const SHARE_GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+export { ALL_GBI_STATUSES as SHARE_GBI_STATUSES } from './gbiStatus';
 export const SHARE_PRIORITY_LABELS = ['High', 'Medium', 'Low'];
 
 export const SHARE_DATE_OPTIONS = [

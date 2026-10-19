@@ -1,4 +1,5 @@
 import { formatGoalTarget } from '../../../../../../settings/care-plan-library/lib/goalFormat';
+import { gbiStatusMeta } from '../../care-plan/lib/gbiStatus';
 
 /**
  * The care program report (Figma CCM-Story 11211:479858 – 14254:106259) as
@@ -113,6 +114,12 @@ const STATUS_TONE = [
 ];
 export const toneOf = v => STATUS_TONE.find(([re]) => re.test(v || ''))?.[1];
 const status = v => ({ text: v || '—', tone: toneOf(v) });
+// Care plan GBI statuses read from the shared vocabulary rather than the
+// regex above, so Discontinued / Not Applicable stay neutral (they aren't
+// failures) and On Hold isn't confused with a stopped item.
+const GBI_REPORT_TONE = { success: 'success', warning: 'warning', error: 'error', secondary: 'muted', disabled: 'muted' };
+const gbiTone = v => GBI_REPORT_TONE[gbiStatusMeta(v).tone];
+const gbiStatus = v => ({ text: v || '—', tone: gbiTone(v) });
 const orDash = v => (v == null || v === '' || v === '—' ? '—' : String(v));
 const titleCase = s => String(s || '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
@@ -233,7 +240,7 @@ const SECTION_BUILDERS = {
           { text: g.title, sub: g.category || '' },
           formatGoalTarget(g) || '—',
           g.currentValue ? { text: g.currentValue, sub: g.trend && g.trend !== '-' ? titleCase(g.trend) : '' } : '—',
-          { text: `${Math.round(Number(g.progress) || 0)}% | ${g.status}`, tone: toneOf(g.status) },
+          { text: `${Math.round(Number(g.progress) || 0)}% | ${g.status}`, tone: gbiTone(g.status) },
         ]),
         'No goals on the care plan.',
       ),
@@ -244,14 +251,14 @@ const SECTION_BUILDERS = {
           { text: i.title, sub: titleCase(i.kind) },
           goalById.get(i.goalId)?.title || '—',
           orDash(i.adherence),
-          status(i.status),
+          gbiStatus(i.status),
         ]),
         'No interventions on the care plan.',
       ),
       { type: 'subtitle', text: 'Barriers' },
       table(
         [{ title: 'Barrier', width: 0.6 }, { title: 'Priority', width: 0.18 }, { title: 'Status', width: 0.22 }],
-        barriers.map(b => [{ text: b.title, sub: b.description || '' }, titleCase(b.priority), status(b.status)]),
+        barriers.map(b => [{ text: b.title, sub: b.description || '' }, titleCase(b.priority), gbiStatus(b.status)]),
         'No barriers on the care plan.',
       ),
     ];

@@ -104,8 +104,13 @@ const STATUS_TONE = {
   Signed:                        'success',
   Accepted:                      'success',
   Met:                           'success',
-  'On Hold':                     'error',
+  Resolved:                      'success',
+  // Care plan GBI statuses (see care-plan/lib/gbiStatus): a pause, a
+  // discontinued item and a not-applicable one are none of them failures.
+  'On Hold':                     'info',
   'Not Met':                     'error',
+  Discontinued:                  'secondary',
+  'Not Applicable':              'disabled',
   Draft:                         'grey',
   Dismissed:                     'error',
   Returned:                      'warning',
