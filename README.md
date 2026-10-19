@@ -37,6 +37,19 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **SDOH barriers, community referrals and UDS social risk.** Care plans and
+  care plan templates get a Social Needs (SDOH) section with the six
+  domains: housing, food, transportation, finance, social and safety. Each
+  need is a barrier with a structured domain, need and suggested ICD-10-CM
+  Z-code (`care-plan/lib/sdohTaxonomy.js`). SDOH needs take Findhelp and Unite
+  Us referrals as their own intervention type (`sdoh-referral`): no partner
+  API, the partner's site opens in a new tab and the referral's program,
+  notes and status (Draft, Sent, Accepted, Completed, Declined) are tracked
+  on the plan. Templates can suggest a referral per need; it lands as a
+  Draft. Analytics > SDoH & Equity gains a live UDS Social Risk card
+  (patients, needs, referred, closed loop and resolved by domain). Needs
+  `supabase/care_plan_sdoh_migration.sql`.
+
 - **Care plan GBI statuses: Discontinued, Not Applicable, Resolved.** Goals,
   interventions and barriers can now be Discontinued (patient refusal) or Not
   Applicable, and barriers can be Resolved, alongside Not Started / In

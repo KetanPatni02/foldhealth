@@ -22,7 +22,7 @@ import { BarrierDetailDrawer } from '../BarrierDetailDrawer/BarrierDetailDrawer'
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import { carePlanKey } from '../../../../../../../../store/lib/carePlanStoreLib';
 import { noteSummaryLookup } from '../../CarePlanView/carePlanLinkedItems';
-import { CARE_PLAN_INTERVENTION_MENU } from '../../lib/carePlanInterventionMenu';
+import { CARE_PLAN_INTERVENTION_KINDS } from '../../lib/carePlanInterventionMenu';
 import { GOAL_CATEGORIES, goalCategoryIcon, normalizeCategory } from '../../../../../../../settings/care-plan-library/lib/goalCategories';
 import { ReviewItemRow } from './ReviewItemRow';
 import { CarePlanHistoryView } from '../CarePlanHistoryDrawer/CarePlanHistoryDrawer';
@@ -40,8 +40,8 @@ const KINDS = {
   barriers: { kind: 'barrier', noun: 'barrier', title: 'Barriers' },
 };
 
-const KIND_META = Object.fromEntries(CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => [i.key, i]));
-const KIND_ORDER = CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => i.key);
+const KIND_META = Object.fromEntries(CARE_PLAN_INTERVENTION_KINDS.map(i => [i.key, i]));
+const KIND_ORDER = CARE_PLAN_INTERVENTION_KINDS.map(i => i.key);
 const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 // The call note is rich text: an emptied editor can still hold <br> or <p></p>.

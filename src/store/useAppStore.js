@@ -72,6 +72,7 @@ import { makeActivityRow as buildHccActivityRow } from '../features/hcc/activity
 import { hccRoleDefaultFilters } from '../features/hcc/filters';
 import { deriveGoalTableFields } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/goalMetrics';
 import { barrierPayloadFromTemplateEntry, goalPayloadFromTemplateEntry, interventionPayloadFromTemplateEntry, templateLinkOwners } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
+import { sdohSocialRisk } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/sdohReport';
 import { INSTANCE_STATUS, formatInstanceDate, instanceOutcome, templateEndsOn } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/templateRenewal';
 import { barrierGoalIdsOf, goalCascade } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanGoalCascade';
 import { templateContentFromApplied, templateContentFromWholePlan } from '../features/patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateSave';
@@ -102,6 +103,7 @@ import {
   mapPatientSocialHistoryRow,
   carePlanGoalToRow,
   mapCarePlanBarrierRow,
+  sdohToRow,
   mapCarePlanTemplateRow,
   mapTemplateInstanceRow,
   partitionRetired,
@@ -2282,7 +2284,11 @@ export const useAppStore = create((set, get) => ({
       ? supabase.from('patient_care_plan_barriers').update({ ...row, updated_at: new Date().toISOString() }).eq('id', id)
       : supabase.from('patient_care_plan_barriers').insert(row);
     const { data, error } = await q.select().single();
-    if (error) { console.warn('savePatientCarePlanBarrier:', error.message); get().showToast('Could not save barrier'); return null; }
+    if (error) {
+      console.warn('savePatientCarePlanBarrier:', error.message);
+      get().showToast(/sdoh_|z_code/i.test(error.message || '') ? 'Social needs need the care plan SDOH migration' : 'Could not save barrier');
+      return null;
+    }
 
     // Diff-based join sync. Bulk status/priority changes loop over every
     // barrier without touching its goals, so most saves land here with
@@ -4524,7 +4530,7 @@ export const useAppStore = create((set, get) => ({
   },
 
   saveCarePlanBarrier: async (values, id = null) => {
-    const row = { title: values.title, description: values.description || '' };
+    const row = { title: values.title, description: values.description || '', ...sdohToRow(values) };
     const q = id
       ? supabase.from('care_plan_barriers').update({ ...row, updated_by: get().currentUserProfile?.name || null, updated_at: new Date().toISOString() }).eq('id', id)
       : supabase.from('care_plan_barriers').insert({ ...row, created_by: get().currentUserProfile?.name || null, updated_by: get().currentUserProfile?.name || null });
@@ -14111,6 +14117,29 @@ export const useAppStore = create((set, get) => ({
       }));
       return null;
     }
+  },
+
+  // UDS social-risk KPIs from care plan SDOH needs and referrals
+  // (care_plan_sdoh migration; lib/sdohReport). `missing` until it has run.
+  sdohSocialRisk: { status: 'idle', data: null },
+  fetchSdohSocialRisk: async () => {
+    set({ sdohSocialRisk: { ...get().sdohSocialRisk, status: 'loading' } });
+    const [b, r] = await Promise.all([
+      supabase.from('patient_care_plan_barriers').select('id, plan_id, title, sdoh_domain, status').not('sdoh_domain', 'is', null),
+      supabase.from('patient_care_plan_interventions').select('id, plan_id, config').eq('kind', 'sdoh-referral'),
+    ]);
+    if (b.error) {
+      const missing = /sdoh_domain/i.test(b.error.message || '');
+      if (!missing) console.warn('fetchSdohSocialRisk:', b.error.message);
+      set({ sdohSocialRisk: { status: missing ? 'missing' : 'error', data: null } });
+      return;
+    }
+    const planIds = [...new Set((b.data || []).map(x => x.plan_id))];
+    const plans = planIds.length
+      ? await supabase.from('patient_care_plans').select('id, patient_id').in('id', planIds)
+      : { data: [] };
+    const planPatient = new Map((plans.data || []).map(p => [p.id, String(p.patient_id)]));
+    set({ sdohSocialRisk: { status: 'ready', data: sdohSocialRisk({ barriers: b.data || [], referrals: r.data || [], planPatient }) } });
   },
 
   fetchViewKpis: async (viewId) => {

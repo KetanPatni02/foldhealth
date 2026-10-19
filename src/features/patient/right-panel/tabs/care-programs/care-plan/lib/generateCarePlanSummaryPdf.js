@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { parseLocalDate } from '../../../../../../../lib/localDate';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../settings/care-plan-library/lib/goalFormat';
-import { CARE_PLAN_INTERVENTION_MENU } from './carePlanInterventionMenu';
+import { CARE_PLAN_INTERVENTION_KINDS } from './carePlanInterventionMenu';
 import { matchesShareConditionFilter } from './carePlanShareFilters';
 
 /**
@@ -34,7 +34,7 @@ const C = {
 };
 
 const DASH = '—';
-const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => [i.key, i.label]));
+const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_KINDS.map(i => [i.key, i.label]));
 
 function fmtDate(value) {
   if (!value) return '';

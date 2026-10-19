@@ -23,6 +23,8 @@ import {
   interventionPayloadFromTemplateEntry,
 } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanTemplateApply';
 import { CARE_PLAN_INTERVENTION_ICONS } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/carePlanInterventionMenu';
+import { useTemplateSdoh } from '../../lib/useTemplateSdoh';
+import { isSdohBarrier } from '../../../../patient/right-panel/tabs/care-programs/care-plan/lib/sdohTaxonomy';
 import styles from './CarePlanCreateView.module.css';
 
 
@@ -84,11 +86,13 @@ export function CarePlanCreateView({ onClose, onSave }) {
     icon: CARE_PLAN_INTERVENTION_ICONS[entry.kind] || 'solar:clipboard-list-linear',
   })), [interventions]);
 
-  const barrierRows = useMemo(() => barriers.map((entry, i) => ({
+  // SDOH needs go to their own section (lib/useTemplateSdoh).
+  const { plainBarriers, sdoh } = useTemplateSdoh({ barriers, setBarriers, interventions, setInterventions });
+  const barrierRows = useMemo(() => plainBarriers.map((entry, i) => ({
     id: entry.id || `barrier-${i}`,
     title: entry.title,
     status: 'Not Started',
-  })), [barriers]);
+  })), [plainBarriers]);
 
   const norm = (v) => (v || '').trim().toLowerCase();
   const linksOf = (goal) => goal?.interventions || [];
@@ -283,6 +287,7 @@ export function CarePlanCreateView({ onClose, onSave }) {
               goalRows={goalRows}
               interventionRows={interventionRows}
               barrierRows={barrierRows}
+              sdoh={sdoh}
               onOpenGoal={(row) => setEditingGoal(libraryGoals.find(g => g.id === row.id) || row)}
               onOpenIntervention={(row) => setEditingIntervention(
                 interventions.find(i => i.id === row.id) || row,
@@ -344,10 +349,11 @@ export function CarePlanCreateView({ onClose, onSave }) {
       {picker === 'barriers' && (
         <AddBarriersDrawer
           primaryLabel="Add to Care Plan"
-          existingBarriers={barriers}
+          existingBarriers={plainBarriers}
           onClose={() => setPicker(null)}
           onAdd={(picked) => {
-            setBarriers((picked || []).map(b => ({ id: b.id, title: b.title })));
+            // The picker manages plain barriers; SDOH needs stay as they are.
+            setBarriers(prev => [...prev.filter(isSdohBarrier), ...(picked || []).map(b => ({ id: b.id, title: b.title }))]);
             setPicker(null);
           }}
         />
