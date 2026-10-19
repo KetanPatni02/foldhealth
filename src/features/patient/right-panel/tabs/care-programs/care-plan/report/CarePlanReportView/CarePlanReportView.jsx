@@ -6,14 +6,8 @@ import { TableSkeleton } from '../../../../../../../../components/TableSkeleton/
 import { useAppStore } from '../../../../../../../../store/useAppStore';
 import styles from './CarePlanReportView.module.css';
 
-const STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
-const STATUS_COLOR = {
-  'Not Started': 'var(--neutral-200)',
-  'In Progress': 'var(--primary-300)',
-  'On Hold': 'var(--status-warning)',
-  Met: 'var(--status-success)',
-  'Not Met': 'var(--status-error)',
-};
+import { ALL_GBI_STATUSES, gbiStatusColor, gbiCompletion } from '../../lib/gbiStatus';
+
 const TARGET_LABEL = { ehr: 'EHR', patient: 'Patient', poa: 'POA' };
 const ACTION_LABEL = {
   created: 'Created', updated: 'Edited', status_changed: 'Status changed',
@@ -44,15 +38,17 @@ export function CarePlanReportView({ patientId, programs, onClose }) {
       perProgram.push({
         code: program.code, name: program.name,
         goals: g.length, interventions: iv.length, barriers: br.length,
-        completion: pct(gbi.filter(x => x.status === 'Met').length, gbi.length),
+        completion: gbiCompletion(gbi).rate,
       });
     }
     const all = [...goals, ...interventions, ...barriers];
-    const statusCounts = STATUSES.map(st => ({ status: st, count: all.filter(x => x.status === st).length }));
+    const statusCounts = ALL_GBI_STATUSES.map(st => ({ status: st, count: all.filter(x => x.status === st).length }));
     return {
       goals, interventions, barriers, perProgram, statusCounts,
       total: all.length,
-      met: all.filter(x => x.status === 'Met').length,
+      // Met or Resolved over the items that are judged: Discontinued and
+      // Not Applicable count toward neither side.
+      completion: gbiCompletion(all),
       hasPlans: perProgram.length > 0,
     };
   }, [programs, patientCarePlans, patientId]);
@@ -83,7 +79,13 @@ export function CarePlanReportView({ patientId, programs, onClose }) {
         <div className={styles.body}>
           <div className={styles.tiles}>
             <div className={styles.tile}><div className={styles.tileNum}>{agg.total}</div><div className={styles.tileLabel}>Total items</div></div>
-            <div className={styles.tile}><div className={styles.tileNum} style={{ color: 'var(--status-success)' }}>{pct(agg.met, agg.total)}%</div><div className={styles.tileLabel}>Met ({agg.met}/{agg.total})</div></div>
+            <div className={styles.tile}>
+              <div className={styles.tileNum} style={{ color: 'var(--status-success)' }}>{agg.completion.rate}%</div>
+              <div className={styles.tileLabel}>Met or resolved ({agg.completion.achieved}/{agg.completion.counted})</div>
+              {agg.completion.excluded > 0 && (
+                <div className={styles.tileLabel}>{agg.completion.excluded} discontinued or N/A not counted</div>
+              )}
+            </div>
             <div className={styles.tile}><div className={styles.tileNum}>{agg.goals.length}</div><div className={styles.tileLabel}>Goals</div></div>
             <div className={styles.tile}><div className={styles.tileNum}>{agg.interventions.length}</div><div className={styles.tileLabel}>Interventions</div></div>
             <div className={styles.tile}><div className={styles.tileNum}>{shares.length}</div><div className={styles.tileLabel}>Shares</div></div>
@@ -96,7 +98,7 @@ export function CarePlanReportView({ patientId, programs, onClose }) {
                 <div key={s.status} className={styles.barRow}>
                   <span className={styles.barLabel}>{s.status}</span>
                   <span className={styles.barTrack}>
-                    <span className={styles.barFill} style={{ width: `${pct(s.count, maxStatus)}%`, background: STATUS_COLOR[s.status] }} />
+                    <span className={styles.barFill} style={{ width: `${pct(s.count, maxStatus)}%`, background: gbiStatusColor(s.status) }} />
                   </span>
                   <span className={styles.barCount}>{s.count}</span>
                 </div>
