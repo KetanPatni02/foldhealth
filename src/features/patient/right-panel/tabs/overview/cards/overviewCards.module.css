@@ -68,6 +68,18 @@
 }
 .titleButton:hover { color: var(--primary-300); }
 
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+}
+
+/* One program and its steps; programs are separated by a rule. */
+.programBlock + .programBlock {
+  border-top: 0.5px solid var(--neutral-100);
+}
+
 /* ── Synopsis ── */
 .poweredBy {
   font-size: var(--font-sm);

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { DashboardCard, DashboardCardBody, DashboardCardSkeleton } from '../../../../../../components/DashboardCard/DashboardCard';
 import { PanelSectionItem, PanelSectionMore } from '../../../../../../components/PanelSection/PanelSection';
-import { useAppStore } from '../../../../../../store/useAppStore';
 import { parseLocalDate } from '../../../../../../lib/localDate';
+import { useP360Profile } from './useP360Profile';
 import styles from './overviewCards.module.css';
 
 const VISIBLE = 3;
@@ -21,13 +21,8 @@ function DateTile({ date }) {
 // Upcoming appointments are stored on the patient's p360_profiles row
 // (upcoming_appointments), the same list the P360 banner shows.
 export function AppointmentsCard({ patientId }) {
-  const profile = useAppStore(s => s.p360ProfilesById[patientId]);
-  const fetchP360Profile = useAppStore(s => s.fetchP360Profile);
+  const profile = useP360Profile(patientId);
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    if (patientId && profile === undefined) fetchP360Profile(patientId);
-  }, [patientId, profile, fetchP360Profile]);
 
   if (profile === undefined) return <DashboardCardSkeleton icon="solar:calendar-linear" title="Upcoming Appointments" />;
 

@@ -4,6 +4,7 @@ import { DashboardCardSkeleton } from '../../../../../../components/DashboardCar
 import { ScheduleDrawer } from '../../../../../../components/ScheduleDrawer/ScheduleDrawer';
 import { AddTaskDrawer } from '../../../../../tasks/AddTaskDrawer';
 import { NonVisitNoteDrawer } from '../../notes/PatientNotesTab/NonVisitNoteDrawer';
+import { OverviewCustomizeDrawer } from '../OverviewCustomizeDrawer/OverviewCustomizeDrawer';
 import { SynopsisCard } from '../cards/SynopsisCard';
 import { HealthChartCard } from '../cards/HealthChartCard';
 import { HighlightsCard } from '../cards/HighlightsCard';
@@ -16,8 +17,21 @@ import { QuickActionsCard } from '../cards/QuickActionsCard';
 import { AppointmentsCard } from '../cards/AppointmentsCard';
 import { TasksCard } from '../cards/TasksCard';
 import { VitalsCard } from '../cards/VitalsCard';
-import { OVERVIEW_COLUMNS, OVERVIEW_COLUMN_TEMPLATE, overviewColumnCount } from './overviewLayout';
+import {
+  CaregiversCard, CareTeamCard, ConditionsCard, ConsentCard, ContactCard, MedicationsCard, RiskAcuityCard,
+} from '../cards/ProfileCards';
+import { ProgramProgressCard, SinceLastTouchCard } from '../cards/MonitoringCards';
+import { SummaryWidgetCard } from '../cards/SummaryWidgetCard';
+import {
+  OVERVIEW_COLUMN_TEMPLATE, OVERVIEW_WIDGETS, normalizeOverviewLayout, overviewColumnCount, overviewColumns,
+} from './overviewLayout';
 import styles from './OverviewTab.module.css';
+
+// Per-user arrangement, saved with the other panel layouts (user_panel_layouts).
+const LAYOUT_KEY = 'patientOverviewLayout';
+
+// The left panel Summary tab's widgets, reused in a card frame.
+const SUMMARY_WIDGETS = new Set(OVERVIEW_WIDGETS.filter(w => w.sample).map(w => w.key));
 
 // Cards fed by the patient_overview row show their real header while it loads.
 const OVERVIEW_SKELETONS = {
@@ -42,9 +56,11 @@ function useElementWidth(ref) {
   return width;
 }
 
-export function OverviewTab({ patient, leftPanelOpen = true }) {
-  const rootRef = useRef(null);
-  const width = useElementWidth(rootRef);
+// `customizing` / `onCustomizeClose`: the Customize drawer is opened from the
+// profile tab bar (PatientDetailView), not from inside the tab.
+export function OverviewTab({ patient, leftPanelOpen = true, customizing = false, onCustomizeClose }) {
+  const gridRef = useRef(null);
+  const width = useElementWidth(gridRef);
   const columnCount = width ? overviewColumnCount(width, { leftPanelOpen }) : 1;
 
   const memberId = patient?.memberId ? String(patient.memberId) : null;
@@ -52,8 +68,13 @@ export function OverviewTab({ patient, leftPanelOpen = true }) {
   const fetchPatientOverview = useAppStore(s => s.fetchPatientOverview);
   const setPatientProfileTab = useAppStore(s => s.setPatientProfileTab);
   const setCareManagementTab = useAppStore(s => s.setCareManagementTab);
+  const savedLayout = useAppStore(s => s.panelLayouts[LAYOUT_KEY]);
+  const fetchPanelLayouts = useAppStore(s => s.fetchPanelLayouts);
+  const savePanelLayout = useAppStore(s => s.savePanelLayout);
+  const layout = useMemo(() => normalizeOverviewLayout(savedLayout), [savedLayout]);
 
   useEffect(() => { if (memberId) fetchPatientOverview(memberId); }, [memberId, fetchPatientOverview]);
+  useEffect(() => { fetchPanelLayouts(); }, [fetchPanelLayouts]);
 
   // One open drawer at a time; `onSaved` lets a suggested action mark itself
   // accepted once the appointment is actually booked.
@@ -77,6 +98,7 @@ export function OverviewTab({ patient, leftPanelOpen = true }) {
       const [icon, title] = OVERVIEW_SKELETONS[key];
       return <DashboardCardSkeleton key={key} icon={icon} title={title} />;
     }
+    if (SUMMARY_WIDGETS.has(key)) return <SummaryWidgetCard key={key} widget={key} />;
     switch (key) {
       case 'synopsis': return <SynopsisCard key={key} overview={overview} />;
       case 'healthChart': return <HealthChartCard key={key} overview={overview} />;
@@ -90,20 +112,36 @@ export function OverviewTab({ patient, leftPanelOpen = true }) {
       case 'appointments': return <AppointmentsCard key={key} patientId={patient.id} />;
       case 'tasks': return <TasksCard key={key} patient={patient} actions={actions} />;
       case 'vitals': return <VitalsCard key={key} overview={overview} />;
+      case 'riskAcuity': return <RiskAcuityCard key={key} patientId={patient.id} />;
+      case 'contact': return <ContactCard key={key} patientId={patient.id} />;
+      case 'careTeam': return <CareTeamCard key={key} patientId={patient.id} />;
+      case 'caregivers': return <CaregiversCard key={key} patientId={patient.id} />;
+      case 'consent': return <ConsentCard key={key} patientId={patient.id} />;
+      case 'medications': return <MedicationsCard key={key} patientId={patient.id} />;
+      case 'conditions': return <ConditionsCard key={key} patientId={patient.id} />;
+      case 'sinceLastTouch': return <SinceLastTouchCard key={key} memberId={memberId} />;
+      case 'programProgress': return <ProgramProgressCard key={key} memberId={memberId} />;
       default: return null;
     }
   };
 
+  const columns = overviewColumns(layout, columnCount);
+
   return (
-    <div ref={rootRef} className={styles.overview}>
-      <div className={styles.grid} style={{ gridTemplateColumns: OVERVIEW_COLUMN_TEMPLATE[columnCount] }}>
-        {OVERVIEW_COLUMNS[columnCount].map(column => (
-          <div key={column[0]} className={styles.column}>
+    <div className={styles.overview}>
+      <div ref={gridRef} className={styles.grid} style={{ gridTemplateColumns: OVERVIEW_COLUMN_TEMPLATE[columnCount] }}>
+        {columns.map((column, i) => (
+          // Each column scrolls on its own, so a long middle column never
+          // drags the narrow ones out of view.
+          <div key={i} className={styles.column}>
             {column.map(card)}
           </div>
         ))}
       </div>
 
+      {customizing && (
+        <OverviewCustomizeDrawer layout={layout} onSave={next => savePanelLayout(LAYOUT_KEY, next)} onClose={() => onCustomizeClose?.()} />
+      )}
       {drawer?.kind === 'note' && <NonVisitNoteDrawer patient={patient} onClose={closeDrawer} />}
       {drawer?.kind === 'task' && (
         <AddTaskDrawer initialMember={patient.name} onClose={closeDrawer} onTaskCreated={closeDrawer} />
@@ -115,6 +153,7 @@ export function OverviewTab({ patient, leftPanelOpen = true }) {
           onClose={closeDrawer}
           onSave={(row) => { if (row) drawer.onSaved?.(); }}
         />
-      )}    </div>
+      )}
+    </div>
   );
 }
