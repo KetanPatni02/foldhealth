@@ -225,7 +225,8 @@ export function ConditionsCard({ patientId }) {
       {(p) => {
         const diagnoses = list(p.diagnoses);
         const chronic = list(p.chronic_conditions);
-        const problems = list(p.problems).filter(x => !chronic.includes(x));
+        const chronicSet = new Set(chronic);
+        const problems = list(p.problems).filter(x => !chronicSet.has(x));
         if (!diagnoses.length && !chronic.length && !problems.length) return <p className={styles.empty}>No diagnoses or problems on file.</p>;
         return (
           <>

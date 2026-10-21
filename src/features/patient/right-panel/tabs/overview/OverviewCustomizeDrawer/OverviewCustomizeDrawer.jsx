@@ -22,10 +22,12 @@ function toLanes(layout) {
   ];
 }
 
+const laneItemKeys = (lanes, key) => (lanes.find(l => l.key === key)?.items || []).map(it => it.key);
+
 function toLayout(lanes) {
   return {
-    lanes: [0, 1, 2].map(i => lanes.find(l => l.key === laneKey(i)).items.map(it => it.key)),
-    hidden: lanes.find(l => l.key === HIDDEN).items.map(it => it.key),
+    lanes: [0, 1, 2].map(i => laneItemKeys(lanes, laneKey(i))),
+    hidden: laneItemKeys(lanes, HIDDEN),
   };
 }
 
@@ -41,7 +43,8 @@ export function OverviewCustomizeDrawer({ layout, onSave, onClose }) {
   const isDefault = JSON.stringify(toLayout(lanes)) === JSON.stringify(toLayout(defaults));
 
   const move = (itemKey, fromKey, toKey) => setLanes(prev => {
-    const item = prev.find(l => l.key === fromKey).items.find(i => i.key === itemKey);
+    const item = prev.find(l => l.key === fromKey)?.items.find(i => i.key === itemKey);
+    if (!item) return prev;
     return prev.map((l) => {
       if (l.key === fromKey) return { ...l, items: l.items.filter(i => i.key !== itemKey) };
       if (l.key === toKey) return { ...l, items: [...l.items, item] };
