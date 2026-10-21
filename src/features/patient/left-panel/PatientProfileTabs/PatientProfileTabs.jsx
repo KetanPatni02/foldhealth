@@ -18,6 +18,8 @@ import { ProfileTab } from '../tabs/profile/ProfileTab/ProfileTab.jsx';
 import { CrmTab } from '../tabs/crm/CrmTab/CrmTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS, CARE_GAP_TABS_DRAWER } from '../../data/careGapsMock';
 import { CareGapDetailDrawer } from '../../../hedis-worklist/CareGapDetailDrawer';
+import { STATUS_BADGE_VARIANT } from '../../../hedis-worklist/HedisWorklistRow';
+import { MEASURE_NAMES } from '../../../hedis-worklist/ClinicalNotePanel.utils';
 import styles from './PatientProfileTabs.module.css';
 
 // In the P360 (full-page) surface the right panel already hosts Tasks and
@@ -76,11 +78,13 @@ export function PatientProfileTabs({
   // → "EED"). We resolve the patient's HEDIS member by id or name so the
   // drawer opens with the right measure set. When no HEDIS row exists
   // the toggle-select fallback runs so the click never dead-ends.
+  const hedisMember = (hedisMembers || []).find(m => m
+    && (m.id === patientId || m.patientId === patientId
+      || (patient?.name && (m.name === patient.name))));
+
   const openGap = (item) => {
     const code = String(item.title || '').split(' - ')[0].trim();
-    const member = (hedisMembers || []).find(m => m
-      && (m.id === patientId || m.patientId === patientId
-        || (patient?.name && (m.name === patient.name))));
+    const member = hedisMember;
     if (!code || !member) {
       toggleGap(item.id);
       return;
@@ -88,7 +92,24 @@ export function PatientProfileTabs({
     setCareGapDrawer({ member, gapCode: code, year: new Date().getFullYear() });
   };
 
-  const careGapSections = CARE_GAP_SECTIONS_EXTENDED.map(section => ({
+  // A patient on the HEDIS worklist shows their real gaps, one row per gap,
+  // so a re-added measure lists its Open gap and its closed parent apart.
+  const sourceSections = hedisMember?.gaps?.length
+    ? [{
+        title: 'HEDIS Measures',
+        items: hedisMember.gaps.map((g, i) => ({
+          id: `hedis-${g.code}-${i}`,
+          title: `${g.code} - ${MEASURE_NAMES[g.code] || g.code}`,
+          status: g.status,
+          statusVariant: STATUS_BADGE_VARIANT[g.status] || 'ai-neutral',
+          diagnosis: g.supersededAt
+            ? `Previous gap · Closed ${g.closedDate || g.supersededAt}`
+            : g.startDate ? `Opened ${g.startDate}` : '',
+        })),
+      }]
+    : CARE_GAP_SECTIONS_EXTENDED;
+
+  const careGapSections = sourceSections.map(section => ({
     ...section,
     items: searchQuery
       ? section.items.filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))

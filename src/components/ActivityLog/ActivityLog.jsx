@@ -111,6 +111,7 @@ const STATUS_TONE = {
   Returned:                      'warning',
   Rebuttal:                      'secondary',
   Rejected:                      'error',
+  'Closed - Data':               'grey',
   'Closed - Do not call':        'grey',
   'Closed - UTR':                'grey',
   'Closed - Other':              'grey',

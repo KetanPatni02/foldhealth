@@ -37,6 +37,14 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Add Care Gaps (HEDIS worklist).** A new row action opens an Add Care Gaps
+  drawer. You pick IPA, HP code and measure year (prefilled from the patient),
+  then one or more care gaps from the Fold whitelist (`caregap_whitelist`), plus
+  the workflows they need (Outreach, Clinical Note, Referral, Task). Gaps that
+  are already open can't be selected. When a measure was previously closed, the
+  drawer shows that gap as the parent, and the new Open gap keeps it in
+  `parentGap`.
+
 - **Pharmacy worklist.** New Population › Worklists › Pharmacy list for the
   Med Adherence gaps (MAD / MAH / MAC; SUPD out of scope): one row per member
   with measure chips, the most urgent measure's PDC, fail date and next fill,
