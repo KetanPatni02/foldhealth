@@ -37,6 +37,20 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Worklist filters and saved filters, per the worklist filter spec.**
+  HCC, HEDIS, SNP, Annual Visits and TOC IP list their filters in the spec's
+  order (always-primary first, then each worklist's own). The chip row stays
+  on one line: what doesn't fit sits in More Filters, which now lists those
+  primaries first and the secondary filters under their domain (Member,
+  Workflow Status, Assignment, Geography, Clinical). Picking one shows it in
+  the row; unchecking clears its value. Saved filters work the same on every
+  worklist (HCC, HEDIS, SNP, Annual Visit, JSA, CCM, TCM, TOC IP): the Figma
+  dropdown (hover, selected and inline edit states, Make a Copy, a delete
+  confirmation, an empty state), the selected filter stays selected while you
+  edit (Go Back to Filter, Save Changes, Save a New Filter, Copy Filter), and
+  Reset Selection clears that worklist's filters. DOB filters (HCC, HEDIS,
+  SNP, CCM) pick by Years or Custom Dates. CCM's filters now live in the store
+  so they can be saved.
 - **Individualized Plan AI.** An empty care plan offers Draft Individualized
   Plan (also in the care plan ⋯ menu). UnityAI reads the patient's chronic
   conditions, latest assessments, open barriers, recent events and lab trends

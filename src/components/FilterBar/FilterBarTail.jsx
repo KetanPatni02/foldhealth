@@ -1,4 +1,6 @@
+import { useRef, useState } from 'react';
 import { DownChevronIcon } from '../Icon/DownChevronIcon';
+import { MenuPopover } from '../MenuPopover/MenuPopover';
 import styles from './FilterBar.module.css';
 
 export function FilterBarTail({
@@ -12,8 +14,18 @@ export function FilterBarTail({
   onClearAll,
   onSaveFilter,
   onOpenSaveDialog,
+  clearAllLabel = 'Clear All',
+  saveLabel = 'Save Filter',
+  saveMenuItems,
+  onSaveMenuSelect,
 }) {
   const hasAction = (key) => actions.includes(key);
+  const saveRef = useRef(null);
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+  const saveNew = () => {
+    if (hasAction('saveFilterDialog')) onOpenSaveDialog();
+    else onSaveFilter();
+  };
 
   return (
     <div className={styles.tail} ref={tailRef}>
@@ -29,26 +41,48 @@ export function FilterBarTail({
         </button>
       )}
 
+      {/* More Filters | Save Filter | Clear All (worklist filter spec 2.4). */}
       {hasActive && (
         <>
-          {hasAction('moreFilters') && <span className={styles.vDivider} />}
-          <button className={styles.clearAll} onClick={onClearAll}>
-            Clear All
-          </button>
           {(hasAction('saveFilter') || hasAction('saveFilterDialog')) && (
             <>
-              <span className={styles.vDivider} />
-              <button
-                className={styles.saveFilter}
-                onClick={() => {
-                  if (hasAction('saveFilterDialog')) onOpenSaveDialog();
-                  else onSaveFilter();
-                }}
-              >
-                Save Filter
-              </button>
+              {hasAction('moreFilters') && <span className={styles.vDivider} />}
+              {saveMenuItems?.length ? (
+                <>
+                  <button
+                    ref={saveRef}
+                    type="button"
+                    className={styles.saveFilter}
+                    aria-haspopup="menu"
+                    aria-expanded={saveMenuOpen}
+                    onClick={() => setSaveMenuOpen(o => !o)}
+                  >
+                    Save Filter
+                    <DownChevronIcon color="var(--primary-300)" />
+                  </button>
+                  {saveMenuOpen && (
+                    <MenuPopover
+                      anchorRef={saveRef}
+                      align="right"
+                      width="auto"
+                      ariaLabel="Save filter"
+                      items={saveMenuItems}
+                      onSelect={(key) => { setSaveMenuOpen(false); onSaveMenuSelect?.(key); }}
+                      onClose={() => setSaveMenuOpen(false)}
+                    />
+                  )}
+                </>
+              ) : (
+                <button className={styles.saveFilter} onClick={saveNew}>
+                  {saveLabel}
+                </button>
+              )}
             </>
           )}
+          {(hasAction('moreFilters') || hasAction('saveFilter') || hasAction('saveFilterDialog')) && <span className={styles.vDivider} />}
+          <button className={styles.clearAll} onClick={onClearAll}>
+            {clearAllLabel}
+          </button>
         </>
       )}
     </div>

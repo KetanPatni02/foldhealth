@@ -4,6 +4,7 @@ import { SubNav } from '../components/SubNav/SubNav';
 import { TopBar } from '../components/TopBar/TopBar';
 import { TabBar } from './TabBar';
 import { FilterBar } from '../components/FilterBar/FilterBar';
+import { useSavedFilterActions } from '../features/hcc/useSavedFilterActions';
 import { Pagination } from '../components/Pagination/Pagination';
 import { ActiveCallCard } from '../components/ActiveCallCard/ActiveCallCard';
 import { InvokeAgentModal } from '../components/InvokeAgentModal/InvokeAgentModal';
@@ -180,7 +181,7 @@ function PopulationView() {
               worklists share one visual pattern. */}
           {(!chromeless || isCcm) && <TabBar />}
           {!chromeless && showFilterBar && (
-            <FilterBar leading={(isToc || (isTcm && activeTab === 'toc-queue')) ? null : undefined} />
+            <WorklistFilterBar leading={(isToc || (isTcm && activeTab === 'toc-queue')) ? null : undefined} />
           )}
           {isTcm && activeTab === 'toc-queue' && <QueueSummaryBar />}
           {isHcc
@@ -612,5 +613,30 @@ export function AppLayout() {
       </Suspense>
       <Toaster />
     </div>
+  );
+}
+
+// The shared filter bar for TCM / TOC IP and the other generic lists, with the
+// saved-filter actions (Go Back to Filter, Save Changes, Copy Filter) for the
+// list's selected saved filter.
+function WorklistFilterBar(props) {
+  const list = useAppStore(s => s.activeSubnavList) || 'TCM';
+  const filters = useAppStore(s => s.activeFilters);
+  const clearAllFilters = useAppStore(s => s.clearAllFilters);
+  const savedActions = useSavedFilterActions(list, filters, clearAllFilters);
+  return (
+    <FilterBar
+      {...props}
+      // One line of chips; the rest sit in More Filters. TOC IP also follows
+      // the worklist filter spec (primaries in spec order, More Filters by domain).
+      autoFit
+      pinPrimary={list === 'TOC IP'}
+      onClearAll={savedActions.onClearAll}
+      clearAllLabel={savedActions.clearAllLabel}
+      saveLabel={savedActions.saveLabel}
+      saveMenuItems={savedActions.saveMenuItems}
+      onSaveMenuSelect={savedActions.onSaveMenuSelect}
+      hasActive={savedActions.edited || undefined}
+    />
   );
 }

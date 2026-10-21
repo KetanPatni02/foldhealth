@@ -6,11 +6,15 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { FilterChip } from '../../components/FilterChip/FilterChip';
+import { DobFilter } from '../../components/DobFilter/DobFilter';
+import { dobInRange } from '../../components/DateRangePopover/yearSpan';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { HeaderCell } from '../../components/HeaderCell/HeaderCell';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
 import { SnpWorklistRow, SNP_MIDDLE_COLUMNS } from './SnpWorklistRow';
 import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
 import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
@@ -47,43 +51,46 @@ const parseMdy = (s) => {
 // (Member Status → Tags) even when the underlying member data doesn't yet
 // carry those fields — filtering on those is a no-op today.
 const FILTER_KEYS = [
+  // Spec 2.1: always-primary, then the SNP workflow filters (UTR Flag isn't
+  // on SNP yet). Every primary always shows, in this order (FilterBar `pinPrimary`).
+  { key: 'memberStatus', label: 'Member Status', primary: true },
+  { key: 'dob', label: 'DOB', primary: true },
+  { key: 'gender', label: 'Gender', primary: true },
+  { key: 'language', label: 'Language', primary: true },
+  { key: 'tags', label: 'Tags', primary: true },
+  { key: 'zipCode', label: 'Zip Code', primary: true },
+  { key: 'assignee', label: 'Assignee', primary: true },
   { key: 'programSubStatus', label: 'Program Sub Status', primary: true },
-  { key: 'carePlanStatus',   label: 'Care Plan Status',   primary: true },
-  { key: 'assignee',         label: 'Assigned to',        primary: true },
-  { key: 'trigger',          label: 'Trigger',            primary: true },
-  { key: 'riskIq',           label: 'Risk IQ',            primary: true },
-  { key: 'outreach',         label: 'Outreach',           primary: true },
-  // Extended (hidden by default — opt in via More Filters).
-  { key: 'memberStatus',      label: 'Member Status',        primary: false },
-  { key: 'phone',             label: 'Phone Number',         primary: false },
-  { key: 'dob',               label: 'DOB',                  primary: false },
-  { key: 'gender',            label: 'Gender',               primary: false },
-  { key: 'language',          label: 'Language',             primary: false },
-  { key: 'programDueDate',    label: 'Program Due Date',     primary: false },
-  { key: 'nextActionDueDate', label: 'Next Action Due Date', primary: false },
-  { key: 'triggerDate',       label: 'Trigger Date',         primary: false },
-  { key: 'triggerType',       label: 'Trigger Type',         primary: false },
-  { key: 'lastOutreachDate',  label: 'Last Outreach Date',   primary: false },
-  { key: 'lastOutreachOutcome', label: 'Last Outreach Outcome', primary: false },
-  { key: 'programStartDate',  label: 'Program Start Date',   primary: false },
-  { key: 'lastAdmissionDate', label: 'Last Admission Date',  primary: false },
-  { key: 'ipa',               label: 'IPA',                  primary: false },
-  { key: 'hpCodes',           label: 'HP Codes',             primary: false },
-  { key: 'isOwnedIpa',        label: 'Is Owned IPA',         primary: false },
-  { key: 'lob',               label: 'LOB',                  primary: false },
-  { key: 'hpGroup',           label: 'HP Group',             primary: false },
-  { key: 'contractType',      label: 'Contract Type',        primary: false },
-  { key: 'snpType',           label: 'SNP Type',             primary: false },
-  { key: 'networkMarket',     label: 'Network Market',       primary: false },
-  { key: 'zipCode',           label: 'Zip Code',             primary: false },
-  { key: 'city',              label: 'City',                 primary: false },
-  { key: 'preferredCallTime', label: 'Preferred Call Time',  primary: false },
-  { key: 'pcp',               label: 'PCP',                  primary: false },
-  { key: 'pcpCounty',         label: 'PCP County',           primary: false },
-  { key: 'pcpState',          label: 'PCP State',            primary: false },
-  { key: 'pcpPod',            label: 'PCP Pod',              primary: false },
-  { key: 'pcpVendor',         label: 'PCP Vendor',           primary: false },
-  { key: 'tags',              label: 'Tags',                 primary: false },
+  { key: 'carePlanStatus', label: 'Care Plan Status', primary: true },
+  { key: 'nextActionDueDate', label: 'Next Action Due Date', primary: true },
+  { key: 'programDueDate', label: 'Program Due Date', primary: true },
+  { key: 'snpType', label: 'SNP Type', primary: true },
+  { key: 'triggerType', label: 'Trigger Type', primary: true },
+  { key: 'lastOutreachOutcome', label: 'Last Outreach Outcome', primary: true },
+  // Spec 2.3: secondary, by domain in More Filters. Trigger, Outreach and
+  // Network Market aren't in the spec; they're kept under the closest domain.
+  { key: 'phone', label: 'Phone Number', primary: false, group: 'Member' },
+  { key: 'preferredCallTime', label: 'Preferred Call Time', primary: false, group: 'Member' },
+  { key: 'lob', label: 'LOB', primary: false, group: 'Member' },
+  { key: 'ipa', label: 'IPA', primary: false, group: 'Member' },
+  { key: 'isOwnedIpa', label: 'Is Owned IPA', primary: false, group: 'Member' },
+  { key: 'hpCodes', label: 'HP Codes', primary: false, group: 'Member' },
+  { key: 'hpGroup', label: 'HP Group', primary: false, group: 'Member' },
+  { key: 'contractType', label: 'Contract Type', primary: false, group: 'Member' },
+  { key: 'programStartDate', label: 'Program Start Date', primary: false, group: 'Workflow Status' },
+  { key: 'lastOutreachDate', label: 'Last Outreach Date', primary: false, group: 'Workflow Status' },
+  { key: 'triggerDate', label: 'Trigger Date', primary: false, group: 'Workflow Status' },
+  { key: 'trigger', label: 'Trigger', primary: false, group: 'Workflow Status' },
+  { key: 'outreach', label: 'Outreach', primary: false, group: 'Workflow Status' },
+  { key: 'pcp', label: 'PCP', primary: false, group: 'Assignment' },
+  { key: 'pcpPod', label: 'PCP Pod', primary: false, group: 'Assignment' },
+  { key: 'pcpVendor', label: 'PCP Vendor', primary: false, group: 'Assignment' },
+  { key: 'city', label: 'City', primary: false, group: 'Geography' },
+  { key: 'pcpCounty', label: 'PCP County', primary: false, group: 'Geography' },
+  { key: 'pcpState', label: 'PCP State', primary: false, group: 'Geography' },
+  { key: 'networkMarket', label: 'Network Market', primary: false, group: 'Geography' },
+  { key: 'lastAdmissionDate', label: 'Last Admission Date', primary: false, group: 'Clinical' },
+  { key: 'riskIq', label: 'Risk IQ', primary: false, group: 'Clinical' },
 ];
 
 // Only the six primary keys have live bucket functions today; extended keys
@@ -99,7 +106,7 @@ const BUCKET_FN = {
   language:         (m) => m.language || null,
 };
 
-const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, primary: f.primary }));
+const MORE_FILTER_ITEMS = FILTER_KEYS.map(f => ({ k: f.key, label: f.label, primary: f.primary, group: f.group }));
 const PRIMARY_FILTER_KEYS = [];
 for (const f of FILTER_KEYS) {
   if (f.primary) PRIMARY_FILTER_KEYS.push(f.key);
@@ -156,6 +163,9 @@ export function SnpWorklistTable() {
   const filters = useAppStore(s => s.snpFilters);
   const setFilter = useAppStore(s => s.setSnpFilter);
   const clearFilters = useAppStore(s => s.clearSnpFilters);
+  // A selected saved filter stays selected while edited: Go Back / Update it.
+  // Save as New opens FilterBar's own name dialog.
+  const savedActions = useSavedFilterActions('SNP', filters, clearFilters);
   const storedVisible = useAppStore(s => s.snpVisibleFilterKeys);
   const setVisibleFilterKeys = useAppStore(s => s.setSnpVisibleFilterKeys);
   const clearVisibleFilters = useAppStore(s => s.clearSnpVisibleFilters);
@@ -220,6 +230,8 @@ export function SnpWorklistTable() {
       const valSet = new Set(vals);
       rows = rows.filter(m => valSet.has(bucket(m)));
     }
+    // DOB is a date range (Years or Custom Dates), not a bucket.
+    rows = rows.filter(m => dobInRange(m.dob, m.age, filters.dob));
     return rows;
   }, [enriched, searchQuery, filters]);
 
@@ -327,7 +339,12 @@ export function SnpWorklistTable() {
           filterDefs={FILTER_KEYS}
           filters={filters}
           onFilterChange={(k, vals) => setFilter(k, vals)}
-          onClearAll={clearFilters}
+          onClearAll={savedActions.onClearAll}
+          clearAllLabel={savedActions.clearAllLabel}
+          saveLabel={savedActions.saveLabel}
+          saveMenuItems={savedActions.saveMenuItems}
+          onSaveMenuSelect={savedActions.onSaveMenuSelect}
+          hasActive={savedActions.edited || undefined}
           onSaveFilter={(name) => saveSnpFilter(name)}
           getOptions={(def) => filterOptions[def.key] || []}
           multiSelect
@@ -336,6 +353,21 @@ export function SnpWorklistTable() {
           onClearVisible={clearVisibleFilters}
           moreFilterItems={MORE_FILTER_ITEMS}
           leading={null}
+          pinPrimary
+          // DOB gets the Years | Custom Dates picker; every other chip is the usual multi-select.
+          renderChip={(k) => {
+            if (k === 'dob') return <DobFilter value={filters.dob || []} onChange={vals => setFilter('dob', vals)} />;
+            const def = FILTER_KEYS.find(f => f.key === k);
+            if (!def) return null;
+            return (
+              <FilterChip
+                label={def.label}
+                options={filterOptions[k] || []}
+                selected={filters[k] || []}
+                onChange={vals => setFilter(k, vals)}
+              />
+            );
+          }}
         />
       )}
 

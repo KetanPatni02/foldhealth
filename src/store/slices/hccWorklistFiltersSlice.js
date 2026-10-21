@@ -15,10 +15,10 @@ export function createHccWorklistFiltersSlice(set, get) {
         const next = { ...s.hccFilters };
         if (!vals || !vals.length) delete next[k];
         else next[k] = vals;
+        // A selected saved filter stays selected while it's edited; the
+        // filter bar then offers Go Back to it, or Update it (FilterBarTail).
         return {
           hccFilters: next,
-          hccActiveSavedId: null,
-          activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HCC'),
           currentPage: 1,
         };
       });

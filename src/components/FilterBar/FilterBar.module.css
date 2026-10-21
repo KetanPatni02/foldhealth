@@ -16,6 +16,11 @@
   flex-wrap: wrap;
   max-width: 100%;
 }
+/* Wraps the row's leading control so auto-fit can measure it. */
+.leading {
+  display: inline-flex;
+  flex-shrink: 0;
+}
 
 /* Hidden mirror — measures chip widths for the auto-fit calculation.
    Rendered inside FilterBar itself when `autoFit` is on. */
@@ -200,6 +205,9 @@
 /* Save Filter — same link style as Clear All but tinted primary to draw
    the eye since saving is the commit action. */
 .saveFilter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: var(--font-md);
   font-weight: 500;
   color: var(--primary-300);
