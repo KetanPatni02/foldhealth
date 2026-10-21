@@ -9,6 +9,7 @@ import { Select } from '../../../components/Select/Select';
 import { BARRIERS, INTERVENTIONS, MEASURE_RESULTS } from '../adherencePicklists';
 import { MEASURE_NAMES, MEASURE_ORDER, medLabel, todayMdy } from '../pharmacyWorklist.utils';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
+import { MeasureCode } from '../PharmacyCells';
 import styles from './PharmacyBarrierStep.module.css';
 
 // Newest log entry that recorded this measure.
@@ -78,11 +79,9 @@ export function PharmacyBarrierStep({ member: memberProp }) {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.card}>
-        <div className={styles.cardHead}>
-          <div className={styles.cardTitle}>Barriers &amp; Interventions</div>
-          <span className={styles.muted}>Marked items are each measure’s current state. Change them and save — only the measures you change are logged.</span>
-        </div>
+      <div className={styles.editor}>
+        {/* The step header already names the step; just say how it works. */}
+        <span className={styles.muted}>Marked items are each measure’s current state. Change them and save; only the measures you change are logged.</span>
 
         {measures.map(x => {
           const r = rec(x.code);
@@ -91,7 +90,7 @@ export function PharmacyBarrierStep({ member: memberProp }) {
           return (
             <section key={x.code} className={`${styles.measure} ${dirty ? styles.measureDirty : ''}`}>
               <div className={styles.measureHead}>
-                <Badge size="S" tone="primary" label={x.code} />
+                <MeasureCode code={x.code} />
                 <span className={styles.measureName}>{MEASURE_NAMES[x.code]}</span>
                 <span className={styles.muted}>{x.medications.map(medLabel).join(', ')}</span>
               </div>
@@ -106,7 +105,7 @@ export function PharmacyBarrierStep({ member: memberProp }) {
                 <div className={styles.field}>
                   <span className={styles.fieldLabel}>Barriers</span>
                   {barrierOptions(x.code).length > 0
-                    ? <ChipSelect ariaLabel={`${x.code} barriers`} tone="error" options={barrierOptions(x.code)} value={r.barriers} onChange={v => patch(x.code, { barriers: v })} />
+                    ? <ChipSelect ariaLabel={`${x.code} barriers`} options={barrierOptions(x.code)} value={r.barriers} onChange={v => patch(x.code, { barriers: v })} />
                     : <span className={styles.muted}>No barriers recorded for this member.</span>}
                   {!dirty && latest?.source === 'Outreach' && latest.rec.barriers.length > 0 && (
                     <span className={styles.flagged}>
@@ -130,7 +129,7 @@ export function PharmacyBarrierStep({ member: memberProp }) {
                 </div>
                 <div className={styles.field}>
                   <span className={styles.fieldLabel}>Result</span>
-                  <ChipSelect ariaLabel={`${x.code} result`} single tone="success" options={MEASURE_RESULTS} value={r.result} onChange={v => patch(x.code, { result: v })} />
+                  <ChipSelect ariaLabel={`${x.code} result`} single options={MEASURE_RESULTS} value={r.result} onChange={v => patch(x.code, { result: v })} />
                 </div>
               </div>
             </section>
@@ -160,11 +159,11 @@ export function PharmacyBarrierStep({ member: memberProp }) {
           </div>
           {Object.entries(e.measures).map(([code, r]) => (
             <div key={code} className={styles.logRow}>
-              <Badge size="S" tone="primary" label={code} />
+              <MeasureCode code={code} />
               <div className={styles.logChips}>
-                {r.barriers.map(b => <Badge key={b} size="S" tone="error" label={b} />)}
-                {r.interventions.map(v => <Badge key={v} size="S" tone="info" label={v} />)}
-                {r.result && <Badge size="S" tone="success" icon="solar:check-circle-linear" label={r.result} />}
+                {r.barriers.map(b => <Badge key={b} size="S" tone="grey" label={b} />)}
+                {r.interventions.map(v => <Badge key={v} size="S" tone="grey" label={v} />)}
+                {r.result && <Badge size="S" tone="grey" icon="solar:check-circle-linear" label={r.result} />}
               </div>
             </div>
           ))}

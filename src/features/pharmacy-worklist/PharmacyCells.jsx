@@ -1,7 +1,17 @@
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUS_TONE, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
+
+// The measure code (MAD / MAH / MAC) as a neutral chip with its full name on
+// hover. One look for the code everywhere in the worklist and program.
+export function MeasureCode({ code }) {
+  return (
+    <Tooltip label={MEASURE_NAMES[code] || code} placement="bottom">
+      <span><Badge size="S" variant="compliance-na" label={code} /></span>
+    </Tooltip>
+  );
+}
 
 export function Dash() {
   return <span className={styles.mutedDash}>—</span>;

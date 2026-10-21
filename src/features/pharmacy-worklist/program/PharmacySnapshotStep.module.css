@@ -16,7 +16,8 @@
 .gapList { display: flex; flex-direction: column; }
 .gapRow {
   display: grid;
-  grid-template-columns: 64px minmax(140px, 1.4fr) repeat(4, minmax(90px, 1fr));
+  /* Columns shrink with the panel; values wrap rather than overflow. */
+  grid-template-columns: 48px minmax(112px, 1.3fr) repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-2) 0;
@@ -39,16 +40,18 @@
   gap: var(--space-3);
 }
 
-.subSection { display: flex; flex-direction: column; gap: var(--space-2); }
 .table { width: 100%; border-collapse: collapse; font-size: var(--font-md); color: var(--neutral-400); }
 .table th {
   text-align: left;
+  font-size: var(--font-sm);
   font-weight: 500;
   color: var(--neutral-300);
   padding: var(--space-1) var(--space-2);
   border-bottom: 0.5px solid var(--neutral-150);
 }
-.table td { padding: var(--space-2); border-bottom: 0.5px solid var(--neutral-150); }
+.table td { padding: var(--space-2); border-bottom: 0.5px solid var(--neutral-150); vertical-align: top; }
+.table tbody tr:last-child td { border-bottom: none; }
+.address { display: block; margin-top: 0.125rem; font-size: var(--font-sm); color: var(--neutral-300); }
 
 .toneError { color: var(--status-error); }
 

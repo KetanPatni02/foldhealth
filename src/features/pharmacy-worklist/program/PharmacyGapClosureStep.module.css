@@ -31,11 +31,11 @@
 }
 .fact { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
 .factLabel { font-size: var(--font-sm); color: var(--neutral-300); }
-.factValue { font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
+.factValue { font-size: var(--font-md); color: var(--neutral-400); }
 
 .signals, .cycles { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 .cycles { flex-direction: column; align-items: flex-start; }
-.signalsLabel { font-size: var(--font-sm); font-weight: 500; color: var(--neutral-400); }
+.signalsLabel { font-size: var(--font-sm); color: var(--neutral-300); }
 .cycle { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-md); color: var(--neutral-400); }
 
 .note {
@@ -45,14 +45,14 @@
   padding: var(--space-2) var(--space-3);
   border-radius: var(--space-2);
   background: var(--status-warning-light);
-  color: var(--status-warning-dark);
+  /* Amber text fails contrast on its tint; the tint and icon carry the cue. */
+  color: var(--neutral-400);
   font-size: var(--font-md);
 }
+.note > :first-child { color: var(--status-warning-dark); flex-shrink: 0; margin-top: 0.125rem; }
 
 .muted { font-size: var(--font-md); color: var(--neutral-300); }
 .toneError { color: var(--status-error); }
-.toneWarning { color: var(--status-warning-dark); }
-.toneSuccess { color: var(--status-success); }
 
 .empty {
   display: flex;

@@ -100,12 +100,18 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
     if (isPharmacy && stepFlags.isOutreachStep) {
       return <div className={styles.outreachWrap}><PharmacyOutreachStep program={program} /></div>;
     }
-    if (isPharmacy && stepFlags.isMedReconStep) return <PharmacyMedicationReview />;
-    if (isPharmacy && v.stepName === 'Pharmacy Verification') return <PharmacyVerificationStep program={program} />;
-    if (isPharmacy && v.stepName === 'Snapshot') return <PharmacySnapshotStep />;
-    if (isPharmacy && v.stepName === 'Barriers & Interventions') return <PharmacyBarrierStep />;
-    if (isPharmacy && v.stepName === 'Gap Closure / Outcome') return <PharmacyGapClosureStep />;
-    if (isPharmacy && v.stepName === 'Activity Log') return <PharmacyActivityLogStep />;
+    // The pharmacy steps are also reused in the Pharmacy Gap Details drawer,
+    // which pads them itself, so the program view supplies the same padded,
+    // scrolling body every other step has.
+    const pharmacyStep = isPharmacy && (
+      (stepFlags.isMedReconStep && <PharmacyMedicationReview />)
+      || (v.stepName === 'Pharmacy Verification' && <PharmacyVerificationStep program={program} />)
+      || (v.stepName === 'Snapshot' && <PharmacySnapshotStep />)
+      || (v.stepName === 'Barriers & Interventions' && <PharmacyBarrierStep />)
+      || (v.stepName === 'Gap Closure / Outcome' && <PharmacyGapClosureStep />)
+      || (v.stepName === 'Activity Log' && <PharmacyActivityLogStep />)
+    );
+    if (pharmacyStep) return <div className={styles.pharmacyStep}>{pharmacyStep}</div>;
     if (stepFlags.isOutreachStep) {
       return (
         <div className={styles.outreachWrap}>

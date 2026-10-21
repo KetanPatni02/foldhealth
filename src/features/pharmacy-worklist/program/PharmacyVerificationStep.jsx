@@ -13,6 +13,7 @@ import {
 } from '../pharmacyWorklist.utils';
 import { Switch } from '../../../components/Switch/Switch';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
+import { MeasureCode } from '../PharmacyCells';
 import styles from './PharmacyVerificationStep.module.css';
 
 // A processed claim isn't proof of pickup: the fill sits on the shelf ~10–14
@@ -22,7 +23,7 @@ import styles from './PharmacyVerificationStep.module.css';
 const REVERSAL_CHECK_DAYS = 14;
 const REFILL_RECHECK_DAYS = 30;
 
-const TONE_CLASS = { error: styles.toneError, warning: styles.toneWarning, success: styles.toneSuccess };
+const TONE_CLASS = { error: styles.toneError };
 const EMPTY_ANSWER = { lastFillConfirmed: true, actualLastFill: '', refilled: null, pickedUp: null, refillsRemaining: '', refillRequestSent: false };
 
 function isAnswered(a) {
@@ -79,8 +80,7 @@ function YesNo({ value, onChange, labels = ['Yes', 'No'], name }) {
   );
 }
 
-// Questions down the left, grouped into categories that double as filters.
-const CATEGORIES = ['Fill history', 'Refill', 'Pickup'];
+// Questions down the left, each tagged with its category.
 const QUESTIONS = [
   { key: 'lastFillConfirmed', category: 'Fill history', label: (g) => `Last fill on ${g.med.lastFill} confirmed?` },
   { key: 'refilled', category: 'Refill', label: () => 'Has it been refilled?' },
@@ -124,25 +124,18 @@ function AnswerCell({ q, gap, answer, onChange }) {
   }
 }
 
-const questionAnswered = (q, a) => {
-  if (q.when && !q.when(a)) return true;
-  if (q.key === 'refilled' || q.key === 'pickedUp') return !!a[q.key];
-  if (q.key === 'refillsRemaining') return a.refillsRemaining !== '';
-  return true;
-};
-
 function LockedCall({ entry }) {
   return (
     <div className={styles.locked}>
       <div className={styles.lockedHead}>
         <Icon name="solar:lock-keyhole-minimalistic-linear" size={14} color="var(--neutral-300)" />
         <span className={styles.lockedTitle}>{entry.date} · Phone · Outbound · {entry.contact}</span>
-        <Badge size="S" tone={entry.result === 'success' ? 'success' : 'warning'} label={entry.outcome} />
+        <Badge size="S" tone="grey" label={entry.outcome} />
         <span className={styles.muted}>Locked by {entry.by}</span>
       </div>
       {(entry.items || []).map(it => (
         <div key={it.medId} className={styles.lockedItem}>
-          <Badge size="S" tone="primary" label={it.measure} />
+          <MeasureCode code={it.measure} />
           <span className={styles.lockedDrug}>{it.drug}</span>
           <span className={styles.muted}>{it.steps.join(' · ')}</span>
         </div>
@@ -155,7 +148,8 @@ function LockedCall({ entry }) {
 // Pharmacy Verification step of the Pharmacy program, as an assessment
 // table: questions down the left, one answer column per pharmacy gap. "Same
 // answer for all" copies an answer across every column; each column stays
-// editable. The question categories on the left filter the rows.
+// editable. Each question is labelled with its category (fill history,
+// refill, pickup) in the first column.
 export function PharmacyVerificationStep({ program, member: memberProp }) {
   const fromProfile = usePharmacyProgramMember();
   const member = memberProp || fromProfile;
@@ -181,7 +175,6 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
 
   const [answers, setAnswers] = useState({});
   const [sameForAll, setSameForAll] = useState(false);
-  const [category, setCategory] = useState(null);
   const [note, setNote] = useState('');
   const answerFor = (code) => answers[code] || EMPTY_ANSWER;
 
@@ -202,8 +195,7 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
     if (on && gaps.length) setAnswers(Object.fromEntries(gaps.map(g => [g.code, answerFor(gaps[0].code)])));
   };
 
-  const rows = QUESTIONS.filter(q => !category || q.category === category);
-  const answeredIn = (cat) => gaps.reduce((n, g) => n + QUESTIONS.filter(q => q.category === cat).every(q => questionAnswered(q, answerFor(g.code))), 0);
+  const rows = QUESTIONS;
   const verifications = (member.callHistory || []).filter(e => e.kind === 'pharmacy-verification');
   const allAnswered = gaps.length > 0 && gaps.every(g => isAnswered(answerFor(g.code)));
 
@@ -285,18 +277,6 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
         </div>
 
         <div className={styles.assessment}>
-          <nav className={styles.categories} aria-label="Question categories">
-            <button type="button" className={`${styles.category} ${!category ? styles.categoryOn : ''}`} onClick={() => setCategory(null)}>
-              All questions
-            </button>
-            {CATEGORIES.map(c => (
-              <button key={c} type="button" className={`${styles.category} ${category === c ? styles.categoryOn : ''}`} onClick={() => setCategory(cur => (cur === c ? null : c))}>
-                <span>{c}</span>
-                <span className={styles.categoryCount}>{answeredIn(c)}/{gaps.length}</span>
-              </button>
-            ))}
-          </nav>
-
           <div className={styles.tableScroll}>
             <table className={styles.qTable}>
               <thead>
@@ -305,9 +285,7 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
                   {gaps.map(g => (
                     <th key={g.code}>
                       <span className={styles.gapHead}>
-                        <Tooltip label={MEASURE_NAMES[g.code]} placement="bottom">
-                          <span><Badge size="S" variant="compliance-na" label={g.code} /></span>
-                        </Tooltip>
+                        <MeasureCode code={g.code} />
                         <span className={styles.gapMed}>{g.meds.map(medLabel).join(', ')}</span>
                         <span className={styles.gapFacts}>
                           Next due <b className={TONE_CLASS[fillDueTone(g.med.nextFill)] || ''}>{g.med.nextFill}</b> · PDC <b className={TONE_CLASS[pdcTone(g.med.pdc)] || ''}>{g.med.pdc == null ? '—' : `${g.med.pdc}%`}</b>
