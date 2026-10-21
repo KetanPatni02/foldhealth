@@ -22,25 +22,22 @@ export function SeriesDosesPicker({ choice, onChange }) {
   const [rect, setRect] = useState(null);
   const toggle = (e) => {
     e.stopPropagation();
-    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
     setRect(rect ? null : ref.current?.getBoundingClientRect() ?? null);
   };
   return (
     <>
-      <span
+      <button
         ref={ref}
-        role="button"
-        tabIndex={0}
+        type="button"
         className={styles.seriesPicker}
         aria-haspopup="menu"
         aria-expanded={!!rect}
         aria-label={`Series length: ${choice.value} doses`}
         onClick={toggle}
-        onKeyDown={toggle}
       >
         <Badge tone="grey" size="S" label={`${choice.value} doses`} chevron />
-      </span>
+      </button>
       {rect && (
         <MenuPopover
           anchorRect={rect}

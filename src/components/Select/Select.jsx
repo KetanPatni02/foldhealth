@@ -92,6 +92,7 @@ export function Select({
   // Ensure a stable label↔trigger association even when `id` isn't set.
   const autoId = useId();
   const triggerId = id || (label ? autoId : undefined);
+  const listboxId = `${autoId}-listbox`;
   const isError = variant === 'error' || Boolean(errorText);
   const valueArray = multiple ? (Array.isArray(value) ? value : []) : null;
   const valueSet = useMemo(
@@ -325,6 +326,7 @@ export function Select({
             type="text"
             role="combobox"
             aria-expanded={open}
+            aria-controls={listboxId}
             aria-autocomplete="list"
             className={styles.triggerInput}
             placeholder={selectedText || searchPlaceholder}
@@ -385,6 +387,7 @@ export function Select({
       {open && renderMenu(
         <ul
           ref={menuRef}
+          id={listboxId}
           role="listbox"
           className={[
             styles.menu,

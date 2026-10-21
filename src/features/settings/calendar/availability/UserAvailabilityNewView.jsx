@@ -73,16 +73,21 @@ export function UserAvailabilityNewView({ users, loading, filtersOpen, onAdd, on
     return (b.startDate || '') <= dateRange[1] && (b.endDate || '9999-12-31') >= dateRange[0];
   };
   // Past segments always fold under "Show N past"; Status picks among the rest.
-  const matches = (b) => (!locations.length || locations.includes(b.location))
-    && (!types.length || typesOf(b).some(t => types.includes(t)))
+  const locationSet = new Set(locations);
+  const typeSet = new Set(types);
+  const matches = (b) => (!locations.length || locationSet.has(b.location))
+    && (!types.length || typesOf(b).some(t => typeSet.has(t)))
     && inRange(b)
     && (b.status === 'expired' || !statuses.length || statuses.some(s => STATUS_FILTER[s] === b.status));
   const segmentFiltersOn = locations.length || types.length || datePreset || statuses.length;
 
+  const providerSet = new Set(providers);
+  const onlyOoo = show.includes('Has OOO');
+  const onlyPractice = show.includes('Using practice availability');
   const shown = people
-    .filter(u => !providers.length || providers.includes(u.name))
-    .filter(u => !show.includes('Has OOO') || u.ooo.length > 0)
-    .filter(u => !show.includes('Using practice availability') || u.blocks.length === 0)
+    .filter(u => !providers.length || providerSet.has(u.name))
+    .filter(u => !onlyOoo || u.ooo.length > 0)
+    .filter(u => !onlyPractice || u.blocks.length === 0)
     .map(u => ({ ...u, segments: u.blocks.filter(matches) }))
     .filter(u => !segmentFiltersOn || u.segments.some(b => b.status !== 'expired'));
 

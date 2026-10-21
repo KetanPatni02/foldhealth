@@ -52,9 +52,12 @@ async function post(path, body) {
   } catch {
     return { ok: false, message: 'We couldn\'t reach Fold Health. Check your connection and try again.' };
   }
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) return { ok: false, message: json?.error?.message || 'Something went wrong. Try again.', code: json?.error?.code };
-  return { ok: true, ...json };
+  if (!res.ok) {
+    // The API explains failures in its error payload; read it for the message.
+    const err = await res.json().catch(() => ({}));
+    return { ok: false, message: err?.error?.message || 'Something went wrong. Try again.', code: err?.error?.code };
+  }
+  return { ok: true, ...(await res.json().catch(() => ({}))) };
 }
 
 /** Emails a 6-digit code. Answers the same whether or not the account exists. */

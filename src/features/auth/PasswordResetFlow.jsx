@@ -36,8 +36,8 @@ export function PasswordResetFlow({ initialEmail = '', onDone, onBack }) {
     if (!email.trim()) { setError('Enter your email.'); return; }
     setLoading(true);
     setError('');
-    const r = await requestResetCode(email);
-    setLoading(false);
+    let r;
+    try { r = await requestResetCode(email); } finally { setLoading(false); }
     if (!r.ok) { setError(r.message); return; }
     track('auth.password_reset_code_requested');
     setStep('code');
@@ -53,8 +53,8 @@ export function PasswordResetFlow({ initialEmail = '', onDone, onBack }) {
     if (password.length < 8) { setError('Use at least 8 characters for your new password.'); return; }
     if (password !== confirm) { setError('The passwords don\'t match.'); return; }
     setLoading(true);
-    const r = await verifyResetCode({ email, code, password });
-    setLoading(false);
+    let r;
+    try { r = await verifyResetCode({ email, code, password }); } finally { setLoading(false); }
     if (!r.ok) {
       setError(r.message);
       if (r.code === 'expired') setCode('');

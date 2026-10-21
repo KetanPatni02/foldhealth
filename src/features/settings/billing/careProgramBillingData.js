@@ -101,7 +101,7 @@ export const SAMPLE_TIMER_SETTINGS = [
 
 /** The history entry a save adds (null when nothing changed). */
 export function timerChange(before, after, actor, at = new Date().toISOString()) {
-  const diff = (a = [], b = []) => b.filter(x => !a.includes(x));
+  const diff = (a = [], b = []) => { const as = new Set(a); return b.filter(x => !as.has(x)); };
   const added = { users: diff(before.userNames, after.userNames), roles: diff(before.roles, after.roles) };
   const removed = { users: diff(after.userNames, before.userNames), roles: diff(after.roles, before.roles) };
   const any = (g) => g.users.length > 0 || g.roles.length > 0;

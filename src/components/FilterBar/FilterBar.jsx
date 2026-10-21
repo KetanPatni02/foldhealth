@@ -141,8 +141,9 @@ export function FilterBar({
       // Spec mode: picks already hold their place in the row.
       picks.filter(k => !activeKeySet.has(k)).forEach(k => { budget -= widthOf(k) + GAP; });
       const fit = new Set();
+      const pickSet = new Set(picks);
       for (const k of inactivePrimary) {
-        if (picks.includes(k)) continue;
+        if (pickSet.has(k)) continue;
         const w = widthOf(k) + GAP;
         if (budget - w >= 0) { budget -= w; fit.add(k); } else break;
       }
@@ -182,7 +183,8 @@ export function FilterBar({
   const inRow = useMemo(() => {
     if (!pinPrimary) return new Set();
     const primarySet = new Set(primaryKeys);
-    return new Set(visibleKeys.filter(k => primarySet.has(k) && !picks.includes(k)));
+    const pickSet = new Set(picks);
+    return new Set(visibleKeys.filter(k => primarySet.has(k) && !pickSet.has(k)));
   }, [pinPrimary, primaryKeys, visibleKeys, picks]);
 
   const clearValue = (k) => effectiveOnFilterChange(k, multiSelect ? [] : null);

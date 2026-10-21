@@ -29,7 +29,8 @@ export function TimerHistoryDrawer({ program, setting, onClose }) {
   const history = setting.history || [];
   const actorOptions = [...new Set(history.map(h => h.actor).filter(Boolean))].sort();
   const inRange = inDatePreset(datePreset, dateRange);
-  const shown = history.filter(h => inRange(h.at) && (!actors.length || actors.includes(h.actor)));
+  const actorSet = new Set(actors);
+  const shown = history.filter(h => inRange(h.at) && (!actors.length || actorSet.has(h.actor)));
   const activeCount = (datePreset ? 1 : 0) + (actors.length ? 1 : 0);
   const filtered = activeCount > 0;
 
