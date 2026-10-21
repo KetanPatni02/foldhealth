@@ -14261,7 +14261,11 @@ export const useAppStore = create((set, get) => ({
         // Until that function exists: write, then remove, and if removing
         // fails, put back what was there so a save never half-lands.
         if (next.length) {
-          const { error } = await supabase.from('user_availability').upsert(next.map(blockToRow), { onConflict: 'id' });
+          let { error } = await supabase.from('user_availability').upsert(next.map(blockToRow), { onConflict: 'id' });
+          // Before the migration adds allow_overlap, save without it rather than fail.
+          if (error && /allow_overlap/.test(error.message || '')) {
+            ({ error } = await supabase.from('user_availability').upsert(next.map(b => { const { allow_overlap: _drop, ...row } = blockToRow(b); return row; }), { onConflict: 'id' }));
+          }
           if (error) { console.warn('saveUserAvailability:', error.message); get().showToast?.('Could not save availability. Nothing was changed. Try again.'); return false; }
         }
         if (removed.length) {

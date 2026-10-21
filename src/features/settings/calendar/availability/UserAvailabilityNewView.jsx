@@ -11,8 +11,9 @@ import { Link } from '../../../../components/Link/Link';
 import { Collapse } from '../../../../components/Collapse/Collapse';
 import { RingEmptyState } from '../../../../components/RingEmptyState/RingEmptyState';
 import { WorklistShell } from '../../../../components/WorklistShell/WorklistShell';
+import { DatePickerPopover } from '../../../../components/DatePicker/DatePickerPopover';
 import { useAppStore } from '../../../../store/useAppStore';
-import { recordsFor, oooStatus } from '../../../ooo/oooUtils';
+import { recordsFor, oooStatus, formatDateTime } from '../../../ooo/oooUtils';
 import { STATUS_LOOK, isoDay, cadenceText, slotText, timezoneAbbr, ALL_TYPES } from './availabilityUtils';
 import { HolidayBadgeIcon } from '../../../../components/Icon/HolidayBadgeIcon';
 import {
@@ -25,7 +26,7 @@ const STATUS_FILTER = { Active: 'active', Upcoming: 'upcoming' };
 const SHOW_FILTER = ['Has OOO', 'Using practice availability'];
 const VIEWS = [
   { key: 'provider', label: 'Provider' },
-  { key: 'week', label: 'This Week' },
+  { key: 'week', label: 'Week' },
 ];
 
 /**
@@ -298,17 +299,25 @@ function ProviderTable({ people, onAdd, onEdit, onDelete }) {
 // its availability with a pink strip on top. Clicking a day edits the user's
 // availability, or adds a slot when the day has none.
 const WEEK_PER_PAGE = 20;
+const PICKER_W = 282; // DatePickerPopover's single-month width
 function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, onAdd }) {
   const [page, setPage] = useState(1);
+  const [pickerRect, setPickerRect] = useState(null);
+  // Users header sorts by name: A–Z, then Z–A, then back to the default order.
+  const [nameSort, setNameSort] = useState(null);
   const [perPage, setPerPage] = useState(WEEK_PER_PAGE);
   const days = weekDays(offset);
   const todayIso = isoDay(new Date());
   const holidayOn = Object.fromEntries((holidays || []).map(h => [h.date, h.name]));
   const lastPage = Math.max(1, Math.ceil(people.length / perPage));
   const pageNow = Math.min(page, lastPage);
-  const rows = people.slice((pageNow - 1) * perPage, pageNow * perPage);
+  const sorted = nameSort
+    ? [...people].sort((a, b) => (nameSort === 'asc' ? 1 : -1) * a.name.localeCompare(b.name))
+    : people;
+  const rows = sorted.slice((pageNow - 1) * perPage, pageNow * perPage);
   const columns = [
-    { key: 'user', label: 'Users', sticky: 'left', left: 0, width: 300 },
+    // Same width as the List view's User column.
+    { key: 'user', label: 'Users', sticky: 'left', left: 0, width: 240, sortKey: 'name', sortType: 'alpha' },
     ...days.map((d) => {
       const iso = isoDay(d);
       return {
@@ -323,6 +332,13 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
           <span className={styles.dayHeadCell}>
             {dayHead(d)}
             <span className={styles.dayHeadDate}>{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            {/* As on the calendar: a green strip along the bottom of the holiday's header. */}
+            {holidayOn[iso] && (
+              <span className={styles.holidayStrip} title={`Holiday: ${holidayOn[iso]}`}>
+                <HolidayBadgeIcon size={12} color="var(--neutral-0)" starColor="var(--accent-green)" />
+                <span className={styles.holidayStripText}>{holidayOn[iso]}</span>
+              </span>
+            )}
           </span>
         ),
       };
@@ -348,11 +364,11 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
     <tr key={u.id || u.name} className={styles.wRow}>
       <td className={`${styles.wTd} ${styles.wUserTd}`} style={{ left: 0 }}>
         <span className={styles.gridUserTop}>
-          {/* As in the List view: avatar, name over email. */}
+          {/* Avatar, name over role. */}
           <Avatar variant="staff" size="M" initials={u.initials} userName={u.name} userId={u.id} />
           <span className={styles.gridUserInfo}>
             <span className={styles.gridUserName}>{u.name}</span>
-            {u.email && <span className={styles.gridUserRole}>{u.email}</span>}
+            {u.role && <span className={styles.gridUserRole}>{u.role}</span>}
           </span>
           {renderActions?.(u)}
         </span>
@@ -367,11 +383,17 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
           // Past slots too: a past week shows what was available then.
           .filter(s => occursOn(s, d) && !(holiday && s.skipHolidays))
           .flatMap(s => (s.slots || []).map((sl, k) => ({ key: `${s.id}-${k}`, s, sl })));
-        const open = () => (ranges.length ? onEdit?.(u) : onAdd?.(u));
+        // Opens on the slot clicked (or the day's first), scrolled to and highlighted.
+        // Skip holidays is set for the user's whole availability: when it's on,
+        // a holiday reads as not available, whether or not a slot falls that day.
+        // Off, the day shows whatever runs (or "No schedule").
+        const skipsHolidays = u.blocks.length > 0 && u.blocks.every(s => s.skipHolidays !== false);
+        const skipped = !!holiday && !ranges.length && skipsHolidays;
+        const open = () => (ranges.length ? onEdit?.(u, ranges[0].s.id) : onAdd?.(u));
         return (
           <td
             key={iso}
-            className={[styles.wTd, styles.dayCell, iso === todayIso ? styles.todayCell : '', holiday ? styles.holidayCell : '', oooLabel === 'All day' ? styles.oooAllDay : ''].filter(Boolean).join(' ')}
+            className={[styles.wTd, styles.dayCell, iso === todayIso ? styles.todayCell : '', oooLabel === 'All day' ? styles.oooAllDay : ''].filter(Boolean).join(' ')}
             role="button"
             tabIndex={0}
             aria-label={`${u.name}, ${dayHead(d)}: ${ranges.length ? 'edit availability' : 'add availability'}`}
@@ -380,23 +402,33 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
           >
             <span className={styles.dayStack}>
               {out && (
-                <span className={styles.oooStrip} aria-label={oooLabel === 'All day' ? 'Out of office' : `Out of office: ${oooLabel}`}>
+                <Tooltip
+                  variant="card"
+                  // Below the strip, into the cell: above, it would cover the day headers.
+                  placement="bottom"
+                  align="left"
+                  maxWidth={320}
+                  className={styles.oooTipWrap}
+                  label={(
+                    <span className={styles.oooTip}>
+                      <span className={styles.oooTipTitle}>Out of office</span>
+                      <span>{formatDateTime(out.startAt)} – {formatDateTime(out.endAt)}</span>
+                      {out.reason && <span className={styles.oooTipNote}>{out.reason}</span>}
+                    </span>
+                  )}
+                >
+                  <span className={styles.oooStrip} aria-label={oooLabel === 'All day' ? 'Out of office' : `Out of office: ${oooLabel}`}>
                   {/* Filled: the linear OOO icon reads too thin at this size. */}
                   <Icon name="solar:square-arrow-right-bold" size={12} color="currentColor" />
                   {oooLabel === 'All day' ? 'Out of office' : oooLabel}
                 </span>
-              )}
-              {holiday && (
-                <span className={styles.holidayLine} title={`Holiday: ${holiday}`}>
-                  <HolidayBadgeIcon size={14} />
-                  <span className={styles.holidayLineName}>{holiday}</span>
-                </span>
+                </Tooltip>
               )}
               {ranges.length ? (
                 // Out all day: what was scheduled still shows, quieter, since it doesn't apply.
                 <span className={`${styles.dayRanges} ${oooLabel === 'All day' ? styles.dayRangesOff : ''}`}>
                   {ranges.map(({ key, s, sl }) => (
-                    <span key={key} className={styles.dayRange}>
+                    <span key={key} className={styles.dayRange} onClick={(e) => { e.stopPropagation(); onEdit?.(u, s.id); }}>
                       <span className={styles.dayHead}>
                         <span className={styles.dayTime}>{slotText(sl)}</span>
                         {s.timezone && <span className={styles.dayZone}>{timezoneAbbr(s.timezone, d)}</span>}
@@ -407,7 +439,9 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
                     </span>
                   ))}
                 </span>
-              ) : !holiday && empty('solar:clock-circle-linear', 'No schedule', true)}
+              ) : skipped
+                ? <span className={styles.holidayNote}>User not available on Holidays</span>
+                : empty('solar:clock-circle-linear', 'No schedule', true)}
             </span>
           </td>
         );
@@ -418,7 +452,38 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
     <div className={styles.weekWrap}>
       <div className={styles.weekNav}>
         <ActionButton icon="solar:alt-arrow-left-linear" size="S" tooltip="Previous week" onClick={() => onOffset(offset - 1)} />
-        <span className={styles.weekLabel}>{weekLabel(days)}</span>
+        {/* Opens a calendar to jump to any week. */}
+        <button
+          type="button"
+          className={styles.weekLabel}
+          aria-label={`Week of ${weekLabel(days)}, pick a different week`}
+          onClick={(e) => {
+            // Centred under the label (the label sits mid-bar), not hanging off its left edge.
+            const r = e.currentTarget.getBoundingClientRect();
+            const left = r.left + r.width / 2 - PICKER_W / 2;
+            setPickerRect({ left, right: left + PICKER_W, top: r.top, bottom: r.bottom, width: PICKER_W, height: r.height });
+          }}
+        >
+          {weekLabel(days)}
+        </button>
+        {/* One click: the week holding the picked date (Sun–Sat) is shown. This
+            week is shaded, so it's clear where you are. */}
+        <DatePickerPopover
+          open={!!pickerRect}
+          anchorRect={pickerRect}
+          value={isoDay(days[0])}
+          highlightedDates={days.map(isoDay)}
+          onChange={(iso) => {
+            if (iso) {
+              const [y, m, d] = iso.split('-').map(Number);
+              const picked = new Date(y, m - 1, d);
+              const pickedSunday = new Date(y, m - 1, d - picked.getDay());
+              onOffset(Math.round((pickedSunday - weekDays(0)[0]) / (7 * 86400000)));
+            }
+            setPickerRect(null);
+          }}
+          onClose={() => setPickerRect(null)}
+        />
         <ActionButton icon="solar:alt-arrow-right-linear" size="S" tooltip="Next week" onClick={() => onOffset(offset + 1)} />
         {/* Figma Care Programs 7843:26166, at the bar's right end. */}
         {offset !== 0 && (
@@ -428,13 +493,17 @@ function WeekGrid({ people, holidays, offset, onOffset, renderActions, onEdit, o
           </Link>
         )}
       </div>
-      <div className={styles.weekShell}>
+      {/* A week with a holiday makes room under every day header for its strip. */}
+      <div className={`${styles.weekShell} ${days.some(d => holidayOn[isoDay(d)]) ? styles.weekHasHoliday : ''}`}>
         <WorklistShell
           header={null}
           columns={columns}
           rows={rows}
           renderRow={renderRow}
           minTableWidth={1180}
+          sortKey={nameSort ? 'name' : null}
+          sortDir={nameSort}
+          onSort={() => { setNameSort(d => (d === 'asc' ? 'desc' : d === 'desc' ? null : 'asc')); setPage(1); }}
           fixedLayout
           page={pageNow}
           perPage={perPage}

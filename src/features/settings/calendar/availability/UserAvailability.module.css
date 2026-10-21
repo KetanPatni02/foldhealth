@@ -31,6 +31,9 @@
 }
 
 .tableWrap table { table-layout: fixed; }
+/* A sticky header cell doesn't carry the collapsed border with it as rows
+   scroll under, so its bottom line is drawn inside the cell instead. */
+.tableWrap th { border-bottom-color: transparent; box-shadow: inset 0 -0.5px 0 var(--neutral-150); }
 .tableWrap th:first-child { padding-left: var(--space-5); border-right: 0.5px solid var(--neutral-150); }
 .tableWrap th:last-child { border-left: 0.5px solid var(--neutral-150); }
 
@@ -174,7 +177,7 @@
 
 /* Actions start where the "Actions" header text does: 4px of cell padding
    + the button's 4px padding + the + glyph's own inset ≈ the header's 12px. */
-.tableWrap .actionTd { text-align: left; padding-left: var(--space-1); }
+.tableWrap .actionTd { text-align: left; padding-left: var(--space-3); padding-right: var(--space-3); }
 
 .actions {
   display: inline-flex;
@@ -338,6 +341,8 @@
 
 /* A block that double-books hours another block already covers. */
 .block.blockConflict { border: 1px solid var(--status-warning); }
+/* New view: an allowed overlap still outlines the slot card, in the darker warning. */
+.block.blockConflictNew { border: 1px solid var(--status-warning); }
 
 .conflictNote { margin: var(--space-3) var(--space-3) 0; }
 /* Several overlaps stack as lines; the icon stays with the first one. */
@@ -347,6 +352,7 @@
 .blockHeadShut ~ .conflictNote { margin-bottom: var(--space-3); }
 
 .conflictLine { display: block; }
+.conflictTitle { display: block; font-weight: 500; margin-bottom: calc(var(--space-1) / 2); }
 
 /* Read-only block (Clone list, Import dialog). */
 .summaryBlock {
@@ -409,7 +415,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) 0;
+  /* The bottom margin cancels the form's 16px gap, so the bar's own 12px
+     bottom padding is the whole gap to the first slot (and stays white when
+     slots scroll under it). */
+  margin: calc(var(--space-4) * -1) calc(var(--space-4) * -1) calc(var(--space-4) * -1);
   padding: var(--space-4) var(--space-4) var(--space-3);
   background: var(--neutral-0);
 }
@@ -420,7 +429,6 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
-  margin-bottom: calc(var(--space-1) * -1);
 }
 
 .blocksTitle {
@@ -683,11 +691,12 @@
   font-size: var(--font-base);
   color: var(--neutral-300);
 }
+/* A section heading over its own column labels (Time ranges). */
+.labelStrong { font-weight: 500; color: var(--neutral-400); }
 
 
-/* A little more room under the switch (16px total), so the days or the
-   panel below read as the group it turns on. */
-.cadenceSwitch { margin-bottom: var(--space-1); }
+/* The switch sits in the card's usual 12px rhythm with what it turns on. */
+.cadenceSwitch { margin-bottom: 0; }
 
 /* Advanced cadence: its options, flush with the rest of the card. */
 .advPanel {
@@ -784,6 +793,27 @@
 .slotRow .slotType { flex: 1; min-width: 0; }
 .slotRow .slotTime { width: 7.5rem; flex-shrink: 0; }
 
+/* Column labels over the time-range rows, styled like field labels. */
+.slotHead { margin-bottom: calc(var(--space-1) * -1); }
+.slotHeadLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+.requiredDot {
+  width: var(--space-1);
+  height: var(--space-1);
+  border-radius: 50%;
+  background: var(--status-error);
+  flex-shrink: 0;
+}
+/* Keep the columns aligned: the "to" and the remove button take their room, unseen. */
+.slotHeadSpacer { visibility: hidden; }
+.slotHeadAction { width: var(--space-6); flex-shrink: 0; }
+
 .to {
   font-size: var(--font-base);
   color: var(--neutral-300);
@@ -820,32 +850,6 @@
 /* Fixed / Rolling side by side. */
 .spanRadios [role="radiogroup"] { flex-direction: row; gap: var(--space-6); }
 
-/* Skips holidays, for the whole availability (Figma Electronic ID 2116:89554). */
-.skipBox {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
-  cursor: pointer;
-}
-.skipText {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-.skipLabel {
-  font-size: var(--font-base);
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--neutral-400);
-}
-.skipHint {
-  font-size: var(--font-sm);
-  line-height: 1.2;
-  color: var(--neutral-300);
-}
 
 /* Overlap alert under the hours: several lines, the icon stays with the first. */
 .conflictNoteNew.conflictNoteNew { align-items: flex-start; }
@@ -876,3 +880,36 @@
   color: var(--neutral-500);
 }
 .cloneOptionRole { font-size: var(--font-sm); color: var(--neutral-300); }
+
+/* Past slots in the drawer: a folded section (as in a patient's PAMI tab). */
+.pastGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.pastHead {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.pastHead > :last-child { transition: transform 0.2s ease; }
+.pastCount.pastCount { padding-left: calc(var(--space-1) * 1.5); padding-right: calc(var(--space-1) * 1.5); }
+.pastTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+.pastList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-2);
+}
+
+/* Availability hours starts a new part of the slot: 16px above it. */
+.hoursSection { margin-top: var(--space-1); }
