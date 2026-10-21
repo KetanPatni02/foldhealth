@@ -25,6 +25,7 @@ const FALLBACK_AUDIENCE_SEGMENTS = [
 import { hccDocumentRowToJs, hccDocumentJsToDb } from '../lib/hccDocumentMapper';
 import { readCachedWorklistOrder, getFirstWorklistLabel, populationEntryPatch, normalizeWorklistLabel } from '../lib/worklistDefaults';
 import { MONITORING_SEED, mapMonitoringRow } from '../features/patient/right-panel/tabs/monitoring/monitoringData';
+import { OVERVIEW_SEED, mapOverviewRow } from '../features/patient/data/overviewData';
 import { toast } from '../components/Toast/sonnerToast';
 // Fallback datasets (~220KB raw across all of these) are imported lazily
 // inside the fetch actions that consume them, so they don't bloat the entry
@@ -358,6 +359,53 @@ export const useAppStore = create((set, get) => ({
       patientMonitoring: { ...st.patientMonitoring, [key]: obj },
       patientMonitoringLoading: { ...st.patientMonitoringLoading, [key]: false },
     }));
+  },
+
+  // Patient Overview: the Overview tab's own data (Unity synopsis, health
+  // chart, highlights, suggested actions, vitals, gaps), keyed by member id.
+  // Falls back to the bundled OVERVIEW_SEED until patient_overview is
+  // migrated + seeded. `null` means "fetched, no overview row".
+  patientOverview: {},
+  patientOverviewLoading: {},
+  patientOverviewTableMissing: false,
+  fetchPatientOverview: async (memberId) => {
+    if (!memberId) return;
+    const key = String(memberId);
+    const s = get();
+    if (s.patientOverview[key] !== undefined || s.patientOverviewLoading[key]) return;
+    set((st) => ({ patientOverviewLoading: { ...st.patientOverviewLoading, [key]: true } }));
+    const { data, error } = await supabase
+      .from('patient_overview')
+      .select('*')
+      .eq('member_id', key)
+      .maybeSingle();
+    let obj;
+    if (error) {
+      console.warn('[store] patient_overview fetch failed (run supabase/patient_overview_migration.sql?):', error.message);
+      if (error.code === '42P01' || error.code === 'PGRST205') set({ patientOverviewTableMissing: true });
+      obj = OVERVIEW_SEED[key] || null;
+    } else {
+      obj = data ? mapOverviewRow(data) : (OVERVIEW_SEED[key] || null);
+    }
+    set((st) => ({
+      patientOverview: { ...st.patientOverview, [key]: obj },
+      patientOverviewLoading: { ...st.patientOverviewLoading, [key]: false },
+    }));
+  },
+  // Accept / dismiss a Unity suggested action. Optimistic; the jsonb array is
+  // written back whole since it is one ordered list on the patient's row.
+  setSuggestedActionStatus: async (memberId, actionId, status) => {
+    const key = String(memberId);
+    const current = get().patientOverview[key];
+    if (!current) return;
+    const suggestedActions = current.suggestedActions.map(a => (a.id === actionId ? { ...a, status } : a));
+    set((st) => ({ patientOverview: { ...st.patientOverview, [key]: { ...current, suggestedActions } } }));
+    if (get().patientOverviewTableMissing) return;
+    const { error } = await supabase
+      .from('patient_overview')
+      .update({ suggested_actions: suggestedActions, updated_at: new Date().toISOString() })
+      .eq('member_id', key);
+    if (error) reportPersistFailure(`setSuggestedActionStatus(${key})`, error);
   },
 
   // Pending add-task request — set by CreateNewPopover or WorklistRow "Add Task"

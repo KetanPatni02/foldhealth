@@ -37,6 +37,18 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Redesigned patient Overview.** The Overview tab is now a card dashboard:
+  Unity Patient Synopsis, Health Chart, Highlights, Suggested Actions, Care
+  Plan, Active Care Programs, Gaps, Recent Notes, Quick Actions, Upcoming
+  Appointments, Tasks and Vitals. Columns follow the Overview's own width:
+  three (25 / 50 / 25) when the left panel is collapsed and there is room,
+  at most two (1/3 + 2/3) while the panel is open, one when narrow
+  (`overviewLayout.js`). Quick Actions are pinnable per user
+  (`user_panel_layouts`). Care plan, programs, notes, tasks and appointments
+  read their existing tables; the synopsis, health scores, highlights,
+  suggested actions, vitals and gaps live in the new `patient_overview`
+  table. New shared pieces: `DashboardCard`, `QuickActionTile`, `Sparkline`.
+  Needs `supabase/patient_overview_migration.sql`.
 - **Customize the patient panel.** The patient profile's left panel has
   More > Customize: switch tabs, and the widgets inside Gaps, PAMI/Hx,
   Vitals/Labs and Summary, on or off and drag them into order, as in the

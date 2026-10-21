@@ -325,7 +325,7 @@ export function PatientDetailView() {
   // One renderer for the right panel's tabs, shared by the standard layout
   // and the split (where they render in the patient card or the side panel).
   const renderRightTab = (tab) => (
-    tab === 'Overview' ? <OverviewTab />
+    tab === 'Overview' ? <OverviewTab patient={patientWithAppStatus} leftPanelOpen={!leftCollapsed} />
       : tab === 'Monitoring' ? <MonitoringTab patient={patientWithAppStatus} />
         : tab === 'Notes' ? <PatientNotesTab patient={patientWithAppStatus} />
           : tab === 'Care Management' ? <CareManagementView />
