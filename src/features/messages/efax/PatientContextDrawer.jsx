@@ -33,7 +33,9 @@ const nameWithMeta = (p) => {
  *   patient the fax is already added to (Change Patient): starts selected, and
  *   Save waits for a change
  */
-export function PatientContextDrawer({ suggestions = [], patients = [], current, onSave, onClose }) {
+const NONE = [];
+
+export function PatientContextDrawer({ suggestions = NONE, patients = NONE, current, onSave, onClose }) {
   const startId = current?.patientId ? String(current.patientId) : '';
   const [pickedId, setPickedId] = useState(startId);
   const [linkReferral, setLinkReferral] = useState(!!current?.linkReferral);

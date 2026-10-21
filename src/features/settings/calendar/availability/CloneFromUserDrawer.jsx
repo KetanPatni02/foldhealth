@@ -58,13 +58,17 @@ export function CloneFromUserDrawer({ users, exclude, imported = [], target, onI
   const rows = chosen.flatMap(u => u.blocks.map((b, i) => ({ ...b, blockId: b.id, id: `${u.name}|${i}`, index: i, owner: u.name, ownerUser: u })));
 
   // Dropping a user drops their picked rows too.
-  const choose = (next) => { setNames(next); setPicked(p => p.filter(k => next.includes(k.split('|')[0]))); };
+  const choose = (next) => {
+    const nextSet = new Set(next);
+    setNames(next);
+    setPicked(p => p.filter(k => nextSet.has(k.split('|')[0])));
+  };
   const importedIds = new Set(imported);
   const isImported = (r) => !!r.blockId && importedIds.has(r.blockId);
-  const targetLocs = (target?.locations || []).map(l => String(l).trim().toLowerCase());
+  const targetLocs = new Set((target?.locations || []).map(l => String(l).trim().toLowerCase()));
   const noAccess = (r) => {
     const loc = String(r.location || '').trim().toLowerCase();
-    return targetLocs.length > 0 && !!loc && !targetLocs.includes(loc);
+    return targetLocs.size > 0 && !!loc && !targetLocs.has(loc);
   };
   // Why a row can't be picked, for its tooltip (null when it can be).
   const blockedReason = (r) => (isImported(r) ? 'These slots are already added' : null);
@@ -72,9 +76,9 @@ export function CloneFromUserDrawer({ users, exclude, imported = [], target, onI
   const defaultLoc = target?.locations?.[0] || '';
   // The slots as they'll be imported: one at a location the user can't
   // access goes to their default location instead.
-  const pickedBlocks = () => rows
-    .filter(r => picked.includes(r.id))
-    .map(({ id, index, owner, ownerUser, blockId, ...b }) => ({ ...b, id: blockId, importedFrom: owner, ...(noAccess(b) ? { location: defaultLoc } : {}) }));
+  const pickedBlocks = () => { const pickedSet = new Set(picked); return rows
+    .filter(r => pickedSet.has(r.id))
+    .map(({ id, index, owner, ownerUser, blockId, ...b }) => ({ ...b, id: blockId, importedFrom: owner, ...(noAccess(b) ? { location: defaultLoc } : {}) })); };
   const toggle = (k) => setPicked(p => (p.includes(k) ? p.filter(x => x !== k) : [...p, k]));
 
   return (

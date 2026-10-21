@@ -53,13 +53,19 @@ function windowsOn(segments, date, isHoliday) {
  * @param {object[]} [props.holidays] – holiday records at the user's locations
  * @param {string}   props.renderTick – changes whenever schedule-x redraws its grid
  */
-export function CalendarAvailabilityLayer({ focusUser, segments, holidays = [], renderTick }) {
+// Stable default: a fresh [] per render would re-run the effect and redraw
+// the shading on every render.
+const NO_HOLIDAYS = [];
+
+export function CalendarAvailabilityLayer({ focusUser, segments, holidays = NO_HOLIDAYS, renderTick }) {
   useEffect(() => {
     if (!focusUser) return undefined;
     const mine = (segments || []).filter(s => (s.userId && String(s.userId) === String(focusUser.id))
       || String(s.userName || '').toLowerCase() === String(focusUser.name || '').toLowerCase());
     if (!mine.length) return undefined;
     const hosts = [];
+    // One abort removes every click blocker added below.
+    const listeners = new AbortController();
     const block = (e) => e.stopPropagation();
     let attempts = 0;
     let timer;
@@ -86,7 +92,7 @@ export function CalendarAvailabilityLayer({ focusUser, segments, holidays = [], 
           host.title = 'Not available';
           // schedule-x listens on the cell itself; stop the click here so
           // unavailable time can't start a booking.
-          host.addEventListener('click', block);
+          host.addEventListener('click', block, { signal: listeners.signal });
           cell.appendChild(host);
           hosts.push(host);
         });
@@ -95,7 +101,8 @@ export function CalendarAvailabilityLayer({ focusUser, segments, holidays = [], 
     timer = setTimeout(draw, 0);
     return () => {
       clearTimeout(timer);
-      hosts.forEach((h) => { h.removeEventListener('click', block); h.remove(); });
+      listeners.abort();
+      hosts.forEach((h) => h.remove());
     };
   }, [focusUser, segments, holidays, renderTick]);
   return null;

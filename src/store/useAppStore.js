@@ -14428,8 +14428,10 @@ export const useAppStore = create((set, get) => ({
   patientContacts: {},
   fetchPatientContacts: async (patientId) => {
     if (!patientId || get().patientContacts[patientId]) return;
-    const { rowToContact, sampleContactsFor } = await import('../features/messages/comms/sendTo');
-    const { data, error } = await supabase.from('patient_contacts').select('*').eq('patient_id', String(patientId));
+    const [{ rowToContact, sampleContactsFor }, { data, error }] = await Promise.all([
+      import('../features/messages/comms/sendTo'),
+      supabase.from('patient_contacts').select('*').eq('patient_id', String(patientId)),
+    ]);
     if (error) console.warn('fetchPatientContacts — falling back to samples:', error.message);
     const list = !error && data?.length ? data.map(rowToContact) : sampleContactsFor(String(patientId));
     set(s => ({ patientContacts: { ...s.patientContacts, [patientId]: list } }));
@@ -14446,8 +14448,10 @@ export const useAppStore = create((set, get) => ({
   fetchEfaxes: async () => {
     if (get().efaxesDidFetch) return;
     set({ efaxesDidFetch: true, efaxesLoading: true });
-    const { rowToFax, sampleFaxes } = await import('../features/messages/efax/efaxData');
-    const { data, error } = await supabase.from('efax_inbound').select('*').order('received_at', { ascending: false });
+    const [{ rowToFax, sampleFaxes }, { data, error }] = await Promise.all([
+      import('../features/messages/efax/efaxData'),
+      supabase.from('efax_inbound').select('*').order('received_at', { ascending: false }),
+    ]);
     if (error) console.warn('fetchEfaxes: falling back to samples:', error.message);
     if (!error && data?.length) {
       set({ efaxes: data.map(rowToFax), efaxesLoading: false, efaxLive: true });
@@ -14483,8 +14487,8 @@ export const useAppStore = create((set, get) => ({
   fetchCareProgramBilling: async () => {
     if (get().careProgramBillingLoading || get().careProgramBillingFetched) return;
     set({ careProgramBillingLoading: true });
-    const d = await import('../features/settings/billing/careProgramBillingData');
-    const [bill, reps, timers] = await Promise.all([
+    const [d, bill, reps, timers] = await Promise.all([
+      import('../features/settings/billing/careProgramBillingData'),
       supabase.from('care_program_billable').select('*').order('date_of_service', { ascending: false }),
       supabase.from('care_program_billing_reports').select('*').order('month', { ascending: false }),
       supabase.from('billing_timer_settings').select('*').order('program', { ascending: true }),

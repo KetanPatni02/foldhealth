@@ -12,7 +12,9 @@ import { dobRangeSummary } from '../DateRangePopover/yearSpan';
  * @param {function} props.onChange – (string[]) => void
  * @param {string}   [props.label='DOB']
  */
-export function DobFilter({ value = [], onChange, label = 'DOB' }) {
+const NO_VALUE = [];
+
+export function DobFilter({ value = NO_VALUE, onChange, label = 'DOB' }) {
   const active = value.length >= 2;
   return (
     <FilterChip

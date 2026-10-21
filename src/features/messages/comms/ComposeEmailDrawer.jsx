@@ -132,7 +132,8 @@ export function ComposeEmailDrawer({ initial = {}, onClose, onSent }) {
     { value: 'patient', label: patient.name, email: patient.email, type: 'Patient', meta: personMeta(patient), initials: patient.initials },
     ...(contacts || []).map(c => ({ value: c.id, label: c.name, email: c.email, type: c.type, meta: personMeta(c) })),
   ] : [];
-  const globalTo = people.filter(o => picked.includes(o.value)).map(o => o.email).filter(Boolean);
+  const pickedSet = new Set(picked);
+  const globalTo = people.filter(o => pickedSet.has(o.value)).map(o => o.email).filter(Boolean);
   const to = forPatient
     ? [contact?.email, ...extraContacts.map(c => c.email)].filter(Boolean)
     : globalTo;
