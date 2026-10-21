@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Icon } from '../Icon/Icon';
 import { Badge } from '../Badge/Badge';
+import { ViewMoreButton } from '../ActivityLog/ActivityLog';
+import styles from './Timeline.module.css';
 import { groupByMonth } from './Timeline.utils';
 
 /**
@@ -112,16 +114,26 @@ export function ChangeDisplay({ change }) {
  *   - createdAt   (string)  — ISO timestamp (drives month grouping)
  *   - date        (string)  — display date, pre-formatted
  *   - time        (string)  — display time, pre-formatted
+ *   - method      (string)  — how it happened (e.g. "Password"), after the time
  *   - user        (string)  — actor name
  *   - action      (string)  — key into ACTION_CONFIG (created/updated/etc.).
  *   - icon, iconBg, iconBorder, iconColor   — per-entry overrides
  *   - avatar      (node)    — rail node rendered in place of the icon tile
  *   - railBelow   (bool)    — keep the rail running below a last entry
+ *   - title       (string)  — bold event line above the details
  *   - details     (string)  — primary description line
+ *   - footnote    (string)  — muted subtitle line, shown in place of category
  *   - category    (string)  — muted subtitle line
  *   - changes     (array)   — structured field diffs (Domain Registry)
+ *
+ * `compact` tightens the spacing between entries (e.g. a profile's Audit Log).
+ * `collapseChanges` hides the field diffs behind the ActivityLog's "View
+ * Details" toggle, which shows while the entry is hovered.
  */
-export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderExtra }) {
+export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderExtra, compact = false, collapseChanges = false }) {
+  const [changesOpen, setChangesOpen] = useState(false);
+  const hasChanges = entry.changes?.length > 0;
+  const toggleable = collapseChanges && hasChanges;
   const cfg = ACTION_CONFIG[entry.action] || DEFAULT_CONFIG;
   const icon = entry.icon || cfg.icon;
   const iconBg = entry.iconBg || cfg.bg;
@@ -130,9 +142,9 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
   const isCurrentUser = currentUserName && entry.user && entry.user.toLowerCase() === currentUserName.toLowerCase();
 
   return (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div className={styles.row}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
-        <div style={{ width: 0.5, flex: '0 0 14px', background: isFirst ? 'transparent' : 'var(--neutral-150)' }} />
+        <div style={{ width: 0.5, flex: `0 0 ${compact ? 4 : 14}px`, background: isFirst ? 'transparent' : 'var(--neutral-150)' }} />
         {entry.avatar || (
           <div style={{
             width: 24, height: 24, borderRadius: 6, flexShrink: 0,
@@ -152,16 +164,18 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
         }} />
       </div>
 
-      <div style={{ flex: 1, background: 'var(--neutral-0)', borderRadius: 8, padding: '6px 4px 12px 4px' }}>
-        <div style={{ padding: 8 }}>
+      <div style={{ flex: 1, background: 'var(--neutral-0)', borderRadius: 8, padding: compact ? '0 4px 8px' : '6px 4px 12px 4px' }}>
+        <div style={{ padding: compact ? '4px 8px' : 8 }}>
           <div style={{
             display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap',
             fontSize: 'var(--font-sm)', fontWeight: 500, color: 'var(--neutral-300)', marginBottom: 4,
           }}>
             {entry.date && <span>{entry.date}</span>}
-            {entry.date && entry.time && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
+            {entry.date && entry.time && <span style={{ color: 'var(--neutral-300)' }}>•</span>}
             {entry.time && <span>{entry.time}</span>}
-            {entry.user && <span style={{ color: 'var(--neutral-150)' }}>•</span>}
+            {entry.method && <span style={{ color: 'var(--neutral-300)' }}>•</span>}
+            {entry.method && <span>{entry.method}</span>}
+            {entry.user && <span style={{ color: 'var(--neutral-300)' }}>•</span>}
             {entry.user && (
               <span>
                 {entry.user}
@@ -170,18 +184,34 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
             )}
           </div>
 
-          {entry.details && (
-            <div style={{ fontSize: 'var(--font-base)', color: 'var(--neutral-400)', lineHeight: 1.2, marginBottom: 4 }}>
-              {entry.details}
+          {entry.title && (
+            <div style={{ fontSize: 'var(--font-base)', fontWeight: 500, color: 'var(--neutral-500)', lineHeight: 1.2, marginBottom: 4 }}>
+              {entry.title}
             </div>
           )}
 
-          {entry.changes && entry.changes.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, marginBottom: 4 }}>
+          {entry.details && (
+            <div style={{
+              fontSize: entry.title ? 'var(--font-md)' : 'var(--font-base)',
+              color: entry.title ? 'var(--neutral-300)' : 'var(--neutral-400)',
+              lineHeight: 1.2, marginBottom: 4,
+            }}>
+              {entry.details}
+              {toggleable && (
+                <ViewMoreButton leadingDot label="View Details" expanded={changesOpen} onToggle={() => setChangesOpen(o => !o)} />
+              )}
+            </div>
+          )}
+
+          {hasChanges && (!collapseChanges || changesOpen) && (
+            <div
+              className={collapseChanges ? styles.changesCard : undefined}
+              style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6, marginBottom: 4 }}
+            >
               {entry.changes.map((c, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {c.field && (
-                    <span style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-200)', textTransform: 'capitalize' }}>{c.field}</span>
+                    <span style={{ fontSize: 'var(--font-xs)', fontWeight: 500, color: 'var(--neutral-200)', textTransform: 'capitalize' }}>{c.field.replace(/_/g, ' ')}</span>
                   )}
                   <ChangeDisplay change={c} />
                 </div>
@@ -189,8 +219,8 @@ export function TimelineEntry({ entry, isFirst, isLast, currentUserName, renderE
             </div>
           )}
 
-          {entry.category && (
-            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{entry.category}</span>
+          {(entry.footnote || entry.category) && (
+            <span style={{ fontSize: 'var(--font-sm)', color: 'var(--neutral-200)' }}>{entry.footnote || entry.category}</span>
           )}
 
           {renderExtra && renderExtra(entry)}

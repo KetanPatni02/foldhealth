@@ -37,6 +37,121 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Individualized Plan AI.** An empty care plan offers Draft Individualized
+  Plan (also in the care plan ⋯ menu). UnityAI reads the patient's chronic
+  conditions, latest assessments, open barriers, recent events and lab trends
+  as numbered facts (`care-plan/lib/individualizedPlan.js`), picks the
+  best-fitting templates and drafts a tailored set of goals, interventions
+  and barriers (`/api/care-plan-individualized`). It's written onto the plan
+  unsigned (a draft), and every item is flagged "AI · Review" with its
+  rationale and the inputs it cites, as they read when drafted. Anything that
+  cites nothing real is dropped on the server. Reviewers clear items one by
+  one or all at once, or discard the AI items; History records the draft.
+  Needs `supabase/care_plan_ai_suggestions_migration.sql`.
+- **Automation Rules: auto-apply care plan templates on enrollment.**
+  Settings > Automation Rules (was the Automations placeholder) holds
+  account-level rules: the programs a rule watches, conditions over the
+  patient's chronic conditions (problem list, diagnosis events), labs (for
+  example HbA1c > 9 within 365 days), recent encounters (ED, inpatient) and
+  assessment answers, matched all or any, plus the templates to attach and
+  who reviews. When a patient enrolls, matching rules attach their templates
+  to the care plan unsigned (a draft), one review task goes to the care
+  manager with the reasons, the plan's History records it, and every
+  evaluation is logged with why it did or didn't match (Recent evaluations).
+  Engine: `features/settings/automation-rules/lib/automationRules.js`. Needs
+  `supabase/automation_rules_migration.sql`, which also seeds the
+  "Diabetes + HbA1c > 9" example rule, off by default.
+- **SDOH barriers, community referrals and UDS social risk.** Care plans and
+  care plan templates get a Social Needs (SDOH) section with the six
+  domains: housing, food, transportation, finance, social and safety. Each
+  need is a barrier with a structured domain, need and suggested ICD-10-CM
+  Z-code (`care-plan/lib/sdohTaxonomy.js`). SDOH needs take Findhelp and Unite
+  Us referrals as their own intervention type (`sdoh-referral`): no partner
+  API, the partner's site opens in a new tab and the referral's program,
+  notes and status (Draft, Sent, Accepted, Completed, Declined) are tracked
+  on the plan. Templates can suggest a referral per need; it lands as a
+  Draft. Analytics > SDoH & Equity gains a live UDS Social Risk card
+  (patients, needs, referred, closed loop and resolved by domain). Needs
+  `supabase/care_plan_sdoh_migration.sql`.
+
+- **Pause a care plan.** The care plan ⋯ menu gets Pause Care Plan: reason
+  (Hospitalized, Traveling, Patient request, Other with a note), pause start
+  date, planned resume date and an auto-resume toggle. While paused the plan
+  shows a banner with Resume Now, no overdue flags, no next touchpoint, and
+  its automations read as paused; `isCarePlanPaused`
+  (`care-plan/lib/carePlanPause.js`) is the gate any cadence or outreach job
+  must check. Resume (by hand, or automatically the first time the plan is
+  opened on or after the resume date) returns it to Active and recomputes the
+  next touchpoint (earliest open intervention due date, else the soonest goal
+  cadence), shown in the plan summary. Every pause and resume writes a
+  History entry. Needs `supabase/care_plan_pause_migration.sql`.
+
+- **Draft a care plan template from plain English.** Settings → Care Plan
+  library → New Template opens with "Describe this template in plain
+  English" (`src/components/UnityPromptField`). UnityAI
+  (`/api/care-plan-template-draft`, Gemini) drafts the name, summary,
+  template type and conditions, plus goals with their cadence, interventions
+  and barriers, picking from the library first: every library reference is
+  checked against the catalog the client sent (`lib/aiTemplateDraft.js`).
+  The draft lands in the editor for review with a banner saying what came
+  from the library and what's new; Redraft replaces it and Discard Draft
+  removes it, leaving anything added by hand. New goals are created in the
+  library when the template saves (with no invented target values), then
+  Save as Template publishes. The three AI endpoints now share one function
+  (`api/ai.js`), so the deployment uses 9 of Hobby's 12.
+- **Care plan GBI statuses: Discontinued, Not Applicable, Resolved.** Goals,
+  interventions and barriers can now be Discontinued (patient refusal) or Not
+  Applicable, and barriers can be Resolved, alongside Not Started / In
+  Progress / On Hold / Met / Not Met. Every status has an icon and a color,
+  and On Hold is now blue rather than grey. The vocabulary lives in one place
+  (`care-plan/lib/gbiStatus.js`) that every badge, picker, filter and rollup
+  reads. Reporting: Met and Resolved are achieved, Not Met is the only
+  failure, and Discontinued / Not Applicable count as neither, so they leave
+  completion rates, average progress and template-run outcomes, and never
+  show red. Closed items collapse into "Closed Goals / Interventions /
+  Barriers". No migration: status columns are plain text.
+
+- **Account emails from the email builder.** Unlock Account (User ID +
+  set-password link), Password Set, Account Activated and Sign-up Approved are
+  email builder templates (Settings → Content → Emails, category "Account
+  Security") with new Account tokens: `{{user_id}}`, `{{set_password_link}}`,
+  `{{sign_in_link}}`, `{{event_time}}`. The server sends whichever template
+  has that `system_key`, filling the tokens, and falls back to the built-in
+  email when there is none. A new password after an unlock now sends Account
+  Activated; approving a Pending sign-up sends Sign-up Approved. Run
+  `supabase/account_email_templates_migration.sql`, then `bun run seed`.
+- **Update card replaces the new-version strip.** When a newer deploy is
+  live, a card appears in the bottom-right corner above everything, listing
+  the top three bold lead-ins from this section (baked into
+  `/version.json` at build time). Refresh reloads; Dismiss hides it until a
+  later deploy. Keep these lead-ins short: they are the card's highlights.
+- **Login Activity in a user's Audit Log.** Two cards sit above the
+  timeline: "Last successful sign-in" and "Failed attempts · 30 days". Each
+  sign-in and lockout entry shows date • time • method • user, then the
+  event (for example "Account locked"), its reason ("5 failed attempts ·
+  locked by the system") and "Device • Location". The server reads the
+  device, location and a masked IP from the request headers through
+  `/api/auth-activity`, which is routed inside `api/account.js` so no new
+  Vercel function is added. Run
+  `supabase/account_activity_context_migration.sql` after
+  `account_unlock_link_migration.sql`.
+- **Account lockout: administrator-only unlock with an emailed link.** A
+  locked account stays locked even with the right password. It all runs on
+  the Supabase free plan: the existing access-token hook refuses password
+  sign-in while locked, and the sign-in page reports each failure to
+  `record_sign_in_failure`, which counts it only after checking the password
+  really is wrong, so nobody can lock an account they didn't guess at. (The
+  paid Password Verification Hook is optional; it also counts guesses sent
+  straight to the Auth API.) The user requests an unlock from the sign-in
+  screen; an admin unlocks it from their profile, which emails the User ID
+  and a one-time link (24 hours) to set a new password and sign in. A locked
+  practice admin can still reset by emailed code, so locking every admin
+  can't leave nobody to unlock. Every step (failed attempts, lock, request,
+  unlock and reason, link sent, password set) is recorded in the user's
+  Audit Log. Password reset, unlock and security email now share one
+  function (`api/account.js`) to stay under Vercel Hobby's 12-function
+  limit. Needs `supabase/account_unlock_link_migration.sql`.
+
 - **HCC Diagnosis Gaps and the Care Plan in the side panel (floating
   sidebar).** The Diagnosis Gaps Details drawer has "Open in Side Panel"
   beside its close button: the drawer morphs into the patient split (a view

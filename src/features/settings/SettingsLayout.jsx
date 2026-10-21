@@ -9,6 +9,7 @@ import { BillingPanel } from './billing/BillingPanel';
 import { CalendarSettings } from './calendar/CalendarSettings';
 import { MemberLeadsPanel } from './member-leads/MemberLeadsPanel';
 import { CarePlanLibraryPanel } from './care-plan-library/panel/CarePlanLibraryPanel/CarePlanLibraryPanel';
+import { AutomationRulesPanel } from './automation-rules/AutomationRulesPanel';
 import { CarePlanCreateView } from './care-plan-library/create/CarePlanCreateView/CarePlanCreateView';
 import { CarePlanTemplateView } from './care-plan-library/templates';
 import { useAppStore } from '../../store/useAppStore';
@@ -36,7 +37,7 @@ function SettingsSubNavSlot({ activeItem, onItemClick }) {
 // queries; a static placeholder costs nothing.
 const IMPLEMENTED = new Set([
   'agents', 'member/leads', 'messages', 'embedded-components',
-  'content', 'care-plan-library', 'billing', 'account', 'calendar',
+  'content', 'care-plan-library', 'billing', 'account', 'calendar', 'automations',
 ]);
 
 function ComingSoonPanel({ label }) {
@@ -126,6 +127,8 @@ export function SettingsLayout() {
         <MemberLeadsPanel />
       ) : settingsNavItem === 'care-plan-library' ? (
         <CarePlanLibraryPanel />
+      ) : settingsNavItem === 'automations' ? (
+        <AutomationRulesPanel />
       ) : (
         <AgentsTable />
       )}

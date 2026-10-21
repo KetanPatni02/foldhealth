@@ -5,8 +5,8 @@ import { FALLBACK_USERS } from '../../fallbackUsers';
 import { getInitials } from '../AccountPanel.constants';
 import { ROLE_FIELDS } from './UsersTab.utils';
 import { apiFetch } from '../../../../lib/apiFetch';
+import { accountStatus } from './accountLock';
 import { flushSecurityEmails } from '../../../auth/accountSecurity';
-import { isLocked } from './accountLock';
 
 // Map a raw `profiles` row to the user shape the table renders. Shared by the
 // list fetch and the single-row save so a save can update just its own row
@@ -138,26 +138,36 @@ export function useUsersTab() {
     [users, lockouts],
   );
 
-  const unlockAccount = async (user, { reason, note, identityConfirmed, requireReset }) => {
+  // Unlock (api/_handlers/account-unlock.js): records the reason, then emails the user
+  // their User ID and a one-time link to set a new password.
+  const postUnlock = async (body) => {
+    const res = await apiFetch('/api/account-unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json().catch(() => ({}));
+    return res.ok ? { ok: true, ...json } : { ok: false, message: json?.error?.message };
+  };
+
+  const unlockAccount = async (user, { reason, note, identityConfirmed }) => {
     if (!isCurrentUserAdmin) {
       showToast('Only practice admins can unlock accounts');
       return false;
     }
-    const { data, error } = await supabase.rpc('admin_unlock_account', {
-      target: user.id,
-      reason,
-      note: note || null,
-      identity_confirmed: !!identityConfirmed,
-      require_reset: !!requireReset,
-    });
-    if (error) {
-      showToast(error.message || 'Could not unlock the account');
+    const r = await postUnlock({ action: 'unlock', userId: user.id, reason, note, identityConfirmed });
+    if (!r.ok) {
+      showToast(r.message || 'Could not unlock the account');
       return false;
     }
-    if (data) setLockouts(prev => ({ ...prev, [user.id]: data }));
-    flushSecurityEmails();
-    showToast(`${user.name} unlocked`);
+    if (r.lock) setLockouts(prev => ({ ...prev, [user.id]: r.lock }));
+    showToast(r.emailSent === false ? r.message : `${user.name} unlocked. We emailed them a link to set a new password.`);
     return true;
+  };
+
+  const resendUnlockLink = async (user) => {
+    const r = await postUnlock({ action: 'resend', userId: user.id });
+    showToast(r.ok ? `New link sent to ${user.email}` : (r.message || 'Could not send the link'));
   };
 
   const toggleUserStatus = async (user) => {
@@ -196,6 +206,8 @@ export function useUsersTab() {
 
     if (!error && data && data.length > 0) {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      // Approval queues the "Sign-up Approved" email (account_email_templates_migration.sql).
+      if (approve) flushSecurityEmails();
       showToast(`${user.name} ${approve ? 'approved' : 'rejected'}`);
     } else {
       showToast(error?.message || 'Failed to update sign-up request (Check permissions)');
@@ -276,7 +288,7 @@ export function useUsersTab() {
       return;
     }
     if (!user.email) { showToast('No email address for this user'); return; }
-    // A 6-digit code to the email on file (api/password-reset.js). Admins
+    // A 6-digit code to the email on file (api/_handlers/password-reset.js). Admins
     // never see or set the password.
     try {
       const res = await apiFetch('/api/password-reset', {
@@ -328,7 +340,7 @@ export function useUsersTab() {
     let list = usersWithLock;
     if (userFilters.status.length) {
       const statusSet = new Set(userFilters.status);
-      list = list.filter(u => statusSet.has(u.status) || (statusSet.has('Locked') && isLocked(u.lock)));
+      list = list.filter(u => statusSet.has(accountStatus(u)));
     }
     if (userFilters.roles.length) {
       const rolesSet = new Set(userFilters.roles);
@@ -355,7 +367,7 @@ export function useUsersTab() {
       if (u.location) locations.add(u.location);
     }
     return {
-      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected', 'Locked'],
+      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected', 'Locked', 'Unlocked'],
       roles: [...roles].sort(),
       location: [...locations].sort(),
     };
@@ -388,6 +400,7 @@ export function useUsersTab() {
     deleteUsersBulk,
     resetPassword,
     unlockAccount,
+    resendUnlockLink,
     lockouts,
     saveUserProfile,
     filteredUsers,

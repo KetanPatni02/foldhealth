@@ -5,7 +5,7 @@ import { ROLE_COLORS } from '../AccountPanel.constants';
 import { statusBadge, formatDate, formatRelative } from './UsersTab.utils';
 import { UserActions } from './UserActions';
 import { OverflowBadge } from './OverflowBadge';
-import { lockLine } from './accountLock';
+import { accountStatus, lockLine } from './accountLock';
 import styles from './UserRow.module.css';
 
 export function UsersTabRow({
@@ -22,7 +22,8 @@ export function UsersTabRow({
   selected = false,
   onToggleSelect,
 }) {
-  const sb = statusBadge(user.status);
+  const status = accountStatus(user);
+  const sb = statusBadge(status);
   const rel = formatRelative(user.lastActiveAt);
 
   return (
@@ -48,7 +49,7 @@ export function UsersTabRow({
         </button>
       </td>
       <td className={styles.td}>
-        <Badge variant={sb.variant} icon={sb.icon} label={user.status} />
+        <Badge variant={sb.variant} icon={sb.icon} label={status} />
       </td>
       <td className={styles.td}>
         <div className={styles.rolesCell}>

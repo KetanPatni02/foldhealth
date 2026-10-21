@@ -91,12 +91,15 @@ export function componentJsToDb(js) {
 export function auditLogDbToJs(row) {
   let detailsText = row.details || '';
   let changes = null;
-  // Parse structured changes from JSON details
+  let context = {};
+  // Parse structured changes (and, for sign-in activity, the method, device
+  // and location) from JSON details
   if (detailsText && detailsText.startsWith('{')) {
     try {
       const parsed = JSON.parse(detailsText);
       detailsText = parsed.text || '';
       changes = parsed.changes || null;
+      context = { method: parsed.method || '', device: parsed.device || '', location: parsed.location || '' };
     } catch (e) { /* not JSON, use as plain text */ }
   }
 
@@ -109,6 +112,7 @@ export function auditLogDbToJs(row) {
     user: row.user_name,
     details: detailsText,
     changes, // [{field, from, to, type: 'text'|'status'}]
+    ...context, // method, device, location (account security rows)
     category: row.category,
     createdAt: row.created_at,
     date: row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '',

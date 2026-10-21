@@ -3,10 +3,12 @@ const Analytics = lazy(() => import('@vercel/analytics/react').then(m => ({ defa
 const SpeedInsights = lazy(() => import('@vercel/speed-insights/react').then(m => ({ default: m.SpeedInsights })).catch(() => ({ default: () => null })));
 import { AppLayout } from './layouts/AppLayout';
 import { Toaster } from './components/Toast/Toast';
-import { UpdateAvailableBanner } from './components/UpdateAvailableBanner/UpdateAvailableBanner';
+import { UpdateAvailableCard } from './components/UpdateCard/UpdateCard';
 import { LoginPage } from './features/auth/LoginPage';
 import { isPendingApprovalSession, PENDING_APPROVAL_NOTICE } from './features/auth/pendingApproval';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
+import { UnlockAccountPage } from './features/auth/UnlockAccountPage';
+import { reportSignInSuccess, takeOAuthSignIn } from './features/auth/accountSecurity';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
@@ -119,6 +121,10 @@ function App() {
         useAppStore.getState().resetCarePlanFavorites();
       } else if (event === 'SIGNED_IN') {
         track('auth.session_established');
+        // Back from Google: log it in Login Activity. Deferred, because
+        // awaiting supabase inside this callback can deadlock supabase-js.
+        const provider = takeOAuthSignIn();
+        if (provider) setTimeout(() => reportSignInSuccess(provider), 0);
         applyDefaults(s?.user);
         useAppStore.setState({ carePlanFavoritesLoaded: false, carePlanFavoritesUserId: null });
         void useAppStore.getState().fetchCarePlanFavorites({ force: true });
@@ -184,6 +190,21 @@ function App() {
           } else {
             window.location.hash = '#/login';
           }
+        }}
+      />
+    );
+  }
+
+  // The link an administrator's unlock emails (account lockout): set a new
+  // password, then sign in. Works whether or not someone is signed in here.
+  const unlockMatch = hash.match(/^#\/unlock-account\?token=([^&#]+)/);
+  if (unlockMatch) {
+    return (
+      <UnlockAccountPage
+        token={decodeURIComponent(unlockMatch[1])}
+        onDone={(opts) => {
+          if (opts?.notice) setLoginNotice(opts.notice);
+          window.location.hash = opts?.enterApp ? '#/home' : '#/login';
         }}
       />
     );
@@ -280,7 +301,7 @@ function App() {
   // Authenticated — show app
   return (
     <Suspense fallback={null}>
-      <UpdateAvailableBanner />
+      <UpdateAvailableCard />
       <AppLayout />
       <Analytics />
       <SpeedInsights />

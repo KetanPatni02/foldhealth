@@ -16,6 +16,7 @@ import { carePlanSignShareEnabled } from '../lib/carePlanSignState';
 import { useCarePlanDraftState } from '../lib/useCarePlanDraftState';
 import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
 import { useCarePlanPanelMenu } from '../../../../../hooks/useProgramPanelSplitActive';
+import { isCarePlanPaused } from '../lib/carePlanPause';
 import styles from '../../program-detail/ProgramDetailView/ProgramDetailView.module.css';
 
 function fmtCarePlanDate(isoOrDisplay) {
@@ -128,15 +129,22 @@ export function CarePlanHeader({ patientId, program, inPanel = false }) {
   // back in the program. Patient-level plans get the layout toggle.
   const rightPanel = useCarePlanPanelMenu({ program, inPanel });
   const rightPanelItems = rightPanel.items;
+  // Pause / Resume for a live plan (not while reading an older version).
+  const canPause = !!liveCarePlan?.plan?.id && !viewedVersion;
+  const planPaused = isCarePlanPaused(liveCarePlan?.plan);
   const carePlanMoreItems = useMemo(() => {
     const items = [
       ...rightPanelItems,
+      { key: 'ai-plan', iconElement: <Icon name="custom:ai" size={16} />, label: 'Draft Individualized Plan' },
+      ...(canPause ? [planPaused
+        ? { key: 'resume', icon: 'solar:play-circle-linear', label: 'Resume Care Plan' }
+        : { key: 'pause', icon: 'solar:pause-circle-linear', label: 'Pause Care Plan' }] : []),
       { key: 'template', icon: 'solar:bookmark-linear', label: 'Save as Template' },
       { key: 'note', icon: 'solar:notes-linear', label: 'Add Note' },
       { key: 'history', iconElement: <Icon name="custom:history" size={16} color="var(--neutral-400)" />, label: 'History' },
     ];
     return items;
-  }, [rightPanelItems]);
+  }, [rightPanelItems, canPause, planPaused]);
 
   const handleCarePlanMoreSelect = (key) => {
     setCarePlanMoreMenu(null);

@@ -1,12 +1,13 @@
 /* Status + date rules shared by the care-plan GBI tables, their drawers and
    the Comprehensive Care Plan, so every surface reads a plan item the same. */
 
-/** Only a Met item leaves the active list; Not Met stays visible so a failed
- *  goal or unresolved barrier can't be overlooked. */
-export const isCompletedStatus = (status) => status === 'Met';
-const OUTCOME_STATUSES = new Set(['Met', 'Not Met']);
-
 import { parseLocalDate } from '../../../../../../../lib/localDate';
+import { isAchievedStatus, isExcludedStatus, isClosedStatus } from '../lib/gbiStatus';
+
+/** Achieved (Met / Resolved) and closed-without-outcome (Discontinued / Not
+ *  Applicable) items leave the active list; Not Met stays visible so a failed
+ *  goal or unresolved barrier can't be overlooked. */
+export const isCompletedStatus = (status) => isAchievedStatus(status) || isExcludedStatus(status);
 
 // Stored plan dates are date-only ("2026-12-14"); see src/lib/localDate.
 export const parseCarePlanDate = parseLocalDate;
@@ -25,10 +26,10 @@ export function toPickerValue(v) {
   return d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : null;
 }
 
-/** Past its date and not yet resolved either way (Met / Not Met). */
+/** Past its date and still open (no final status, see lib/gbiStatus). */
 export function isPastDue(v, status) {
   const d = parseCarePlanDate(v);
-  if (!d || OUTCOME_STATUSES.has(status)) return false;
+  if (!d || isClosedStatus(status)) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return d < today;

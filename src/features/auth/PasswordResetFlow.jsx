@@ -12,7 +12,7 @@ const RESEND_COOLDOWN_SECONDS = 30;
  * Forgot password by emailed code: enter email, receive a 6-digit code,
  * enter it with a new password. Completing it also clears an account lock.
  */
-export function PasswordResetFlow({ initialEmail = '', intro, onDone, onBack }) {
+export function PasswordResetFlow({ initialEmail = '', onDone, onBack }) {
   const uid = useId();
   const [step, setStep] = useState('email');
   const [email, setEmail] = useState(initialEmail);
@@ -73,7 +73,7 @@ export function PasswordResetFlow({ initialEmail = '', intro, onDone, onBack }) 
         </h1>
         <p className={styles.welcomeSub}>
           {step === 'email'
-            ? (intro || 'Enter your email and we\'ll send you a 6-digit code.')
+            ? 'Enter your email and we\'ll send you a 6-digit code.'
             : 'Enter the code from your email and choose a new password.'}
         </p>
       </div>

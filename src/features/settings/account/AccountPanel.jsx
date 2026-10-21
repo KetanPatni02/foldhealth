@@ -334,7 +334,7 @@ function UserDetailsView({ user, raw }) {
   );
 }
 
-export function ViewUserDrawer({ user, onClose, onEdit, canEdit = true, lock, canUnlock = false, onUnlock }) {
+export function ViewUserDrawer({ user, onClose, onEdit, canEdit = true, lock, canUnlock = false, onUnlock, onResendLink }) {
   const raw = user._raw || {};
   const [viewTab, setViewTab] = useState('User Details');
   const setActivePage = useAppStore(s => s.setActivePage);
@@ -351,13 +351,13 @@ export function ViewUserDrawer({ user, onClose, onEdit, canEdit = true, lock, ca
   return (
     <Drawer title="User Profile" onClose={onClose} bodyClassName={styles.editDrawerBody} headerStyle={{ padding: '12px' }} titleStyle={{ fontSize: 'var(--font-base)' }}>
       <UserProfileBanner user={user} onChat={openChat} />
-      <AccountLockPanel lock={lock} canUnlock={canUnlock} onUnlock={onUnlock} />
+      <AccountLockPanel lock={lock} canUnlock={canUnlock} onUnlock={onUnlock} onResendLink={onResendLink} />
       <TabStrip
         items={VIEW_TABS.map(t => ({ key: t, label: t }))}
         activeKey={viewTab}
         onChange={setViewTab}
         fullWidth={false}
-        trailing={canEdit ? <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} /> : undefined}
+        trailing={canEdit && viewTab !== 'Audit Log' ? <ActionButton icon="solar:pen-linear" size="S" tooltip="Edit Profile" onClick={onEdit} /> : undefined}
       />
 
       {viewTab === 'Audit Log' ? (

@@ -35,6 +35,38 @@
       "destination": "/api/email?route=referral-email"
     },
     {
+      "source": "/api/password-reset",
+      "destination": "/api/account?route=password-reset"
+    },
+    {
+      "source": "/api/account-unlock",
+      "destination": "/api/account?route=account-unlock"
+    },
+    {
+      "source": "/api/security-email-dispatch",
+      "destination": "/api/account?route=security-email-dispatch"
+    },
+    {
+      "source": "/api/auth-activity",
+      "destination": "/api/account?route=auth-activity"
+    },
+    {
+      "source": "/api/pop-group-rule-from-nl",
+      "destination": "/api/ai?route=pop-group-rule-from-nl"
+    },
+    {
+      "source": "/api/care-plan-summary",
+      "destination": "/api/ai?route=care-plan-summary"
+    },
+    {
+      "source": "/api/care-plan-template-draft",
+      "destination": "/api/ai?route=care-plan-template-draft"
+    },
+    {
+      "source": "/api/care-plan-individualized",
+      "destination": "/api/ai?route=care-plan-individualized"
+    },
+    {
       "source": "/s/:section",
       "destination": "/api/share?s=:section"
     },

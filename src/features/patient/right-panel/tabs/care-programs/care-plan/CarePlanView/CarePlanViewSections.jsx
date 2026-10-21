@@ -4,7 +4,7 @@ import { AddIconMinimalist } from '@/components/Icon/AddIconMinimalist';
 import { DownChevronIcon } from '@/components/Icon/DownChevronIcon';
 import styles from './CarePlanView.module.css';
 
-export const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+export { GBI_STATUSES } from '../lib/gbiStatus';
 export const PRIORITIES = ['high', 'medium', 'low'];
 export const PRIORITY_LABELS = ['High', 'Medium', 'Low'];
 

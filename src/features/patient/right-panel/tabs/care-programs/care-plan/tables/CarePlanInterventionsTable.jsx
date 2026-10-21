@@ -27,6 +27,7 @@ import { isCompletedStatus, parseCarePlanDate, toPickerValue, interventionOwner 
 import { enrichInterventionRows } from './carePlanTableSort';
 import { CARE_PLAN_INTERVENTION_ICONS } from '../lib/carePlanInterventionMenu';
 import { KIND_LABELS } from '../../../../../../settings/care-plan-library/interventions/shared/interventionKinds';
+import { AiSuggestionBadge } from '../ai/AiSuggestionBadge';
 import styles from './carePlanTables.module.css';
 
 // "7d" / "1w" / "2m" / "1y" (or config.dueOffset + dueUnit) → "1 week".
@@ -374,6 +375,7 @@ export function CarePlanInterventionsTable({
             icon={kindIcon(i)}
             iconTitle={KIND_LABELS[i.kind] || 'Intervention'}
             title={i.title}
+            badge={<AiSuggestionBadge kind="intervention" item={i} />}
             meta={bits.length ? <span className={styles.intvSubMeta}>{bits.join(' · ')}</span> : null}
             layout="stacked"
             linked={linked(i)}
@@ -463,6 +465,7 @@ export function CarePlanInterventionsTable({
             icon={kindIcon(i)}
             iconTitle={KIND_LABELS[i.kind] || 'Intervention'}
             title={i.title}
+            badge={<AiSuggestionBadge kind="intervention" item={i} />}
             meta={meta}
             layout="stacked"
             showLink={false}
@@ -541,7 +544,7 @@ export function CarePlanInterventionsTable({
         renderRow={renderRow}
         renderTbodyFooter={template ? undefined : (ctx) => (
           <CompletedRowsGroup
-            label="Completed Interventions"
+            label="Closed Interventions"
             rows={completedRows}
             open={completedOpen}
             onToggle={() => setCompletedOpen(v => !v)}

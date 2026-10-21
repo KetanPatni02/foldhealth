@@ -10,6 +10,8 @@ import { useState } from 'react';
 import { GbiLinkButton } from './CarePlanLinkedPreview';
 import { EditableText } from '../../../../../../../components/EditableText/EditableText';
 import { fmtCarePlanDate, isPastDue } from './carePlanTableModel';
+import { GBI_STATUS_META, gbiStatusMeta, gbiStatusColor, gbiStatusesFor } from '../lib/gbiStatus';
+import { useCarePlanPaused } from '../lib/carePlanPausedContext';
 import styles from './carePlanTables.module.css';
 
 export function EditableInlineTitle({ title, editable, onCommit }) {
@@ -51,14 +53,30 @@ export function EditableInlineTitle({ title, editable, onCommit }) {
   );
 }
 
-export const GBI_STATUS_TONE = {
-  'Not Started': 'grey',
-  'In Progress': 'warning',
-  'On Hold': 'grey',
-  Overdue: 'error',
-  Met: 'success',
-  'Not Met': 'error',
-};
+/** Status → badge tone, from the shared vocabulary (lib/gbiStatus). */
+export const GBI_STATUS_TONE = Object.fromEntries(
+  Object.entries(GBI_STATUS_META).map(([status, meta]) => [status, meta.tone]),
+);
+
+/** A status's icon in its color, e.g. for a picker row. */
+export function GbiStatusIcon({ status, size = 16 }) {
+  return <Icon name={gbiStatusMeta(status).icon} size={size} color={gbiStatusColor(status)} />;
+}
+
+/**
+ * MenuPopover items for a status picker: `kind` 'barrier' adds Resolved.
+ * Each row carries its colored icon, a tooltip for the newer statuses, and
+ * marks `current`.
+ */
+export function gbiStatusMenuItems(kind, current) {
+  return gbiStatusesFor(kind).map(s => ({
+    key: s,
+    label: s,
+    iconElement: <GbiStatusIcon status={s} />,
+    hint: GBI_STATUS_META[s].hint,
+    selected: s === current,
+  }));
+}
 
 const HEADER_COMPACT = { paddingLeft: 6, paddingRight: 6 };
 
@@ -147,7 +165,9 @@ export function GbiMetaLine({ segments }) {
  */
 export function GbiMetaDate({ label, noun, value, emptyLabel, status, editable, onEdit, trailing = null }) {
   const formatted = fmtCarePlanDate(value);
-  const overdue = isPastDue(value, status);
+  // A paused plan has no overdue flags.
+  const paused = useCarePlanPaused();
+  const overdue = !paused && isPastDue(value, status);
   const text = formatted ? [label, formatted].filter(Boolean).join(' ') : emptyLabel;
   const cls = [
     styles.metaDate,
@@ -212,7 +232,7 @@ export function GbiRowActions({ linked, note, onNotes, onMenu, menuDisabled = fa
 }
 
 /**
- * Collapsible "Completed Goals" group rendered inside the table body (via
+ * Collapsible "Closed Goals" group rendered inside the table body (via
  * WorklistShell `renderTbodyFooter`) so its rows keep the live column layout.
  */
 export function CompletedRowsGroup({ label, rows, open, onToggle, colSpan, renderRow, ctx }) {
@@ -284,6 +304,8 @@ export function GbiNameCell({
   // on the row still open the drawer.
   onTitleCommit,
   titleLabel = 'Title',
+  // A marker after the title, e.g. the AI · Review badge.
+  badge = null,
 }) {
   const stacked = layout === 'stacked';
 
@@ -322,6 +344,7 @@ export function GbiNameCell({
         ) : null}
         {meta && stacked ? <span className={styles.nameSecondary}>{meta}</span> : null}
       </span>
+      {badge}
       {recurring && (
         <Tooltip label={recurringLabel}>
           <span className={styles.recurringIcon} aria-label={recurringLabel}>
@@ -365,6 +388,7 @@ export function GbiStatusButton({ value, disabled, onOpen, badgeSize = 'S' }) {
       <Badge
         tone={GBI_STATUS_TONE[value] || 'grey'}
         size={badgeSize}
+        icon={gbiStatusMeta(value).icon}
         label={value}
         chevron={!disabled}
       />

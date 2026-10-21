@@ -37,6 +37,7 @@ import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows
 import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/oooSeed.js';
 import { sampleOnCallSchedules, onCallToRow } from '../src/features/ooo/onCallSeed.js';
 import { sampleHolidays, holidayToRow } from '../src/features/holidays/holidaySeed.js';
+import { ACCOUNT_EMAIL_TEMPLATES, accountEmailTemplateToRow } from '../src/features/email-builder/accountEmailTemplates.js';
 import { sampleAvailability, blockToRow } from '../src/features/settings/calendar/availability/availabilityUtils.js';
 import { careTeamJsToDb } from '../src/store/lib/careTeamMappers.js';
 import { sampleContactsFor, contactToRow } from '../src/features/messages/comms/sendTo.js';
@@ -1940,6 +1941,20 @@ async function main() {
         unsubscribe_url: 'https://fold.health/unsubscribe?e={{email}}',
       }], { onConflict: 'id' });
     console.log(ecsErr ? `  ✗ ${ecsErr.message}` : '  ✓ email compliance settings');
+  }
+
+  // ── Account emails (email builder templates sent by api/_lib/securityEmails.js) ──
+  // ignoreDuplicates keeps a template already edited in the email builder.
+  console.log('Seeding account email templates...');
+  {
+    const rows = ACCOUNT_EMAIL_TEMPLATES.map(accountEmailTemplateToRow);
+    const { error: aetErr } = await supabase
+      .from('campaigns')
+      .upsert(rows, { onConflict: 'system_key', ignoreDuplicates: true });
+    if (aetErr) {
+      if (aetErr.code === '42703' || aetErr.code === '42P10') console.log('  ⚠ campaigns.system_key missing — run supabase/account_email_templates_migration.sql');
+      else console.error('  ✗', aetErr.message);
+    } else console.log(`  ✓ ${rows.length} account email templates`);
   }
 
   // ── Audience segments (CampaignBuilder Include/Exclude options) ──
