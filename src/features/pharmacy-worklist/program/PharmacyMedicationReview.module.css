@@ -45,7 +45,7 @@
 .medRowDc td { color: var(--neutral-300); text-decoration: line-through; }
 
 .rxCell { display: flex; flex-direction: column; gap: 0.0625rem; }
-.rxName { font-weight: 500; color: var(--neutral-500); }
+.rxName { font-weight: 500; color: var(--neutral-400); }
 .rxGeneric { font-size: var(--font-sm); color: var(--neutral-300); }
 .openCell { width: 28px; text-align: right; }
 
@@ -65,9 +65,9 @@
   max-width: calc(100cqw - 20px);
   white-space: normal;
 }
-.groupName { font-weight: 600; color: var(--neutral-500); }
+.groupName { font-weight: 500; color: var(--neutral-400); }
 .groupMeta { color: var(--neutral-300); }
-.groupMeta b { font-weight: 500; color: var(--neutral-400); }
+.groupMeta b { font-weight: 400; color: var(--neutral-400); }
 
 
 /* Beats `.table td` / `.groupMeta b`, which set their own color. */
@@ -104,7 +104,7 @@
   min-width: 0;
 }
 .cardTitle { font-size: var(--font-sm); font-weight: 500; color: var(--primary-300); display: flex; gap: var(--space-2); flex-wrap: wrap; }
-.cardName { color: var(--neutral-500); font-weight: 600; }
+.cardName { color: var(--neutral-400); font-weight: 500; }
 .cardGrid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -118,7 +118,7 @@
 /* The click-to-dial number needs room: it doesn't wrap. */
 .wideCell { grid-column: span 2; }
 
-.subTitle { font-size: var(--font-sm); font-weight: 600; color: var(--primary-300); }
+.subTitle { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
 
 .empty {
   display: flex;

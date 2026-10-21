@@ -11,18 +11,10 @@
   color: var(--neutral-400);
 }
 
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
-}
-.cardHead { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.measureName { font-size: var(--font-base); font-weight: 600; color: var(--neutral-500); margin-right: auto; }
-.detail { font-size: var(--font-md); color: var(--neutral-400); margin-top: calc(-1 * var(--space-2)); }
+.measureTitle { display: inline-flex; align-items: center; gap: var(--space-2); }
+/* Card body: one inset with the DashboardCard header. */
+.body { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-1) var(--space-4) var(--space-4); }
+.detail { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; font-size: var(--font-md); color: var(--neutral-400); }
 
 .facts {
   display: grid;

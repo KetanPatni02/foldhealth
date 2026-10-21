@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 import { Badge } from '../../../components/Badge/Badge';
+import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
 import {
-  MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, addDaysMdy, daysFromToday, fillDueTone, measureStatus, parseMdy, pdcTone,
+  GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, addDaysMdy, daysFromToday, fillDueTone, measureStatus, parseMdy, pdcTone,
 } from '../pharmacyWorklist.utils';
-import { GapStatus, MeasureCode } from '../PharmacyCells';
+import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacyGapClosureStep.module.css';
 
@@ -70,31 +71,31 @@ export function PharmacyGapClosureStep() {
         const open = OPEN_GAPS.has(st.gap);
         const risk = (tone) => (open ? tone : null);
         return (
-          <section key={x.code} className={styles.card}>
-            <div className={styles.cardHead}>
-              <MeasureCode code={x.code} />
-              <span className={styles.measureName}>{MEASURE_NAMES[x.code]}</span>
-              <GapStatus status={st} size="M" />
-            </div>
-            <div className={styles.detail}>{st.detail}</div>
+          <DashboardCard
+            key={x.code}
+            title={<span className={styles.measureTitle}><MeasureCode code={x.code} />{MEASURE_NAMES[x.code]}</span>}
+            actions={<Badge size="S" tone={GAP_STATUS_TONE[st.gap]} label={st.gap} />}
+          >
+            <div className={styles.body}>
+            <div className={styles.detail}><SubStatus label={st.label} /><span>{st.detail}</span></div>
 
             <div className={styles.facts}>
-              <Fact label="PDC (plan)" tone={risk(pdcTone(x.pdc))}>{x.pdc == null ? 'Not sent' : `${x.pdc}%`}</Fact>
-              <Fact label="PDC (claims)" tone={risk(pdcTone(x.calcPdc))}>{x.calcPdc == null ? null : `${x.calcPdc}%`}</Fact>
-              <Fact label="Next fill due" tone={risk(fillDueTone(x.nextFillDue))}>{x.nextFillDue}</Fact>
-              <Fact label="Fail (hopeless) date" tone={risk(failIn != null && failIn <= 14 ? 'error' : null)}>
+              <Fact label="PDC (Plan)" tone={risk(pdcTone(x.pdc))}>{x.pdc == null ? 'Not sent' : `${x.pdc}%`}</Fact>
+              <Fact label="PDC (Claims)" tone={risk(pdcTone(x.calcPdc))}>{x.calcPdc == null ? null : `${x.calcPdc}%`}</Fact>
+              <Fact label="Next Fill Due" tone={risk(fillDueTone(x.nextFillDue))}>{x.nextFillDue}</Fact>
+              <Fact label="Fail (Hopeless) Date" tone={risk(failIn != null && failIn <= 14 ? 'error' : null)}>
                 {x.failDate ? `${x.failDate}${failIn != null ? ` · ${failIn}d` : ''}` : null}
               </Fact>
-              <Fact label="Allowable days left">{x.daysLeft}</Fact>
-              <Fact label="Pickup confirmed">{x.pickupConfirmed}</Fact>
-              <Fact label="Reopens on">{st.reopensOn}</Fact>
-              <Fact label="Latest claim" tone={x.claim?.status === 'Reversed' ? 'error' : null}>
+              <Fact label="Allowable Days Left">{x.daysLeft}</Fact>
+              <Fact label="Pickup Confirmed">{x.pickupConfirmed}</Fact>
+              <Fact label="Reopens On">{st.reopensOn}</Fact>
+              <Fact label="Latest Claim" tone={x.claim?.status === 'Reversed' ? 'error' : null}>
                 {x.claim ? `${x.claim.status} ${x.claim.date}` : null}
               </Fact>
             </div>
 
             <div className={styles.signals}>
-              <span className={styles.signalsLabel}>Plan signals</span>
+              <span className={styles.signalsLabel}>Plan Signals</span>
               {x.projectedStatus && <Badge size="S" tone="grey" label={x.projectedStatus} />}
               {x.oneFillToInvincible && <Badge size="S" tone="grey" label="1 fill left" />}
               {x.excluded && <Badge size="S" tone="grey" label="Excluded" />}
@@ -110,7 +111,7 @@ export function PharmacyGapClosureStep() {
             )}
 
             <div className={styles.cycles}>
-              <span className={styles.signalsLabel}>Closure history</span>
+              <span className={styles.signalsLabel}>Closure History</span>
               {cycles.length === 0
                 ? <span className={styles.muted}>No pickup-verified closures yet.</span>
                 : cycles.map((c, i) => (
@@ -120,7 +121,8 @@ export function PharmacyGapClosureStep() {
                   </div>
                 ))}
             </div>
-          </section>
+            </div>
+          </DashboardCard>
         );
       })}
     </div>

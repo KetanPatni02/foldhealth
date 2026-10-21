@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
+import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { Icon } from '../../../components/Icon/Icon';
 import { Input } from '../../../components/Input/Input';
@@ -267,15 +268,11 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
         </span>
       </div>
 
-      <div className={styles.callCard}>
-        <div className={styles.callHead}>
-          <div>
-            <div className={styles.callTitle}>Pharmacy verification assessment</div>
-            <div className={styles.muted}>Phone · Outbound · {member.pharmacy?.name || 'Pharmacy'}{member.pharmacy?.phone ? ` · ${member.pharmacy.phone}` : ''}</div>
-          </div>
-          {gaps.length > 1 && <Switch checked={sameForAll} onChange={toggleSame} label="Same answer for all gaps" />}
-        </div>
-
+      <DashboardCard
+        title="Pharmacy Verification Assessment"
+        actions={gaps.length > 1 ? <Switch checked={sameForAll} onChange={toggleSame} label="Same answer for all gaps" /> : undefined}
+      >
+        <div className={styles.callMeta}>Phone · Outbound · {member.pharmacy?.name || 'Pharmacy'}{member.pharmacy?.phone ? ` · ${member.pharmacy.phone}` : ''}</div>
         <div className={styles.assessment}>
           <div className={styles.tableScroll}>
             <table className={styles.qTable}>
@@ -330,23 +327,25 @@ export function PharmacyVerificationStep({ program, member: memberProp }) {
           </div>
         </div>
 
-        <div className={styles.q}>
-          <span className={styles.qLabel}>Call note</span>
-          <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="One note for the whole call" aria-label="Call note" />
+        <div className={styles.callBody}>
+          <div className={styles.q}>
+            <span className={styles.qLabel}>Call Note</span>
+            <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="One note for the whole call" aria-label="Call note" />
+          </div>
+          <div className={styles.callFoot}>
+            <span className={styles.muted}>Locking logs this call as one action across all gaps (counts as 1 outreach).</span>
+            <Button variant="primary" size="L" disabled={!allAnswered} onClick={handleLock}>
+              Lock &amp; Log Call
+            </Button>
+          </div>
         </div>
+      </DashboardCard>
 
-        <div className={styles.callFoot}>
-          <span className={styles.muted}>Locking logs this call as one action across all gaps (counts as 1 outreach).</span>
-          <Button variant="primary" size="L" disabled={!allAnswered} onClick={handleLock}>
-            Lock &amp; log call
-          </Button>
-        </div>
-      </div>
-
-      <div className={styles.sectionTitle}>Verification history</div>
-      {verifications.length === 0
-        ? <div className={styles.muted}>No verification calls logged yet.</div>
-        : verifications.map((e, i) => <LockedCall key={`${e.date}-${i}`} entry={e} />)}
+      <DashboardCard title="Verification History" count={verifications.length || undefined}>
+        {verifications.length === 0
+          ? <div className={styles.locked}><span className={styles.muted}>No verification calls logged yet.</span></div>
+          : verifications.map((e, i) => <LockedCall key={`${e.date}-${i}`} entry={e} />)}
+      </DashboardCard>
     </div>
   );
 }

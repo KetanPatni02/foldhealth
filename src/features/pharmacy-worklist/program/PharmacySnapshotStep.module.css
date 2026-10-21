@@ -1,57 +1,51 @@
 .wrap { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--neutral-0);
-  border: 0.5px solid var(--neutral-150);
-  border-radius: var(--space-2);
+/* Cards are DashboardCards: title in the header, rows edge to edge with the
+   card's 16px inset, a hairline between header and each row. */
+.row, .gapRow {
+  padding: var(--space-3) var(--space-4);
+  border-top: 0.5px solid var(--neutral-150);
 }
-.cardHead { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
-.cardTitle { font-size: var(--font-base); font-weight: 600; color: var(--neutral-500); }
-.muted { font-size: var(--font-md); color: var(--neutral-300); }
-
-.gapList { display: flex; flex-direction: column; }
+.row { display: flex; flex-direction: column; gap: var(--space-2); }
 .gapRow {
   display: grid;
   /* Columns shrink with the panel; values wrap rather than overflow. */
   grid-template-columns: 48px minmax(112px, 1.3fr) repeat(4, minmax(0, 1fr));
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) 0;
 }
-.gapRow + .gapRow { border-top: 0.5px solid var(--neutral-150); }
 .gapStatus { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
 .gapStatus > * { align-self: flex-start; }
 
+.muted { font-size: var(--font-md); color: var(--neutral-300); }
 .field { display: flex; flex-direction: column; gap: 0.125rem; min-width: 0; }
 .fieldLabel { font-size: var(--font-sm); color: var(--neutral-300); }
 .fieldValue { font-size: var(--font-md); color: var(--neutral-400); overflow-wrap: anywhere; }
 
-.contact { display: flex; flex-direction: column; gap: var(--space-2); }
-.contact + .contact { padding-top: var(--space-3); border-top: 0.5px solid var(--neutral-150); }
-.contactHead { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.contactName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.contactHead { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.contactName { font-size: var(--font-md); font-weight: 500; color: var(--neutral-400); }
 .contactGrid {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(110px, 1fr) minmax(200px, 2fr);
+  grid-template-columns: minmax(120px, 1fr) minmax(110px, 1fr) minmax(180px, 2fr);
   gap: var(--space-3);
 }
+.address { display: block; margin-top: 0.125rem; font-size: var(--font-sm); color: var(--neutral-300); }
 
 .table { width: 100%; border-collapse: collapse; font-size: var(--font-md); color: var(--neutral-400); }
 .table th {
   text-align: left;
   font-size: var(--font-sm);
-  font-weight: 500;
+  font-weight: 400;
   color: var(--neutral-300);
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-top: 0.5px solid var(--neutral-150);
   border-bottom: 0.5px solid var(--neutral-150);
+  background: var(--neutral-25);
 }
-.table td { padding: var(--space-2); border-bottom: 0.5px solid var(--neutral-150); vertical-align: top; }
+.table td { padding: var(--space-3); border-bottom: 0.5px solid var(--neutral-150); vertical-align: top; }
+.table th:first-child, .table td:first-child { padding-left: var(--space-4); }
+.table th:last-child, .table td:last-child { padding-right: var(--space-4); }
 .table tbody tr:last-child td { border-bottom: none; }
-.address { display: block; margin-top: 0.125rem; font-size: var(--font-sm); color: var(--neutral-300); }
 
 .toneError { color: var(--status-error); }
 
