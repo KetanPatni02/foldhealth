@@ -19,6 +19,7 @@ const EMPTY_OPTIONS = [];
  * @param {string}   [props.emptyText]
  * @param {number}   [props.width=260]
  * @param {'left'|'right'} [props.align='left']
+ * @param {string}   [props.selected]    – Value to mark as the current pick
  */
 export function SearchListPopover({
   anchorRect,
@@ -29,6 +30,7 @@ export function SearchListPopover({
   emptyText = 'No results',
   width = 260,
   align = 'left',
+  selected,
 }) {
   const [query, setQuery] = useState('');
 
@@ -78,7 +80,8 @@ export function SearchListPopover({
                 key={o.value}
                 type="button"
                 disabled={o.disabled}
-                className={[styles.row, o.disabled ? styles.rowDisabled : ''].filter(Boolean).join(' ')}
+                aria-current={o.value === selected ? 'true' : undefined}
+                className={[styles.row, o.disabled ? styles.rowDisabled : '', o.value === selected ? styles.rowSelected : ''].filter(Boolean).join(' ')}
                 onClick={() => { if (o.disabled) return; onSelect?.(o.value); onClose?.(); }}
               >
                 <span className={styles.label}>{o.label}</span>

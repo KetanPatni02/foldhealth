@@ -28,7 +28,7 @@ import styles from './MenuPopover.module.css';
  * @param {function} props.onSelect       – (key, item) => void
  * @param {function} props.onClose
  * @param {string}   [props.ariaLabel='Menu']
- * @param {number}   [props.width=200]    – Pixel width of the menu
+ * @param {number|'auto'} [props.width=200] – Pixel width of the menu; 'auto' fits the longest label
  * @param {'left'|'right'} [props.align='right']
  *                                          'right' = right edge of menu aligns with right edge of anchor;
  *                                          'left'  = left edge aligns with left edge of anchor.

@@ -12,50 +12,49 @@ import { parseLocalDate } from '../../lib/localDate';
 //   - date  → DateRangePopover
 //   - range → RangeSliderPopover
 
-// Ordering matches the HEDIS filter-list reference (Figma / product spec):
-// the "More Filters" popover reads top-to-bottom, left-to-right in the
-// exact sequence below. `primary: true` items are the six the chip row
-// shows by default (Member Status, Language, Care Gaps, Gap Status,
-// Assignee, Care Gap Added Date); the rest stay hidden until toggled on.
+// Filter allocation per the worklist filter spec (2.1 primary, 2.3 secondary
+// by domain). The order below is the chip row's order; secondary filters
+// show only when picked from More Filters.
 export const MORE_FILTER_ITEMS = [
-  // ── Row 1 — Identity & outreach essentials ─────────────────────────
-  { k: 'memberStatus',                label: 'Member Status',                primary: true },
-  { k: 'phone',                       label: 'Phone Number',                 primary: false },
-  { k: 'dob',                         label: 'DOB',                          primary: false },
-  { k: 'age',                         label: 'Age Range',                    primary: false },
-  { k: 'gender',                      label: 'Gender',                       primary: false },
-  { k: 'language',                    label: 'Language',                     primary: true },
-  { k: 'gapStatus',                   label: 'Gap Status',                   primary: true },
-  { k: 'assignee',                    label: 'Assignee',                     primary: true },
-  { k: 'lastOutreachDate',            label: 'Last Outreach Date',           primary: false },
-  { k: 'lastOutreachOutcome',         label: 'Last Outreach Outcome',        primary: false },
-  { k: 'ipa',                         label: 'IPA',                          primary: false },
-  // ── Row 2 — Coverage & plan attributes ─────────────────────────────
-  { k: 'hpCode',                      label: 'HP Codes',                     primary: false },
-  { k: 'isOwnedIpa',                  label: 'Is Owned IPA',                 primary: false },
-  { k: 'lob',                         label: 'LOB',                          primary: false },
-  { k: 'hpGroup',                     label: 'HP Group',                     primary: false },
-  { k: 'contractType',                label: 'Contract Type',                primary: false },
-  { k: 'snpType',                     label: 'SNP Type',                     primary: false },
-  { k: 'networkMarket',               label: 'Network Market',               primary: false },
-  { k: 'zip',                         label: 'Zip Code',                     primary: false },
-  { k: 'city',                        label: 'City',                         primary: false },
-  { k: 'preferredCallTime',           label: 'Preferred Call Time',          primary: false },
-  // ── Row 3 — Residence + PCP attribution + care-gap timing ──────────
-  { k: 'state',                       label: 'State of Residence',           primary: false },
-  { k: 'pcp',                         label: 'PCP',                          primary: false },
-  { k: 'pcpCounty',                   label: 'PCP County',                   primary: false },
-  { k: 'pcpPod',                      label: 'PCP Pod',                      primary: false },
-  { k: 'pcpVendor',                   label: 'PCP Vendor',                   primary: false },
-  { k: 'pcpState',                    label: 'PCP State',                    primary: false },
-  { k: 'careGaps',                    label: 'Care Gaps',                    primary: true },
-  { k: 'careGapAddedDate',            label: 'Care Gap Added Date',          primary: true },
-  { k: 'lastCareGapAssessmentDate',   label: 'Last Care Gap Assessment Date',primary: false },
-  // ── Row 4 — Visit + clinical risk scores ───────────────────────────
-  { k: 'lastVisitDate',               label: 'Last Visit Date',              primary: false },
-  { k: 'riskIQ',                      label: 'Risk IQ',                      primary: false },
-  { k: 'advancedIllness',             label: 'Advanced Illness',             primary: false },
-  { k: 'frailty',                     label: 'Frailty',                      primary: false },
+  // Spec 2.1: always-primary (Member Status, DOB, Gender, Language, Zip Code,
+  // Assignee), then the HEDIS workflow filters. Every primary always shows,
+  // in this order (FilterBar `pinPrimary`).
+  { k: 'memberStatus', label: 'Member Status', primary: true },
+  { k: 'dob', label: 'DOB', primary: true },
+  { k: 'gender', label: 'Gender', primary: true },
+  { k: 'language', label: 'Language', primary: true },
+  { k: 'zip', label: 'Zip Code', primary: true },
+  { k: 'assignee', label: 'Assignee', primary: true },
+  { k: 'careGaps', label: 'Gaps', primary: true },
+  { k: 'gapStatus', label: 'Gap Status', primary: true },
+  { k: 'careGapAddedDate', label: 'Gap Added Date', primary: true },
+  { k: 'lastCareGapAssessmentDate', label: 'Last Gap Assessment Date', primary: true },
+  { k: 'lastVisitDate', label: 'Last Visit Date', primary: true },
+  { k: 'lastOutreachDate', label: 'Last Outreach Date', primary: true },
+  { k: 'lastOutreachOutcome', label: 'Last Outreach Outcome', primary: true },
+  { k: 'lob', label: 'LOB', primary: true },
+  // Spec 2.3: secondary, by domain in More Filters. Age Range and Network
+  // Market aren't in the spec; they're kept under the closest domain.
+  { k: 'phone', label: 'Phone Number', primary: false, group: 'Member' },
+  { k: 'preferredCallTime', label: 'Preferred Call Time', primary: false, group: 'Member' },
+  { k: 'ipa', label: 'IPA', primary: false, group: 'Member' },
+  { k: 'isOwnedIpa', label: 'Is Owned IPA', primary: false, group: 'Member' },
+  { k: 'hpCode', label: 'HP Codes', primary: false, group: 'Member' },
+  { k: 'hpGroup', label: 'HP Group', primary: false, group: 'Member' },
+  { k: 'contractType', label: 'Contract Type', primary: false, group: 'Member' },
+  { k: 'snpType', label: 'SNP Type', primary: false, group: 'Member' },
+  { k: 'age', label: 'Age Range', primary: false, group: 'Member' },
+  { k: 'pcp', label: 'PCP', primary: false, group: 'Assignment' },
+  { k: 'pcpPod', label: 'PCP Pod', primary: false, group: 'Assignment' },
+  { k: 'pcpVendor', label: 'PCP Vendor', primary: false, group: 'Assignment' },
+  { k: 'city', label: 'City', primary: false, group: 'Geography' },
+  { k: 'state', label: 'State of Residence', primary: false, group: 'Geography' },
+  { k: 'pcpCounty', label: 'PCP County', primary: false, group: 'Geography' },
+  { k: 'pcpState', label: 'PCP State', primary: false, group: 'Geography' },
+  { k: 'networkMarket', label: 'Network Market', primary: false, group: 'Geography' },
+  { k: 'riskIQ', label: 'Risk IQ', primary: false, group: 'Clinical' },
+  { k: 'advancedIllness', label: 'Advanced Illness', primary: false, group: 'Clinical' },
+  { k: 'frailty', label: 'Frailty', primary: false, group: 'Clinical' },
 ];
 
 export const PRIMARY_FILTER_KEYS = MORE_FILTER_ITEMS.reduce((keys, x) => {
@@ -112,7 +111,7 @@ export const FILTER_DEFS = [
     dynamic: 'ipa', opts: [] },
   { k: 'hpCode',              label: 'HP Codes', type: 'multi',
     dynamic: 'hpCode', opts: [] },
-  { k: 'dob',                 label: 'DOB', type: 'date', field: 'dob' },
+  { k: 'dob',                 label: 'DOB', type: 'date', field: 'dob', years: true },
   { k: 'age',                 label: 'Age Range', type: 'multi',
     opts: AGE_GROUPS.map(g => g.label) },
   { k: 'lastOutreachDate',    label: 'Last Outreach Date', type: 'date', field: 'outreachDate' },
@@ -146,10 +145,10 @@ export const FILTER_DEFS = [
   // those gaps. Options are computed from the loaded members at
   // render time (dynamic: 'careGaps'); labels render as "CODE —
   // Measure Name" so the popover reads without needing the codebook.
-  { k: 'careGaps',            label: 'Care Gaps', type: 'multi',
+  { k: 'careGaps',            label: 'Gaps', type: 'multi',
     dynamic: 'careGaps', opts: [], searchable: true },
-  { k: 'careGapAddedDate',    label: 'Care Gap Added Date', type: 'date', field: 'careGapAddedDate' },
-  { k: 'lastCareGapAssessmentDate', label: 'Last Care Gap Assessment Date', type: 'date', field: 'lastCareGapAssessmentDate' },
+  { k: 'careGapAddedDate',    label: 'Gap Added Date', type: 'date', field: 'careGapAddedDate' },
+  { k: 'lastCareGapAssessmentDate', label: 'Last Gap Assessment Date', type: 'date', field: 'lastCareGapAssessmentDate' },
   { k: 'lastVisitDate',       label: 'Last Visit Date', type: 'date', field: 'lastVisitDate' },
   // ── Clinical risk (range sliders) ──────────────────────────────────
   // Advanced Illness + Frailty are integer scores on the member (already

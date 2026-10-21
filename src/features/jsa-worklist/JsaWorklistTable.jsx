@@ -4,6 +4,8 @@ import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { JsaWorklistRow, JSA_MIDDLE_COLUMNS } from './JsaWorklistRow';
 
@@ -42,6 +44,8 @@ export function JsaWorklistTable() {
   const filters = useAppStore(s => s.jsaFilters);
   const setFilter = useAppStore(s => s.setJsaFilter);
   const clearFilters = useAppStore(s => s.clearJsaFilters);
+  // A selected saved filter stays selected while edited: Go Back / Save Changes / Copy Filter.
+  const savedActions = useSavedFilterActions('JSA', filters, clearFilters);
   const selectedIds = useAppStore(s => s.selectedJsaIds);
   const selectMember = useAppStore(s => s.selectJsaMember);
   const selectAll = useAppStore(s => s.selectAllJsa);
@@ -132,7 +136,12 @@ export function JsaWorklistTable() {
       filterDefs={JSA_FILTER_DEFS}
       filters={filters}
       onFilterChange={(k, vals) => setFilter(k, vals)}
-      onClearAll={clearFilters}
+      onClearAll={savedActions.onClearAll}
+      clearAllLabel={savedActions.clearAllLabel}
+      saveLabel={savedActions.saveLabel}
+      saveMenuItems={savedActions.saveMenuItems}
+      onSaveMenuSelect={savedActions.onSaveMenuSelect}
+      hasActive={savedActions.edited || undefined}
       onSaveFilter={(name) => saveSavedFilter('JSA', name)}
       getOptions={(def) => filterOptions[def.key] || []}
       moreFilterItems={JSA_MORE_FILTER_ITEMS}
@@ -154,6 +163,12 @@ export function JsaWorklistTable() {
       filterActive={filterBarOpen}
       onFilter={() => setFilterBarOpen(v => !v)}
       onHistory={openHistoryDrawer}
+      rightExtras={
+        <>
+          <SavedFiltersChip list="JSA" />
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+        </>
+      }
       onDownload={() => showToast('Export — coming soon')}
     />
   );

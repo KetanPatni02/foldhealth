@@ -7701,10 +7701,10 @@ export const useAppStore = create((set, get) => ({
   snpFilters: {},
   snpVisibleFilterKeys: null,
   setSnpFilter: (k, vals) => {
+    // A selected saved filter stays selected while it's edited.
     set(s => ({
       snpFilters: { ...s.snpFilters, [k]: vals },
       currentPage: 1,
-      activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'SNP'),
     }));
   },
   clearSnpFilters: () => {
@@ -10766,14 +10766,15 @@ export const useAppStore = create((set, get) => ({
     set({ awvMembers: mappedMembers, awvMembersLoading: false });
   },
   // Multi-value filters keyed by column. Empty array on a key = no filter.
-  awvFilters: {},
+  // Hydrated from the selected saved filter, like HEDIS.
+  awvFilters: hydrateListFilters('AWV'),
   setAwvFilter: (k, vals) => set(s => {
     const next = { ...s.awvFilters };
     if (!vals || vals.length === 0) delete next[k];
     else next[k] = vals;
     return { awvFilters: next };
   }),
-  clearAwvFilters: () => set({ awvFilters: {} }),
+  clearAwvFilters: () => set(s => ({ awvFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'AWV') })),
   // Bulk-select state.
   selectedAwvIds: [],
   selectAwvMember: (id) => set(s => ({
@@ -10857,14 +10858,26 @@ export const useAppStore = create((set, get) => ({
 
     set({ jsaMembers: mappedMembers, jsaMembersLoading: false });
   },
-  jsaFilters: {},
+  jsaFilters: hydrateListFilters('JSA'),
   setJsaFilter: (k, vals) => set(s => {
     const next = { ...s.jsaFilters };
     if (!vals || vals.length === 0) delete next[k];
     else next[k] = vals;
     return { jsaFilters: next };
   }),
-  clearJsaFilters: () => set({ jsaFilters: {} }),
+  clearJsaFilters: () => set(s => ({ jsaFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'JSA') })),
+
+  // CCM worklist filters: the bucket chips (string arrays) plus the two time
+  // filters (billableMins / unloggedMins: { user, threshold }, present only
+  // while set). In the store so saved filters work for CCM too.
+  ccmFilters: hydrateListFilters('CCM'),
+  setCcmFilter: (k, v) => set(s => {
+    const next = { ...s.ccmFilters };
+    if (v == null || (Array.isArray(v) && v.length === 0)) delete next[k];
+    else next[k] = v;
+    return { ccmFilters: next };
+  }),
+  clearCcmFilters: () => set(s => ({ ccmFilters: {}, activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'CCM') })),
   selectedJsaIds: [],
   selectJsaMember: (id) => set(s => ({
     selectedJsaIds: s.selectedJsaIds.includes(id)
@@ -10912,9 +10925,9 @@ export const useAppStore = create((set, get) => ({
       const next = { ...s.hedisFilters };
       if (!vals || !vals.length) delete next[k];
       else next[k] = vals;
+      // A selected saved filter stays selected while it's edited.
       return {
         hedisFilters: next,
-        activeSavedIdByList: detachSaved(s.activeSavedIdByList, 'HEDIS'),
         currentPage: 1,
       };
     });
@@ -10963,6 +10976,46 @@ export const useAppStore = create((set, get) => ({
       try { localStorage.setItem('activeSavedIdByList', JSON.stringify(nextActive)); } catch {/* */}
       return { savedFiltersByList: nextSaved, activeSavedIdByList: nextActive };
     });
+  },
+  // updateSavedFilter(list, id): overwrite a saved view with the list's
+  // current filters (Save Filter ⌄ → Update "<name>").
+  updateSavedFilter: (list, id) => {
+    track('list.saved_filter_updated', { list, filterId: id });
+    set(s => {
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      const cur = s.savedFiltersByList[list] || [];
+      const nextList = cur.map(f => (f.id === id ? { ...f, filters: { ...(s[key] || {}) } } : f));
+      const nextSaved = { ...s.savedFiltersByList, [list]: nextList };
+      try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+      return { savedFiltersByList: nextSaved };
+    });
+  },
+  // resetSavedFilter(list): Reset Selection in the Saved Filters dropdown.
+  // Clears that list's filters and deselects its saved filter.
+  resetSavedFilter: (list) => {
+    track('list.saved_filter_reset', { list });
+    set(s => {
+      const key = LIST_FILTER_KEY[list] || 'activeFilters';
+      return {
+        [key]: {},
+        activeSavedIdByList: detachSaved(s.activeSavedIdByList, list),
+        ...(list === 'HCC' ? { hccActiveSavedId: null } : {}),
+        currentPage: 1,
+      };
+    });
+  },
+  // copySavedFilter(list, id): a duplicate named "<name> (Copy)", just
+  // below the original. The selected filter doesn't change. Returns its id.
+  copySavedFilter: (list, id) => {
+    track('list.saved_filter_copied', { list, filterId: id });
+    const cur = get().savedFiltersByList[list] || [];
+    const i = cur.findIndex(f => f.id === id);
+    if (i < 0) return null;
+    const copy = { id: `sf-${Date.now()}`, name: `${cur[i].name} (Copy)`, filters: { ...cur[i].filters } };
+    const nextSaved = { ...get().savedFiltersByList, [list]: [...cur.slice(0, i + 1), copy, ...cur.slice(i + 1)] };
+    try { localStorage.setItem('savedFiltersByList', JSON.stringify(nextSaved)); } catch {/* */}
+    set({ savedFiltersByList: nextSaved });
+    return copy.id;
   },
   renameSavedFilter: (list, id, name) => {
     track('list.saved_filter_renamed', { list, filterId: id });
