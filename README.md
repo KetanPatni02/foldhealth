@@ -37,6 +37,32 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Pharmacy worklist, HEDIS layout.** Each patient row stacks one sub-row
+  per pharmacy gap (MAD / MAH / MAC) with its own status, start date, PDC,
+  drug count and claim reconciliation; assignment stays at the patient level.
+  New Progress and Other Care Gaps (count, hover list) columns. Priority is always P1–P3 (High/Medium/Low from the plan file maps to it).
+  Sub-statuses are a fixed short list; a pickup matched by a paid claim closes
+  the gap as Closed-Data; an overdue claim creates a pharmacy follow-up task.
+  Days Left, Overdue and both Other Care Gaps filters added. Clicking a gap
+  (or the row) opens a Pharmacy Gap Details drawer laid out like HEDIS Care
+  Gap Details: header, suggested actions, tabs (Snapshot, Medication Review,
+  Outreaches, Barriers & Interventions, Verification, Activity) and a left side
+  workspace for logging work and drug details. The same views back the PHARM
+  program steps: a Snapshot step (prescriber and pharmacies with click-to-dial),
+  Medication Review grouped by therapeutic class with the clicked gap first,
+  patient-only barriers with outreach flags, and the pharmacy verification
+  assessment as a questions-by-gap table. Outreach stays the app's standard
+  form and automations, shared by the drawer and the program step.
+  Migration: `supabase/pharmacy_worklist_source_fields_migration.sql`.
+
+- **Add Care Gaps (HEDIS worklist).** A new row action opens an Add Care Gaps
+  drawer. You pick IPA, HP code and measure year (prefilled from the patient),
+  then one or more care gaps from the Fold whitelist (`caregap_whitelist`), plus
+  the workflows they need (Outreach, Clinical Note, Referral, Task). Gaps that
+  are already open can't be selected. When a measure was previously closed, the
+  drawer shows that gap as the parent, and the new Open gap keeps it in
+  `parentGap`.
+
 - **Pharmacy worklist.** New Population › Worklists › Pharmacy list for the
   Med Adherence gaps (MAD / MAH / MAC; SUPD out of scope): one row per member
   with measure chips, the most urgent measure's PDC, fail date and next fill,

@@ -20,6 +20,7 @@ const STATUS_TONE = {
   'Engaged Requires Follow-Up':  'warning',
   'Submitted':                   'warning',
   'Completed':                   'success',
+  'Closed - Data':               'grey',
   'Closed - Do not call':        'grey',
   'Closed - UTR':                'grey',
   'Closed - Other':              'grey',
@@ -47,6 +48,8 @@ export function CareGapDetailDrawerHeader({
   onOpenClinicalNote,
   onScheduleAppointment,
   onAddOutreach,
+  onAddTask,
+  onSendReferral,
   onOpenMeasureInfo,
   moreBtnRef,
   moreMenuRect,
@@ -238,6 +241,21 @@ export function CareGapDetailDrawerHeader({
           <Icon name="solar:magic-stick-3-bold" size={14} color="var(--primary-300)" /> Suggested Actions
         </div>
         <div className={styles.suggestActions}>
+          {gap.workflows?.length > 0 ? (() => {
+            // Gaps added from the worklist carry the workflows picked at
+            // creation; suggest only those, first one as the primary action.
+            const noteOpen = !(status === 'Submitted' || status === 'Completed' || (status || '').startsWith('Closed'));
+            const actions = [
+              { key: 'Outreach', label: 'Add Outreach', onClick: () => onAddOutreach?.() },
+              noteOpen && { key: 'Clinical Note', label: 'Add Note', onClick: () => (onOpenClinicalNote ? onOpenClinicalNote() : setShowClinicalNote(true)) },
+              { key: 'Referral', label: 'Send Referral', onClick: () => onSendReferral?.() },
+              { key: 'Task', label: 'Add Task', onClick: () => onAddTask?.() },
+            ].filter(a => a && gap.workflows.includes(a.key));
+            return actions.map((a, i) => (
+              <Button key={a.key} variant={i === 0 ? 'primary' : 'tertiary'} size="L" onClick={a.onClick}>{a.label}</Button>
+            ));
+          })() : (
+          <>
           {/* CIS-CMB10 is outreach and care coordination (we don't give the
               vaccines), so Add Outreach leads there, as the primary action. */}
           {isCis && <Button variant="primary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>}
@@ -251,6 +269,8 @@ export function CareGapDetailDrawerHeader({
           )}
           <Button variant={isCis ? 'secondary' : 'tertiary'} size="L" onClick={() => showToast('Add MRC Task — coming soon')}>Add MRC Task</Button>
           {!isCis && <Button variant="secondary" size="L" onClick={() => onAddOutreach?.()}>Add Outreach</Button>}
+          </>
+          )}
         </div>
       </div>
     </>

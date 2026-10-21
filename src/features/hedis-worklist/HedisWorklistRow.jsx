@@ -28,12 +28,13 @@ const RISK_BADGE_VARIANT = {
   '5_Low':      'compliance-pass',
 };
 
-const STATUS_BADGE_VARIANT = {
+export const STATUS_BADGE_VARIANT = {
   Open:                            'ai-care',
   Engaged:                         'status-queued',
   'Engaged Requires Follow-Up':    'status-queued',
   Submitted:                       'status-queued',
   Completed:                       'status-completed',
+  'Closed - Data':                 'ai-neutral',
   'Closed - Do not call':          'ai-neutral',
   'Closed - UTR':                  'ai-neutral',
   'Closed - Other':                'ai-neutral',
@@ -113,9 +114,17 @@ export const HEDIS_MIDDLE_COLUMNS = [
     ),
     renderCell: (member, ctx) => (
       <div className={styles.gapItems}>
-        {(ctx.visibleGaps || []).map(g => (
-          <div key={g.code} className={styles.gapItem}>
-            {/* Hover shows the measure's full name; the code alone is hard to read. */}
+        {(ctx.visibleGaps || []).map((g, i) => (
+          <div key={`${g.code}-${i}`} className={styles.gapItem}>
+            {/* Hover shows the measure's full name; the code alone is hard to read.
+                A superseded gap (closed, then re-added) is history: the drawer
+                and every gap action work on the active gap with that code, so
+                its pill is a label, not a button. */}
+            {g.supersededAt ? (
+              <Tooltip label={`${MEASURE_NAMES[g.code] || g.code} · previous gap, re-added ${g.supersededAt}`}>
+                <Badge size="M" variant="compliance-na" label={g.code} />
+              </Tooltip>
+            ) : (
             <Tooltip label={MEASURE_NAMES[g.code] || g.code}>
               <button
                 type="button"
@@ -126,6 +135,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                 <Badge size="M" variant="compliance-na" label={g.code} />
               </button>
             </Tooltip>
+            )}
           </div>
         ))}
         {ctx.extraCount > 0 && (
@@ -157,8 +167,8 @@ export const HEDIS_MIDDLE_COLUMNS = [
     ),
     renderCell: (member, ctx) => (
       <div className={styles.gapItems}>
-        {(ctx.visibleGaps || []).map(g => (
-          <div key={g.code} className={styles.gapItem}>
+        {(ctx.visibleGaps || []).map((g, i) => (
+          <div key={`${g.code}-${i}`} className={styles.gapItem}>
             <Badge size="M" variant={STATUS_BADGE_VARIANT[g.status] || 'ai-neutral'} label={g.status} />
           </div>
         ))}
@@ -178,7 +188,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
     ),
     renderCell: (member, ctx) => (
       <div className={styles.gapItems}>
-        {(ctx.visibleGaps || []).map(g => {
+        {(ctx.visibleGaps || []).map((g, i) => {
           const assignee = g.assignee ?? member.assignee;
           // Gap-level overrides carry name only — derive initials from words
           // so the avatar always has content. Member-level overrides keep the
@@ -188,11 +198,13 @@ export const HEDIS_MIDDLE_COLUMNS = [
             : (member.assigneeInitials
                 || assignee?.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(''));
           const handlePick = (u) => {
-            if (!ctx.updateGapAssignee || !ctx.memberId) return;
+            // A superseded gap's assignee is history; updateGapAssignee acts on
+            // the active gap with this code.
+            if (g.supersededAt || !ctx.updateGapAssignee || !ctx.memberId) return;
             ctx.updateGapAssignee(ctx.memberId, g.code, u?.name || null);
           };
           return (
-            <div key={g.code} className={styles.gapItem}>
+            <div key={`${g.code}-${i}`} className={styles.gapItem}>
               {assignee ? (
                 <AssigneeChange
                   name={assignee}
@@ -201,6 +213,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                   users={ctx.assigneePickerUsers}
                   pickerTitle="Change assignee"
                   onSelect={handlePick}
+                  disabled={!!g.supersededAt}
                 />
               ) : (
                 <AssigneeChange
@@ -210,6 +223,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                   users={ctx.assigneePickerUsers}
                   pickerTitle="Assign to"
                   onSelect={handlePick}
+                  disabled={!!g.supersededAt}
                 />
               )}
             </div>
@@ -230,8 +244,8 @@ export const HEDIS_MIDDLE_COLUMNS = [
     ),
     renderCell: (member, ctx) => (
       <div className={styles.gapItems}>
-        {(ctx.visibleGaps || []).map(g => (
-          <div key={g.code} className={styles.gapItem}>
+        {(ctx.visibleGaps || []).map((g, i) => (
+          <div key={`${g.code}-${i}`} className={styles.gapItem}>
             <div className={styles.startDateCell}>
               <span className={styles.startDateValue}>{g.startDate ?? member.startDate}</span>
               {/* DSF-B carries a 30-day window. Anchor is the paired
@@ -307,6 +321,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
   const updateGapAssignee = useAppStore(s => s.updateGapAssignee);
   const allTasks = useAppStore(s => s.tasks);
   const openCallPopover = useAppStore(s => s.openCallPopover);
+  const openAddCareGaps = useAppStore(s => s.openAddCareGaps);
   const callBtnRef = useRef(null);
   // useState must sit above the early return: a row whose member loses its last
   // gap would otherwise render two hooks where it previously rendered three, and
@@ -426,7 +441,7 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
         );
       })}
 
-      {/* Actions — HEDIS rows expose Call + More only. The eye affordance
+      {/* Actions — HEDIS rows expose Call, Add Care Gaps and More. The eye affordance
           was removed because the gap pills in-row already open the Care
           Gap Details drawer, so a duplicate view button in the actions
           column added noise without a distinct outcome. */}
@@ -441,6 +456,13 @@ export function HedisWorklistRow({ member, columns, hiddenSet, isSelected, onSel
               e.stopPropagation();
               openCallPopover(worklistMemberCallId(member), callBtnRef);
             }}
+          />
+          <span className={styles.actionsDivider} />
+          <ActionButton
+            icon="solar:clipboard-add-linear"
+            size="L"
+            tooltip="Add Care Gaps"
+            onClick={(e) => { e.stopPropagation(); openAddCareGaps(member); }}
           />
           <span className={styles.actionsDivider} />
           <ActionButton

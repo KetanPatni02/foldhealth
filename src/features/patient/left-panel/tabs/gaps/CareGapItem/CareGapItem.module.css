@@ -27,7 +27,7 @@
 .titleButton:hover { text-decoration: underline; }
 .meta { font-size: var(--font-md); color: var(--neutral-300); }
 
-.status { width: 90px; flex-shrink: 0; font-size: var(--font-base); color: var(--neutral-300); padding-top: 2px; }
+.status { width: 120px; flex-shrink: 0; font-size: var(--font-base); color: var(--neutral-300); padding-top: 0.125rem; }
 
 .moreBtn { display: flex; align-items: center; flex-shrink: 0; opacity: 0; transition: opacity 0.1s; }
 .row:hover .moreBtn { opacity: 1; }

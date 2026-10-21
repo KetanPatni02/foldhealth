@@ -74,6 +74,7 @@ const UploadDocumentDrawer = lz(() => import('../features/hcc/upload/UploadDocum
 const HccUploadProcessingHost = lz(() => import('../features/hcc/upload/HccUploadProcessingHost'),         'HccUploadProcessingHost');
 const HccSftpReviewDrawer  = lz(() => import('../features/hcc/upload/HccSftpReviewDrawer'),                'HccSftpReviewDrawer');
 const HccAddDosDrawer      = lz(() => import('../features/hcc/HccAddDosDrawer'),                           'HccAddDosDrawer');
+const AddCareGapsDrawer    = lz(() => import('../features/hedis-worklist/AddCareGapsDrawer'),              'AddCareGapsDrawer');
 const IcdCreationScreen    = lz(() => import('../features/hcc/upload/IcdCreationScreen'),                  'IcdCreationScreen');
 const ClaimPreviewDrawer   = lz(() => import('../features/hcc/ClaimPreviewDrawer'),                        'ClaimPreviewDrawer');
 const EditPatientDrawer    = lz(() => import('../features/patient/left-panel/tabs/profile/EditPatientDrawer/EditPatientDrawer'), 'EditPatientDrawer');
@@ -583,6 +584,7 @@ export function AppLayout() {
         <HccUploadProcessingHost />{/* floats bottom-right while the upload is minimized */}
         <HccSftpReviewDrawer />{/* mounts itself only when hccSftpReviewOpen is true */}
         <HccAddDosDrawer />{/* mounts itself only when hccAddDosMember is set */}
+        <AddCareGapsDrawer />{/* mounts itself only when addCareGapsMember is set */}
         <IcdCreationScreen />{/* mounts itself only when icdCreationOpen is true */}
         <ClaimPreviewDrawer />{/* mounts itself only when hccClaimPreview.open is true */}
         {invitePatientOpen && (

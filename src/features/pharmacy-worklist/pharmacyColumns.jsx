@@ -2,92 +2,108 @@ import { Icon } from '../../components/Icon/Icon';
 import { DownChevronIcon } from '../../components/Icon/DownChevronIcon';
 import { AssigneeChange } from '../../components/AssigneeChange/AssigneeChange';
 import { Badge } from '../../components/Badge/Badge';
-import { MenuPopover } from '../../components/MenuPopover/MenuPopover';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUSES, GAP_STATUS_TONE, daysFromToday, measureDrugs } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, OPEN_GAPS, daysFromToday } from './pharmacyWorklist.utils';
 import { OutreachStatusCell } from '../../components/OutreachStatusCell/OutreachStatusCell';
-import { ClaimReconCell, Dash, DateWithDays, MeasureChips, PdcValue, SubStatus } from './PharmacyCells';
+import { ClaimReconCell, Dash, DateOnly, DateWithDays, DrugsCount, OtherGapsCount, PdcValue, ProgressCell, SubStatus } from './PharmacyCells';
 import styles from './PharmacyWorklistRow.module.css';
 
-const AUTO_STATUS = '__auto';
-const statusItems = (m) => [
-  ...GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === m.status })),
-  ...(m.statusManual ? [{ key: AUTO_STATUS, label: 'Use measure roll-up' }] : []),
-];
-
-// Only P1 carries color; P2 / P3 stay neutral so red keeps meaning "act now".
-const PRIORITY_TONE = { P1: 'error', P2: 'grey', P3: 'white' };
+// Only top priority carries color; the rest stay neutral so red keeps meaning "act now".
+const PRIORITY_TONE = { P1: 'error' };
 
 const isOverdue = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
 
+// Gap-level columns stack one item per pharmacy gap, HEDIS style; the last
+// one draws the divider between per-gap and per-member columns.
+const gapTd = (last) => (m) => [
+  styles.tdGap,
+  m.gaps.length === 1 ? styles.tdGapCenter : '',
+  last ? styles.tdGapDivide : '',
+].filter(Boolean).join(' ');
+
+const perGap = (render) => (m, ctx) => (
+  <div className={styles.gapItems}>
+    {m.gaps.map(g => <div key={g.code} className={styles.gapItem}>{render(g, m, ctx)}</div>)}
+  </div>
+);
+
 /**
- * Middle-column defs, in triage order: what to act on first (priority,
- * status, the focus measure's PDC and dates) sits next to Members.
- * `optional: true` columns start hidden; the Actions header picker shows them.
+ * Middle-column defs: priority, then the per-gap block (one stacked item per
+ * gap), then member-level columns. `optional: true` columns start hidden; the
+ * Actions header picker shows them.
  */
 export const PHARMACY_MIDDLE_COLUMNS = [
   {
-    key: 'priority', label: 'Priority', sortKey: 'priority', sortType: 'alpha',
-    renderCell: (m) => <Badge size="S" tone={PRIORITY_TONE[m.priority]} label={m.priority} />,
-  },
-  {
-    key: 'status', label: 'Status', sortKey: 'status', sortType: 'alpha', stopRowClickPropagation: true,
-    // Gap status (editable) with the focus measure's sub-status below. A
-    // hand-set status is marked, and the menu can hand it back to the roll-up.
-    renderCell: (m, ctx) => (
-      <span className={styles.stack}>
-        <span className={styles.relative}>
-          <button
-            ref={ctx.statusBtnRef}
-            type="button"
-            className={styles.badgeBtn}
-            onClick={() => ctx.setShowStatusMenu(v => !v)}
-            aria-haspopup="menu"
-            aria-expanded={ctx.showStatusMenu}
-          >
-            <Badge size="M" tone={GAP_STATUS_TONE[m.status] || 'grey'} label={m.status} trailingIconElement={<DownChevronIcon size={13} color="currentColor" />} />
-          </button>
-          {ctx.showStatusMenu && (
-            <MenuPopover
-              anchorRef={ctx.statusBtnRef}
-              items={statusItems(m)}
-              onSelect={(key) => {
-                if (key === AUTO_STATUS) ctx.clearPharmacyStatusOverride(m.id);
-                else ctx.setPharmacyStatus(m.id, key);
-                ctx.setShowStatusMenu(false);
-              }}
-              onClose={() => ctx.setShowStatusMenu(false)}
-              width={240}
-              ariaLabel="Change status"
-            />
-          )}
-        </span>
-        <SubStatus
-          label={m.subStatus?.label}
-          suffix={[m.measureCodes.length > 1 ? m.subStatus?.code : null, m.statusManual ? 'Set manually' : null].filter(Boolean).join(' · ') || null}
-        />
-      </span>
+    key: 'priority', label: 'Priority', sortKey: 'priorityRank', sortType: 'number',
+    renderCell: (m) => (
+      <Tooltip label={m.sourcePriority && m.sourcePriority !== m.priority ? `Plan file: ${m.sourcePriority}` : ''} placement="bottom">
+        <span><Badge size="S" tone={PRIORITY_TONE[m.priority] || 'grey'} label={m.priority} /></span>
+      </Tooltip>
     ),
   },
-  { key: 'measures', label: 'Measures', renderCell: (m) => <MeasureChips codes={m.measureCodes} statuses={m.measureStatuses} /> },
   {
-    key: 'pdc', label: 'PDC', sortKey: 'pdc', sortType: 'number',
-    renderCell: (m) => <PdcValue pdc={m.pdc} code={m.measureCodes.length > 1 ? m.urgent?.code : null} open={m.urgentOpen} />,
+    key: 'gaps', label: 'Pharmacy Gaps', getTdClassName: gapTd(false), stopRowClickPropagation: true,
+    renderCell: perGap((g, m, ctx) => (
+      <Tooltip label={MEASURE_NAMES[g.code]} placement="bottom">
+        <button type="button" className={styles.gapBadgeButton} onClick={() => ctx.openGap(g.code)} aria-label={`Open ${g.code} (${MEASURE_NAMES[g.code]})`}>
+          <Badge size="M" variant="compliance-na" label={g.code} />
+        </button>
+      </Tooltip>
+    )),
   },
   {
-    key: 'failDate', label: 'Fail Date', sortKey: 'failDateSort', sortType: 'date',
-    renderCell: (m) => {
-      const d = daysFromToday(m.failDate);
-      return <DateWithDays date={m.failDate} alert={m.urgentOpen && d != null && d <= 14} />;
-    },
+    key: 'drugs', label: 'Drugs', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => <DrugsCount meds={g.medications || []} />),
   },
   {
-    key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date',
-    renderCell: (m) => <DateWithDays date={m.nextFillDue} alert={m.urgentOpen && isOverdue(m.nextFillDue)} />,
+    key: 'gapStatus', label: 'Gap Status', getTdClassName: gapTd(false), stopRowClickPropagation: true,
+    renderCell: perGap((g, m, ctx) => (
+      <span className={styles.stack}>
+        <button
+          type="button"
+          className={styles.badgeBtn}
+          onClick={(e) => ctx.openGapStatusMenu(g.code, e.currentTarget.getBoundingClientRect())}
+          aria-haspopup="menu"
+          aria-label={`Change ${g.code} status`}
+        >
+          <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap] || 'grey'} label={g.status.gap} trailingIconElement={<DownChevronIcon size={12} color="currentColor" />} />
+        </button>
+        <Tooltip label={g.status.detail} placement="bottom">
+          <span><SubStatus label={g.status.label} suffix={g.status.manual ? 'Set manually' : null} /></span>
+        </Tooltip>
+      </span>
+    )),
   },
   {
-    key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number',
-    renderCell: (m) => (m.recon ? <ClaimReconCell recon={m.recon} showCode={m.measureCodes.length > 1} /> : <Dash />),
+    key: 'startDate', label: 'Start Date', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => (g.startDate ? <span className={styles.dateText}>{g.startDate}</span> : <Dash />)),
+  },
+  {
+    key: 'pdc', label: 'PDC', sortKey: 'pdc', sortType: 'number', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => <PdcValue pdc={g.pdc} open={OPEN_GAPS.has(g.status.gap)} />),
+  },
+  {
+    key: 'failDate', label: 'Fail Date', sortKey: 'failDateSort', sortType: 'date', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => {
+      const d = daysFromToday(g.failDate);
+      return <DateOnly date={g.failDate} alert={OPEN_GAPS.has(g.status.gap) && d != null && d <= 14} />;
+    }),
+  },
+  {
+    key: 'nextFillDue', label: 'Next Fill Due', sortKey: 'nextFillDueSort', sortType: 'date', getTdClassName: gapTd(false),
+    renderCell: perGap((g) => <DateOnly date={g.nextFillDue} alert={OPEN_GAPS.has(g.status.gap) && isOverdue(g.nextFillDue)} />),
+  },
+  {
+    key: 'claimRecon', label: 'Claim Reconciliation', sortKey: 'reconRank', sortType: 'number', getTdClassName: gapTd(true),
+    renderCell: perGap((g) => (g.recon ? <ClaimReconCell recon={g.recon} followUpTask={g.claimFollowUpTask} /> : <Dash />)),
+  },
+  {
+    key: 'progress', label: 'Progress', sortKey: 'progressRank', sortType: 'number',
+    renderCell: (m) => <ProgressCell progress={m.progress} />,
+  },
+  {
+    key: 'otherCareGaps', label: 'Other Care Gaps', sortKey: 'otherCareGapsCount', sortType: 'number',
+    renderCell: (m) => <OtherGapsCount gaps={m.otherCareGaps} />,
   },
   {
     key: 'outreach', label: 'Outreach', sortKey: 'outreachSort', sortType: 'date',
@@ -135,16 +151,6 @@ export const PHARMACY_MIDDLE_COLUMNS = [
         </span>
       </Tooltip>
     ) : <Dash />),
-  },
-  {
-    key: 'drugs', label: 'Drug(s)',
-    renderCell: (m) => (
-      <span className={styles.stack}>
-        {(m.measures || []).map(x => (
-          <span key={x.code} className={styles.cellText}><span className={styles.subText}>{x.code}</span> {measureDrugs(x)}</span>
-        ))}
-      </span>
-    ),
   },
   {
     key: 'priorYear', label: 'Prior-Year Non-Compliant',

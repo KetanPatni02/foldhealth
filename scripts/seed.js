@@ -41,6 +41,7 @@ import { sampleAvailability, blockToRow } from '../src/features/settings/calenda
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
+import { CAREGAP_WHITELIST_MOCK } from '../src/features/hedis-worklist/data/caregapWhitelistMock.js';
 import { priorLabResultsFor } from '../src/features/hedis-worklist/labs/labMock.js';
 import { buildPatientSnapshot, snapshotToRow } from '../src/lib/patientSnapshot.js';
 
@@ -572,6 +573,19 @@ async function withoutExistingPeople(supabase, table, rows) {
   return rows.filter((r) => !have.has(normName(r.name)));
 }
 
+function caregapWhitelistToRow(w) {
+  return {
+    id: w.id,
+    code: w.code,
+    name: w.name,
+    measure_year: w.measureYear,
+    ipas: w.ipas,
+    hp_codes: w.hpCodes,
+    billable: w.billable,
+    active: true,
+  };
+}
+
 function hedisToRow(m, foldIdMap) {
   return {
     id:                m.id,
@@ -779,6 +793,8 @@ function pharmacyWorklistToRow(m) {
     intervention_log:  m.interventionLog ?? [],
     activity_log:      m.activityLog ?? [],
     measures:          m.measures ?? [],
+    source_priority:   m.sourcePriority ?? null,
+    other_care_gaps:   m.otherCareGaps ?? [],
   };
 }
 
@@ -1756,6 +1772,17 @@ async function main() {
           : `  ✓ notifications (${rows.length} seeded for demo@fold.health)`);
       }
     }
+  }
+
+  // ── Care gap whitelist (Add Care Gaps drawer) ──
+  console.log('\nSeeding caregap_whitelist...');
+  {
+    const { error } = await supabase
+      .from('caregap_whitelist')
+      .upsert(CAREGAP_WHITELIST_MOCK.map(caregapWhitelistToRow), { onConflict: 'id' });
+    console.log(error
+      ? `  ✗ caregap_whitelist: ${error.message} (run supabase/caregap_whitelist_migration.sql first)`
+      : `  ✓ caregap_whitelist (${CAREGAP_WHITELIST_MOCK.length})`);
   }
 
   // ── Patient Care Plan (demo) ──

@@ -2,13 +2,13 @@ import { Fragment, useMemo, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { Icon } from '../../../components/Icon/Icon';
-import { FilterChip } from '../../../components/FilterChip/FilterChip';
+import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
 import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Select } from '../../../components/Select/Select';
 import { Drawer } from '../../../components/Drawer/Drawer';
-import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, fillDueTone, measureStatus, pdcTone } from '../pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, fillDueTone, measureStatus, pdcTone } from '../pharmacyWorklist.utils';
 import { SubStatus } from '../PharmacyCells';
 import { BARRIERS } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -41,7 +41,7 @@ function ContactCard({ title, person }) {
     <section className={styles.card}>
       <header className={styles.cardTitle}>{title}{person?.name ? <span className={styles.cardName}>{person.name}</span> : null}</header>
       <dl className={styles.cardGrid}>
-        <div><dt>Primary Phone</dt><dd>{person?.phone || '—'}</dd></div>
+        <div className={styles.wideCell}><dt>Primary Phone</dt><dd><PhoneLink number={person?.phone} label={person?.name} /></dd></div>
         {person?.fax !== undefined && <div><dt>Fax</dt><dd>{person.fax || '—'}</dd></div>}
         <div className={styles.fullRow}><dt>Address</dt><dd>{person?.address1 || '—'}</dd></div>
         <div><dt>City</dt><dd>{person?.city || '—'}</dd></div>
@@ -52,7 +52,7 @@ function ContactCard({ title, person }) {
   );
 }
 
-function MedicationDetail({ med, memberRowId, interventionLog }) {
+export function MedicationDetail({ med, memberRowId, interventionLog }) {
   // Barrier & Intervention log entries for this medication's measure.
   const barrierLog = (interventionLog || [])
     .filter(e => e.measures?.[med.measure])
@@ -135,7 +135,7 @@ function MedicationDetail({ med, memberRowId, interventionLog }) {
       <div className={styles.tableScroll}>
         <table className={styles.table}>
           <thead>
-            <tr><th>Fill Date</th><th>Qty</th><th>Days Supply</th><th>Pharmacy</th><th>Prescriber</th><th>Prescriber Address</th><th>Source</th></tr>
+            <tr><th>Fill Date</th><th>Quantity</th><th>Days Supply</th><th>Pharmacy</th><th>Prescriber</th><th>Prescriber Address</th><th>Source</th></tr>
           </thead>
           <tbody>
             {med.refills.map(r => (
@@ -153,27 +153,66 @@ function MedicationDetail({ med, memberRowId, interventionLog }) {
   );
 }
 
-// Medication Review step of the Pharmacy program: every medication linked to
-// the member's MAD / MAH / MAC measures, grouped by measure (collapsible, with
-// the measure's PDC / next due / status on the group row). Clicking a
-// medication opens its details + refill history in a side drawer, so the
-// list stays usable however many medications a measure has.
-export function PharmacyMedicationReview() {
-  const member = usePharmacyProgramMember();
-  const [measureFilter, setMeasureFilter] = useState([]);
+// Therapeutic class by generic name, so a switch within a class (one ARB
+// discontinued, another started) sits together.
+const CLASS_BY_GENERIC = [
+  [/metformin/, 'Biguanides'],
+  [/glipizide|glyburide|glimepiride/, 'Sulfonylureas'],
+  [/sitagliptin|linagliptin|saxagliptin|alogliptin/, 'DPP-4 inhibitors'],
+  [/pioglitazone/, 'Thiazolidinediones'],
+  [/pril$/, 'ACE inhibitors'],
+  [/sartan/, 'ARBs'],
+  [/statin/, 'Statins'],
+];
+const CONDITION_BY_MEASURE = { MAD: 'Diabetes', MAH: 'Hypertension', MAC: 'Cholesterol' };
+const classOf = (d) => CLASS_BY_GENERIC.find(([re]) => re.test(d.generic || ''))?.[1] || 'Other';
+
+// Medication Review step of the Pharmacy program. The member's open pharmacy
+// gaps sit together at the top, the one opened from the worklist first; the
+// medications below are grouped by condition and therapeutic class so drug
+// switches are visible. Clicking a medication opens its details and refill
+// history in a side drawer.
+// `onOpenMed` lets a host (the gap drawer) show a medication in its own
+// side workspace instead of the stacked drawer.
+export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
+  const fromProfile = usePharmacyProgramMember();
+  const member = memberProp || fromProfile;
+  const focus = useAppStore(s => s.pharmacyFocusGap);
+  const [includeClosed, setIncludeClosed] = useState(false);
   const [collapsed, setCollapsed] = useState(() => new Set());
   const [openId, setOpenId] = useState(null);
 
-  const measures = useMemo(() => (member?.measures || [])
+  const all = useMemo(() => (member?.measures || [])
+    .map(x => ({ ...x, st: measureStatus(x, member) }))
     .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code)), [member]);
-  const shown = measureFilter.length ? measures.filter(x => measureFilter.includes(x.code)) : measures;
-  const medCount = shown.reduce((n, x) => n + x.medications.length, 0);
+  const focusCode = focus?.memberId === member?.id ? focus.code : null;
+  // The gap opened from the worklist always shows, even when it's closed.
+  const open = all.filter(x => OPEN_GAPS.has(x.st.gap) || x.code === focusCode);
+  const shown = (includeClosed || !open.length ? all : open)
+    .toSorted((a, b) => (b.code === focusCode) - (a.code === focusCode));
+
+  // condition → class → medications (each tagged with its gap)
+  const groups = useMemo(() => {
+    const out = [];
+    for (const x of shown) {
+      const condition = CONDITION_BY_MEASURE[x.code];
+      for (const d of x.medications) {
+        const key = `${condition} · ${classOf(d)}`;
+        let g = out.find(y => y.key === key);
+        if (!g) { g = { key, condition, cls: classOf(d), code: x.code, meds: [] }; out.push(g); }
+        g.meds.push({ ...d, measure: x.code });
+      }
+    }
+    return out;
+  }, [shown]);
+
+  const medCount = groups.reduce((n, g) => n + g.meds.length, 0);
   const openMed = openId
-    ? measures.flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))).find(d => d.id === openId)
+    ? all.flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))).find(d => d.id === openId)
     : null;
-  const toggle = (code) => setCollapsed(prev => {
+  const toggle = (key) => setCollapsed(prev => {
     const next = new Set(prev);
-    if (next.has(code)) next.delete(code); else next.add(code);
+    if (next.has(key)) next.delete(key); else next.add(key);
     return next;
   });
 
@@ -188,13 +227,31 @@ export function PharmacyMedicationReview() {
 
   return (
     <div className={styles.wrap}>
+      <div className={styles.gapStrip}>
+        {shown.map(x => (
+          <div key={x.code} className={`${styles.gapCard} ${x.code === focusCode ? styles.gapCardFocus : ''}`}>
+            <span className={styles.gapCardHead}>
+              <Badge size="S" variant="compliance-na" label={x.code} />
+              <span className={styles.groupName}>{MEASURE_NAMES[x.code]}</span>
+              {x.code === focusCode && <span className={styles.groupMeta}>Opened from worklist</span>}
+            </span>
+            <span className={styles.gapCardMeta}>
+              <Badge size="S" tone={GAP_STATUS_TONE[x.st.gap]} label={x.st.gap} />
+              <SubStatus label={x.st.label} />
+              <span className={styles.groupMeta}>PDC <b className={TONE_CLASS[pdcTone(x.pdc)] || ''}>{x.pdc == null ? '—' : `${x.pdc}%`}</b></span>
+              <span className={styles.groupMeta}>Next due <b className={TONE_CLASS[fillDueTone(x.nextFillDue)] || ''}>{x.nextFillDue || '—'}</b></span>
+            </span>
+          </div>
+        ))}
+      </div>
+
       <div className={styles.toolbar}>
-        <FilterChip
-          label="Measure"
-          options={measures.map(x => x.code)}
-          selected={measureFilter}
-          onChange={setMeasureFilter}
-        />
+        {open.length > 0 && open.length < all.length && (
+          <label className={styles.checkRow}>
+            <Checkbox checked={includeClosed} onCheckedChange={v => setIncludeClosed(!!v)} />
+            <span>Include closed gaps ({all.length - open.length})</span>
+          </label>
+        )}
         <span className={styles.count}>{medCount} medication{medCount === 1 ? '' : 's'}</span>
       </div>
 
@@ -202,42 +259,40 @@ export function PharmacyMedicationReview() {
         <table className={`${styles.table} ${styles.medTable}`}>
           <thead>
             <tr>
-              <th>Rx</th><th>Last Fill</th><th>Next Fill</th><th>PDC</th><th>MPR</th>
-              <th>DS</th><th>Qty</th><th>Barrier</th><th>Prescriber</th><th>Pharmacy</th><th aria-label="Open" />
+              <th>Rx</th><th>Gap</th><th>Last Fill</th><th>Next Fill</th><th>PDC</th><th>MPR</th>
+              <th>DS</th><th>Quantity</th><th>Barrier</th><th>Prescriber</th><th>Pharmacy</th><th aria-label="Open" />
             </tr>
           </thead>
           <tbody>
-            {shown.map(x => {
-              const isOpen = !collapsed.has(x.code);
-              const st = measureStatus(x, member);
+            {groups.map(g => {
+              const isOpen = !collapsed.has(g.key);
+              const switched = g.meds.some(d => d.status === 'Discontinued') && g.meds.some(d => d.status !== 'Discontinued');
               return (
-                <Fragment key={x.code}>
-                  <tr className={styles.groupRow} onClick={() => toggle(x.code)} aria-expanded={isOpen}>
-                    <td colSpan={11}>
+                <Fragment key={g.key}>
+                  <tr className={styles.groupRow} onClick={() => toggle(g.key)} aria-expanded={isOpen}>
+                    <td colSpan={12}>
                       <span className={styles.groupHead}>
                         <Icon name={isOpen ? 'solar:alt-arrow-down-linear' : 'solar:alt-arrow-right-linear'} size={14} color="var(--neutral-300)" />
-                        <Badge size="S" tone="primary" label={x.code} />
-                        <span className={styles.groupName}>{MEASURE_NAMES[x.code]}</span>
-                        <span className={styles.groupMeta}>{x.medications.length} medication{x.medications.length === 1 ? '' : 's'}</span>
-                        <span className={styles.groupMeta}>PDC <b className={TONE_CLASS[pdcTone(x.pdc)] || ''}>{x.pdc == null ? '—' : `${x.pdc}%`}</b></span>
-                        <span className={styles.groupMeta}>Next due <b className={TONE_CLASS[fillDueTone(x.nextFillDue)] || ''}>{x.nextFillDue || '—'}</b></span>
-                        <Badge size="S" tone={GAP_STATUS_TONE[st.gap]} label={st.gap} />
-                        <SubStatus label={st.label} />
+                        <span className={styles.groupName}>{g.condition}</span>
+                        <span className={styles.groupMeta}>{g.cls}</span>
+                        <span className={styles.groupMeta}>{g.meds.length} medication{g.meds.length === 1 ? '' : 's'}</span>
+                        {switched && <Badge size="S" tone="warning" icon="solar:refresh-linear" label="Drug switched" />}
                       </span>
                     </td>
                   </tr>
-                  {isOpen && x.medications.map(d => {
+                  {isOpen && g.meds.map(d => {
                     const fillTone = fillDueTone(d.nextFill);
                     return (
                       <tr
                         key={d.id}
                         className={`${styles.medRow} ${openId === d.id ? styles.medRowSelected : ''} ${d.status === 'Discontinued' ? styles.medRowDc : ''}`}
-                        onClick={() => setOpenId(d.id)}
+                        onClick={() => (onOpenMed ? onOpenMed(d.id) : setOpenId(d.id))}
                       >
                         <td className={styles.rxCell}>
                           <span className={styles.rxName}>{d.name.toUpperCase()} {d.strength} {d.unit}</span>
-                          <span className={styles.rxGeneric}>{d.generic}</span>
+                          <span className={styles.rxGeneric}>{d.generic}{d.status === 'Discontinued' ? ' · Discontinued' : ''}</span>
                         </td>
+                        <td><Badge size="S" variant="compliance-na" label={d.measure} /></td>
                         <td>{d.lastFill}</td>
                         <td><span className={`${styles.nextFill} ${fillTone === 'error' ? styles.nextFillOverdue : ''} ${TONE_CLASS[fillTone] || ''}`}>{d.nextFill}</span></td>
                         <td className={TONE_CLASS[pdcTone(d.pdc)] || ''}>{d.pdc == null ? '—' : `${d.pdc}%`}</td>

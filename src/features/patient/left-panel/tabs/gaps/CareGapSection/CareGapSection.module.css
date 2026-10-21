@@ -17,5 +17,5 @@
   border-bottom: 0.5px solid var(--neutral-150);
 }
 .colTitle { flex: 1; font-size: var(--font-base); font-weight: 500; color: var(--neutral-300); }
-.colStatus { width: 90px; flex-shrink: 0; font-size: var(--font-base); font-weight: 500; color: var(--neutral-300); }
+.colStatus { width: 120px; flex-shrink: 0; font-size: var(--font-base); font-weight: 500; color: var(--neutral-300); }
 .colActions { width: 24px; flex-shrink: 0; }

@@ -1,6 +1,6 @@
 import { Badge } from '../../components/Badge/Badge';
 import { Tooltip } from '../../components/Tooltip/Tooltip';
-import { GAP_STATUS_TONE, MEASURE_NAMES, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, pdcTone } from './pharmacyWorklist.utils';
+import { GAP_STATUS_TONE, RECON_TONE, URGENT_SUB_STATUSES, daysFromToday, medLabel, pdcTone } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
 
 export function Dash() {
@@ -21,20 +21,56 @@ export function DateWithDays({ date, alert = false }) {
   );
 }
 
-// One neutral chip per measure; each measure's own status (closure is per
-// measure) is in the tooltip and in the Program view.
-export function MeasureChips({ codes, statuses }) {
-  if (!codes?.length) return <Dash />;
+// Date alone; red when the caller says it needs action.
+export function DateOnly({ date, alert = false }) {
+  if (!date) return <Dash />;
+  return <span className={`${styles.dateText} ${alert ? styles.toneError : ''}`}>{date}</span>;
+}
+
+// A count with the full list in a hover card. `label` adds a noun ("3
+// gaps"); without it the column header names what's counted.
+function CountWithList({ count, label, children }) {
+  if (!count) return <Dash />;
   return (
-    <span className={styles.chips}>
-      {codes.map(c => {
-        const st = statuses?.[c];
-        return (
-          <Tooltip key={c} label={st ? `${MEASURE_NAMES[c]}: ${st.gap}, ${st.label}. ${st.detail}` : MEASURE_NAMES[c]} placement="bottom">
-            <Badge size="S" tone="white" label={c} />
-          </Tooltip>
-        );
-      })}
+    <Tooltip label={<span className={styles.hoverList}>{children}</span>} placement="bottom" variant="light" maxWidth={320}>
+      <span className={styles.countLink}>{count}{label ? ` ${label}${count === 1 ? '' : 's'}` : ''}</span>
+    </Tooltip>
+  );
+}
+
+// One gap's drug count; hover lists its drugs.
+export function DrugsCount({ meds }) {
+  return (
+    <CountWithList count={meds.length}>
+      {meds.map(d => (
+        <span key={d.id} className={styles.hoverItem}>
+          {medLabel(d)}{d.status === 'Discontinued' ? ' (discontinued)' : ''}
+        </span>
+      ))}
+    </CountWithList>
+  );
+}
+
+// Count of the member's non-pharmacy care gaps; hover lists them.
+export function OtherGapsCount({ gaps }) {
+  return (
+    <CountWithList count={gaps.length} label="gap">
+      {gaps.map(g => (
+        <span key={g.code} className={styles.hoverItem}>
+          <b>{g.code}</b>{g.name ? ` ${g.name}` : ''} · {g.status}
+        </span>
+      ))}
+    </CountWithList>
+  );
+}
+
+const PROGRESS_TONE = { Complete: 'success', 'Partially complete': 'primary', 'In progress': 'primary', 'Not started': 'white' };
+
+export function ProgressCell({ progress }) {
+  return (
+    <span className={styles.stack}>
+      <Badge size="S" tone={PROGRESS_TONE[progress.label]} label={progress.label} />
+      <span className={styles.subText}>{progress.closed} of {progress.total} gap{progress.total === 1 ? '' : 's'} closed</span>
     </span>
   );
 }
@@ -56,11 +92,19 @@ export function PdcValue({ pdc, code, open }) {
   );
 }
 
-export function ClaimReconCell({ recon, showCode }) {
+export function ClaimReconCell({ recon, showCode, followUpTask }) {
   return (
     <span className={styles.stack}>
       <Badge size="S" tone={RECON_TONE[recon.status]} label={showCode ? `${recon.status} · ${recon.code}` : recon.status} />
-      <span className={styles.subText}>{recon.detail}</span>
+      {recon.status === 'Claim overdue' ? (
+        <Tooltip label={recon.detail} placement="bottom">
+          <span className={`${styles.subText} ${styles.toneError}`}>
+            {followUpTask ? 'Pharmacy follow-up task created' : 'Follow up with pharmacy'}
+          </span>
+        </Tooltip>
+      ) : (
+        <span className={styles.subText}>{recon.detail}</span>
+      )}
     </span>
   );
 }

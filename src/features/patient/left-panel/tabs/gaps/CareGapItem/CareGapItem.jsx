@@ -1,4 +1,5 @@
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
+import { Badge } from '../../../../../../components/Badge/Badge';
 import styles from './CareGapItem.module.css';
 
 export function CareGapItem({ item, selected, onSelect, onOpen }) {
@@ -22,7 +23,9 @@ export function CareGapItem({ item, selected, onSelect, onOpen }) {
         )}
         {item.diagnosis && <span className={styles.meta}>{item.diagnosis}</span>}
       </div>
-      <span className={styles.status}>{item.status}</span>
+      <span className={styles.status}>
+        {item.statusVariant ? <Badge variant={item.statusVariant} label={item.status} /> : item.status}
+      </span>
       <div className={styles.moreBtn} onClick={e => e.stopPropagation()}>
         <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
       </div>

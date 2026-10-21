@@ -9,8 +9,9 @@ import { RadioButton } from '../../../components/RadioButton/RadioButton';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Tooltip } from '../../../components/Tooltip/Tooltip';
 import {
-  MEASURE_NAMES, MEASURE_ORDER, addDaysMdy, fillDueTone, medLabel, parseMdy, pdcTone, todayMdy,
+  MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, addDaysMdy, fillDueTone, measureStatus, medLabel, parseMdy, pdcTone, todayMdy,
 } from '../pharmacyWorklist.utils';
+import { Switch } from '../../../components/Switch/Switch';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacyVerificationStep.module.css';
 
@@ -78,86 +79,57 @@ function YesNo({ value, onChange, labels = ['Yes', 'No'], name }) {
   );
 }
 
-function MedVerification({ med, measure, pickup, answer, onChange }) {
+// Questions down the left, grouped into categories that double as filters.
+const CATEGORIES = ['Fill history', 'Refill', 'Pickup'];
+const QUESTIONS = [
+  { key: 'lastFillConfirmed', category: 'Fill history', label: (g) => `Last fill on ${g.med.lastFill} confirmed?` },
+  { key: 'refilled', category: 'Refill', label: () => 'Has it been refilled?' },
+  { key: 'refillsRemaining', category: 'Refill', label: () => 'Refills remaining' },
+  { key: 'refillRequestSent', category: 'Refill', label: () => 'Refill request sent to prescriber', when: (a) => a.refillsRemaining !== '' && Number(a.refillsRemaining) === 0 },
+  { key: 'pickedUp', category: 'Pickup', label: () => 'Has it been picked up?', when: (a) => a.refilled === 'Yes' },
+];
+
+function AnswerCell({ q, gap, answer, onChange }) {
   const set = (patch) => onChange({ ...answer, ...patch });
-  const action = nextAction(med, answer);
-  const firstFill = med.refills.length <= 1;
-  const zeroRefills = answer.refillsRemaining !== '' && Number(answer.refillsRemaining) === 0;
-
-  return (
-    <div className={styles.med}>
-      <div className={styles.medHead}>
-        <Tooltip label={MEASURE_NAMES[measure]} placement="bottom">
-          <Badge size="S" tone="primary" label={measure} />
-        </Tooltip>
-        <span className={styles.medName}>{medLabel(med)}</span>
-        {firstFill && <Badge size="S" tone="info" label="First fill" />}
-      </div>
-      <div className={styles.facts}>
-        <span>Last fill <b>{med.lastFill}</b></span>
-        {pickup && <span>Pickup confirmed <b className={styles.toneSuccess}>{pickup}</b></span>}
-        <span>Next due <b className={TONE_CLASS[fillDueTone(med.nextFill)] || ''}>{med.nextFill}</b></span>
-        <span>PDC <b className={TONE_CLASS[pdcTone(med.pdc)] || ''}>{med.pdc == null ? '—' : `${med.pdc}%`}</b></span>
-        <span>{med.qty} qty · {med.daysSupply} DS</span>
-      </div>
-
-      <div className={styles.questions}>
-        <div className={styles.q}>
-          <span className={styles.qLabel}>Confirm: was {medLabel(med)} last filled on {med.lastFill}?</span>
-          <div className={styles.inline}>
-            <YesNo name="Last fill confirmed" value={answer.lastFillConfirmed ? 'Yes' : 'No'} onChange={v => set({ lastFillConfirmed: v === 'Yes' })} />
-            {!answer.lastFillConfirmed && (
-              <Input
-                className={styles.dateInput}
-                placeholder="MM/DD/YYYY"
-                value={answer.actualLastFill}
-                onChange={e => set({ actualLastFill: e.target.value })}
-                aria-label="Actual last fill date"
-              />
-            )}
-          </div>
+  if (q.when && !q.when(answer)) return <span className={styles.na}>—</span>;
+  switch (q.key) {
+    case 'lastFillConfirmed':
+      return (
+        <div className={styles.cellStack}>
+          <YesNo name={`${gap.code} last fill confirmed`} value={answer.lastFillConfirmed ? 'Yes' : 'No'} onChange={v => set({ lastFillConfirmed: v === 'Yes' })} />
+          {!answer.lastFillConfirmed && (
+            <Input className={styles.dateInput} placeholder="MM/DD/YYYY" value={answer.actualLastFill} onChange={e => set({ actualLastFill: e.target.value })} aria-label={`${gap.code} actual last fill date`} />
+          )}
         </div>
-        <div className={styles.q}>
-          <span className={styles.qLabel}>Has it been refilled?</span>
-          <YesNo name="Refilled" value={answer.refilled} onChange={v => set({ refilled: v, pickedUp: v === 'No' ? null : answer.pickedUp })} />
-        </div>
-        {answer.refilled === 'Yes' && (
-          <div className={styles.q}>
-            <span className={styles.qLabel}>Has it been picked up?</span>
-            <YesNo name="Picked up" value={answer.pickedUp} labels={['Yes', 'No — still on the shelf']} onChange={v => set({ pickedUp: v })} />
-          </div>
-        )}
-        <div className={styles.q}>
-          <span className={styles.qLabel}>How many refills are remaining?</span>
-          <Input
-            type="number"
-            min={0}
-            className={styles.numInput}
-            value={answer.refillsRemaining}
-            onChange={e => set({ refillsRemaining: e.target.value === '' ? '' : String(Math.max(0, Number(e.target.value))) })}
-            aria-label="Refills remaining"
-          />
-        </div>
-        {zeroRefills && (
-          <label className={styles.checkRow}>
-            <Checkbox checked={answer.refillRequestSent} onCheckedChange={v => set({ refillRequestSent: !!v })} />
-            <span>Asked the pharmacy to send a refill request to {med.prescriber?.name || 'the prescriber'}</span>
-          </label>
-        )}
-      </div>
-
-      {action && (
-        <div className={`${styles.action} ${styles[`action_${action.tone}`]}`}>
-          <Icon name={action.tone === 'success' ? 'solar:check-circle-linear' : 'solar:danger-circle-linear'} size={16} color="currentColor" />
-          <div>
-            <div className={styles.actionLabel}>{action.label}</div>
-            {action.detail && <div className={styles.actionDetail}>{action.detail}</div>}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+      );
+    case 'refilled':
+      return <YesNo name={`${gap.code} refilled`} value={answer.refilled} onChange={v => set({ refilled: v, pickedUp: v === 'No' ? null : answer.pickedUp })} />;
+    case 'pickedUp':
+      return <YesNo name={`${gap.code} picked up`} value={answer.pickedUp} labels={['Yes', 'No, on shelf']} onChange={v => set({ pickedUp: v })} />;
+    case 'refillsRemaining':
+      return (
+        <Input
+          type="number"
+          min={0}
+          className={styles.numInput}
+          value={answer.refillsRemaining}
+          onChange={e => set({ refillsRemaining: e.target.value === '' ? '' : String(Math.max(0, Number(e.target.value))) })}
+          aria-label={`${gap.code} refills remaining`}
+        />
+      );
+    case 'refillRequestSent':
+      return <Checkbox checked={answer.refillRequestSent} onCheckedChange={v => set({ refillRequestSent: !!v })} aria-label={`${gap.code} refill request sent`} />;
+    default:
+      return null;
+  }
 }
+
+const questionAnswered = (q, a) => {
+  if (q.when && !q.when(a)) return true;
+  if (q.key === 'refilled' || q.key === 'pickedUp') return !!a[q.key];
+  if (q.key === 'refillsRemaining') return a.refillsRemaining !== '';
+  return true;
+};
 
 function LockedCall({ entry }) {
   return (
@@ -180,23 +152,38 @@ function LockedCall({ entry }) {
   );
 }
 
-// Pharmacy Verification step of the Pharmacy program.
-export function PharmacyVerificationStep({ program }) {
-  const member = usePharmacyProgramMember();
+// Pharmacy Verification step of the Pharmacy program, as an assessment
+// table: questions down the left, one answer column per pharmacy gap. "Same
+// answer for all" copies an answer across every column; each column stays
+// editable. The question categories on the left filter the rows.
+export function PharmacyVerificationStep({ program, member: memberProp }) {
+  const fromProfile = usePharmacyProgramMember();
+  const member = memberProp || fromProfile;
   const lockVerification = useAppStore(s => s.lockPharmacyVerification);
   const createTask = useAppStore(s => s.createTask);
   const addProgramTask = useAppStore(s => s.addProgramTask);
   const currentUser = useAppStore(s => s.currentUserProfile);
-  const patientId = useAppStore(s => s.selectedPatientId);
+  const selectedPatientId = useAppStore(s => s.selectedPatientId);
+  const patientId = memberProp ? (memberProp.patientId || memberProp.id) : selectedPatientId;
   const showToast = useAppStore(s => s.showToast);
 
-  const meds = useMemo(() => (member?.measures || [])
-    .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code))
-    .flatMap(x => x.medications.filter(d => d.status !== 'Discontinued').map(d => ({ med: d, measure: x.code, pickup: x.pickupConfirmed }))), [member]);
+  // One column per gap; its active medications share the answers.
+  const gaps = useMemo(() => {
+    if (!member) return [];
+    const all = (member.measures || [])
+      .toSorted((a, b) => MEASURE_ORDER.indexOf(a.code) - MEASURE_ORDER.indexOf(b.code))
+      .map(x => ({ code: x.code, pickup: x.pickupConfirmed, status: measureStatus(x, member).gap, meds: x.medications.filter(d => d.status !== 'Discontinued') }))
+      .filter(g => g.meds.length)
+      .map(g => ({ ...g, med: g.meds[0] }));
+    const open = all.filter(g => OPEN_GAPS.has(g.status));
+    return open.length ? open : all;
+  }, [member]);
 
   const [answers, setAnswers] = useState({});
+  const [sameForAll, setSameForAll] = useState(false);
+  const [category, setCategory] = useState(null);
   const [note, setNote] = useState('');
-  const answerFor = (id) => answers[id] || EMPTY_ANSWER;
+  const answerFor = (code) => answers[code] || EMPTY_ANSWER;
 
   if (!member) {
     return (
@@ -207,20 +194,30 @@ export function PharmacyVerificationStep({ program }) {
     );
   }
 
+  const setAnswer = (code, a) => setAnswers(prev => (sameForAll
+    ? Object.fromEntries(gaps.map(g => [g.code, a]))
+    : { ...prev, [code]: a }));
+  const toggleSame = (on) => {
+    setSameForAll(on);
+    if (on && gaps.length) setAnswers(Object.fromEntries(gaps.map(g => [g.code, answerFor(gaps[0].code)])));
+  };
+
+  const rows = QUESTIONS.filter(q => !category || q.category === category);
+  const answeredIn = (cat) => gaps.reduce((n, g) => n + QUESTIONS.filter(q => q.category === cat).every(q => questionAnswered(q, answerFor(g.code))), 0);
   const verifications = (member.callHistory || []).filter(e => e.kind === 'pharmacy-verification');
-  const allAnswered = meds.length > 0 && meds.every(({ med }) => isAnswered(answerFor(med.id)));
+  const allAnswered = gaps.length > 0 && gaps.every(g => isAnswered(answerFor(g.code)));
 
   const handleLock = async () => {
     const today = todayMdy();
-    const items = meds.map(({ med, measure }) => {
-      const a = answerFor(med.id);
-      return { medId: med.id, measure, drug: medLabel(med), steps: stepsFor(med, a), answer: a };
-    });
+    const items = gaps.flatMap(g => g.meds.map(med => {
+      const a = answerFor(g.code);
+      return { medId: med.id, measure: g.code, drug: medLabel(med), steps: stepsFor(med, a), answer: a };
+    }));
     const pickedAll = items.every(it => it.answer.pickedUp === 'Yes');
     const onShelf = items.some(it => it.answer.refilled === 'Yes' && it.answer.pickedUp === 'No');
-    const outcome = pickedAll ? 'Med pickup confirmed' : onShelf ? 'Filled — not picked up' : 'Not refilled';
-    const pickedUpCodes = [...new Set(items.filter(it => it.answer.pickedUp === 'Yes').map(it => it.measure))];
-    const pendingCodes = [...new Set(items.filter(it => it.answer.refilled === 'Yes' && it.answer.pickedUp === 'No').map(it => it.measure))];
+    const outcome = pickedAll ? 'Med pickup confirmed' : onShelf ? 'Filled, not picked up' : 'Not refilled';
+    const pickedUpCodes = gaps.filter(g => answerFor(g.code).pickedUp === 'Yes').map(g => g.code);
+    const pendingCodes = gaps.filter(g => answerFor(g.code).refilled === 'Yes' && answerFor(g.code).pickedUp === 'No').map(g => g.code);
     const refillsByMed = {};
     for (const it of items) refillsByMed[it.medId] = Number(it.answer.refillsRemaining);
     const by = currentUser?.name || 'You';
@@ -235,7 +232,7 @@ export function PharmacyVerificationStep({ program }) {
       result: pickedAll ? 'success' : 'failed',
       by,
       note,
-      measures: [...new Set(items.map(it => it.measure))],
+      measures: gaps.map(g => g.code),
       items: items.map(({ medId, measure, drug, steps, answer }) => ({
         medId, measure, drug, steps,
         refilled: answer.refilled === 'Yes',
@@ -245,10 +242,10 @@ export function PharmacyVerificationStep({ program }) {
 
     // Follow-ups: re-check the next gap report for a reversal; confirm any
     // refill request reached the pharmacy a month out.
-    const followUps = [{ name: `Check gap report for claim reversal — ${member.name}`, due: addDaysMdy(today, REVERSAL_CHECK_DAYS) }];
-    for (const it of items) {
-      if (it.answer.refillRequestSent) {
-        followUps.push({ name: `Confirm refill request received — ${it.drug} (${member.name})`, due: addDaysMdy(today, REFILL_RECHECK_DAYS) });
+    const followUps = [{ name: `Check gap report for claim reversal: ${member.name}`, due: addDaysMdy(today, REVERSAL_CHECK_DAYS) }];
+    for (const g of gaps) {
+      if (answerFor(g.code).refillRequestSent) {
+        followUps.push({ name: `Confirm refill request received: ${g.code} (${member.name})`, due: addDaysMdy(today, REFILL_RECHECK_DAYS) });
       }
     }
     let createdCount = 0;
@@ -274,37 +271,94 @@ export function PharmacyVerificationStep({ program }) {
       <div className={styles.banner}>
         <Icon name="solar:info-circle-linear" size={16} color="var(--status-info)" />
         <span>
-          A processed claim isn’t proof of pickup, and plan data lags 1–4 weeks. Call the pharmacy to confirm each drug was refilled and picked up.
+          A processed claim isn’t proof of pickup, and plan data lags 1–4 weeks. Call the pharmacy to confirm each gap’s medication was refilled and picked up.
         </span>
       </div>
 
       <div className={styles.callCard}>
         <div className={styles.callHead}>
           <div>
-            <div className={styles.callTitle}>Verification call</div>
+            <div className={styles.callTitle}>Pharmacy verification assessment</div>
             <div className={styles.muted}>Phone · Outbound · {member.pharmacy?.name || 'Pharmacy'}{member.pharmacy?.phone ? ` · ${member.pharmacy.phone}` : ''}</div>
           </div>
-          {member.status !== 'Completed' && member.status !== 'Closed-Data' && <Badge size="S" tone="warning" label="Pending pharmacy verification" />}
+          {gaps.length > 1 && <Switch checked={sameForAll} onChange={toggleSame} label="Same answer for all gaps" />}
         </div>
 
-        {meds.map(({ med, measure, pickup }) => (
-          <MedVerification
-            key={med.id}
-            med={med}
-            measure={measure}
-            pickup={pickup}
-            answer={answerFor(med.id)}
-            onChange={a => setAnswers(prev => ({ ...prev, [med.id]: a }))}
-          />
-        ))}
+        <div className={styles.assessment}>
+          <nav className={styles.categories} aria-label="Question categories">
+            <button type="button" className={`${styles.category} ${!category ? styles.categoryOn : ''}`} onClick={() => setCategory(null)}>
+              All questions
+            </button>
+            {CATEGORIES.map(c => (
+              <button key={c} type="button" className={`${styles.category} ${category === c ? styles.categoryOn : ''}`} onClick={() => setCategory(cur => (cur === c ? null : c))}>
+                <span>{c}</span>
+                <span className={styles.categoryCount}>{answeredIn(c)}/{gaps.length}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className={styles.tableScroll}>
+            <table className={styles.qTable}>
+              <thead>
+                <tr>
+                  <th className={styles.qCol}>Question</th>
+                  {gaps.map(g => (
+                    <th key={g.code}>
+                      <span className={styles.gapHead}>
+                        <Tooltip label={MEASURE_NAMES[g.code]} placement="bottom">
+                          <span><Badge size="S" variant="compliance-na" label={g.code} /></span>
+                        </Tooltip>
+                        <span className={styles.gapMed}>{g.meds.map(medLabel).join(', ')}</span>
+                        <span className={styles.gapFacts}>
+                          Next due <b className={TONE_CLASS[fillDueTone(g.med.nextFill)] || ''}>{g.med.nextFill}</b> · PDC <b className={TONE_CLASS[pdcTone(g.med.pdc)] || ''}>{g.med.pdc == null ? '—' : `${g.med.pdc}%`}</b>
+                        </span>
+                      </span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(q => (
+                  <tr key={q.key}>
+                    <td className={styles.qCol}>
+                      <span className={styles.qCategory}>{q.category}</span>
+                      <span className={styles.qLabel}>{q.label(gaps[0] || { med: {} })}</span>
+                    </td>
+                    {gaps.map(g => (
+                      <td key={g.code}>
+                        <AnswerCell q={q} gap={g} answer={answerFor(g.code)} onChange={a => setAnswer(g.code, a)} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+                <tr className={styles.actionRow}>
+                  <td className={styles.qCol}><span className={styles.qLabel}>Next action</span></td>
+                  {gaps.map(g => {
+                    const action = nextAction(g.med, answerFor(g.code));
+                    return (
+                      <td key={g.code}>
+                        {action ? (
+                          <span className={`${styles.actionChip} ${styles[`action_${action.tone}`]}`}>
+                            <span className={styles.actionLabel}>{action.label}</span>
+                            {action.detail && <span className={styles.actionDetail}>{action.detail}</span>}
+                          </span>
+                        ) : <span className={styles.na}>Answer the questions</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         <div className={styles.q}>
           <span className={styles.qLabel}>Call note</span>
-          <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="One note for every medication and measure on this call" aria-label="Call note" />
+          <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="One note for the whole call" aria-label="Call note" />
         </div>
 
         <div className={styles.callFoot}>
-          <span className={styles.muted}>Locking logs this call as one action across all measures (counts as 1 outreach).</span>
+          <span className={styles.muted}>Locking logs this call as one action across all gaps (counts as 1 outreach).</span>
           <Button variant="primary" size="L" disabled={!allAnswered} onClick={handleLock}>
             Lock &amp; log call
           </Button>

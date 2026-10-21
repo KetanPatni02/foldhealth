@@ -79,3 +79,52 @@
 
 .subStatus { font-size: var(--font-md); color: var(--neutral-300); white-space: nowrap; }
 .subSuffix { color: var(--neutral-200); }
+
+/* Per-gap sub-rows (HEDIS worklist pattern): gap-level columns stack one
+   fixed-height item per pharmacy gap so the items line up across columns. */
+.rowMultiGap .checkTd,
+.rowMultiGap .membersTd,
+.rowMultiGap .td { vertical-align: top; }
+.tdGap {
+  padding: 0;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  vertical-align: top;
+  white-space: nowrap;
+}
+.tdGapCenter { vertical-align: middle; }
+.tdGapDivide { border-right: 0.5px solid var(--neutral-150); }
+.gapItems { display: flex; flex-direction: column; }
+.gapItem {
+  padding: var(--space-2) 0.875rem;
+  height: 56px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+.gapItem + .gapItem { border-top: 0.5px solid var(--neutral-150); }
+
+/* Count cells with the full list in a hover card. */
+.countLink {
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+  white-space: nowrap;
+  border-bottom: 1px dashed var(--neutral-200);
+  cursor: default;
+}
+.hoverList { display: flex; flex-direction: column; gap: var(--space-2); text-align: left; }
+.hoverItem { font-size: var(--font-sm); color: var(--neutral-400); white-space: normal; }
+.gapBadgeButton {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  border-radius: 4px;
+}
+.gapBadgeButton:hover :global([class*="_badge_"]) {
+  background: var(--primary-50);
+  border-color: var(--primary-200);
+  color: var(--primary-300);
+}
+.gapBadgeButton:focus-visible { outline: 2px solid var(--primary-200); outline-offset: 2px; }
