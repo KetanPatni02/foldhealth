@@ -6,6 +6,17 @@ keep entries short and specific. Newest at the top.
 
 ## Working agreements
 
+- **Never touch the production database from a dev session without an
+  explicit ask.** Production is Supabase project `osnihfqqrcchsaqhagcx`.
+  Local dev, dev servers, browser previews, seeds and migrations go to the
+  dev project (`.env.development.local`, see
+  `docs/getting-started/dev-database.mdx`). Before
+  running a migration, a seed, `supabase db query --linked`, or starting a
+  dev server, check which project the env points at; if it is production,
+  stop and ask. On 2026-10-21 dev sessions made 88% of production API
+  traffic and the database went down. Close browser preview tabs you no
+  longer need: every open tab keeps a realtime socket and refetches on
+  reconnect.
 - **Never use em dashes (—) in any prose you generate.** This applies to
   everything you write: UI copy, form descriptions, docs, README entries,
   commit messages, PR descriptions, and chat replies. Rewrite the sentence

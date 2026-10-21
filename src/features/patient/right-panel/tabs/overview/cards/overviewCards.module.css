@@ -1,0 +1,317 @@
+/* Shared styles for the Overview tab's cards. Card chrome (border, header,
+   footer) comes from DashboardCard; list rows are PanelSectionItems. */
+
+.muted {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+
+.sectionLabel {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--neutral-200);
+}
+
+.empty {
+  padding: var(--space-3) 0 var(--space-2);
+  font-size: var(--font-md);
+  color: var(--neutral-200);
+}
+
+.spacer { flex: 1; }
+
+/* Unity-suggested content without the full AI wash. */
+.aiOutline { border-color: var(--primary-200); }
+
+/* Ghost "+N more" under a list: text lines up with the rows' left edge. */
+.moreLink {
+  align-self: flex-start;
+  margin: var(--space-1) 0 0 calc(-1 * var(--space-2));
+}
+
+/* Leading icon tile on list rows, tinted by tone. */
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-8);
+  height: var(--space-8);
+  border-radius: calc(var(--space-1) * 1.5);
+  background: var(--neutral-50);
+  color: var(--neutral-300);
+}
+.tile.error   { background: var(--status-error-light); color: var(--status-error); }
+.tile.warning { background: var(--status-warning-light); color: var(--status-warning); }
+.tile.success { background: var(--status-success-light); color: var(--status-success); }
+.tile.info    { background: var(--status-info-light); color: var(--status-info); }
+.tile.ai      { background: var(--primary-100); color: var(--primary-300); }
+
+.textError   { color: var(--status-error); }
+.textWarning { color: var(--status-warning); }
+.textSuccess { color: var(--status-success); }
+
+/* Rows that open something: the title is a button so the row is reachable by keyboard. */
+.titleButton {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.titleButton:hover { color: var(--primary-300); }
+
+/* ── Synopsis ── */
+.poweredBy {
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+  white-space: nowrap;
+}
+
+.synopsisBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+}
+
+.synopsisText {
+  margin: 0;
+  font-size: var(--font-base);
+  line-height: var(--leading-loose);
+  color: var(--neutral-400);
+}
+
+.synopsisText strong { font-weight: 500; color: var(--neutral-500); }
+
+.takeaways {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.takeaway {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--font-md);
+  line-height: var(--leading-normal);
+  color: var(--neutral-400);
+}
+
+.takeawayDot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neutral-200);
+  transform: translateY(-1px);
+}
+.takeawayDot.error   { background: var(--status-error); }
+.takeawayDot.warning { background: var(--status-warning-dark); }
+.takeawayDot.success { background: var(--status-success); }
+
+/* ── Health chart ── */
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+
+.legendItem { display: inline-flex; align-items: center; gap: var(--space-1); }
+
+.legendSwatch {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--primary-300);
+}
+.legendSwatch.clinic {
+  background: repeating-linear-gradient(90deg, var(--neutral-200) 0 3px, transparent 3px 5px);
+}
+
+.radar {
+  height: 230px;
+}
+
+.scoreRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-1) 0 var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: calc(var(--space-1) * 1.5);
+  background: var(--neutral-50);
+  font-size: var(--font-sm);
+  color: var(--neutral-200);
+}
+
+.scoreValue {
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+/* ── Care plan ── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: calc(var(--space-1) * 1.5);
+  background: var(--neutral-50);
+}
+
+.statValue {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+
+.statNumber {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-1);
+}
+
+.progressPct {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-400);
+}
+
+/* Inline progress bar (care plan, programs). */
+.bar {
+  flex: 1;
+  min-width: 64px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--neutral-100);
+  overflow: hidden;
+}
+.barFill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--status-success);
+}
+.barFixed { flex: 0 0 96px; }
+
+.programTrailing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ── Gaps ── */
+.tabs { padding: 0 var(--space-4) var(--space-1); }
+
+.codeChip {
+  display: inline-flex;
+  align-items: center;
+  min-width: var(--space-8);
+  justify-content: center;
+  padding: calc(var(--space-1) / 2) var(--space-1);
+  border-radius: var(--space-1);
+  background: var(--neutral-50);
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  color: var(--neutral-300);
+  white-space: nowrap;
+}
+
+/* ── Appointments ── */
+.dateTile {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-10);
+  height: var(--space-10);
+  border-radius: calc(var(--space-1) * 1.5);
+  background: var(--primary-100);
+  line-height: 1.1;
+}
+.dateMonth { font-size: var(--font-2xs); font-weight: 500; color: var(--primary-300); }
+.dateDay { font-size: var(--font-lg); font-weight: 500; color: var(--primary-400); }
+
+/* ── Quick actions ── */
+.quickGrid {
+  container-type: inline-size;
+}
+
+.quickGridInner {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+/* Full-width single column: one row of six instead of a stretched 3×2. */
+@container (min-width: 560px) {
+  .quickGridInner { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+/* ── Vitals ── */
+.vitalsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+}
+
+.vital {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: calc(var(--space-1) * 1.5);
+}
+
+.vitalValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.vitalValue {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  color: var(--neutral-500);
+}
+
+.vitalChange {
+  margin-left: auto;
+  font-size: var(--font-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}

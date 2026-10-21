@@ -32,6 +32,7 @@ import { CARE_PLAN_INTERVENTION_LIBRARY } from '../src/features/settings/care-pl
 import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY } from '../src/features/settings/care-plan-library/data/carePlanBarrierStructuredSeed.js';
 import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src/features/settings/care-plan-library/data/carePlanTemplateLibrarySeed.js';
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
+import { OVERVIEW_SEED, overviewToRow } from '../src/features/patient/data/overviewData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
 import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/oooSeed.js';
@@ -1116,6 +1117,13 @@ async function main() {
     .from('patient_monitoring')
     .upsert(monitoringRows, { onConflict: 'member_id' });
   if (pme) { console.error('  ✗', pme.message); } else { console.log(`  ✓ ${monitoringRows.length} monitoring snapshots`); }
+
+  console.log('Seeding patient_overview...');
+  const overviewRows = Object.values(OVERVIEW_SEED).map(overviewToRow);
+  const { error: poe } = await supabase
+    .from('patient_overview')
+    .upsert(overviewRows, { onConflict: 'member_id' });
+  if (poe) { console.error('  ✗', poe.message); } else { console.log(`  ✓ ${overviewRows.length} overview snapshots`); }
 
   console.log('Seeding ccm_worklist_members...');
   const worklistRows = await withoutExistingPeople(supabase, 'ccm_worklist_members', CCM_WORKLIST_MEMBERS.map((m) => ccmWorklistToRow(m, foldIdMap)));

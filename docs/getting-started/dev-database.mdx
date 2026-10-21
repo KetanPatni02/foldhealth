@@ -1,0 +1,64 @@
+---
+title: "Dev database"
+description: "Local development runs against its own Supabase project, never production"
+---
+
+## Why
+
+Production (Supabase project `osnihfqqrcchsaqhagcx`) is on the free plan's
+smallest instance. On 2026-10-21 it stopped accepting connections. The logs
+showed that 88% of its API traffic that day came from local dev servers and
+Claude browser previews, not from users: long-lived tabs re-ran the same
+notification and unread-count queries on every reconnect and refocus until the
+database fell over.
+
+So local development uses a separate free project, **Foldhealth Dev**
+(`uwswpbiyhlmpnubxtipc`, ap-southeast-1). The deployed app on Vercel keeps
+using production through its own environment variables.
+
+## Setup
+
+Vite loads `.env.development.local` on top of `.env` when you run `bun run dev`,
+and ignores it for production builds. Create it (it is gitignored) with the
+dev project's values. Ask Alok Kumar for the dev anon key and database password.
+
+```bash
+VITE_SUPABASE_URL=https://uwswpbiyhlmpnubxtipc.supabase.co
+VITE_SUPABASE_ANON_KEY=<dev anon key>
+DEV_SUPABASE_PROJECT_REF=uwswpbiyhlmpnubxtipc
+DEV_SUPABASE_DB_PASSWORD=<dev database password>
+```
+
+Restart the dev server after adding it. The dev login (`VITE_DEV_LOGIN_*` in
+`.env`) has a matching user in the dev project.
+
+## Refreshing the dev copy
+
+`scripts/dev-db-sync.sh` reads production's `public` schema (read only) and
+loads it into the dev project. Add `--with-data` to copy the rows as well.
+It refuses to run if the target is production.
+
+```bash
+brew install libpq
+```
+
+```bash
+scripts/dev-db-sync.sh --with-data
+```
+
+## Migrations
+
+New `supabase/*_migration.sql` files run against the dev project first:
+
+```bash
+supabase db query --db-url "postgresql://postgres.uwswpbiyhlmpnubxtipc:<password>@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres" --file supabase/<name>_migration.sql
+```
+
+Run them on production (`supabase db query --linked --file …`) only when the
+change ships, and only with an explicit go-ahead.
+
+## Monitoring
+
+`.github/workflows/db-uptime.yml` probes the production data API every 10
+minutes. Two failures in a row open a `db-outage` issue, which GitHub emails to
+repo watchers; it closes itself when the probe passes again.
