@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { Icon } from '../../../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../../../components/Avatar/Avatar';
 import { Switch } from '../../../../../components/Switch/Switch';
+import { PanelSection, PanelSectionItem } from '../../../../../components/PanelSection/PanelSection';
 import styles from './ActiveAutomationsWidget.module.css';
 
 const AUTOMATIONS = [
@@ -23,56 +22,28 @@ const AUTOMATIONS = [
 ];
 
 export function ActiveAutomationsWidget() {
-  const [collapsed, setCollapsed] = useState(false);
-  const [states, setStates] = useState(() => {
-    const map = {};
-    AUTOMATIONS.forEach(a => { map[a.id] = a.defaultOn; });
-    return map;
-  });
-
-  const handleToggle = (id, val) => setStates(prev => ({ ...prev, [id]: val }));
+  const [states, setStates] = useState(() => Object.fromEntries(AUTOMATIONS.map(a => [a.id, a.defaultOn])));
 
   return (
-    <div className={styles.widget}>
-      <div className={styles.header}>
-        <button className={styles.titleBtn} onClick={() => setCollapsed(v => !v)}>
-          <DownChevronIcon
-            size={13}
-            color="var(--neutral-400)"
-            style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
-          />
-          <span className={styles.title}>Active Automations</span>
-        </button>
-        {!collapsed && (
-          <ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh" />
-        )}
-      </div>
-
-      {!collapsed && (
-        <div className={styles.body}>
-          {AUTOMATIONS.map(a => (
-            <div key={a.id} className={styles.item}>
-              <Avatar
-                variant="generic"
-                size="32px"
-                backgroundColor="var(--primary-50)"
-                borderColor="var(--neutral-100)"
-                icon={<Icon name="solar:bolt-linear" size={16} color="var(--primary-300)" />}
-              />
-
-              <div className={styles.itemContent}>
-                <span className={styles.itemTitle}>{a.title}</span>
-                <span className={styles.itemDesc}>{a.description}</span>
-              </div>
-
-              <div className={styles.itemActions}>
-                <ActionButton icon="solar:eye-linear" size="S" />
-                <Switch checked={states[a.id]} onChange={val => handleToggle(a.id, val)} />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <PanelSection
+      title="Active Automations"
+      actions={<ActionButton icon="solar:refresh-linear" size="S" tooltip="Refresh" />}
+    >
+      {AUTOMATIONS.map(a => (
+        <PanelSectionItem
+          key={a.id}
+          leading={<Avatar type="icon" variant="patient" iconName="solar:bolt-linear" size="M" />}
+          title={a.title}
+          trailing={(
+            <>
+              <ActionButton icon="solar:eye-linear" size="S" tooltip="View Automation" />
+              <Switch checked={states[a.id]} onChange={val => setStates(prev => ({ ...prev, [a.id]: val }))} />
+            </>
+          )}
+        >
+          <span className={styles.description} title={a.description}>{a.description}</span>
+        </PanelSectionItem>
+      ))}
+    </PanelSection>
   );
 }

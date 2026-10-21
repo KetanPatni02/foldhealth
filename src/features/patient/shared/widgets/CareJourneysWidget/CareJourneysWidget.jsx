@@ -1,8 +1,10 @@
-import { useState, Fragment } from 'react';
-import { Icon } from '../../../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
+import { useState } from 'react';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
+import { Avatar } from '../../../../../components/Avatar/Avatar';
 import { Badge } from '../../../../../components/Badge/Badge';
+import { BadgeSelect } from '../../../../../components/BadgeSelect/BadgeSelect';
+import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
+import { PanelSection, PanelSectionDivider, PanelSectionItem, PanelSectionMore } from '../../../../../components/PanelSection/PanelSection';
 import styles from './CareJourneysWidget.module.css';
 
 const JOURNEYS = [
@@ -52,65 +54,67 @@ const JOURNEYS = [
   },
 ];
 
+// "Completed Journeys" is a view of the same list rather than a separate page.
+const VIEW_OPTIONS = ['Current', 'Completed', 'All'];
+const PREVIEW_COUNT = 3;
+const inView = (journey, view) => view === 'All' || (view === 'Completed') === (journey.status === 'Completed');
+
 export function CareJourneysWidget() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [view, setView] = useState('Current');
+  const [expanded, setExpanded] = useState(false);
+
+  const journeys = JOURNEYS.filter(j => inView(j, view));
+  const shown = expanded ? journeys : journeys.slice(0, PREVIEW_COUNT);
 
   return (
-    <div className={styles.widget}>
-      <div className={styles.header}>
-        <button className={styles.titleBtn} onClick={() => setCollapsed(v => !v)}>
-          <DownChevronIcon
-            size={13}
-            color="var(--neutral-400)"
-            style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
+    <PanelSection
+      title="Care Journeys"
+      actions={(
+        <>
+          <BadgeSelect
+            label="View By"
+            value={view}
+            options={VIEW_OPTIONS}
+            onChange={(v) => { setView(v); setExpanded(false); }}
           />
-          <span className={styles.title}>Care Journeys</span>
-        </button>
-        {!collapsed && (
-          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" />
-        )}
-      </div>
-
-      {!collapsed && (
-        <div className={styles.body}>
-          <div className={styles.table}>
-            {/* Column headers */}
-            <span className={`${styles.colLabel} ${styles.colName}`}>Journey Name</span>
-            <span className={`${styles.colLabel} ${styles.colStatus}`}>Status</span>
-
-            {/* Divider spans both columns */}
-            <div className={styles.dividerLine} />
-
-            {/* Data rows — flat children so they share the grid's column tracks */}
-            {JOURNEYS.map((j, idx) => {
-              const pct = j.total > 0 ? (j.progress / j.total) * 100 : 0;
-              const isFirst = idx === 0;
-              return (
-                <Fragment key={j.id}>
-                  <div className={`${styles.rowLeft} ${isFirst ? styles.rowFirst : ''}`}>
-                    <span className={styles.journeyName}>{j.name}</span>
-                    <span className={styles.journeyMeta}>{j.date} • {j.type}</span>
-                    <div className={styles.progressRow}>
-                      <div className={styles.progressTrack}>
-                        <div className={styles.progressFill} style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className={styles.progressLabel}>{j.progress}/{j.total} {j.unit}</span>
-                    </div>
-                  </div>
-                  <div className={`${styles.statusCell} ${isFirst ? styles.rowFirst : ''}`}>
-                    <Badge variant={j.badgeVariant} label={j.status} style={{ fontWeight: 400 }} />
-                  </div>
-                </Fragment>
-              );
-            })}
-          </div>
-
-          <button className={styles.completedLink}>
-            Completed Journeys
-            <Icon name="solar:alt-arrow-right-linear" size={11} color="var(--primary-300, #8c5ae2)" />
-          </button>
-        </div>
+          <PanelSectionDivider />
+          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add Care Journey" />
+        </>
       )}
-    </div>
+    >
+      {journeys.length === 0 ? (
+        <RingEmptyState icon="solar:routing-2-linear" label={`No ${view.toLowerCase()} care journeys`} size="S" />
+      ) : (
+        <>
+          {shown.map(j => {
+            const pct = j.total > 0 ? (j.progress / j.total) * 100 : 0;
+            return (
+              <PanelSectionItem
+                key={j.id}
+                leading={<Avatar type="icon" variant="patient" iconName="solar:routing-2-linear" size="M" />}
+                title={j.name}
+                meta={[j.date, j.type]}
+                titleAside={<Badge variant={j.badgeVariant} label={j.status} />}
+              >
+                <div className={styles.progressRow}>
+                  <div
+                    className={styles.progressTrack}
+                    role="progressbar"
+                    aria-label={`${j.name} progress`}
+                    aria-valuemin={0}
+                    aria-valuemax={j.total}
+                    aria-valuenow={j.progress}
+                  >
+                    <div className={styles.progressFill} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className={styles.progressLabel}>{j.progress}/{j.total} {j.unit}</span>
+                </div>
+              </PanelSectionItem>
+            );
+          })}
+          <PanelSectionMore expanded={expanded} hiddenCount={journeys.length - PREVIEW_COUNT} onToggle={() => setExpanded(v => !v)} />
+        </>
+      )}
+    </PanelSection>
   );
 }

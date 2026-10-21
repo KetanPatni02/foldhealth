@@ -1,15 +1,10 @@
 import { useState } from 'react';
-import { Icon } from '../../../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
-import { Badge } from '../../../../../components/Badge/Badge';
-import UnityAILogo from '../../../../../assets/unity-ai-logo.svg';
+import { Button } from '../../../../../components/Button/Button';
+import { BadgeSelect } from '../../../../../components/BadgeSelect/BadgeSelect';
+import { PanelSection, PanelSectionDivider } from '../../../../../components/PanelSection/PanelSection';
+import { UnityFooter } from '../UnityFooter/UnityFooter';
 import styles from './PatientSynopsisWidget.module.css';
-
-/* ── Unity logo ── */
-function UnityDot({ size = 14 }) {
-  return <img src={UnityAILogo} width={size} height={size} alt="Unity AI" />;
-}
 
 /* ── Numbered reference badge ── */
 function R({ n }) {
@@ -67,90 +62,64 @@ function SynopsisContent() {
   );
 }
 
-/* ── Main widget ── */
+// The template the synopsis was generated from, and its version.
+const TEMPLATES = ['Health Overview', 'Diabetes Standard Template'];
+const VERSIONS = ['v4'];
+
 export function PatientSynopsisWidget() {
-  const [collapsed, setCollapsed] = useState(false);
-  const [expanded,  setExpanded]  = useState(false);
-  const [feedback,  setFeedback]  = useState(null);
+  const [expanded, setExpanded] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [template, setTemplate] = useState(TEMPLATES[0]);
+  const [version, setVersion] = useState(VERSIONS[0]);
 
   return (
-    <div className={`${styles.widget} ${collapsed ? styles.widgetCollapsed : ''}`}>
-
-      {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button className={styles.titleBtn} onClick={() => setCollapsed(v => !v)}>
-            <DownChevronIcon
-              size={13}
-              color="var(--neutral-400)"
-              style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
-            />
-            <span className={styles.title}>Patient Synopsis</span>
-          </button>
-        </div>
-        {!collapsed && (
-          <div className={styles.headerRight}>
-            <button className={styles.overviewBtn}>
-              <span>Health Overview</span>
-              <Icon name="solar:alt-arrow-down-linear" size={12} color="var(--neutral-300)" />
-            </button>
-            <button className={styles.versionBtn}>
-              <span>v4</span>
-              <Icon name="solar:alt-arrow-down-linear" size={10} color="var(--neutral-300)" />
-            </button>
-            <ActionButton icon="solar:menu-dots-linear" size="S" />
-          </div>
-        )}
-      </div>
-
-      {/* Body + footer inside gradient border */}
-      {!collapsed && (
-        <div className={`${styles.contentArea} ${expanded ? styles.contentAreaExpanded : ''}`}>
-
-          {/* Text body */}
-          <div className={`${styles.body} ${expanded ? styles.bodyExpanded : ''}`}>
-            <SynopsisContent />
-          </div>
-
-          {/* See More / See Less — always below text, white bg */}
-          <button className={styles.seeMoreBtn} onClick={() => setExpanded(v => !v)}>
-            {expanded ? 'See Less' : 'See More'}
-          </button>
-
-          {/* Footer */}
-          <div className={styles.footer}>
-            <div className={styles.footerMeta}>
-              <span className={styles.metaText}>
-                Last Generated on:<br />
-                11/09/2025, 2:30 PM • Dr. Michael Chen
-              </span>
-              <Badge variant="toc-new" icon="solar:lock-keyhole-linear" label="Internal Use Only" />
-            </div>
-            <div className={styles.unityRow}>
-              <div className={styles.unityBrand}>
-                <UnityDot size={14} />
-                <span className={styles.unityName}>Unity</span>
-                <span className={styles.unityAlpha}>Alpha</span>
-              </div>
-              <div className={styles.feedbackBtns}>
-                <ActionButton
-                  icon="solar:dislike-linear"
-                  size="S"
-                  iconColor={feedback === 'down' ? 'var(--primary-300)' : undefined}
-                  onClick={() => setFeedback(v => v === 'down' ? null : 'down')}
-                />
-                <ActionButton
-                  icon="solar:like-linear"
-                  size="S"
-                  iconColor={feedback === 'up' ? 'var(--primary-300)' : undefined}
-                  onClick={() => setFeedback(v => v === 'up' ? null : 'up')}
-                />
-                <ActionButton icon="solar:refresh-linear" size="S" />
-              </div>
-            </div>
-          </div>
-        </div>
+    <PanelSection
+      title="Patient Synopsis"
+      actions={(
+        <>
+          <BadgeSelect value={template} options={TEMPLATES} onChange={setTemplate} />
+          <BadgeSelect value={version} options={VERSIONS} onChange={setVersion} />
+          <PanelSectionDivider />
+          <ActionButton icon="solar:menu-dots-linear" size="S" tooltip="More" />
+        </>
       )}
-    </div>
+    >
+      <div className={[styles.text, expanded ? styles.expanded : ''].join(' ')}>
+        <SynopsisContent />
+      </div>
+      <Button
+        variant="ghost"
+        size="S"
+        trailingIcon={expanded ? 'solar:alt-arrow-up-linear' : 'solar:alt-arrow-down-linear'}
+        className={styles.seeMore}
+        onClick={() => setExpanded(v => !v)}
+      >
+        {expanded ? 'See Less' : 'See More'}
+      </Button>
+      <UnityFooter
+        visibility="internal"
+        generatedOn="11/09/2025, 2:30 PM"
+        generatedBy="Dr. Michael Chen"
+        actions={(
+          <>
+            <ActionButton
+              icon="solar:like-linear"
+              size="S"
+              tooltip="Helpful"
+              iconColor={feedback === 'up' ? 'var(--primary-300)' : undefined}
+              onClick={() => setFeedback(v => (v === 'up' ? null : 'up'))}
+            />
+            <ActionButton
+              icon="solar:dislike-linear"
+              size="S"
+              tooltip="Not helpful"
+              iconColor={feedback === 'down' ? 'var(--primary-300)' : undefined}
+              onClick={() => setFeedback(v => (v === 'down' ? null : 'down'))}
+            />
+            <ActionButton icon="solar:refresh-linear" size="S" tooltip="Regenerate" />
+          </>
+        )}
+      />
+    </PanelSection>
   );
 }

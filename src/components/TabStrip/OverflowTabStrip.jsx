@@ -16,8 +16,13 @@ const MORE_RESERVE_PX = 72;
  * `{ icon, label: (tab) => string, onSelect: (key) => void, appliesTo?: (key) => boolean }`.
  * It sits beside the row's own button (never nested in it) so both stay
  * keyboard reachable.
+ *
+ * `moreActions` (optional) adds commands under the overflow tabs, after a
+ * divider: `[{ key, label, icon, onSelect }]` (e.g. "Customize"). With
+ * actions, More always shows, even when every tab fits.
  */
-export function OverflowTabStrip({ items, activeKey, onChange, itemAction }) {
+export function OverflowTabStrip({ items, activeKey, onChange, itemAction, moreActions }) {
+  const alwaysMore = !!moreActions?.length;
   const rowRef = useRef(null);
   const measurerRef = useRef(null);
   const moreBtnRef = useRef(null);
@@ -42,7 +47,7 @@ export function OverflowTabStrip({ items, activeKey, onChange, itemAction }) {
       total += w;
     }
 
-    if (total <= available) {
+    if (total <= available - (alwaysMore ? MORE_RESERVE_PX : 0)) {
       setVisibleCount(items.length);
       return;
     }
@@ -55,7 +60,7 @@ export function OverflowTabStrip({ items, activeKey, onChange, itemAction }) {
       count += 1;
     }
     setVisibleCount(Math.max(1, count));
-  }, [items.length]);
+  }, [items.length, alwaysMore]);
 
   useEffect(() => {
     measure();
@@ -130,7 +135,7 @@ export function OverflowTabStrip({ items, activeKey, onChange, itemAction }) {
         fullWidth={false}
       />
 
-      {overflow.length > 0 && (
+      {(overflow.length > 0 || alwaysMore) && (
         <div className={styles.moreWrap} ref={moreBtnRef}>
           <div
             className={[tabStripStyles.tabItem, styles.tabMore, overflowHasActive ? tabStripStyles.active : ''].filter(Boolean).join(' ')}
@@ -139,7 +144,7 @@ export function OverflowTabStrip({ items, activeKey, onChange, itemAction }) {
             tabIndex={0}
             aria-haspopup="menu"
             aria-expanded={moreOpen}
-            aria-label={`Show ${overflow.length} more tab${overflow.length === 1 ? '' : 's'}`}
+            aria-label={overflow.length ? `Show ${overflow.length} more tab${overflow.length === 1 ? '' : 's'}` : 'More options'}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -193,6 +198,19 @@ export function OverflowTabStrip({ items, activeKey, onChange, itemAction }) {
                   </div>
                 );
               })}
+              {alwaysMore && overflow.length > 0 && <hr className={styles.moreDivider} />}
+              {moreActions?.map(action => (
+                <button
+                  key={action.key}
+                  type="button"
+                  role="menuitem"
+                  className={styles.moreItem}
+                  onClick={() => { action.onSelect(); setMoreOpen(false); }}
+                >
+                  {action.icon && <Icon name={action.icon} size={16} color="var(--neutral-300)" />}
+                  {action.label}
+                </button>
+              ))}
             </div>,
             document.body,
           )}
