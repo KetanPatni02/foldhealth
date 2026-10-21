@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { applyPendingPickup, applyPickup } from '../../features/pharmacy-worklist/fillEvents';
-import { enrichPharmacyMember, parseMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
+import { CLAIM_LAG_DAYS, enrichPharmacyMember, parseMdy, reconcileMeasure, todayMdy } from '../../features/pharmacy-worklist/pharmacyWorklist.utils';
 
 function rowToMember(r) {
   return {
@@ -32,6 +32,8 @@ function rowToMember(r) {
     activityLog: r.activity_log || [],
     measures: r.measures || [],
     patientId: r.patient_id,
+    sourcePriority: r.source_priority ?? null,
+    otherCareGaps: r.other_care_gaps || [],
   };
 }
 
@@ -59,6 +61,9 @@ export function findPharmacyMember(members, patientId) {
 
 /** Pharmacy (Med Adherence) worklist — one row per member. Backed by pharmacy_worklist_members. */
 export function createPharmacyWorklistSlice(set, get) {
+  // Keys already tried this session (in flight, or failed), so a re-render
+  // can't start a second create or retry a failing insert on every update.
+  const claimTasksTried = new Set();
   // Apply `fn` to one member, append an activity-log entry, and persist the
   // listed columns (activity_log always). `fn` may return `_changes` (fill
   // updates it made); `activity` may be a function of those changes.
@@ -117,21 +122,54 @@ export function createPharmacyWorklistSlice(set, get) {
       set({ pharmacyWorklistMembers: data.map(rowToMember), pharmacyWorklistLoading: false });
     },
 
-    setPharmacyStatus: (id, status) => {
-      const row = get().pharmacyWorklistMembers.find(m => m.id === id);
-      const prev = row ? enrichPharmacyMember(row).status : null;
-      if (prev === status) return;
-      // A hand-picked status overrides the roll-up from the measures.
-      update(id, m => ({ ...m, status, statusManual: true }), ['status', 'status_manual'], { t: 'status_change', title: 'Status changed', from: prev, to: status });
+    // Click-to-dial on a prescriber or pharmacy number (Snapshot).
+    logPharmacyDial: (id, who, number) => {
+      update(id, m => m, [], { t: 'call', title: `Dialed ${who}`, note: number });
     },
 
-    // Hand the status back to the measure roll-up.
-    clearPharmacyStatusOverride: (id) => {
+    // Per-gap status. A hand-picked status overrides the one derived from
+    // fills and claims; null hands it back to the data.
+    setPharmacyGapStatus: (id, code, status) => {
       const row = get().pharmacyWorklistMembers.find(m => m.id === id);
-      if (!row?.statusManual) return;
-      const prev = enrichPharmacyMember(row).status;
-      const to = enrichPharmacyMember({ ...row, statusManual: false }).status;
-      update(id, m => ({ ...m, statusManual: false }), ['status_manual'], { t: 'status_change', title: 'Status set from measures', from: prev, to });
+      const prev = row && enrichPharmacyMember(row).measureStatuses[code]?.gap;
+      const to = status ?? (row && enrichPharmacyMember({
+        ...row, measures: row.measures.map(x => (x.code === code ? { ...x, statusManual: false } : x)),
+      }).measureStatuses[code]?.gap);
+      update(id, m => ({
+        ...m,
+        measures: m.measures.map(x => (x.code !== code ? x
+          : status ? { ...x, status, statusManual: true } : { ...x, statusManual: false })),
+      }), ['measures'], {
+        t: 'status_change', title: status ? `${code} status changed` : `${code} status set from data`, from: prev, to,
+      });
+    },
+
+    // A confirmed pickup with no claim past the claim lag needs a call to the
+    // pharmacy. Create that follow-up task once per pickup; the marker on the
+    // measure keeps it from being created again.
+    ensureClaimFollowUpTasks: async () => {
+      for (const row of get().pharmacyWorklistMembers) {
+        for (const x of row.measures || []) {
+          if (reconcileMeasure(x)?.status !== 'Claim overdue') continue;
+          const key = `pharm-claim-overdue-${row.id}-${x.code}-${x.pickupConfirmed}`;
+          if (x.claimFollowUpTask?.key === key || claimTasksTried.has(key)) continue;
+          claimTasksTried.add(key);
+          const created = await get().createTask({
+            name: `Follow up with pharmacy: ${x.code} claim overdue`,
+            status: 'pending', priority: 'high', due_date: todayMdy(),
+            assigned_to: row.assigneeName || null, assigned_to_id: row.assigneeId || null, member: row.name,
+            labels: [], meta: '', pool: null, mentions: [], attachments: 0, comments: 0,
+            description: `Pickup confirmed ${x.pickupConfirmed}, no paid claim after ${CLAIM_LAG_DAYS} days. Call ${row.pharmacy?.name || 'the pharmacy'}${row.pharmacy?.phone ? ` at ${row.pharmacy.phone}` : ''} to confirm the claim was submitted.`,
+            is_subtask: false, parent_task: null, parent_task_id: null,
+            program_code: 'PHARM', patient_id: String(row.patientId || row.id), source_key: key,
+          }, { auditUserName: 'Fold Automation' });
+          if (!created) continue;
+          update(row.id, m => ({
+            ...m,
+            measures: m.measures.map(y => (y.code === x.code ? { ...y, claimFollowUpTask: { key, taskId: created.id, createdAt: new Date().toISOString() } } : y)),
+          }), ['measures'], { t: 'system', title: `Pharmacy follow-up task created (${x.code})`, note: 'Claim overdue after a confirmed pickup' });
+        }
+      }
     },
 
     // Accepts AssigneeChange's { id, name, initials } shape; null unassigns.
@@ -236,6 +274,19 @@ export function createPharmacyWorklistSlice(set, get) {
           .join('\n'),
       });
     },
+
+    // The gap a user opened from the worklist; the program's Medication
+    // Review puts it first. { memberId, code }
+    pharmacyFocusGap: null,
+    setPharmacyFocusGap: (memberId, code) => set({ pharmacyFocusGap: memberId ? { memberId, code } : null }),
+
+    // Pharmacy Gap Details drawer (worklist): which member and gap it shows.
+    pharmacyGapDrawer: null,
+    openPharmacyGapDrawer: (memberId, code) => set({
+      pharmacyGapDrawer: { memberId, code },
+      pharmacyFocusGap: { memberId, code },
+    }),
+    closePharmacyGapDrawer: () => set({ pharmacyGapDrawer: null }),
 
     pharmacyFilters: {},
     setPharmacyFilter: (k, vals) => set(s => {

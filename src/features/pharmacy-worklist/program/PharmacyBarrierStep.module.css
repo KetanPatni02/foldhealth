@@ -60,3 +60,11 @@
   text-align: center;
 }
 .empty p { margin: 0; }
+.flagged {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-md);
+  color: var(--status-error);
+}
+.addBarrier { max-width: 220px; }

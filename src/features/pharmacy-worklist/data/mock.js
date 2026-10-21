@@ -111,7 +111,7 @@ const CVS_3301 = { name: 'CVS Pharmacy #3301', phone: '(714) 555-0102', address1
 const COSTCO_112 = { name: 'Costco Pharmacy #112', phone: '(818) 555-0108', address1: '8810 Tampa Ave', city: 'Northridge', state: 'CA', zip: '91324' };
 const WAG_2219 = { name: 'Walgreens #2219', phone: '(626) 555-0175', address1: '1 W Duarte Rd', city: 'Arcadia', state: 'CA', zip: '91007' };
 
-export const PHARMACY_WORKLIST_MEMBERS = [
+const BASE_MEMBERS = [
   member({
     id: '19401', initials: 'MG', name: 'Maria Gonzalez', gender: 'F', age: '71y 4m', dob: '06/02/1955',
     memberId: '19401', language: 'es', healthPlan: 'Humana Gold Plus', ipa: 'Astrana IPA', bookOfBusiness: 'Astrana',
@@ -369,7 +369,7 @@ export const PHARMACY_WORKLIST_MEMBERS = [
     measure({
       code: 'MAC', pdc: 90, calcPdc: 88, failDate: '12/12/2026', daysLeft: 60,
       priorYearNonCompliant: false, excluded: false, projectedStatus: null, drugInteraction: false,
-      pickupConfirmed: null, claim: { status: 'Paid', date: '09/24/2026', rxNumber: 'RX-2204718' },
+      pickupConfirmed: '09/24/2026', claim: { status: 'Paid', date: '09/24/2026', rxNumber: 'RX-2204718' },
     }, [{
       id: '19409-mac-1', name: 'Rosuvastatin', generic: 'rosuvastatin', strength: '20', sig: 'Take 1 tablet by mouth once daily',
       condition: 'Hyperlipidemia', mpr: 88, pdc: 90, qty: 30, daysSupply: 30, lastFill: '09/24/2026', gaps: [2, 3],
@@ -398,3 +398,23 @@ export const PHARMACY_WORKLIST_MEMBERS = [
     }], b),
   ]),
 ];
+
+// Fields the plan file sends per member. `sourcePriority` is kept in the
+// source's own format (Humana: High/Medium/Low, Aetna: P1–P3; the others
+// send none and the worklist derives it). `otherCareGaps` are the member's
+// non-pharmacy care gaps.
+const gap = (code, name, status) => ({ code, name, status });
+const SOURCE_FIELDS = {
+  19401: { sourcePriority: 'High', otherCareGaps: [gap('CBP', 'Controlling Blood Pressure', 'Open'), gap('EED', 'Eye Exam for Patients With Diabetes', 'Open'), gap('KED', 'Kidney Health Evaluation', 'Closed-Data')] },
+  19402: { otherCareGaps: [gap('COL', 'Colorectal Cancer Screening', 'Open')] },
+  19403: { otherCareGaps: [gap('CBP', 'Controlling Blood Pressure', 'Open'), gap('EED', 'Eye Exam for Patients With Diabetes', 'In Progress')] },
+  19404: { sourcePriority: 'Medium', otherCareGaps: [] },
+  19405: { sourcePriority: 'P1', otherCareGaps: [gap('BCS', 'Breast Cancer Screening', 'Open'), gap('COA-M', 'Care for Older Adults: Medication Review', 'Open'), gap('CBP', 'Controlling Blood Pressure', 'In Progress'), gap('OMW', 'Osteoporosis Management in Women', 'Open')] },
+  19406: { otherCareGaps: [] },
+  19407: { otherCareGaps: [gap('EED', 'Eye Exam for Patients With Diabetes', 'Open')] },
+  19408: { sourcePriority: 'P2', otherCareGaps: [gap('CBP', 'Controlling Blood Pressure', 'Open'), gap('KED', 'Kidney Health Evaluation', 'Open')] },
+  19409: { sourcePriority: 'Low', otherCareGaps: [gap('BCS', 'Breast Cancer Screening', 'Completed')] },
+  19410: { otherCareGaps: [gap('COL', 'Colorectal Cancer Screening', 'Open'), gap('CBP', 'Controlling Blood Pressure', 'Open')] },
+};
+
+export const PHARMACY_WORKLIST_MEMBERS = BASE_MEMBERS.map(m => ({ sourcePriority: null, ...m, ...SOURCE_FIELDS[m.id] }));

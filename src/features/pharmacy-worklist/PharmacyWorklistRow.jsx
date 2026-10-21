@@ -11,8 +11,10 @@ import { useAppStore } from '../../store/useAppStore';
 import { worklistMemberCallId } from '../../lib/patientCall';
 import { clinicalRolesPickerLabel } from '../../lib/worklistAssignee';
 import { PharmacyActivityDrawer } from './program/PharmacyActivityLog';
+import { GAP_STATUSES } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistRow.module.css';
 
+const AUTO_STATUS = '__auto';
 const HCC_ONLY_ROLES = new Set(['Coder', 'Support', 'QA', 'Compliance']);
 const LANG_MAP = { en: 'English', es: 'Spanish', zh: 'Chinese', yue: 'Cantonese', ko: 'Korean', vi: 'Vietnamese', hi: 'Hindi', pa: 'Punjabi' };
 
@@ -22,8 +24,8 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   const openCallPopover = useAppStore(s => s.openCallPopover);
   const requestAddTask = useAppStore(s => s.requestAddTask);
   const runPatientRowAction = useAppStore(s => s.runPatientRowAction);
-  const setPharmacyStatus = useAppStore(s => s.setPharmacyStatus);
-  const clearPharmacyStatusOverride = useAppStore(s => s.clearPharmacyStatusOverride);
+  const setPharmacyGapStatus = useAppStore(s => s.setPharmacyGapStatus);
+  const openPharmacyGapDrawer = useAppStore(s => s.openPharmacyGapDrawer);
   const setPharmacyAssignee = useAppStore(s => s.setPharmacyAssignee);
   const platformUsers = useAppStore(s => s.platformUsers);
   const showToast = useAppStore(s => s.showToast);
@@ -31,11 +33,10 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   const dobLabel = formatDobDisplay(m.dob) || deriveDob(m.age, m.name);
 
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [gapStatusMenu, setGapStatusMenu] = useState(null); // { code, rect }
   const [showActivity, setShowActivity] = useState(false);
   const dropBtnRef = useRef(null);
   const callBtnRef = useRef(null);
-  const statusBtnRef = useRef(null);
 
   const middleCols = columns.filter(c => !c.sticky && !c.showCheckbox && c.renderCell);
   const visibleMiddle = middleCols.filter(c => !hiddenSet.has(c.key));
@@ -46,7 +47,17 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
     eligibleUsers.push({ id: u.id, name: u.name, initials: u.initials, role: clinicalRolesPickerLabel(u) });
   }
 
-  const cellCtx = { showStatusMenu, setShowStatusMenu, statusBtnRef, setPharmacyStatus, clearPharmacyStatusOverride, setPharmacyAssignee, eligibleUsers };
+  const cellCtx = {
+    setPharmacyAssignee,
+    openGap: (code) => openPharmacyGapDrawer(m.id, code),
+    eligibleUsers,
+    openGapStatusMenu: (code, rect) => setGapStatusMenu(cur => (cur?.code === code ? null : { code, rect })),
+  };
+  const menuGap = gapStatusMenu && m.gaps.find(g => g.code === gapStatusMenu.code);
+  const gapStatusItems = menuGap ? [
+    ...GAP_STATUSES.map(s => ({ key: s, label: s, selected: s === menuGap.status.gap })),
+    ...(menuGap.status.manual ? [{ key: AUTO_STATUS, label: 'Use status from data' }] : []),
+  ] : [];
 
   const openInCareProgram = (e) => {
     e?.stopPropagation?.();
@@ -74,7 +85,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
   };
 
   return (
-    <tr className={styles.row} onClick={openInCareProgram}>
+    <tr className={`${styles.row} ${m.gaps.length > 1 ? styles.rowMultiGap : ''}`} onClick={() => openPharmacyGapDrawer(m.id, m.urgent?.code || m.gaps[0]?.code)}>
       <td className={`${styles.checkTd} ${styles.stickyLeft}`} style={{ left: 0 }} onClick={e => e.stopPropagation()}>
         <Checkbox checked={isSelected} onCheckedChange={() => onSelect(m.id)} aria-label={`Select ${m.name}`} />
       </td>
@@ -107,7 +118,7 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
         <td
           key={col.key}
           data-col-key={col.key}
-          className={styles.td}
+          className={col.getTdClassName ? col.getTdClassName(m) : styles.td}
           onClick={col.stopRowClickPropagation ? (e) => e.stopPropagation() : undefined}
         >
           {col.renderCell(m, cellCtx)}
@@ -141,6 +152,19 @@ export function PharmacyWorklistRow({ member, columns, hiddenSet, isSelected, on
           </div>
         </div>
         {showActivity && <PharmacyActivityDrawer member={m} onClose={() => setShowActivity(false)} />}
+        {menuGap && (
+          <MenuPopover
+            anchorRect={gapStatusMenu.rect}
+            items={gapStatusItems}
+            onSelect={(key) => {
+              setPharmacyGapStatus(m.id, menuGap.code, key === AUTO_STATUS ? null : key);
+              setGapStatusMenu(null);
+            }}
+            onClose={() => setGapStatusMenu(null)}
+            width={220}
+            ariaLabel={`Change ${menuGap.code} status`}
+          />
+        )}
       </td>
     </tr>
   );

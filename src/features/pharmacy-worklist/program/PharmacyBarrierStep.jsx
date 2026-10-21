@@ -5,6 +5,7 @@ import { Button } from '../../../components/Button/Button';
 import { ChipSelect } from '../../../components/ChipSelect/ChipSelect';
 import { Icon } from '../../../components/Icon/Icon';
 import { Textarea } from '../../../components/Textarea/Textarea';
+import { Select } from '../../../components/Select/Select';
 import { BARRIERS, INTERVENTIONS, MEASURE_RESULTS } from '../adherencePicklists';
 import { MEASURE_NAMES, MEASURE_ORDER, medLabel, todayMdy } from '../pharmacyWorklist.utils';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
@@ -27,8 +28,9 @@ const isChanged = (r, base) => !sameSet(r.barriers, base.barriers)
 // a new entry for just the measures that changed. Measures are recorded
 // separately — a cost barrier on MAD (brand copay) doesn't imply one on MAC —
 // and barrier, intervention and result stay apart for reporting.
-export function PharmacyBarrierStep() {
-  const member = usePharmacyProgramMember();
+export function PharmacyBarrierStep({ member: memberProp }) {
+  const fromProfile = usePharmacyProgramMember();
+  const member = memberProp || fromProfile;
   const logInterventions = useAppStore(s => s.logPharmacyInterventions);
   const currentUser = useAppStore(s => s.currentUserProfile);
   const showToast = useAppStore(s => s.showToast);
@@ -52,6 +54,16 @@ export function PharmacyBarrierStep() {
 
   const changed = measures.filter(x => isChanged(rec(x.code), current(x.code)));
 
+  // Only the barriers this member has (logged on any gap, on the worklist, or
+  // as a medication's non-adherence reason) are offered; the rest of the
+  // master list is one pick away.
+  const memberBarriers = new Set([
+    ...(member.interventionLog || []).flatMap(e => Object.values(e.measures).flatMap(r => r.barriers)),
+    ...(member.barrier ? [member.barrier] : []),
+    ...measures.flatMap(x => x.medications.map(d => d.nonAdherenceReason).filter(Boolean)),
+  ]);
+  const barrierOptions = (code) => BARRIERS.filter(b => memberBarriers.has(b) || rec(code).barriers.includes(b));
+
   const handleSave = () => {
     const recorded = {};
     for (const x of changed) {
@@ -68,7 +80,7 @@ export function PharmacyBarrierStep() {
     <div className={styles.wrap}>
       <div className={styles.card}>
         <div className={styles.cardHead}>
-          <div className={styles.cardTitle}>Barriers &amp; interventions</div>
+          <div className={styles.cardTitle}>Barriers &amp; Interventions</div>
           <span className={styles.muted}>Marked items are each measure’s current state. Change them and save — only the measures you change are logged.</span>
         </div>
 
@@ -93,7 +105,24 @@ export function PharmacyBarrierStep() {
               <div className={styles.fields}>
                 <div className={styles.field}>
                   <span className={styles.fieldLabel}>Barriers</span>
-                  <ChipSelect ariaLabel={`${x.code} barriers`} tone="error" options={BARRIERS} value={r.barriers} onChange={v => patch(x.code, { barriers: v })} />
+                  {barrierOptions(x.code).length > 0
+                    ? <ChipSelect ariaLabel={`${x.code} barriers`} tone="error" options={barrierOptions(x.code)} value={r.barriers} onChange={v => patch(x.code, { barriers: v })} />
+                    : <span className={styles.muted}>No barriers recorded for this member.</span>}
+                  {!dirty && latest?.source === 'Outreach' && latest.rec.barriers.length > 0 && (
+                    <span className={styles.flagged}>
+                      <Icon name="solar:flag-linear" size={13} color="currentColor" />
+                      Flagged from outreach on {latest.date}: {latest.rec.barriers.join(', ')}
+                    </span>
+                  )}
+                  {BARRIERS.length > barrierOptions(x.code).length && (
+                    <Select
+                      className={styles.addBarrier}
+                      options={BARRIERS.filter(b => !barrierOptions(x.code).includes(b)).map(b => ({ value: b, label: b }))}
+                      value=""
+                      placeholder="Add barrier"
+                      onChange={b => patch(x.code, { barriers: [...r.barriers, b] })}
+                    />
+                  )}
                 </div>
                 <div className={styles.field}>
                   <span className={styles.fieldLabel}>Interventions</span>

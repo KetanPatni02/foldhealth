@@ -119,6 +119,8 @@
 .cardGrid dt { font-size: var(--font-xs); color: var(--primary-300); }
 .cardGrid dd { margin: 0; font-size: var(--font-md); color: var(--neutral-400); overflow-wrap: anywhere; }
 .fullRow { grid-column: 1 / -1; }
+/* The click-to-dial number needs room: it doesn't wrap. */
+.wideCell { grid-column: span 2; }
 
 .subTitle { font-size: var(--font-sm); font-weight: 600; color: var(--primary-300); }
 
@@ -147,3 +149,17 @@
 .barrierMeta { font-size: var(--font-sm); color: var(--neutral-300); }
 .barrierChips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
 .muted { font-size: var(--font-md); color: var(--neutral-300); }
+
+/* Open gaps together at the top; the one opened from the worklist first. */
+.gapStrip { display: flex; flex-direction: column; gap: var(--space-2); }
+.gapCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+}
+.gapCardFocus { border-color: var(--primary-200); background: var(--primary-50); }
+.gapCardHead, .gapCardMeta { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }

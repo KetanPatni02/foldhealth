@@ -83,23 +83,21 @@ export function fillDueTone(mdy) {
 
 // ── Claim reconciliation ──
 // A gap only closes once the plan sees a paid claim, so a pickup the pharmacy
-// confirmed on the phone still has to show up in claims, and the plan's PDC
-// has to agree with the PDC we calculate from claims.
-const CLAIM_LAG_DAYS = 14;
-const PDC_TOLERANCE = 3;
+// confirmed on the phone still has to show up in claims. Reconciliation is
+// about that pickup: a measure with no confirmed pickup has nothing to match.
+export const CLAIM_LAG_DAYS = 14;
 
 // Most severe first; a member's row shows its worst measure.
-export const RECON_STATUSES = ['Claim reversed', 'Claim overdue', 'Awaiting claim', 'PDC mismatch', 'Matched'];
+export const RECON_STATUSES = ['Claim reversed', 'Claim overdue', 'Awaiting claim', 'Matched'];
 
 export const RECON_TONE = {
   'Claim reversed': 'error',
   'Claim overdue': 'error',
   'Awaiting claim': 'grey',
-  'PDC mismatch': 'grey',
-  'Matched': 'grey',
+  'Matched': 'success',
 };
 
-function reconcileMeasure(x) {
+export function reconcileMeasure(x) {
   const claim = x.claim || null;
   if (claim?.status === 'Reversed') {
     return { status: 'Claim reversed', detail: `${claim.rxNumber || 'Claim'} reversed ${claim.date}` };
@@ -113,10 +111,7 @@ function reconcileMeasure(x) {
       detail: `Pickup ${x.pickupConfirmed} · no claim ${waited}d`,
     };
   }
-  if (x.pdc != null && x.calcPdc != null && Math.abs(x.pdc - x.calcPdc) >= PDC_TOLERANCE) {
-    return { status: 'PDC mismatch', detail: `Plan ${x.pdc}% vs claims ${x.calcPdc}%` };
-  }
-  if (claimAt != null) return { status: 'Matched', detail: `Claim paid ${claim.date}` };
+  if (pickup != null && claimAt != null) return { status: 'Matched', detail: `Claim paid ${claim.date}` };
   return null;
 }
 
@@ -146,13 +141,14 @@ export const GAP_STATUS_TONE = {
   'Closed-Data': 'grey',
 };
 
-// Sub-status (second line), most urgent first.
+// Sub-status (second line): a fixed list of short labels, most urgent first.
 export const MEASURE_STATUSES = [
-  'Reopened', 'At risk', 'Pending pickup', 'Needs monitoring', 'Pickup confirmed', 'Safe',
-  'Already adherent', '1 fill to invincible', 'Excluded',
+  'Reopened', 'Refill overdue', 'Low PDC', 'Pending pickup', 'Refill due', 'On track', 'No fill data',
+  'Picked up', 'Safe', 'Claim matched', 'Adherent', '1 fill left', 'Excluded',
 ];
 // The only sub-statuses that call for action; the rest read as plain text.
-export const URGENT_SUB_STATUSES = new Set(['Reopened', 'At risk']);
+export const URGENT_SUB_STATUSES = new Set(['Reopened', 'Refill overdue', 'Low PDC']);
+const REFILL_DUE_DAYS = 14;
 
 // Latest pharmacy-verification answers for one measure, if any.
 export function latestVerification(callHistory, code) {
@@ -175,7 +171,7 @@ function measureSubStatus(x, callHistory) {
     if (since >= REVERSAL_WINDOW_DAYS) {
       return { label: 'Safe', detail: `Picked up ${x.pickupConfirmed}, no reversal after ${REVERSAL_WINDOW_DAYS} days · reopens ${reopensOn}`, reopensOn };
     }
-    return { label: 'Pickup confirmed', detail: `Watching for a reversal until ${addDaysMdy(x.pickupConfirmed, REVERSAL_WINDOW_DAYS)} · reopens ${reopensOn}`, reopensOn };
+    return { label: 'Picked up', detail: `Watching for a reversal until ${addDaysMdy(x.pickupConfirmed, REVERSAL_WINDOW_DAYS)} · reopens ${reopensOn}`, reopensOn };
   }
   const ver = latestVerification(callHistory, x.code);
   if (x.pendingPickupSince && (pickup == null || parseMdy(x.pendingPickupSince) > pickup)) {
@@ -184,10 +180,14 @@ function measureSubStatus(x, callHistory) {
   if (ver?.items.some(i => i.refilled && !i.pickedUp)) {
     return { label: 'Pending pickup', detail: `Filled but on the pharmacy shelf as of ${ver.entry.date}` };
   }
-  if (fillDueTone(x.nextFillDue) === 'error' || (x.pdc != null && x.pdc < 80)) {
-    return { label: 'At risk', detail: x.nextFillDue && daysFromToday(x.nextFillDue) < 0 ? `Next fill ${-daysFromToday(x.nextFillDue)}d overdue` : `PDC ${x.pdc}% is below 80%` };
+  if (fillDueTone(x.nextFillDue) === 'error') {
+    return { label: 'Refill overdue', detail: `Next fill ${-daysFromToday(x.nextFillDue)}d overdue` };
   }
-  return { label: 'Needs monitoring', detail: x.nextFillDue ? `Next fill due ${x.nextFillDue}` : 'No fill date on file' };
+  if (x.pdc != null && x.pdc < 80) return { label: 'Low PDC', detail: `PDC ${x.pdc}% is below 80%` };
+  if (!x.nextFillDue) return { label: 'No fill data', detail: 'No fill date on file' };
+  const due = daysFromToday(x.nextFillDue);
+  if (due <= REFILL_DUE_DAYS) return { label: 'Refill due', detail: `Next fill due ${x.nextFillDue} (${due === 0 ? 'today' : `in ${due}d`})` };
+  return { label: 'On track', detail: `Next fill due ${x.nextFillDue}` };
 }
 
 // A measure counts as worked once outreach, a verification call or a barrier
@@ -201,18 +201,69 @@ function workedThisCycle(x, member) {
 }
 
 // Gap status + sub-status for one measure:
-//   Completed   — pickup confirmed in Fold (sub: Pickup confirmed / Safe)
-//   Closed-Data — closed by plan / claims data (Excluded, Already adherent,
-//                 1 fill to invincible)
+//   Closed-Data — closed by plan / claims data (Claim matched, Excluded,
+//                 Adherent, 1 fill left)
+//   Completed   — pickup confirmed in Fold (sub: Picked up / Safe)
 //   In Progress — worked this fill cycle
 //   Open        — not worked yet
+// A status someone set by hand on the gap (`statusManual`) wins.
 export function measureStatus(x, member) {
+  const auto = autoMeasureStatus(x, member);
+  return x.statusManual && x.status ? { ...auto, gap: x.status, manual: true } : auto;
+}
+
+function autoMeasureStatus(x, member) {
   const sub = measureSubStatus(x, member?.callHistory);
   if (sub.label === 'Excluded') return { gap: 'Closed-Data', ...sub };
-  if (sub.label === 'Pickup confirmed' || sub.label === 'Safe') return { gap: 'Completed', ...sub };
-  if (x.oneFillToInvincible) return { gap: 'Closed-Data', label: '1 fill to invincible', detail: 'Plan file: one more fill guarantees 80% PDC for the year' };
-  if (x.projectedStatus === 'Already adherent') return { gap: 'Closed-Data', label: 'Already adherent', detail: 'Plan file: projected adherent for the year' };
+  if (reconcileMeasure(x)?.status === 'Matched') {
+    return { gap: 'Closed-Data', label: 'Claim matched', detail: `Pickup ${x.pickupConfirmed} matched by claim ${x.claim.date}` };
+  }
+  if (sub.label === 'Picked up' || sub.label === 'Safe') return { gap: 'Completed', ...sub };
+  if (x.oneFillToInvincible) return { gap: 'Closed-Data', label: '1 fill left', detail: 'Plan file: one more fill guarantees 80% PDC for the year' };
+  if (x.projectedStatus === 'Already adherent') return { gap: 'Closed-Data', label: 'Adherent', detail: 'Plan file: projected adherent for the year' };
   return { gap: member && workedThisCycle(x, member) ? 'In Progress' : 'Open', ...sub };
+}
+
+export const CLOSED_GAPS = new Set(['Completed', 'Closed-Data']);
+
+// Gap start date: from the plan file when it sends one, otherwise the first
+// fill of the measure year.
+export function gapStartDate(x) {
+  if (x.startDate) return x.startDate;
+  const year = (x.failDate || '').slice(6);
+  const fills = (x.medications || []).flatMap(d => (d.refills || []).map(r => r.date)).filter(d => d?.endsWith(year));
+  return fills.toSorted((a, b) => parseMdy(a) - parseMdy(b))[0] || null;
+}
+
+// At-a-glance progress across the member's pharmacy gaps.
+export const PROGRESS_LEVELS = ['Not started', 'In progress', 'Partially complete', 'Complete'];
+export function gapProgress(statuses) {
+  const gaps = Object.values(statuses).map(s => s.gap);
+  const closed = gaps.filter(g => CLOSED_GAPS.has(g)).length;
+  const label = !gaps.length || closed === gaps.length ? 'Complete'
+    : closed > 0 ? 'Partially complete'
+    : gaps.some(g => g === 'In Progress') ? 'In progress'
+    : 'Not started';
+  return { label, closed, total: gaps.length };
+}
+
+// Sources send priority as P1–P3 or High/Medium/Low; the worklist always
+// shows P1–P3 so rows compare at a glance. Derived when the source has none.
+const SOURCE_PRIORITY = { P1: 'P1', High: 'P1', P2: 'P2', Medium: 'P2', P3: 'P3', Low: 'P3' };
+const PRIORITY_RANKS = { P1: 0, P2: 1, P3: 2 };
+export const priorityRank = (p) => PRIORITY_RANKS[p] ?? 3;
+
+export const otherGapsCountBucket = (n) => (n >= 3 ? '3+' : String(n));
+
+// Fail-date countdown buckets for the Days Left filter (the column is gone).
+export function daysLeftBucket(mdy) {
+  const d = daysFromToday(mdy);
+  if (d == null) return 'No fail date';
+  if (d < 0) return 'Past fail date';
+  if (d <= 14) return '0–14 days';
+  if (d <= 30) return '15–30 days';
+  if (d <= 60) return '31–60 days';
+  return '60+ days';
 }
 
 // Member-level gap status rolled up from its measures.
@@ -253,12 +304,21 @@ export function enrichPharmacyMember(m) {
   const recon = worstRecon(m.measures);
   const outreach = outreachSummary(m.callHistory);
   const measureCodes = MEASURE_ORDER.filter(c => (m.measures || []).some(x => x.code === c));
+  const gaps = measureCodes.map(code => {
+    const x = m.measures.find(y => y.code === code);
+    return { ...x, startDate: gapStartDate(x), status: statuses[code], recon: reconcileMeasure(x) };
+  });
   return {
     ...m,
     urgent,
     urgentOpen,
     measureCodes,
-    priority: urgentOpen ? derivePriority(urgent) : 'P3',
+    gaps,
+    progress: gapProgress(statuses),
+    otherCareGaps: m.otherCareGaps || [],
+    otherCareGapsCount: (m.otherCareGaps || []).length,
+    priority: SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3'),
+    priorityRank: priorityRank(SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3')),
     pdc: urgent?.pdc ?? null,
     failDate: urgent?.failDate ?? null,
     failDateSort: parseMdy(urgent?.failDate),
@@ -271,9 +331,47 @@ export function enrichPharmacyMember(m) {
     outreach,
     outreachSort: parseMdy(outreach?.date),
     measureStatuses: statuses,
+    progressRank: PROGRESS_LEVELS.indexOf(gapProgress(statuses).label),
     // Rolled up from the measures unless someone set it by hand.
     status: m.statusManual ? m.status : rollupGapStatus(statuses),
     subStatus: urgent ? { ...statuses[urgent.code], code: urgent.code } : null,
     followUpDueSort: parseMdy(m.followUpDue),
   };
+}
+
+// ── Snapshot: prescribers and pharmacies from the member's medications ──
+export function prescribersOf(member) {
+  const byName = new Map();
+  for (const x of member?.measures || []) {
+    for (const d of x.medications || []) {
+      const p = d.prescriber;
+      if (!p?.name) continue;
+      const cur = byName.get(p.name) || { ...p, drugs: [] };
+      cur.drugs.push(medLabel(d));
+      byName.set(p.name, cur);
+    }
+  }
+  return [...byName.values()];
+}
+
+// Every pharmacy in the fill history, newest first. Contact details come from
+// the medications' pharmacy records; fills give the count and last date.
+export function pharmaciesUsed(member) {
+  const contacts = new Map();
+  for (const p of [member?.pharmacy, ...(member?.measures || []).flatMap(x => (x.medications || []).map(d => d.pharmacy))]) {
+    if (p?.name && !contacts.has(p.name)) contacts.set(p.name, p);
+  }
+  const used = new Map();
+  for (const x of member?.measures || []) {
+    for (const d of x.medications || []) {
+      for (const r of d.refills || []) {
+        if (!r.pharmacy) continue;
+        const cur = used.get(r.pharmacy) || { ...(contacts.get(r.pharmacy) || { name: r.pharmacy }), fills: 0, lastFill: null };
+        cur.fills += 1;
+        if (!cur.lastFill || parseMdy(r.date) > parseMdy(cur.lastFill)) cur.lastFill = r.date;
+        used.set(r.pharmacy, cur);
+      }
+    }
+  }
+  return [...used.values()].toSorted((a, b) => parseMdy(b.lastFill) - parseMdy(a.lastFill));
 }

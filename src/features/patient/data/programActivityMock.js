@@ -437,12 +437,13 @@ const APE_STEPS = [
 
 // Pharmacy (Med Adherence, SUPD, Medication Safety). "Letters/eFax" and
 // "Tasks" reuse the Letters and Program Related Task views.
+// Prescriber and pharmacy details sit in Snapshot, not steps of their own.
 const PHARM_STEPS = [
+  { id: 'pharm-snapshot', name: 'Snapshot' },
   { id: 'pharm-outreach', name: 'Outreach', mandatory: true },
   { id: 'pharm-medreview', name: 'Medication Review', mandatory: true },
   { id: 'pharm-verify', name: 'Pharmacy Verification', mandatory: true },
-  { id: 'pharm-barrier', name: 'Barrier & Intervention' },
-  { id: 'pharm-prescriber', name: 'Prescriber Coordination' },
+  { id: 'pharm-barrier', name: 'Barriers & Interventions' },
   { id: 'pharm-letters', name: 'Letters/eFax' },
   { id: 'pharm-tasks', name: 'Tasks' },
   { id: 'pharm-handoff', name: 'Handoff / Escalation' },

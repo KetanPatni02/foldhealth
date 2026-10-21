@@ -13,33 +13,56 @@ import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { ColumnsHeaderButton } from '../../components/WorklistColumns/ColumnsHeaderButton';
 import { useWorklistColumns } from '../../components/WorklistColumns/useWorklistColumns';
 import { PharmacyWorklistRow } from './PharmacyWorklistRow';
+import { PharmacyGapDetailDrawer } from './PharmacyGapDetailDrawer';
 import { PHARMACY_MIDDLE_COLUMNS, PHARMACY_HIDDEN_BY_DEFAULT } from './pharmacyColumns';
-import { enrichPharmacyMember, measureDrugs } from './pharmacyWorklist.utils';
+import { OPEN_GAPS, daysFromToday, daysLeftBucket, enrichPharmacyMember, measureDrugs, otherGapsCountBucket } from './pharmacyWorklist.utils';
 import styles from './PharmacyWorklistTable.module.css';
 
-// Health plan and book of business are filters, not separate spaces.
+// Health plan and book of business are filters, not separate spaces. Days
+// Left and Overdue stay filters though their columns are gone: fewer
+// columns, never fewer filters.
 const FILTER_KEYS = [
   { key: 'priority',       label: 'Priority',         primary: true },
-  { key: 'measure',        label: 'Measure',          primary: true },
-  { key: 'measureStatus',  label: 'Gap Sub-Status',   primary: true },
-  { key: 'status',         label: 'Status',           primary: true },
+  { key: 'gap',            label: 'Pharmacy Gap',     primary: true },
+  { key: 'gapStatus',      label: 'Gap Status',       primary: true },
+  { key: 'progress',       label: 'Progress',         primary: true },
+  { key: 'daysLeft',       label: 'Days Left',        primary: true },
+  { key: 'overdue',        label: 'Overdue',          primary: true },
   { key: 'claimRecon',     label: 'Claim Reconciliation', primary: true },
   { key: 'assignee',       label: 'Assigned to',      primary: true },
-  { key: 'healthPlan',     label: 'Health Plan',      primary: true },
-  { key: 'bookOfBusiness', label: 'Book of Business', primary: true },
+  { key: 'subStatus',      label: 'Gap Sub-Status',   primary: false },
+  { key: 'otherGapsCount', label: 'Other Care Gaps (count)', primary: false },
+  { key: 'otherGap',       label: 'Other Care Gap',   primary: false },
+  { key: 'healthPlan',     label: 'Health Plan',      primary: false },
+  { key: 'bookOfBusiness', label: 'Book of Business', primary: false },
   { key: 'ipa',            label: 'IPA',              primary: false },
   { key: 'barrier',        label: 'Barrier',          primary: false },
   { key: 'language',       label: 'Language',         primary: false },
 ];
 
-// Multi-valued buckets (a member has several measures) return arrays.
+const openGaps = (m) => m.gaps.filter(g => OPEN_GAPS.has(g.status.gap));
+const isPast = (mdy) => { const d = daysFromToday(mdy); return d != null && d < 0; };
+function overdueTags(m) {
+  const tags = [];
+  if (openGaps(m).some(g => isPast(g.nextFillDue))) tags.push('Refill overdue');
+  if (m.gaps.some(g => g.recon?.status === 'Claim overdue')) tags.push('Claim overdue');
+  if (isPast(m.followUpDue)) tags.push('Follow-up overdue');
+  return tags.length ? tags : ['Not overdue'];
+}
+
+// Multi-valued buckets (a member has several gaps) return arrays.
 const BUCKET_FN = {
   priority:       (m) => m.priority,
-  measure:        (m) => m.measureCodes,
-  measureStatus:  (m) => [...new Set(Object.values(m.measureStatuses).map(s => s.label))],
-  status:         (m) => m.status || 'Open',
+  gap:            (m) => m.measureCodes,
+  gapStatus:      (m) => [...new Set(m.gaps.map(g => g.status.gap))],
+  subStatus:      (m) => [...new Set(m.gaps.map(g => g.status.label))],
+  progress:       (m) => m.progress.label,
+  daysLeft:       (m) => [...new Set(openGaps(m).map(g => daysLeftBucket(g.failDate)))],
+  overdue:        overdueTags,
   claimRecon:     (m) => m.reconStatuses,
   assignee:       (m) => m.assigneeName || 'Unassigned',
+  otherGapsCount: (m) => otherGapsCountBucket(m.otherCareGapsCount),
+  otherGap:       (m) => m.otherCareGaps.map(g => g.code),
   healthPlan:     (m) => m.healthPlan || null,
   bookOfBusiness: (m) => m.bookOfBusiness || null,
   ipa:            (m) => m.ipa || null,
@@ -54,9 +77,8 @@ const KEY_ORDER = Object.fromEntries(FILTER_KEYS.map((f, i) => [f.key, i]));
 
 // Default order is triage order: priority, then the soonest fail date.
 // A header sort overrides it; clearing the sort returns here.
-const PRIORITY_RANK = { P1: 0, P2: 1, P3: 2 };
 const byTriage = (a, b) =>
-  (PRIORITY_RANK[a.priority] ?? 3) - (PRIORITY_RANK[b.priority] ?? 3)
+  a.priorityRank - b.priorityRank
   || (a.failDateSort ?? Infinity) - (b.failDateSort ?? Infinity);
 
 const thStyle = {
@@ -79,6 +101,7 @@ export function PharmacyWorklistTable() {
   const loading = useAppStore(s => s.pharmacyWorklistLoading);
   const loadError = useAppStore(s => s.pharmacyWorklistError);
   const fetchMembers = useAppStore(s => s.fetchPharmacyWorklistMembers);
+  const ensureClaimFollowUpTasks = useAppStore(s => s.ensureClaimFollowUpTasks);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
   const showToast = useAppStore(s => s.showToast);
   const filters = useAppStore(s => s.pharmacyFilters);
@@ -93,6 +116,8 @@ export function PharmacyWorklistTable() {
   const [perPage, setPerPage] = useState(10);
 
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
+  // Overdue claims get a pharmacy follow-up task automatically.
+  useEffect(() => { if (members.length) ensureClaimFollowUpTasks(); }, [members, ensureClaimFollowUpTasks]);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
 
   const enriched = useMemo(() => members.map(enrichPharmacyMember).toSorted(byTriage), [members]);
@@ -283,6 +308,8 @@ export function PharmacyWorklistTable() {
           </div>
         )}
       </div>
+
+      <PharmacyGapDetailDrawer />
 
       <Pagination
         currentPage={page}

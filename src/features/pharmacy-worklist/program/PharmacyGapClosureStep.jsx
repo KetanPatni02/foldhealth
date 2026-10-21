@@ -62,7 +62,7 @@ export function PharmacyGapClosureStep() {
         const pickup = parseMdy(x.pickupConfirmed);
         // Fold closes on pickup; the plan only sees it once the claim lands,
         // and its report lags 1–4 weeks — flag the gap between the two.
-        const planBehind = (st.label === 'Safe' || st.label === 'Pickup confirmed')
+        const planBehind = (st.label === 'Safe' || st.label === 'Picked up')
           && (x.claim?.status !== 'Paid' || parseMdy(x.claim.date) < pickup);
         const cycles = closureCycles(member, x);
         const failIn = daysFromToday(x.failDate);
@@ -93,7 +93,7 @@ export function PharmacyGapClosureStep() {
             <div className={styles.signals}>
               <span className={styles.signalsLabel}>Plan signals</span>
               {x.projectedStatus && <Badge size="S" tone={x.projectedStatus === 'Already adherent' ? 'success' : 'warning'} label={x.projectedStatus} />}
-              {x.oneFillToInvincible && <Badge size="S" tone="success" label="1 fill to invincible" />}
+              {x.oneFillToInvincible && <Badge size="S" tone="success" label="1 fill left" />}
               {x.excluded && <Badge size="S" tone="grey" label="Excluded" />}
               {x.priorYearNonCompliant && <Badge size="S" tone="error" label="Prior-year non-compliant" />}
               {!x.projectedStatus && !x.oneFillToInvincible && !x.excluded && !x.priorYearNonCompliant && <span className={styles.muted}>None reported</span>}

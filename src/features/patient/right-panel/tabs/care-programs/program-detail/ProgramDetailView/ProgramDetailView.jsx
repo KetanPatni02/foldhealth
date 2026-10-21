@@ -31,6 +31,7 @@ import { PharmacyVerificationStep } from '../../../../../../pharmacy-worklist/pr
 import { PharmacyBarrierStep } from '../../../../../../pharmacy-worklist/program/PharmacyBarrierStep';
 import { PharmacyGapClosureStep } from '../../../../../../pharmacy-worklist/program/PharmacyGapClosureStep';
 import { PharmacyActivityLogStep } from '../../../../../../pharmacy-worklist/program/PharmacyActivityLog';
+import { PharmacySnapshotStep } from '../../../../../../pharmacy-worklist/program/PharmacySnapshotStep';
 import { useProgramDetailView } from './useProgramDetailView';
 import { StepItem, SectionHeader, StepPlaceholder } from './ProgramDetailViewParts';
 import { ProgramDetailViewHeader } from './ProgramDetailViewHeader';
@@ -99,7 +100,8 @@ export function ProgramDetailView({ program, onClose, startAtFirstStep = false, 
     }
     if (isPharmacy && stepFlags.isMedReconStep) return <PharmacyMedicationReview />;
     if (isPharmacy && v.stepName === 'Pharmacy Verification') return <PharmacyVerificationStep program={program} />;
-    if (isPharmacy && v.stepName === 'Barrier & Intervention') return <PharmacyBarrierStep />;
+    if (isPharmacy && v.stepName === 'Snapshot') return <PharmacySnapshotStep />;
+    if (isPharmacy && v.stepName === 'Barriers & Interventions') return <PharmacyBarrierStep />;
     if (isPharmacy && v.stepName === 'Gap Closure / Outcome') return <PharmacyGapClosureStep />;
     if (isPharmacy && v.stepName === 'Activity Log') return <PharmacyActivityLogStep />;
     if (stepFlags.isOutreachStep) {
