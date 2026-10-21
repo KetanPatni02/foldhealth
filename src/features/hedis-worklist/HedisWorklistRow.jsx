@@ -116,7 +116,15 @@ export const HEDIS_MIDDLE_COLUMNS = [
       <div className={styles.gapItems}>
         {(ctx.visibleGaps || []).map((g, i) => (
           <div key={`${g.code}-${i}`} className={styles.gapItem}>
-            {/* Hover shows the measure's full name; the code alone is hard to read. */}
+            {/* Hover shows the measure's full name; the code alone is hard to read.
+                A superseded gap (closed, then re-added) is history: the drawer
+                and every gap action work on the active gap with that code, so
+                its pill is a label, not a button. */}
+            {g.supersededAt ? (
+              <Tooltip label={`${MEASURE_NAMES[g.code] || g.code} · previous gap, re-added ${g.supersededAt}`}>
+                <Badge size="M" variant="compliance-na" label={g.code} />
+              </Tooltip>
+            ) : (
             <Tooltip label={MEASURE_NAMES[g.code] || g.code}>
               <button
                 type="button"
@@ -127,6 +135,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                 <Badge size="M" variant="compliance-na" label={g.code} />
               </button>
             </Tooltip>
+            )}
           </div>
         ))}
         {ctx.extraCount > 0 && (
@@ -189,7 +198,9 @@ export const HEDIS_MIDDLE_COLUMNS = [
             : (member.assigneeInitials
                 || assignee?.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join(''));
           const handlePick = (u) => {
-            if (!ctx.updateGapAssignee || !ctx.memberId) return;
+            // A superseded gap's assignee is history; updateGapAssignee acts on
+            // the active gap with this code.
+            if (g.supersededAt || !ctx.updateGapAssignee || !ctx.memberId) return;
             ctx.updateGapAssignee(ctx.memberId, g.code, u?.name || null);
           };
           return (
@@ -202,6 +213,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                   users={ctx.assigneePickerUsers}
                   pickerTitle="Change assignee"
                   onSelect={handlePick}
+                  disabled={!!g.supersededAt}
                 />
               ) : (
                 <AssigneeChange
@@ -211,6 +223,7 @@ export const HEDIS_MIDDLE_COLUMNS = [
                   users={ctx.assigneePickerUsers}
                   pickerTitle="Assign to"
                   onSelect={handlePick}
+                  disabled={!!g.supersededAt}
                 />
               )}
             </div>

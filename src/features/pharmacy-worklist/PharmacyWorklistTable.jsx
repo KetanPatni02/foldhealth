@@ -15,7 +15,8 @@ import { useWorklistColumns } from '../../components/WorklistColumns/useWorklist
 import { PharmacyWorklistRow } from './PharmacyWorklistRow';
 import { PharmacyGapDetailDrawer } from './PharmacyGapDetailDrawer';
 import { PHARMACY_MIDDLE_COLUMNS, PHARMACY_HIDDEN_BY_DEFAULT } from './pharmacyColumns';
-import { OPEN_GAPS, daysFromToday, daysLeftBucket, enrichPharmacyMember, measureDrugs, otherGapsCountBucket } from './pharmacyWorklist.utils';
+import { OPEN_GAPS, daysFromToday, daysLeftBucket, enrichPharmacyMember, measureDrugs, normMemberId, otherGapsCountBucket } from './pharmacyWorklist.utils';
+import { MEASURE_NAMES as HEDIS_MEASURE_NAMES } from '../hedis-worklist/CareGapDetailDrawer.utils';
 import styles from './PharmacyWorklistTable.module.css';
 
 // Health plan and book of business are filters, not separate spaces. Days
@@ -103,6 +104,8 @@ export function PharmacyWorklistTable() {
   const fetchMembers = useAppStore(s => s.fetchPharmacyWorklistMembers);
   const ensureClaimFollowUpTasks = useAppStore(s => s.ensureClaimFollowUpTasks);
   const fetchPlatformUsers = useAppStore(s => s.fetchPlatformUsers);
+  const hedisMembers = useAppStore(s => s.hedisMembers);
+  const fetchHedisMembers = useAppStore(s => s.fetchHedisMembers);
   const showToast = useAppStore(s => s.showToast);
   const filters = useAppStore(s => s.pharmacyFilters);
   const setFilter = useAppStore(s => s.setPharmacyFilter);
@@ -119,8 +122,18 @@ export function PharmacyWorklistTable() {
   // Overdue claims get a pharmacy follow-up task automatically.
   useEffect(() => { if (members.length) ensureClaimFollowUpTasks(); }, [members, ensureClaimFollowUpTasks]);
   useEffect(() => { fetchPlatformUsers(); }, [fetchPlatformUsers]);
+  // Other Care Gaps come from the member's live HEDIS gaps (one patient, one
+  // story); superseded gaps were closed and re-added, so they don't count.
+  useEffect(() => { fetchHedisMembers(); }, [fetchHedisMembers]);
+  const hedisGapsByMember = useMemo(() => new Map((hedisMembers || []).map(h => [
+    normMemberId(h.memberId || h.id),
+    (h.gaps || []).filter(g => !g.supersededAt).map(g => ({ code: g.code, name: HEDIS_MEASURE_NAMES[g.code], status: g.status })),
+  ])), [hedisMembers]);
 
-  const enriched = useMemo(() => members.map(enrichPharmacyMember).toSorted(byTriage), [members]);
+  const enriched = useMemo(
+    () => members.map(m => enrichPharmacyMember(m, { hedisGapsByMember })).toSorted(byTriage),
+    [members, hedisGapsByMember],
+  );
 
   const filterOptions = useMemo(() => {
     const opts = {};

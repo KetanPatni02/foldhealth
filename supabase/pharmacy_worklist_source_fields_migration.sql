@@ -2,9 +2,11 @@
 -- HEDIS-style worklist.
 --   source_priority  priority in the source's own format (P1/P2/P3 or
 --                    High/Medium/Low); null means the worklist derives it.
---   other_care_gaps  the member's non-pharmacy care gaps:
---                    [{ code, name, status }]. Shown as a count with the list
---                    on hover, and filterable by count and by gap.
+--   other_care_gaps  the member's non-pharmacy care gaps as the plan file
+--                    sent them: [{ code, name, status }]. Only a fallback:
+--                    when the member has a HEDIS record (matched by Fold ID),
+--                    the worklist shows those live gaps instead, so a gap
+--                    closed on the HEDIS worklist is closed here too.
 --
 -- Per-gap status and start date live in the existing `measures` jsonb
 -- (status / statusManual / startDate / claimFollowUpTask), so they need no

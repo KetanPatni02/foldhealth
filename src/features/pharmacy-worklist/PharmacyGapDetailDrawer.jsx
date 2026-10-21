@@ -58,7 +58,8 @@ const ago = (mdy) => {
 export function PharmacyGapDetailDrawer() {
   const target = useAppStore(s => s.pharmacyGapDrawer);
   const row = useAppStore(s => (target ? s.pharmacyWorklistMembers.find(m => m.id === target.memberId) : null));
-  if (!target || !row) return null;
+  // A member with no pharmacy measures has no gap to show.
+  if (!target || !row || !row.measures?.length) return null;
   // Keyed by member: the outreach state reads the member's log once per mount.
   return <PharmacyGapDrawerBody key={row.id} target={target} row={row} />;
 }
@@ -84,7 +85,9 @@ function PharmacyGapDrawerBody({ target, row }) {
   // (pickups move fill dates, outcomes feed Barriers & Interventions).
   const outreach = usePharmacyOutreachTab(row, { patientId: row.patientId || row.id, memberName: row.name });
 
-  const idx = Math.max(0, m.gaps.findIndex(g => g.code === target.code));
+  // Unknown code (e.g. a stale link): fall back to the row's focus gap.
+  const found = m.gaps.findIndex(g => g.code === target.code);
+  const idx = found >= 0 ? found : Math.max(0, m.gaps.findIndex(g => g.code === m.urgent?.code));
   const gap = m.gaps[idx];
   const closeWorkspace = () => {
     if (workspace === 'outreach') outreach.handleDiscard();

@@ -76,7 +76,8 @@ export function createPharmacyWorklistSlice(set, get) {
         const a = typeof activity === 'function' ? activity(_changes || []) : activity;
         next = {
           ...changed,
-          activityLog: [{ at: new Date().toISOString(), actor: get().currentUserProfile?.name || 'You', ...a }, ...(m.activityLog || [])],
+          // A null activity records the change without a log entry.
+          activityLog: a ? [{ at: new Date().toISOString(), actor: get().currentUserProfile?.name || 'You', ...a }, ...(m.activityLog || [])] : (m.activityLog || []),
         };
         return next;
       }),
@@ -91,6 +92,8 @@ export function createPharmacyWorklistSlice(set, get) {
     pharmacyWorklistMembers: [],
     pharmacyWorklistLoading: false,
     pharmacyWorklistError: null,
+    // True while the rows are the local dev mock, not Supabase data.
+    pharmacyWorklistIsMock: false,
     pharmacyWorklistDidFetch: false,
     fetchPharmacyWorklistMembers: async () => {
       if (get().pharmacyWorklistDidFetch) return;
@@ -113,13 +116,13 @@ export function createPharmacyWorklistSlice(set, get) {
       if (!data?.length) {
         if (import.meta.env.DEV && !get().pharmacyWorklistMembers.length) {
           const { PHARMACY_WORKLIST_MEMBERS } = await import('../../features/pharmacy-worklist/data/mock');
-          set({ pharmacyWorklistMembers: PHARMACY_WORKLIST_MEMBERS, pharmacyWorklistLoading: false });
+          set({ pharmacyWorklistMembers: PHARMACY_WORKLIST_MEMBERS, pharmacyWorklistLoading: false, pharmacyWorklistIsMock: true });
           return;
         }
         set({ pharmacyWorklistLoading: false });
         return;
       }
-      set({ pharmacyWorklistMembers: data.map(rowToMember), pharmacyWorklistLoading: false });
+      set({ pharmacyWorklistMembers: data.map(rowToMember), pharmacyWorklistLoading: false, pharmacyWorklistIsMock: false });
     },
 
     // Click-to-dial on a prescriber or pharmacy number (Snapshot).
@@ -147,14 +150,21 @@ export function createPharmacyWorklistSlice(set, get) {
     // A confirmed pickup with no claim past the claim lag needs a call to the
     // pharmacy. Create that follow-up task once per pickup; the marker on the
     // measure keeps it from being created again.
+    // Runs when the worklist loads, in each viewer's browser; the tasks
+    // table's unique source_key keeps it to one task per pickup. Never for
+    // mock rows: those patients don't exist, but the tasks would.
     ensureClaimFollowUpTasks: async () => {
+      if (get().pharmacyWorklistIsMock) return;
       for (const row of get().pharmacyWorklistMembers) {
         for (const x of row.measures || []) {
           if (reconcileMeasure(x)?.status !== 'Claim overdue') continue;
           const key = `pharm-claim-overdue-${row.id}-${x.code}-${x.pickupConfirmed}`;
           if (x.claimFollowUpTask?.key === key || claimTasksTried.has(key)) continue;
           claimTasksTried.add(key);
-          const created = await get().createTask({
+          // Another viewer may have created it already; reuse theirs instead
+          // of racing the unique index.
+          const { data: existing } = await supabase.from('tasks').select('id').eq('source_key', key).maybeSingle();
+          const created = existing || await get().createTask({
             name: `Follow up with pharmacy: ${x.code} claim overdue`,
             status: 'pending', priority: 'high', due_date: todayMdy(),
             assigned_to: row.assigneeName || null, assigned_to_id: row.assigneeId || null, member: row.name,
@@ -167,7 +177,7 @@ export function createPharmacyWorklistSlice(set, get) {
           update(row.id, m => ({
             ...m,
             measures: m.measures.map(y => (y.code === x.code ? { ...y, claimFollowUpTask: { key, taskId: created.id, createdAt: new Date().toISOString() } } : y)),
-          }), ['measures'], { t: 'system', title: `Pharmacy follow-up task created (${x.code})`, note: 'Claim overdue after a confirmed pickup' });
+          }), ['measures'], existing ? null : { t: 'system', title: `Pharmacy follow-up task created (${x.code})`, note: 'Claim overdue after a confirmed pickup' });
         }
       }
     },
@@ -278,7 +288,6 @@ export function createPharmacyWorklistSlice(set, get) {
     // The gap a user opened from the worklist; the program's Medication
     // Review puts it first. { memberId, code }
     pharmacyFocusGap: null,
-    setPharmacyFocusGap: (memberId, code) => set({ pharmacyFocusGap: memberId ? { memberId, code } : null }),
 
     // Pharmacy Gap Details drawer (worklist): which member and gap it shows.
     pharmacyGapDrawer: null,

@@ -215,10 +215,13 @@ export function measureStatus(x, member) {
 function autoMeasureStatus(x, member) {
   const sub = measureSubStatus(x, member?.callHistory);
   if (sub.label === 'Excluded') return { gap: 'Closed-Data', ...sub };
-  if (reconcileMeasure(x)?.status === 'Matched') {
-    return { gap: 'Closed-Data', label: 'Claim matched', detail: `Pickup ${x.pickupConfirmed} matched by claim ${x.claim.date}` };
+  // A pickup only covers its fill: once the supply runs out the gap reopens,
+  // whether or not the claim matched (sub-status is no longer Picked up / Safe).
+  const covered = sub.label === 'Picked up' || sub.label === 'Safe';
+  if (covered && reconcileMeasure(x)?.status === 'Matched') {
+    return { gap: 'Closed-Data', label: 'Claim matched', detail: `Pickup ${x.pickupConfirmed} matched by claim ${x.claim.date} · reopens ${sub.reopensOn}`, reopensOn: sub.reopensOn };
   }
-  if (sub.label === 'Picked up' || sub.label === 'Safe') return { gap: 'Completed', ...sub };
+  if (covered) return { gap: 'Completed', ...sub };
   if (x.oneFillToInvincible) return { gap: 'Closed-Data', label: '1 fill left', detail: 'Plan file: one more fill guarantees 80% PDC for the year' };
   if (x.projectedStatus === 'Already adherent') return { gap: 'Closed-Data', label: 'Adherent', detail: 'Plan file: projected adherent for the year' };
   return { gap: member && workedThisCycle(x, member) ? 'In Progress' : 'Open', ...sub };
@@ -295,7 +298,13 @@ export function outreachSummary(callHistory) {
   };
 }
 
-export function enrichPharmacyMember(m) {
+// Fold ID as the cross-worklist key: '#' stripped, trimmed, lowercased.
+export const normMemberId = (v) => String(v ?? '').replace(/^#/, '').trim().toLowerCase();
+
+// `hedisGapsByMember` (normMemberId -> [{ code, name, status }]) supplies the
+// member's live HEDIS gaps for Other Care Gaps; the stored `otherCareGaps`
+// (plan file) is only the fallback for members with no HEDIS record.
+export function enrichPharmacyMember(m, { hedisGapsByMember } = {}) {
   const statuses = Object.fromEntries((m.measures || []).map(x => [x.code, measureStatus(x, m)]));
   // One focus measure drives priority, PDC, dates and the sub-status, so the
   // row never mixes numbers from different measures.
@@ -304,9 +313,12 @@ export function enrichPharmacyMember(m) {
   const recon = worstRecon(m.measures);
   const outreach = outreachSummary(m.callHistory);
   const measureCodes = MEASURE_ORDER.filter(c => (m.measures || []).some(x => x.code === c));
+  const priority = SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3');
+  const progress = gapProgress(statuses);
+  const otherCareGaps = hedisGapsByMember?.get(normMemberId(m.memberId || m.id)) ?? m.otherCareGaps ?? [];
   const gaps = measureCodes.map(code => {
     const x = m.measures.find(y => y.code === code);
-    return { ...x, startDate: gapStartDate(x), status: statuses[code], recon: reconcileMeasure(x) };
+    return { ...x, medications: x.medications || [], startDate: gapStartDate(x), status: statuses[code], recon: reconcileMeasure(x) };
   });
   return {
     ...m,
@@ -314,11 +326,11 @@ export function enrichPharmacyMember(m) {
     urgentOpen,
     measureCodes,
     gaps,
-    progress: gapProgress(statuses),
-    otherCareGaps: m.otherCareGaps || [],
-    otherCareGapsCount: (m.otherCareGaps || []).length,
-    priority: SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3'),
-    priorityRank: priorityRank(SOURCE_PRIORITY[m.sourcePriority] || (urgentOpen ? derivePriority(urgent) : 'P3')),
+    progress,
+    otherCareGaps,
+    otherCareGapsCount: otherCareGaps.length,
+    priority,
+    priorityRank: priorityRank(priority),
     pdc: urgent?.pdc ?? null,
     failDate: urgent?.failDate ?? null,
     failDateSort: parseMdy(urgent?.failDate),
@@ -331,9 +343,10 @@ export function enrichPharmacyMember(m) {
     outreach,
     outreachSort: parseMdy(outreach?.date),
     measureStatuses: statuses,
-    progressRank: PROGRESS_LEVELS.indexOf(gapProgress(statuses).label),
-    // Rolled up from the measures unless someone set it by hand.
-    status: m.statusManual ? m.status : rollupGapStatus(statuses),
+    progressRank: PROGRESS_LEVELS.indexOf(progress.label),
+    // Status is set per gap now; the member's is always the roll-up (an old
+    // member-level override has no UI left to clear it).
+    status: rollupGapStatus(statuses),
     subStatus: urgent ? { ...statuses[urgent.code], code: urgent.code } : null,
     followUpDueSort: parseMdy(m.followUpDue),
   };
