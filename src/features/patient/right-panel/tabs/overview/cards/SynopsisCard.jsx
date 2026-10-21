@@ -13,9 +13,10 @@ function escapeRegExp(s) {
 function EmphasizedText({ text, phrases }) {
   const list = (phrases || []).filter(Boolean);
   if (!list.length) return text;
+  const emphasized = new Set(list);
   const parts = text.split(new RegExp(`(${list.map(escapeRegExp).join('|')})`, 'g'));
   return parts.map((part, i) => (
-    list.includes(part) ? <strong key={i}>{part}</strong> : <Fragment key={i}>{part}</Fragment>
+    emphasized.has(part) ? <strong key={i}>{part}</strong> : <Fragment key={i}>{part}</Fragment>
   ));
 }
 
