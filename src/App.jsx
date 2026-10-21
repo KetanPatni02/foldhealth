@@ -3,9 +3,12 @@ const Analytics = lazy(() => import('@vercel/analytics/react').then(m => ({ defa
 const SpeedInsights = lazy(() => import('@vercel/speed-insights/react').then(m => ({ default: m.SpeedInsights })).catch(() => ({ default: () => null })));
 import { AppLayout } from './layouts/AppLayout';
 import { Toaster } from './components/Toast/Toast';
-import { UpdateAvailableBanner } from './components/UpdateAvailableBanner/UpdateAvailableBanner';
+import { UpdateAvailableCard } from './components/UpdateCard/UpdateCard';
 import { LoginPage } from './features/auth/LoginPage';
+import { isPendingApprovalSession, PENDING_APPROVAL_NOTICE } from './features/auth/pendingApproval';
 import { ResetPasswordPage } from './features/auth/ResetPasswordPage';
+import { UnlockAccountPage } from './features/auth/UnlockAccountPage';
+import { reportSignInSuccess, takeOAuthSignIn } from './features/auth/accountSecurity';
 import { useAppStore } from './store/useAppStore';
 import { supabase } from './lib/supabase';
 import { initRouter } from './lib/router';
@@ -23,6 +26,9 @@ const PatientCommsPage = lazy(() => import('./features/patient-portal/PatientCom
 function App() {
   const routerInit = useRef(false);
   const [session, setSession] = useState(undefined); // undefined = loading, null = unauthenticated
+  // Message handed from ResetPasswordPage to LoginPage (e.g. "awaiting approval").
+  const [loginNotice, setLoginNotice] = useState('');
+  const [signOutRequest, setSignOutRequest] = useState(0);
   const [bypassed, setBypassed] = useState(() => sessionStorage.getItem('__auth_bypass') === 'true');
   // Set when Supabase fires PASSWORD_RECOVERY OR when the URL hash carries
   // the recovery tokens directly (e.g. before supabase-js has processed
@@ -37,6 +43,8 @@ function App() {
     return /type=recovery/.test(h) || /type=signup/.test(h)
       || /token_hash=/.test(h) || h.startsWith('#/reset-password');
   });
+  const recoveryModeRef = useRef(recoveryMode);
+  useEffect(() => { recoveryModeRef.current = recoveryMode; }, [recoveryMode]);
   // Featurebase identity-verification JWT — minted server-side by the
   // featurebase-jwt Edge Function (the signing secret never reaches the
   // client). The Help popover's "Give Feedback" builds the portal SSO link
@@ -87,7 +95,21 @@ function App() {
       maybeApplyOrgDefaults(u, { setTheme: store.setTheme, setNavStyle: store.setNavStyle });
     };
 
+    // A Pending account finishing an OAuth sign-up gets a token it can't use
+    // (see pendingApproval.js). Drop it and say why. ResetPasswordPage handles
+    // its own email-confirmation case. signOut runs from an effect because
+    // awaiting supabase calls inside onAuthStateChange can deadlock supabase-js.
+    const rejectPending = (s) => {
+      if (!isPendingApprovalSession(s) || recoveryModeRef.current) return false;
+      track('auth.signup_pending_approval');
+      setLoginNotice(PENDING_APPROVAL_NOTICE);
+      setSession(null);
+      setSignOutRequest(n => n + 1);
+      return true;
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (rejectPending(s)) return;
       // Sentry/Vercel events for major auth transitions. Supabase emits
       // SIGNED_IN once after a successful login (covers password, OAuth
       // callback, and magic-link), and SIGNED_OUT on logout. PASSWORD_RECOVERY
@@ -99,9 +121,14 @@ function App() {
         useAppStore.getState().resetCarePlanFavorites();
       } else if (event === 'SIGNED_IN') {
         track('auth.session_established');
+        // Back from Google: log it in Login Activity. Deferred, because
+        // awaiting supabase inside this callback can deadlock supabase-js.
+        const provider = takeOAuthSignIn();
+        if (provider) setTimeout(() => reportSignInSuccess(provider), 0);
         applyDefaults(s?.user);
-        useAppStore.setState({ carePlanFavoritesLoaded: false, carePlanFavoritesUserId: null });
-        void useAppStore.getState().fetchCarePlanFavorites({ force: true });
+        // supabase-js also emits SIGNED_IN on tab refocus and token refresh,
+        // so no force: the fetch re-runs only when the signed-in user changed.
+        void useAppStore.getState().fetchCarePlanFavorites();
         // Invited users arrive here via the confirmation email with a
         // placeholder password. Keep them on ResetPasswordPage so they
         // can set a real one before dropping into the app.
@@ -116,18 +143,23 @@ function App() {
     });
 
     supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (rejectPending(s)) return;
       if (s?.user?.user_metadata?.invited === 'true') {
         setRecoveryMode(true);
       }
       applyDefaults(s?.user);
       setSession(s);
       if (s?.user) {
-        void useAppStore.getState().fetchCarePlanFavorites({ force: true });
+        void useAppStore.getState().fetchCarePlanFavorites();
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (signOutRequest) void supabase.auth.signOut({ scope: 'local' });
+  }, [signOutRequest]);
 
   // Initialize hash router (once)
   useEffect(() => {
@@ -151,6 +183,7 @@ function App() {
       <ResetPasswordPage
         onDone={(opts) => {
           setRecoveryMode(false);
+          if (opts?.notice) setLoginNotice(opts.notice);
           if (opts?.enterApp) {
             // Invited user just set their first password — session is
             // valid, drop them straight into the app.
@@ -158,6 +191,21 @@ function App() {
           } else {
             window.location.hash = '#/login';
           }
+        }}
+      />
+    );
+  }
+
+  // The link an administrator's unlock emails (account lockout): set a new
+  // password, then sign in. Works whether or not someone is signed in here.
+  const unlockMatch = hash.match(/^#\/unlock-account\?token=([^&#]+)/);
+  if (unlockMatch) {
+    return (
+      <UnlockAccountPage
+        token={decodeURIComponent(unlockMatch[1])}
+        onDone={(opts) => {
+          if (opts?.notice) setLoginNotice(opts.notice);
+          window.location.hash = opts?.enterApp ? '#/home' : '#/login';
         }}
       />
     );
@@ -243,7 +291,7 @@ function App() {
       }
       legacyBypass();
     };
-    return <LoginPage onBypass={handleBypass} />;
+    return <LoginPage key={loginNotice} onBypass={handleBypass} notice={loginNotice} />;
   }
 
   // Authenticated — clear login hash if present
@@ -254,7 +302,7 @@ function App() {
   // Authenticated — show app
   return (
     <Suspense fallback={null}>
-      <UpdateAvailableBanner />
+      <UpdateAvailableCard />
       <AppLayout />
       <Analytics />
       <SpeedInsights />

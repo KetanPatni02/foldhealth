@@ -17,6 +17,15 @@
 .secondary:hover {
   color: var(--neutral-400);
 }
+.subtle {
+  color: var(--neutral-400);
+  font-weight: 400;
+}
+.subtle:hover {
+  color: var(--primary-300);
+  text-decoration: underline dashed;
+  text-underline-offset: 2px;
+}
 .link:focus-visible {
   outline: 2px solid var(--primary-100);
   outline-offset: 2px;

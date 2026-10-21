@@ -1,0 +1,37 @@
+/* ItemRow: a bordered row with icon actions, inside a message. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  background: var(--neutral-0);
+}
+.leading { display: inline-flex; flex-shrink: 0; }
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-base);
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+.muted { color: var(--neutral-300); }
+.primary { border-color: var(--primary-200); background: var(--primary-100); }
+.primary .label { color: var(--primary-300); }
+.divider {
+  flex-shrink: 0;
+  width: 0.5px;
+  height: var(--space-4);
+  margin: 0 var(--space-1);
+  background: var(--neutral-150);
+}

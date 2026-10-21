@@ -346,6 +346,9 @@ export function hashToState(route, state = null) {
   // The patient's Comms page (#/p/{token}) renders outside the app; leave
   // app state alone so nothing rewrites its hash.
   if (route.page === 'p') return {};
+  // The account-unlock link page (#/unlock-account?token=…) also renders
+  // outside the app.
+  if (String(route.page || '').startsWith('unlock-account')) return {};
 
   // Shareable form fill-view: #/f/{id}
   if (route.page === 'f' && route.section) {

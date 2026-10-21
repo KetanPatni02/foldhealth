@@ -115,11 +115,12 @@
   z-index: 2;
   background: var(--neutral-0);
 }
+/* Select Version + Select Date Range, side by side; tops aligned so the
+   custom range field can sit under the date presets. */
 .filterBar {
   display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
   padding: var(--space-4) var(--space-4) var(--space-2);
   background: var(--neutral-0);
   border-bottom: 0.5px solid var(--neutral-150);
@@ -240,6 +241,12 @@
   min-width: 0;
   margin-right: auto;
 }
+/* V3 / V2 tags on a row when two versions are picked. */
+.rowVersions {
+  display: inline-flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
 .rowTitle {
   font-size: var(--font-base);
   font-weight: 500;
@@ -273,6 +280,17 @@
 }
 
 /* Signed version / draft switch, shown only while there are unsigned changes. */
-.versionToggle {
-  margin-bottom: var(--space-3);
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Level with the inputs, past the field label. */
+.filterBar > .clearFilters { margin-top: var(--space-6); }
+.filterLabel {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-300);
 }

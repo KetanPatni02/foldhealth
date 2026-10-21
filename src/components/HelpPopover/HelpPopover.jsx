@@ -206,7 +206,7 @@ const FEATURES = [
         analyticsView: 'network',
       },
       {
-        icon: 'solar:magic-stick-3-linear',
+        icon: 'custom:ai',
         crumbs: ['AI Analytics'],
         description: 'Agent performance and automation insights.',
         page: 'analytics',

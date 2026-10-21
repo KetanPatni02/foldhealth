@@ -21,8 +21,10 @@ const STATUS_STYLE = {
  * @param {string}   [props.initialId] – doc to preview (falls back to the first)
  * @param {object}   props.member
  * @param {function} props.onClose
+ * @param {boolean}  [props.showStatus=true] – false for a document with no
+ *   review status (e.g. a received eFax): no pill in the header
  */
-export function DocPreviewDrawer({ charts, initialId, member, onClose }) {
+export function DocPreviewDrawer({ charts, initialId, member, onClose, showStatus = true }) {
   const docs = charts || [];
   if (docs.length === 0) return null;
   const doc = docs.find(d => d.id === initialId) || docs[0];
@@ -33,12 +35,12 @@ export function DocPreviewDrawer({ charts, initialId, member, onClose }) {
       title="Document Preview"
       onClose={onClose}
       bodyClassName={styles.pdfBody}
-      headerRight={
+      headerRight={showStatus ? (
         <span className={styles.statusPill} style={{ color: st.color, background: st.bg, borderColor: st.border }}>
           <Icon name={st.icon} size={12} color={st.color} />
           {st.label}
         </span>
-      }
+      ) : undefined}
     >
       {(doc.pdf || doc.file) ? (
         <FilePreview className={styles.pdf} src={doc.pdf} file={doc.file} name={doc.n} ext={doc.ext} />

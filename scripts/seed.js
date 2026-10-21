@@ -21,6 +21,7 @@ import { HCC_MEMBER_BY_NAME, HCC_MEMBERS } from '../src/features/hcc/data/mock.j
 import { AWV_MEMBERS } from '../src/features/awv-worklist/data/mock.js';
 import { sampleCrmActivities, crmToRow } from '../src/features/patient/data/crmActivity.js';
 import { EDUCATION_LIBRARY, educationToRow } from '../src/features/messages/comms/educationLibrary.js';
+import { sampleFaxes, faxToRow } from '../src/features/messages/efax/efaxData.js';
 import { JSA_MEMBERS } from '../src/features/jsa-worklist/data/mock.js';
 import { PHARMACY_WORKLIST_MEMBERS } from '../src/features/pharmacy-worklist/data/mock.js';
 import { POP_GROUPS } from '../src/features/population-groups/PopulationGroupsView.utils.js';
@@ -32,12 +33,17 @@ import { CARE_PLAN_INTERVENTION_LIBRARY } from '../src/features/settings/care-pl
 import { CARE_PLAN_BARRIER_STRUCTURED_LIBRARY } from '../src/features/settings/care-plan-library/data/carePlanBarrierStructuredSeed.js';
 import { CARE_PLAN_TEMPLATE_LIBRARY, carePlanTemplateLibraryToRow } from '../src/features/settings/care-plan-library/data/carePlanTemplateLibrarySeed.js';
 import { MONITORING_SEED, monitoringToRow } from '../src/features/patient/right-panel/tabs/monitoring/monitoringData.js';
+import { OVERVIEW_SEED, overviewToRow } from '../src/features/patient/data/overviewData.js';
 import { CCM_WORKLIST_MEMBERS } from '../src/features/ccm-worklist/data/mock.js';
 import { EMPLOYER_IMPACT_EMPLOYERS, employerImpactRows, employerImpactExportRows } from '../src/features/analytics/views/employer/employerImpactSeed.js';
 import { sampleOooRecords, demoOooForUser, oooToRow } from '../src/features/ooo/oooSeed.js';
 import { sampleOnCallSchedules, onCallToRow } from '../src/features/ooo/onCallSeed.js';
 import { sampleHolidays, holidayToRow } from '../src/features/holidays/holidaySeed.js';
+import { ACCOUNT_EMAIL_TEMPLATES, accountEmailTemplateToRow } from '../src/features/email-builder/accountEmailTemplates.js';
 import { sampleAvailability, blockToRow } from '../src/features/settings/calendar/availability/availabilityUtils.js';
+import { careTeamJsToDb } from '../src/store/lib/careTeamMappers.js';
+import { sampleContactsFor, contactToRow } from '../src/features/messages/comms/sendTo.js';
+import { SAMPLE_BILLABLE, SAMPLE_BILLING_REPORTS, SAMPLE_TIMER_SETTINGS, SAMPLE_CARE_PROGRAM_TEAMS, billableToRow, reportToRow, timerToRow } from '../src/features/settings/billing/careProgramBillingData.js';
 import { REPORT_HEADER_OPTIONS, REPORT_FOOTER_OPTIONS } from '../src/features/email-builder/reportHeaderComponent.js';
 import { SNP_WORKLIST_MEMBERS } from '../src/features/snp-worklist/data/mock.js';
 import { CAREGAP_ACTIVITY_MOCK } from '../src/features/hedis-worklist/data/caregapActivityMock.js';
@@ -1124,6 +1130,28 @@ async function main() {
     .upsert(availRows, { onConflict: 'id' });
   if (availErr) { console.error('  ✗', availErr.message); } else { console.log(`  ✓ ${availRows.length} availability blocks`); }
 
+  console.log('Seeding care program billing (Settings → Billing)...');
+  for (const [table, rows] of [
+    ['care_program_billable', SAMPLE_BILLABLE.map(billableToRow)],
+    ['care_program_billing_reports', SAMPLE_BILLING_REPORTS.map(reportToRow)],
+    ['billing_timer_settings', SAMPLE_TIMER_SETTINGS.map(timerToRow)],
+    ['care_teams', SAMPLE_CARE_PROGRAM_TEAMS.map(careTeamJsToDb)],
+  ]) {
+    const { error: billErr } = await supabase.from(table).upsert(rows, { onConflict: 'id' });
+    if (billErr) { console.error(`  ✗ ${table}:`, billErr.message); } else { console.log(`  ✓ ${rows.length} ${table}`); }
+  }
+
+  console.log('Seeding patient_contacts (Send To)...');
+  const contactRows = sampleContactsFor(PAMI_DEMO_PATIENT).map(contactToRow);
+  const { error: contactErr } = await supabase.from('patient_contacts').upsert(contactRows, { onConflict: 'id' });
+  if (contactErr) { console.error('  ✗', contactErr.message); } else { console.log(`  ✓ ${contactRows.length} patient contacts`); }
+
+  console.log('Seeding efax_inbound (Comms → E-fax)...');
+  const { data: faxPatients } = await supabase.from('all_patients').select('id, name, dob, member_id, gender, age, phone').order('name').limit(2);
+  const faxRows = sampleFaxes((faxPatients || []).map(r => ({ ...r, memberId: r.member_id }))).map(faxToRow);
+  const { error: faxErr } = await supabase.from('efax_inbound').upsert(faxRows, { onConflict: 'id' });
+  if (faxErr) { console.error('  ✗', faxErr.message); } else { console.log(`  ✓ ${faxRows.length} inbound faxes`); }
+
   console.log('Seeding patient_education_content (Send Education)...');
   const eduRows = EDUCATION_LIBRARY.map(educationToRow);
   const { error: eduErr } = await supabase
@@ -1140,6 +1168,13 @@ async function main() {
     .from('patient_monitoring')
     .upsert(monitoringRows, { onConflict: 'member_id' });
   if (pme) { console.error('  ✗', pme.message); } else { console.log(`  ✓ ${monitoringRows.length} monitoring snapshots`); }
+
+  console.log('Seeding patient_overview...');
+  const overviewRows = Object.values(OVERVIEW_SEED).map(overviewToRow);
+  const { error: poe } = await supabase
+    .from('patient_overview')
+    .upsert(overviewRows, { onConflict: 'member_id' });
+  if (poe) { console.error('  ✗', poe.message); } else { console.log(`  ✓ ${overviewRows.length} overview snapshots`); }
 
   console.log('Seeding ccm_worklist_members...');
   const worklistRows = await withoutExistingPeople(supabase, 'ccm_worklist_members', CCM_WORKLIST_MEMBERS.map((m) => ccmWorklistToRow(m, foldIdMap)));
@@ -1987,6 +2022,20 @@ async function main() {
         unsubscribe_url: 'https://fold.health/unsubscribe?e={{email}}',
       }], { onConflict: 'id' });
     console.log(ecsErr ? `  ✗ ${ecsErr.message}` : '  ✓ email compliance settings');
+  }
+
+  // ── Account emails (email builder templates sent by api/_lib/securityEmails.js) ──
+  // ignoreDuplicates keeps a template already edited in the email builder.
+  console.log('Seeding account email templates...');
+  {
+    const rows = ACCOUNT_EMAIL_TEMPLATES.map(accountEmailTemplateToRow);
+    const { error: aetErr } = await supabase
+      .from('campaigns')
+      .upsert(rows, { onConflict: 'system_key', ignoreDuplicates: true });
+    if (aetErr) {
+      if (aetErr.code === '42703' || aetErr.code === '42P10') console.log('  ⚠ campaigns.system_key missing — run supabase/account_email_templates_migration.sql');
+      else console.error('  ✗', aetErr.message);
+    } else console.log(`  ✓ ${rows.length} account email templates`);
   }
 
   // ── Audience segments (CampaignBuilder Include/Exclude options) ──

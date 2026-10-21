@@ -3,6 +3,8 @@ import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
 import { RangeSliderPopover } from '../../components/RangeSliderPopover/RangeSliderPopover';
 import { DateRangePopover } from '../../components/DateRangePopover/DateRangePopover';
+import { dobRangeSummary } from '../../components/DateRangePopover/yearSpan';
+import { useSavedFilterActions } from './useSavedFilterActions';
 import { useAppStore } from '../../store/useAppStore';
 import {
   FILTER_DEF_MAP as HCC_FILTER_DEF_MAP,
@@ -72,6 +74,8 @@ export function FilterChipBar({
   const storedVisible       = useAppStore(s => s[sel.visibleKeys]);
   const setVisibleFilterKeys= useAppStore(s => s[sel.setVisible]);
   const clearVisibleFilters = useAppStore(s => s[sel.clearVisible]);
+  // A selected saved filter stays selected while edited: Go Back / Update it.
+  const savedActions = useSavedFilterActions(list, filters, clearFilters, onSaveFilter);
 
   const showToast = useAppStore(s => s.showToast);
   const hccMembers = useAppStore(s => s.hccMembers);
@@ -248,6 +252,7 @@ export function FilterChipBar({
               selected={vals}
               onChange={setVals}
               onClose={onClose}
+              years={def.years}
             />
           )}
         />
@@ -284,6 +289,9 @@ export function FilterChipBar({
   return (
     <FilterBar
       autoFit
+      // HCC and HEDIS follow the filter spec: primaries always show; More
+      // Filters lists the secondary filters by domain.
+      pinPrimary
       leading={null}
       filterDefs={filterDefs}
       primaryKeys={primaryFilterKeys}
@@ -292,15 +300,19 @@ export function FilterChipBar({
         ? (k, next) => withViewTransition(() => setFilter(k, next))
         : (k, next) => setFilter(k, next)}
       onClearAll={list === 'HCC'
-        ? () => withViewTransition(() => clearFilters())
-        : clearFilters}
+        ? () => withViewTransition(() => savedActions.onClearAll())
+        : savedActions.onClearAll}
+      clearAllLabel={savedActions.clearAllLabel}
+      saveLabel={savedActions.saveLabel}
+      saveMenuItems={savedActions.saveMenuItems}
+      onSaveMenuSelect={savedActions.onSaveMenuSelect}
       onSaveFilter={onSaveFilter}
       multiSelect
       visibleKeys={controlledVisibleKeys}
       onToggleVisible={toggleVisible}
       onClearVisible={clearVisibleFilters}
       moreFilterItems={moreFilterItems}
-      hasActive={activeKeys.length > 0}
+      hasActive={activeKeys.length > 0 || savedActions.edited}
       showInternalSaveDialog={false}
       renderChip={renderChip}
     />
@@ -309,6 +321,8 @@ export function FilterChipBar({
 
 function summarize(k, vals) {
   if (k === 'dec' && vals.length >= 2) return `${vals[0]}–${vals[1]}`;
+  // DOB: a year pick reads "1950 – 1960" (or "1950"); a custom range keeps the year.
+  if (k === 'dob' && vals.length >= 2) return dobRangeSummary(vals);
   if (['cd', 'dos', 'dob', 'lvd', 'lastOutreachDate'].includes(k) && vals.length >= 2) {
     return `${formatShortDate(vals[0])} – ${formatShortDate(vals[1])}`;
   }
@@ -317,6 +331,6 @@ function summarize(k, vals) {
 }
 
 function formatShortDate(iso) {
-  const [y, m, d] = (iso || '').split('-');
+  const [, m, d] = (iso || '').split('-');
   return m && d ? `${m}/${d}` : iso;
 }

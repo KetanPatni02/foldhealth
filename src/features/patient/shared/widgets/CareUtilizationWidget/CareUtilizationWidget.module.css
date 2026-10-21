@@ -1,132 +1,65 @@
-/* ── CareUtilizationWidget ── */
-.widget {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-/* ── Header — outside bordered container ── */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 4px;
-  min-height: 28px;
-  flex-shrink: 0;
-}
-
-.header:last-child {
-  border-bottom: 0.5px solid var(--neutral-100);
-}
-
-.titleBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-}
-
-.title {
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: #16181d;
-  white-space: nowrap;
-}
-
-.yearBtn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--neutral-50);
-  border: 0.5px solid rgba(111, 122, 144, 0.1);
-  border-radius: 4px;
-  padding: 2px 6px;
-  font-size: var(--font-sm);
-  color: var(--neutral-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* ── Main bordered container ── */
 .container {
-  background: var(--neutral-0);
-  border: 0.5px solid #d0d6e1;
-  border-radius: 8px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  overflow: hidden;
 }
 
 /* ── Legend ── */
 .legend {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 8px 8px;
-  border-bottom: 0.5px solid #d0d6e1;
+  gap: var(--space-4);
+  padding: var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-150);
   overflow-x: auto;
-  overflow-y: hidden;
-  flex-shrink: 0;
+  font-size: var(--font-sm);
+  line-height: var(--leading-normal);
+  color: var(--neutral-400);
 }
 
 .legendItem {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  flex-shrink: 0;
+  gap: var(--space-2);
+  white-space: nowrap;
 }
 
 .legendDot {
-  width: 8px;
-  height: 8px;
+  width: var(--space-2);
+  height: var(--space-2);
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.legendLabel {
-  font-size: var(--font-sm);
-  font-weight: 400;
-  color: #3a485f;
-  white-space: nowrap;
-}
-
 /* ── Month grid ── */
 .grid {
-  display: flex;
-  background: #fcfaff;
-  overflow-x: auto;
-  overflow-y: hidden;
-  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  background: var(--primary-50);
 }
 
 .monthCol {
   display: flex;
   flex-direction: column;
-  flex: 1 0 0;
   min-width: 0;
-  border-right: 0.5px solid #d0d6e1;
+  border-right: 0.5px solid var(--neutral-150);
 }
 
 .monthCol:last-child {
   border-right: none;
 }
 
-/* Badge stack — fixed 100px height, badges stack from bottom */
+/* Counts stack up from the bottom of a fixed-height column. */
 .badgeStack {
   display: flex;
   flex-direction: column;
-  align-items: center;
   justify-content: flex-end;
-  gap: 8px;
-  height: 100px;
-  padding: 8px 0;
+  align-items: center;
+  gap: var(--space-2);
+  height: calc(var(--space-10) * 2.5);
+  padding: var(--space-2) 0;
   box-sizing: border-box;
 }
 
@@ -134,32 +67,22 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
+  width: var(--space-4);
+  height: var(--space-4);
+  flex-shrink: 0;
   border: 0.5px solid;
+  border-radius: var(--space-1);
   font-size: var(--font-sm);
-  font-weight: 400;
-  line-height: 1;
-  flex-shrink: 0;
-  box-sizing: border-box;
-}
-
-/* Month label row — pinned below the badge stack */
-.monthLabelRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px;
-  border-top: 0.5px solid #d0d6e1;
-  flex-shrink: 0;
+  line-height: var(--leading-tight);
 }
 
 .monthLabel {
+  padding: var(--space-2) 0;
+  border-top: 0.5px solid var(--neutral-150);
+  text-align: center;
   font-size: var(--font-sm);
-  font-weight: 400;
-  color: #6f7a90;
-  white-space: nowrap;
+  line-height: var(--leading-normal);
+  color: var(--neutral-200);
 }
 
 /* ── Footer ── */
@@ -167,39 +90,26 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 8px 12px;
-  border-top: 0.5px solid #d0d6e1;
-  flex-shrink: 0;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-top: 0.5px solid var(--neutral-150);
 }
 
-.footerLeft {
-  display: flex;
+.footerItem {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-}
-
-.footerKeyText {
+  gap: var(--space-1);
   font-size: var(--font-base);
   font-weight: 500;
-  color: #3a485f;
+  line-height: var(--leading-normal);
+  color: var(--neutral-400);
   white-space: nowrap;
 }
 
 .footerLink {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: var(--font-base);
+  gap: var(--space-1);
   font-weight: 400;
-  color: var(--primary-300, #8c5ae2);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.footerRight {
-  font-size: var(--font-base);
-  font-weight: 500;
-  color: #3a485f;
-  white-space: nowrap;
+  color: var(--primary-300);
 }

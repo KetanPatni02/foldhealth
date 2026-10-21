@@ -289,10 +289,15 @@ function MetricChart({ metric, range, colors }) {
 
 // ── Table View ───────────────────────────────────────────────────────────────
 
-function TableView({ onOpenGraph }) {
+const pick = (sections, keys) => {
+  const byId = new Map(sections.map(sec => [sec.id, sec]));
+  return keys.map(k => byId.get(k)).filter(Boolean);
+};
+
+function TableView({ onOpenGraph, widgets }) {
   return (
     <div className={styles.tableView}>
-      {TABLE_SECTIONS.map(section => (
+      {pick(TABLE_SECTIONS, widgets).map(section => (
         <div key={section.id} className={styles.tableSection}>
           <div className={styles.tableSectionHeader}>
             <span className={styles.tableSectionTitle}>{section.title}</span>
@@ -339,7 +344,7 @@ function TableView({ onOpenGraph }) {
 
 // ── Graph View ───────────────────────────────────────────────────────────────
 
-function GraphView({ onClose }) {
+function GraphView({ onClose, widgets }) {
   const [range, setRange] = useState('1W');
 
   const topColor  = cssVar('--chart-1');
@@ -351,14 +356,14 @@ function GraphView({ onClose }) {
 
   return (
     <div className={styles.graphView}>
-      {GRAPH_SECTIONS.map(section => (
+      {pick(GRAPH_SECTIONS, widgets).map((section, i) => (
         <div key={section.id}>
           <div className={styles.graphSectionHeader}>
             <span className={styles.graphSectionTitle}>{section.title}</span>
             {section.showRangeToggle && (
               <Toggle items={['1D', '1W', '3W']} active={range} onChange={setRange} size="S" />
             )}
-            {section.id === GRAPH_SECTIONS[0].id && (
+            {i === 0 && (
               <button className={styles.listIconBtn} onClick={onClose} title="Back to list">
                 <ListIcon />
               </button>
@@ -413,13 +418,16 @@ function GraphView({ onClose }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 
-export function VitalsLabsTab() {
+const VITALS_WIDGETS = TABLE_SECTIONS.map(sec => sec.id);
+
+/** `widgets`: the section ids to show, in order (More > Customize); all by default. */
+export function VitalsLabsTab({ widgets = VITALS_WIDGETS }) {
   const [graphOpen, setGraphOpen] = useState(false);
   return (
     <div className={styles.wrapper}>
       {graphOpen
-        ? <GraphView onClose={() => setGraphOpen(false)} />
-        : <TableView onOpenGraph={() => setGraphOpen(true)} />
+        ? <GraphView onClose={() => setGraphOpen(false)} widgets={widgets} />
+        : <TableView onOpenGraph={() => setGraphOpen(true)} widgets={widgets} />
       }
     </div>
   );

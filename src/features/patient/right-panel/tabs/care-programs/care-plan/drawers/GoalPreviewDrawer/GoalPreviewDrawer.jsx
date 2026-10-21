@@ -55,7 +55,9 @@ import barrierStyles from '../BarrierDetailDrawer/BarrierDetailDrawer.module.css
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { localDateMs } from '../../../../../../../../lib/localDate';
 
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+import { GBI_STATUSES, gbiStatusMeta } from '../../lib/gbiStatus';
+import { isCarePlanPaused } from '../../lib/carePlanPause';
+import { gbiStatusMenuItems } from '../../tables/carePlanTableShared';
 
 /** Session-persisted accordion open state for Goal Details sections. */
 const GOAL_PREVIEW_SECTIONS_KEY = 'fold.carePlan.goalPreview.sections';
@@ -96,13 +98,6 @@ const ACTIVITY_FILTERS = [
   { key: 'value_changed', label: 'Values' },
 ];
 const PRIORITIES = ['high', 'medium', 'low'];
-const STATUS_TONE = {
-  'Not Started': 'grey',
-  'In Progress': 'warning',
-  'On Hold': 'grey',
-  Met: 'success',
-  'Not Met': 'error',
-};
 
 // `progressBand` / `progressTone` moved to `../../lib/goalMetrics.js` as
 // `goalProgressBand` / `goalProgressTone` so the audit-log detail and the
@@ -331,7 +326,12 @@ function IntvDeleteScopePicker({ name, kindLabel = 'intervention', onCancel, onC
  * Every edit (status, progress, readings, automations, notes, interventions,
  * barriers) writes through the care-plan store into Supabase.
  */
-export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention, onOpenBarrier, consolidated = false, signedView = false, focusSection = null }) {
+export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenIntervention, onOpenBarrier, consolidated = false, signedView = false, focusSection = null, readOnly = false, snapshot = null }) {
+  // `readOnly` + `snapshot`: opened from a past version or an earlier
+  // template run. The goal and its linked items come from that copy
+  // ({ goals, interventions, barriers }); nothing can be changed and
+  // sections with nothing in them are hidden.
+  const ro = consolidated || readOnly;
   const key = patientId && program ? `${patientId}::${program.id}` : null;
   // `signedView`: opened from a surface that shows the plan as last signed
   // (Comprehensive Care Plan, Monitoring). The item is read from that copy
@@ -339,7 +339,9 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   // documentation, so those stay open.
   const liveSlice = useAppStore(s => (key ? s.patientCarePlans[key] : null));
   const signedSlice = useSignedCarePlan(signedView ? key : null);
-  const slice = signedView ? signedSlice : liveSlice;
+  const slice = useMemo(() => (snapshot
+    ? { ...liveSlice, goals: snapshot.goals || [], interventions: snapshot.interventions || [], barriers: snapshot.barriers || [] }
+    : (signedView ? signedSlice : liveSlice)), [snapshot, signedView, signedSlice, liveSlice]);
   const audit = useAppStore(s => (key ? s.patientCarePlanAudit[key] : null)) || [];
   const lastVisit = useAppStore(s => {
     const p = (s.patients || []).find(x => x.id === patientId)
@@ -628,7 +630,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   // canDocument: readings, notes and live progress (status, priority, title,
   // progress), which apply to the signed plan without a signature.
   // canEdit: details and structure, which are draft edits made in the editor.
-  const canDocument = !!(patientId && program);
+  const canDocument = !!(patientId && program) && !readOnly;
   const canEdit = canDocument && !signedView;
   const saveLive = (patch) => (signedView
     ? saveCarePlanLiveField(patientId, program, 'goal', live.id, patch)
@@ -805,8 +807,10 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
   // target date says so; no date is projected for it. The target is a
   // date-only value, so it's formatted without a UTC shift.
   const targetDateLabel = fmtDate(live.targetDate);
-  const targetDateEditable = canEdit && !consolidated;
-  const targetOverdue = isPastDue(live.targetDate, live.status);
+  const targetDateEditable = canEdit && !ro;
+  // A paused plan has no overdue flags (lib/carePlanPause).
+  const planPaused = isCarePlanPaused(liveSlice?.plan);
+  const targetOverdue = !planPaused && isPastDue(live.targetDate, live.status);
   // Structured target, same formatter as the plan table: "≤ 130 / 80 mmHg •
   // Daily • 3 Months". Assessments are done on a date, which the Completion
   // section and Target Date already show.
@@ -843,7 +847,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
       <div className={styles.body}>
         <div className={styles.statusBar}>
           <Select
-            options={GBI_STATUSES.map(s => ({ value: s, label: s }))}
+            options={GBI_STATUSES.map(s => ({ value: s, label: s, icon: gbiStatusMeta(s).icon }))}
             value={live.status}
             onChange={changeStatus}
             disabled={!canDocument}
@@ -851,11 +855,11 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             className={styles.statusSelect}
             style={{ width: 'fit-content' }}
           />
-          {/* Read-only-plus (consolidated view opened from the Comprehensive
+          {/* Read-only-plus (ro view opened from the Comprehensive
               Care Plan tab): Edit Goal + More live outside the allow-list
               (status / progress / trends / note only), so drop the whole
               action cluster in that mode. */}
-          {!consolidated && (
+          {!ro && (
             <div className={styles.statusActions}>
               <ActionButton
                 icon="solar:pen-linear"
@@ -880,7 +884,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         <div className={styles.hero}>
           <div className={styles.titleRow}>
             <span className={styles.priorityTrigger}>
-              {consolidated ? (
+              {ro ? (
                 <PriorityIcon priority={live.priority} size={20} />
               ) : (
                 <DetailDropdown
@@ -910,7 +914,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               ariaLabel="Goal title"
               className={styles.titleText}
               elementRef={titleRef}
-              disabled={!canEdit || consolidated}
+              disabled={!canEdit || ro}
             />
           </div>
           {showSubtitle && <span className={styles.subtitle}>{live.subtitle}</span>}
@@ -1007,6 +1011,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           </div>
         </section>
 
+        {(!readOnly || measurements.length > 0) && (
         <section className={styles.section}>
           <AccordionHead
             title={isAssessment ? 'Completion' : 'Last Trends'}
@@ -1059,19 +1064,20 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             </>
           )}
         </section>
+        )}
 
         {/* Interventions / Barriers / Automations sections. In the
-            consolidated view (opened from the Comprehensive Care Plan
+            ro view (opened from the Comprehensive Care Plan
             tab) these sections auto-hide when nothing is linked, drop
             the "+" add affordance on the head, and render their rows
             read-only. */}
-        {(!consolidated || interventions.length > 0) && (
+        {(!ro || interventions.length > 0) && (
           <section className={styles.accSection}>
             <AccordionHead
               title="Interventions"
               open={open.interventions}
               onToggle={() => toggle('interventions')}
-              canEdit={canEdit && !consolidated}
+              canEdit={canEdit && !ro}
               addTooltip="Add Intervention"
               addRef={intvAddRef}
               addAriaHasPopup="menu"
@@ -1082,7 +1088,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               linkMenuOpen={intvLinkMenuOpen}
               onLinkExisting={() => expandAnd('interventions', () => setIntvLinkMenuOpen(v => !v))}
             />
-            {intvLinkMenuOpen && !consolidated && (
+            {intvLinkMenuOpen && !ro && (
               <LinkItemsToGoalDrawer
                 title="Link Intervention to Goal"
                 items={interventionLinkCandidates}
@@ -1098,7 +1104,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 }}
               />
             )}
-            {intvMenuOpen && !consolidated && (
+            {intvMenuOpen && !ro && (
               <MenuPopover
                 anchorRef={intvAddRef}
                 align="right"
@@ -1119,29 +1125,29 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               ) : (
                 <GoalLinkedInterventionsList
                   interventions={interventions}
-                  canEdit={canEdit && !consolidated}
+                  canEdit={canEdit && !ro}
                   platformUsers={platformUsers}
                   patient={patient}
                   onOpen={onOpenIntervention}
-                  onPriorityMenu={consolidated ? undefined : setPriorityMenu}
-                  onAssigneeChange={consolidated ? undefined : handleAssigneeChange}
-                  onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
-                  onDueDateChange={consolidated ? undefined : handleDueDateChange}
-                  onRecurrenceChange={consolidated ? undefined : handleRecurrenceChange}
-                  onRowMenu={consolidated ? undefined : (m) => setRowMenu({ ...m, kind: 'intv-menu' })}
+                  onPriorityMenu={ro ? undefined : setPriorityMenu}
+                  onAssigneeChange={ro ? undefined : handleAssigneeChange}
+                  onStatusMenu={ro ? undefined : setLinkedStatusMenu}
+                  onDueDateChange={ro ? undefined : handleDueDateChange}
+                  onRecurrenceChange={ro ? undefined : handleRecurrenceChange}
+                  onRowMenu={ro ? undefined : (m) => setRowMenu({ ...m, kind: 'intv-menu' })}
                 />
               )
             )}
           </section>
         )}
 
-        {(!consolidated || barriers.length > 0) && (
+        {(!ro || barriers.length > 0) && (
           <section className={styles.accSection}>
             <AccordionHead
               title="Barriers"
               open={open.barriers}
               onToggle={() => toggle('barriers')}
-              canEdit={canEdit && !consolidated}
+              canEdit={canEdit && !ro}
               addTooltip="Add Barriers"
               onAdd={() => expandAnd('barriers', () => setAddingBarrier(v => !v))}
               linkRef={barrierLinkRef}
@@ -1149,7 +1155,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
               linkMenuOpen={barrierLinkMenuOpen}
               onLinkExisting={() => expandAnd('barriers', () => setBarrierLinkMenuOpen(v => !v))}
             />
-            {barrierLinkMenuOpen && !consolidated && (
+            {barrierLinkMenuOpen && !ro && (
               <LinkItemsToGoalDrawer
                 title="Link Barrier to Goal"
                 items={barrierLinkCandidates}
@@ -1167,7 +1173,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
             )}
             {open.barriers && (
               <>
-                {addingBarrier && !consolidated && (
+                {addingBarrier && !ro && (
                   <div className={styles.addRow}>
                     <Input
                       placeholder="Barrier title"
@@ -1184,10 +1190,10 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                 ) : (
                   <GoalLinkedBarriersList
                     barriers={barriers}
-                    canEdit={canEdit && !consolidated}
+                    canEdit={canEdit && !ro}
                     onOpen={onOpenBarrier}
-                    onStatusMenu={consolidated ? undefined : setLinkedStatusMenu}
-                    onRowMenu={consolidated ? undefined : (m) => setRowMenu({ ...m, kind: 'barrier-menu' })}
+                    onStatusMenu={ro ? undefined : setLinkedStatusMenu}
+                    onRowMenu={ro ? undefined : (m) => setRowMenu({ ...m, kind: 'barrier-menu' })}
                   />
                 )}
               </>
@@ -1195,19 +1201,19 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
           </section>
         )}
 
-        {(!consolidated || automations.length > 0) && (
+        {(!ro || automations.length > 0) && (
           <section className={styles.accSection}>
             <AccordionHead
               title="Automations"
               open={open.automations}
               onToggle={() => toggle('automations')}
-              canEdit={canEdit && !consolidated}
+              canEdit={canEdit && !ro}
               addTooltip="Add Automations"
               onAdd={() => expandAnd('automations', () => setAddingAutomation(v => !v))}
             />
             {open.automations && (
               <>
-                {addingAutomation && !consolidated && (
+                {addingAutomation && !ro && (
                   <div className={styles.addRow}>
                     <Input
                       placeholder="Automation (e.g. Notify care team on 5% deviation)"
@@ -1227,7 +1233,7 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
                       <div key={a.id} className={styles.linkedRow}>
                         <span className={styles.linkedIcon}><Icon name={a.icon || 'solar:bolt-linear'} size={16} color="var(--neutral-400)" /></span>
                         <span className={styles.linkedText}><span className={styles.linkedTitle}>{a.title}</span></span>
-                        {canEdit && !consolidated && (
+                        {canEdit && !ro && (
                           <span className={styles.linkedRowActions}>
                             <button type="button" className={styles.linkedRowRemove} onClick={() => deleteCarePlanAutomation(patientId, program.id, a.id)} aria-label="Remove automation">
                               <Icon name="solar:trash-bin-minimalistic-linear" size={14} color="var(--neutral-300)" />
@@ -1402,9 +1408,9 @@ export function GoalPreviewDrawer({ goal, patientId, program, onClose, onOpenInt
         <MenuPopover
           anchorRect={linkedStatusMenu.rect}
           align="left"
-          width={160}
+          width={180}
           ariaLabel="Change status"
-          items={GBI_STATUSES.map(s => ({ key: s, label: s }))}
+          items={gbiStatusMenuItems(linkedStatusMenu.kind, linkedStatusMenu.item?.status)}
           onSelect={changeLinkedItemStatus}
           onClose={() => setLinkedStatusMenu(null)}
         />

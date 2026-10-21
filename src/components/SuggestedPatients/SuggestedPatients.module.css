@@ -1,0 +1,203 @@
+/* SuggestedPatients: the AI's patient picks, attached under a message. */
+.root {
+  display: flex;
+  flex-direction: column;
+  /* The light AI gradient at 20%. */
+  background:
+    linear-gradient(color-mix(in srgb, var(--neutral-0) 80%, transparent), color-mix(in srgb, var(--neutral-0) 80%, transparent)),
+    var(--ai-gradient-light);
+}
+
+/* In a drawer: its own box. */
+.boxed {
+  border: 0.5px solid var(--primary-200);
+  border-radius: var(--space-2);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 0.5px solid transparent;
+  transition: border-color 200ms ease;
+}
+.boxed .head { padding: var(--space-2); }
+.headRuled { border-bottom-color: var(--neutral-100); }
+.titleGroup {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+/* The orange count badge (Figma 2956:5854): 16×16 for a single digit,
+   the number centred, growing sideways for more digits. */
+.count {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: var(--space-4);
+  height: var(--space-4);
+  padding: calc(var(--space-1) / 2) var(--space-1);
+  border-radius: var(--space-1);
+  background: var(--secondary-300);
+  color: var(--neutral-0);
+  font-size: var(--font-2xs);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.title {
+  min-width: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: 1.2;
+}
+.aiText {
+  background: var(--ai-gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--font-sm);
+  color: var(--neutral-400);
+  cursor: pointer;
+}
+.link:hover { color: var(--primary-300); }
+/* "View N More": the subtle Link, with its chevron. */
+.more {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--space-1) / 2);
+  font-size: var(--font-sm);
+}
+.linkPrimary { color: var(--primary-300); }
+.linkPrimary:hover { color: var(--primary-400); }
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-bottom: 0.5px solid var(--neutral-100);
+}
+.row:last-child { border-bottom: 0; }
+/* Read, but nobody matched. */
+.empty {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+.emptyText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.emptyTitle { font-size: var(--font-base); line-height: 1.2; color: var(--neutral-400); }
+.emptyHint { font-size: var(--font-sm); line-height: 1.2; color: var(--neutral-300); }
+
+.text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+.nameRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+.meta { font-size: var(--font-sm); color: var(--neutral-300); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: calc(var(--space-1) / 2) var(--space-1);
+  border: 0.5px solid;
+  border-radius: var(--space-1);
+  font-size: var(--font-sm);
+  line-height: 1.2;
+}
+.badgeHigh {
+  color: var(--status-success);
+  background: var(--status-success-light);
+  border-color: color-mix(in srgb, var(--status-success) 20%, transparent);
+}
+.badgeMedium {
+  color: var(--status-warning);
+  background: var(--status-warning-light);
+  border-color: color-mix(in srgb, var(--status-warning) 20%, transparent);
+}
+.badgeLow {
+  color: var(--status-error);
+  background: var(--status-error-light);
+  border-color: color-mix(in srgb, var(--status-error) 20%, transparent);
+}
+
+/* The confidence tooltip (Figma 2941:74217): the band in its colour, what
+   it means, then the fields that matched after a blank line. */
+.tip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  /* Wide enough that the longest header, Medium's, stays on one line. */
+  width: calc(222px - 2 * var(--space-2));
+  text-align: left;
+}
+.tipHead {
+  display: flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-400);
+}
+.tipNote {
+  font-size: var(--font-2xs);
+  line-height: 1.2;
+  color: var(--neutral-300);
+}
+.tipFields { margin-top: var(--space-2); }
+.toneHigh { color: var(--status-success); }
+.toneMedium { color: var(--status-warning); }
+.toneLow { color: var(--status-error); }
+
+.bone {
+  flex: 1;
+  height: var(--space-3);
+  border-radius: var(--space-1);
+  background: linear-gradient(90deg, var(--neutral-50), var(--neutral-100), var(--neutral-50));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+.boneShort { flex: 0 0 30%; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .bone, .spin { animation: none; }
+}

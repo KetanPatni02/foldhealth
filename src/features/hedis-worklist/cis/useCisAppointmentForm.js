@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CIS_ANTIGENS, CIS_DOSE_STATUS } from './cisRules';
 import { todayIso } from '../useCareGapReminderForm';
+import { appointmentForDose } from './cisAppointments';
 
 const EMPTY = { date: '', time: '', provider: '', doses: [], note: '' };
 const LABEL = Object.fromEntries(CIS_ANTIGENS.map(a => [a.key, a.label]));
@@ -25,10 +26,12 @@ export function useCisAppointmentForm() {
   const set = (key) => (value) => setValues(v => ({ ...v, [key]: value }));
   const toggleDose = (key, on) => setValues(v => ({ ...v, doses: on ? [...v.doses, key] : v.doses.filter(k => k !== key) }));
 
-  const reset = (result) => {
+  // `appointments`: the member's scheduled visits; doses already booked
+  // aren't preselected.
+  const reset = (result, appointments = []) => {
     setEditing(null);
     const due = (result?.antigens || []).flatMap(a => a.rows
-      .filter(r => r.kind !== 'given' && PRESELECT.includes(r.status))
+      .filter(r => r.kind !== 'given' && PRESELECT.includes(r.status) && !appointmentForDose(appointments, a.key, r))
       .map(r => `${a.key}:${r.number}`));
     setValues({ ...EMPTY, doses: due });
   };

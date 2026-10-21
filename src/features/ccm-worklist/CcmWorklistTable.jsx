@@ -4,6 +4,9 @@ import { Icon } from '../../components/Icon/Icon';
 import { Checkbox } from '../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
+import { DobFilter } from '../../components/DobFilter/DobFilter';
+import { dobInRange } from '../../components/DateRangePopover/yearSpan';
 import { Pagination } from '../../components/Pagination/Pagination';
 import { TableSkeleton } from '../../components/TableSkeleton/TableSkeleton';
 import { BulkBar } from '../../components/BulkBar/BulkBar';
@@ -98,16 +101,11 @@ const utrAgeBucket = (days) => {
   if (days <= 30) return '8-30 days';
   return '30+ days';
 };
-const dobDecade = (iso) => {
-  if (!iso) return 'Unknown';
-  return `${iso.slice(0, 3)}0s`;
-};
 
 // A single per-row → bucket lookup used both for populating the FilterChip
 // option lists AND for evaluating each row against a selected filter — keeps
 // the two branches consistent by construction.
 const BUCKET_FN = {
-  dob:                 (m) => dobDecade(m.dob),
   gender:              (m) => m.gender || 'Unknown',
   language:            (m) => LANG_LABEL[m.language] || 'Other',
   utrFlag:             (m) => m.utrFlag || 'No',
@@ -123,8 +121,6 @@ const BUCKET_FN = {
   memberStatus:        (m) => m.memberStatus || 'Active',
   unloggedUser:        (m) => m.assigneeName || 'Unassigned',
 };
-
-const EMPTY_FILTERS = Object.fromEntries(FILTER_KEYS.map(f => [f.key, []]));
 
 // Chip definitions for the shared FilterBar. First 8 chips are `primary`
 // (rendered by default, on one line — the shared FilterBar's autoFit packer
@@ -190,11 +186,19 @@ export function CcmWorklistTable() {
   // toggles TOC's <FilterBar />.
   const searchQuery = useAppStore(s => s.searchQuery);
   const showFilterBar = useAppStore(s => s.showFilterBar);
-  const showToast = useAppStore(s => s.showToast);
 
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [billableFilter, setBillableFilter] = useState(EMPTY_TIME_FILTER);
-  const [unloggedFilter, setUnloggedFilter] = useState(EMPTY_TIME_FILTER);
+  // Filters live in the store (ccmFilters) so saved filters work for CCM:
+  // the bucket chips are string arrays; the two time filters sit under
+  // billableMins / unloggedMins while they're set.
+  const filters = useAppStore(s => s.ccmFilters);
+  const setCcmFilter = useAppStore(s => s.setCcmFilter);
+  const clearFilters = useAppStore(s => s.clearCcmFilters);
+  const saveSavedFilter = useAppStore(s => s.saveSavedFilter);
+  const savedActions = useSavedFilterActions('CCM', filters, clearFilters);
+  const billableFilter = filters.billableMins || EMPTY_TIME_FILTER;
+  const unloggedFilter = filters.unloggedMins || EMPTY_TIME_FILTER;
+  const setBillableFilter = (v) => setCcmFilter('billableMins', isTimeFilterActive(v) ? v : null);
+  const setUnloggedFilter = (v) => setCcmFilter('unloggedMins', isTimeFilterActive(v) ? v : null);
   // `null` = default (FilterBar's autoFit packer picks visible chips); a
   // populated array = user-customized set from the More Filters popover.
   const [visibleKeys, setVisibleKeys] = useState(null);
@@ -211,6 +215,7 @@ export function CcmWorklistTable() {
     const sets = Object.fromEntries(FILTER_KEYS.map(({ key }) => [key, new Set()]));
     for (const m of members) {
       for (const { key } of FILTER_KEYS) {
+        if (!BUCKET_FN[key]) continue;
         const val = BUCKET_FN[key](m);
         if (val) sets[key].add(val);
       }
@@ -235,9 +240,12 @@ export function CcmWorklistTable() {
       const vals = filters[key];
       if (vals && vals.length) {
         const valSet = new Set(vals);
+        if (!BUCKET_FN[key]) continue;
         rows = rows.filter(m => valSet.has(BUCKET_FN[key](m)));
       }
     }
+    // DOB is a date range (Years or Custom Dates), not a bucket.
+    rows = rows.filter(m => dobInRange(m.dob, m.age, filters.dob));
     // Billable + Unlogged filters compose user + threshold so we can't
     // fold them into the bucket-based FILTER_KEYS loop.
     rows = rows.filter(m => matchTimeFilter(m.billableSeconds, m.assigneeName, billableFilter));
@@ -274,14 +282,9 @@ export function CcmWorklistTable() {
     return next;
   });
 
-  const setFilter = (key, vals) => setFilters(f => ({ ...f, [key]: vals }));
-  const clearFilters = () => {
-    setFilters(EMPTY_FILTERS);
-    setBillableFilter(EMPTY_TIME_FILTER);
-    setUnloggedFilter(EMPTY_TIME_FILTER);
-  };
+  const setFilter = (key, vals) => setCcmFilter(key, vals);
   const hasAnyActive =
-    Object.values(filters).some(v => v.length > 0) ||
+    FILTER_KEYS.some(({ key }) => filters[key]?.length > 0) ||
     isTimeFilterActive(billableFilter) ||
     isTimeFilterActive(unloggedFilter);
 
@@ -322,9 +325,13 @@ export function CcmWorklistTable() {
             unloggedMins: isTimeFilterActive(unloggedFilter) ? ['active'] : [],
           }}
           multiSelect
-          onClearAll={clearFilters}
-          onSaveFilter={(name) => showToast(`Saved filter "${name}"`)}
-          hasActive={hasAnyActive}
+          onClearAll={savedActions.onClearAll}
+          clearAllLabel={savedActions.clearAllLabel}
+          saveLabel={savedActions.saveLabel}
+          saveMenuItems={savedActions.saveMenuItems}
+          onSaveMenuSelect={savedActions.onSaveMenuSelect}
+          onSaveFilter={(name) => saveSavedFilter('CCM', name)}
+          hasActive={hasAnyActive || savedActions.edited}
           visibleKeys={visibleKeys ?? undefined}
           onToggleVisible={(k) => {
             setVisibleKeys(prev => {
@@ -382,6 +389,9 @@ export function CcmWorklistTable() {
                   )}
                 />
               );
+            }
+            if (k === 'dob') {
+              return <DobFilter key={k} value={filters.dob || []} onChange={vals => setFilter('dob', vals)} />;
             }
             const def = CCM_FILTER_DEFS.find(d => d.key === k);
             if (!def) return null;
@@ -448,6 +458,8 @@ export function CcmWorklistTable() {
       <Pagination
         currentPage={page}
         totalItems={filtered.length}
+        totalCount={members.length}
+        filtered={!!searchQuery.trim() || Object.values(filters).some(v => v?.length) || filtered.length !== members.length}
         perPage={perPage}
         onPageChange={setPage}
         onPerPageChange={(n) => { setPerPage(n); setPage(1); }}

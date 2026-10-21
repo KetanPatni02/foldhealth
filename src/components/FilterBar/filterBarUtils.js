@@ -64,10 +64,33 @@ export const FILTER_DEFS = [
   { key: 'agentAssigned', label: 'Agent', primary: false, optionsFromData: true },
 ];
 
+// TOC IP's filter allocation per the worklist filter spec: always-primary
+// (Gender, Language, Assignee; the rest aren't on TOC IP yet), then Program
+// Sub Status (the TOC IP Status chip), Care Plan Status and Readmission.
+// Everything else is secondary, under its domain in More Filters. TCM keeps
+// FILTER_DEFS as they are.
+const TOC_IP_PRIMARY = ['gender', 'language', 'assignee', 'tocStatus', 'carePlanStatus', 'readmission'];
+const TOC_IP_GROUP = {
+  status: 'Workflow Status', outreachType: 'Workflow Status', tocType: 'Workflow Status',
+  priority: 'Workflow Status', outreachCategory: 'Workflow Status',
+  agentAssigned: 'Assignment',
+  lace: 'Clinical',
+};
+const TOC_IP_LABEL = { assignee: 'Assignee', carePlanStatus: 'Care Plan Status' };
+
+function tocIpDefs(defs) {
+  const byKey = Object.fromEntries(defs.map(d => [d.key, d]));
+  const primary = TOC_IP_PRIMARY.map(k => ({ ...byKey[k], primary: true, label: TOC_IP_LABEL[k] || byKey[k].label }));
+  const secondary = defs
+    .filter(d => !TOC_IP_PRIMARY.includes(d.key))
+    .map(d => ({ ...d, primary: false, group: TOC_IP_GROUP[d.key] }));
+  return [...primary, ...secondary];
+}
+
 /** Relabel status + outreach chips for the standalone TOC queue vs TCM. */
 export function filterDefsForList(list) {
   const program = list === 'TOC IP' ? 'TOC IP' : 'TCM';
-  return FILTER_DEFS.map((def) => {
+  const defs = FILTER_DEFS.map((def) => {
     if (def.key === 'tocStatus') return { ...def, label: `${program} Status` };
     if (def.key === 'outreachType') {
       return {
@@ -80,6 +103,7 @@ export function filterDefsForList(list) {
     }
     return def;
   });
+  return list === 'TOC IP' ? tocIpDefs(defs) : defs;
 }
 
 export function resolveOptions(filterDef, patients) {

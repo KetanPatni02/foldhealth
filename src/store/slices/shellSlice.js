@@ -6,6 +6,8 @@ import {
   applyNavStyle,
   applyContrast,
   applyFontScale,
+  applySidebarShape,
+  applyFloatingDensity,
 } from '../../lib/theme';
 import {
   initialThemeSetting,
@@ -13,7 +15,10 @@ import {
   initialNavStyle,
   initialContrast,
   initialFontScale,
+  initialSidebarShape,
+  initialFloatingDensity,
   readChangelogSeenAt,
+  readProgramPanelSplit,
 } from '../shellInitial';
 
 /** Theme, chrome preferences, Featurebase JWT, and changelog — shell concerns only. */
@@ -60,6 +65,43 @@ export function createShellSlice(set, get) {
       const applied = applyFontScale(next);
       set({ fontScale: applied });
     },
+
+    sidebarShape: initialSidebarShape,
+    setSidebarShape: (next) => {
+      const from = get().sidebarShape;
+      track('sidebarShape.changed', { from, to: next });
+      const applied = applySidebarShape(next);
+      set({ sidebarShape: applied });
+    },
+
+    floatingDensity: initialFloatingDensity,
+    setFloatingDensity: (next) => {
+      const from = get().floatingDensity;
+      track('floatingDensity.changed', { from, to: next });
+      const applied = applyFloatingDensity(next);
+      set({ floatingDensity: applied });
+    },
+
+    // An open care program as its own card beside the patient card. Only
+    // honored with the floating sidebar; see useProgramPanelSplitActive.
+    programPanelSplit: readProgramPanelSplit(),
+    setProgramPanelSplit: (next) => {
+      track('programPanelSplit.changed', { to: next });
+      try { localStorage.setItem('programPanelSplit', String(next)); } catch { /* private mode */ }
+      set({ programPanelSplit: next });
+    },
+
+    // The split layout's panel stack, right of the patient card:
+    // { programKey, ids, activeId } | null. `programKey` is the main panel it
+    // was built over (an open program's key, or 'patient-plan'); ids are panel
+    // ids in display order ('program' is the main panel, 'careplan' a program's
+    // care plan opened on its own, 'tab:<name>' a right-panel tab). In the
+    // store so a care plan header can open its plan as a panel. See
+    // PatientDetailView and hooks/useProgramPanelSplitActive.
+    programPanelStack: null,
+    setProgramPanelStack: (next) => set(s => ({
+      programPanelStack: typeof next === 'function' ? next(s.programPanelStack) : next,
+    })),
 
     featurebaseJwt: null,
     _featurebaseJwtPending: false,

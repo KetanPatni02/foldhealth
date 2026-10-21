@@ -3,6 +3,7 @@ import { ActionButton } from '../../components/ActionButton/ActionButton';
 import { Button } from '../../components/Button/Button';
 import { FilterChip } from '../../components/FilterChip/FilterChip';
 import { Select } from '../../components/Select/Select';
+import { Switch } from '../../components/Switch/Switch';
 // Locations and statuses come from the ScheduleDrawer constants — the booking
 // form is what writes these values, so sourcing the filter options from the
 // same place keeps every chip option matchable against real rows.
@@ -42,6 +43,8 @@ export function CalendarToolbar({
   onScheduleSelect,
   onOpenOoo,
   onOpenHolidays,
+  showAvailable = false,
+  onShowAvailableChange,
 }) {
   // People by id; the chip speaks labels (a name, plus email when shared).
   const userOptions = useMemo(() => peopleOptions(users), [users]);
@@ -126,10 +129,13 @@ export function CalendarToolbar({
         />
         */}
 
-        <label className={styles.availabilityToggle}>
-          <input type="checkbox" />
-          <span>Availability</span>
-        </label>
+        {/* Week view: shade the time the user in view can't be booked. */}
+        <Switch
+          checked={!!showAvailable}
+          onChange={(v) => onShowAvailableChange?.(!!v)}
+          label="Show available slots"
+          disabled={currentView !== 'week'}
+        />
         {/* Figma Eventus 17596:117364: the whole button opens the menu. */}
         <Button
           variant="secondary"

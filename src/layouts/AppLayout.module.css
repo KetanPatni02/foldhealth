@@ -3,6 +3,19 @@
   height: 100vh;
   overflow: hidden;
   width: 100%;
+  /* Neutral-100 surface sits behind the nav and body in every shape, so
+     the panes always read as cards on a tinted ground that's a touch
+     deeper than the body's own neutral-50 bg. */
+  background: var(--neutral-100);
+}
+
+/* Floating-sidebar shape: inset the whole shell so every top-level pane
+   (the rail, any feature SideNav, and the main column) reads as a card
+   on the neutral-100 ground. The feature SideNavs pick up the matching
+   card chrome via the global rule in SideNav.module.css. */
+:root[data-sidebar-shape="floating"] .app {
+  padding: var(--space-1);
+  gap: var(--space-1);
 }
 
 .main {
@@ -10,6 +23,41 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Body panel reads as a second floating card beside the NavBar, with
+   matching outline and radius, per user request. Targets every direct
+   child of .app that is NOT the floating-sidebar frame (identified by
+   `data-float-shell`) so each view's own root wrapper (`.main`, HomeView's
+   `.page`, CallsView's `.panels`, TasksView's `.wrapper`, Messages,
+   Campaign, ...) picks up the Body panel chrome without each view having
+   to opt in. Feature SideNavs inside the card drop their own chrome in
+   SideNav.module.css so cards don't nest.
+
+   Excludes:
+   - `[data-react-aria-top-layer]`: React Aria's always-mounted Toaster
+     notifications region. It's an empty inline section until a toast
+     fires, and sat as a 1px strip beside the body carrying our chrome.
+   - `[data-floating-overlay]`: opt-out for position: fixed / absolute
+     children (BrowserCallCard, drawer hosts, etc.) that already carry
+     their own chrome and shouldn't double up.
+   - `[data-floating-split]`: the patient view with a program "in right
+     panel" draws its own two cards, so the wrapper stays bare. */
+:root[data-sidebar-shape="floating"] .app > *:not([data-float-shell]):not([data-react-aria-top-layer]):not([data-floating-overlay]):not([data-floating-split]) {
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  background: var(--neutral-0);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+/* The Toaster's always-mounted live region stays a flex child by default,
+   so the gap before it leaves a thin dead strip on the right of the Body
+   card. Taking it out of flow lets Body's flex:1 fill the full width.
+   Screen-reader announcements still fire; its toasts render in Sonner's
+   own position:fixed container, not this element. */
+:root[data-sidebar-shape="floating"] .app > [data-react-aria-top-layer] {
+  position: absolute;
 }
 
 .bodyRow {

@@ -69,6 +69,82 @@ export function initNavStyle() {
 }
 
 /**
+ * Sidebar shape — the user's choice between the standard 72px labeled rail
+ * (plus a page-column SubNav) and the compact 240px floating card that
+ * pairs a 52px icon-only rail with the SubNav inline. Persisted so the
+ * preference survives reloads. No `data-*` attribute: the layout picks
+ * which rail to mount based on the store value.
+ */
+export const SIDEBAR_SHAPE_STORAGE_KEY = 'sidebarShape';
+export const SIDEBAR_SHAPE_VALUES = ['standard', 'floating'];
+
+export function getStoredSidebarShape() {
+  try {
+    const v = localStorage.getItem(SIDEBAR_SHAPE_STORAGE_KEY);
+    return SIDEBAR_SHAPE_VALUES.includes(v) ? v : 'standard';
+  } catch {
+    return 'standard';
+  }
+}
+
+export function persistSidebarShape(value) {
+  try {
+    localStorage.setItem(SIDEBAR_SHAPE_STORAGE_KEY, value);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+export function applySidebarShape(value) {
+  const safe = SIDEBAR_SHAPE_VALUES.includes(value) ? value : 'standard';
+  if (typeof document !== 'undefined') {
+    const root = document.documentElement;
+    if (safe === 'standard') root.removeAttribute('data-sidebar-shape');
+    else root.setAttribute('data-sidebar-shape', safe);
+  }
+  persistSidebarShape(safe);
+  return safe;
+}
+
+/**
+ * Floating-sidebar density, Figma node 1256:42013. Variant of the
+ * floating rail that drops icon size (24px to 18px) and stroke weight
+ * (1.5 to the global 1px) for a quieter, denser chrome. No effect when
+ * `sidebarShape` is 'standard'. Attribute lands on <html> so SideNav's
+ * stroke override can key off it alongside the shape attribute.
+ */
+export const FLOATING_DENSITY_STORAGE_KEY = 'floatingDensity';
+export const FLOATING_DENSITY_VALUES = ['comfortable', 'compact'];
+
+export function getStoredFloatingDensity() {
+  try {
+    const v = localStorage.getItem(FLOATING_DENSITY_STORAGE_KEY);
+    return FLOATING_DENSITY_VALUES.includes(v) ? v : 'comfortable';
+  } catch {
+    return 'comfortable';
+  }
+}
+
+export function persistFloatingDensity(value) {
+  try {
+    localStorage.setItem(FLOATING_DENSITY_STORAGE_KEY, value);
+  } catch {
+    /* localStorage unavailable */
+  }
+}
+
+export function applyFloatingDensity(value) {
+  const safe = FLOATING_DENSITY_VALUES.includes(value) ? value : 'comfortable';
+  if (typeof document !== 'undefined') {
+    const root = document.documentElement;
+    if (safe === 'comfortable') root.removeAttribute('data-floating-density');
+    else root.setAttribute('data-floating-density', safe);
+  }
+  persistFloatingDensity(safe);
+  return safe;
+}
+
+/**
  * Contrast setting — independent of color theme.
  * 'default' keeps the standard neutral scale.
  * 'high'    boosts text and border tokens for easier reading (older users,

@@ -15,13 +15,16 @@ import {
   canSaveTeam,
 } from './ConfigureTeamDrawer.utils';
 import { UserCard } from './ConfigureTeamDrawerUserCard';
+import { TIMER_PROGRAM_CODES } from '../billing/careProgramBillingData';
 import {
   ConfigureTeamDrawerUserPicker,
   ConfigureTeamDrawerBasicFields,
 } from './ConfigureTeamDrawerFields';
 import drawerStyles from './ConfigureTeamDrawer.module.css';
 
-export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) {
+// `defaultTeamType` preselects the Team Type for a new team (e.g. opened from
+// Billing → Timer Access to add a CCM team).
+export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, defaultTeamType, onClose }) {
   const addHccCareTeam = useAppStore(s => s.addHccCareTeam);
   const updateHccCareTeam = useAppStore(s => s.updateHccCareTeam);
   const existingTeams = useAppStore(s => s.hccCareTeams);
@@ -39,7 +42,7 @@ export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) 
   const isEdit = !!editTeam;
 
   const [name, setName] = useState(editTeam?.name || '');
-  const [teamType, setTeamType] = useState(editTeam?.teamType || teamTypeOptions[0]);
+  const [teamType, setTeamType] = useState(editTeam?.teamType || defaultTeamType || teamTypeOptions[0]);
   const allocatedTins = editTeam?.allocatedTins || [];
   const [members, setMembers] = useState(() => editTeam?.members || []);
 
@@ -123,7 +126,7 @@ export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) 
       noCloseDivider
       headerRight={
         <>
-          <Button variant="primary" size="S" disabled={!canSave} onClick={handleSave}>Save</Button>
+          <Button variant="primary" size="L" disabled={!canSave} onClick={handleSave}>Save</Button>
           <span className={drawerStyles.headerDivider} />
         </>
       }
@@ -157,6 +160,7 @@ export function ConfigureTeamDrawer({ kind = 'hcc', editTeam = null, onClose }) 
                 key={m.userId}
                 member={m}
                 teamType={teamType}
+                showBillableCheck={kind === 'care-program' && TIMER_PROGRAM_CODES.includes(teamType)}
                 priorUtilization={utilizationFor(m.userId)}
                 breakdown={breakdownFor(m.userId)}
                 usersForTin={usersForTin}

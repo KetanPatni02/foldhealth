@@ -1,8 +1,8 @@
-/* Drawer's own body already pads 16px; this only stacks the cards. */
+/* Search, then the cards (Figma Mar-Present-2026, 4143:18611). */
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 /* The card is a row so its actions sit centred against the whole card, not
@@ -10,10 +10,11 @@
 .card {
   border: 0.5px solid var(--neutral-150);
   border-radius: var(--space-2);
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-4);
+  background: var(--neutral-0);
   cursor: pointer;
   text-align: left;
 }
@@ -31,8 +32,8 @@
   gap: var(--space-2);
 }
 .version {
-  font-size: var(--font-base);
-  font-weight: 600;
+  font-size: var(--font-lg);
+  font-weight: 500;
   color: var(--neutral-500);
 }
 /* Row actions, matching the library tables: icon, divider, icon. */
@@ -51,17 +52,10 @@
 
 
 .meta {
-  font-size: var(--font-md);
+  font-size: var(--font-base);
   color: var(--neutral-300);
 }
 .counts {
-  font-size: var(--font-md);
+  font-size: var(--font-base);
   color: var(--neutral-400);
-}
-.note {
-  font-size: var(--font-md);
-  color: var(--neutral-400);
-  font-style: italic;
-  border-left: 2px solid var(--neutral-150);
-  padding-left: var(--space-2);
 }

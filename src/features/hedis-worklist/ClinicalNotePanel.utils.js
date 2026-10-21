@@ -3,6 +3,14 @@ import { derivedPatch, needsTelehealthConsent, requiredKeys } from '../../lib/no
 export const CURRENT_USER = 'Isabeth Partida Fra';
 export const GENDER_LABEL = { M: 'Male', F: 'Female', O: 'Other' };
 
+// Gaps closed from their own tracker, not a visit note: CIS-CMB10 closes
+// from recorded immunizations. Never listed in the clinical note.
+export const NOTELESS_GAP_CODES = new Set(['CIS-CMB10']);
+
+// Open gaps a clinical note can cover.
+export const noteOpenGaps = (gaps) => (gaps || []).filter(g =>
+  !NOTELESS_GAP_CODES.has(g.code) && g.status !== 'Completed' && !String(g.status).startsWith('Closed'));
+
 export const MEASURE_NAMES = {
   CBP:        'Controlling Blood Pressure',
   COL:        'Colorectal Cancer Screening',

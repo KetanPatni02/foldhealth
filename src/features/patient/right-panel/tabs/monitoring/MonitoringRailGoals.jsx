@@ -4,16 +4,15 @@ import { MenuPopover } from '../../../../../components/MenuPopover/MenuPopover';
 import { useAppStore } from '../../../../../store/useAppStore';
 import { buildCarePlanSnapshot } from '../care-programs/care-plan/summary/carePlanSnapshot';
 import { carePlanSources } from '../care-programs/care-plan/lib/carePlanMode';
-import { GbiNameCell, GbiStatusButton } from '../care-programs/care-plan/tables/carePlanTableShared';
+import { GbiNameCell, GbiStatusButton, gbiStatusMenuItems } from '../care-programs/care-plan/tables/carePlanTableShared';
+import { isClosedStatus } from '../care-programs/care-plan/lib/gbiStatus';
 import { enrichGoalRows } from '../care-programs/care-plan/tables/carePlanTableSort';
 import { normalizeCategory } from '../../../../settings/care-plan-library/lib';
 import { GoalPreviewDrawer } from '../care-programs/care-plan/drawers/GoalPreviewDrawer/GoalPreviewDrawer';
 import { useSignedCarePlans } from '../care-programs/care-plan/lib/useSignedCarePlans';
 import styles from './MonitoringRailGoals.module.css';
 
-const CLOSED_GOAL_STATUSES = new Set(['Met', 'Not Met']);
 const PRIORITIES = ['high', 'medium', 'low'];
-const GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
 
 // Goals on signed care plans. Status and priority are progress on the signed
 // plan, so they change from here directly.
@@ -52,7 +51,7 @@ export function MonitoringRailGoals({ patient }) {
   const activeGoals = useMemo(() => {
     if (!patientId) return [];
     const { goals } = buildCarePlanSnapshot(programs, signedCarePlans, patientId);
-    const open = goals.filter((g) => !CLOSED_GOAL_STATUSES.has(g.status));
+    const open = goals.filter((g) => !isClosedStatus(g.status));
     return enrichGoalRows(open).sort((a, b) => {
       if (a._sortPriority !== b._sortPriority) return a._sortPriority - b._sortPriority;
       return (a.title || '').localeCompare(b.title || '');
@@ -141,10 +140,10 @@ export function MonitoringRailGoals({ patient }) {
       {statusMenu && (
         <MenuPopover
           anchorRect={statusMenu.rect}
-          items={GBI_STATUSES.map((s) => ({ key: s, label: s }))}
+          items={gbiStatusMenuItems('goal', statusMenu.item?.status)}
           onSelect={changeStatus}
           onClose={() => setStatusMenu(null)}
-          width={160}
+          width={180}
           align="right"
           ariaLabel="Change status"
         />

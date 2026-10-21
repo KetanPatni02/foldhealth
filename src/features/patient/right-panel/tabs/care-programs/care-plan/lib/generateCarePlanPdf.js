@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import { parseLocalDate } from '../../../../../../../lib/localDate';
 import { formatGoalTarget, formatGoalDuration } from '../../../../../../settings/care-plan-library/lib/goalFormat';
-import { CARE_PLAN_INTERVENTION_MENU } from './carePlanInterventionMenu';
+import { CARE_PLAN_INTERVENTION_KINDS } from './carePlanInterventionMenu';
 import { matchesShareConditionFilter } from './carePlanShareFilters';
 import { generateCarePlanSummaryPdf } from './generateCarePlanSummaryPdf';
 
@@ -28,23 +28,32 @@ const C = {
   white: [255, 255, 255],
 };
 
+// The app's GBI status colors (lib/gbiStatus tones) as RGB, since the PDF
+// can't read CSS tokens: In Progress amber, On Hold blue, Discontinued
+// orange and Not Applicable faded, neither of them failure red.
 const STATUS_STYLE = {
   'Not Started': { bg: [241, 243, 246], text: [95, 106, 126] },
-  'In Progress': { bg: [233, 242, 255], text: [32, 96, 199] },
-  'On Hold': { bg: [255, 244, 229], text: [176, 104, 0] },
+  'In Progress': { bg: [255, 244, 229], text: [176, 104, 0] },
+  'On Hold': { bg: [233, 242, 255], text: [32, 96, 199] },
   Met: { bg: [230, 246, 236], text: [22, 128, 61] },
   Completed: { bg: [230, 246, 236], text: [22, 128, 61] },
   Resolved: { bg: [230, 246, 236], text: [22, 128, 61] },
   'Not Met': { bg: [254, 236, 236], text: [196, 43, 28] },
   Overdue: { bg: [254, 236, 236], text: [196, 43, 28] },
+  Discontinued: { bg: [255, 240, 230], text: [194, 87, 18] },
+  'Not Applicable': { bg: [246, 247, 249], text: [150, 158, 172] },
 };
 const statusStyle = s => STATUS_STYLE[s] || STATUS_STYLE['Not Started'];
 
-const STATUS_RANK = { 'In Progress': 0, 'On Hold': 1, 'Not Met': 2, Overdue: 2, 'Not Started': 3, Met: 4, Completed: 4, Resolved: 4 };
+// Open work first, then outcomes; items closed without one sort last.
+const STATUS_RANK = {
+  'In Progress': 0, 'On Hold': 1, 'Not Met': 2, Overdue: 2, 'Not Started': 3,
+  Met: 4, Completed: 4, Resolved: 4, Discontinued: 5, 'Not Applicable': 5,
+};
 const byStatus = (a, b) => ((STATUS_RANK[a.status] ?? 3) - (STATUS_RANK[b.status] ?? 3))
   || (a.title || '').localeCompare(b.title || '');
 
-const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => [i.key, i.label]));
+const KIND_LABEL = Object.fromEntries(CARE_PLAN_INTERVENTION_KINDS.map(i => [i.key, i.label]));
 
 function fmtDate(value) {
   if (!value) return '';
@@ -73,7 +82,7 @@ export function conditionGroups(selection) {
 
 /**
  * Build the care plan PDF from the selected elements.
- * @param {{patientName?:string, programName?:string, sharedBy?:string, date?:string, note?:string}} meta
+ * @param {{patientName?:string, programName?:string, sharedBy?:string, date?:string, note?:string, versionLabel?:string}} meta
  * @param {{conditions:string[], goals:Array, interventions:Array, barriers?:Array}} selection
  * @param {object} [options] Personalize settings: format, groupBy, carePlanNote,
  *   demographics ([{ label, value }]), header / footer (drawn components;
@@ -98,7 +107,7 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     logo = null,
     fonts = null,
   } = options;
-  const { patientName = 'Patient', programName = '', sharedBy = '', date = '', note = '' } = meta;
+  const { patientName = 'Patient', programName = '', sharedBy = '', date = '', note = '', versionLabel = '' } = meta;
 
   const doc = new jsPDF({ unit: 'pt', format: [PAGE.w, PAGE.h] });
   let REG = ['helvetica', 'normal'];
@@ -152,7 +161,7 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     }
     font('medium', 18, C.ink);
     doc.text('Care Plan', M, y + 14);
-    const metaItems = [['Date', date], ['Prepared by', sharedBy]].filter(([, v]) => v);
+    const metaItems = [['Version', versionLabel], ['Date', date], ['Prepared by', sharedBy]].filter(([, v]) => v);
     metaItems.forEach(([label, value], i) => {
       const x = PAGE.w - M - (metaItems.length - 1 - i) * 120;
       font('regular', 7.5, C.faint);
@@ -169,9 +178,21 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
     y += 12;
   } else {
     font('regular', 9, C.muted);
-    doc.text([programName, sharedBy && `Prepared by ${sharedBy}`, date].filter(Boolean).join('  •  '), M, y);
+    doc.text([programName, versionLabel, sharedBy && `Prepared by ${sharedBy}`, date].filter(Boolean).join('  •  '), M, y);
     y += 14;
   }
+
+  // Two versions print back to back: a band at the start of each part says
+  // which version follows.
+  const versionBand = () => {
+    if (!meta.versionBanner) return;
+    doc.setFillColor(243, 238, 252);
+    doc.roundedRect(M, y, CONTENT_W, 24, 4, 4, 'F');
+    font('medium', 9, C.ink);
+    doc.text(meta.versionBanner, M + 10, y + 15.5);
+    y += 34;
+  };
+  versionBand();
 
   // ── Patient card: name, conditions as chips, picked demographics ──
   {
@@ -412,7 +433,7 @@ export function generateCarePlanPdf(meta, selection, options = {}) {
       doc.setLineWidth(0.5);
       doc.line(M, PAGE.h - 30, PAGE.w - M, PAGE.h - 30);
       font('regular', 7, C.faint);
-      doc.text([patientName, 'Care Plan'].filter(Boolean).join('  •  '), M, PAGE.h - 18);
+      doc.text([patientName, 'Care Plan', versionLabel].filter(Boolean).join('  •  '), M, PAGE.h - 18);
       doc.text(`Page ${p} of ${total}`, PAGE.w - M, PAGE.h - 18, { align: 'right' });
     }
   }

@@ -143,7 +143,7 @@ export function CampaignBuilder() {
                 onClick={() => showToast('Write with AI — coming soon')}
                 type="button"
               >
-                <Icon name="solar:magic-stick-3-linear" size={14} color="var(--primary-300)" />
+                <Icon name="custom:ai" size={14} color="var(--primary-300)" />
                 Write with AI
               </button>
             </div>

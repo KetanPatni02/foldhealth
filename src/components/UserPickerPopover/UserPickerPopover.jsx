@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Avatar } from '../Avatar/Avatar';
 import { Icon } from '../Icon/Icon';
+import { Checkbox } from '../ShadcnCheckbox/ShadcnCheckbox';
 import styles from './UserPickerPopover.module.css';
 
 const initialsOf = (name) => String(name || '?').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase();
@@ -23,8 +24,10 @@ const initialsOf = (name) => String(name || '?').trim().split(/\s+/).map(w => w[
  * @param {string}   [props.emptyText='No users available.']
  * @param {'left'|'right'} [props.align='left'] – Line up with the trigger's left edge, or its right edge
  *   (opening leftward, for triggers at the right of a panel)
+ * @param {boolean}  [props.multiple]     – Checkbox rows (Figma Eventus 16978:128250): `selected` is
+ *   an array of ids/names, each click toggles one and calls `onSelect(nextArray)`, and the menu stays open
  */
-export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, onUnassign, onClose, title = 'Select User', emptyText = 'No users available.', align = 'left' }) {
+export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, onUnassign, onClose, title = 'Select User', emptyText = 'No users available.', align = 'left', multiple = false }) {
   const ref = useRef(null);
   const searchRef = useRef(null);
   const [query, setQuery] = useState('');
@@ -39,7 +42,16 @@ export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, 
 
   const q = query.trim().toLowerCase();
   const shown = useMemo(() => users.filter(u => !q || `${u.name} ${u.role || ''}`.toLowerCase().includes(q)), [users, q]);
-  const isPicked = (u) => selected != null && (String(u.id) === String(selected) || u.name === selected);
+  const keyOf = (u) => (u.id != null ? String(u.id) : u.name);
+  const pickedSet = new Set(multiple ? (selected || []).map(String) : []);
+  const isPicked = (u) => (multiple
+    ? pickedSet.has(keyOf(u)) || pickedSet.has(u.name)
+    : selected != null && (String(u.id) === String(selected) || u.name === selected));
+  const toggle = (u) => {
+    const k = keyOf(u);
+    const next = isPicked(u) ? [...pickedSet].filter(x => x !== k && x !== u.name) : [...pickedSet, k];
+    onSelect(next);
+  };
   if (!anchorRect) return null;
   // Opens below the trigger, or above it near the bottom of the window.
   const width = 280;
@@ -63,6 +75,28 @@ export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, 
           onChange={(e) => setQuery(e.target.value)}
         />
       </label>
+      {multiple && (() => {
+        // Select All / Clear All act on the users in view (the search narrows them).
+        const allOn = shown.length > 0 && shown.every(isPicked);
+        const someOn = shown.some(isPicked);
+        return (
+          <div className={styles.bulk}>
+            <button
+              type="button"
+              className={styles.selectAll}
+              onClick={() => {
+                const keys = new Set(pickedSet);
+                shown.forEach(u => (allOn ? (keys.delete(keyOf(u)), keys.delete(u.name)) : keys.add(keyOf(u))));
+                onSelect([...keys]);
+              }}
+            >
+              <Checkbox checked={allOn ? true : someOn ? 'indeterminate' : false} tabIndex={-1} aria-hidden="true" className={styles.check} />
+              Select All
+            </button>
+            <button type="button" className={styles.clearAll} onClick={() => onSelect([])} disabled={!pickedSet.size}>Clear All</button>
+          </div>
+        );
+      })()}
       <div className={styles.list}>
         {onUnassign && !q && (
           <button type="button" role="menuitem" className={styles.row} onClick={() => { onUnassign(); onClose(); }}>
@@ -76,16 +110,18 @@ export function UserPickerPopover({ anchorRect, users = [], selected, onSelect, 
           <button
             key={u.id || u.name}
             type="button"
-            role="menuitem"
-            className={isPicked(u) ? `${styles.row} ${styles.rowActive}` : styles.row}
-            onClick={() => { onSelect(u); onClose(); }}
+            role={multiple ? 'menuitemcheckbox' : 'menuitem'}
+            aria-checked={multiple ? isPicked(u) : undefined}
+            className={[styles.row, multiple ? styles.rowMulti : '', isPicked(u) && !multiple ? styles.rowActive : ''].filter(Boolean).join(' ')}
+            onClick={() => (multiple ? toggle(u) : (onSelect(u), onClose()))}
           >
+            {multiple && <Checkbox checked={isPicked(u)} tabIndex={-1} aria-hidden="true" className={styles.check} />}
             <Avatar variant="staff" initials={u.initials || initialsOf(u.name)} size="M" />
             <span className={styles.text}>
               <span className={styles.name}>{u.name}</span>
               {u.role && <span className={styles.role}>{u.role}</span>}
             </span>
-            {isPicked(u) && <Icon name="solar:check-circle-linear" size={16} color="var(--primary-300)" />}
+            {isPicked(u) && !multiple && <Icon name="solar:check-circle-linear" size={16} color="var(--primary-300)" />}
           </button>
         ))}
       </div>

@@ -23,6 +23,8 @@ const EMPTY_SELECTED = [];
  *  - showClear  (boolean)        Show the "Select All / Clear All" controls row
  *                                 (default true). Matches Figma 4240-110454.
  *  - searchable (boolean)        Show a search box above the list (default false).
+ *  - renderOptionLeading (fn(option) => node)  Optional node before each
+ *                                 option's label (e.g. a person's avatar).
  */
 export function CheckboxListPopover({
   anchorRect,
@@ -34,6 +36,7 @@ export function CheckboxListPopover({
   width = 240,
   showClear = true,
   searchable = false,
+  renderOptionLeading,
 }) {
   // Close on Escape
   useEffect(() => {
@@ -141,6 +144,7 @@ export function CheckboxListPopover({
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(opt); } }}
               >
                 <Checkbox checked={checked} tabIndex={-1} aria-hidden className="pointer-events-none" />
+                {renderOptionLeading?.(opt)}
                 <span className={styles.label}>{opt}</span>
               </div>
             );

@@ -67,20 +67,6 @@
 }
 
 
-.availabilityToggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--font-md);
-  color: var(--neutral-300);
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.availabilityToggle input {
-  accent-color: var(--primary-300);
-}
-
 /* Calendar container — fill remaining height */
 .calendarWrap {
   flex: 1;

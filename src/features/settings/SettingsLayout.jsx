@@ -9,18 +9,35 @@ import { BillingPanel } from './billing/BillingPanel';
 import { CalendarSettings } from './calendar/CalendarSettings';
 import { MemberLeadsPanel } from './member-leads/MemberLeadsPanel';
 import { CarePlanLibraryPanel } from './care-plan-library/panel/CarePlanLibraryPanel/CarePlanLibraryPanel';
+import { AutomationRulesPanel } from './automation-rules/AutomationRulesPanel';
 import { CarePlanCreateView } from './care-plan-library/create/CarePlanCreateView/CarePlanCreateView';
 import { CarePlanTemplateView } from './care-plan-library/templates';
 import { useAppStore } from '../../store/useAppStore';
+import { createPortal } from 'react-dom';
 import { Icon } from '../../components/Icon/Icon';
+import { useFloatingSubNavSlot } from '../../components/FloatingSidebar/floatingSubNavSlot';
 import styles from './SettingsLayout.module.css';
+
+/**
+ * SettingsSubNav lives inside the floating NavBar card when the user has
+ * opted into the floating shape — same shape Population / Analytics /
+ * Calls / Comms use. The feature's state (activeItem, click handler)
+ * stays here; only the DOM moves via portal.
+ */
+function SettingsSubNavSlot({ activeItem, onItemClick }) {
+  const sidebarShape = useAppStore(s => s.sidebarShape);
+  const slot = useFloatingSubNavSlot();
+  const floating = sidebarShape === 'floating' && slot;
+  const el = <SettingsSubNav activeItem={activeItem} onItemClick={onItemClick} width={floating ? '100%' : 180} />;
+  return floating ? createPortal(el, slot) : el;
+}
 
 // Nav items without a built panel yet. Rendering AgentsTable for these (the
 // old fall-through) both showed the wrong screen and fired its Supabase
 // queries; a static placeholder costs nothing.
 const IMPLEMENTED = new Set([
   'agents', 'member/leads', 'messages', 'embedded-components',
-  'content', 'care-plan-library', 'billing', 'account', 'calendar',
+  'content', 'care-plan-library', 'billing', 'account', 'calendar', 'automations',
 ]);
 
 function ComingSoonPanel({ label }) {
@@ -85,7 +102,7 @@ export function SettingsLayout() {
   if (!IMPLEMENTED.has(settingsNavItem)) {
     return (
       <div className={styles.layout}>
-        <SettingsSubNav activeItem={settingsNavItem} onItemClick={setSettingsNavItem} />
+        <SettingsSubNavSlot activeItem={settingsNavItem} onItemClick={setSettingsNavItem} />
         <ComingSoonPanel label={SECTION_LABELS[settingsNavItem] || settingsNavItem} />
       </div>
     );
@@ -93,7 +110,7 @@ export function SettingsLayout() {
 
   return (
     <div className={styles.layout}>
-      <SettingsSubNav activeItem={settingsNavItem} onItemClick={setSettingsNavItem} />
+      <SettingsSubNavSlot activeItem={settingsNavItem} onItemClick={setSettingsNavItem} />
       {settingsNavItem === 'messages' ? (
         <MessagesSettings />
       ) : settingsNavItem === 'embedded-components' ? (
@@ -110,6 +127,8 @@ export function SettingsLayout() {
         <MemberLeadsPanel />
       ) : settingsNavItem === 'care-plan-library' ? (
         <CarePlanLibraryPanel />
+      ) : settingsNavItem === 'automations' ? (
+        <AutomationRulesPanel />
       ) : (
         <AgentsTable />
       )}

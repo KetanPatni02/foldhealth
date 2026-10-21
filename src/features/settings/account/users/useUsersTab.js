@@ -4,6 +4,9 @@ import { useAppStore } from '../../../../store/useAppStore';
 import { FALLBACK_USERS } from '../../fallbackUsers';
 import { getInitials } from '../AccountPanel.constants';
 import { ROLE_FIELDS } from './UsersTab.utils';
+import { apiFetch } from '../../../../lib/apiFetch';
+import { accountStatus } from './accountLock';
+import { flushSecurityEmails } from '../../../auth/accountSecurity';
 
 // Map a raw `profiles` row to the user shape the table renders. Shared by the
 // list fetch and the single-row save so a save can update just its own row
@@ -120,6 +123,53 @@ export function useUsersTab() {
     fetchUsers();
   }, [fetchUsers]);
 
+  // Account lockout state (admins only; RLS returns nothing to others, and
+  // nothing at all before account_lockout_migration.sql runs).
+  const [lockouts, setLockouts] = useState({});
+  useEffect(() => {
+    let live = true;
+    supabase.from('account_lockouts').select('*').then(({ data, error }) => {
+      if (live && !error) setLockouts(Object.fromEntries((data || []).map(r => [r.user_id, r])));
+    });
+    return () => { live = false; };
+  }, []);
+  const usersWithLock = useMemo(
+    () => users.map(u => (lockouts[u.id] ? { ...u, lock: lockouts[u.id] } : u)),
+    [users, lockouts],
+  );
+
+  // Unlock (api/_handlers/account-unlock.js): records the reason, then emails the user
+  // their User ID and a one-time link to set a new password.
+  const postUnlock = async (body) => {
+    const res = await apiFetch('/api/account-unlock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json().catch(() => ({}));
+    return res.ok ? { ok: true, ...json } : { ok: false, message: json?.error?.message };
+  };
+
+  const unlockAccount = async (user, { reason, note, identityConfirmed }) => {
+    if (!isCurrentUserAdmin) {
+      showToast('Only practice admins can unlock accounts');
+      return false;
+    }
+    const r = await postUnlock({ action: 'unlock', userId: user.id, reason, note, identityConfirmed });
+    if (!r.ok) {
+      showToast(r.message || 'Could not unlock the account');
+      return false;
+    }
+    if (r.lock) setLockouts(prev => ({ ...prev, [user.id]: r.lock }));
+    showToast(r.emailSent === false ? r.message : `${user.name} unlocked. We emailed them a link to set a new password.`);
+    return true;
+  };
+
+  const resendUnlockLink = async (user) => {
+    const r = await postUnlock({ action: 'resend', userId: user.id });
+    showToast(r.ok ? `New link sent to ${user.email}` : (r.message || 'Could not send the link'));
+  };
+
   const toggleUserStatus = async (user) => {
     if (!isCurrentUserAdmin) {
       showToast('Only Admin/Practice Manager can change user status');
@@ -156,6 +206,8 @@ export function useUsersTab() {
 
     if (!error && data && data.length > 0) {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: newStatus } : u));
+      // Approval queues the "Sign-up Approved" email (account_email_templates_migration.sql).
+      if (approve) flushSecurityEmails();
       showToast(`${user.name} ${approve ? 'approved' : 'rejected'}`);
     } else {
       showToast(error?.message || 'Failed to update sign-up request (Check permissions)');
@@ -236,14 +288,19 @@ export function useUsersTab() {
       return;
     }
     if (!user.email) { showToast('No email address for this user'); return; }
+    // A 6-digit code to the email on file (api/_handlers/password-reset.js). Admins
+    // never see or set the password.
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: window.location.origin,
+      const res = await apiFetch('/api/password-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'request', userId: user.id }),
       });
-      if (error) showToast(`Error: ${error.message}`);
-      else showToast(`Password reset email sent to ${user.email}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) showToast(json?.error?.message || 'Failed to send the reset code');
+      else showToast(`Reset code sent to ${user.email}`);
     } catch {
-      showToast('Failed to send password reset email');
+      showToast('Failed to send the reset code');
     }
   };
 
@@ -280,10 +337,10 @@ export function useUsersTab() {
   };
 
   const filteredUsers = useMemo(() => {
-    let list = users;
+    let list = usersWithLock;
     if (userFilters.status.length) {
       const statusSet = new Set(userFilters.status);
-      list = list.filter(u => statusSet.has(u.status));
+      list = list.filter(u => statusSet.has(accountStatus(u)));
     }
     if (userFilters.roles.length) {
       const rolesSet = new Set(userFilters.roles);
@@ -300,7 +357,7 @@ export function useUsersTab() {
       u.email.toLowerCase().includes(q) ||
       u.role.toLowerCase().includes(q) ||
       u.location.toLowerCase().includes(q));
-  }, [users, searchVal, userFilters]);
+  }, [usersWithLock, searchVal, userFilters]);
 
   const filterOptions = useMemo(() => {
     const roles = new Set();
@@ -310,7 +367,7 @@ export function useUsersTab() {
       if (u.location) locations.add(u.location);
     }
     return {
-      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected'],
+      status: ['Active', 'Pending', 'Invited', 'Inactive', 'Suspended', 'Rejected', 'Locked', 'Unlocked'],
       roles: [...roles].sort(),
       location: [...locations].sort(),
     };
@@ -342,6 +399,9 @@ export function useUsersTab() {
     deleteUser,
     deleteUsersBulk,
     resetPassword,
+    unlockAccount,
+    resendUnlockLink,
+    lockouts,
     saveUserProfile,
     filteredUsers,
     filterOptions,

@@ -88,6 +88,8 @@ export function ApcmBillingTable({ searchQuery = '', filtersOpen = false }) {
             currentPage={table.safePage}
             perPage={table.perPage}
             totalItems={table.rows.length}
+            totalCount={table.totalCount}
+            filtered={table.isFiltered}
             onPageChange={table.goToPage}
             onPerPageChange={(n) => { table.setPerPage(Number(n)); table.setCurrentPage(1); }}
           />

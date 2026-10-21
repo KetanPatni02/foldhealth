@@ -19,8 +19,14 @@ const to12 = (h) => h % 12 || 12;
  * @param {object}   [props.hourColRef] / [props.minColRef] – refs on the
  *   scrolling lists, for scrolling the picked item into view
  * @param {string}   [props.className] – Extra class on the section
+ * @param {number}   [props.after]   – minutes from midnight; times at or before
+ *   it are disabled (an end time after its start)
  */
-export function TimeColumns({ hour, minute, onHour, onMinute, hour12 = false, hourColRef, minColRef, className }) {
+export function TimeColumns({ hour, minute, onHour, onMinute, hour12 = false, hourColRef, minColRef, className, after }) {
+  const limit = Number.isFinite(after) ? after : -1;
+  // An hour is out when even its last minute is too early; a minute when it is.
+  const hourOff = (h) => h * 60 + 59 <= limit;
+  const minuteOff = (m) => hour * 60 + m <= limit;
   return (
     <div className={[styles.timeColumnsSection, hour12 ? styles.timeColumns12 : '', className || ''].filter(Boolean).join(' ')}>
       <div className={styles.timeColsRow}>
@@ -30,6 +36,7 @@ export function TimeColumns({ hour, minute, onHour, onMinute, hour12 = false, ho
             {hour12
               ? HOURS_12.map(h => (
                 <button key={h} type="button" data-h={h}
+                  disabled={hourOff((h % 12) + (hour >= 12 ? 12 : 0))}
                   className={`${styles.timeColItem} ${to12(hour) === h ? styles.timeColItemSelected : ''}`}
                   onClick={() => onHour((h % 12) + (hour >= 12 ? 12 : 0))}>
                   {pad(h)}
@@ -37,6 +44,7 @@ export function TimeColumns({ hour, minute, onHour, onMinute, hour12 = false, ho
               ))
               : HOURS.map(h => (
                 <button key={h} type="button" data-h={h}
+                  disabled={hourOff(h)}
                   className={`${styles.timeColItem} ${hour === h ? styles.timeColItemSelected : ''}`}
                   onClick={() => onHour(h)}>
                   {pad(h)}
@@ -49,6 +57,7 @@ export function TimeColumns({ hour, minute, onHour, onMinute, hour12 = false, ho
           <div className={styles.timeCol} ref={minColRef}>
             {MINUTES.map(m => (
               <button key={m} type="button" data-m={m}
+                disabled={minuteOff(m)}
                 className={`${styles.timeColItem} ${minute === m ? styles.timeColItemSelected : ''}`}
                 onClick={() => onMinute(m)}>
                 {pad(m)}
@@ -62,6 +71,8 @@ export function TimeColumns({ hour, minute, onHour, onMinute, hour12 = false, ho
             <div className={styles.timeCol}>
               {['AM', 'PM'].map(p => (
                 <button key={p} type="button"
+                  // AM is out once the limit is past 11:59 AM.
+                  disabled={p === 'AM' && hourOff(11)}
                   className={`${styles.timeColItem} ${(hour >= 12) === (p === 'PM') ? styles.timeColItemSelected : ''}`}
                   onClick={() => onHour((hour % 12) + (p === 'PM' ? 12 : 0))}>
                   {p}

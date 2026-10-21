@@ -8,8 +8,16 @@ export const CARE_PLAN_INTERVENTION_MENU = [
   { key: 'internal-task', label: 'Internal Task', icon: 'solar:clipboard-check-linear' },
 ];
 
+/** Every intervention kind with its label and icon. Community referrals are
+ *  added from an SDOH need (sdoh/SdohSection), not from the picker above, so
+ *  they're listed here but have no menu row. */
+export const CARE_PLAN_INTERVENTION_KINDS = [
+  ...CARE_PLAN_INTERVENTION_MENU.filter(i => i.key),
+  { key: 'sdoh-referral', label: 'Community Referral', icon: 'solar:share-circle-linear' },
+];
+
 export const CARE_PLAN_INTERVENTION_ICONS = Object.fromEntries(
-  CARE_PLAN_INTERVENTION_MENU.filter(i => i.key).map(i => [i.key, i.icon]),
+  CARE_PLAN_INTERVENTION_KINDS.map(i => [i.key, i.icon]),
 );
 
 export function interventionDurationFromConfig(config) {

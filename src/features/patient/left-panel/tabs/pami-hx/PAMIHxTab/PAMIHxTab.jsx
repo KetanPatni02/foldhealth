@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { ActionButton } from '../../../../../../components/ActionButton/ActionButton';
 import { Icon } from '../../../../../../components/Icon/Icon';
 import { CardSkeleton } from '../../../../../../components/CardSkeleton/CardSkeleton';
@@ -807,8 +807,10 @@ function HistorySection({ patientId, history, loading }) {
 }
 
 const EMPTY_RECORDS = { history: [] };
+const PAMI_WIDGETS = ['clinical-events', 'problems', 'allergies', 'medications', 'immunizations', 'history', 'lab-reports', 'imaging-reports'];
 
-export function PAMIHxTab({ patientId }) {
+/** `widgets`: the keys to show, in order (More > Customize); all by default. */
+export function PAMIHxTab({ patientId, widgets = PAMI_WIDGETS }) {
   const records = useAppStore(s => (patientId ? s.patientPamiRecords[patientId] : null)) || EMPTY_RECORDS;
   const loadedFor = useAppStore(s => (patientId ? s.patientPamiRecordsLoadedFor[patientId] : false));
   const fetchPatientPamiRecords = useAppStore(s => s.fetchPatientPamiRecords);
@@ -816,14 +818,14 @@ export function PAMIHxTab({ patientId }) {
   useEffect(() => { if (patientId) fetchPatientPamiRecords(patientId); }, [patientId, fetchPatientPamiRecords]);
   const loading = !!patientId && !loadedFor;
 
-  return (
-    <div className={styles.wrapper}>
-      <RecentClinicalEvents updates={CLINICAL_EVENTS} loading={false} />
-      <ProblemsSection patientId={patientId} />
-      <AllergiesSection patientId={patientId} />
-      <MedicationsSection patientId={patientId} />
-      <ImmunizationsSection patientId={patientId} />
-      <HistorySection patientId={patientId} history={records.history} loading={loading} />
+  const render = {
+    'clinical-events': () => <RecentClinicalEvents updates={CLINICAL_EVENTS} loading={false} />,
+    problems: () => <ProblemsSection patientId={patientId} />,
+    allergies: () => <AllergiesSection patientId={patientId} />,
+    medications: () => <MedicationsSection patientId={patientId} />,
+    immunizations: () => <ImmunizationsSection patientId={patientId} />,
+    history: () => <HistorySection patientId={patientId} history={records.history} loading={loading} />,
+    'lab-reports': () => (
       <ReportsSection
         title="Lab Reports"
         nameLabel="Lab Name"
@@ -832,6 +834,8 @@ export function PAMIHxTab({ patientId }) {
         reports={LAB_REPORTS}
         loading={false}
       />
+    ),
+    'imaging-reports': () => (
       <ReportsSection
         title="Imaging Reports"
         nameLabel="Report Name"
@@ -840,6 +844,12 @@ export function PAMIHxTab({ patientId }) {
         reports={IMAGING_REPORTS}
         loading={false}
       />
+    ),
+  };
+
+  return (
+    <div className={styles.wrapper}>
+      {widgets.map(key => <Fragment key={key}>{render[key]?.()}</Fragment>)}
     </div>
   );
 }

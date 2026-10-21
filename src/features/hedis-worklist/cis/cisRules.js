@@ -235,8 +235,9 @@ function recommendedLabel(slot) {
  * @param {object} antigen    – CIS_ANTIGENS entry
  * @param {Array}  doses      – recorded doses ({ id, title, code, date }), date order
  * @param {number} pending    – doses marked given with no date yet
+ * @param {number} [seriesDoses] – care team's series length (Rotavirus 2 or 3)
  */
-function evaluateAntigen(antigen, doses, ctx, pending = 0) {
+function evaluateAntigen(antigen, doses, ctx, pending = 0, seriesDoses = null) {
   const { dob, today, firstBirthday, secondBirthday } = ctx;
   const valid = [];
   const invalid = [];
@@ -249,8 +250,11 @@ function evaluateAntigen(antigen, doses, ctx, pending = 0) {
       invalid.push({ ...dose, reason: reason.text });
     } else valid.push(dose);
   }
+  // Rotavirus: a recorded RotaTeq (non-Rotarix) dose always needs 3. Otherwise
+  // the care team's pick (seriesDoses) wins, then the brand on record.
+  const rvNeedsThree = antigen.key === 'rv' && valid.some(d => !isRotarix(d));
   const required = antigen.key === 'rv'
-    ? (valid.length > 0 && valid.every(isRotarix) ? 2 : 3)
+    ? (rvNeedsThree ? 3 : seriesDoses ?? (valid.length > 0 ? 2 : 3))
     : antigen.doses;
 
   // Routine window + earliest allowed date for the dose filling `slotIdx`.
@@ -358,7 +362,8 @@ function evaluateAntigen(antigen, doses, ctx, pending = 0) {
     label: antigen.label,
     name: antigen.name,
     required,
-    requiredLabel: antigen.key === 'rv' && valid.length === 0 ? '2 or 3' : String(required),
+    requiredLabel: String(required),
+    seriesChoice: antigen.key === 'rv' ? { value: required, picked: !rvNeedsThree && seriesDoses != null, locked: rvNeedsThree } : null,
     valid,
     invalid,
     rows,
@@ -382,9 +387,10 @@ function evaluateAntigen(antigen, doses, ctx, pending = 0) {
  *                                              `pendingFor` antigen key is a
  *                                              dose marked given, date to come.
  * @param {number} [args.measurementYear]     – defaults to today's year
+ * @param {object} [args.seriesDoses]       – { rv: 2 | 3 } series length picked per vaccine
  * @param {Date}   [args.today]
  */
-export function evaluateCis({ dob, immunizations = [], measurementYear, today = new Date() }) {
+export function evaluateCis({ dob, immunizations = [], measurementYear, today = new Date(), seriesDoses = {} }) {
   const birth = parseLocalDate(dob);
   const now = toDay(today);
   const year = measurementYear || now.getFullYear();
@@ -413,6 +419,7 @@ export function evaluateCis({ dob, immunizations = [], measurementYear, today = 
     dosesByAntigen[a.key].sort((x, y) => x.date - y.date),
     ctx,
     pendingByAntigen[a.key],
+    seriesDoses?.[a.key] ?? null,
   ));
 
   const allRows = antigens.flatMap(a => a.rows);
@@ -466,4 +473,22 @@ export function evaluateCis({ dob, immunizations = [], measurementYear, today = 
     return { ...base, evaluation: CIS_EVALUATION.atRisk, reason };
   }
   return { ...base, evaluation: CIS_EVALUATION.onTrack, reason: `${metCount} of ${antigens.length} vaccines complete. Remaining doses fit before the 2nd birthday.` };
+}
+
+/**
+ * Worklist countdown for a CIS-CMB10 gap: "Overdue by Nd" from the most
+ * overdue dose, else "Due in Nd" to the nearest deadline of a dose that is
+ * due now or opens within UPCOMING_DAYS. Null when nothing is pending.
+ */
+export function cisDueIndicator(result, today = new Date()) {
+  const rows = (result?.antigens || []).flatMap(a => a.rows).filter(r => r.kind === 'planned');
+  const overdue = rows.filter(r => r.status === CIS_DOSE_STATUS.overdue);
+  if (overdue.length) {
+    const days = Math.max(...overdue.map(r => daysBetween(today, r.due)));
+    return { label: `Overdue by ${days}d`, tone: 'error' };
+  }
+  const due = rows.filter(r => r.status === CIS_DOSE_STATUS.dueNow || r.status === CIS_DOSE_STATUS.upcoming);
+  if (!due.length) return null;
+  const days = Math.min(...due.map(r => daysBetween(r.due, today)));
+  return { label: days > 0 ? `Due in ${days}d` : 'Due today', tone: 'warning' };
 }

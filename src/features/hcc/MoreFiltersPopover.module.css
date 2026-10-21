@@ -104,3 +104,21 @@
   transition: background 0.12s;
 }
 .clear:hover { background: var(--neutral-50); }
+
+/* Grouped mode: one block per domain (Member, Workflow Status, …). */
+.domain {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+.domain + .domain {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 0.5px solid var(--neutral-150);
+}
+.domainHeading {
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--neutral-200);
+}

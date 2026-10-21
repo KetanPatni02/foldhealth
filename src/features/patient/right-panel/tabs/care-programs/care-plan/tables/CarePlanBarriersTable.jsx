@@ -14,6 +14,7 @@ import {
 } from './carePlanTableShared';
 import { COMPACT_BARRIER_COLUMNS } from './carePlanTableColumns';
 import { isCompletedStatus } from './carePlanTableModel';
+import { AiSuggestionBadge } from '../ai/AiSuggestionBadge';
 import styles from './carePlanTables.module.css';
 
 function BarrierRow({
@@ -77,6 +78,7 @@ function BarrierRow({
         <GbiNameCell
           icon="custom:barrier"
           title={b.title}
+          badge={<AiSuggestionBadge kind="barrier" item={b} />}
           meta={template ? (b.description || null) : null}
           linked={linked(b)}
           showLink={template}
@@ -229,7 +231,7 @@ export function CarePlanBarriersTable({
         renderRow={renderRow}
         renderTbodyFooter={template ? undefined : (ctx) => (
           <CompletedRowsGroup
-            label="Resolved Barriers"
+            label="Closed Barriers"
             rows={resolvedRows}
             open={resolvedOpen}
             onToggle={() => setResolvedOpen(v => !v)}

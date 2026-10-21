@@ -15,6 +15,8 @@ import { parseLocalDate } from '../../../../../../../lib/localDate';
 import { carePlanSignShareEnabled } from '../lib/carePlanSignState';
 import { useCarePlanDraftState } from '../lib/useCarePlanDraftState';
 import { ConfirmDialog } from '../../../../../../../components/ConfirmDialog/ConfirmDialog';
+import { useCarePlanPanelMenu } from '../../../../../hooks/useProgramPanelSplitActive';
+import { isCarePlanPaused } from '../lib/carePlanPause';
 import styles from '../../program-detail/ProgramDetailView/ProgramDetailView.module.css';
 
 function fmtCarePlanDate(isoOrDisplay) {
@@ -40,7 +42,7 @@ const CARE_PLAN_SIGN_MENU_ITEMS = [
  * Sign / Send for Review, More). Rendered by the program Care Plan step and by
  * the patient-level Care Plan tab, so both read and act identically.
  */
-export function CarePlanHeader({ patientId, program }) {
+export function CarePlanHeader({ patientId, program, inPanel = false }) {
   const [carePlanReviewOpen, setCarePlanReviewOpen] = useState(false);
   const [carePlanMoreMenu, setCarePlanMoreMenu] = useState(null);
   const requestCarePlanShare = useAppStore(s => s.requestCarePlanShare);
@@ -65,6 +67,7 @@ export function CarePlanHeader({ patientId, program }) {
   const discardCarePlanDraft = useAppStore(s => s.discardCarePlanDraft);
   const [discardOpen, setDiscardOpen] = useState(false);
   const carePlanDraft = useCarePlanDraftState(patientId, program?.id);
+  const viewedVersion = useAppStore(s => (carePlanKey ? s.viewedCarePlanVersion[carePlanKey] : null));
 
   useEffect(() => {
     if (!patientId || !program?.id) return;
@@ -121,17 +124,31 @@ export function CarePlanHeader({ patientId, program }) {
     [liveCarePlan, carePlanMeta.usingMock, carePlanDraft],
   );
 
+  // Floating sidebar only: open this plan in its own panel (or switch to
+  // the right-panel layout with it there), or, inside that panel, put it
+  // back in the program. Patient-level plans get the layout toggle.
+  const rightPanel = useCarePlanPanelMenu({ program, inPanel });
+  const rightPanelItems = rightPanel.items;
+  // Pause / Resume for a live plan (not while reading an older version).
+  const canPause = !!liveCarePlan?.plan?.id && !viewedVersion;
+  const planPaused = isCarePlanPaused(liveCarePlan?.plan);
   const carePlanMoreItems = useMemo(() => {
     const items = [
+      ...rightPanelItems,
+      { key: 'ai-plan', iconElement: <Icon name="custom:ai" size={16} />, label: 'Draft Individualized Plan' },
+      ...(canPause ? [planPaused
+        ? { key: 'resume', icon: 'solar:play-circle-linear', label: 'Resume Care Plan' }
+        : { key: 'pause', icon: 'solar:pause-circle-linear', label: 'Pause Care Plan' }] : []),
       { key: 'template', icon: 'solar:bookmark-linear', label: 'Save as Template' },
       { key: 'note', icon: 'solar:notes-linear', label: 'Add Note' },
       { key: 'history', iconElement: <Icon name="custom:history" size={16} color="var(--neutral-400)" />, label: 'History' },
     ];
     return items;
-  }, []);
+  }, [rightPanelItems, canPause, planPaused]);
 
   const handleCarePlanMoreSelect = (key) => {
     setCarePlanMoreMenu(null);
+    if (rightPanel.select(key)) return;
     if (key === 'bulk') toggleCarePlanBulkMode();
     else if (key === 'preview') requestCarePlanShare('preview');
     else requestCarePlanPanel(key);
@@ -166,7 +183,9 @@ export function CarePlanHeader({ patientId, program }) {
                 aria-label="Open version history"
               >
                 <span className={styles.assessmentTitle}>
-                  Care Plan • {carePlanMeta.signedBy && carePlanMeta.versionNumber ? `Ver. ${carePlanMeta.versionNumber}` : 'Draft'}
+                  Care Plan • {viewedVersion
+                    ? `Ver. ${viewedVersion.versionNumber} (read only)`
+                    : carePlanMeta.signedBy && carePlanMeta.versionNumber ? `Ver. ${carePlanMeta.versionNumber}` : 'Draft'}
                 </span>
                 <DownChevronIcon size={16} color="var(--neutral-500)" />
               </button>
@@ -192,7 +211,13 @@ export function CarePlanHeader({ patientId, program }) {
                 let statusText = 'Not signed';
                 let statusColor = 'var(--neutral-300)';
                 let statusWeight = 400;
-                if (carePlanMeta.reviewRequestedTo) {
+                if (viewedVersion) {
+                  // A past version reads as itself, not the live draft.
+                  const verb = viewedVersion.reason === 'restore' ? 'Restored' : viewedVersion.reason === 'signed' ? 'Signed' : 'Saved';
+                  statusText = `${verb}${viewedVersion.createdBy ? ` by ${viewedVersion.createdBy}` : ''}${viewedVersion.createdAt ? ` on ${fmtShort(viewedVersion.createdAt)}` : ''}`;
+                  statusColor = 'var(--status-success)';
+                  statusWeight = 500;
+                } else if (carePlanMeta.reviewRequestedTo) {
                   const on = carePlanMeta.reviewRequestedAt ? ` on ${fmtShort(carePlanMeta.reviewRequestedAt)}` : '';
                   statusText = `Sent for review to ${carePlanMeta.reviewRequestedTo}${on}`;
                   statusColor = 'var(--status-warning)';
@@ -279,6 +304,7 @@ export function CarePlanHeader({ patientId, program }) {
                     variant="secondary"
                     size="L"
                     leadingIcon="solar:restart-linear"
+                    disabled={!!viewedVersion}
                     onClick={() => setDiscardOpen(true)}
                   >
                     Discard
@@ -290,7 +316,7 @@ export function CarePlanHeader({ patientId, program }) {
                 variant="primary"
                 size="M"
                 leadingIcon="solar:pen-2-linear"
-                disabled={!signShareEnabled}
+                disabled={!signShareEnabled || !!viewedVersion}
                 onClick={signCarePlanDirect}
                 menuItems={CARE_PLAN_SIGN_MENU_ITEMS}
                 menuWidth={200}

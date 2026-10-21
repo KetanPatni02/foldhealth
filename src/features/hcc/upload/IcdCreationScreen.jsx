@@ -342,7 +342,7 @@ function UploadPhase({ queue, extracting, onRemoveQueued, onStart, onDiscard, wh
           <Button
             variant="primary"
             size="M"
-            leadingIcon="solar:magic-stick-3-linear"
+            leadingIcon="custom:ai-mono"
             disabled={extracting}
             onClick={onStart}
           >
@@ -493,7 +493,7 @@ function TierDocRow({ doc, tier, onReview }) {
         <Button
           variant="primary"
           size="S"
-          leadingIcon="solar:magic-stick-3-linear"
+          leadingIcon="custom:ai-mono"
           onClick={() => onReview(doc.id)}
         >
           Review

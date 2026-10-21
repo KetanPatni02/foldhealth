@@ -20,8 +20,10 @@ function isDownChevron(name) {
  *
  * Canonical props (Figma "Fold Pixel 1.0" spec — Badge node 24:1678):
  *   • tone — one of white | grey | ghost | primary | secondary | success |
- *            warning | error | info | disabled. Drives the color palette.
- *   • size — 'S' | 'M' | 'L' — matches Figma S=18px / M=22px / L=30px heights.
+ *            warning | error | info | disabled | unity. Drives the color
+ *            palette. unity: the coral→pink→blue gradient text (AI Color).
+ *   • size — 'XS' | 'S' | 'M' | 'L' — XS is the compact 18px badge for dense rows
+ *     (counts inside an activity log); S / M / L match the Figma heights.
  *   • hover — force the hover-state class (used by Storybook to demo the
  *             hover appearance; real UX still uses CSS :hover).
  *
@@ -71,9 +73,9 @@ export function Badge({
   const hoverClass = hover ? styles.hover : '';
   // Only badges you can act on get a hover tint.
   const interactiveClass = chevron || onTrailingIconClick ? styles.interactive : '';
-  // Icons (leading, trailing, chevron) scale with the badge's size — S=14,
-  // M=16, L=20. Unspecified size stays at the legacy 13.
-  const iconPx = size === 'L' ? 20 : size === 'M' ? 16 : size === 'S' ? 14 : 13;
+  // Icons (leading, trailing, chevron) scale with the badge's size — XS=12,
+  // S=14, M=16, L=20. Unspecified size stays at the legacy 13.
+  const iconPx = size === 'L' ? 20 : size === 'M' ? 16 : size === 'S' ? 14 : size === 'XS' ? 12 : 13;
 
   return (
     <span
@@ -88,7 +90,7 @@ export function Badge({
           ? <DownChevronIcon size={iconPx} color="currentColor" />
           : <Icon name={toLinear(icon)} size={iconPx} />
       )}
-      {label}
+      {tone === 'unity' && label != null ? <span className={styles.unityText}>{label}</span> : label}
       {trailingIconElement && (
         onTrailingIconClick ? (
           <button

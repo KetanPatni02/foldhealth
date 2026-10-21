@@ -16,6 +16,7 @@ export const MEASURE_NAMES = {
   'DSF-B':  'Depression Follow-Up (PHQ-9)',
   LSC:      'Lead Screening in Children',
   'CIS-CMB10': 'Childhood Immunization Status (Combo 10)',
+  WCV:      'Child and Adolescent Well-Care Visits',
 };
 
 export const STATUSES = [

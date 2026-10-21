@@ -218,7 +218,7 @@ export function PatientBanner({
               <button className={styles.seeMore}>See More</button>
               <div className={styles.synopsisFooter}>
                 <div className={styles.synopsisFooterLeft}>
-                  <Icon name="solar:magic-stick-3-bold" size={14} color="var(--primary-300)" />
+                  <Icon name="custom:ai" size={14} color="var(--primary-300)" />
                   <span className={styles.poweredBy}>Powered by Unity</span>
                   <Badge variant="ai-neutral" label="BETA" />
                 </div>

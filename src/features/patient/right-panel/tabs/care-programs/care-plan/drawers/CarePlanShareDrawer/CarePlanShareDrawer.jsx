@@ -7,8 +7,8 @@ import { Checkbox } from '../../../../../../../../components/ShadcnCheckbox/Shad
 import { Icon } from '../../../../../../../../components/Icon/Icon';
 import { DownChevronIcon } from '../../../../../../../../components/Icon/DownChevronIcon';
 import { Badge } from '../../../../../../../../components/Badge/Badge';
-import { FilterChip } from '../../../../../../../../components/FilterChip/FilterChip';
-import { Toggle } from '../../../../../../../../components/Toggle/Toggle';
+import { Select } from '../../../../../../../../components/Select/Select';
+import { DatePickerPopover } from '../../../../../../../../components/DatePicker/DatePickerPopover';
 import { TabStrip } from '../../../../../../../../components/TabStrip/TabStrip';
 import { withReportHeader, withReportFooter } from '../../../../../../../email-builder/reportHeaderComponent';
 import { interFontFaces } from '../../../../../../../email-builder/rasterizeComponent';
@@ -19,13 +19,13 @@ import {
 } from '../../lib/carePlanPrintSettings';
 import { CarePlanPrintPersonalize } from './CarePlanPrintPersonalize';
 import { useAppStore } from '../../../../../../../../store/useAppStore';
-import { buildCarePlanDownloadFilename, downloadCarePlanPdf } from '../../lib/carePlanExport';
+import { buildCarePlanDownloadFilename } from '../../lib/carePlanExport';
+import { buildCarePlanVersionsPdf } from '../../lib/carePlanVersionsPdf';
 import {
-  SHARE_DATE_OPTIONS,
+  SHARE_DATE_RANGE_PRESETS,
   SHARE_FILTERS_DEFAULT,
-  SHARE_GBI_STATUSES,
-  SHARE_PRIORITY_LABELS,
   isShareFiltersActive,
+  shareDateRangeFor,
   matchesShareFilters,
 } from '../../lib/carePlanShareFilters';
 import { useCarePlanDraftState } from '../../lib/useCarePlanDraftState';
@@ -178,18 +178,109 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
   const draft = useCarePlanDraftState(patientId, program.id);
   useEffect(() => { fetchSignedCarePlans(patientId); }, [patientId, fetchSignedCarePlans]);
   const signed = draft.signed && !!signedCopy;
-  // With unsigned changes, the draft can still be previewed before signing;
-  // only the signed version can be shared.
-  const [view, setView] = useState('signed');
-  const showDraft = !signed || (draft.hasUnsignedChanges && view === 'draft');
-  const data = useMemo(() => (!showDraft ? {
-    conditions: signedCopy.plan?.conditions || [],
-    goals: signedCopy.goals || [],
-    interventions: signedCopy.interventions || [],
-    barriers: signedCopy.barriers || [],
-  } : draftData), [showDraft, signedCopy, draftData]);
   const signedVersion = signedCopy?.signedVersion || draft.latestVersion?.versionNumber || null;
-  const canShare = canEdit && signed && !showDraft;
+  // Earlier versions come from their saved snapshots, so any of them can be
+  // previewed, downloaded and (if it was signed) shared again.
+  const fetchCarePlanVersions = useAppStore(s => s.fetchCarePlanVersions);
+  const versions = useAppStore(s => s.patientCarePlanVersions[key]);
+  useEffect(() => {
+    if (versions === undefined) fetchCarePlanVersions(patientId, program.id);
+  }, [versions, patientId, program.id, fetchCarePlanVersions]);
+  const olderVersions = useMemo(
+    () => (versions || []).filter(v => v.versionNumber !== signedVersion && Array.isArray(v.snapshot?.goals)),
+    [versions, signedVersion],
+  );
+  const versionFmt = (iso) => (iso ? new Date(iso).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '');
+  // Newest first: the draft, the latest signed version, then earlier ones.
+  const versionOptions = useMemo(() => [
+    ...(!signed || draft.hasUnsignedChanges ? [{ value: 'draft', label: signed ? 'Draft with unsigned changes' : 'Draft (not signed)' }] : []),
+    ...(signed ? [{ value: 'signed', label: `Version ${signedVersion} (signed, latest)` }] : []),
+    ...olderVersions.map(v => ({
+      value: `v${v.versionNumber}`,
+      label: `Version ${v.versionNumber} (${v.reason === 'signed' ? 'signed' : v.reason === 'restore' ? 'restored' : 'saved'} ${versionFmt(v.createdAt)})`,
+    })),
+  ], [signed, draft.hasUnsignedChanges, signedVersion, olderVersions]);
+  // Up to two versions, printed back to back.
+  const [pickedVersions, setPickedVersions] = useState(null);
+  const defaultVersion = signed ? 'signed' : 'draft';
+  const pickedKeys = (pickedVersions || []).filter(k => versionOptions.some(o => o.value === k));
+  const versionKeysStr = (pickedKeys.length ? pickedKeys : [defaultVersion]).join(',');
+  const pickVersions = (vals) => { if (vals.length) setPickedVersions(vals.slice(-2)); };
+  const versionParts = useMemo(() => {
+    const order = versionOptions.map(o => o.value);
+    return versionKeysStr.split(',')
+      .toSorted((a, b) => order.indexOf(a) - order.indexOf(b))
+      .map((k) => {
+        if (k === 'draft') return { key: k, versionNumber: null, reason: null, label: 'Draft (unsigned)', data: draftData };
+        if (k === 'signed') {
+          return {
+            key: k, versionNumber: signedVersion, reason: 'signed', label: `Version ${signedVersion}`,
+            signedBy: signedCopy.plan?.signedBy, signedAt: signedCopy.plan?.signedAt,
+            data: {
+              conditions: signedCopy.plan?.conditions || [],
+              goals: signedCopy.goals || [],
+              interventions: signedCopy.interventions || [],
+              barriers: signedCopy.barriers || [],
+            },
+          };
+        }
+        const v = olderVersions.find(x => `v${x.versionNumber}` === k);
+        const s = v.snapshot;
+        return {
+          key: k, versionNumber: v.versionNumber, reason: v.reason, label: `Version ${v.versionNumber}`,
+          signedBy: v.createdBy, signedAt: v.createdAt, createdAt: v.createdAt,
+          data: {
+            conditions: (s.conditions || []).map(x => (typeof x === 'string' ? { label: x } : x)),
+            goals: s.goals || [],
+            interventions: s.interventions || [],
+            barriers: s.barriers || [],
+          },
+        };
+      });
+  }, [versionKeysStr, versionOptions, draftData, signedCopy, signedVersion, olderVersions]);
+  // The editor lists every item in the picked versions (newest copy wins), so
+  // one checkbox includes or leaves out an item in both.
+  const data = useMemo(() => {
+    const firstById = (lists) => {
+      const seen = new Map();
+      for (const list of lists) for (const item of list || []) if (item?.id != null && !seen.has(String(item.id))) seen.set(String(item.id), item);
+      return [...seen.values()];
+    };
+    const labels = new Map();
+    for (const p of versionParts) for (const cnd of p.data.conditions || []) if (cnd?.label && !labels.has(cnd.label)) labels.set(cnd.label, cnd);
+    return {
+      conditions: [...labels.values()],
+      goals: firstById(versionParts.map(p => p.data.goals)),
+      interventions: firstById(versionParts.map(p => p.data.interventions)),
+      barriers: firstById(versionParts.map(p => p.data.barriers)),
+    };
+  }, [versionParts]);
+  // With two versions picked, each row says which version(s) it is in.
+  const versionTags = useMemo(() => {
+    if (versionParts.length < 2) return null;
+    const map = { goals: new Map(), interventions: new Map(), barriers: new Map() };
+    versionParts.forEach((p, idx) => {
+      for (const kind of Object.keys(map)) {
+        for (const item of p.data[kind] || []) {
+          const id = String(item.id);
+          map[kind].set(id, [...(map[kind].get(id) || []), { short: p.versionNumber ? `V${p.versionNumber}` : 'Draft', newest: idx === 0 }]);
+        }
+      }
+    });
+    return map;
+  }, [versionParts]);
+  const tagsFor = (kind, id) => (versionTags ? (
+    <span className={styles.rowVersions}>
+      {(versionTags[kind].get(String(id)) || []).map(t => (
+        <Badge key={t.short} size="XS" tone={t.newest ? 'primary' : 'grey'} label={t.short} />
+      ))}
+    </span>
+  ) : null);
+  const primaryPart = versionParts[0];
+  const singleVersion = versionParts.length === 1;
+  // Share sends one signed version; two picked versions download together.
+  const shownVersion = singleVersion ? primaryPart.versionNumber : null;
+  const canShare = canEdit && signed && singleVersion && primaryPart.reason === 'signed';
   const currentUserProfile = useAppStore(s => s.currentUserProfile);
   const showToast = useAppStore(s => s.showToast);
   const lastVisit = useAppStore((s) => {
@@ -267,6 +358,8 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
   }), [printSettings, carePlanNote, patientRecord, headerImage, footerImage, footerComponent, logo, assets.fonts]);
 
   const [shareFilters, setShareFilters] = useState(() => ({ ...SHARE_FILTERS_DEFAULT }));
+  const rangeFieldRef = useRef(null);
+  const [rangeAnchor, setRangeAnchor] = useState(null);
   const setShareFilter = (key, value) => setShareFilters(f => ({ ...f, [key]: value }));
   const clearShareFilters = () => setShareFilters({ ...SHARE_FILTERS_DEFAULT });
   const filtersActive = isShareFiltersActive(shareFilters);
@@ -287,11 +380,6 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
   const filteredBarriers = useMemo(
     () => (data.barriers || []).filter(b => matchesShareFilters(b, shareFilters, filterCtx)),
     [data.barriers, shareFilters, filterCtx],
-  );
-
-  const assigneeOptions = useMemo(
-    () => [...new Set((data.interventions || []).map(i => i.assignee?.name).filter(Boolean))],
-    [data.interventions],
   );
 
   const filteredGoalIds = useMemo(() => filteredGoals.map(g => g.id), [filteredGoals]);
@@ -364,18 +452,56 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
     };
   }, [patientName, program.name, currentUserProfile?.name, note, plan, selection.goals, carePlanNote, patientRecord]);
 
-  const handleDownload = () => {
-    downloadCarePlanPdf(
-      docMeta,
-      selection,
-      buildCarePlanDownloadFilename({
-        patientName,
-        programCode: program.code,
-        programName: program.name,
-      }),
-      pdfOptions,
-    );
-    showToast('Care plan downloaded');
+  // One PDF part per picked version: that version's items, minus whatever the
+  // filters and checkboxes leave out, signed by whoever signed it.
+  const pdfParts = useMemo(() => versionParts.map((p) => {
+    const keep = (list, opts, off) => (list || []).filter(x => matchesShareFilters(x, shareFilters, opts) && !off.has(x.id));
+    const partSelection = {
+      conditions: (p.data.conditions || []).map(x => x.label),
+      goals: keep(p.data.goals, filterCtx, goalOff),
+      interventions: keep(p.data.interventions, { ...filterCtx, kind: 'intervention' }, intvOff),
+      barriers: keep(p.data.barriers, filterCtx, barrierOff),
+    };
+    const progresses = partSelection.goals.map(g => Number(g.progress)).filter(n => Number.isFinite(n));
+    return {
+      meta: {
+        ...docMeta,
+        versionLabel: p.label,
+        // Only needed when two versions share one PDF.
+        versionBanner: versionParts.length > 1
+          ? [p.label, p.signedBy || p.signedAt ? `Signed${p.signedBy ? ` by ${p.signedBy}` : ''}${p.signedAt ? ` on ${versionFmt(p.signedAt)}` : ''}` : (p.key === 'draft' ? 'Unsigned changes' : '')].filter(Boolean).join('  •  ')
+          : '',
+        plan: docMeta.plan ? {
+          ...docMeta.plan,
+          signedBy: p.signedBy ?? docMeta.plan.signedBy,
+          signedAt: p.signedAt ?? docMeta.plan.signedAt,
+          progress: progresses.length ? Math.round(progresses.reduce((a, b) => a + b, 0) / progresses.length) : null,
+        } : null,
+      },
+      selection: partSelection,
+    };
+  }), [versionParts, docMeta, shareFilters, filterCtx, goalOff, intvOff, barrierOff]);
+
+  const handleDownload = async () => {
+    const base = buildCarePlanDownloadFilename({
+      patientName,
+      programCode: program.code,
+      programName: program.name,
+    });
+    // Anything but the latest signed copy alone names its version(s).
+    const suffix = singleVersion && primaryPart.key === 'signed'
+      ? ''
+      : `-${versionParts.map(p => (p.versionNumber ? `v${p.versionNumber}` : 'draft')).join('-')}`;
+    const blob = await buildCarePlanVersionsPdf(pdfParts, pdfOptions);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = base.replace(/\.pdf$/, `${suffix}.pdf`);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast(singleVersion ? 'Care plan downloaded' : `${versionParts.map(p => p.label).join(' and ')} downloaded`);
   };
 
   const handleShare = async (shareTarget = 'EHR') => {
@@ -386,12 +512,12 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
       note: note.trim(),
       goalIds: selectedGoalIds,
       interventionIds: selectedIntvIds,
-      versionNumber: signedVersion,
+      versionNumber: shownVersion,
     });
     setSharing(false);
     if (!rec) return;
-    showToast(signedVersion
-      ? `Version ${signedVersion} shared to ${shareTarget}`
+    showToast(shownVersion
+      ? `Version ${shownVersion} shared to ${shareTarget}`
       : `Care plan shared to ${shareTarget}`);
     onClose();
   };
@@ -421,11 +547,26 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
     </>
   );
 
-  const dateChipSelected = useMemo(() => {
-    if (shareFilters.datePreset === 'all') return [];
-    const opt = SHARE_DATE_OPTIONS.find(o => o.key === shareFilters.datePreset);
-    return opt ? [opt.label] : [];
-  }, [shareFilters.datePreset]);
+  // A picked custom range reads as its dates in the same field.
+  const fmtIso = (iso) => { const [y, m, d] = String(iso).split('-'); return `${m}/${d}/${y}`; };
+  const rangeOptions = SHARE_DATE_RANGE_PRESETS.map(o => ({
+    value: o.key,
+    label: o.label,
+    triggerLabel: o.key === 'custom' && shareFilters.dateRange
+      ? `${fmtIso(shareFilters.dateRange.start)} - ${fmtIso(shareFilters.dateRange.end)}`
+      : undefined,
+  }));
+
+  let versionNote = null;
+  if (!singleVersion) {
+    versionNote = `Printing ${versionParts.map(p => p.label).join(' and ')} back to back. Share sends one version at a time.`;
+  } else if (primaryPart.key === 'draft') {
+    versionNote = 'Previewing the draft with its unsigned changes. Sign the care plan to share it.';
+  } else if (primaryPart.key !== 'signed') {
+    versionNote = `Showing version ${primaryPart.versionNumber} from ${versionFmt(primaryPart.createdAt)}. Version ${signedVersion} is the latest.${canShare ? '' : ' Only signed versions can be shared; this one can be downloaded.'}`;
+  } else if (draft.hasUnsignedChanges) {
+    versionNote = `Showing version ${signedVersion} as signed. Unsigned changes are not included; sign the care plan to share them.`;
+  }
 
   const personalizePane = (
     <CarePlanPrintPersonalize
@@ -448,61 +589,54 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
 
   const editorPane = (
     <div className={styles.editorScroll}>
-      {signed && draft.hasUnsignedChanges && (
-        <Toggle
-          size="S"
-          fullWidth
-          className={styles.versionToggle}
-          items={[
-            { key: 'signed', label: `Version ${signedVersion} (signed)` },
-            { key: 'draft', label: 'Draft with unsigned changes' },
-          ]}
-          active={view}
-          onChange={setView}
-        />
-      )}
       <div className={styles.stickyTop}>
       <TabStrip items={EDITOR_TABS} activeKey={editorTab} onChange={setEditorTab} fullWidth={false} />
       {editorTab === 'content' && (
       <div className={styles.filterBar}>
-          <FilterChip
-            label="Date"
-            options={SHARE_DATE_OPTIONS.map(o => o.label)}
-            selected={dateChipSelected}
-            singleSelect
-            onChange={(next) => {
-              const pick = next[0];
-              const opt = SHARE_DATE_OPTIONS.find(o => o.label === pick);
-              setShareFilter('datePreset', opt?.key || 'all');
-            }}
+        <div className={styles.filterField}>
+          <span className={styles.filterLabel}>Select Version</span>
+          <Select
+            multiple
+            checkboxes
+            options={versionOptions}
+            value={versionKeysStr.split(',')}
+            onChange={pickVersions}
+            placeholder="Select version"
           />
-          <FilterChip
-            label="Status"
-            options={SHARE_GBI_STATUSES}
-            selected={shareFilters.status}
-            onChange={(v) => setShareFilter('status', v)}
-          />
-          <FilterChip
-            label="Priority"
-            options={SHARE_PRIORITY_LABELS}
-            selected={shareFilters.priority}
-            onChange={(v) => setShareFilter('priority', v)}
-          />
-          {assigneeOptions.length > 0 && (
-            <FilterChip
-              label="Assignee"
-              options={assigneeOptions}
-              selected={shareFilters.assignee}
-              searchable
-              onChange={(v) => setShareFilter('assignee', v)}
+        </div>
+        <div className={styles.filterField}>
+          <span className={styles.filterLabel}>Select Date Range</span>
+          <div ref={rangeFieldRef}>
+            <Select
+              options={rangeOptions}
+              value={shareFilters.rangePreset || ''}
+              onChange={(key) => {
+                // Custom opens the calendar on this field; the pick lands here.
+                if (key === 'custom') { setRangeAnchor(rangeFieldRef.current?.getBoundingClientRect() ?? null); return; }
+                setShareFilters(f => ({ ...f, rangePreset: key, dateRange: shareDateRangeFor(key) }));
+              }}
+              placeholder="Select date range"
             />
-          )}
-          {filtersActive && (
-            <button type="button" className={styles.clearFilters} onClick={clearShareFilters}>
-              <Icon name="solar:backspace-linear" size={16} color="var(--primary-300)" />
-              Clear all
-            </button>
-          )}
+          </div>
+          <DatePickerPopover
+            mode="range"
+            open={!!rangeAnchor}
+            anchorRect={rangeAnchor}
+            value={shareFilters.rangePreset === 'custom' && shareFilters.dateRange ? shareFilters.dateRange : { start: '', end: '' }}
+            onChange={(r) => {
+              if (!r?.start || !r?.end) return;
+              setShareFilters(f => ({ ...f, rangePreset: 'custom', dateRange: r }));
+              setRangeAnchor(null);
+            }}
+            onClose={() => setRangeAnchor(null)}
+          />
+        </div>
+        {filtersActive && (
+          <button type="button" className={styles.clearFilters} onClick={clearShareFilters}>
+            <Icon name="solar:backspace-linear" size={16} color="var(--primary-300)" />
+            Clear all
+          </button>
+        )}
       </div>
       )}
       </div>
@@ -580,6 +714,7 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
                   <span className={styles.rowTitle}>{g.title}</span>
                   {g.subtitle && <span className={styles.rowSub}>{g.subtitle}</span>}
                 </span>
+                {tagsFor('goals', g.id)}
               </div>
             ))}
           </div>
@@ -601,6 +736,7 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
                   <span className={styles.rowTitle}>{i.title}</span>
                   <span className={styles.rowSub}>{i.assignee?.name}</span>
                 </span>
+                {tagsFor('interventions', i.id)}
               </div>
             ))}
           </div>
@@ -621,6 +757,7 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
                   <span className={styles.rowText}>
                     <span className={styles.rowTitle}>{b.title}</span>
                   </span>
+                  {tagsFor('barriers', b.id)}
                 </div>
               ))}
             </div>
@@ -640,12 +777,10 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
             This care plan has not been signed. Sign it before sharing. The preview shows the draft, which you can still download.
           </div>
         )}
-        {signed && draft.hasUnsignedChanges && (
+        {signed && versionNote && (
           <div className={styles.warn}>
             <Icon name="solar:info-circle-linear" size={14} color="var(--status-warning)" />
-            {showDraft
-              ? 'Previewing the draft with its unsigned changes. Sign the care plan to share it.'
-              : `Showing version ${signedVersion} as signed. Unsigned changes are not included; sign the care plan to share them.`}
+            {versionNote}
           </div>
         )}
       </div>
@@ -656,8 +791,7 @@ export function CarePlanShareDrawer({ patientId, program, data: draftData, patie
   const previewPane = (
     <div className={styles.previewPane}>
       <CarePlanPdfPreview
-        docMeta={docMeta}
-        selection={selection}
+        parts={pdfParts}
         options={pdfOptions}
         nothingSelected={nothingSelected}
         onPageCount={setPageCount}

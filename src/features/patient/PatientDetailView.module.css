@@ -80,6 +80,99 @@
 }
 .tabContent { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
+/* "Open in right panel" (floating shell only): two cards on the shell's
+   tinted ground, separated by the same 4px gap the shell uses between the
+   nav and the body. The handle lives in that gap. */
+.split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+.splitPatientCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: 8px;
+  box-shadow: var(--shadow-card);
+}
+.splitPatientCard { flex-shrink: 0; }
+
+/* HCC "Open in Side Panel" morph (hcc/DiagPanel/diagPanelSplit.js): while
+   <html> carries data-diag-morph, the drawer and this stack share a
+   view-transition-name so the drawer becomes the panel (and back), and the
+   patient card slides in from the left (or out). */
+:root[data-diag-morph] .splitStack { view-transition-name: diag-surface; }
+:root[data-diag-morph] .splitPatientCard { view-transition-name: diag-patient-card; }
+::view-transition-group(diag-surface),
+::view-transition-group(diag-patient-card) {
+  animation-duration: var(--duration-slow);
+  animation-timing-function: var(--ease-drawer);
+}
+/* Clip rather than stretch: the frame resizes while its content stays crisp,
+   pinned top-left, with the two states crossfading. */
+::view-transition-image-pair(diag-surface) { overflow: clip; }
+::view-transition-old(diag-surface),
+::view-transition-new(diag-surface) {
+  width: 100%;
+  height: 100%;
+  object-fit: none;
+  object-position: left top;
+  animation-duration: var(--duration-slow);
+  animation-timing-function: var(--ease-out);
+}
+::view-transition-new(diag-patient-card) {
+  animation: diagCardIn var(--duration-slow) var(--ease-drawer) both;
+}
+::view-transition-old(diag-patient-card) {
+  animation: diagCardOut var(--duration-medium) var(--ease-out) both;
+}
+@keyframes diagCardIn {
+  from { opacity: 0; transform: translateX(calc(var(--space-6) * -1)); }
+}
+@keyframes diagCardOut {
+  to { opacity: 0; transform: translateX(calc(var(--space-6) * -1)); }
+}
+.splitPatientTabs { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.splitHandle {
+  flex: 0 0 var(--space-1);
+  align-self: stretch;
+  cursor: col-resize;
+  position: relative;
+}
+.splitHandle:hover .dragHandleLine,
+.splitHandle:focus-visible .dragHandleLine { opacity: 1; background: var(--primary-300); }
+.splitHandle:focus-visible { outline: none; }
+
+/* A right-panel tab hosted in the split, in the patient card or swapped into
+   the side panel: a slim title bar with the move action, then the tab's own
+   view filling the rest. */
+.hostedTab { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.hostedTabHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-bottom: 0.5px solid var(--neutral-150);
+  flex-shrink: 0;
+}
+.hostedTabTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hostedTabBody { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
+
+
 /* Left-panel content flowed into the (now full-width) right panel on collapse.
    Cap the width and center it so a narrow form/table stays comfortable to read
    instead of stretching edge to edge; on narrower viewports it fills as usual. */

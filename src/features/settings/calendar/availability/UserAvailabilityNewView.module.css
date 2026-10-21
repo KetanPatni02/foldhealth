@@ -1,0 +1,409 @@
+/* User Availability, new view. */
+.root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The view switch; the filter bar opens under it from the filter icon. */
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+
+.loading,
+.empty {
+  padding: var(--space-10) var(--space-4);
+  text-align: center;
+  color: var(--neutral-300);
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ── Provider / Location tables ── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  /* Fixed columns wrap long text instead of pushing the table wider. */
+  table-layout: fixed;
+  font-size: var(--font-base);
+  color: var(--neutral-400);
+}
+/* Shares of the width, so the table fits the screen without sideways scroll. */
+.colOuter { width: 17%; }
+.colInner { width: 16%; }
+.colDates { width: 15%; }
+.colHours { width: 18%; }
+.colStatus { width: 11%; }
+.colActions { width: 8.5rem; }
+.table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-50);
+  border-bottom: 0.5px solid var(--neutral-150);
+  font-weight: 400;
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+  text-align: left;
+}
+.thFirst { padding-left: var(--space-5) !important; }
+.td {
+  padding: var(--space-2) var(--space-3);
+  vertical-align: top;
+  border-bottom: 0.5px solid var(--neutral-100);
+  overflow-wrap: anywhere;
+}
+/* The provider (or location) and its slots read as one block. */
+.outerTd {
+  padding-left: var(--space-5);
+  border-bottom: 0.5px solid var(--neutral-150);
+  border-right: 0.5px solid var(--neutral-100);
+}
+.innerTd { border-right: 0.5px solid var(--neutral-100); }
+.actionsTd {
+  border-bottom: 0.5px solid var(--neutral-150);
+  border-left: 0.5px solid var(--neutral-100);
+}
+.row:hover > .td:not(.outerTd):not(.actionsTd) { background: var(--neutral-25); }
+.rowPast { color: var(--neutral-300); }
+.pastTd { font-size: var(--font-sm); }
+
+.person {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  min-width: 0;
+}
+.outerName { font-weight: 500; color: var(--neutral-500); }
+.innerName {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  color: var(--neutral-500);
+}
+.sub { font-size: var(--font-sm); color: var(--neutral-300); }
+.statusCell {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.divider {
+  width: 0.5px;
+  height: var(--space-4);
+  background: var(--neutral-150);
+}
+.inherited {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  color: var(--neutral-300);
+}
+
+.tagPrimary,
+.tagCovering {
+  padding: 0 var(--space-1);
+  border-radius: var(--space-1);
+  font-size: var(--font-2xs);
+  font-weight: 400;
+  line-height: 1.6;
+}
+.tagPrimary { background: var(--primary-100); color: var(--primary-300); }
+.tagCovering { background: var(--neutral-75); color: var(--neutral-300); }
+
+.flags {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--neutral-300);
+}
+.flags:empty { display: none; }
+.flag { display: inline-flex; }
+.flagWarn { color: var(--status-warning); }
+
+/* ── Week ── */
+.weekWrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.weekNav {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  position: relative;
+  padding: var(--space-2) var(--space-5);
+  border-bottom: 0.5px solid var(--neutral-150);
+}
+.backToToday {
+  position: absolute;
+  right: var(--space-5);
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-base);
+  font-weight: 400;
+  line-height: 1.2;
+}
+.weekLabel {
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--space-1);
+  background: none;
+  font-size: var(--font-base);
+  font-weight: 500;
+  color: var(--neutral-500);
+  cursor: pointer;
+}
+.weekLabel:hover { background: var(--neutral-50); }
+.weekLabel:focus-visible { outline: 2px solid var(--primary-300); outline-offset: 1px; }
+
+/* This Week in the shared WorklistShell table, styled as Figma Eventus
+   17367:126705 / 17367:126707. */
+.weekShell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.weekShell th {
+  /* A collapsed border doesn't travel with a sticky header cell, so the
+     header's bottom line is drawn inside it instead. */
+  box-shadow: inset 0 -0.5px 0 var(--neutral-150);
+  border-bottom: 0;
+  padding: var(--space-3) var(--space-4);
+  font-weight: 500;
+  color: var(--neutral-200);
+}
+.weekShell th + th { border-left: 0.5px solid var(--neutral-150); }
+.dayHeadCell {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+.dayHeadDate { font-weight: 400; }
+
+.wRow { composes: row from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+/* Rows don't open anything, so no hover tint. */
+.weekShell .wRow:hover,
+.weekShell .wRow:hover .wUserTd { background: var(--neutral-0) !important; }
+.wTd { composes: td from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+.weekShell .wTd {
+  height: 5rem;
+  padding: var(--space-3);
+  vertical-align: top;
+  white-space: normal;
+  border-left: 0.5px solid var(--neutral-150);
+  /* The collapsed row line disappears under tinted (today / OOO) and pinned
+     (user) cells, so every cell draws its own line inside instead. */
+  border-bottom: 0;
+  box-shadow: inset 0 -0.5px 0 var(--neutral-150);
+}
+/* …and the row draws none, so there's only ever the one 0.5px line. */
+.weekShell .wRow { border-bottom: 0; }
+.wUserTd { composes: stickyLeft from '../../../../components/WorklistShell/WorklistRow.module.css'; }
+.weekShell .wUserTd { border-left: 0; padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5); }
+/* The user column starts 20px in, as in the List view. */
+.weekShell th:first-child { padding-left: var(--space-5); }
+.gridUserTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.gridUserInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+  line-height: 1.2;
+}
+.gridUserName,
+.gridUserRole {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gridUserName { font-size: var(--font-base); font-weight: 500; color: var(--neutral-500); }
+.gridUserRole { font-size: var(--font-sm); color: var(--neutral-300); }
+.weekShell .dayCell { cursor: pointer; }
+.weekShell .dayCell:hover { background: var(--neutral-25); }
+.weekShell .dayCell:focus-visible { outline: 2px solid var(--primary-300); outline-offset: -2px; }
+/* Today's column, as on the calendar. */
+.weekShell .todayCell,
+.weekShell .todayCell:hover { background: var(--primary-25); }
+/* A holiday reads as on the calendar: a light green day with its badge and name. */
+.weekShell .holidayCell,
+.weekShell .holidayCell:hover { background: var(--accent-light-green-tint); }
+.dayStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+/* Out of office that day: the day's availability stays, with this strip
+   across the top edge of the cell. */
+/* Out the whole day: the whole cell takes the out-of-office tint. */
+.weekShell .oooAllDay,
+.weekShell .oooAllDay:hover { background: var(--accent-light-magenta); }
+.oooStrip {
+  /* Pulled out over the cell's padding to its top and side edges; it wraps
+     rather than truncating when the column is narrow. */
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: calc(var(--space-3) * -1) calc(var(--space-3) * -1) 0;
+  padding: calc(var(--space-1) / 2) var(--space-3);
+  background: var(--accent-light-magenta);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--accent-magenta) 20%, transparent);
+  font-size: var(--font-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--accent-magenta);
+}
+.oooStrip > :first-child { flex-shrink: 0; }
+.holidayLine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  font-size: var(--font-sm);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--neutral-500);
+}
+.holidayLineName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* One time range: time and timezone, a rule, then the location. */
+.dayRanges {
+  display: flex;
+  flex-direction: column;
+}
+/* Ranges in one day are split by a line across the whole cell, so they read
+   as separate slots (the short rule inside a range only splits its parts). */
+.dayRange + .dayRange {
+  margin: var(--space-3) calc(var(--space-3) * -1) 0;
+  padding: var(--space-3) var(--space-3) 0;
+  border-top: 0.5px dashed var(--neutral-200);
+}
+.dayRangesOff { opacity: 0.6; }
+.dayRange {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  font-size: var(--font-sm);
+  line-height: 1.2;
+}
+.dayHead {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--space-1) / 2);
+}
+.dayTime { font-weight: 500; color: var(--neutral-300); }
+.dayZone {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--neutral-200);
+}
+.dayRule { height: 0.5px; background: var(--neutral-150); }
+/* Long locations wrap onto the next line rather than truncating. */
+.dayLoc { color: var(--neutral-300); overflow-wrap: break-word; }
+.dayType { margin-top: calc(var(--space-1) * -1); color: var(--placeholder-text); overflow-wrap: break-word; }
+
+.dayEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--font-sm);
+  line-height: 1.2;
+  color: var(--neutral-200);
+}
+.dayEmptyMuted { color: var(--neutral-150); }
+
+/* Hover on an OOO strip: the record's dates and reason. */
+.oooTip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-sm);
+  line-height: 1.35;
+  color: var(--neutral-400);
+}
+.oooTipTitle { font-weight: 500; color: var(--neutral-500); }
+.oooTipNote { color: var(--neutral-300); }
+/* The tooltip's wrapper takes the strip's place, edge to edge across the cell top. */
+.oooTipWrap {
+  display: flex;
+  margin: calc(var(--space-3) * -1) calc(var(--space-3) * -1) 0;
+}
+.oooTipWrap > .oooStrip { flex: 1; margin: 0; }
+
+/* Holiday in the header (as on the calendar): a full-width green strip at
+   the bottom of that day's header; every header in the week gets the room. */
+.weekShell.weekHasHoliday th { padding-bottom: calc(var(--space-3) + var(--space-5)); }
+.holidayStrip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  height: var(--space-5);
+  padding: 0 var(--space-2);
+  background: var(--accent-green);
+  font-size: var(--font-xs);
+  font-weight: 500;
+  line-height: 1;
+  color: var(--neutral-0);
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* Room for descenders ("g"): the strip's line-height of 1 plus the ellipsis clip cut them off. */
+.holidayStripText { min-width: 0; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.holidayNote {
+  font-size: var(--font-sm);
+  line-height: 1.35;
+  color: var(--neutral-200);
+}

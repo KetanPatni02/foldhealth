@@ -1,5 +1,5 @@
 import { localDateMs } from '../../../../../../../lib/localDate';
-export const SHARE_GBI_STATUSES = ['Not Started', 'In Progress', 'On Hold', 'Met', 'Not Met'];
+export { ALL_GBI_STATUSES as SHARE_GBI_STATUSES } from './gbiStatus';
 export const SHARE_PRIORITY_LABELS = ['High', 'Medium', 'Low'];
 
 export const SHARE_DATE_OPTIONS = [
@@ -15,7 +15,50 @@ export const SHARE_FILTERS_DEFAULT = {
   priority: [],
   assignee: [],
   conditions: [],
+  // { start, end } ISO dates (YYYY-MM-DD), matched against the item's start date.
+  dateRange: null,
+  // SHARE_DATE_RANGE_PRESETS key the range came from ('custom' = picked dates).
+  rangePreset: null,
 };
+
+// Select Date Range presets (Figma Mar-Present-2026, 4143:19492).
+export const SHARE_DATE_RANGE_PRESETS = [
+  { key: 'today', label: 'Today’s Summary' },
+  { key: 'week', label: 'Current Week Summary' },
+  { key: 'month', label: 'Current Month Summary' },
+  { key: 'lastMonth', label: 'Last Month Summary' },
+  { key: '3m', label: 'Last 3 Months Summary' },
+  { key: '6m', label: 'Last 6 Months Summary' },
+  { key: 'custom', label: 'Custom Date Summary' },
+];
+
+const isoDay = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** { start, end } for a preset, ending today (weeks start on Sunday); null for custom. */
+export function shareDateRangeFor(key, today = new Date()) {
+  const t = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const range = (from, to = t) => ({ start: isoDay(from), end: isoDay(to) });
+  switch (key) {
+    case 'today': return range(t);
+    case 'week': return range(new Date(t.getFullYear(), t.getMonth(), t.getDate() - t.getDay()));
+    case 'month': return range(new Date(t.getFullYear(), t.getMonth(), 1));
+    case 'lastMonth': return range(new Date(t.getFullYear(), t.getMonth() - 1, 1), new Date(t.getFullYear(), t.getMonth(), 0));
+    case '3m': return range(new Date(t.getFullYear(), t.getMonth() - 3, t.getDate()));
+    case '6m': return range(new Date(t.getFullYear(), t.getMonth() - 6, t.getDate()));
+    default: return null;
+  }
+}
+
+/** Item's start date (the PDF's "Start Date") falls inside { start, end }. */
+export function matchesShareDateRange(item, range) {
+  if (!range?.start || !range?.end) return true;
+  const raw = item?.createdAt || item?.startDate;
+  if (!raw) return true;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return true;
+  const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return day >= range.start && day <= range.end;
+}
 
 /** ISO timestamp on the row — prefers last update, then create. */
 export function shareItemTimestamp(item) {
@@ -78,6 +121,7 @@ export function matchesShareFilters(item, filters, { lastVisitIso, kind } = {}) 
   }
 
   if (!matchesShareDatePreset(item, filters.datePreset, lastVisitIso)) return false;
+  if (!matchesShareDateRange(item, filters.dateRange)) return false;
   return true;
 }
 
@@ -88,5 +132,7 @@ export function isShareFiltersActive(filters) {
     || (filters.priority?.length > 0)
     || (filters.assignee?.length > 0)
     || (filters.conditions?.length > 0)
+    || !!(filters.dateRange?.start && filters.dateRange?.end)
+    || !!filters.rangePreset
   );
 }

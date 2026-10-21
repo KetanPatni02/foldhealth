@@ -16,6 +16,8 @@ import styles from './Select.module.css';
  * Props:
  *  - options    [{ value: string, label: string, disabled?: boolean, icon?: string }]
  *                 (`icon`: a Solar icon shown before the option's label)
+ *  - emptyText  (string | (query) => string) — shown when nothing matches; a
+ *                 function gets what was typed, for "No users match "x" …"
  *  - value      (string)
  *  - onChange   (value) => void
  *  - placeholder (string)
@@ -135,7 +137,7 @@ export function Select({
   // 240px menu wouldn't fit below and there IS enough room above.
   useEffect(() => {
     if (!open) return;
-    const trigger = wrapRef.current?.querySelector('button');
+    const trigger = wrapRef.current?.querySelector('[data-select-trigger]');
     if (!trigger) return;
     const rect = trigger.getBoundingClientRect();
     setAnchorRect({ top: rect.top, bottom: rect.bottom, left: rect.left, right: rect.right, width: rect.width });
@@ -178,8 +180,17 @@ export function Select({
   // both. Falls back to the label when it's a string. With external search
   // control the caller filters the option list, so client-side filtering
   // is skipped entirely.
+  const matches = o => (o.searchText != null ? o.searchText : String(o.label)).toLowerCase().includes(q);
+  // While searching, a group header stays when anything under it matches,
+  // so results keep their sections.
   const shownOptions = (searchable && q && !externalQuery)
-    ? options.filter(o => (o.searchText != null ? o.searchText : String(o.label)).toLowerCase().includes(q))
+    ? options.filter((o, i) => {
+      if (o.type !== 'header') return matches(o);
+      for (let j = i + 1; j < options.length && options[j].type !== 'header'; j++) {
+        if (matches(options[j])) return true;
+      }
+      return false;
+    })
     : options;
 
   const needsField = Boolean(label || helperText || errorText);
@@ -223,31 +234,105 @@ export function Select({
     // cascades renders.
     const raf = requestAnimationFrame(recompute);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
-  }, [multiple, badges, selectedKey]);
+    // `open` too: a searchable field swaps the badge row for its input while
+    // open, so picks made then are measured when it closes and the row returns.
+  }, [multiple, badges, selectedKey, open]);
 
   const hiddenBadges = selectedMulti.slice(visibleBadgeCount);
 
+  // Searchable: the field is a combobox you type into (no search box in
+  // the menu). Closed it shows the pick like any Select; a click, Enter,
+  // ArrowDown or a typed character opens it for typing.
+  const selectedText = !multiple && selected
+    ? (selected.searchText ?? (typeof selected.label === 'string' ? selected.label : ''))
+    : '';
+  const firstPickable = () => shownOptions.find(o => o.type !== 'header' && !o.disabled);
+  const onSearchKeyDown = (e) => {
+    // Keep Escape / Enter from reaching drawers and dialogs around the field.
+    e.stopPropagation();
+    if (e.key === 'Escape') { setOpen(false); return; }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const opt = firstPickable();
+      if (!opt) return;
+      if (multiple) {
+        onChange(valueSet.has(opt.value) ? valueArray.filter(v => v !== opt.value) : [...valueArray, opt.value]);
+      } else {
+        onChange(opt.value);
+        setOpen(false);
+      }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      menuRef.current?.querySelector('[role="option"]:not([aria-disabled="true"])')?.focus();
+    }
+  };
+  const TriggerTag = searchable ? 'div' : 'button';
+  const triggerProps = searchable
+    ? {
+      id: open ? undefined : triggerId,
+      role: open ? undefined : 'combobox',
+      tabIndex: disabled ? -1 : (open ? -1 : 0),
+      'aria-disabled': disabled || undefined,
+      onClick: () => { if (!disabled && !open) setOpen(true); },
+      onKeyDown: (e) => {
+        if (disabled || open) return;
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          setOpen(true);
+        } else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          // Typing on the closed field starts the search with that letter.
+          e.preventDefault();
+          setQuery(e.key);
+          setOpen(true);
+        }
+      },
+    }
+    : {
+      id: triggerId,
+      type: 'button',
+      disabled,
+      onClick: () => !disabled && setOpen(o => !o),
+    };
+
   const trigger = (
     <div ref={wrapRef} className={[styles.wrap, needsField ? '' : (className || '')].filter(Boolean).join(' ')} style={style}>
-      <button
-        id={triggerId}
-        type="button"
+      <TriggerTag
+        data-select-trigger=""
+        {...triggerProps}
         className={[
           styles.trigger,
+          searchable ? styles.triggerSearch : '',
+          searchable && disabled ? styles.triggerDisabled : '',
           variant === 'ghost' ? styles.triggerGhost : '',
           isError ? styles.triggerError : '',
           (multiple ? selectedMulti.length === 0 : !selected) ? styles.triggerPlaceholder : '',
         ].filter(Boolean).join(' ')}
-        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-invalid={isError || undefined}
-        onClick={() => !disabled && setOpen(o => !o)}
       >
         {leadingIcon && (
           <Icon name={leadingIcon} size={16} color="currentColor" />
         )}
-        {multiple && badges && selectedMulti.length > 0 ? (
+        {searchable && open ? (
+          // Searching: type in the field itself; the current pick shows as
+          // the placeholder until something is typed.
+          <input
+            ref={searchRef}
+            id={triggerId}
+            type="text"
+            role="combobox"
+            aria-expanded={open}
+            aria-autocomplete="list"
+            className={styles.triggerInput}
+            placeholder={selectedText || searchPlaceholder}
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={onSearchKeyDown}
+          />
+        ) : multiple && badges && selectedMulti.length > 0 ? (
           <span ref={badgeRowRef} className={styles.triggerBadges}>
             {selectedMulti.slice(0, visibleBadgeCount).map(o => (
               <Badge
@@ -294,8 +379,9 @@ export function Select({
           size={14}
           color={disabled ? 'var(--neutral-150)' : 'var(--neutral-300)'}
           className={open ? styles.chevronOpen : styles.chevron}
+          {...(searchable ? { onClick: (e) => { e.stopPropagation(); if (!disabled) setOpen(o => !o); } } : {})}
         />
-      </button>
+      </TriggerTag>
       {open && renderMenu(
         <ul
           ref={menuRef}
@@ -326,23 +412,9 @@ export function Select({
               : { top: anchorRect.bottom + 4 }),
           } : undefined}
         >
-          {searchable && (
-            <li className={styles.searchRow}>
-              <Icon name="solar:magnifer-linear" size={13} color="var(--neutral-300)" />
-              <input
-                ref={searchRef}
-                type="text"
-                className={styles.searchInput}
-                placeholder={searchPlaceholder}
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => e.stopPropagation()}
-              />
-            </li>
-          )}
           {shownOptions.length === 0 && (
             <li className={styles.emptyOption} aria-disabled>
-              {searchLoading ? 'Searching…' : (emptyText || 'No matches')}
+              {searchLoading ? 'Searching…' : ((typeof emptyText === 'function' ? emptyText(query) : emptyText) || 'No matches')}
             </li>
           )}
           {shownOptions.map((opt, i) => {

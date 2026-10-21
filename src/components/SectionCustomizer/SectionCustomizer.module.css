@@ -1,0 +1,107 @@
+/* Cards and rows follow the analytics Print / Export Report drawer. */
+.cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--neutral-0);
+  border: 0.5px solid var(--neutral-150);
+  border-radius: var(--space-2);
+  cursor: grab;
+  transition: border-color var(--duration-instant) var(--ease-hover), box-shadow var(--duration-instant) var(--ease-hover);
+}
+
+.card:hover {
+  border-color: var(--primary-300);
+  box-shadow: 0 0 0 0.5px var(--primary-300), var(--shadow-popover);
+}
+
+.card[data-dragging] {
+  cursor: grabbing;
+  border-color: var(--primary-300);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.cardText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTitle {
+  font-size: var(--font-base);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  color: var(--neutral-400);
+}
+
+.cardMeta {
+  font-size: var(--font-sm);
+  line-height: var(--leading-tight);
+  color: var(--neutral-200);
+}
+
+/* Rows keep their own cursor; only the card frame grabs. */
+.list {
+  display: flex;
+  flex-direction: column;
+  border-top: 0.5px solid var(--neutral-150);
+  cursor: auto;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--neutral-0);
+}
+
+.row + .row {
+  border-top: 0.5px solid var(--neutral-100);
+}
+
+.rowText {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-base);
+  line-height: var(--leading-tight);
+  color: var(--neutral-400);
+}
+
+.off {
+  color: var(--neutral-200);
+}
+
+/* Height animates open and shut. */
+.collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--duration-base) var(--ease-out);
+}
+
+.collapsed {
+  grid-template-rows: 0fr;
+}
+
+.collapseInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Mid-reorder the cards shrink at once, so drop targets stay put. */
+.reordering .collapse { transition: none; }
+.reordering .card { cursor: grabbing; }

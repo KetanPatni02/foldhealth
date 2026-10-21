@@ -1,0 +1,26 @@
+# State is local until the S3 backend lands (see README), and it holds
+# secrets in plain text: the RDS password and the Supabase JWT secret.
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Provider plugins and module cache.
+.terraform/
+
+# Variable files tend to collect secrets; keep only examples.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Saved plans embed variable values, secrets included.
+*.tfplan
+tfplan
+
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# .terraform.lock.hcl stays committed: it pins provider versions.

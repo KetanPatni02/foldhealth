@@ -2,82 +2,76 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 14px 24px;
+  position: relative;
+  padding: var(--space-2) var(--space-3);
   background: var(--neutral-0);
   border-top: 0.5px solid var(--neutral-150);
   flex-shrink: 0;
 }
 
-.btn {
-  min-width: 34px;
-  height: 34px;
+/* Pinned to the far left so the page controls stay centred. */
+.summary {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+/* Figma SNP-Story 2653:877579 */
+.group {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  background: var(--neutral-0);
-  color: var(--neutral-400);
-  cursor: pointer;
-  font-size: var(--font-base);
-  font-weight: 500;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  background: var(--neutral-50);
+  border-radius: 8px;
 }
 
-.btn:hover:not(:disabled) { background: var(--neutral-50); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn.active { background: var(--primary-300); color: #fff; border-color: var(--primary-300); }
-.btn.active:hover:not(:disabled) { background: var(--primary-400); border-color: var(--primary-400); }
-
-.ellipsis {
-  color: var(--neutral-300);
-  font-size: var(--font-base);
-}
-
-/* Sizing wrapper for the shared <Select> — trigger chrome comes from the
-   component itself. */
-.perPage {
-  width: 110px;
-}
-
-.goToWrapper {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.goToInput {
-  width: 48px;
-  height: 34px;
-  padding: 0 8px;
-  border: 0.5px solid var(--neutral-150);
-  border-radius: 6px;
-  font-size: var(--font-base);
-  color: var(--neutral-400);
-  background: var(--neutral-0);
-  outline: none;
-  text-align: center;
-  -moz-appearance: textfield;
-}
-
-.goToInput::-webkit-outer-spin-button,
-.goToInput::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.goBtn {
+.toggle {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 calc(var(--space-1) * 1.5);
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  justify-content: center;
+  border: 0.5px solid transparent;
+  border-radius: 4px;
   background: transparent;
-  color: var(--primary-300);
-  border: 0.5px solid var(--primary-200);
-  border-radius: 6px;
+  color: var(--placeholder-text);
   font-size: var(--font-base);
-  font-weight: 500;
-  cursor: pointer;
+  font-weight: 400;
+  line-height: 1.2;
+  box-sizing: border-box;
 }
 
-.goBtn:hover { background: var(--primary-50); }
+button.toggle { cursor: pointer; }
+button.toggle:hover:not(:disabled) { color: var(--neutral-400); }
+button.toggle:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.toggle.active {
+  background: var(--neutral-0);
+  border-color: var(--neutral-150);
+  color: var(--neutral-400);
+}
+
+/* Shared Input at the group's 24px row height. */
+.goTo { width: 152px; }
+.goTo > * { height: 24px; }
+/* The grey trailing segment (same as the care plan Due Date unit) holds
+   the enter button edge to edge. */
+.goTo > * > span:last-child { padding: 0; }
+.enterBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: 0 4px 4px 0;
+  background: transparent;
+  color: var(--neutral-300);
+  cursor: pointer;
+}
+.enterBtn:hover { color: var(--neutral-400); background: var(--neutral-100); }

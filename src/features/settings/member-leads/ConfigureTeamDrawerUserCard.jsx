@@ -1,6 +1,7 @@
 import { Icon } from '../../../components/Icon/Icon';
 import { CloseButton } from '../../../components/CloseButton/CloseButton';
 import { Avatar } from '../../../components/Avatar/Avatar';
+import { Checkbox } from '../../../components/ShadcnCheckbox/ShadcnCheckbox';
 import { ASSIGN_TO_DIMENSIONS } from './teamTypeConfig';
 import { HoverCard } from './HoverCard';
 import hoverStyles from './HoverCard.module.css';
@@ -8,7 +9,7 @@ import drawerStyles from './ConfigureTeamDrawer.module.css';
 import { AssignValueSelect } from './ConfigureTeamDrawerAssignValueSelect';
 
 // ── User card with nested Assign To rows ───────────────────────────────
-export function UserCard({ member, teamType, priorUtilization, breakdown = [], usersForTin, tinAssignedPct, staffAvailablePct, onPatch, onRemove, onPatchAssignTo }) {
+export function UserCard({ member, teamType, showBillableCheck = false, priorUtilization, breakdown = [], usersForTin, tinAssignedPct, staffAvailablePct, onPatch, onRemove, onPatchAssignTo }) {
   const dims = ASSIGN_TO_DIMENSIONS[teamType] || [];
   const capacity = Number(member.capacityPct) || 0;
   const totalAssigned = (member.assignTo || []).reduce((sum, r) => sum + (Number(r.pct) || 0), 0);
@@ -31,7 +32,8 @@ export function UserCard({ member, teamType, priorUtilization, breakdown = [], u
 
   return (
     <div className={drawerStyles.userCard}>
-      <div className={drawerStyles.userCardHead}>
+      {/* With the check the column is taller: line the avatar and capacity up with the name. */}
+      <div className={`${drawerStyles.userCardHead} ${showBillableCheck ? drawerStyles.userCardHeadTop : ''}`}>
         <Avatar variant="assignee" initials={member.initials} />
         <div className={drawerStyles.userCardText}>
           <div className={drawerStyles.userCardName}>{member.name}</div>
@@ -61,6 +63,18 @@ export function UserCard({ member, teamType, priorUtilization, breakdown = [], u
               Capacity Used: {priorUtilization}%
             </span>
           </HoverCard>
+          {/* BHI and CCM teams only: whether this member sees the billing timer
+              on a patient's profile (Settings → Billing → Timer Access). Sits in
+              the user's own column so it reads as part of who they are here. */}
+          {showBillableCheck && (
+            <label className={drawerStyles.billableCheck}>
+              <Checkbox
+                checked={member.canLogTime !== false}
+                onCheckedChange={(v) => onPatch({ canLogTime: v === true })}
+              />
+              This user can log billable time for this program.
+            </label>
+          )}
         </div>
         <div className={drawerStyles.capacityWrap}>
           <input

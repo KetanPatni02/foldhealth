@@ -9,7 +9,31 @@ const yearsAgo = (y, extraDays = 0) => {
 };
 const matches = (member, groups) => memberMatchesFilters(member, { age: groups });
 
+const monthsAgo = (n, extraDays = 0) => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - n);
+  d.setDate(d.getDate() + extraDays);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+};
+
 describe('Age filter', () => {
+  it('month bands for the first two years', () => {
+    expect(matches({ dob: monthsAgo(1) }, ['0–2 months'])).toBe(true);
+    expect(matches({ dob: monthsAgo(2) }, ['0–2 months'])).toBe(false);
+    expect(matches({ dob: monthsAgo(2) }, ['2–6 months'])).toBe(true);
+    expect(matches({ dob: monthsAgo(6) }, ['6–18 months'])).toBe(true);
+    expect(matches({ dob: monthsAgo(17) }, ['6–18 months'])).toBe(true);
+    expect(matches({ dob: monthsAgo(18) }, ['18–24 months'])).toBe(true);
+    expect(matches({ dob: monthsAgo(6, 3) }, ['2–6 months'])).toBe(true); // 6-month day not reached yet
+    expect(matches({ dob: monthsAgo(23) }, ['Under 2'])).toBe(true);
+  });
+
+  it('month text falls into the month bands', () => {
+    expect(matches({ age: '5m' }, ['2–6 months'])).toBe(true);
+    expect(matches({ age: '1m' }, ['0–2 months'])).toBe(true);
+    expect(matches({ age: '1y 7m' }, ['18–24 months'])).toBe(true);
+  });
+
   it('buckets by whole years from DOB', () => {
     expect(matches({ dob: yearsAgo(1) }, ['Under 2'])).toBe(true);
     expect(matches({ dob: yearsAgo(2) }, ['Under 2'])).toBe(false);

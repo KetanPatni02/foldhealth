@@ -4,21 +4,25 @@ import { WorklistShell } from '../../components/WorklistShell/WorklistShell';
 import { SectionTitleBar } from '../../components/SectionTitleBar/SectionTitleBar';
 import { SubnavToggle } from '../../components/SubnavToggle/SubnavToggle';
 import { FilterBar } from '../../components/FilterBar/FilterBar';
+import { SavedFiltersChip } from '../hcc/SavedFiltersChip';
+import { useSavedFilterActions } from '../hcc/useSavedFilterActions';
 import { useTableSort } from '../../components/HeaderCell/useTableSort';
 import { AwvWorklistRow, AWV_MIDDLE_COLUMNS } from './AwvWorklistRow';
 
-// FilterBar chip definitions — all seven are primary so they show on wide
-// viewports; auto-fit trims the tail into More Filters on narrow screens.
+// FilterBar chip definitions, per the worklist filter spec: always-primary
+// (Assignee; the others aren't on Annual Visit yet), then Program Name and
+// Program Sub Status. The risk scores are secondary, under Clinical in More
+// Filters. Every primary always shows (FilterBar `pinPrimary`).
 const AWV_FILTER_DEFS = [
-  { key: 'progSubStatus', label: 'Program Sub Status', primary: true },
-  { key: 'progName',      label: 'Program Name',       primary: true },
-  { key: 'ri',            label: 'Risk IQ',            primary: true },
-  { key: 'dec',           label: 'Decile',             primary: true },
-  { key: 'ad',            label: 'AdvIllness',         primary: true },
-  { key: 'fr',            label: 'Frailty',            primary: true },
   { key: 'assignee',      label: 'Assignee',           primary: true },
+  { key: 'progName',      label: 'Program Name',       primary: true },
+  { key: 'progSubStatus', label: 'Program Sub Status', primary: true },
+  { key: 'dec',           label: 'Decile',             primary: false, group: 'Clinical' },
+  { key: 'ri',            label: 'Risk IQ',            primary: false, group: 'Clinical' },
+  { key: 'ad',            label: 'Advanced Illness',   primary: false, group: 'Clinical' },
+  { key: 'fr',            label: 'Frailty',            primary: false, group: 'Clinical' },
 ];
-const AWV_MORE_FILTER_ITEMS = AWV_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary }));
+const AWV_MORE_FILTER_ITEMS = AWV_FILTER_DEFS.map(fd => ({ k: fd.key, label: fd.label, primary: fd.primary, group: fd.group }));
 const AWV_PRIMARY_KEYS = [];
 for (const fd of AWV_FILTER_DEFS) {
   if (fd.primary) AWV_PRIMARY_KEYS.push(fd.key);
@@ -42,6 +46,8 @@ export function AwvWorklistTable() {
   const filters = useAppStore(s => s.awvFilters);
   const setFilter = useAppStore(s => s.setAwvFilter);
   const clearFilters = useAppStore(s => s.clearAwvFilters);
+  // A selected saved filter stays selected while edited: Go Back / Save Changes / Copy Filter.
+  const savedActions = useSavedFilterActions('AWV', filters, clearFilters);
   const selectedIds = useAppStore(s => s.selectedAwvIds);
   const selectMember = useAppStore(s => s.selectAwvMember);
   const selectAll = useAppStore(s => s.selectAllAwv);
@@ -128,12 +134,18 @@ export function AwvWorklistTable() {
   const filterNode = (
     <FilterBar
       autoFit
+      pinPrimary
       multiSelect
       leading={null}
       filterDefs={AWV_FILTER_DEFS}
       filters={filters}
       onFilterChange={(k, vals) => setFilter(k, vals)}
-      onClearAll={clearFilters}
+      onClearAll={savedActions.onClearAll}
+      clearAllLabel={savedActions.clearAllLabel}
+      saveLabel={savedActions.saveLabel}
+      saveMenuItems={savedActions.saveMenuItems}
+      onSaveMenuSelect={savedActions.onSaveMenuSelect}
+      hasActive={savedActions.edited || undefined}
       onSaveFilter={(name) => saveSavedFilter('AWV', name)}
       getOptions={(def) => filterOptions[def.key] || []}
       moreFilterItems={AWV_MORE_FILTER_ITEMS}
@@ -155,6 +167,12 @@ export function AwvWorklistTable() {
       filterActive={filterBarOpen}
       onFilter={() => setFilterBarOpen(v => !v)}
       onHistory={openHistoryDrawer}
+      rightExtras={
+        <>
+          <SavedFiltersChip list="AWV" />
+          <span style={{ width: 1, height: 16, background: 'var(--neutral-150)', flexShrink: 0 }} />
+        </>
+      }
       onDownload={() => showToast('Export — coming soon')}
     />
   );

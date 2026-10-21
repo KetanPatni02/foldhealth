@@ -1,4 +1,6 @@
 export function statusBadge(status) {
+  if (status === 'Locked') return { variant: 'status-failed', icon: 'solar:lock-keyhole-minimalistic-linear' };
+  if (status === 'Unlocked') return { variant: 'status-scheduled', icon: 'solar:lock-keyhole-unlocked-linear' };
   if (status === 'Pending') return { variant: 'status-scheduled', icon: 'solar:clock-circle-linear' };
   const isActive = status === 'Active';
   const isInvited = status === 'Invited';
