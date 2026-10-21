@@ -7,6 +7,7 @@ import { Checkbox } from '../../../../../../components/ShadcnCheckbox/ShadcnChec
 import { Button } from '../../../../../../components/Button/Button';
 import { useAppStore } from '../../../../../../store/useAppStore';
 import { groupTasksForTab } from '../../../../left-panel/tabs/tasks/TasksTab/groupTasksForTab';
+import { TaskDetailDrawer } from '../../../../../tasks/TaskDetailDrawer';
 import styles from './overviewCards.module.css';
 
 const VISIBLE = 4;
@@ -26,6 +27,7 @@ export function TasksCard({ patient, actions }) {
   const fetchTasks = useAppStore(s => s.fetchTasks);
   const updateTask = useAppStore(s => s.updateTask);
   const [pickedTab, setTab] = useState(null);
+  const [openTaskId, setOpenTaskId] = useState(null);
 
   useEffect(() => { fetchTasks?.(); }, [fetchTasks]);
 
@@ -35,6 +37,8 @@ export function TasksCard({ patient, actions }) {
   const tab = pickedTab ?? (groups.pending.length === 0 && groups.overdue.length > 0 ? 'overdue' : 'pending');
   const list = groups[tab] || [];
   const isOverdueTab = tab === 'overdue';
+  // The drawer reads the live store task, so edits made in it show here.
+  const openTask = openTaskId ? (allTasks || []).find(t => String(t.id) === String(openTaskId)) : null;
 
   const toggle = (task) => {
     if (tab === 'completed') updateTask(task.id, { status: 'pending', completed_at: null });
@@ -63,24 +67,40 @@ export function TasksCard({ patient, actions }) {
         {list.length === 0 ? (
           <p className={styles.empty}>{tab === 'completed' ? 'No completed tasks.' : isOverdueTab ? 'Nothing overdue.' : 'No open tasks.'}</p>
         ) : list.slice(0, VISIBLE).map(t => (
-          <PanelSectionItem
-            key={t.id}
-            leading={(
-              <Checkbox
-                checked={tab === 'completed'}
-                onCheckedChange={() => toggle(t)}
-                aria-label={tab === 'completed' ? `Reopen ${t.title}` : `Complete ${t.title}`}
-              />
-            )}
-            title={t.title}
-            meta={[
-              t.due && <span key="due" className={isOverdueTab ? styles.textError : undefined}>{isOverdueTab ? 'Overdue • ' : ''}Due {t.due}</span>,
-              t.assignee,
-            ]}
-            trailing={<PriorityIcon priority={t.priority} title={`${t.priority} priority`} />}
-          />
+          <div key={t.id} className={styles.clickRow}>
+            <PanelSectionItem
+              leading={(
+                <span className={styles.leadPair}>
+                  <span className={styles.aboveStretch}>
+                    <Checkbox
+                      checked={tab === 'completed'}
+                      onCheckedChange={() => toggle(t)}
+                      aria-label={tab === 'completed' ? `Reopen ${t.title}` : `Complete ${t.title}`}
+                    />
+                  </span>
+                  <PriorityIcon priority={t.priority} title={`${t.priority} priority`} />
+                </span>
+              )}
+              title={(
+                <button type="button" className={`${styles.titleButton} ${styles.stretch}`} onClick={() => setOpenTaskId(t.id)}>
+                  {t.title}
+                </button>
+              )}
+              meta={[
+                t.due && <span key="due" className={isOverdueTab ? styles.textError : undefined}>{isOverdueTab ? 'Overdue • ' : ''}Due {t.due}</span>,
+                t.assignee,
+              ]}
+            />
+          </div>
         ))}
       </DashboardCardBody>
+      {openTask && (
+        <TaskDetailDrawer
+          task={openTask}
+          onClose={() => setOpenTaskId(null)}
+          onSelectTask={next => setOpenTaskId(next?.id ?? null)}
+        />
+      )}
     </DashboardCard>
   );
 }

@@ -52,10 +52,10 @@ export function SuggestedActionsCard({ memberId, overview, actions }) {
             meta={a.reason}
             wrapTitle
             trailing={(
-              <>
+              <span className={styles.trail}>
                 <Button variant="ghost" size="S" onClick={() => dismiss(a)}>Dismiss</Button>
-                <Button variant="secondary" size="S" onClick={() => run(a)}>{a.cta}</Button>
-              </>
+                <Button variant="secondary" size="S" className={styles.ctaButton} onClick={() => run(a)}>{a.cta}</Button>
+              </span>
             )}
           />
         ))}
