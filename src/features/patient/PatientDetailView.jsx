@@ -26,6 +26,8 @@ const DiagPanel = lazy(() => import('../hcc/DiagPanel/DiagPanel').then(m => ({ d
 import { PatientCarePlanPane } from './right-panel/tabs/care-management/PatientCarePlanPane/PatientCarePlanPane';
 import { programUrlKey } from './right-panel/tabs/care-programs/CareProgramsTab/CareProgramsTab.utils';
 import { CARE_GAP_TABS } from './data/careGapsMock';
+import { usePatientPanelLayout } from './hooks/usePatientPanelLayout';
+import { visibleTabs } from './left-panel/patientPanelLayout';
 import { PROFILE_TABS } from './data/programActivityMock';
 import styles from './PatientDetailView.module.css';
 
@@ -154,9 +156,13 @@ export function PatientDetailView() {
   // renders in the right panel. `showingLeftContent` is only meaningful while
   // collapsed — true means a flowed-in left tab is the active view.
   const [leftTabRaw, setLeftTab] = useState(CARE_GAP_TABS[0]);
+  // The left tabs in the user's order, without the ones they switched off
+  // (More > Customize).
+  const { layout: panelLayout } = usePatientPanelLayout();
+  const leftTabs = useMemo(() => visibleTabs(panelLayout, CARE_GAP_TABS), [panelLayout]);
   // The split hosts the right panel's tabs here too; outside it, a hosted
-  // tab has no home in this panel, so fall back to Gaps.
-  const leftTab = programSplit || CARE_GAP_TABS.includes(leftTabRaw) ? leftTabRaw : CARE_GAP_TABS[0];
+  // tab has no home in this panel, so fall back to the first tab.
+  const leftTab = programSplit || leftTabs.includes(leftTabRaw) ? leftTabRaw : leftTabs[0];
   const [showingLeftContent, setShowingLeftContent] = useState(false);
   const dragging = useRef(false);
   const bodyRef = useRef(null);
@@ -164,14 +170,14 @@ export function PatientDetailView() {
   // Collapsed: the tab bar is the merged [right tabs, …left tabs]. Route a
   // click to the correct side and record which content the right panel shows.
   const handleRightTabChange = useCallback((key) => {
-    if (leftCollapsed && CARE_GAP_TABS.includes(key)) {
+    if (leftCollapsed && leftTabs.includes(key)) {
       setLeftTab(key);
       setShowingLeftContent(true);
     } else {
       setActiveTab(key);
       setShowingLeftContent(false);
     }
-  }, [leftCollapsed, setActiveTab]);
+  }, [leftCollapsed, leftTabs, setActiveTab]);
 
   // Once the signed-in user is known, load their saved collapse state (only if
   // they have one — a new user keeps the device default until they toggle).
@@ -344,7 +350,7 @@ export function PatientDetailView() {
     const openInPanel = (tab) => {
       const id = panelIdFor(tab);
       setStack(base => ({ ids: base.ids.includes(id) ? base.ids : [id, ...base.ids], activeId: id }));
-      if (leftTab === tab) setLeftTab(CARE_GAP_TABS[0]);
+      if (leftTab === tab) setLeftTab(leftTabs[0]);
     };
     const removePanel = (id) => setStack((base) => {
       const idx = base.ids.indexOf(id);
@@ -526,7 +532,7 @@ export function PatientDetailView() {
             onTabChange={handleRightTabChange}
             leftCollapsed={leftCollapsed}
             onToggleLeft={toggleLeft}
-            extraTabs={leftCollapsed ? CARE_GAP_TABS : undefined}
+            extraTabs={leftCollapsed ? leftTabs : undefined}
           />
           <div className={styles.tabContent}>
             {leftCollapsed && showingLeftContent ? (

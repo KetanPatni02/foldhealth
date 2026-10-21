@@ -11126,6 +11126,51 @@ export const useAppStore = create((set, get) => ({
     }
   },
 
+  // ── Per-user side-panel layouts (Supabase + localStorage) ──
+  // Tab and widget order + on/off per panel (More > Customize on the patient
+  // profile's left panel). Supabase table: user_panel_layouts (see
+  // supabase/user_panel_layouts_migration.sql); localStorage seeds the first
+  // paint and keeps working until the migration runs.
+  panelLayouts: (() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('panelLayouts') || 'null');
+      return (cached && typeof cached === 'object') ? cached : {};
+    } catch { return {}; }
+  })(),
+  panelLayoutsLoaded: false,
+
+  fetchPanelLayouts: async () => {
+    if (get().panelLayoutsLoaded) return;
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { data, error } = await supabase
+        .from('user_panel_layouts')
+        .select('panel_key, layout')
+        .eq('user_id', userId);
+      if (!error && Array.isArray(data) && data.length) {
+        const merged = { ...get().panelLayouts };
+        for (const row of data) merged[row.panel_key] = row.layout || {};
+        set({ panelLayouts: merged });
+        try { localStorage.setItem('panelLayouts', JSON.stringify(merged)); } catch { /* */ }
+      }
+    } catch { /* table may not exist yet: keep the local copy */ }
+    set({ panelLayoutsLoaded: true });
+  },
+
+  savePanelLayout: async (panelKey, layout) => {
+    set(s => ({ panelLayouts: { ...s.panelLayouts, [panelKey]: layout } }));
+    try { localStorage.setItem('panelLayouts', JSON.stringify(get().panelLayouts)); } catch { /* */ }
+    try {
+      const userId = await get()._resolveWorklistUser();
+      const { error } = await supabase
+        .from('user_panel_layouts')
+        .upsert({ user_id: userId, panel_key: panelKey, layout }, { onConflict: 'user_id,panel_key' });
+      if (error) console.warn('[store] save panel layout failed (run supabase/user_panel_layouts_migration.sql):', error.message);
+    } catch (e) {
+      console.warn('[store] save panel layout failed:', e?.message);
+    }
+  },
+
   // `defaultHidden` seeds a worklist that has no saved prefs yet, so the first
   // toggle changes one column instead of revealing every default-hidden one.
   toggleWorklistColumn: (worklistKey, colKey, defaultHidden = []) => {

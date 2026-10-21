@@ -40,6 +40,7 @@
 }
 
 .moreItem:hover { background: var(--neutral-50); }
+.moreDivider { height: 0.5px; margin: var(--space-1) 0; border: 0; background: var(--neutral-150); }
 .moreItemActive { color: var(--primary-400); font-weight: 500; }
 
 /* Row with a trailing action (itemAction): the row hovers as one, the

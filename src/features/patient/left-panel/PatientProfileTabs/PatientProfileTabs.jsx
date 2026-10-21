@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { Fragment, useState, useRef, useEffect, useMemo } from 'react';
 import { DownChevronIcon } from '../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../components/ActionButton/ActionButton';
 import { OverflowTabStrip } from '../../../../components/TabStrip/OverflowTabStrip';
@@ -18,6 +18,9 @@ import { ProfileTab } from '../tabs/profile/ProfileTab/ProfileTab.jsx';
 import { CrmTab } from '../tabs/crm/CrmTab/CrmTab.jsx';
 import { CARE_GAP_SECTIONS_EXTENDED, CARE_GAP_TABS, CARE_GAP_TABS_DRAWER } from '../../data/careGapsMock';
 import { CareGapDetailDrawer } from '../../../hedis-worklist/CareGapDetailDrawer';
+import { usePatientPanelLayout } from '../../hooks/usePatientPanelLayout';
+import { visibleTabs, visibleWidgets } from '../patientPanelLayout';
+import { PanelCustomizeDrawer } from '../PanelCustomizeDrawer/PanelCustomizeDrawer';
 import styles from './PatientProfileTabs.module.css';
 
 // In the P360 (full-page) surface the right panel already hosts Tasks and
@@ -44,7 +47,16 @@ export function PatientProfileTabs({
   // `itemAction` shape, minus `appliesTo`, which is scoped to extraTabs here).
   extraTabAction,
 }) {
-  const tabs = variant === 'drawer' ? CARE_GAP_TABS_DRAWER : CARE_GAP_TABS;
+  const allTabs = variant === 'drawer' ? CARE_GAP_TABS_DRAWER : CARE_GAP_TABS;
+  // The user's tab order and on/off, and per-tab widget order and on/off
+  // (More > Customize).
+  const { layout, saveLayout } = usePatientPanelLayout();
+  const tabs = useMemo(() => visibleTabs(layout, allTabs), [layout, allTabs]);
+  const [customizing, setCustomizing] = useState(false);
+  const moreActions = useMemo(
+    () => [{ key: 'customize', label: 'Customize', icon: 'solar:tuning-2-linear', onSelect: () => setCustomizing(true) }],
+    [],
+  );
   const tabItems = useMemo(
     () => [...tabs, ...(extraTabs || [])].map(tab => ({ key: tab, label: tab })),
     [tabs, extraTabs],
@@ -106,7 +118,8 @@ export function PatientProfileTabs({
       : section.items,
   }));
 
-  const activeIdx = useMemo(() => tabs.indexOf(activeTab), [tabs, activeTab]);
+  // A tab switched off while open falls back to the first one shown.
+  const currentTab = tabs.includes(activeTab) ? activeTab : tabs[0];
   const extraActive = !!(extraTabs && renderExtraTab && extraTabs.includes(activeTab));
   const itemAction = useMemo(
     () => (extraTabAction && extraTabs
@@ -114,6 +127,127 @@ export function PatientProfileTabs({
       : undefined),
     [extraTabAction, extraTabs],
   );
+
+  // Gaps tab widgets, keyed so the user's order applies; every header after
+  // the first gets the extra top spacing.
+  const gapWidgets = visibleWidgets(layout, 'Gaps(11)');
+  const headerClass = key => (gapWidgets[0] === key ? styles.sectionHeader : `${styles.sectionHeader} ${styles.diagnosisHeader}`);
+  const gapBlocks = {
+    'care-gaps': (
+          <>
+            {/* Care Gaps header */}
+            <div className={headerClass('care-gaps')}>
+              <span className={styles.sectionTitle}>Care Gaps</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setGapsCollapsed(v => !v)}
+                aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
+                aria-expanded={!gapsCollapsed}
+              >
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={gapsCollapsed ? styles.chevronCollapsed : undefined}
+                />
+              </button>
+              {!gapsCollapsed && (
+                <div className={styles.sectionActions}>
+                  <span className={styles.viewBy}>View By: Action</span>
+                  <DownChevronIcon size={10} />
+                  <span className={styles.filterDivider} />
+                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                </div>
+              )}
+            </div>
+
+            <div className={`${styles.collapseOuter} ${gapsCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                <div className={styles.sections}>
+                  {careGapSections.map(section => (
+                    <CareGapSection
+                      key={section.title}
+                      section={section}
+                      selectedGaps={selectedGaps}
+                      onToggleGap={toggleGap}
+                      onOpenGap={openGap}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+    ),
+    'diagnosis-gaps': (
+          <>
+            {/* Diagnosis Gaps header */}
+            <div className={headerClass('diagnosis-gaps')}>
+              <span className={styles.sectionTitle}>Diagnosis Gaps</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setDiagnosisCollapsed(v => !v)}
+                aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
+                aria-expanded={!diagnosisCollapsed}
+              >
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={diagnosisCollapsed ? styles.chevronCollapsed : undefined}
+                />
+              </button>
+              {!diagnosisCollapsed && (
+                <div className={styles.sectionActions}>
+                  <span className={styles.dosLabel}>DOS:</span>
+                  <span className={styles.dosValue}>03/04/2025</span>
+                  <DownChevronIcon size={10} />
+                  <span className={styles.filterDivider} />
+                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                </div>
+              )}
+            </div>
+
+            <div className={`${styles.collapseOuter} ${diagnosisCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                <div className={styles.sections}>
+                  <DiagnosisGapsTable memberName={patient?.name} />
+                </div>
+              </div>
+            </div>
+          </>
+    ),
+    alerts: (
+          <>
+            {/* Alerts header */}
+            <div className={headerClass('alerts')}>
+              <span className={styles.sectionTitle}>Alerts</span>
+              <button
+                className={styles.collapseToggle}
+                onClick={() => setAlertsCollapsed(v => !v)}
+                aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
+                aria-expanded={!alertsCollapsed}
+              >
+                <DownChevronIcon
+                  size={12}
+                  color="var(--neutral-200)"
+                  className={alertsCollapsed ? styles.chevronCollapsed : undefined}
+                />
+              </button>
+              {!alertsCollapsed && (
+                <div className={styles.sectionActions}>
+                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
+                </div>
+              )}
+            </div>
+
+            <div className={`${styles.collapseOuter} ${alertsCollapsed ? styles.collapsedSection : ''}`}>
+              <div className={styles.collapseInner}>
+                <div className={styles.sections}>
+                  <AlertsTable />
+                </div>
+              </div>
+            </div>
+          </>
+    ),
+  };
 
   return (
     <div className={styles.panel}>
@@ -138,9 +272,10 @@ export function PatientProfileTabs({
           <div className={styles.tabsArea}>
             <OverflowTabStrip
               items={tabItems}
-              activeKey={activeTab}
+              activeKey={extraActive ? activeTab : currentTab}
               onChange={setActiveTab}
               itemAction={itemAction}
+              moreActions={moreActions}
             />
           </div>
           {!extraActive && (
@@ -180,138 +315,41 @@ export function PatientProfileTabs({
           />
         )}
 
-        {activeIdx === 0 && (
+        {currentTab === 'Gaps(11)' && (
           <div className={styles.gapsWrapper}>
-            {/* Care Gaps header */}
-            <div className={styles.sectionHeader}>
-              <span className={styles.sectionTitle}>Care Gaps</span>
-              <button
-                className={styles.collapseToggle}
-                onClick={() => setGapsCollapsed(v => !v)}
-                aria-label={gapsCollapsed ? 'Expand Care Gaps' : 'Collapse Care Gaps'}
-                aria-expanded={!gapsCollapsed}
-              >
-                <DownChevronIcon
-                  size={12}
-                  color="var(--neutral-200)"
-                  className={gapsCollapsed ? styles.chevronCollapsed : undefined}
-                />
-              </button>
-              {!gapsCollapsed && (
-                <div className={styles.sectionActions}>
-                  <span className={styles.viewBy}>View By: Action</span>
-                  <DownChevronIcon size={10} />
-                  <span className={styles.filterDivider} />
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-                </div>
-              )}
-            </div>
-
-            <div className={`${styles.collapseOuter} ${gapsCollapsed ? styles.collapsedSection : ''}`}>
-              <div className={styles.collapseInner}>
-                <div className={styles.sections}>
-                  {careGapSections.map(section => (
-                    <CareGapSection
-                      key={section.title}
-                      section={section}
-                      selectedGaps={selectedGaps}
-                      onToggleGap={toggleGap}
-                      onOpenGap={openGap}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Diagnosis Gaps header */}
-            <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
-              <span className={styles.sectionTitle}>Diagnosis Gaps</span>
-              <button
-                className={styles.collapseToggle}
-                onClick={() => setDiagnosisCollapsed(v => !v)}
-                aria-label={diagnosisCollapsed ? 'Expand Diagnosis Gaps' : 'Collapse Diagnosis Gaps'}
-                aria-expanded={!diagnosisCollapsed}
-              >
-                <DownChevronIcon
-                  size={12}
-                  color="var(--neutral-200)"
-                  className={diagnosisCollapsed ? styles.chevronCollapsed : undefined}
-                />
-              </button>
-              {!diagnosisCollapsed && (
-                <div className={styles.sectionActions}>
-                  <span className={styles.dosLabel}>DOS:</span>
-                  <span className={styles.dosValue}>03/04/2025</span>
-                  <DownChevronIcon size={10} />
-                  <span className={styles.filterDivider} />
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-                </div>
-              )}
-            </div>
-
-            <div className={`${styles.collapseOuter} ${diagnosisCollapsed ? styles.collapsedSection : ''}`}>
-              <div className={styles.collapseInner}>
-                <div className={styles.sections}>
-                  <DiagnosisGapsTable memberName={patient?.name} />
-                </div>
-              </div>
-            </div>
-
-            {/* Alerts header */}
-            <div className={`${styles.sectionHeader} ${styles.diagnosisHeader}`}>
-              <span className={styles.sectionTitle}>Alerts</span>
-              <button
-                className={styles.collapseToggle}
-                onClick={() => setAlertsCollapsed(v => !v)}
-                aria-label={alertsCollapsed ? 'Expand Alerts' : 'Collapse Alerts'}
-                aria-expanded={!alertsCollapsed}
-              >
-                <DownChevronIcon
-                  size={12}
-                  color="var(--neutral-200)"
-                  className={alertsCollapsed ? styles.chevronCollapsed : undefined}
-                />
-              </button>
-              {!alertsCollapsed && (
-                <div className={styles.sectionActions}>
-                  <ActionButton icon="custom:filter" size="S" tooltip="Filter" />
-                </div>
-              )}
-            </div>
-
-            <div className={`${styles.collapseOuter} ${alertsCollapsed ? styles.collapsedSection : ''}`}>
-              <div className={styles.collapseInner}>
-                <div className={styles.sections}>
-                  <AlertsTable />
-                </div>
-              </div>
-            </div>
+            {gapWidgets.map(key => <Fragment key={key}>{gapBlocks[key]}</Fragment>)}
           </div>
         )}
 
-        {activeIdx === 1 && <PAMIHxTab patientId={patientId} />}
+        {currentTab === 'PAMI/Hx' && <PAMIHxTab patientId={patientId} widgets={visibleWidgets(layout, 'PAMI/Hx')} />}
 
-        {activeIdx === 2 && <VitalsLabsTab />}
+        {currentTab === 'Vitals/Labs' && <VitalsLabsTab widgets={visibleWidgets(layout, 'Vitals/Labs')} />}
 
-        {activeIdx === 3 && <CommsTab patient={patient} />}
+        {currentTab === 'Comms' && <CommsTab patient={patient} />}
 
-        {activeIdx === 4 && <OutreachTab memberName={patient?.name} />}
+        {currentTab === 'Outreach' && <OutreachTab memberName={patient?.name} />}
 
-        {activeIdx === 5 && <SummaryTab />}
+        {currentTab === 'Summary' && <SummaryTab widgets={visibleWidgets(layout, 'Summary')} />}
 
-        {/* Tail tabs — index layout depends on variant:
-            - full  (P360 page):   [6] CRM
-            - drawer (QuickView):  [6] Tasks · [7] CRM · [8] Profile
-            Tasks/Profile live only on the right panel in P360, so they're
-            keyed off tabs[idx] rather than a hard-coded index. */}
-        {tabs[activeIdx] === 'Tasks' && <TasksTab />}
+        {/* Tasks and Profile show here only in the QuickView drawer; on the
+            full page they live in the right panel. */}
+        {currentTab === 'Tasks' && <TasksTab />}
 
-        {tabs[activeIdx] === 'CRM' && <CrmTab patientId={patientId} />}
+        {currentTab === 'CRM' && <CrmTab patientId={patientId} />}
 
-        {tabs[activeIdx] === 'Profile' && (
+        {currentTab === 'Profile' && (
           <ProfileTab patient={patient || { id: patientId }} />
         )}
       </div>
+      )}
+
+      {customizing && (
+        <PanelCustomizeDrawer
+          layout={layout}
+          available={allTabs}
+          onSave={saveLayout}
+          onClose={() => setCustomizing(false)}
+        />
       )}
 
       {careGapDrawer && (

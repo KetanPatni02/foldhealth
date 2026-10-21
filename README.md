@@ -37,6 +37,15 @@ build requires esbuild ≥ 0.28 on Node 26.
 
 ## Recent Changes
 
+- **Customize the patient panel.** The patient profile's left panel has
+  More > Customize: switch tabs, and the widgets inside Gaps, PAMI/Hx,
+  Vitals/Labs and Summary, on or off and drag them into order, as in the
+  analytics Export Report drawer. The layout is per user
+  (`user_panel_layouts`, cached in localStorage), applies on Save, and keeps
+  at least one tab shown. New shared pieces: `SectionCustomizer`,
+  `SortableList` (moved from analytics), `PanelSection` and `BadgeSelect`
+  (the redesigned Summary tab), and `moreActions` on `OverflowTabStrip`.
+  Needs `supabase/user_panel_layouts_migration.sql`.
 - **Worklist filters and saved filters, per the worklist filter spec.**
   HCC, HEDIS, SNP, Annual Visits and TOC IP list their filters in the spec's
   order (always-primary first, then each worklist's own). The chip row stays

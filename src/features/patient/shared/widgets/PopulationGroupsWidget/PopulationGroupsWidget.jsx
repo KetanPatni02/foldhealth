@@ -1,67 +1,60 @@
 import { useState } from 'react';
-import { Icon } from '../../../../../components/Icon/Icon';
-import { DownChevronIcon } from '../../../../../components/Icon/DownChevronIcon';
 import { ActionButton } from '../../../../../components/ActionButton/ActionButton';
 import { Avatar } from '../../../../../components/Avatar/Avatar';
-import { Badge } from '../../../../../components/Badge/Badge';
-import styles from './PopulationGroupsWidget.module.css';
+import { BadgeSelect } from '../../../../../components/BadgeSelect/BadgeSelect';
+import { RingEmptyState } from '../../../../../components/RingEmptyState/RingEmptyState';
+import { PanelSection, PanelSectionDivider, PanelSectionItem, PanelSectionMore } from '../../../../../components/PanelSection/PanelSection';
 
 const GROUPS = [
-  { id: 1, title: 'PHQ-8 completed every 3 months' },
-  { id: 2, title: 'Exercise interventions for fall prevention in community-dwelling older adults' },
-  { id: 3, title: 'Screen for hepatitis C virus infection in adolescents and adults' },
-  { id: 4, title: 'Screen for hepatitis C virus infection in adolescents and adults' },
-  { id: 5, title: 'Screen for hepatitis C virus infection in adolescents and adults' },
+  { id: 1, title: 'PHQ-8 completed every 3 months', joinedOn: '06/30/2023', source: 'Automation', status: 'Active' },
+  { id: 2, title: 'Exercise interventions for fall prevention in community-dwelling older adults', joinedOn: '06/30/2023', source: 'Automation', status: 'Active' },
+  { id: 3, title: 'Screen for hepatitis C virus infection in adolescents and adults', joinedOn: '06/30/2023', source: 'Automation', status: 'Active' },
+  { id: 4, title: 'Screen for hepatitis C virus infection in adolescents and adults', joinedOn: '06/30/2023', source: 'Automation', status: 'Active' },
+  { id: 5, title: 'Screen for hepatitis C virus infection in adolescents and adults', joinedOn: '06/30/2023', source: 'Automation', status: 'Active' },
 ];
 
+const VIEW_OPTIONS = ['Active', 'Inactive', 'All'];
+const PREVIEW_COUNT = 3;
+
 export function PopulationGroupsWidget() {
-  const [collapsed, setCollapsed] = useState(false);
+  const [view, setView] = useState('Active');
+  const [expanded, setExpanded] = useState(false);
+
+  const groups = view === 'All' ? GROUPS : GROUPS.filter(g => g.status === view);
+  const shown = expanded ? groups : groups.slice(0, PREVIEW_COUNT);
 
   return (
-    <div className={styles.widget}>
-      <div className={styles.header}>
-        <button className={styles.titleBtn} onClick={() => setCollapsed(v => !v)}>
-          <DownChevronIcon
-            size={13}
-            color="var(--neutral-400)"
-            style={collapsed ? { transform: 'rotate(-90deg)' } : undefined}
+    <PanelSection
+      title="Population Groups"
+      actions={(
+        <>
+          <BadgeSelect
+            label="View By"
+            value={view}
+            options={VIEW_OPTIONS}
+            onChange={(v) => { setView(v); setExpanded(false); }}
           />
-          <span className={styles.title}>Population Groups</span>
-        </button>
-
-        {!collapsed && (
-          <div className={styles.headerRight}>
-            <Badge variant="toc-new" label="View By: Active" trailingIcon="solar:alt-arrow-down-linear" />
-            <span className={styles.divider} />
-            <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add" />
-          </div>
-        )}
-      </div>
-
-      {!collapsed && (
-        <div className={styles.body}>
-          {GROUPS.map(group => (
-            <div key={group.id} className={styles.item}>
-              <Avatar
-                variant="generic"
-                size="32px"
-                backgroundColor="var(--primary-50)"
-                borderColor="var(--neutral-100)"
-                icon={<Icon name="solar:users-group-rounded-linear" size={16} color="var(--primary-300)" />}
-              />
-              <div className={styles.itemContent}>
-                <span className={styles.itemTitle}>{group.title}</span>
-                <span className={styles.itemMeta}>Join Date: 06/30/2023 • Automation</span>
-              </div>
-            </div>
-          ))}
-
-          <button className={styles.viewMoreBtn}>
-            View More
-            <Icon name="solar:alt-arrow-down-linear" size={11} color="var(--primary-300, #8c5ae2)" />
-          </button>
-        </div>
+          <PanelSectionDivider />
+          <ActionButton icon="solar:add-circle-linear" size="S" tooltip="Add to Population Group" />
+        </>
       )}
-    </div>
+    >
+      {groups.length === 0 ? (
+        <RingEmptyState icon="solar:users-group-rounded-linear" label={`No ${view.toLowerCase()} population groups`} size="S" />
+      ) : (
+        <>
+          {shown.map(g => (
+            <PanelSectionItem
+              key={g.id}
+              leading={<Avatar type="icon" variant="patient" iconName="solar:users-group-rounded-linear" size="M" />}
+              title={g.title}
+              wrapTitle
+              meta={[`Joined ${g.joinedOn}`, g.source]}
+            />
+          ))}
+          <PanelSectionMore expanded={expanded} hiddenCount={groups.length - PREVIEW_COUNT} onToggle={() => setExpanded(v => !v)} />
+        </>
+      )}
+    </PanelSection>
   );
 }
