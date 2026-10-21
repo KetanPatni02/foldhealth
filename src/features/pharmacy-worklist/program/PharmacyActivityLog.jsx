@@ -12,7 +12,7 @@ export function PharmacyActivityLog({ member }) {
     () => toActivityLogEntries((member?.activityLog || []).map(e => ({ ...e, when: e.at }))),
     [member],
   );
-  return <ActivityLog entries={entries} relaxed emptyLabel="No activity recorded yet." />;
+  return <ActivityLog entries={entries} relaxed flushTop emptyLabel="No activity recorded yet." />;
 }
 
 // Activity Log step of the Pharmacy program.

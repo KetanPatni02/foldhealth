@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
 import { Button } from '../../../components/Button/Button';
-import { ChipSelect } from '../../../components/ChipSelect/ChipSelect';
+import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
 import { Textarea } from '../../../components/Textarea/Textarea';
 import { Select } from '../../../components/Select/Select';
@@ -23,8 +23,8 @@ const sameSet = (a, b) => a.length === b.length && a.every(v => b.includes(v));
 const isChanged = (r, base) => !sameSet(r.barriers, base.barriers)
   || !sameSet(r.interventions, base.interventions) || (r.result || null) !== (base.result || null);
 
-// Barrier & Intervention step of the Pharmacy program. Each measure's chips
-// start marked with its current barriers / interventions / result (latest
+// Barrier & Intervention step of the Pharmacy program. Each measure's fields
+// start filled with its current barriers / interventions / result (latest
 // log entry — from this step or from Outreach); changing them and saving logs
 // a new entry for just the measures that changed. Measures are recorded
 // separately — a cost barrier on MAD (brand copay) doesn't imply one on MAC —
@@ -63,7 +63,11 @@ export function PharmacyBarrierStep({ member: memberProp }) {
     ...(member.barrier ? [member.barrier] : []),
     ...measures.flatMap(x => x.medications.map(d => d.nonAdherenceReason).filter(Boolean)),
   ]);
-  const barrierOptions = (code) => BARRIERS.filter(b => memberBarriers.has(b) || rec(code).barriers.includes(b));
+  // The member's own barriers lead the list; the rest of the master list follows.
+  const barrierOptions = [...BARRIERS.filter(b => memberBarriers.has(b)), ...BARRIERS.filter(b => !memberBarriers.has(b))]
+    .map(b => ({ value: b, label: b }));
+  const interventionOptions = INTERVENTIONS.map(v => ({ value: v, label: v }));
+  const resultOptions = MEASURE_RESULTS.map(v => ({ value: v, label: v }));
 
   const handleSave = () => {
     const recorded = {};
@@ -79,97 +83,105 @@ export function PharmacyBarrierStep({ member: memberProp }) {
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.editor}>
-        {/* The step header already names the step; just say how it works. */}
-        <span className={styles.muted}>Marked items are each measure’s current state. Change them and save; only the measures you change are logged.</span>
+      <span className={styles.muted}>Each measure shows its current barriers, interventions and result. Change them and save; only the measures you change are logged.</span>
 
-        {measures.map(x => {
-          const r = rec(x.code);
-          const latest = latestFor(member.interventionLog, x.code);
-          const dirty = isChanged(r, current(x.code));
-          return (
-            <section key={x.code} className={`${styles.measure} ${dirty ? styles.measureDirty : ''}`}>
-              <div className={styles.measureHead}>
-                <MeasureCode code={x.code} />
-                <span className={styles.measureName}>{MEASURE_NAMES[x.code]}</span>
-                <span className={styles.muted}>{x.medications.map(medLabel).join(', ')}</span>
-              </div>
-              <span className={styles.asOf}>
+      {measures.map(x => {
+        const r = rec(x.code);
+        const latest = latestFor(member.interventionLog, x.code);
+        const dirty = isChanged(r, current(x.code));
+        return (
+          <DashboardCard
+            key={x.code}
+            className={dirty ? styles.dirty : undefined}
+            // The code chip names the measure on hover; the header names the drugs.
+            title={<span className={styles.measureTitle}><MeasureCode code={x.code} />{x.medications.map(medLabel).join(', ') || MEASURE_NAMES[x.code]}</span>}
+            actions={(
+              <span className={dirty ? styles.asOfDirty : styles.asOf}>
                 {dirty
                   ? 'Unsaved changes'
                   : latest
-                    ? `Current as of ${latest.date}${latest.source ? ` · from ${latest.source.toLowerCase()}` : ''}`
+                    ? `As of ${latest.date}${latest.source ? ` · ${latest.source}` : ''}`
                     : 'Nothing logged yet'}
               </span>
-              <div className={styles.fields}>
-                <div className={styles.field}>
-                  <span className={styles.fieldLabel}>Barriers</span>
-                  {barrierOptions(x.code).length > 0
-                    ? <ChipSelect ariaLabel={`${x.code} barriers`} options={barrierOptions(x.code)} value={r.barriers} onChange={v => patch(x.code, { barriers: v })} />
-                    : <span className={styles.muted}>No barriers recorded for this member.</span>}
-                  {!dirty && latest?.source === 'Outreach' && latest.rec.barriers.length > 0 && (
-                    <span className={styles.flagged}>
-                      <Icon name="solar:flag-linear" size={13} color="currentColor" />
-                      Flagged from outreach on {latest.date}: {latest.rec.barriers.join(', ')}
-                    </span>
-                  )}
-                  {BARRIERS.length > barrierOptions(x.code).length && (
-                    <Select
-                      className={styles.addBarrier}
-                      options={BARRIERS.filter(b => !barrierOptions(x.code).includes(b)).map(b => ({ value: b, label: b }))}
-                      value=""
-                      placeholder="Add barrier"
-                      onChange={b => patch(x.code, { barriers: [...r.barriers, b] })}
-                    />
-                  )}
-                </div>
-                <div className={styles.field}>
-                  <span className={styles.fieldLabel}>Interventions</span>
-                  <ChipSelect ariaLabel={`${x.code} interventions`} options={INTERVENTIONS} value={r.interventions} onChange={v => patch(x.code, { interventions: v })} />
-                </div>
-                <div className={styles.field}>
-                  <span className={styles.fieldLabel}>Result</span>
-                  <ChipSelect ariaLabel={`${x.code} result`} single options={MEASURE_RESULTS} value={r.result} onChange={v => patch(x.code, { result: v })} />
-                </div>
-              </div>
-            </section>
-          );
-        })}
-
-        <div className={styles.field}>
-          <span className={styles.fieldLabel}>Note</span>
-          <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="One note for the whole call" aria-label="Call note" />
-        </div>
-        <div className={styles.foot}>
-          {changed.length > 0 && <Button variant="ghost" size="L" onClick={() => setDraft({})}>Discard</Button>}
-          <Button variant="primary" size="L" disabled={!changed.length} onClick={handleSave}>
-            {changed.length ? `Save (${changed.map(x => x.code).join(', ')})` : 'Save'}
-          </Button>
-        </div>
-      </div>
-
-      <div className={styles.sectionTitle}>History</div>
-      {(member.interventionLog || []).length === 0 && <div className={styles.muted}>No barriers or interventions logged yet.</div>}
-      {(member.interventionLog || []).map((e, i) => (
-        <div key={`${e.date}-${i}`} className={styles.logEntry}>
-          <div className={styles.logHead}>
-            <span className={styles.logDate}>{e.date}</span>
-            <span className={styles.muted}>by {e.by}</span>
-            {e.source && <Badge size="S" tone="grey" icon="solar:phone-linear" label={`From ${e.source.toLowerCase()}`} />}
-          </div>
-          {Object.entries(e.measures).map(([code, r]) => (
-            <div key={code} className={styles.logRow}>
-              <MeasureCode code={code} />
-              <div className={styles.logChips}>
-                {r.barriers.map(b => <Badge key={b} size="S" tone="grey" label={b} />)}
-                {r.interventions.map(v => <Badge key={v} size="S" tone="grey" label={v} />)}
-                {r.result && <Badge size="S" tone="grey" icon="solar:check-circle-linear" label={r.result} />}
-              </div>
+            )}
+          >
+            <div className={styles.fields}>
+              <Select
+                label="Barriers"
+                multiple
+                badges
+                searchable
+                portal
+                options={barrierOptions}
+                value={r.barriers}
+                placeholder="Add barriers"
+                onChange={v => patch(x.code, { barriers: v })}
+              />
+              <Select
+                label="Interventions"
+                multiple
+                badges
+                searchable
+                portal
+                options={interventionOptions}
+                value={r.interventions}
+                placeholder="Add interventions"
+                onChange={v => patch(x.code, { interventions: v })}
+              />
+              <Select
+                label="Result"
+                portal
+                options={resultOptions}
+                value={r.result || ''}
+                placeholder="Select result"
+                onChange={v => patch(x.code, { result: v || null })}
+              />
+              {!dirty && latest?.source === 'Outreach' && latest.rec.barriers.length > 0 && (
+                <span className={styles.flagged}>
+                  <Icon name="solar:flag-linear" size={13} color="currentColor" />
+                  Flagged from outreach on {latest.date}: {latest.rec.barriers.join(', ')}
+                </span>
+              )}
             </div>
-          ))}
-          {e.note ? <div className={styles.logNote}>{e.note}</div> : null}
+          </DashboardCard>
+        );
+      })}
+
+      <DashboardCard title="Note">
+        <div className={styles.noteBody}>
+          <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="One note for the whole call" aria-label="Call note" />
+          <div className={styles.foot}>
+            {changed.length > 0 && <Button variant="ghost" size="L" onClick={() => setDraft({})}>Discard</Button>}
+            <Button variant="primary" size="L" disabled={!changed.length} onClick={handleSave}>
+              {changed.length ? `Save (${changed.map(x => x.code).join(', ')})` : 'Save'}
+            </Button>
+          </div>
         </div>
-      ))}
+      </DashboardCard>
+
+      <DashboardCard title="History" count={(member.interventionLog || []).length || undefined}>
+        {(member.interventionLog || []).length === 0 && <div className={styles.logEntry}><span className={styles.muted}>No barriers or interventions logged yet.</span></div>}
+        {(member.interventionLog || []).map((e, i) => (
+          <div key={`${e.date}-${i}`} className={styles.logEntry}>
+            <div className={styles.logHead}>
+              <span className={styles.logDate}>{e.date}</span>
+              <span className={styles.muted}>by {e.by}</span>
+              {e.source && <Badge size="S" tone="grey" icon="solar:phone-linear" label={`From ${e.source.toLowerCase()}`} />}
+            </div>
+            {Object.entries(e.measures).map(([code, rr]) => (
+              <div key={code} className={styles.logRow}>
+                <MeasureCode code={code} />
+                <div className={styles.logChips}>
+                  {rr.barriers.map(b => <Badge key={b} size="S" tone="grey" label={b} />)}
+                  {rr.interventions.map(v => <Badge key={v} size="S" tone="grey" label={v} />)}
+                  {rr.result && <Badge size="S" tone="grey" icon="solar:check-circle-linear" label={rr.result} />}
+                </div>
+              </div>
+            ))}
+            {e.note ? <div className={styles.logNote}>{e.note}</div> : null}
+          </div>
+        ))}
+      </DashboardCard>
     </div>
   );
 }

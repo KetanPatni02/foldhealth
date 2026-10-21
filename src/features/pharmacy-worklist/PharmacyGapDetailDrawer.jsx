@@ -24,6 +24,7 @@ import { PharmacyVerificationStep } from './program/PharmacyVerificationStep';
 import { PharmacyActivityLog } from './program/PharmacyActivityLog';
 // Same layout system as the HEDIS Care Gap Details drawer, so both read as one.
 import styles from '../hedis-worklist/CareGapDetailDrawer.module.css';
+import local from './PharmacyGapDetailDrawer.module.css';
 
 const PHARM_PROGRAM = { code: 'PHARM' };
 const AUTO_STATUS = '__auto';
@@ -263,7 +264,7 @@ function PharmacyGapDrawerBody({ target, row }) {
           </div>
 
           <div className={styles.gapTitleWrap}>
-            <div className={styles.gapTitle}>{gap.code} - {MEASURE_NAMES[gap.code]}</div>
+            <div className={local.gapTitle}>{gap.code} - {MEASURE_NAMES[gap.code]}</div>
             <div className={styles.gapSubRow}>
               {gap.startDate && <span>Started {gap.startDate} ({ago(gap.startDate)})</span>}
               {gap.failDate && <><span>•</span><span>Fail date {gap.failDate}</span></>}

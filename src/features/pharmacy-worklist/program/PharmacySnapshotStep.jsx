@@ -1,5 +1,6 @@
 import { useAppStore } from '../../../store/useAppStore';
 import { Badge } from '../../../components/Badge/Badge';
+import { DashboardCard } from '../../../components/DashboardCard/DashboardCard';
 import { Icon } from '../../../components/Icon/Icon';
 import { PhoneLink } from '../../../components/PhoneLink/PhoneLink';
 import {
@@ -46,41 +47,32 @@ export function PharmacySnapshotStep({ member }) {
 
   return (
     <div className={styles.wrap}>
-      <section className={styles.card}>
-        <header className={styles.cardHead}>
-          <span className={styles.cardTitle}>Pharmacy gaps</span>
-          <span className={styles.muted}>{m.progress.closed} of {m.progress.total} closed · {m.progress.label}</span>
-        </header>
-        <div className={styles.gapList}>
-          {m.gaps.map(g => {
-            // Red only where someone has to act: an open gap. A closed gap's
-            // low PDC or past fill date is history.
-            const open = OPEN_GAPS.has(g.status.gap);
-            const tone = (t) => (open ? TONE_CLASS[t] || '' : '');
-            return (
-              <div key={g.code} className={styles.gapRow}>
-                <MeasureCode code={g.code} />
-                <span className={styles.gapStatus}>
-                  <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap]} label={g.status.gap} />
-                  <SubStatus label={g.status.label} />
-                </span>
-                <Field label="PDC"><span className={tone(pdcTone(g.pdc))}>{g.pdc == null ? 'Not sent' : `${g.pdc}%`}</span></Field>
-                <Field label="Fail date">{g.failDate || '—'}</Field>
-                <Field label="Next fill due"><span className={tone(fillDueTone(g.nextFillDue))}>{g.nextFillDue || '—'}</span></Field>
-                <Field label="Claim">{g.recon?.status || '—'}</Field>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+      <DashboardCard title="Pharmacy Gaps" count={`${m.progress.closed} of ${m.progress.total} closed · ${m.progress.label}`}>
+        {m.gaps.map(g => {
+          // Red only where someone has to act: an open gap. A closed gap's
+          // low PDC or past fill date is history.
+          const open = OPEN_GAPS.has(g.status.gap);
+          const tone = (t) => (open ? TONE_CLASS[t] || '' : '');
+          return (
+            <div key={g.code} className={styles.gapRow}>
+              <MeasureCode code={g.code} />
+              <span className={styles.gapStatus}>
+                <Badge size="S" tone={GAP_STATUS_TONE[g.status.gap]} label={g.status.gap} />
+                <SubStatus label={g.status.label} />
+              </span>
+              <Field label="PDC"><span className={tone(pdcTone(g.pdc))}>{g.pdc == null ? 'Not sent' : `${g.pdc}%`}</span></Field>
+              <Field label="Fail Date">{g.failDate || '—'}</Field>
+              <Field label="Next Fill Due"><span className={tone(fillDueTone(g.nextFillDue))}>{g.nextFillDue || '—'}</span></Field>
+              <Field label="Claim">{g.recon?.status || '—'}</Field>
+            </div>
+          );
+        })}
+      </DashboardCard>
 
-      <section className={styles.card}>
-        <header className={styles.cardHead}>
-          <span className={styles.cardTitle}>Prescriber{prescribers.length === 1 ? '' : 's'}</span>
-        </header>
-        {prescribers.length === 0 && <span className={styles.muted}>No prescriber on file.</span>}
+      <DashboardCard title={prescribers.length === 1 ? 'Prescriber' : 'Prescribers'}>
+        {prescribers.length === 0 && <div className={styles.row}><span className={styles.muted}>No prescriber on file.</span></div>}
         {prescribers.map(p => (
-          <div key={p.name} className={styles.contact}>
+          <div key={p.name} className={styles.row}>
             <div className={styles.contactHead}>
               <span className={styles.contactName}>{p.name}</span>
               <span className={styles.muted}>{p.drugs.join(', ')}</span>
@@ -92,17 +84,13 @@ export function PharmacySnapshotStep({ member }) {
             </div>
           </div>
         ))}
-      </section>
+      </DashboardCard>
 
-      <section className={styles.card}>
-        <header className={styles.cardHead}>
-          <span className={styles.cardTitle}>Pharmacies</span>
-          <span className={styles.muted}>Where fills happened, most recent first</span>
-        </header>
-        {pharmacies.length === 0 ? <span className={styles.muted}>No fills on record.</span> : (
+      <DashboardCard title="Pharmacies" count="Where fills happened, most recent first">
+        {pharmacies.length === 0 ? <div className={styles.row}><span className={styles.muted}>No fills on record.</span></div> : (
           <table className={styles.table}>
             <thead>
-              <tr><th>Pharmacy</th><th>Phone</th><th>Fills</th><th>Last fill</th></tr>
+              <tr><th>Pharmacy</th><th>Phone</th><th>Fills</th><th>Last Fill</th></tr>
             </thead>
             <tbody>
               {pharmacies.map((p, i) => (
@@ -120,7 +108,7 @@ export function PharmacySnapshotStep({ member }) {
             </tbody>
           </table>
         )}
-      </section>
+      </DashboardCard>
     </div>
   );
 }

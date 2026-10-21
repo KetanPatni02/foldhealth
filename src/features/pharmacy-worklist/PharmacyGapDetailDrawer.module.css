@@ -1,0 +1,9 @@
+/* Overrides on top of the shared Care Gap Details drawer styles. */
+
+/* The gap title reads as a heading without the heavy 17px/600 near-black. */
+.gapTitle {
+  font-size: var(--font-lg);
+  font-weight: 500;
+  line-height: var(--leading-tight);
+  color: var(--neutral-400);
+}
