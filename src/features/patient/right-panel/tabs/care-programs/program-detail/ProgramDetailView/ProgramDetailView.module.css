@@ -647,6 +647,12 @@
   min-height: 0;
   overflow-y: auto;
 }
+.pharmacyStep {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
 .contentInner {
   display: flex;
   flex-direction: column;

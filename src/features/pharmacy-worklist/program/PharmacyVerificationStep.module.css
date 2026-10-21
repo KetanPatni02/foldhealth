@@ -45,7 +45,8 @@
 .numInput { width: 96px; }
 
 .action_success { background: var(--status-success-light); color: var(--status-success); }
-.action_warning { background: var(--status-warning-light); color: var(--status-warning-dark); }
+/* Amber text fails contrast on its tint; the tint carries the cue. */
+.action_warning { background: var(--status-warning-light); color: var(--neutral-500); }
 .action_error { background: var(--status-error-light); color: var(--status-error); }
 .actionLabel { font-size: var(--font-md); font-weight: 600; }
 .actionDetail { font-size: var(--font-md); color: var(--neutral-400); }
@@ -68,9 +69,7 @@
 .lockedNote { font-size: var(--font-md); color: var(--neutral-400); }
 
 .muted { font-size: var(--font-md); color: var(--neutral-300); }
-.toneError { color: var(--status-error); }
-.toneWarning { color: var(--status-warning-dark); }
-.toneSuccess { color: var(--status-success); }
+.toneError, .gapFacts b.toneError { color: var(--status-error); }
 
 .empty {
   display: flex;
@@ -84,32 +83,8 @@
 }
 .empty p { margin: 0; }
 
-/* Assessment table: categories (filters) on the left, questions × gaps. */
-.assessment {
-  display: grid;
-  grid-template-columns: 148px minmax(0, 1fr);
-  gap: var(--space-3);
-  align-items: start;
-}
-.categories { display: flex; flex-direction: column; gap: 0.125rem; position: sticky; top: 0; }
-.category {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  border: none;
-  border-radius: 6px;
-  background: none;
-  cursor: pointer;
-  font-size: var(--font-md);
-  color: var(--neutral-400);
-  text-align: left;
-}
-.category:hover { background: var(--neutral-50); }
-.categoryOn { background: var(--primary-50); color: var(--primary-300); font-weight: 500; }
-.categoryCount { font-size: var(--font-sm); color: var(--neutral-300); }
-
+/* Assessment table: questions down the left, one answer column per gap. */
+.assessment { min-width: 0; }
 .tableScroll { overflow-x: auto; min-width: 0; }
 .qTable { width: 100%; border-collapse: collapse; font-size: var(--font-md); color: var(--neutral-400); }
 .qTable th, .qTable td {

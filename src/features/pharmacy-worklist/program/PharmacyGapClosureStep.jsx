@@ -2,13 +2,13 @@ import { useMemo } from 'react';
 import { Badge } from '../../../components/Badge/Badge';
 import { Icon } from '../../../components/Icon/Icon';
 import {
-  MEASURE_NAMES, MEASURE_ORDER, addDaysMdy, daysFromToday, fillDueTone, measureStatus, parseMdy, pdcTone,
+  MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, addDaysMdy, daysFromToday, fillDueTone, measureStatus, parseMdy, pdcTone,
 } from '../pharmacyWorklist.utils';
-import { GapStatus } from '../PharmacyCells';
+import { GapStatus, MeasureCode } from '../PharmacyCells';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacyGapClosureStep.module.css';
 
-const TONE_CLASS = { error: styles.toneError, warning: styles.toneWarning, success: styles.toneSuccess };
+const TONE_CLASS = { error: styles.toneError };
 
 function Fact({ label, children, tone }) {
   return (
@@ -66,20 +66,23 @@ export function PharmacyGapClosureStep() {
           && (x.claim?.status !== 'Paid' || parseMdy(x.claim.date) < pickup);
         const cycles = closureCycles(member, x);
         const failIn = daysFromToday(x.failDate);
+        // Red only for an open gap's risk; a closed gap's numbers are history.
+        const open = OPEN_GAPS.has(st.gap);
+        const risk = (tone) => (open ? tone : null);
         return (
           <section key={x.code} className={styles.card}>
             <div className={styles.cardHead}>
-              <Badge size="S" tone="primary" label={x.code} />
+              <MeasureCode code={x.code} />
               <span className={styles.measureName}>{MEASURE_NAMES[x.code]}</span>
               <GapStatus status={st} size="M" />
             </div>
             <div className={styles.detail}>{st.detail}</div>
 
             <div className={styles.facts}>
-              <Fact label="PDC (plan)" tone={pdcTone(x.pdc)}>{x.pdc == null ? 'Not sent' : `${x.pdc}%`}</Fact>
-              <Fact label="PDC (claims)" tone={pdcTone(x.calcPdc)}>{x.calcPdc == null ? null : `${x.calcPdc}%`}</Fact>
-              <Fact label="Next fill due" tone={fillDueTone(x.nextFillDue)}>{x.nextFillDue}</Fact>
-              <Fact label="Fail (hopeless) date" tone={failIn != null && failIn <= 14 ? 'error' : null}>
+              <Fact label="PDC (plan)" tone={risk(pdcTone(x.pdc))}>{x.pdc == null ? 'Not sent' : `${x.pdc}%`}</Fact>
+              <Fact label="PDC (claims)" tone={risk(pdcTone(x.calcPdc))}>{x.calcPdc == null ? null : `${x.calcPdc}%`}</Fact>
+              <Fact label="Next fill due" tone={risk(fillDueTone(x.nextFillDue))}>{x.nextFillDue}</Fact>
+              <Fact label="Fail (hopeless) date" tone={risk(failIn != null && failIn <= 14 ? 'error' : null)}>
                 {x.failDate ? `${x.failDate}${failIn != null ? ` · ${failIn}d` : ''}` : null}
               </Fact>
               <Fact label="Allowable days left">{x.daysLeft}</Fact>
@@ -92,17 +95,17 @@ export function PharmacyGapClosureStep() {
 
             <div className={styles.signals}>
               <span className={styles.signalsLabel}>Plan signals</span>
-              {x.projectedStatus && <Badge size="S" tone={x.projectedStatus === 'Already adherent' ? 'success' : 'warning'} label={x.projectedStatus} />}
-              {x.oneFillToInvincible && <Badge size="S" tone="success" label="1 fill left" />}
+              {x.projectedStatus && <Badge size="S" tone="grey" label={x.projectedStatus} />}
+              {x.oneFillToInvincible && <Badge size="S" tone="grey" label="1 fill left" />}
               {x.excluded && <Badge size="S" tone="grey" label="Excluded" />}
-              {x.priorYearNonCompliant && <Badge size="S" tone="error" label="Prior-year non-compliant" />}
+              {x.priorYearNonCompliant && <Badge size="S" tone="grey" label="Prior-year non-compliant" />}
               {!x.projectedStatus && !x.oneFillToInvincible && !x.excluded && !x.priorYearNonCompliant && <span className={styles.muted}>None reported</span>}
             </div>
 
             {planBehind && (
               <div className={styles.note}>
                 <Icon name="solar:danger-triangle-linear" size={14} color="currentColor" />
-                <span>Pickup verified in Fold, but the plan hasn’t received a paid claim for it yet — its gap report may still show this measure open (lags 1–4 weeks).</span>
+                <span>Pickup verified in Fold, but the plan hasn’t received a paid claim for it yet. Its gap report may still show this measure open (it lags 1–4 weeks).</span>
               </div>
             )}
 
@@ -112,7 +115,7 @@ export function PharmacyGapClosureStep() {
                 ? <span className={styles.muted}>No pickup-verified closures yet.</span>
                 : cycles.map((c, i) => (
                   <div key={`${c.closed}-${i}`} className={styles.cycle}>
-                    <Icon name="solar:check-circle-linear" size={14} color="var(--status-success)" />
+                    <Icon name="solar:check-circle-linear" size={14} color="var(--neutral-300)" />
                     <span>Closed {c.closed} (pickup confirmed{c.by ? ` by ${c.by}` : ''}){c.reopens ? ` · reopens ${c.reopens}` : ''}</span>
                   </div>
                 ))}

@@ -9,7 +9,7 @@ import { Textarea } from '../../../components/Textarea/Textarea';
 import { Select } from '../../../components/Select/Select';
 import { Drawer } from '../../../components/Drawer/Drawer';
 import { GAP_STATUS_TONE, MEASURE_NAMES, MEASURE_ORDER, OPEN_GAPS, fillDueTone, measureStatus, pdcTone } from '../pharmacyWorklist.utils';
-import { SubStatus } from '../PharmacyCells';
+import { MeasureCode, SubStatus } from '../PharmacyCells';
 import { BARRIERS } from '../adherencePicklists';
 import { usePharmacyProgramMember } from './usePharmacyProgramMember';
 import styles from './PharmacyMedicationReview.module.css';
@@ -18,7 +18,7 @@ const CONDITIONS = ['Type 2 diabetes', 'Hypertension', 'Hyperlipidemia', 'Chroni
 
 const NON_ADHERENCE_REASONS = [...BARRIERS, 'Other'].map(r => ({ value: r, label: r }));
 
-const TONE_CLASS = { error: styles.toneError, warning: styles.toneWarning, success: styles.toneSuccess };
+const TONE_CLASS = { error: styles.toneError };
 
 const conditionsOf = (d) => d.conditions ?? (d.condition ? [d.condition] : []);
 
@@ -67,7 +67,7 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
   return (
     <div className={styles.detail}>
       <div className={styles.detailHead}>
-        <Badge size="S" tone="primary" label={med.measure} />
+        <MeasureCode code={med.measure} />
         <span className={styles.detailMeta}><span>Dose Form:</span> {med.doseForm}</span>
         <span className={styles.detailMeta}><span>Route:</span> {med.route}</span>
       </div>
@@ -122,9 +122,9 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
                 {i === 0 ? 'Latest · ' : ''}{e.date} · {e.by}{e.source ? ` · from ${e.source.toLowerCase()}` : ''}
               </span>
               <span className={styles.barrierChips}>
-                {e.rec.barriers.map(b => <Badge key={b} size="S" tone="error" label={b} />)}
-                {e.rec.interventions.map(v => <Badge key={v} size="S" tone="info" label={v} />)}
-                {e.rec.result && <Badge size="S" tone="success" icon="solar:check-circle-linear" label={e.rec.result} />}
+                {e.rec.barriers.map(b => <Badge key={b} size="S" tone="grey" label={b} />)}
+                {e.rec.interventions.map(v => <Badge key={v} size="S" tone="grey" label={v} />)}
+                {e.rec.result && <Badge size="S" tone="grey" icon="solar:check-circle-linear" label={e.rec.result} />}
               </span>
             </div>
           ))}
@@ -143,7 +143,7 @@ export function MedicationDetail({ med, memberRowId, interventionLog }) {
                 <td>{r.date}</td><td>{r.qty}</td><td>{r.daysSupply}</td>
                 <td>{r.pharmacy}</td><td>{r.prescriber}</td><td>{r.prescriberAddress}</td>
                 {/* Call-confirmed pickups land here before the claim does. */}
-                <td>{r.source ? <Badge size="S" tone="success" icon="solar:phone-linear" label={r.source} /> : 'Claim'}</td>
+                <td>{r.source ? <Badge size="S" tone="grey" icon="solar:phone-linear" label={r.source} /> : 'Claim'}</td>
               </tr>
             ))}
           </tbody>
@@ -207,6 +207,9 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
   }, [shown]);
 
   const medCount = groups.reduce((n, g) => n + g.meds.length, 0);
+  // Red only for an open gap's risk; a closed gap's numbers are history.
+  const openCodes = new Set(all.filter(x => OPEN_GAPS.has(x.st.gap)).map(x => x.code));
+  const riskClass = (code, tone) => (openCodes.has(code) ? TONE_CLASS[tone] || '' : '');
   const openMed = openId
     ? all.flatMap(x => x.medications.map(d => ({ ...d, measure: x.code }))).find(d => d.id === openId)
     : null;
@@ -231,15 +234,15 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
         {shown.map(x => (
           <div key={x.code} className={`${styles.gapCard} ${x.code === focusCode ? styles.gapCardFocus : ''}`}>
             <span className={styles.gapCardHead}>
-              <Badge size="S" variant="compliance-na" label={x.code} />
+              <MeasureCode code={x.code} />
               <span className={styles.groupName}>{MEASURE_NAMES[x.code]}</span>
               {x.code === focusCode && <span className={styles.groupMeta}>Opened from worklist</span>}
             </span>
             <span className={styles.gapCardMeta}>
               <Badge size="S" tone={GAP_STATUS_TONE[x.st.gap]} label={x.st.gap} />
               <SubStatus label={x.st.label} />
-              <span className={styles.groupMeta}>PDC <b className={TONE_CLASS[pdcTone(x.pdc)] || ''}>{x.pdc == null ? '—' : `${x.pdc}%`}</b></span>
-              <span className={styles.groupMeta}>Next due <b className={TONE_CLASS[fillDueTone(x.nextFillDue)] || ''}>{x.nextFillDue || '—'}</b></span>
+              <span className={styles.groupMeta}>PDC <b className={riskClass(x.code, pdcTone(x.pdc))}>{x.pdc == null ? '—' : `${x.pdc}%`}</b></span>
+              <span className={styles.groupMeta}>Next due <b className={riskClass(x.code, fillDueTone(x.nextFillDue))}>{x.nextFillDue || '—'}</b></span>
             </span>
           </div>
         ))}
@@ -276,12 +279,11 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                         <span className={styles.groupName}>{g.condition}</span>
                         <span className={styles.groupMeta}>{g.cls}</span>
                         <span className={styles.groupMeta}>{g.meds.length} medication{g.meds.length === 1 ? '' : 's'}</span>
-                        {switched && <Badge size="S" tone="warning" icon="solar:refresh-linear" label="Drug switched" />}
+                        {switched && <Badge size="S" tone="grey" icon="solar:refresh-linear" label="Drug switched" />}
                       </span>
                     </td>
                   </tr>
                   {isOpen && g.meds.map(d => {
-                    const fillTone = fillDueTone(d.nextFill);
                     return (
                       <tr
                         key={d.id}
@@ -289,17 +291,17 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
                         onClick={() => (onOpenMed ? onOpenMed(d.id) : setOpenId(d.id))}
                       >
                         <td className={styles.rxCell}>
-                          <span className={styles.rxName}>{d.name.toUpperCase()} {d.strength} {d.unit}</span>
+                          <span className={styles.rxName}>{d.name} {d.strength} {d.unit}</span>
                           <span className={styles.rxGeneric}>{d.generic}{d.status === 'Discontinued' ? ' · Discontinued' : ''}</span>
                         </td>
-                        <td><Badge size="S" variant="compliance-na" label={d.measure} /></td>
+                        <td><MeasureCode code={d.measure} /></td>
                         <td>{d.lastFill}</td>
-                        <td><span className={`${styles.nextFill} ${fillTone === 'error' ? styles.nextFillOverdue : ''} ${TONE_CLASS[fillTone] || ''}`}>{d.nextFill}</span></td>
-                        <td className={TONE_CLASS[pdcTone(d.pdc)] || ''}>{d.pdc == null ? '—' : `${d.pdc}%`}</td>
+                        <td className={riskClass(d.measure, fillDueTone(d.nextFill))}>{d.nextFill}</td>
+                        <td className={riskClass(d.measure, pdcTone(d.pdc))}>{d.pdc == null ? '—' : `${d.pdc}%`}</td>
                         <td>{d.mpr ?? '—'}</td>
                         <td>{d.daysSupply}</td>
                         <td>{d.qty}</td>
-                        <td>{d.nonAdherenceReason ? <Badge size="S" tone="error" label={d.nonAdherenceReason} /> : '—'}</td>
+                        <td>{d.nonAdherenceReason ? <Badge size="S" tone="grey" label={d.nonAdherenceReason} /> : '—'}</td>
                         <td>{d.prescriber?.name || '—'}</td>
                         <td>{d.pharmacy?.name || '—'}</td>
                         <td className={styles.openCell}>
@@ -317,7 +319,7 @@ export function PharmacyMedicationReview({ member: memberProp, onOpenMed }) {
 
       {openMed && (
         <Drawer
-          title={`${openMed.name.toUpperCase()} ${openMed.strength} ${openMed.unit} (${openMed.generic})`}
+          title={`${openMed.name} ${openMed.strength} ${openMed.unit} (${openMed.generic})`}
           onClose={() => setOpenId(null)}
           width={760}
         >

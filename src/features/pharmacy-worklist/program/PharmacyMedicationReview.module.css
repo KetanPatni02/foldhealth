@@ -69,13 +69,9 @@
 .groupMeta { color: var(--neutral-300); }
 .groupMeta b { font-weight: 500; color: var(--neutral-400); }
 
-/* Next fill gets the Arine-style box when it's overdue. */
-.nextFill { display: inline-block; padding: 0.0625rem var(--space-1); border: 1px solid transparent; border-radius: var(--space-1); }
-.nextFillOverdue { border-color: var(--status-error); }
 
-.toneError { color: var(--status-error); }
-.toneWarning { color: var(--status-warning-dark); }
-.toneSuccess { color: var(--status-success); }
+/* Beats `.table td` / `.groupMeta b`, which set their own color. */
+.toneError, .table td.toneError, .groupMeta b.toneError { color: var(--status-error); }
 
 .detail {
   display: flex;
